@@ -1,56 +1,49 @@
-## ClientOps — Frontend Only (MVP)
+# Plan: Deepen every ClientOps subpage
 
-Build the full UI shell described in the spec as a **frontend-only Lovable app** using TanStack Start + Tailwind + shadcn/ui. No backend, no Lovable Cloud, no auth, no agents executing — all data comes from in-memory mock fixtures so every page renders realistic content.
+Frontend-only. Mock data stays in `src/lib/mock-data.ts`. All mutations live in component-level React state (resets on reload). Toasts via sonner.
 
-### Scope
+## Cross-cutting fixes
+- Fix SSR hydration mismatch from locale-formatted dates: centralize date formatting in `src/lib/format.ts` using fixed `en-GB` + UTC `Intl.DateTimeFormat`, replace ad-hoc `toLocaleString()` / `new Intl.DateTimeFormat("en-HK", …)` calls across routes.
+- Expand `mock-data.ts`: add more leads/quotes/clients/tasks/approvals/runs, plus arrays for `quoteTemplates`, `notifications`, `pricingRules`, `notes`.
+- New shared components: `data-table-toolbar.tsx` (search + filter chips), `empty-state.tsx`, `metric-card.tsx`, `activity-feed.tsx`, `confirm-dialog.tsx`.
 
-All 14 routes from spec §8.1, navigable from a persistent dashboard layout (sidebar + topbar):
+## Per-route deepening
 
-| Route | Page |
-|---|---|
-| `/` | Dashboard — KPI tiles, pipeline funnel chart, agent activity feed |
-| `/leads` | Lead Inbox — filterable table (source, status, score, owner) |
-| `/leads/$id` | Lead Detail — profile, qualification JSON, activity log, agent suggestions |
-| `/quotes` | Quote List — table with status, value, client |
-| `/quotes/new` | Quote Builder — line-item editor, template picker, totals, request-approval CTA |
-| `/quotes/$id` | Quote Detail — summary, status timeline, mock PDF preview panel |
-| `/clients` | Client List — health score, tier, renewal date |
-| `/clients/$id` | Client Profile — projects, tasks, history tabs |
-| `/tasks` | Task Board — Kanban (open / in-progress / done) |
-| `/approvals` | Approval Inbox — cards with Approve/Reject/Escalate |
-| `/agents` | Agent Monitor — agent_runs table, expandable rows showing tool calls |
-| `/agents/$name` | Agent Detail — run history, memory snippets, config |
-| `/reports` | Reports — Recharts pipeline / conversion / agent activity |
-| `/settings` | Settings — tabs for users, pricing rules, service taxonomy, agent config |
+**`/` Dashboard** — 4 KPI cards with deltas, pipeline funnel (Recharts), agent activity sparkline, recent approvals feed, "needs your attention" list, quick-action buttons (New lead / New quote).
 
-### Design System
+**`/leads`** — Search, status filter chips, owner filter, sort by score/value, bulk-select with "assign owner" / "convert to quote" actions, "New lead" dialog (local push), row click → detail.
 
-- Neutral white/slate base, indigo brand accent (Fimmick-style), defined as semantic tokens in `src/styles.css` (oklch)
-- Inter font, Lucide icons, shadcn/ui primitives already present
-- Sidebar navigation using `components/ui/sidebar.tsx`; topbar with search + user menu
-- Status badges colored consistently across leads/quotes/approvals
-- Agent vs user actor distinguished with robot vs avatar icon
+**`/leads/$id`** — Tabs: Overview · Activity · Quotes · Files · AI Insights. Inline status change (Select), add-note composer, "Generate quote" CTA navigates to `/quotes/new?leadId=…`.
 
-### Mock data
+**`/quotes`** — Status tabs (draft/pending/sent/accepted/lost), revenue summary bar, search, sort, row actions (duplicate, archive).
 
-A `src/lib/mock-data.ts` module exports typed arrays for leads, quotes, clients, tasks, approvals, agent_runs, tool_calls, activity_logs — matching the schema in spec §6 so swapping to a real API later is trivial. Detail pages look up by id.
+**`/quotes/new`** — Multi-step wizard (Client → Services → Review): autocomplete client, add/remove line items from templates, qty/price editing with live total, discount %, validity date, "Save draft" / "Submit for approval" → toast + navigate.
 
-### Out of scope (explicitly not built)
+**`/quotes/$id`** — Add Approve/Reject buttons (state-driven), inline status edits, comment thread, version history list, "Send to client" advances timeline.
 
-- No Lovable Cloud / Supabase / database
-- No authentication
-- No real agent runtime, LLM calls, PDF generation, or messaging integrations
-- No CSV import processing (UI button only)
-- Form submissions update local component state only; nothing persists
+**`/clients`** — Tier filter, health-score color chips, sortable columns, "Add client" dialog, ARR total at top.
 
-### Technical notes
+**`/clients/$id`** — Already has tabs; add Contacts tab, Quotes tab listing related quotes, Files tab (mock list), edit-health-score popover.
 
-- TanStack Start file-based routing in `src/routes/`, flat dot-separated naming (e.g. `leads.$id.tsx`, `quotes.new.tsx`, `agents.$name.tsx`)
-- Dashboard layout route `src/routes/_app.tsx` wraps all pages with sidebar + outlet; `__root.tsx` keeps current head/error/notFound
-- Each route sets its own `head()` with unique title + description
-- Recharts for charts, TanStack Table for sortable tables, shadcn Dialog/Sheet for detail modals where helpful
-- Replace placeholder `src/routes/index.tsx` with the real dashboard
+**`/tasks`** — Kanban: drag-and-drop between columns using local state (HTML5 DnD, no library), priority filter, assignee filter, "New task" dialog, due-date overdue highlighting.
 
-### Deliverable
+**`/approvals`** — Split view: list + detail pane. Approve/Reject with reason textarea, bulk approve, filter by agent/type, SLA countdown chips.
 
-A fully clickable ClientOps frontend prototype — every page renders, navigation works, mock data flows through tables and detail views. Ready for a backend team to wire to real endpoints later.
+**`/agents`** — Toggle agent on/off (Switch, local state), success-rate sparklines per row, filter by status, "View runs" → detail.
+
+**`/agents/$name`** — Add Runs timeline with expandable tool-call traces (mock JSON), Memory tab editor (read-only viewer + "pin" toggle), Config tab with sliders for temperature/confidence threshold.
+
+**`/reports`** — Date-range selector (chips: 7d/30d/90d), 4 charts: revenue trend, conversion funnel, agent leaderboard (bar), task throughput. Export-CSV button (toast stub).
+
+**`/settings`** — Expand existing tabs: Profile (form), Team (table with role select), Pricing (editable threshold rows), Agents (per-agent toggles + approval-required switch), Notifications (channel checkboxes), API keys (masked list + "Generate" button).
+
+## Technical details
+- New files: `src/lib/format.ts`, `src/components/data-table-toolbar.tsx`, `src/components/empty-state.tsx`, `src/components/metric-card.tsx`, `src/components/activity-feed.tsx`, `src/components/confirm-dialog.tsx`.
+- All forms use shadcn `Dialog` + `Form` + `zod` (already installed).
+- Drag-and-drop on `/tasks` uses native HTML5 DnD (no extra dep).
+- Charts use existing Recharts.
+- Mutations: each list page holds its own `useState` seeded from mock arrays; child pages receive via route loader (re-reads mock arrays at navigation time — accept that cross-page edits don't propagate, this is documented limitation of frontend-only prototype).
+- Keep design tokens from `src/styles.css` (indigo brand). No new colors.
+
+## Out of scope
+Backend, persistence across reload, real auth, real PDF, real CSV, real email send.
