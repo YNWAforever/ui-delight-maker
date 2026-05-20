@@ -119,7 +119,7 @@ function LeadDetail() {
                         Missing information
                       </p>
                       <div className="mt-1 flex flex-wrap gap-1.5">
-                        {lead.qualification_data.missing_information.map((m) => (
+                        {lead.qualification_data.missing_information.map((m: string) => (
                           <span
                             key={m}
                             className="rounded-md bg-warning/15 px-2 py-0.5 text-xs text-warning-foreground"

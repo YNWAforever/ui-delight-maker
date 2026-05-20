@@ -9,38 +9,262 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as QuotesRouteImport } from './routes/quotes'
+import { Route as LeadsRouteImport } from './routes/leads'
+import { Route as ClientsRouteImport } from './routes/clients'
+import { Route as ApprovalsRouteImport } from './routes/approvals'
+import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as QuotesNewRouteImport } from './routes/quotes.new'
+import { Route as QuotesIdRouteImport } from './routes/quotes.$id'
+import { Route as LeadsIdRouteImport } from './routes/leads.$id'
+import { Route as ClientsIdRouteImport } from './routes/clients.$id'
+import { Route as AgentsNameRouteImport } from './routes/agents.$name'
 
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuotesRoute = QuotesRouteImport.update({
+  id: '/quotes',
+  path: '/quotes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeadsRoute = LeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientsRoute = ClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApprovalsRoute = ApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentsRoute = AgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QuotesNewRoute = QuotesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => QuotesRoute,
+} as any)
+const QuotesIdRoute = QuotesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => QuotesRoute,
+} as any)
+const LeadsIdRoute = LeadsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => LeadsRoute,
+} as any)
+const ClientsIdRoute = ClientsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ClientsRoute,
+} as any)
+const AgentsNameRoute = AgentsNameRouteImport.update({
+  id: '/$name',
+  path: '/$name',
+  getParentRoute: () => AgentsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRouteWithChildren
+  '/approvals': typeof ApprovalsRoute
+  '/clients': typeof ClientsRouteWithChildren
+  '/leads': typeof LeadsRouteWithChildren
+  '/quotes': typeof QuotesRouteWithChildren
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
+  '/agents/$name': typeof AgentsNameRoute
+  '/clients/$id': typeof ClientsIdRoute
+  '/leads/$id': typeof LeadsIdRoute
+  '/quotes/$id': typeof QuotesIdRoute
+  '/quotes/new': typeof QuotesNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRouteWithChildren
+  '/approvals': typeof ApprovalsRoute
+  '/clients': typeof ClientsRouteWithChildren
+  '/leads': typeof LeadsRouteWithChildren
+  '/quotes': typeof QuotesRouteWithChildren
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
+  '/agents/$name': typeof AgentsNameRoute
+  '/clients/$id': typeof ClientsIdRoute
+  '/leads/$id': typeof LeadsIdRoute
+  '/quotes/$id': typeof QuotesIdRoute
+  '/quotes/new': typeof QuotesNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRouteWithChildren
+  '/approvals': typeof ApprovalsRoute
+  '/clients': typeof ClientsRouteWithChildren
+  '/leads': typeof LeadsRouteWithChildren
+  '/quotes': typeof QuotesRouteWithChildren
+  '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
+  '/agents/$name': typeof AgentsNameRoute
+  '/clients/$id': typeof ClientsIdRoute
+  '/leads/$id': typeof LeadsIdRoute
+  '/quotes/$id': typeof QuotesIdRoute
+  '/quotes/new': typeof QuotesNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/agents'
+    | '/approvals'
+    | '/clients'
+    | '/leads'
+    | '/quotes'
+    | '/reports'
+    | '/settings'
+    | '/tasks'
+    | '/agents/$name'
+    | '/clients/$id'
+    | '/leads/$id'
+    | '/quotes/$id'
+    | '/quotes/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/agents'
+    | '/approvals'
+    | '/clients'
+    | '/leads'
+    | '/quotes'
+    | '/reports'
+    | '/settings'
+    | '/tasks'
+    | '/agents/$name'
+    | '/clients/$id'
+    | '/leads/$id'
+    | '/quotes/$id'
+    | '/quotes/new'
+  id:
+    | '__root__'
+    | '/'
+    | '/agents'
+    | '/approvals'
+    | '/clients'
+    | '/leads'
+    | '/quotes'
+    | '/reports'
+    | '/settings'
+    | '/tasks'
+    | '/agents/$name'
+    | '/clients/$id'
+    | '/leads/$id'
+    | '/quotes/$id'
+    | '/quotes/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentsRoute: typeof AgentsRouteWithChildren
+  ApprovalsRoute: typeof ApprovalsRoute
+  ClientsRoute: typeof ClientsRouteWithChildren
+  LeadsRoute: typeof LeadsRouteWithChildren
+  QuotesRoute: typeof QuotesRouteWithChildren
+  ReportsRoute: typeof ReportsRoute
+  SettingsRoute: typeof SettingsRoute
+  TasksRoute: typeof TasksRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quotes': {
+      id: '/quotes'
+      path: '/quotes'
+      fullPath: '/quotes'
+      preLoaderRoute: typeof QuotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leads': {
+      id: '/leads'
+      path: '/leads'
+      fullPath: '/leads'
+      preLoaderRoute: typeof LeadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clients': {
+      id: '/clients'
+      path: '/clients'
+      fullPath: '/clients'
+      preLoaderRoute: typeof ClientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/approvals': {
+      id: '/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof ApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agents': {
+      id: '/agents'
+      path: '/agents'
+      fullPath: '/agents'
+      preLoaderRoute: typeof AgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +272,99 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/quotes/new': {
+      id: '/quotes/new'
+      path: '/new'
+      fullPath: '/quotes/new'
+      preLoaderRoute: typeof QuotesNewRouteImport
+      parentRoute: typeof QuotesRoute
+    }
+    '/quotes/$id': {
+      id: '/quotes/$id'
+      path: '/$id'
+      fullPath: '/quotes/$id'
+      preLoaderRoute: typeof QuotesIdRouteImport
+      parentRoute: typeof QuotesRoute
+    }
+    '/leads/$id': {
+      id: '/leads/$id'
+      path: '/$id'
+      fullPath: '/leads/$id'
+      preLoaderRoute: typeof LeadsIdRouteImport
+      parentRoute: typeof LeadsRoute
+    }
+    '/clients/$id': {
+      id: '/clients/$id'
+      path: '/$id'
+      fullPath: '/clients/$id'
+      preLoaderRoute: typeof ClientsIdRouteImport
+      parentRoute: typeof ClientsRoute
+    }
+    '/agents/$name': {
+      id: '/agents/$name'
+      path: '/$name'
+      fullPath: '/agents/$name'
+      preLoaderRoute: typeof AgentsNameRouteImport
+      parentRoute: typeof AgentsRoute
+    }
   }
 }
 
+interface AgentsRouteChildren {
+  AgentsNameRoute: typeof AgentsNameRoute
+}
+
+const AgentsRouteChildren: AgentsRouteChildren = {
+  AgentsNameRoute: AgentsNameRoute,
+}
+
+const AgentsRouteWithChildren =
+  AgentsRoute._addFileChildren(AgentsRouteChildren)
+
+interface ClientsRouteChildren {
+  ClientsIdRoute: typeof ClientsIdRoute
+}
+
+const ClientsRouteChildren: ClientsRouteChildren = {
+  ClientsIdRoute: ClientsIdRoute,
+}
+
+const ClientsRouteWithChildren =
+  ClientsRoute._addFileChildren(ClientsRouteChildren)
+
+interface LeadsRouteChildren {
+  LeadsIdRoute: typeof LeadsIdRoute
+}
+
+const LeadsRouteChildren: LeadsRouteChildren = {
+  LeadsIdRoute: LeadsIdRoute,
+}
+
+const LeadsRouteWithChildren = LeadsRoute._addFileChildren(LeadsRouteChildren)
+
+interface QuotesRouteChildren {
+  QuotesIdRoute: typeof QuotesIdRoute
+  QuotesNewRoute: typeof QuotesNewRoute
+}
+
+const QuotesRouteChildren: QuotesRouteChildren = {
+  QuotesIdRoute: QuotesIdRoute,
+  QuotesNewRoute: QuotesNewRoute,
+}
+
+const QuotesRouteWithChildren =
+  QuotesRoute._addFileChildren(QuotesRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentsRoute: AgentsRouteWithChildren,
+  ApprovalsRoute: ApprovalsRoute,
+  ClientsRoute: ClientsRouteWithChildren,
+  LeadsRoute: LeadsRouteWithChildren,
+  QuotesRoute: QuotesRouteWithChildren,
+  ReportsRoute: ReportsRoute,
+  SettingsRoute: SettingsRoute,
+  TasksRoute: TasksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

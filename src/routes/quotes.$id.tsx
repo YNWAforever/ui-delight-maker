@@ -88,7 +88,7 @@ function QuoteDetail() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {quote.line_items.map((li) => (
+                  {quote.line_items.map((li: typeof quote.line_items[number]) => (
                     <tr key={li.id}>
                       <td className="py-3">
                         <div className="font-medium">{li.service}</div>
