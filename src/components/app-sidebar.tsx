@@ -1,0 +1,107 @@
+import { Link, useRouterState } from "@tanstack/react-router";
+import {
+  LayoutDashboard,
+  Inbox,
+  FileText,
+  Building2,
+  CheckSquare,
+  ShieldCheck,
+  Bot,
+  BarChart3,
+  Settings,
+  Sparkles,
+} from "lucide-react";
+
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+
+const workspaceItems = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Leads", url: "/leads", icon: Inbox },
+  { title: "Quotes", url: "/quotes", icon: FileText },
+  { title: "Clients", url: "/clients", icon: Building2 },
+  { title: "Tasks", url: "/tasks", icon: CheckSquare },
+];
+
+const opsItems = [
+  { title: "Approvals", url: "/approvals", icon: ShieldCheck },
+  { title: "Agents", url: "/agents", icon: Bot },
+  { title: "Reports", url: "/reports", icon: BarChart3 },
+];
+
+const settingsItems = [{ title: "Settings", url: "/settings", icon: Settings }];
+
+export function AppSidebar() {
+  const currentPath = useRouterState({
+    select: (s) => s.location.pathname,
+  });
+
+  const isActive = (path: string) => {
+    if (path === "/") return currentPath === "/";
+    return currentPath === path || currentPath.startsWith(path + "/");
+  };
+
+  const renderGroup = (label: string, items: typeof workspaceItems) => (
+    <SidebarGroup>
+      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+                <Link to={item.url}>
+                  <item.icon className="h-4 w-4" />
+                  <span>{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <div className="flex items-center gap-2 px-2 py-1.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="text-sm font-semibold">Fimmick ClientOps</span>
+            <span className="text-[11px] text-muted-foreground">Multi-agent workspace</span>
+          </div>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        {renderGroup("Workspace", workspaceItems)}
+        {renderGroup("Operations", opsItems)}
+        {renderGroup("System", settingsItems)}
+      </SidebarContent>
+
+      <SidebarFooter>
+        <div className="flex items-center gap-2 rounded-md border border-sidebar-border bg-sidebar-accent/40 px-2 py-2 group-data-[collapsible=icon]:hidden">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-xs font-medium text-primary">
+            AW
+          </div>
+          <div className="flex min-w-0 flex-col leading-tight">
+            <span className="truncate text-xs font-medium">Ada Wong</span>
+            <span className="truncate text-[11px] text-muted-foreground">admin · Fimmick</span>
+          </div>
+        </div>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
