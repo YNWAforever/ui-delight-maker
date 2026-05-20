@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowLeft, Check, Download, FileText, Send } from "lucide-react";
+import { ArrowLeft, Check, CheckCircle2, Download, FileText, Send, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -7,7 +8,18 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { leadById, quoteById, userById, type QuoteStatus } from "@/lib/mock-data";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { formatDateTime } from "@/lib/format";
+import {
+  leadById,
+  quoteById,
+  quoteComments,
+  quoteVersions,
+  userById,
+  type Comment,
+  type QuoteStatus,
+} from "@/lib/mock-data";
 
 export const Route = createFileRoute("/quotes/$id")({
   loader: ({ params }) => {
@@ -46,8 +58,34 @@ function QuoteDetail() {
   const lead = leadById(quote.lead_id);
   const creator = userById(quote.created_by);
   const approver = quote.approved_by ? userById(quote.approved_by) : null;
+  const initialComments = quoteComments.filter((c) => c.quote_id === quote.id);
+  const versions = quoteVersions.filter((v) => v.quote_id === quote.id);
 
-  const reachedIdx = TIMELINE.indexOf(quote.status as QuoteStatus);
+  const [status, setStatus] = useState<QuoteStatus>(quote.status as QuoteStatus);
+  const [comments, setComments] = useState<Comment[]>(initialComments);
+  const [composer, setComposer] = useState("");
+
+  const reachedIdx = TIMELINE.indexOf(status);
+
+  const advance = (next: QuoteStatus, msg: string) => {
+    setStatus(next);
+    toast.success(msg);
+  };
+
+  const addComment = () => {
+    if (!composer.trim()) return;
+    setComments((prev) => [
+      ...prev,
+      {
+        id: `QC-${Math.random().toString(36).slice(2, 7)}`,
+        quote_id: quote.id,
+        author: "Ada Wong",
+        body: composer.trim(),
+        created_at: new Date("2026-05-20T10:00:00Z").toISOString(),
+      },
+    ]);
+    setComposer("");
+  };
 
   return (
     <>
@@ -58,15 +96,31 @@ function QuoteDetail() {
           <>
             <Button variant="outline" size="sm" asChild>
               <Link to="/quotes">
-                <ArrowLeft className="mr-2 h-4 w-4" /> All quotes
+                <ArrowLeft className="mr-2 h-4 w-4" /> All
               </Link>
             </Button>
-            <Button variant="outline" size="sm">
-              <Download className="mr-2 h-4 w-4" /> Download PDF
+            <Button variant="outline" size="sm" onClick={() => toast.message("PDF download mocked")}>
+              <Download className="mr-2 h-4 w-4" /> PDF
             </Button>
-            <Button size="sm" onClick={() => toast.success("Quote sent to client.")}>
-              <Send className="mr-2 h-4 w-4" /> Send to client
-            </Button>
+            {status === "pending_approval" && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => advance("rejected", "Quote rejected")}
+                >
+                  <XCircle className="mr-2 h-4 w-4" /> Reject
+                </Button>
+                <Button size="sm" onClick={() => advance("approved", "Quote approved")}>
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
+                </Button>
+              </>
+            )}
+            {status === "approved" && (
+              <Button size="sm" onClick={() => advance("sent", "Sent to client")}>
+                <Send className="mr-2 h-4 w-4" /> Send to client
+              </Button>
+            )}
           </>
         }
       />
@@ -74,64 +128,118 @@ function QuoteDetail() {
       <div className="grid grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Line items</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="py-2 text-left font-medium">Service</th>
-                    <th className="py-2 text-right font-medium">Qty</th>
-                    <th className="py-2 text-right font-medium">Unit</th>
-                    <th className="py-2 text-right font-medium">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {quote.line_items.map((li: typeof quote.line_items[number]) => (
-                    <tr key={li.id}>
-                      <td className="py-3">
-                        <div className="font-medium">{li.service}</div>
-                        <div className="text-xs text-muted-foreground">{li.description}</div>
-                      </td>
-                      <td className="py-3 text-right tabular-nums">{li.qty}</td>
-                      <td className="py-3 text-right tabular-nums">
-                        {li.unit_price.toLocaleString()}
-                      </td>
-                      <td className="py-3 text-right font-medium tabular-nums">
-                        {(li.qty * li.unit_price).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t border-border">
-                    <td colSpan={3} className="py-3 text-right text-sm font-semibold">
-                      Total
-                    </td>
-                    <td className="py-3 text-right text-base font-semibold tabular-nums">
-                      {quote.currency} {quote.total_value.toLocaleString()}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </CardContent>
-          </Card>
+            <CardContent className="p-5">
+              <Tabs defaultValue="items">
+                <TabsList>
+                  <TabsTrigger value="items">Line items</TabsTrigger>
+                  <TabsTrigger value="comments">Comments ({comments.length})</TabsTrigger>
+                  <TabsTrigger value="versions">Versions ({versions.length})</TabsTrigger>
+                  <TabsTrigger value="preview">PDF preview</TabsTrigger>
+                </TabsList>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">PDF preview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex aspect-[1/1.2] items-center justify-center rounded-md border-2 border-dashed border-border bg-muted/30">
-                <div className="text-center">
-                  <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
-                  <p className="mt-3 text-sm font-medium">{quote.number}.pdf</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Generated when the quote is approved.
-                  </p>
-                </div>
-              </div>
+                <TabsContent value="items" className="mt-4">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                        <th className="py-2 text-left font-medium">Service</th>
+                        <th className="py-2 text-right font-medium">Qty</th>
+                        <th className="py-2 text-right font-medium">Unit</th>
+                        <th className="py-2 text-right font-medium">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {quote.line_items.map((li: typeof quote.line_items[number]) => (
+                        <tr key={li.id}>
+                          <td className="py-3">
+                            <div className="font-medium">{li.service}</div>
+                            <div className="text-xs text-muted-foreground">{li.description}</div>
+                          </td>
+                          <td className="py-3 text-right tabular-nums">{li.qty}</td>
+                          <td className="py-3 text-right tabular-nums">
+                            {li.unit_price.toLocaleString()}
+                          </td>
+                          <td className="py-3 text-right font-medium tabular-nums">
+                            {(li.qty * li.unit_price).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t border-border">
+                        <td colSpan={3} className="py-3 text-right text-sm font-semibold">
+                          Total
+                        </td>
+                        <td className="py-3 text-right text-base font-semibold tabular-nums">
+                          {quote.currency} {quote.total_value.toLocaleString()}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </TabsContent>
+
+                <TabsContent value="comments" className="mt-4">
+                  <div className="space-y-3">
+                    {comments.map((c) => (
+                      <div key={c.id} className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">{c.author}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDateTime(c.created_at)}
+                          </span>
+                        </div>
+                        <p className="mt-1 leading-snug">{c.body}</p>
+                      </div>
+                    ))}
+                    {comments.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No comments yet.</p>
+                    )}
+                    <div className="flex gap-2">
+                      <Textarea
+                        placeholder="Add a comment…"
+                        value={composer}
+                        onChange={(e) => setComposer(e.target.value)}
+                        className="min-h-[60px] flex-1"
+                      />
+                      <Button size="sm" onClick={addComment}>
+                        <Send className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="versions" className="mt-4">
+                  <ol className="space-y-3">
+                    {versions.map((v) => (
+                      <li key={v.version} className="flex items-start gap-3">
+                        <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium">
+                          v{v.version}
+                        </span>
+                        <div className="text-sm">
+                          <p className="font-medium">{v.summary}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {v.changed_by} · {formatDateTime(v.created_at)}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                    {versions.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No version history.</p>
+                    )}
+                  </ol>
+                </TabsContent>
+
+                <TabsContent value="preview" className="mt-4">
+                  <div className="flex aspect-[1/1.2] items-center justify-center rounded-md border-2 border-dashed border-border bg-muted/30">
+                    <div className="text-center">
+                      <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
+                      <p className="mt-3 text-sm font-medium">{quote.number}.pdf</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Generated when the quote is approved.
+                      </p>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>
@@ -155,11 +263,19 @@ function QuoteDetail() {
                             : "border-border bg-background text-muted-foreground"
                         }`}
                       >
-                        {reached ? <Check className="h-3 w-3" /> : <span className="text-[10px]">{idx + 1}</span>}
+                        {reached ? (
+                          <Check className="h-3 w-3" />
+                        ) : (
+                          <span className="text-[10px]">{idx + 1}</span>
+                        )}
                       </div>
                       <span
                         className={`text-sm capitalize ${
-                          current ? "font-semibold" : reached ? "text-foreground" : "text-muted-foreground"
+                          current
+                            ? "font-semibold"
+                            : reached
+                              ? "text-foreground"
+                              : "text-muted-foreground"
                         }`}
                       >
                         {stage.replace(/_/g, " ")}
@@ -177,11 +293,15 @@ function QuoteDetail() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <Row label="Status">
-                <StatusBadge value={quote.status} />
+                <StatusBadge value={status} />
               </Row>
               <Row label="Lead">
                 {lead ? (
-                  <Link to="/leads/$id" params={{ id: lead.id }} className="text-primary hover:underline">
+                  <Link
+                    to="/leads/$id"
+                    params={{ id: lead.id }}
+                    className="text-primary hover:underline"
+                  >
                     {lead.company_name}
                   </Link>
                 ) : (
@@ -192,7 +312,7 @@ function QuoteDetail() {
               <Row label="Approved by">{approver?.name ?? "Pending"}</Row>
               <Separator />
               <Row label="Valid until">{quote.valid_until}</Row>
-              <Row label="Created">{new Date(quote.created_at).toLocaleString()}</Row>
+              <Row label="Created">{formatDateTime(quote.created_at)}</Row>
             </CardContent>
           </Card>
         </div>

@@ -1,13 +1,23 @@
-import { useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bot, ChevronDown, ChevronRight, Play } from "lucide-react";
+import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { agentRuns, agents } from "@/lib/mock-data";
+import { formatDateTime } from "@/lib/format";
+import { agentRuns, agents as seedAgents } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/agents")({
   head: () => ({
@@ -19,15 +29,17 @@ export const Route = createFileRoute("/agents")({
   component: AgentsMonitor,
 });
 
-const fmt = new Intl.DateTimeFormat("en-HK", {
-  month: "short",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
 function AgentsMonitor() {
   const [open, setOpen] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [agentStates, setAgentStates] = useState(() =>
+    Object.fromEntries(seedAgents.map((a) => [a.name, a.status === "active"])),
+  );
+
+  const filteredRuns = useMemo(
+    () => (statusFilter === "all" ? agentRuns : agentRuns.filter((r) => r.status === statusFilter)),
+    [statusFilter],
+  );
 
   return (
     <>
@@ -35,28 +47,33 @@ function AgentsMonitor() {
 
       <div className="space-y-6 px-6 py-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {agents.map((a) => (
-            <Link
-              key={a.name}
-              to="/agents/$name"
-              params={{ name: a.name }}
-              className="group rounded-lg border border-border bg-card p-4 transition-shadow hover:shadow-md"
-            >
+          {seedAgents.map((a) => (
+            <Card key={a.name} className="p-4">
               <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
+                <Link
+                  to="/agents/$name"
+                  params={{ name: a.name }}
+                  className="flex items-center gap-2 hover:text-primary"
+                >
                   <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
                     <Bot className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium group-hover:text-primary">{a.display_name}</p>
+                    <p className="text-sm font-medium">{a.display_name}</p>
                     <p className="text-xs text-muted-foreground">{a.runs_24h} runs / 24h</p>
                   </div>
-                </div>
-                <StatusBadge value={a.status} />
+                </Link>
+                <Switch
+                  checked={agentStates[a.name]}
+                  onCheckedChange={(v) => {
+                    setAgentStates((p) => ({ ...p, [a.name]: v }));
+                    toast.success(`${a.display_name} ${v ? "enabled" : "paused"}`);
+                  }}
+                />
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <p className="text-muted-foreground">Conf</p>
+                  <p className="text-muted-foreground">Confidence</p>
                   <p className="font-medium">{(a.avg_confidence * 100).toFixed(0)}%</p>
                 </div>
                 <div>
@@ -64,9 +81,41 @@ function AgentsMonitor() {
                   <p className="font-medium">{a.human_approval ? "Required" : "Auto"}</p>
                 </div>
               </div>
-            </Link>
+              <div className="mt-3 flex h-6 items-end gap-0.5">
+                {Array.from({ length: 14 }).map((_, i) => {
+                  const h = 20 + ((i * 13 + a.runs_24h * 7) % 80);
+                  return (
+                    <div
+                      key={i}
+                      className="flex-1 rounded-sm bg-primary/30"
+                      style={{ height: `${h}%` }}
+                    />
+                  );
+                })}
+              </div>
+            </Card>
           ))}
         </div>
+
+        <Card className="p-3">
+          <div className="flex items-center gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-9 w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All run statuses</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="waiting_approval">Waiting approval</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="running">Running</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground">
+              {filteredRuns.length} runs · click a row to inspect
+            </span>
+          </div>
+        </Card>
 
         <Card>
           <Table>
@@ -84,12 +133,11 @@ function AgentsMonitor() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {agentRuns.map((run) => {
+              {filteredRuns.map((run) => {
                 const expanded = open === run.id;
                 return (
-                  <>
+                  <Fragment key={run.id}>
                     <TableRow
-                      key={run.id}
                       className="cursor-pointer"
                       onClick={() => setOpen(expanded ? null : run.id)}
                     >
@@ -117,30 +165,27 @@ function AgentsMonitor() {
                         {(run.confidence_score * 100).toFixed(0)}%
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {fmt.format(new Date(run.created_at))}
+                        {formatDateTime(run.created_at)}
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toast.message(`Replaying ${run.id}`);
+                          }}
+                        >
                           <Play className="mr-1 h-3 w-3" /> Replay
                         </Button>
                       </TableCell>
                     </TableRow>
                     {expanded && (
-                      <TableRow key={`${run.id}-expand`}>
+                      <TableRow>
                         <TableCell colSpan={9} className="bg-muted/30">
                           <div className="space-y-3 py-2">
-                            <div>
-                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Input
-                              </p>
-                              <p className="text-sm">{run.input_summary}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Output
-                              </p>
-                              <p className="text-sm">{run.output_summary}</p>
-                            </div>
+                            <KV label="Input" value={run.input_summary} />
+                            <KV label="Output" value={run.output_summary} />
                             <div>
                               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                                 Tool calls ({run.tool_calls.length})
@@ -172,7 +217,7 @@ function AgentsMonitor() {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </TableBody>
@@ -180,5 +225,14 @@ function AgentsMonitor() {
         </Card>
       </div>
     </>
+  );
+}
+
+function KV({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-sm">{value}</p>
+    </div>
   );
 }
