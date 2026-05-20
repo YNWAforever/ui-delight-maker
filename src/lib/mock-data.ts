@@ -926,3 +926,158 @@ export const quotePerformance = [
   { month: "Apr", sent: 31, accepted: 18 },
   { month: "May", sent: 24, accepted: 15 },
 ];
+
+// ────────────────────────────────────────────────────────────────────────────
+// Additional reporting series
+// ────────────────────────────────────────────────────────────────────────────
+export const revenueTrend = [
+  { week: "W14", revenue: 420 },
+  { week: "W15", revenue: 580 },
+  { week: "W16", revenue: 510 },
+  { week: "W17", revenue: 690 },
+  { week: "W18", revenue: 760 },
+  { week: "W19", revenue: 840 },
+  { week: "W20", revenue: 920 },
+];
+
+export const agentLeaderboard = [
+  { name: "Qualification", runs: 37, success: 96 },
+  { name: "Lead Intake", runs: 41, success: 99 },
+  { name: "Sales Reply", runs: 22, success: 88 },
+  { name: "Quotation", runs: 12, success: 92 },
+  { name: "Approval", runs: 9, success: 95 },
+  { name: "Client Success", runs: 14, success: 94 },
+  { name: "Orchestrator", runs: 24, success: 98 },
+];
+
+export const taskThroughput = [
+  { day: "Mon", created: 14, completed: 10 },
+  { day: "Tue", created: 18, completed: 16 },
+  { day: "Wed", created: 12, completed: 14 },
+  { day: "Thu", created: 22, completed: 17 },
+  { day: "Fri", created: 16, completed: 19 },
+  { day: "Sat", created: 4, completed: 6 },
+  { day: "Sun", created: 2, completed: 3 },
+];
+
+// ────────────────────────────────────────────────────────────────────────────
+// Notifications
+// ────────────────────────────────────────────────────────────────────────────
+export interface Notification {
+  id: string;
+  type: "approval" | "task" | "lead" | "client";
+  message: string;
+  link: string;
+  created_at: string;
+  read: boolean;
+}
+
+export const notifications: Notification[] = [
+  { id: "N-1", type: "approval", message: "Quotation Agent waiting on FIM-Q-2029 approval", link: "/approvals", created_at: "2026-05-19T08:32:00Z", read: false },
+  { id: "N-2", type: "lead", message: "New high-score lead: Aurora Retail (82)", link: "/leads/L-1042", created_at: "2026-05-18T09:48:00Z", read: false },
+  { id: "N-3", type: "task", message: "3 tasks overdue", link: "/tasks", created_at: "2026-05-19T07:00:00Z", read: true },
+  { id: "N-4", type: "client", message: "Lumen Education health score dropped to 58", link: "/clients/C-503", created_at: "2026-05-19T07:00:00Z", read: false },
+];
+
+// ────────────────────────────────────────────────────────────────────────────
+// Pricing rules (for Settings)
+// ────────────────────────────────────────────────────────────────────────────
+export interface PricingRule {
+  id: string;
+  name: string;
+  threshold: number;
+  unit: "%" | "HKD";
+  description: string;
+}
+
+export const pricingRules: PricingRule[] = [
+  { id: "pr-1", name: "Max discount without approval", threshold: 10, unit: "%", description: "Sales can apply up to this discount without manager sign-off." },
+  { id: "pr-2", name: "Manager approval threshold", threshold: 400000, unit: "HKD", description: "Quotes above this value require manager approval." },
+  { id: "pr-3", name: "Director approval threshold", threshold: 1000000, unit: "HKD", description: "Quotes above this value require director approval." },
+  { id: "pr-4", name: "Min margin", threshold: 25, unit: "%", description: "Quotes below this margin are flagged for review." },
+];
+
+// ────────────────────────────────────────────────────────────────────────────
+// Client contacts & files (mock)
+// ────────────────────────────────────────────────────────────────────────────
+export interface Contact {
+  id: string;
+  client_id: string;
+  name: string;
+  title: string;
+  email: string;
+  phone: string;
+  is_primary: boolean;
+}
+
+export const contacts: Contact[] = [
+  { id: "CT-1", client_id: "C-501", name: "Dr. Lillian Park", title: "Head of R&D Ops", email: "lpark@helixbio.com", phone: "+852 9234 5678", is_primary: true },
+  { id: "CT-2", client_id: "C-501", name: "Marco Wei", title: "CFO", email: "mwei@helixbio.com", phone: "+852 9111 2222", is_primary: false },
+  { id: "CT-3", client_id: "C-502", name: "Joanna Tse", title: "Brand Director", email: "jtse@northwindapparel.com", phone: "+852 9001 7766", is_primary: true },
+  { id: "CT-4", client_id: "C-503", name: "Edwin Ho", title: "VP Product", email: "edwin@lumen.edu", phone: "+852 9087 1234", is_primary: true },
+  { id: "CT-5", client_id: "C-504", name: "Annette Kwok", title: "COO", email: "akwok@tesserabank.com", phone: "+852 9555 0001", is_primary: true },
+];
+
+export interface FileAsset {
+  id: string;
+  client_id: string;
+  name: string;
+  size: string;
+  uploaded_at: string;
+  uploaded_by: string;
+}
+
+export const clientFiles: FileAsset[] = [
+  { id: "F-1", client_id: "C-501", name: "MSA_Helix_v3.pdf", size: "412 KB", uploaded_at: "2026-05-12T10:00:00Z", uploaded_by: "Priya Shah" },
+  { id: "F-2", client_id: "C-501", name: "Discovery_notes.docx", size: "84 KB", uploaded_at: "2026-05-10T14:00:00Z", uploaded_by: "Priya Shah" },
+  { id: "F-3", client_id: "C-502", name: "Brand_guidelines.pdf", size: "2.1 MB", uploaded_at: "2025-09-01T09:00:00Z", uploaded_by: "Kenji Tan" },
+  { id: "F-4", client_id: "C-504", name: "SOC2_report_2026.pdf", size: "1.4 MB", uploaded_at: "2026-03-12T11:00:00Z", uploaded_by: "Marcus Lee" },
+];
+
+// ────────────────────────────────────────────────────────────────────────────
+// Quote comments / version history
+// ────────────────────────────────────────────────────────────────────────────
+export interface Comment {
+  id: string;
+  quote_id: string;
+  author: string;
+  body: string;
+  created_at: string;
+}
+
+export const quoteComments: Comment[] = [
+  { id: "QC-1", quote_id: "Q-2029", author: "Marcus Lee", body: "Looks good — please double-check the AI pilot scope before sending.", created_at: "2026-05-19T09:00:00Z" },
+  { id: "QC-2", quote_id: "Q-2029", author: "Quotation Agent", body: "Pilot scope verified against template tpl-crm and lead requirements.", created_at: "2026-05-19T09:05:00Z" },
+  { id: "QC-3", quote_id: "Q-2030", author: "Ada Wong", body: "Approved — proceed.", created_at: "2026-05-18T16:20:00Z" },
+];
+
+export interface QuoteVersion {
+  version: number;
+  quote_id: string;
+  changed_by: string;
+  summary: string;
+  created_at: string;
+}
+
+export const quoteVersions: QuoteVersion[] = [
+  { version: 1, quote_id: "Q-2029", changed_by: "Quotation Agent", summary: "Initial draft from template", created_at: "2026-05-19T08:30:00Z" },
+  { version: 2, quote_id: "Q-2029", changed_by: "Priya Shah", summary: "Added AI pilot line item", created_at: "2026-05-19T08:55:00Z" },
+];
+
+// ────────────────────────────────────────────────────────────────────────────
+// Lead notes
+// ────────────────────────────────────────────────────────────────────────────
+export interface Note {
+  id: string;
+  lead_id: string;
+  author: string;
+  body: string;
+  created_at: string;
+}
+
+export const leadNotes: Note[] = [
+  { id: "LN-1", lead_id: "L-1042", author: "Priya Shah", body: "Spoke with Jonathan. Decision committee includes COO + Head of Retail Tech.", created_at: "2026-05-18T11:00:00Z" },
+  { id: "LN-2", lead_id: "L-1042", author: "Qualification Agent", body: "Cross-checked LinkedIn — confirmed 14 stores, ~120 store managers.", created_at: "2026-05-18T09:50:00Z" },
+  { id: "LN-3", lead_id: "L-1040", author: "Priya Shah", body: "Iris asked for case study in Traditional Chinese.", created_at: "2026-05-18T11:30:00Z" },
+];
+
