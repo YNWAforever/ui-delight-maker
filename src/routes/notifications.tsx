@@ -65,7 +65,7 @@ function NotificationsPage() {
       <PageHeader
         title="Notifications"
         description="Activity across leads, quotes, clients, and approvals."
-        action={
+        actions={
           unreadCount > 0 && (
             <Button variant="outline" size="sm" onClick={markAllRead}>
               <CheckCheck className="mr-2 h-4 w-4" />
