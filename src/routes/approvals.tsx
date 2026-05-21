@@ -1,13 +1,32 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Bot, CheckCircle2, XCircle } from "lucide-react";
+import { AlertTriangle, Bot, CheckCircle2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -18,7 +37,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
-import { approvals as seedApprovals, type Approval, type ApprovalStatus } from "@/lib/mock-data";
+import { approvals as seedApprovals, users, userById, type Approval, type ApprovalStatus } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/approvals")({
   head: () => ({
@@ -66,13 +85,54 @@ function ApprovalsInbox() {
     setReason("");
   };
 
+  const [confirm, setConfirm] = useState<null | {
+    title: string;
+    description: string;
+    label: string;
+    destructive?: boolean;
+    action: () => void;
+  }>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignee, setAssignee] = useState(users[1].id);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
   const bulkApprove = () => {
+    const n = bulk.size;
     setRows((prev) =>
       prev.map((a) => (bulk.has(a.id) ? { ...a, status: "approved" as ApprovalStatus } : a)),
     );
-    toast.success(`${bulk.size} approvals processed`);
+    toast.success(`Approved ${n} request${n > 1 ? "s" : ""}`);
     setBulk(new Set());
   };
+
+  const bulkReject = () => {
+    const n = bulk.size;
+    setRows((prev) =>
+      prev.map((a) => (bulk.has(a.id) ? { ...a, status: "rejected" as ApprovalStatus } : a)),
+    );
+    toast.success(
+      `Rejected ${n} request${n > 1 ? "s" : ""}${rejectReason ? ` — "${rejectReason}"` : ""}`,
+    );
+    setBulk(new Set());
+    setRejectReason("");
+    setRejectOpen(false);
+  };
+
+  const bulkAssign = () => {
+    const n = bulk.size;
+    // requested_by stores the reviewer id in this mock
+    setRows((prev) =>
+      prev.map((a) => (bulk.has(a.id) ? { ...a, requested_by: assignee } : a)),
+    );
+    toast.success(`Assigned ${n} request${n > 1 ? "s" : ""} to ${userById(assignee)?.name}`);
+    setBulk(new Set());
+    setAssignOpen(false);
+  };
+
+  const allVisibleSelected = pending.length > 0 && pending.every((a) => bulk.has(a.id));
+  const toggleAll = (v: boolean) =>
+    setBulk(v ? new Set(pending.map((a) => a.id)) : new Set());
 
   const agentNames = Array.from(new Set(rows.map((a) => a.agent_name)));
 
@@ -111,16 +171,45 @@ function ApprovalsInbox() {
                 ))}
               </SelectContent>
             </Select>
-            {bulk.size > 0 && (
-              <Button size="sm" className="ml-auto" onClick={bulkApprove}>
-                <CheckCircle2 className="mr-2 h-4 w-4" /> Approve {bulk.size}
-              </Button>
-            )}
           </div>
         </Card>
 
+        {bulk.size > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+            <span className="font-medium">{bulk.size} selected</span>
+            <Button
+              size="sm"
+              onClick={() =>
+                setConfirm({
+                  title: `Approve ${bulk.size} request${bulk.size > 1 ? "s" : ""}?`,
+                  description: "Agents will proceed immediately with the proposed action.",
+                  label: "Approve all",
+                  action: bulkApprove,
+                })
+              }
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setRejectOpen(true)}>
+              <XCircle className="mr-2 h-4 w-4" /> Reject
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>
+              <UserPlus className="mr-2 h-4 w-4" /> Assign reviewer
+            </Button>
+            <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setBulk(new Set())}>
+              Clear
+            </Button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
           <Card className="lg:col-span-2">
+            {pending.length > 0 && (
+              <div className="flex items-center gap-2 border-b border-border px-4 py-2 text-xs text-muted-foreground">
+                <Checkbox checked={allVisibleSelected} onCheckedChange={(v) => toggleAll(!!v)} />
+                <span>Select all visible ({pending.length})</span>
+              </div>
+            )}
             <ul className="divide-y divide-border">
               {pending.map((a) => {
                 const sla = slaChip(a.created_at);
@@ -251,6 +340,83 @@ function ApprovalsInbox() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign {bulk.size} request{bulk.size > 1 ? "s" : ""}</DialogTitle>
+            <DialogDescription>Route these approvals to a specific reviewer.</DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label className="text-xs">Reviewer</Label>
+            <Select value={assignee} onValueChange={setAssignee}>
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {users
+                  .filter((u) => u.role === "admin" || u.role === "manager")
+                  .map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name} · <span className="capitalize text-muted-foreground">{u.role}</span>
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={bulkAssign}>Assign</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject {bulk.size} request{bulk.size > 1 ? "s" : ""}?</DialogTitle>
+            <DialogDescription>
+              Agents will be notified and will not proceed. A reason is recommended.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Reason for rejection (optional)"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            className="h-24 text-sm"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={bulkReject}>
+              Reject all
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirm !== null} onOpenChange={(o) => !o && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirm?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{confirm?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                confirm?.action();
+                setConfirm(null);
+              }}
+            >
+              {confirm?.label}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

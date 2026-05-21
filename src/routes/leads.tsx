@@ -3,6 +3,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Download, Plus, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -200,18 +210,30 @@ function LeadsPage() {
         </Card>
 
         {selected.size > 0 && (
-          <div className="flex items-center gap-3 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
-            <span className="font-medium">{selected.size} selected</span>
-            <Button size="sm" variant="outline" onClick={() => toast.success(`Assigned ${selected.size} leads`)}>
-              Assign owner
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => toast.success(`Created ${selected.size} draft quotes`)}>
-              Convert to quote
-            </Button>
-            <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setSelected(new Set())}>
-              Clear
-            </Button>
-          </div>
+          <LeadsBulkBar
+            count={selected.size}
+            onAssign={(uid) => {
+              setRows((prev) =>
+                prev.map((l) => (selected.has(l.id) ? { ...l, assigned_to: uid } : l)),
+              );
+              toast.success(
+                `Assigned ${selected.size} lead${selected.size > 1 ? "s" : ""} to ${userById(uid)?.name}`,
+              );
+              setSelected(new Set());
+            }}
+            onMarkStatus={(s) => {
+              setRows((prev) =>
+                prev.map((l) => (selected.has(l.id) ? { ...l, status: s } : l)),
+              );
+              toast.success(`Marked ${selected.size} lead${selected.size > 1 ? "s" : ""} as ${s}`);
+              setSelected(new Set());
+            }}
+            onConvert={() => {
+              toast.success(`Created ${selected.size} draft quote${selected.size > 1 ? "s" : ""}`);
+              setSelected(new Set());
+            }}
+            onClear={() => setSelected(new Set())}
+          />
         )}
 
         <Card>
@@ -424,5 +446,139 @@ function NewLeadDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function LeadsBulkBar({
+  count,
+  onAssign,
+  onMarkStatus,
+  onConvert,
+  onClear,
+}: {
+  count: number;
+  onAssign: (uid: string) => void;
+  onMarkStatus: (s: Lead["status"]) => void;
+  onConvert: () => void;
+  onClear: () => void;
+}) {
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignee, setAssignee] = useState(users[2].id);
+  const [confirm, setConfirm] = useState<null | {
+    title: string;
+    description: string;
+    action: () => void;
+    label: string;
+  }>(null);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+      <span className="font-medium">{count} selected</span>
+      <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>
+        Assign owner
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() =>
+          setConfirm({
+            title: `Mark ${count} lead${count > 1 ? "s" : ""} as qualified?`,
+            description: "This updates the status for every selected lead.",
+            label: "Mark qualified",
+            action: () => onMarkStatus("qualified"),
+          })
+        }
+      >
+        Mark qualified
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() =>
+          setConfirm({
+            title: `Mark ${count} lead${count > 1 ? "s" : ""} as lost?`,
+            description: "Lost leads stay in history but won't appear in active pipelines.",
+            label: "Mark lost",
+            action: () => onMarkStatus("lost"),
+          })
+        }
+      >
+        Mark lost
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() =>
+          setConfirm({
+            title: `Create ${count} draft quote${count > 1 ? "s" : ""}?`,
+            description: "Each selected lead becomes a new draft quote, ready to edit.",
+            label: "Create drafts",
+            action: onConvert,
+          })
+        }
+      >
+        Convert to quote
+      </Button>
+      <Button size="sm" variant="ghost" className="ml-auto" onClick={onClear}>
+        Clear
+      </Button>
+
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign {count} lead{count > 1 ? "s" : ""}</DialogTitle>
+            <DialogDescription>Pick a new owner. Reassignment is logged.</DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label className="text-xs">Owner</Label>
+            <Select value={assignee} onValueChange={setAssignee}>
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name} · <span className="capitalize text-muted-foreground">{u.role}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                onAssign(assignee);
+                setAssignOpen(false);
+              }}
+            >
+              Assign
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirm !== null} onOpenChange={(o) => !o && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirm?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{confirm?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                confirm?.action();
+                setConfirm(null);
+              }}
+            >
+              {confirm?.label}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
