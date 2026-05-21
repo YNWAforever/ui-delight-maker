@@ -13,6 +13,7 @@ import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as QuotesRouteImport } from './routes/quotes'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
@@ -42,6 +43,11 @@ const ReportsRoute = ReportsRouteImport.update({
 const QuotesRoute = QuotesRouteImport.update({
   id: '/quotes',
   path: '/quotes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeadsRoute = LeadsRouteImport.update({
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/approvals': typeof ApprovalsRoute
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
+  '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/approvals': typeof ApprovalsRoute
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
+  '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/approvals': typeof ApprovalsRoute
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
+  '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/clients'
     | '/leads'
+    | '/notifications'
     | '/quotes'
     | '/reports'
     | '/settings'
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/clients'
     | '/leads'
+    | '/notifications'
     | '/quotes'
     | '/reports'
     | '/settings'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/clients'
     | '/leads'
+    | '/notifications'
     | '/quotes'
     | '/reports'
     | '/settings'
@@ -201,6 +213,7 @@ export interface RootRouteChildren {
   ApprovalsRoute: typeof ApprovalsRoute
   ClientsRoute: typeof ClientsRouteWithChildren
   LeadsRoute: typeof LeadsRouteWithChildren
+  NotificationsRoute: typeof NotificationsRoute
   QuotesRoute: typeof QuotesRouteWithChildren
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
@@ -235,6 +248,13 @@ declare module '@tanstack/react-router' {
       path: '/quotes'
       fullPath: '/quotes'
       preLoaderRoute: typeof QuotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leads': {
@@ -361,6 +381,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApprovalsRoute: ApprovalsRoute,
   ClientsRoute: ClientsRouteWithChildren,
   LeadsRoute: LeadsRouteWithChildren,
+  NotificationsRoute: NotificationsRoute,
   QuotesRoute: QuotesRouteWithChildren,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
@@ -369,3 +390,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
