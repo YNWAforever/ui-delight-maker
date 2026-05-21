@@ -177,7 +177,8 @@ function LeadDetail() {
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="activity">Activity</TabsTrigger>
                   <TabsTrigger value="quotes">Quotes ({relatedQuotes.length})</TabsTrigger>
-                  <TabsTrigger value="files">Files</TabsTrigger>
+                  <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
+                  <TabsTrigger value="comments">Comments ({comments.length})</TabsTrigger>
                   <TabsTrigger value="insights">AI insights</TabsTrigger>
                 </TabsList>
 
