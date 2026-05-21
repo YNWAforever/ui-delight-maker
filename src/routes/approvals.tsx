@@ -85,13 +85,54 @@ function ApprovalsInbox() {
     setReason("");
   };
 
+  const [confirm, setConfirm] = useState<null | {
+    title: string;
+    description: string;
+    label: string;
+    destructive?: boolean;
+    action: () => void;
+  }>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignee, setAssignee] = useState(users[1].id);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
   const bulkApprove = () => {
+    const n = bulk.size;
     setRows((prev) =>
       prev.map((a) => (bulk.has(a.id) ? { ...a, status: "approved" as ApprovalStatus } : a)),
     );
-    toast.success(`${bulk.size} approvals processed`);
+    toast.success(`Approved ${n} request${n > 1 ? "s" : ""}`);
     setBulk(new Set());
   };
+
+  const bulkReject = () => {
+    const n = bulk.size;
+    setRows((prev) =>
+      prev.map((a) => (bulk.has(a.id) ? { ...a, status: "rejected" as ApprovalStatus } : a)),
+    );
+    toast.success(
+      `Rejected ${n} request${n > 1 ? "s" : ""}${rejectReason ? ` — "${rejectReason}"` : ""}`,
+    );
+    setBulk(new Set());
+    setRejectReason("");
+    setRejectOpen(false);
+  };
+
+  const bulkAssign = () => {
+    const n = bulk.size;
+    // requested_by stores the reviewer id in this mock
+    setRows((prev) =>
+      prev.map((a) => (bulk.has(a.id) ? { ...a, requested_by: assignee } : a)),
+    );
+    toast.success(`Assigned ${n} request${n > 1 ? "s" : ""} to ${userById(assignee)?.name}`);
+    setBulk(new Set());
+    setAssignOpen(false);
+  };
+
+  const allVisibleSelected = pending.length > 0 && pending.every((a) => bulk.has(a.id));
+  const toggleAll = (v: boolean) =>
+    setBulk(v ? new Set(pending.map((a) => a.id)) : new Set());
 
   const agentNames = Array.from(new Set(rows.map((a) => a.agent_name)));
 
