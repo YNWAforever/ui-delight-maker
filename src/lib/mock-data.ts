@@ -1081,3 +1081,59 @@ export const leadNotes: Note[] = [
   { id: "LN-3", lead_id: "L-1040", author: "Priya Shah", body: "Iris asked for case study in Traditional Chinese.", created_at: "2026-05-18T11:30:00Z" },
 ];
 
+// ────────────────────────────────────────────────────────────────────────────
+// Lead & quote scoped files / comments
+// ────────────────────────────────────────────────────────────────────────────
+export interface LeadFile {
+  id: string;
+  lead_id: string;
+  name: string;
+  size: string;
+  kind: "pdf" | "docx" | "image" | "email" | "deck";
+  uploaded_at: string;
+  uploaded_by: string;
+}
+
+export const leadFiles: LeadFile[] = [
+  { id: "LF-1", lead_id: "L-1042", name: "Aurora_RFP_v2.pdf", size: "1.2 MB", kind: "pdf", uploaded_at: "2026-05-18T09:20:00Z", uploaded_by: "Jonathan Cheung" },
+  { id: "LF-2", lead_id: "L-1042", name: "Store_list_HK_Macau.xlsx", size: "84 KB", kind: "docx", uploaded_at: "2026-05-18T09:45:00Z", uploaded_by: "Priya Shah" },
+  { id: "LF-3", lead_id: "L-1042", name: "Discovery_intro_email.eml", size: "12 KB", kind: "email", uploaded_at: "2026-05-18T10:01:00Z", uploaded_by: "Priya Shah" },
+  { id: "LF-4", lead_id: "L-1041", name: "Nimbus_fleet_brief.pdf", size: "640 KB", kind: "pdf", uploaded_at: "2026-05-17T14:30:00Z", uploaded_by: "Sandra Wu" },
+  { id: "LF-5", lead_id: "L-1040", name: "Sunscreen_campaign_deck.pdf", size: "3.4 MB", kind: "deck", uploaded_at: "2026-05-17T09:10:00Z", uploaded_by: "Iris Mak" },
+  { id: "LF-6", lead_id: "L-1038", name: "Helix_AI_roadmap_signed.pdf", size: "2.1 MB", kind: "pdf", uploaded_at: "2026-05-16T09:00:00Z", uploaded_by: "Dr. Lillian Park" },
+];
+
+export interface LeadComment {
+  id: string;
+  lead_id: string;
+  author: string;
+  body: string;
+  created_at: string;
+}
+
+export const leadComments: LeadComment[] = [
+  { id: "LC-1", lead_id: "L-1042", author: "Marcus Lee", body: "Looped in Ada — she'll review the AI pilot scope before we quote.", created_at: "2026-05-18T10:15:00Z" },
+  { id: "LC-2", lead_id: "L-1042", author: "Priya Shah", body: "Sent calendar invite for discovery call on Thursday.", created_at: "2026-05-18T11:10:00Z" },
+  { id: "LC-3", lead_id: "L-1041", author: "Kenji Tan", body: "They want quarterly board reporting — pull the Tessera case study.", created_at: "2026-05-17T15:00:00Z" },
+  { id: "LC-4", lead_id: "L-1040", author: "Outreach Agent", body: "Drafted reply in zh-HK pending human review.", created_at: "2026-05-18T11:45:00Z" },
+];
+
+export interface QuoteFile {
+  id: string;
+  quote_id: string;
+  name: string;
+  size: string;
+  kind: "pdf" | "docx" | "image" | "email";
+  uploaded_at: string;
+  uploaded_by: string;
+}
+
+export const quoteFiles: QuoteFile[] = [
+  { id: "QF-1", quote_id: "Q-2029", name: "FIM-Q-2029_draft.pdf", size: "320 KB", kind: "pdf", uploaded_at: "2026-05-19T08:31:00Z", uploaded_by: "Quotation Agent" },
+  { id: "QF-2", quote_id: "Q-2029", name: "Pilot_scope_addendum.docx", size: "48 KB", kind: "docx", uploaded_at: "2026-05-19T08:56:00Z", uploaded_by: "Priya Shah" },
+  { id: "QF-3", quote_id: "Q-2030", name: "FIM-Q-2030_signed.pdf", size: "412 KB", kind: "pdf", uploaded_at: "2026-05-18T16:35:00Z", uploaded_by: "Ada Wong" },
+  { id: "QF-4", quote_id: "Q-2031", name: "Nimbus_quote_cover_email.eml", size: "9 KB", kind: "email", uploaded_at: "2026-05-19T10:22:00Z", uploaded_by: "Kenji Tan" },
+  { id: "QF-5", quote_id: "Q-2027", name: "Helix_AI_roadmap_MSA.pdf", size: "1.8 MB", kind: "pdf", uploaded_at: "2026-05-16T09:00:00Z", uploaded_by: "Ada Wong" },
+];
+
+
