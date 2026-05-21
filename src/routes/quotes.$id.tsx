@@ -1,6 +1,16 @@
 import { useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowLeft, Check, CheckCircle2, Download, FileText, Send, XCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  CheckCircle2,
+  Download,
+  File as FileIcon,
+  FileText,
+  Send,
+  Upload,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -15,9 +25,11 @@ import {
   leadById,
   quoteById,
   quoteComments,
+  quoteFiles,
   quoteVersions,
   userById,
   type Comment,
+  type QuoteFile,
   type QuoteStatus,
 } from "@/lib/mock-data";
 
