@@ -7,11 +7,12 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { Search, Bell } from "lucide-react";
+import { Bell } from "lucide-react";
+import { GlobalSearch } from "@/components/global-search";
 
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { Input } from "@/components/ui/input";
+
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -110,12 +111,8 @@ function RootComponent() {
           <div className="flex min-w-0 flex-1 flex-col">
             <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
               <SidebarTrigger />
-              <div className="relative hidden flex-1 max-w-md md:block">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search leads, quotes, clients…"
-                  className="h-9 pl-9"
-                />
+              <div className="hidden flex-1 max-w-md md:block">
+                <GlobalSearch />
               </div>
               <div className="ml-auto flex items-center gap-2">
                 <Button variant="ghost" size="icon" aria-label="Notifications">
