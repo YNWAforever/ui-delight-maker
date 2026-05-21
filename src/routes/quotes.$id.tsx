@@ -72,10 +72,12 @@ function QuoteDetail() {
   const approver = quote.approved_by ? userById(quote.approved_by) : null;
   const initialComments = quoteComments.filter((c) => c.quote_id === quote.id);
   const versions = quoteVersions.filter((v) => v.quote_id === quote.id);
+  const initialFiles = quoteFiles.filter((f) => f.quote_id === quote.id);
 
   const [status, setStatus] = useState<QuoteStatus>(quote.status as QuoteStatus);
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [composer, setComposer] = useState("");
+  const [files, setFiles] = useState<QuoteFile[]>(initialFiles);
 
   const reachedIdx = TIMELINE.indexOf(status);
 
@@ -97,6 +99,27 @@ function QuoteDetail() {
       },
     ]);
     setComposer("");
+    toast.success("Comment posted");
+  };
+
+  const uploadMockFile = () => {
+    const stamp = Math.floor(Math.random() * 900 + 100);
+    const f: QuoteFile = {
+      id: `QF-${Math.random().toString(36).slice(2, 7)}`,
+      quote_id: quote.id,
+      name: `${quote.number}_attachment_${stamp}.pdf`,
+      size: `${(Math.random() * 1.5 + 0.1).toFixed(1)} MB`,
+      kind: "pdf",
+      uploaded_at: new Date("2026-05-20T10:00:00Z").toISOString(),
+      uploaded_by: "Ada Wong",
+    };
+    setFiles((prev) => [f, ...prev]);
+    toast.success(`Uploaded ${f.name}`);
+  };
+
+  const removeFile = (id: string) => {
+    setFiles((prev) => prev.filter((f) => f.id !== id));
+    toast.message("File removed");
   };
 
   return (
