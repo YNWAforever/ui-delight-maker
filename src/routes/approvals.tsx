@@ -171,16 +171,45 @@ function ApprovalsInbox() {
                 ))}
               </SelectContent>
             </Select>
-            {bulk.size > 0 && (
-              <Button size="sm" className="ml-auto" onClick={bulkApprove}>
-                <CheckCircle2 className="mr-2 h-4 w-4" /> Approve {bulk.size}
-              </Button>
-            )}
           </div>
         </Card>
 
+        {bulk.size > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+            <span className="font-medium">{bulk.size} selected</span>
+            <Button
+              size="sm"
+              onClick={() =>
+                setConfirm({
+                  title: `Approve ${bulk.size} request${bulk.size > 1 ? "s" : ""}?`,
+                  description: "Agents will proceed immediately with the proposed action.",
+                  label: "Approve all",
+                  action: bulkApprove,
+                })
+              }
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setRejectOpen(true)}>
+              <XCircle className="mr-2 h-4 w-4" /> Reject
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>
+              <UserPlus className="mr-2 h-4 w-4" /> Assign reviewer
+            </Button>
+            <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setBulk(new Set())}>
+              Clear
+            </Button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
           <Card className="lg:col-span-2">
+            {pending.length > 0 && (
+              <div className="flex items-center gap-2 border-b border-border px-4 py-2 text-xs text-muted-foreground">
+                <Checkbox checked={allVisibleSelected} onCheckedChange={(v) => toggleAll(!!v)} />
+                <span>Select all visible ({pending.length})</span>
+              </div>
+            )}
             <ul className="divide-y divide-border">
               {pending.map((a) => {
                 const sla = slaChip(a.created_at);
