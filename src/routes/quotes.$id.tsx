@@ -168,6 +168,7 @@ function QuoteDetail() {
                 <TabsList>
                   <TabsTrigger value="items">Line items</TabsTrigger>
                   <TabsTrigger value="comments">Comments ({comments.length})</TabsTrigger>
+                  <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
                   <TabsTrigger value="versions">Versions ({versions.length})</TabsTrigger>
                   <TabsTrigger value="preview">PDF preview</TabsTrigger>
                 </TabsList>
