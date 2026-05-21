@@ -340,6 +340,83 @@ function ApprovalsInbox() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign {bulk.size} request{bulk.size > 1 ? "s" : ""}</DialogTitle>
+            <DialogDescription>Route these approvals to a specific reviewer.</DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label className="text-xs">Reviewer</Label>
+            <Select value={assignee} onValueChange={setAssignee}>
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {users
+                  .filter((u) => u.role === "admin" || u.role === "manager")
+                  .map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name} · <span className="capitalize text-muted-foreground">{u.role}</span>
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={bulkAssign}>Assign</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject {bulk.size} request{bulk.size > 1 ? "s" : ""}?</DialogTitle>
+            <DialogDescription>
+              Agents will be notified and will not proceed. A reason is recommended.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Reason for rejection (optional)"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            className="h-24 text-sm"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={bulkReject}>
+              Reject all
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirm !== null} onOpenChange={(o) => !o && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirm?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{confirm?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                confirm?.action();
+                setConfirm(null);
+              }}
+            >
+              {confirm?.label}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
