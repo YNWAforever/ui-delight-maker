@@ -264,6 +264,55 @@ function QuoteDetail() {
                   </ol>
                 </TabsContent>
 
+                <TabsContent value="files" className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Signed PDFs, scope addenda, and cover emails for this quote.
+                    </p>
+                    <Button size="sm" variant="outline" onClick={uploadMockFile}>
+                      <Upload className="mr-2 h-3.5 w-3.5" /> Upload
+                    </Button>
+                  </div>
+                  {files.length === 0 ? (
+                    <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                      No files attached to this quote yet.
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-border rounded-md border border-border">
+                      {files.map((f) => (
+                        <li key={f.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                            <FileIcon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{f.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {f.size} · <span className="uppercase">{f.kind}</span> ·{" "}
+                              {f.uploaded_by} · {formatDateTime(f.uploaded_at)}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => toast.message(`Downloading ${f.name}…`)}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => removeFile(f.id)}
+                          >
+                            Remove
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </TabsContent>
+
+
                 <TabsContent value="preview" className="mt-4">
                   <div className="flex aspect-[1/1.2] items-center justify-center rounded-md border-2 border-dashed border-border bg-muted/30">
                     <div className="text-center">
