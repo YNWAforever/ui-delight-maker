@@ -21,6 +21,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { LeaderboardWidget } from "@/components/leaderboard-widget";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -164,6 +165,8 @@ function Dashboard() {
             </CardContent>
           </Card>
         </div>
+        <LeaderboardWidget />
+
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
