@@ -1,6 +1,19 @@
 import { useState } from "react";
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Bot, FileText, Mail, Phone, Send, Sparkles, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Bot,
+  Download,
+  File as FileIcon,
+  FileText,
+  Mail,
+  MessageSquare,
+  Phone,
+  Send,
+  Sparkles,
+  Upload,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -21,9 +34,13 @@ import { formatDateTime } from "@/lib/format";
 import {
   activityLogs,
   leadById,
+  leadComments,
+  leadFiles,
   leadNotes,
   quotes,
   userById,
+  type LeadComment,
+  type LeadFile,
   type LeadStatus,
 } from "@/lib/mock-data";
 
@@ -67,10 +84,15 @@ function LeadDetail() {
     (a) => a.object_type === "lead" && a.object_id === lead.id,
   );
   const initialNotes = leadNotes.filter((n) => n.lead_id === lead.id);
+  const initialComments = leadComments.filter((c) => c.lead_id === lead.id);
+  const initialFiles = leadFiles.filter((f) => f.lead_id === lead.id);
 
   const [status, setStatus] = useState<LeadStatus>(lead.status);
   const [notes, setNotes] = useState(initialNotes);
   const [composer, setComposer] = useState("");
+  const [comments, setComments] = useState<LeadComment[]>(initialComments);
+  const [commentDraft, setCommentDraft] = useState("");
+  const [files, setFiles] = useState<LeadFile[]>(initialFiles);
 
   const addNote = () => {
     if (!composer.trim()) return;
@@ -86,6 +108,42 @@ function LeadDetail() {
     ]);
     setComposer("");
     toast.success("Note added");
+  };
+
+  const addComment = () => {
+    if (!commentDraft.trim()) return;
+    setComments((prev) => [
+      ...prev,
+      {
+        id: `LC-${Math.random().toString(36).slice(2, 7)}`,
+        lead_id: lead.id,
+        author: "Ada Wong",
+        body: commentDraft.trim(),
+        created_at: new Date("2026-05-20T10:00:00Z").toISOString(),
+      },
+    ]);
+    setCommentDraft("");
+    toast.success("Comment posted");
+  };
+
+  const uploadMockFile = () => {
+    const stamp = Math.floor(Math.random() * 900 + 100);
+    const f: LeadFile = {
+      id: `LF-${Math.random().toString(36).slice(2, 7)}`,
+      lead_id: lead.id,
+      name: `Attachment_${stamp}.pdf`,
+      size: `${(Math.random() * 2 + 0.1).toFixed(1)} MB`,
+      kind: "pdf",
+      uploaded_at: new Date("2026-05-20T10:00:00Z").toISOString(),
+      uploaded_by: "Ada Wong",
+    };
+    setFiles((prev) => [f, ...prev]);
+    toast.success(`Uploaded ${f.name}`);
+  };
+
+  const removeFile = (id: string) => {
+    setFiles((prev) => prev.filter((f) => f.id !== id));
+    toast.message("File removed");
   };
 
   return (
@@ -119,7 +177,8 @@ function LeadDetail() {
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="activity">Activity</TabsTrigger>
                   <TabsTrigger value="quotes">Quotes ({relatedQuotes.length})</TabsTrigger>
-                  <TabsTrigger value="files">Files</TabsTrigger>
+                  <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
+                  <TabsTrigger value="comments">Comments ({comments.length})</TabsTrigger>
                   <TabsTrigger value="insights">AI insights</TabsTrigger>
                 </TabsList>
 
@@ -235,9 +294,89 @@ function LeadDetail() {
                   )}
                 </TabsContent>
 
-                <TabsContent value="files" className="mt-4">
-                  <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                    Drop discovery decks, RFPs, and emails here.
+                <TabsContent value="files" className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Discovery decks, RFPs, signed proposals, and email threads.
+                    </p>
+                    <Button size="sm" variant="outline" onClick={uploadMockFile}>
+                      <Upload className="mr-2 h-3.5 w-3.5" /> Upload
+                    </Button>
+                  </div>
+                  {files.length === 0 ? (
+                    <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                      No files yet. Drop discovery decks, RFPs, and emails here.
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-border rounded-md border border-border">
+                      {files.map((f) => (
+                        <li key={f.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                            <FileIcon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{f.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {f.size} · <span className="uppercase">{f.kind}</span> ·{" "}
+                              {f.uploaded_by} · {formatDateTime(f.uploaded_at)}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => toast.message(`Downloading ${f.name}…`)}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => removeFile(f.id)}
+                          >
+                            Remove
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="comments" className="mt-4 space-y-3">
+                  <ul className="space-y-3">
+                    {comments.map((c) => (
+                      <li
+                        key={c.id}
+                        className="rounded-md border border-border bg-muted/30 p-3 text-sm"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <MessageSquare className="h-3 w-3" />
+                          </div>
+                          <span className="font-medium">{c.author}</span>
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            {formatDateTime(c.created_at)}
+                          </span>
+                        </div>
+                        <p className="mt-2 leading-snug">{c.body}</p>
+                      </li>
+                    ))}
+                    {comments.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        No comments yet. Start the conversation below.
+                      </p>
+                    )}
+                  </ul>
+                  <div className="flex gap-2">
+                    <Textarea
+                      placeholder="Reply to the thread…"
+                      value={commentDraft}
+                      onChange={(e) => setCommentDraft(e.target.value)}
+                      className="min-h-[60px] flex-1"
+                    />
+                    <Button size="sm" onClick={addComment}>
+                      <Send className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </TabsContent>
 

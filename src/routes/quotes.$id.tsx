@@ -1,6 +1,16 @@
 import { useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowLeft, Check, CheckCircle2, Download, FileText, Send, XCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  CheckCircle2,
+  Download,
+  File as FileIcon,
+  FileText,
+  Send,
+  Upload,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -15,9 +25,11 @@ import {
   leadById,
   quoteById,
   quoteComments,
+  quoteFiles,
   quoteVersions,
   userById,
   type Comment,
+  type QuoteFile,
   type QuoteStatus,
 } from "@/lib/mock-data";
 
@@ -60,10 +72,12 @@ function QuoteDetail() {
   const approver = quote.approved_by ? userById(quote.approved_by) : null;
   const initialComments = quoteComments.filter((c) => c.quote_id === quote.id);
   const versions = quoteVersions.filter((v) => v.quote_id === quote.id);
+  const initialFiles = quoteFiles.filter((f) => f.quote_id === quote.id);
 
   const [status, setStatus] = useState<QuoteStatus>(quote.status as QuoteStatus);
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [composer, setComposer] = useState("");
+  const [files, setFiles] = useState<QuoteFile[]>(initialFiles);
 
   const reachedIdx = TIMELINE.indexOf(status);
 
@@ -85,6 +99,27 @@ function QuoteDetail() {
       },
     ]);
     setComposer("");
+    toast.success("Comment posted");
+  };
+
+  const uploadMockFile = () => {
+    const stamp = Math.floor(Math.random() * 900 + 100);
+    const f: QuoteFile = {
+      id: `QF-${Math.random().toString(36).slice(2, 7)}`,
+      quote_id: quote.id,
+      name: `${quote.number}_attachment_${stamp}.pdf`,
+      size: `${(Math.random() * 1.5 + 0.1).toFixed(1)} MB`,
+      kind: "pdf",
+      uploaded_at: new Date("2026-05-20T10:00:00Z").toISOString(),
+      uploaded_by: "Ada Wong",
+    };
+    setFiles((prev) => [f, ...prev]);
+    toast.success(`Uploaded ${f.name}`);
+  };
+
+  const removeFile = (id: string) => {
+    setFiles((prev) => prev.filter((f) => f.id !== id));
+    toast.message("File removed");
   };
 
   return (
@@ -133,6 +168,7 @@ function QuoteDetail() {
                 <TabsList>
                   <TabsTrigger value="items">Line items</TabsTrigger>
                   <TabsTrigger value="comments">Comments ({comments.length})</TabsTrigger>
+                  <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
                   <TabsTrigger value="versions">Versions ({versions.length})</TabsTrigger>
                   <TabsTrigger value="preview">PDF preview</TabsTrigger>
                 </TabsList>
@@ -227,6 +263,55 @@ function QuoteDetail() {
                     )}
                   </ol>
                 </TabsContent>
+
+                <TabsContent value="files" className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Signed PDFs, scope addenda, and cover emails for this quote.
+                    </p>
+                    <Button size="sm" variant="outline" onClick={uploadMockFile}>
+                      <Upload className="mr-2 h-3.5 w-3.5" /> Upload
+                    </Button>
+                  </div>
+                  {files.length === 0 ? (
+                    <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                      No files attached to this quote yet.
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-border rounded-md border border-border">
+                      {files.map((f) => (
+                        <li key={f.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                            <FileIcon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{f.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {f.size} · <span className="uppercase">{f.kind}</span> ·{" "}
+                              {f.uploaded_by} · {formatDateTime(f.uploaded_at)}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => toast.message(`Downloading ${f.name}…`)}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => removeFile(f.id)}
+                          >
+                            Remove
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </TabsContent>
+
 
                 <TabsContent value="preview" className="mt-4">
                   <div className="flex aspect-[1/1.2] items-center justify-center rounded-md border-2 border-dashed border-border bg-muted/30">
