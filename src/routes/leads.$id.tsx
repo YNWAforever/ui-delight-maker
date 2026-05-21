@@ -84,10 +84,15 @@ function LeadDetail() {
     (a) => a.object_type === "lead" && a.object_id === lead.id,
   );
   const initialNotes = leadNotes.filter((n) => n.lead_id === lead.id);
+  const initialComments = leadComments.filter((c) => c.lead_id === lead.id);
+  const initialFiles = leadFiles.filter((f) => f.lead_id === lead.id);
 
   const [status, setStatus] = useState<LeadStatus>(lead.status);
   const [notes, setNotes] = useState(initialNotes);
   const [composer, setComposer] = useState("");
+  const [comments, setComments] = useState<LeadComment[]>(initialComments);
+  const [commentDraft, setCommentDraft] = useState("");
+  const [files, setFiles] = useState<LeadFile[]>(initialFiles);
 
   const addNote = () => {
     if (!composer.trim()) return;
@@ -103,6 +108,42 @@ function LeadDetail() {
     ]);
     setComposer("");
     toast.success("Note added");
+  };
+
+  const addComment = () => {
+    if (!commentDraft.trim()) return;
+    setComments((prev) => [
+      ...prev,
+      {
+        id: `LC-${Math.random().toString(36).slice(2, 7)}`,
+        lead_id: lead.id,
+        author: "Ada Wong",
+        body: commentDraft.trim(),
+        created_at: new Date("2026-05-20T10:00:00Z").toISOString(),
+      },
+    ]);
+    setCommentDraft("");
+    toast.success("Comment posted");
+  };
+
+  const uploadMockFile = () => {
+    const stamp = Math.floor(Math.random() * 900 + 100);
+    const f: LeadFile = {
+      id: `LF-${Math.random().toString(36).slice(2, 7)}`,
+      lead_id: lead.id,
+      name: `Attachment_${stamp}.pdf`,
+      size: `${(Math.random() * 2 + 0.1).toFixed(1)} MB`,
+      kind: "pdf",
+      uploaded_at: new Date("2026-05-20T10:00:00Z").toISOString(),
+      uploaded_by: "Ada Wong",
+    };
+    setFiles((prev) => [f, ...prev]);
+    toast.success(`Uploaded ${f.name}`);
+  };
+
+  const removeFile = (id: string) => {
+    setFiles((prev) => prev.filter((f) => f.id !== id));
+    toast.message("File removed");
   };
 
   return (
