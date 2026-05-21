@@ -200,18 +200,30 @@ function LeadsPage() {
         </Card>
 
         {selected.size > 0 && (
-          <div className="flex items-center gap-3 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
-            <span className="font-medium">{selected.size} selected</span>
-            <Button size="sm" variant="outline" onClick={() => toast.success(`Assigned ${selected.size} leads`)}>
-              Assign owner
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => toast.success(`Created ${selected.size} draft quotes`)}>
-              Convert to quote
-            </Button>
-            <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setSelected(new Set())}>
-              Clear
-            </Button>
-          </div>
+          <LeadsBulkBar
+            count={selected.size}
+            onAssign={(uid) => {
+              setRows((prev) =>
+                prev.map((l) => (selected.has(l.id) ? { ...l, assigned_to: uid } : l)),
+              );
+              toast.success(
+                `Assigned ${selected.size} lead${selected.size > 1 ? "s" : ""} to ${userById(uid)?.name}`,
+              );
+              setSelected(new Set());
+            }}
+            onMarkStatus={(s) => {
+              setRows((prev) =>
+                prev.map((l) => (selected.has(l.id) ? { ...l, status: s } : l)),
+              );
+              toast.success(`Marked ${selected.size} lead${selected.size > 1 ? "s" : ""} as ${s}`);
+              setSelected(new Set());
+            }}
+            onConvert={() => {
+              toast.success(`Created ${selected.size} draft quote${selected.size > 1 ? "s" : ""}`);
+              setSelected(new Set());
+            }}
+            onClear={() => setSelected(new Set())}
+          />
         )}
 
         <Card>
