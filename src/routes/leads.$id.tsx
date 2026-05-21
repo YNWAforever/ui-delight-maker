@@ -1,6 +1,19 @@
 import { useState } from "react";
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Bot, FileText, Mail, Phone, Send, Sparkles, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Bot,
+  Download,
+  File as FileIcon,
+  FileText,
+  Mail,
+  MessageSquare,
+  Phone,
+  Send,
+  Sparkles,
+  Upload,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -21,9 +34,13 @@ import { formatDateTime } from "@/lib/format";
 import {
   activityLogs,
   leadById,
+  leadComments,
+  leadFiles,
   leadNotes,
   quotes,
   userById,
+  type LeadComment,
+  type LeadFile,
   type LeadStatus,
 } from "@/lib/mock-data";
 
