@@ -294,9 +294,89 @@ function LeadDetail() {
                   )}
                 </TabsContent>
 
-                <TabsContent value="files" className="mt-4">
-                  <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                    Drop discovery decks, RFPs, and emails here.
+                <TabsContent value="files" className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Discovery decks, RFPs, signed proposals, and email threads.
+                    </p>
+                    <Button size="sm" variant="outline" onClick={uploadMockFile}>
+                      <Upload className="mr-2 h-3.5 w-3.5" /> Upload
+                    </Button>
+                  </div>
+                  {files.length === 0 ? (
+                    <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                      No files yet. Drop discovery decks, RFPs, and emails here.
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-border rounded-md border border-border">
+                      {files.map((f) => (
+                        <li key={f.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                            <FileIcon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium">{f.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {f.size} · <span className="uppercase">{f.kind}</span> ·{" "}
+                              {f.uploaded_by} · {formatDateTime(f.uploaded_at)}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => toast.message(`Downloading ${f.name}…`)}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => removeFile(f.id)}
+                          >
+                            Remove
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="comments" className="mt-4 space-y-3">
+                  <ul className="space-y-3">
+                    {comments.map((c) => (
+                      <li
+                        key={c.id}
+                        className="rounded-md border border-border bg-muted/30 p-3 text-sm"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <MessageSquare className="h-3 w-3" />
+                          </div>
+                          <span className="font-medium">{c.author}</span>
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            {formatDateTime(c.created_at)}
+                          </span>
+                        </div>
+                        <p className="mt-2 leading-snug">{c.body}</p>
+                      </li>
+                    ))}
+                    {comments.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        No comments yet. Start the conversation below.
+                      </p>
+                    )}
+                  </ul>
+                  <div className="flex gap-2">
+                    <Textarea
+                      placeholder="Reply to the thread…"
+                      value={commentDraft}
+                      onChange={(e) => setCommentDraft(e.target.value)}
+                      className="min-h-[60px] flex-1"
+                    />
+                    <Button size="sm" onClick={addComment}>
+                      <Send className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </TabsContent>
 
