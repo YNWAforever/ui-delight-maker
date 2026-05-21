@@ -21,6 +21,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { LeaderboardWidget } from "@/components/leaderboard-widget";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
