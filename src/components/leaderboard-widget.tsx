@@ -211,6 +211,7 @@ export function LeaderboardWidget() {
   const [sortKey, setSortKey] = useState<SortKey>(initial.sort ?? "value");
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [showRestored, setShowRestored] = useState(persisted !== null || query !== null);
+  const [showResetDialog, setShowResetDialog] = useState(false);
 
   useEffect(() => {
     if (!showRestored) return;
