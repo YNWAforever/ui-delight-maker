@@ -84,6 +84,13 @@ export function LeaderboardWidget() {
   );
   const [sortKey, setSortKey] = useState<SortKey>(persisted?.sort ?? "value");
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [showRestored, setShowRestored] = useState(persisted !== null);
+
+  useEffect(() => {
+    if (!showRestored) return;
+    const t = setTimeout(() => setShowRestored(false), 3000);
+    return () => clearTimeout(t);
+  }, [showRestored]);
 
   useEffect(() => {
     savePersisted({
