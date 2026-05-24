@@ -293,6 +293,9 @@ export function LeaderboardWidget() {
           <Button size="sm" variant="outline" onClick={exportCSV}>
             <Download className="mr-1.5 h-3.5 w-3.5" /> Export
           </Button>
+          <Button size="sm" variant="outline" onClick={shareLink}>
+            <Link2 className="mr-1.5 h-3.5 w-3.5" /> Share
+          </Button>
           <Button size="sm" variant="ghost" onClick={resetAll}>
             <X className="mr-1.5 h-3.5 w-3.5" /> Reset
           </Button>
