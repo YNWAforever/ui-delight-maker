@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, ChevronRight, Download, Filter, Medal, Trophy, X } from "lucide-react";
 import { toast } from "sonner";
@@ -21,6 +21,15 @@ const ALL_AGENTS = Array.from(new Set(agentLeaderboardDaily.map((d) => d.agent))
 const DEFAULT_FROM = new Date("2026-05-13T00:00:00Z");
 const DEFAULT_TO = new Date("2026-05-19T00:00:00Z");
 
+const LS_KEY = "leaderboard-widget-state";
+
+type PersistedState = {
+  agents: string[];
+  from: string;
+  to: string;
+  thresholds: ThresholdState;
+};
+
 type ThresholdState = { minRuns: number; minSuccess: number; minValue: number };
 
 const DEFAULT_THRESHOLDS: ThresholdState = {
@@ -29,12 +38,51 @@ const DEFAULT_THRESHOLDS: ThresholdState = {
   minValue: 200_000,
 };
 
+function loadPersisted(): PersistedState | null {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedState;
+    if (!Array.isArray(parsed.agents)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function savePersisted(state: PersistedState) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+  } catch {
+    // ignore quota errors
+  }
+}
+
 export function LeaderboardWidget() {
-  const [agents, setAgents] = useState<Set<string>>(new Set(ALL_AGENTS));
-  const [from, setFrom] = useState<Date>(DEFAULT_FROM);
-  const [to, setTo] = useState<Date>(DEFAULT_TO);
-  const [thresholds, setThresholds] = useState<ThresholdState>(DEFAULT_THRESHOLDS);
+  const persisted = loadPersisted();
+
+  const [agents, setAgents] = useState<Set<string>>(
+    new Set(persisted?.agents ?? ALL_AGENTS)
+  );
+  const [from, setFrom] = useState<Date>(
+    persisted?.from ? new Date(persisted.from) : DEFAULT_FROM
+  );
+  const [to, setTo] = useState<Date>(
+    persisted?.to ? new Date(persisted.to) : DEFAULT_TO
+  );
+  const [thresholds, setThresholds] = useState<ThresholdState>(
+    persisted?.thresholds ?? DEFAULT_THRESHOLDS
+  );
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+
+  useEffect(() => {
+    savePersisted({
+      agents: Array.from(agents),
+      from: from.toISOString(),
+      to: to.toISOString(),
+      thresholds,
+    });
+  }, [agents, from, to, thresholds]);
 
   const rows = useMemo(() => {
     const fromMs = from.getTime();
