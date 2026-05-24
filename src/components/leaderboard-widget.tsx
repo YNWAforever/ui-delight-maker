@@ -369,7 +369,7 @@ export function LeaderboardWidget() {
             <Download className="mr-1.5 h-3.5 w-3.5" /> Export
           </Button>
           <Button size="sm" variant="outline" onClick={shareLink}>
-            <Link2 className="mr-1.5 h-3.5 w-3.5" /> Share
+            <Link2 className="mr-1.5 h-3.5 w-3.5" /> Copy share link
           </Button>
           <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
             <AlertDialogTrigger asChild>
