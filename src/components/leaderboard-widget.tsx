@@ -22,6 +22,7 @@ const DEFAULT_FROM = new Date("2026-05-13T00:00:00Z");
 const DEFAULT_TO = new Date("2026-05-19T00:00:00Z");
 
 const LS_KEY = "leaderboard-widget-state";
+const LS_VERSION = 2;
 
 type SortKey = "value" | "runs" | "successRate";
 
@@ -31,6 +32,11 @@ type PersistedState = {
   to: string;
   thresholds: ThresholdState;
   sort: SortKey;
+};
+
+type PersistedEnvelope = {
+  version: number;
+  state: PersistedState;
 };
 
 type ThresholdState = { minRuns: number; minSuccess: number; minValue: number };
@@ -47,13 +53,69 @@ const SORT_LABELS: Record<SortKey, string> = {
   successRate: "Success rate",
 };
 
+const SORT_KEYS: SortKey[] = ["value", "runs", "successRate"];
+
+// Validates an unknown blob into a PersistedState, dropping unknown fields and
+// falling back to defaults for missing/invalid ones. Returns null only if the
+// input is unusable beyond repair.
+function coerceState(raw: unknown): PersistedState | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+
+  const agents = Array.isArray(r.agents)
+    ? (r.agents.filter((a): a is string => typeof a === "string"))
+    : null;
+
+  const from = typeof r.from === "string" && !Number.isNaN(new Date(r.from).getTime()) ? r.from : null;
+  const to = typeof r.to === "string" && !Number.isNaN(new Date(r.to).getTime()) ? r.to : null;
+
+  const tRaw = (r.thresholds ?? {}) as Record<string, unknown>;
+  const thresholds: ThresholdState = {
+    minRuns: typeof tRaw.minRuns === "number" && Number.isFinite(tRaw.minRuns) ? tRaw.minRuns : DEFAULT_THRESHOLDS.minRuns,
+    minSuccess: typeof tRaw.minSuccess === "number" && Number.isFinite(tRaw.minSuccess) ? tRaw.minSuccess : DEFAULT_THRESHOLDS.minSuccess,
+    minValue: typeof tRaw.minValue === "number" && Number.isFinite(tRaw.minValue) ? tRaw.minValue : DEFAULT_THRESHOLDS.minValue,
+  };
+
+  const sort = SORT_KEYS.includes(r.sort as SortKey) ? (r.sort as SortKey) : "value";
+
+  // Require at least one identifying field to consider this a real persisted record.
+  if (agents === null && from === null && to === null && r.thresholds === undefined && r.sort === undefined) {
+    return null;
+  }
+
+  return {
+    agents: agents ?? [],
+    from: from ?? "",
+    to: to ?? "",
+    thresholds,
+    sort,
+  };
+}
+
+// Migrate older shapes forward. Each step takes the prior version's state and
+// returns the next. Unknown/future versions fall through to coerceState.
+function migrate(version: number, state: unknown): PersistedState | null {
+  // v1 had no envelope — the raw object WAS the state. Same field shape as v2.
+  if (version === 1) return coerceState(state);
+  if (version === LS_VERSION) return coerceState(state);
+  // Future/unknown version: try a best-effort coerce so we don't wipe usable data.
+  return coerceState(state);
+}
+
 function loadPersisted(): PersistedState | null {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistedState;
-    if (!Array.isArray(parsed.agents)) return null;
-    return parsed;
+    const parsed = JSON.parse(raw) as unknown;
+
+    // v2+ envelope: { version, state }
+    if (parsed && typeof parsed === "object" && "version" in parsed && "state" in parsed) {
+      const env = parsed as PersistedEnvelope;
+      return migrate(typeof env.version === "number" ? env.version : 1, env.state);
+    }
+
+    // Legacy v1: bare state object. Migrate forward.
+    return migrate(1, parsed);
   } catch {
     return null;
   }
@@ -61,7 +123,8 @@ function loadPersisted(): PersistedState | null {
 
 function savePersisted(state: PersistedState) {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    const envelope: PersistedEnvelope = { version: LS_VERSION, state };
+    localStorage.setItem(LS_KEY, JSON.stringify(envelope));
   } catch {
     // ignore quota errors
   }
