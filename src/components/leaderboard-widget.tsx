@@ -23,11 +23,14 @@ const DEFAULT_TO = new Date("2026-05-19T00:00:00Z");
 
 const LS_KEY = "leaderboard-widget-state";
 
+type SortKey = "value" | "runs" | "successRate";
+
 type PersistedState = {
   agents: string[];
   from: string;
   to: string;
   thresholds: ThresholdState;
+  sort: SortKey;
 };
 
 type ThresholdState = { minRuns: number; minSuccess: number; minValue: number };
@@ -36,6 +39,12 @@ const DEFAULT_THRESHOLDS: ThresholdState = {
   minRuns: 15,
   minSuccess: 90,
   minValue: 200_000,
+};
+
+const SORT_LABELS: Record<SortKey, string> = {
+  value: "Attributed value",
+  runs: "Runs",
+  successRate: "Success rate",
 };
 
 function loadPersisted(): PersistedState | null {
