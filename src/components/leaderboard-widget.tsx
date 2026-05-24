@@ -121,8 +121,18 @@ export function LeaderboardWidget() {
         successRate: r.runs === 0 ? 0 : Math.round((r.successes / r.runs) * 100),
         activeDays: r.days.size,
       }))
-      .sort((a, b) => b.value - a.value || b.runs - a.runs);
-  }, [agents, from, to]);
+      .sort((a, b) => {
+        switch (sortKey) {
+          case "runs":
+            return b.runs - a.runs || b.value - a.value;
+          case "successRate":
+            return b.successRate - a.successRate || b.value - a.value;
+          case "value":
+          default:
+            return b.value - a.value || b.runs - a.runs;
+        }
+      });
+  }, [agents, from, to, sortKey]);
 
   const passes = (r: { runs: number; successRate: number; value: number }) =>
     r.runs >= thresholds.minRuns &&
