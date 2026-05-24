@@ -299,6 +299,15 @@ export function LeaderboardWidget() {
     }
   };
 
+  const clearSaved = () => {
+    try {
+      localStorage.removeItem(LS_KEY);
+      toast.success("Saved filters cleared", { description: "Defaults will be used on next reload." });
+    } catch {
+      toast.error("Couldn't clear saved filters");
+    }
+  };
+
   const shareLink = async () => {
     if (typeof window === "undefined") return;
     const url = window.location.href;
