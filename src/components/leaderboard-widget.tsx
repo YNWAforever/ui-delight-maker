@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, ChevronRight, Download, Filter, Medal, Trophy, X } from "lucide-react";
+import { ArrowDownAZ, ArrowUpDown, CalendarIcon, ChevronRight, Download, Filter, Medal, Trophy, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -23,11 +23,14 @@ const DEFAULT_TO = new Date("2026-05-19T00:00:00Z");
 
 const LS_KEY = "leaderboard-widget-state";
 
+type SortKey = "value" | "runs" | "successRate";
+
 type PersistedState = {
   agents: string[];
   from: string;
   to: string;
   thresholds: ThresholdState;
+  sort: SortKey;
 };
 
 type ThresholdState = { minRuns: number; minSuccess: number; minValue: number };
@@ -36,6 +39,12 @@ const DEFAULT_THRESHOLDS: ThresholdState = {
   minRuns: 15,
   minSuccess: 90,
   minValue: 200_000,
+};
+
+const SORT_LABELS: Record<SortKey, string> = {
+  value: "Attributed value",
+  runs: "Runs",
+  successRate: "Success rate",
 };
 
 function loadPersisted(): PersistedState | null {
@@ -73,6 +82,7 @@ export function LeaderboardWidget() {
   const [thresholds, setThresholds] = useState<ThresholdState>(
     persisted?.thresholds ?? DEFAULT_THRESHOLDS
   );
+  const [sortKey, setSortKey] = useState<SortKey>(persisted?.sort ?? "value");
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
 
   useEffect(() => {
@@ -81,8 +91,9 @@ export function LeaderboardWidget() {
       from: from.toISOString(),
       to: to.toISOString(),
       thresholds,
+      sort: sortKey,
     });
-  }, [agents, from, to, thresholds]);
+  }, [agents, from, to, thresholds, sortKey]);
 
   const rows = useMemo(() => {
     const fromMs = from.getTime();
@@ -110,8 +121,18 @@ export function LeaderboardWidget() {
         successRate: r.runs === 0 ? 0 : Math.round((r.successes / r.runs) * 100),
         activeDays: r.days.size,
       }))
-      .sort((a, b) => b.value - a.value || b.runs - a.runs);
-  }, [agents, from, to]);
+      .sort((a, b) => {
+        switch (sortKey) {
+          case "runs":
+            return b.runs - a.runs || b.value - a.value;
+          case "successRate":
+            return b.successRate - a.successRate || b.value - a.value;
+          case "value":
+          default:
+            return b.value - a.value || b.runs - a.runs;
+        }
+      });
+  }, [agents, from, to, sortKey]);
 
   const passes = (r: { runs: number; successRate: number; value: number }) =>
     r.runs >= thresholds.minRuns &&
@@ -131,6 +152,7 @@ export function LeaderboardWidget() {
     setFrom(DEFAULT_FROM);
     setTo(DEFAULT_TO);
     setThresholds(DEFAULT_THRESHOLDS);
+    setSortKey("value");
     try {
       localStorage.removeItem(LS_KEY);
     } catch {
@@ -178,7 +200,7 @@ export function LeaderboardWidget() {
             <Trophy className="h-4 w-4 text-primary" /> Agent leaderboard
           </CardTitle>
           <CardDescription>
-            Ranked by attributed value. Highlights respect your threshold rules.
+            Ranked by {SORT_LABELS[sortKey].toLowerCase()}. Highlights respect your threshold rules.
           </CardDescription>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -186,6 +208,7 @@ export function LeaderboardWidget() {
           <DateButton label="To" value={to} onChange={setTo} min={from} />
           <AgentFilter agents={agents} all={ALL_AGENTS} onToggle={toggleAgent} onReset={() => setAgents(new Set(ALL_AGENTS))} />
           <ThresholdPopover value={thresholds} onChange={setThresholds} />
+          <SortPopover value={sortKey} onChange={setSortKey} />
           <Button size="sm" variant="outline" onClick={exportCSV}>
             <Download className="mr-1.5 h-3.5 w-3.5" /> Export
           </Button>
@@ -556,6 +579,49 @@ function ThresholdPopover({
         <p className="text-[11px] text-muted-foreground">
           Rows passing all three rules are highlighted as “On target”.
         </p>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function SortPopover({
+  value,
+  onChange,
+}: {
+  value: SortKey;
+  onChange: (v: SortKey) => void;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 gap-2 font-normal">
+          <ArrowDownAZ className="h-3.5 w-3.5" />
+          Sort
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-56 p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <Label className="text-xs">Rank by</Label>
+        </div>
+        <ul className="space-y-1">
+          {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
+            <li key={key}>
+              <button
+                type="button"
+                onClick={() => onChange(key)}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                  value === key
+                    ? "bg-primary/10 font-medium text-primary"
+                    : "hover:bg-muted/60 text-foreground"
+                )}
+              >
+                {value === key && <ArrowUpDown className="h-3.5 w-3.5" />}
+                <span className={value === key ? "" : "ml-5.5"}>{SORT_LABELS[key]}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </PopoverContent>
     </Popover>
   );
