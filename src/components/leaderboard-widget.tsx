@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { ArrowDownAZ, ArrowUpDown, CalendarIcon, CheckCircle2, ChevronRight, Download, Filter, Medal, Trophy, X } from "lucide-react";
+import { ArrowDownAZ, ArrowUpDown, CalendarIcon, CheckCircle2, ChevronRight, Download, Filter, Link2, Medal, Trophy, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -67,24 +67,76 @@ function savePersisted(state: PersistedState) {
   }
 }
 
+const isValidDate = (d: Date) => !Number.isNaN(d.getTime());
+
+function loadFromQuery(): Partial<PersistedState> | null {
+  if (typeof window === "undefined") return null;
+  const sp = new URLSearchParams(window.location.search);
+  if (![...sp.keys()].some((k) => ["agents", "from", "to", "minRuns", "minSuccess", "minValue", "sort"].includes(k))) {
+    return null;
+  }
+  const out: Partial<PersistedState> = {};
+  const agents = sp.get("agents");
+  if (agents !== null) out.agents = agents ? agents.split(",").filter(Boolean) : [];
+  const from = sp.get("from");
+  if (from) {
+    const d = new Date(from);
+    if (isValidDate(d)) out.from = d.toISOString();
+  }
+  const to = sp.get("to");
+  if (to) {
+    const d = new Date(to);
+    if (isValidDate(d)) out.to = d.toISOString();
+  }
+  const minRuns = sp.get("minRuns");
+  const minSuccess = sp.get("minSuccess");
+  const minValue = sp.get("minValue");
+  if (minRuns || minSuccess || minValue) {
+    out.thresholds = {
+      minRuns: minRuns ? Number(minRuns) : DEFAULT_THRESHOLDS.minRuns,
+      minSuccess: minSuccess ? Number(minSuccess) : DEFAULT_THRESHOLDS.minSuccess,
+      minValue: minValue ? Number(minValue) : DEFAULT_THRESHOLDS.minValue,
+    };
+  }
+  const sort = sp.get("sort");
+  if (sort === "value" || sort === "runs" || sort === "successRate") out.sort = sort;
+  return out;
+}
+
+function syncQuery(state: PersistedState) {
+  if (typeof window === "undefined") return;
+  const sp = new URLSearchParams(window.location.search);
+  sp.set("agents", state.agents.join(","));
+  sp.set("from", state.from.slice(0, 10));
+  sp.set("to", state.to.slice(0, 10));
+  sp.set("minRuns", String(state.thresholds.minRuns));
+  sp.set("minSuccess", String(state.thresholds.minSuccess));
+  sp.set("minValue", String(state.thresholds.minValue));
+  sp.set("sort", state.sort);
+  const next = `${window.location.pathname}?${sp.toString()}${window.location.hash}`;
+  window.history.replaceState(null, "", next);
+}
+
 export function LeaderboardWidget() {
   const persisted = loadPersisted();
+  const query = loadFromQuery();
+  const initial = { ...(persisted ?? {}), ...(query ?? {}) } as Partial<PersistedState>;
 
   const [agents, setAgents] = useState<Set<string>>(
-    new Set(persisted?.agents ?? ALL_AGENTS)
+    new Set(initial.agents ?? ALL_AGENTS)
   );
   const [from, setFrom] = useState<Date>(
-    persisted?.from ? new Date(persisted.from) : DEFAULT_FROM
+    initial.from ? new Date(initial.from) : DEFAULT_FROM
   );
   const [to, setTo] = useState<Date>(
-    persisted?.to ? new Date(persisted.to) : DEFAULT_TO
+    initial.to ? new Date(initial.to) : DEFAULT_TO
   );
   const [thresholds, setThresholds] = useState<ThresholdState>(
-    persisted?.thresholds ?? DEFAULT_THRESHOLDS
+    initial.thresholds ?? DEFAULT_THRESHOLDS
   );
-  const [sortKey, setSortKey] = useState<SortKey>(persisted?.sort ?? "value");
+  const [sortKey, setSortKey] = useState<SortKey>(initial.sort ?? "value");
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
-  const [showRestored, setShowRestored] = useState(persisted !== null);
+  const [showRestored, setShowRestored] = useState(persisted !== null || query !== null);
 
   useEffect(() => {
     if (!showRestored) return;
@@ -93,13 +145,15 @@ export function LeaderboardWidget() {
   }, [showRestored]);
 
   useEffect(() => {
-    savePersisted({
+    const state: PersistedState = {
       agents: Array.from(agents),
       from: from.toISOString(),
       to: to.toISOString(),
       thresholds,
       sort: sortKey,
-    });
+    };
+    savePersisted(state);
+    syncQuery(state);
   }, [agents, from, to, thresholds, sortKey]);
 
   const rows = useMemo(() => {
@@ -165,6 +219,20 @@ export function LeaderboardWidget() {
     } catch {
       // ignore
     }
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+    }
+  };
+
+  const shareLink = async () => {
+    if (typeof window === "undefined") return;
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Share link copied to clipboard");
+    } catch {
+      toast.error("Couldn't copy link", { description: url });
+    }
   };
 
   const exportCSV = () => {
@@ -224,6 +292,9 @@ export function LeaderboardWidget() {
           <SortPopover value={sortKey} onChange={setSortKey} />
           <Button size="sm" variant="outline" onClick={exportCSV}>
             <Download className="mr-1.5 h-3.5 w-3.5" /> Export
+          </Button>
+          <Button size="sm" variant="outline" onClick={shareLink}>
+            <Link2 className="mr-1.5 h-3.5 w-3.5" /> Share
           </Button>
           <Button size="sm" variant="ghost" onClick={resetAll}>
             <X className="mr-1.5 h-3.5 w-3.5" /> Reset
