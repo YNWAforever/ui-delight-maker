@@ -43,7 +43,14 @@ export const updateQuote = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: quote, error } = await supabase
-      .from("quotes").update(data.updates).eq("id", data.id).select().single();
+      .from("quotes").update({
+        ...(data.updates.status !== undefined && { status: data.updates.status }),
+        ...(data.updates.total_value !== undefined && { total_value: data.updates.total_value }),
+        ...(data.updates.valid_until !== undefined && { valid_until: data.updates.valid_until }),
+        ...(data.updates.line_items !== undefined && { line_items: data.updates.line_items }),
+        ...(data.updates.pdf_url !== undefined && { pdf_url: data.updates.pdf_url }),
+        ...(data.updates.approved_by !== undefined && { approved_by: data.updates.approved_by }),
+      }).eq("id", data.id).select().single();
     if (error) throw new Error(error.message);
     return quote as Quote;
   });

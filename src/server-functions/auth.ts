@@ -27,7 +27,7 @@ export const signIn = createServerFn({ method: "POST" })
     const supabase = createSupabaseServerClient();
     const { error } = await supabase.auth.signInWithPassword(data);
     if (error) throw new Error(error.message);
-    throw redirect({ to: "/" });
+    // Return void on success — caller handles navigation
   });
 
 export const signOut = createServerFn({ method: "POST" }).handler(async () => {

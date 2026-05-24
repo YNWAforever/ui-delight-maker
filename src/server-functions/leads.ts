@@ -57,7 +57,12 @@ export const updateLead = createServerFn({ method: "POST" })
     const supabase = createSupabaseServerClient();
     const { data: lead, error } = await supabase
       .from("leads")
-      .update(data.updates)
+      .update({
+        ...(data.updates.status !== undefined && { status: data.updates.status }),
+        ...(data.updates.assigned_to !== undefined && { assigned_to: data.updates.assigned_to }),
+        ...(data.updates.lead_score !== undefined && { lead_score: data.updates.lead_score }),
+        ...(data.updates.qualification_data !== undefined && { qualification_data: data.updates.qualification_data }),
+      })
       .eq("id", data.id)
       .select()
       .single();

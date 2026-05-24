@@ -24,6 +24,8 @@ export const decideApproval = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { error } = await supabase
       .from("human_approvals")
       .update({
@@ -34,9 +36,10 @@ export const decideApproval = createServerFn({ method: "POST" })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
 
-    // Write activity log
     await supabase.from("activity_logs").insert({
       actor_type: "user",
+      actor_id: user?.id ?? null,
+      actor_name: null,
       action: `${data.decision} approval`,
       object_type: "approval",
       object_id: data.id,

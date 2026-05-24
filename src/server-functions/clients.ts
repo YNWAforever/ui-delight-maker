@@ -43,7 +43,15 @@ export const updateClient = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: client, error } = await supabase
-      .from("clients").update(data.updates).eq("id", data.id).select().single();
+      .from("clients").update({
+        ...(data.updates.company_name !== undefined && { company_name: data.updates.company_name }),
+        ...(data.updates.industry !== undefined && { industry: data.updates.industry }),
+        ...(data.updates.tier !== undefined && { tier: data.updates.tier }),
+        ...(data.updates.health_score !== undefined && { health_score: data.updates.health_score }),
+        ...(data.updates.onboarding_status !== undefined && { onboarding_status: data.updates.onboarding_status }),
+        ...(data.updates.renewal_date !== undefined && { renewal_date: data.updates.renewal_date }),
+        ...(data.updates.arr !== undefined && { arr: data.updates.arr }),
+      }).eq("id", data.id).select().single();
     if (error) throw new Error(error.message);
     return client as Client;
   });

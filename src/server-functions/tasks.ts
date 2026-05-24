@@ -33,7 +33,14 @@ export const updateTask = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: task, error } = await supabase
-      .from("tasks").update(data.updates).eq("id", data.id).select().single();
+      .from("tasks").update({
+        ...(data.updates.status !== undefined && { status: data.updates.status }),
+        ...(data.updates.title !== undefined && { title: data.updates.title }),
+        ...(data.updates.description !== undefined && { description: data.updates.description }),
+        ...(data.updates.assigned_to !== undefined && { assigned_to: data.updates.assigned_to }),
+        ...(data.updates.due_date !== undefined && { due_date: data.updates.due_date }),
+        ...(data.updates.priority !== undefined && { priority: data.updates.priority }),
+      }).eq("id", data.id).select().single();
     if (error) throw new Error(error.message);
     return task as Task;
   });
