@@ -131,6 +131,11 @@ export function LeaderboardWidget() {
     setFrom(DEFAULT_FROM);
     setTo(DEFAULT_TO);
     setThresholds(DEFAULT_THRESHOLDS);
+    try {
+      localStorage.removeItem(LS_KEY);
+    } catch {
+      // ignore
+    }
   };
 
   const exportCSV = () => {
