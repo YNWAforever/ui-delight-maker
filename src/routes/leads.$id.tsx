@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Bot,
@@ -31,24 +31,21 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
-import {
-  activityLogs,
-  leadById,
-  leadComments,
-  leadFiles,
-  leadNotes,
-  quotes,
-  userById,
-  type LeadComment,
-  type LeadFile,
-  type LeadStatus,
-} from "@/lib/mock-data";
+import type { Lead, ActivityLog, LeadStatus } from "@/lib/types";
+import { getLead, updateLead } from "@/server-functions/leads";
+import { getQuotes, triggerQuoteAgent } from "@/server-functions/quotes";
+
+// Local types for UI-only state (files/comments not yet in Supabase)
+type LeadComment = { id: string; lead_id: string; author: string; body: string; created_at: string };
+type LeadFile = { id: string; lead_id: string; name: string; size: string; kind: string; uploaded_at: string; uploaded_by: string };
 
 export const Route = createFileRoute("/leads/$id")({
-  loader: ({ params }) => {
-    const lead = leadById(params.id);
-    if (!lead) throw notFound();
-    return { lead };
+  loader: async ({ params }) => {
+    const [leadData, quotes] = await Promise.all([
+      getLead({ data: { id: params.id } }),
+      getQuotes({ data: { lead_id: params.id } }),
+    ]);
+    return { ...leadData, quotes };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -76,23 +73,21 @@ export const Route = createFileRoute("/leads/$id")({
 const STATUSES: LeadStatus[] = ["new", "qualified", "replied", "quoted", "approved", "won", "lost"];
 
 function LeadDetail() {
-  const { lead } = Route.useLoaderData();
+  const { lead, activityLogs, quotes: relatedQuotes } = Route.useLoaderData();
   const navigate = useNavigate();
-  const owner = userById(lead.assigned_to);
-  const relatedQuotes = quotes.filter((q) => q.lead_id === lead.id);
-  const leadActivity = activityLogs.filter(
-    (a) => a.object_type === "lead" && a.object_id === lead.id,
-  );
-  const initialNotes = leadNotes.filter((n) => n.lead_id === lead.id);
-  const initialComments = leadComments.filter((c) => c.lead_id === lead.id);
-  const initialFiles = leadFiles.filter((f) => f.lead_id === lead.id);
+  const router = useRouter();
 
   const [status, setStatus] = useState<LeadStatus>(lead.status);
-  const [notes, setNotes] = useState(initialNotes);
+  const [notes, setNotes] = useState<{ id: string; lead_id: string; author: string; body: string; created_at: string }[]>([]);
   const [composer, setComposer] = useState("");
-  const [comments, setComments] = useState<LeadComment[]>(initialComments);
+  const [comments, setComments] = useState<LeadComment[]>([]);
   const [commentDraft, setCommentDraft] = useState("");
-  const [files, setFiles] = useState<LeadFile[]>(initialFiles);
+  const [files, setFiles] = useState<LeadFile[]>([]);
+
+  const handleGenerateQuote = async () => {
+    await triggerQuoteAgent({ data: { leadId: lead.id } });
+    toast.success("Quote agent triggered — quote will appear shortly");
+  };
 
   const addNote = () => {
     if (!composer.trim()) return;
@@ -158,11 +153,14 @@ function LeadDetail() {
                 <ArrowLeft className="mr-2 h-4 w-4" /> All leads
               </Link>
             </Button>
+            <Button variant="outline" size="sm" onClick={handleGenerateQuote}>
+              <Sparkles className="mr-2 h-4 w-4" /> Generate Quote
+            </Button>
             <Button
               size="sm"
               onClick={() => navigate({ to: "/quotes/new", search: { leadId: lead.id } as never })}
             >
-              <FileText className="mr-2 h-4 w-4" /> Generate quote
+              <FileText className="mr-2 h-4 w-4" /> New quote
             </Button>
           </>
         }
@@ -232,10 +230,10 @@ function LeadDetail() {
                 </TabsContent>
 
                 <TabsContent value="activity" className="mt-4 space-y-3">
-                  {leadActivity.length === 0 && (
+                  {activityLogs.length === 0 && (
                     <p className="text-sm text-muted-foreground">No activity yet.</p>
                   )}
-                  {leadActivity.map((a) => (
+                  {activityLogs.map((a) => (
                     <div key={a.id} className="flex items-start gap-2">
                       <div
                         className={`mt-0.5 flex h-6 w-6 items-center justify-center rounded-full ${
@@ -485,7 +483,7 @@ function LeadDetail() {
               <Separator />
               <div>
                 <p className="text-xs text-muted-foreground">Owner</p>
-                <p className="mt-1">{owner?.name ?? "Unassigned"}</p>
+                <p className="mt-1">{lead.assigned_to ?? "Unassigned"}</p>
               </div>
             </CardContent>
           </Card>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Download, Plus, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -39,7 +39,8 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { leads as seedLeads, users, userById, type Lead } from "@/lib/mock-data";
+import type { Lead } from "@/lib/types";
+import { getLeads, createLead } from "@/server-functions/leads";
 
 export const Route = createFileRoute("/leads")({
   head: () => ({
@@ -48,6 +49,7 @@ export const Route = createFileRoute("/leads")({
       { name: "description", content: "All inbound leads with status, source, and qualification score." },
     ],
   }),
+  loader: () => getLeads({}),
   component: LeadsPage,
 });
 
@@ -55,7 +57,9 @@ const STATUSES = ["new", "qualified", "replied", "quoted", "approved", "won", "l
 const SOURCES = ["website", "whatsapp", "email", "linkedin", "csv", "event"];
 
 function LeadsPage() {
-  const [rows, setRows] = useState<Lead[]>(seedLeads);
+  const loaderLeads = Route.useLoaderData();
+  const router = useRouter();
+  const [rows, setRows] = useState<Lead[]>(loaderLeads);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [source, setSource] = useState("all");
@@ -63,6 +67,13 @@ function LeadsPage() {
   const [sort, setSort] = useState<"recent" | "score">("recent");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [newOpen, setNewOpen] = useState(false);
+
+  const handleCreateLead = async (formData: { company_name: string; enquiry_text?: string; source?: Lead["source"]; contact_name?: string; contact_email?: string }) => {
+    await createLead({ data: formData });
+    router.invalidate();
+    setNewOpen(false);
+    toast.success("Lead created");
+  };
 
   const filtered = useMemo(() => {
     const out = rows.filter((l) => {
@@ -101,7 +112,7 @@ function LeadsPage() {
     source !== "all" && { key: "source", label: source, clear: () => setSource("all") },
     owner !== "all" && {
       key: "owner",
-      label: userById(owner)?.name ?? owner,
+      label: owner,
       clear: () => setOwner("all"),
     },
   ].filter(Boolean) as { key: string; label: string; clear: () => void }[];
@@ -123,10 +134,7 @@ function LeadsPage() {
             <NewLeadDialog
               open={newOpen}
               onOpenChange={setNewOpen}
-              onCreate={(lead) => {
-                setRows((prev) => [lead, ...prev]);
-                toast.success(`Lead created: ${lead.company_name}`);
-              }}
+              onCreate={handleCreateLead}
             />
           </>
         }
@@ -173,11 +181,6 @@ function LeadsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All owners</SelectItem>
-                {users.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name}
-                  </SelectItem>
-                ))}
               </SelectContent>
             </Select>
             <Select value={sort} onValueChange={(v) => setSort(v as "recent" | "score")}>
@@ -217,7 +220,7 @@ function LeadsPage() {
                 prev.map((l) => (selected.has(l.id) ? { ...l, assigned_to: uid } : l)),
               );
               toast.success(
-                `Assigned ${selected.size} lead${selected.size > 1 ? "s" : ""} to ${userById(uid)?.name}`,
+                `Assigned ${selected.size} lead${selected.size > 1 ? "s" : ""}`,
               );
               setSelected(new Set());
             }}
@@ -259,7 +262,6 @@ function LeadsPage() {
             </TableHeader>
             <TableBody>
               {filtered.map((lead) => {
-                const ownerUser = userById(lead.assigned_to);
                 return (
                   <TableRow key={lead.id} className="cursor-pointer">
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -290,7 +292,7 @@ function LeadsPage() {
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{lead.lead_score}</TableCell>
                     <TableCell>
-                      <span className="text-sm">{ownerUser?.name ?? "—"}</span>
+                      <span className="text-sm">{lead.assigned_to ?? "—"}</span>
                     </TableCell>
                     <TableCell>
                       {lead.qualification_data ? (
@@ -335,40 +337,30 @@ function NewLeadDialog({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onCreate: (lead: Lead) => void;
+  onCreate: (formData: { company_name: string; enquiry_text?: string; source?: Lead["source"]; contact_name?: string; contact_email?: string }) => Promise<void>;
 }) {
   const [company, setCompany] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
   const [enquiry, setEnquiry] = useState("");
   const [source, setSource] = useState("website");
-  const [ownerId, setOwnerId] = useState(users[2].id);
 
-  const submit = () => {
+  const submit = async () => {
     if (!company || !contact) {
       toast.error("Company and contact name are required.");
       return;
     }
-    onCreate({
-      id: `L-${Math.floor(Math.random() * 9000) + 2000}`,
+    await onCreate({
       company_name: company,
       contact_name: contact,
-      contact_email: email || "—",
-      contact_phone: "—",
+      contact_email: email || undefined,
       source: source as Lead["source"],
-      status: "new",
-      assigned_to: ownerId,
-      lead_score: 0,
-      enquiry_text: enquiry,
-      qualification_data: null,
-      created_at: new Date("2026-05-20T10:00:00Z").toISOString(),
-      updated_at: new Date("2026-05-20T10:00:00Z").toISOString(),
+      enquiry_text: enquiry || undefined,
     });
     setCompany("");
     setContact("");
     setEmail("");
     setEnquiry("");
-    onOpenChange(false);
   };
 
   return (
@@ -413,21 +405,6 @@ function NewLeadDialog({
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label className="text-xs">Owner</Label>
-            <Select value={ownerId} onValueChange={setOwnerId}>
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {users.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="sm:col-span-2">
             <Label className="text-xs">Enquiry</Label>
             <Textarea
@@ -463,7 +440,7 @@ function LeadsBulkBar({
   onClear: () => void;
 }) {
   const [assignOpen, setAssignOpen] = useState(false);
-  const [assignee, setAssignee] = useState(users[2].id);
+  const [assignee, setAssignee] = useState("");
   const [confirm, setConfirm] = useState<null | {
     title: string;
     description: string;
@@ -530,19 +507,13 @@ function LeadsBulkBar({
             <DialogDescription>Pick a new owner. Reassignment is logged.</DialogDescription>
           </DialogHeader>
           <div>
-            <Label className="text-xs">Owner</Label>
-            <Select value={assignee} onValueChange={setAssignee}>
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {users.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name} · <span className="capitalize text-muted-foreground">{u.role}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-xs">Owner UUID</Label>
+            <Input
+              className="mt-1"
+              placeholder="Paste user UUID…"
+              value={assignee}
+              onChange={(e) => setAssignee(e.target.value)}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAssignOpen(false)}>
