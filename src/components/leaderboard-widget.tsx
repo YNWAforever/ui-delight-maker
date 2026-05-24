@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Filter, Medal, Trophy, X } from "lucide-react";
+import { CalendarIcon, Download, Filter, Medal, Trophy, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,38 @@ export function LeaderboardWidget() {
     setThresholds(DEFAULT_THRESHOLDS);
   };
 
+  const exportCSV = () => {
+    const headers = ["Rank", "Agent", "Runs", "SuccessRate", "ActiveDays", "AttributedValue", "OnTarget"];
+    const lines = rows.map((r, idx) => {
+      const ok = passes(r);
+      return [
+        idx + 1,
+        r.agent,
+        r.runs,
+        `${r.successRate}%`,
+        r.activeDays,
+        r.value,
+        ok ? "Yes" : "No",
+      ].join(",");
+    });
+    const meta = [
+      `# Agent Leaderboard Export`,
+      `# Date range: ${format(from, "yyyy-MM-dd")} to ${format(to, "yyyy-MM-dd")}`,
+      `# Thresholds: minRuns=${thresholds.minRuns}, minSuccess=${thresholds.minSuccess}%, minValue=${thresholds.minValue}`,
+    ];
+    const csv = [...meta, headers.join(","), ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `leaderboard-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast.success("Leaderboard exported as CSV");
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -98,6 +131,9 @@ export function LeaderboardWidget() {
           <DateButton label="To" value={to} onChange={setTo} min={from} />
           <AgentFilter agents={agents} all={ALL_AGENTS} onToggle={toggleAgent} onReset={() => setAgents(new Set(ALL_AGENTS))} />
           <ThresholdPopover value={thresholds} onChange={setThresholds} />
+          <Button size="sm" variant="outline" onClick={exportCSV}>
+            <Download className="mr-1.5 h-3.5 w-3.5" /> Export
+          </Button>
           <Button size="sm" variant="ghost" onClick={resetAll}>
             <X className="mr-1.5 h-3.5 w-3.5" /> Reset
           </Button>
