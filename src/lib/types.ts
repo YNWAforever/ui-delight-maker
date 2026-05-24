@@ -19,6 +19,8 @@ export type ApprovalType = "quote_send" | "message_send" | "discount" | "qualifi
 export type AgentRunStatus = "running" | "completed" | "failed" | "waiting_approval";
 export type UserRole = "admin" | "manager" | "sales" | "cs";
 
+export type PricingCategory = "AI transformation" | "CRM" | "KOC" | "campaign" | "data" | "custom";
+
 export interface Profile {
   id: string;
   name: string | null;
@@ -165,7 +167,7 @@ export interface PricingTemplate {
   id: string;
   service: string;
   description: string | null;
-  category: string | null;
+  category: PricingCategory | null;
   unit_price: number | null;
   currency: string;
   active: boolean;
