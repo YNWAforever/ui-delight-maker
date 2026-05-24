@@ -151,61 +151,191 @@ export function LeaderboardWidget() {
             {rows.map((r, idx) => {
               const ok = passes(r);
               return (
-                <li
-                  key={r.agent}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 text-sm transition-colors",
-                    ok && "bg-primary/5",
-                  )}
-                >
-                  <div
+                <li key={r.agent}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAgent(r.agent)}
                     className={cn(
-                      "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold",
-                      idx === 0
-                        ? "bg-warning/20 text-warning-foreground"
-                        : idx === 1
-                          ? "bg-secondary text-secondary-foreground"
-                          : "bg-muted text-muted-foreground",
+                      "flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/60 focus:outline-none focus-visible:bg-muted/60",
+                      ok && "bg-primary/5 hover:bg-primary/10",
                     )}
                   >
-                    {idx < 3 ? <Medal className="h-3.5 w-3.5" /> : idx + 1}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{r.agent}</span>
-                      {ok && (
-                        <Badge variant="outline" className="border-success/40 bg-success/10 text-success">
-                          On target
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {r.activeDays} active day{r.activeDays === 1 ? "" : "s"} ·{" "}
-                      <ThresholdHint label="runs" value={r.runs} min={thresholds.minRuns} />
-                      {" · "}
-                      <ThresholdHint label="success" value={r.successRate} min={thresholds.minSuccess} suffix="%" />
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-semibold tabular-nums">
-                      {formatCompactHKD(r.value)}
-                    </div>
                     <div
                       className={cn(
-                        "text-xs tabular-nums",
-                        r.value >= thresholds.minValue ? "text-success" : "text-muted-foreground",
+                        "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold",
+                        idx === 0
+                          ? "bg-warning/20 text-warning-foreground"
+                          : idx === 1
+                            ? "bg-secondary text-secondary-foreground"
+                            : "bg-muted text-muted-foreground",
                       )}
                     >
-                      target {formatCompactHKD(thresholds.minValue)}
+                      {idx < 3 ? <Medal className="h-3.5 w-3.5" /> : idx + 1}
                     </div>
-                  </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{r.agent}</span>
+                        {ok && (
+                          <Badge variant="outline" className="border-success/40 bg-success/10 text-success">
+                            On target
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {r.activeDays} active day{r.activeDays === 1 ? "" : "s"} ·{" "}
+                        <ThresholdHint label="runs" value={r.runs} min={thresholds.minRuns} />
+                        {" · "}
+                        <ThresholdHint label="success" value={r.successRate} min={thresholds.minSuccess} suffix="%" />
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-semibold tabular-nums">
+                        {formatCompactHKD(r.value)}
+                      </div>
+                      <div
+                        className={cn(
+                          "text-xs tabular-nums",
+                          r.value >= thresholds.minValue ? "text-success" : "text-muted-foreground",
+                        )}
+                      >
+                        target {formatCompactHKD(thresholds.minValue)}
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </button>
                 </li>
               );
             })}
           </ul>
         )}
       </CardContent>
+      <AgentDetailSheet
+        agent={selectedAgent}
+        from={from}
+        to={to}
+        onClose={() => setSelectedAgent(null)}
+      />
     </Card>
+  );
+}
+
+function AgentDetailSheet({
+  agent,
+  from,
+  to,
+  onClose,
+}: {
+  agent: string | null;
+  from: Date;
+  to: Date;
+  onClose: () => void;
+}) {
+  const data = useMemo(() => {
+    if (!agent) return null;
+    const fromMs = from.getTime();
+    const toMs = to.getTime() + 86_399_000;
+    const days = agentLeaderboardDaily
+      .filter((d) => d.agent === agent)
+      .filter((d) => {
+        const ms = new Date(d.date + "T00:00:00Z").getTime();
+        return ms >= fromMs && ms <= toMs;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const totals = days.reduce(
+      (acc, d) => {
+        acc.runs += d.runs;
+        acc.successes += d.successes;
+        acc.value += d.value;
+        return acc;
+      },
+      { runs: 0, successes: 0, value: 0 },
+    );
+    const successRate = totals.runs === 0 ? 0 : Math.round((totals.successes / totals.runs) * 100);
+    const maxRuns = Math.max(1, ...days.map((d) => d.runs));
+    const maxValue = Math.max(1, ...days.map((d) => d.value));
+    return { days, totals, successRate, maxRuns, maxValue };
+  }, [agent, from, to]);
+
+  return (
+    <Sheet open={agent !== null} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-primary" /> {agent ?? ""}
+          </SheetTitle>
+          <SheetDescription>
+            Daily breakdown · {format(from, "MMM d")} – {format(to, "MMM d, yyyy")}
+          </SheetDescription>
+        </SheetHeader>
+
+        {data && (
+          <div className="mt-4 space-y-4">
+            <div className="grid grid-cols-3 gap-2">
+              <SummaryStat label="Runs" value={data.totals.runs.toLocaleString()} />
+              <SummaryStat label="Success rate" value={`${data.successRate}%`} />
+              <SummaryStat label="Value" value={formatCompactHKD(data.totals.value)} />
+            </div>
+
+            {data.days.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No activity for this agent in the selected range.
+              </p>
+            ) : (
+              <div className="rounded-md border border-border">
+                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <span>Date</span>
+                  <span className="text-right">Runs</span>
+                  <span className="text-right">Success</span>
+                  <span className="text-right">Value</span>
+                </div>
+                <ul className="divide-y divide-border">
+                  {data.days.map((d) => {
+                    const rate = d.runs === 0 ? 0 : Math.round((d.successes / d.runs) * 100);
+                    return (
+                      <li key={d.date} className="px-3 py-2.5 text-sm">
+                        <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 tabular-nums">
+                          <span className="font-medium">
+                            {format(new Date(d.date + "T00:00:00Z"), "EEE, MMM d")}
+                          </span>
+                          <span className="text-right">{d.runs}</span>
+                          <span className={cn("text-right", rate >= 90 ? "text-success" : "text-muted-foreground")}>
+                            {rate}%
+                          </span>
+                          <span className="text-right font-medium">{formatCompactHKD(d.value)}</span>
+                        </div>
+                        <div className="mt-1.5 flex gap-1">
+                          <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full bg-primary/60"
+                              style={{ width: `${(d.runs / data.maxRuns) * 100}%` }}
+                            />
+                          </div>
+                          <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full bg-success/70"
+                              style={{ width: `${(d.value / data.maxValue) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function SummaryStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-0.5 text-sm font-semibold tabular-nums">{value}</div>
+    </div>
   );
 }
 
