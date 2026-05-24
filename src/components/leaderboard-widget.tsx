@@ -209,6 +209,12 @@ export function LeaderboardWidget() {
           <CardDescription>
             Ranked by {SORT_LABELS[sortKey].toLowerCase()}. Highlights respect your threshold rules.
           </CardDescription>
+          {showRestored && (
+            <div className="mt-1 inline-flex items-center gap-1 text-[11px] text-success transition-opacity duration-500">
+              <CheckCircle2 className="h-3 w-3" />
+              Filters restored from last session
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DateButton label="From" value={from} onChange={setFrom} max={to} />
