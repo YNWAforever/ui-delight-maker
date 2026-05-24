@@ -152,6 +152,7 @@ export function LeaderboardWidget() {
     setFrom(DEFAULT_FROM);
     setTo(DEFAULT_TO);
     setThresholds(DEFAULT_THRESHOLDS);
+    setSortKey("value");
     try {
       localStorage.removeItem(LS_KEY);
     } catch {
