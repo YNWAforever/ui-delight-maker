@@ -145,13 +145,15 @@ export function LeaderboardWidget() {
   }, [showRestored]);
 
   useEffect(() => {
-    savePersisted({
+    const state: PersistedState = {
       agents: Array.from(agents),
       from: from.toISOString(),
       to: to.toISOString(),
       thresholds,
       sort: sortKey,
-    });
+    };
+    savePersisted(state);
+    syncQuery(state);
   }, [agents, from, to, thresholds, sortKey]);
 
   const rows = useMemo(() => {
