@@ -583,3 +583,45 @@ function ThresholdPopover({
     </Popover>
   );
 }
+
+function SortPopover({
+  value,
+  onChange,
+}: {
+  value: SortKey;
+  onChange: (v: SortKey) => void;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 gap-2 font-normal">
+          <ArrowDownAZ className="h-3.5 w-3.5" />
+          Sort
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-56 p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <Label className="text-xs">Rank by</Label>
+        </div>
+        <ul className="space-y-1">
+          {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
+            <li key={key}>
+              <button
+                type="button"
+                onClick={() => onChange(key)}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+                  value === key
+                    ? "bg-primary/10 font-medium text-primary"
+                    : "hover:bg-muted/60 text-foreground"
+                )}
+              >
+                {value === key && <ArrowUpDown className="h-3.5 w-3.5" />}
+                <span className={value === key ? "" : "ml-5.5"}>{SORT_LABELS[key]}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  );
