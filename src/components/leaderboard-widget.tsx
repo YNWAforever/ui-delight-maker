@@ -34,6 +34,7 @@ export function LeaderboardWidget() {
   const [from, setFrom] = useState<Date>(DEFAULT_FROM);
   const [to, setTo] = useState<Date>(DEFAULT_TO);
   const [thresholds, setThresholds] = useState<ThresholdState>(DEFAULT_THRESHOLDS);
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
 
   const rows = useMemo(() => {
     const fromMs = from.getTime();
