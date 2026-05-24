@@ -200,7 +200,7 @@ export function LeaderboardWidget() {
             <Trophy className="h-4 w-4 text-primary" /> Agent leaderboard
           </CardTitle>
           <CardDescription>
-            Ranked by attributed value. Highlights respect your threshold rules.
+            Ranked by {SORT_LABELS[sortKey].toLowerCase()}. Highlights respect your threshold rules.
           </CardDescription>
         </div>
         <div className="flex flex-wrap items-center gap-2">
