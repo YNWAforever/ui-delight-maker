@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { AlertTriangle, Bot, CheckCircle2, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,9 +37,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
-import { approvals as seedApprovals, users, userById, type Approval, type ApprovalStatus } from "@/lib/mock-data";
+import { users, userById } from "@/lib/mock-data";
+import { getApprovals, decideApproval } from "@/server-functions/approvals";
+import type { HumanApproval } from "@/lib/types";
+import type { ApprovalStatus } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/approvals")({
+  loader: () => getApprovals({}),
   head: () => ({
     meta: [
       { title: "Approvals — Fimmick ClientOps" },
@@ -61,7 +65,8 @@ function slaChip(createdAt: string) {
 }
 
 function ApprovalsInbox() {
-  const [rows, setRows] = useState<Approval[]>(seedApprovals);
+  const allApprovals = Route.useLoaderData();
+  const router = useRouter();
   const [typeFilter, setTypeFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -70,19 +75,20 @@ function ApprovalsInbox() {
 
   const pending = useMemo(
     () =>
-      rows
+      allApprovals
         .filter((a) => a.status === "pending")
         .filter((a) => typeFilter === "all" || a.approval_type === typeFilter)
-        .filter((a) => agentFilter === "all" || a.agent_name === agentFilter),
-    [rows, typeFilter, agentFilter],
+        .filter((a) => agentFilter === "all"),
+    [allApprovals, typeFilter, agentFilter],
   );
-  const decided = rows.filter((a) => a.status !== "pending");
+  const decided = allApprovals.filter((a) => a.status !== "pending");
   const selected = pending.find((a) => a.id === selectedId) ?? pending[0];
 
-  const decide = (id: string, status: ApprovalStatus, msg: string) => {
-    setRows((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
+  const decide = async (id: string, status: "approved" | "rejected", msg: string) => {
+    await decideApproval({ data: { id, decision: status, notes: reason || undefined } });
     toast.success(msg);
     setReason("");
+    router.invalidate();
   };
 
   const [confirm, setConfirm] = useState<null | {
@@ -97,19 +103,22 @@ function ApprovalsInbox() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
-  const bulkApprove = () => {
+  const bulkApprove = async () => {
     const n = bulk.size;
-    setRows((prev) =>
-      prev.map((a) => (bulk.has(a.id) ? { ...a, status: "approved" as ApprovalStatus } : a)),
+    await Promise.all(
+      Array.from(bulk).map((id) => decideApproval({ data: { id, decision: "approved" } })),
     );
     toast.success(`Approved ${n} request${n > 1 ? "s" : ""}`);
     setBulk(new Set());
+    router.invalidate();
   };
 
-  const bulkReject = () => {
+  const bulkReject = async () => {
     const n = bulk.size;
-    setRows((prev) =>
-      prev.map((a) => (bulk.has(a.id) ? { ...a, status: "rejected" as ApprovalStatus } : a)),
+    await Promise.all(
+      Array.from(bulk).map((id) =>
+        decideApproval({ data: { id, decision: "rejected", notes: rejectReason || undefined } }),
+      ),
     );
     toast.success(
       `Rejected ${n} request${n > 1 ? "s" : ""}${rejectReason ? ` — "${rejectReason}"` : ""}`,
@@ -117,14 +126,12 @@ function ApprovalsInbox() {
     setBulk(new Set());
     setRejectReason("");
     setRejectOpen(false);
+    router.invalidate();
   };
 
   const bulkAssign = () => {
     const n = bulk.size;
-    // requested_by stores the reviewer id in this mock
-    setRows((prev) =>
-      prev.map((a) => (bulk.has(a.id) ? { ...a, requested_by: assignee } : a)),
-    );
+    // assignment not yet backed by server function — show toast only
     toast.success(`Assigned ${n} request${n > 1 ? "s" : ""} to ${userById(assignee)?.name}`);
     setBulk(new Set());
     setAssignOpen(false);
@@ -134,7 +141,7 @@ function ApprovalsInbox() {
   const toggleAll = (v: boolean) =>
     setBulk(v ? new Set(pending.map((a) => a.id)) : new Set());
 
-  const agentNames = Array.from(new Set(rows.map((a) => a.agent_name)));
+  const agentNames: string[] = []; // HumanApproval has no agent_name field
 
   return (
     <>
@@ -233,7 +240,7 @@ function ApprovalsInbox() {
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">{a.agent_name}</span>
+                        <span className="text-sm font-medium">{a.approval_type?.replace(/_/g, " ") ?? "Approval"}</span>
                         <span
                           className={cn(
                             "rounded-md px-1.5 py-0.5 text-[10px] font-medium",
@@ -247,7 +254,7 @@ function ApprovalsInbox() {
                         {a.context_summary}
                       </p>
                       <p className="mt-1 text-[10px] capitalize text-muted-foreground">
-                        {a.approval_type.replace(/_/g, " ")} · conf {(a.confidence * 100).toFixed(0)}%
+                        {a.approval_type?.replace(/_/g, " ") ?? "—"}
                       </p>
                     </div>
                   </li>
@@ -269,9 +276,9 @@ function ApprovalsInbox() {
                     <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
                       <Bot className="h-4 w-4" />
                     </div>
-                    <span className="text-sm font-semibold">{selected.agent_name}</span>
+                    <span className="text-sm font-semibold">{selected.approval_type?.replace(/_/g, " ") ?? "Approval"}</span>
                     <span className="rounded-md bg-secondary px-2 py-0.5 text-xs capitalize text-secondary-foreground">
-                      {selected.approval_type.replace(/_/g, " ")}
+                      {selected.approval_type?.replace(/_/g, " ") ?? "—"}
                     </span>
                     <StatusBadge value={selected.status} />
                     <span className="ml-auto text-xs text-muted-foreground">
@@ -280,7 +287,7 @@ function ApprovalsInbox() {
                   </div>
                   <p className="mt-3 text-sm">{selected.context_summary}</p>
                   <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
-                    {selected.payload_preview}
+                    {selected.context_data ? JSON.stringify(selected.context_data, null, 2) : "No payload data"}
                   </pre>
                   <Textarea
                     placeholder="Reviewer notes / reason for decision"
@@ -292,7 +299,7 @@ function ApprovalsInbox() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => decide(selected.id, "escalated", "Escalated to manager")}
+                      onClick={() => decide(selected.id, "rejected", "Escalated to manager")}
                     >
                       <AlertTriangle className="mr-2 h-4 w-4" /> Escalate
                     </Button>
@@ -331,7 +338,7 @@ function ApprovalsInbox() {
               {decided.map((a) => (
                 <li key={a.id} className="flex items-center gap-3 p-4 text-sm">
                   <Bot className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{a.agent_name}</span>
+                  <span className="font-medium">{a.approval_type?.replace(/_/g, " ") ?? "Approval"}</span>
                   <span className="truncate text-muted-foreground">{a.context_summary}</span>
                   <StatusBadge value={a.status} className="ml-auto" />
                 </li>

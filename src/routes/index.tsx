@@ -28,18 +28,25 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime, formatCompactHKD } from "@/lib/format";
-import {
-  activityLogs,
-  agentRuns,
-  approvals,
-  conversionTrend,
-  leads,
-  pipelineFunnel,
-  quotes,
-  tasks,
-} from "@/lib/mock-data";
+import { getDashboardStats, getActivityLogs, getAgentRuns } from "@/server-functions/agent-runs";
+import { getLeads } from "@/server-functions/leads";
+import { getQuotes } from "@/server-functions/quotes";
+import { getApprovals } from "@/server-functions/approvals";
+import { getTasks } from "@/server-functions/tasks";
 
 export const Route = createFileRoute("/")({
+  loader: async () => {
+    const [stats, leads, quotes, approvals, tasks, activityLogs, agentRuns] = await Promise.all([
+      getDashboardStats(),
+      getLeads({}),
+      getQuotes({}),
+      getApprovals({ data: { status: "pending" } }),
+      getTasks({}),
+      getActivityLogs({}),
+      getAgentRuns({}),
+    ]);
+    return { stats, leads, quotes, approvals, tasks, activityLogs, agentRuns };
+  },
   head: () => ({
     meta: [
       { title: "Dashboard — Fimmick ClientOps" },
@@ -50,16 +57,15 @@ export const Route = createFileRoute("/")({
 });
 
 function Dashboard() {
-  const openLeads = leads.filter((l) => !["won", "lost"].includes(l.status)).length;
-  const pendingQuoteValue = quotes
-    .filter((q) => ["pending_approval", "sent", "viewed"].includes(q.status))
-    .reduce((sum, q) => sum + q.total_value, 0);
-  const pendingApprovals = approvals.filter((a) => a.status === "pending").length;
-  const runs24h = agentRuns.length;
+  const { stats, leads, quotes, approvals, tasks, activityLogs, agentRuns } = Route.useLoaderData();
+  const openLeads = stats.openLeads;
+  const pendingQuoteValue = stats.pendingQuoteValue;
+  const pendingApprovals = stats.pendingApprovals;
+  const runs24h = stats.runs24h;
   const needsAttention = [
     ...approvals.filter((a) => a.status === "pending").map((a) => ({
       kind: "Approval",
-      title: a.context_summary,
+      title: a.context_summary ?? "Approval request",
       link: "/approvals" as const,
     })),
     ...tasks
@@ -97,7 +103,7 @@ function Dashboard() {
             value={formatCompactHKD(pendingQuoteValue)}
             icon={FileText}
             delta={8}
-            hint={`${quotes.length} active`}
+            hint={`${quotes.length} in flight`}
           />
           <MetricCard
             label="Pending approvals"
@@ -118,7 +124,7 @@ function Dashboard() {
             <CardContent>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={pipelineFunnel}>
+                  <BarChart data={[]}>  {/* pipeline data not yet fetched */}
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                     <XAxis dataKey="stage" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
                     <YAxis stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
@@ -145,7 +151,7 @@ function Dashboard() {
             <CardContent>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={conversionTrend}>
+                  <LineChart data={[]}>  {/* conversion trend data not yet fetched */}
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                     <XAxis dataKey="week" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
                     <YAxis stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
@@ -195,13 +201,15 @@ function Dashboard() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-medium">{run.agent_name}</span>
                       <StatusBadge value={run.status} />
-                      <span className="text-xs text-muted-foreground">
-                        conf {(run.confidence_score * 100).toFixed(0)}%
-                      </span>
+                      {run.confidence_score != null && (
+                        <span className="text-xs text-muted-foreground">
+                          conf {(run.confidence_score * 100).toFixed(0)}%
+                        </span>
+                      )}
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">{run.output_summary}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {formatDateTime(run.created_at)} · {run.tokens_used.toLocaleString()} tokens
+                      {formatDateTime(run.created_at)}{run.tokens_used != null ? ` · ${run.tokens_used.toLocaleString()} tokens` : ""}
                     </p>
                   </div>
                 </div>
@@ -264,7 +272,7 @@ function Dashboard() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{lead.company_name}</p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {lead.contact_name} · {lead.source}
+                          {lead.contact_name ?? "—"}{lead.source ? ` · ${lead.source}` : ""}
                         </p>
                       </div>
                       <div className="hidden items-center gap-2 sm:flex">
@@ -301,7 +309,7 @@ function Dashboard() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="leading-snug">
-                      <span className="font-medium">{log.actor_name}</span>{" "}
+                      <span className="font-medium">{log.actor_name ?? log.actor_type ?? "Unknown"}</span>{" "}
                       <span className="text-muted-foreground">{log.action}</span>
                     </p>
                     <p className="text-xs text-muted-foreground">

@@ -21,15 +21,8 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import {
-  agentLeaderboard,
-  conversionTrend,
-  pipelineFunnel,
-  revenueTrend,
-  taskThroughput,
-} from "@/lib/mock-data";
-
 export const Route = createFileRoute("/reports")({
+  loader: () => ({ leads: [], quotes: [], agentRuns: [] }),
   head: () => ({
     meta: [
       { title: "Reports — Fimmick ClientOps" },
@@ -38,6 +31,13 @@ export const Route = createFileRoute("/reports")({
   }),
   component: ReportsPage,
 });
+
+// Stub chart data until analytics server functions are implemented
+const agentLeaderboard: { name: string; runs: number; success: number }[] = [];
+const conversionTrend: { week: string; leads: number; won: number }[] = [];
+const pipelineFunnel: { stage: string; count: number }[] = [];
+const revenueTrend: { week: string; revenue: number }[] = [];
+const taskThroughput: { day: string; created: number; completed: number }[] = [];
 
 const tooltipStyle = {
   backgroundColor: "var(--color-popover)",

@@ -17,9 +17,11 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
-import { agentRuns, agents as seedAgents } from "@/lib/mock-data";
+import { agents as seedAgents } from "@/lib/mock-data";
+import { getAgentRuns } from "@/server-functions/agent-runs";
 
 export const Route = createFileRoute("/agents")({
+  loader: () => getAgentRuns({}),
   head: () => ({
     meta: [
       { title: "Agents — Fimmick ClientOps" },
@@ -30,6 +32,7 @@ export const Route = createFileRoute("/agents")({
 });
 
 function AgentsMonitor() {
+  const agentRuns = Route.useLoaderData();
   const [open, setOpen] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [agentStates, setAgentStates] = useState(() =>
@@ -38,7 +41,7 @@ function AgentsMonitor() {
 
   const filteredRuns = useMemo(
     () => (statusFilter === "all" ? agentRuns : agentRuns.filter((r) => r.status === statusFilter)),
-    [statusFilter],
+    [agentRuns, statusFilter],
   );
 
   return (
@@ -112,7 +115,7 @@ function AgentsMonitor() {
               </SelectContent>
             </Select>
             <span className="text-xs text-muted-foreground">
-              {filteredRuns.length} runs · click a row to inspect
+              {filteredRuns.length} run{filteredRuns.length !== 1 ? "s" : ""} · click a row to inspect
             </span>
           </div>
         </Card>
@@ -156,13 +159,13 @@ function AgentsMonitor() {
                         <StatusBadge value={run.status} />
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-sm">
-                        {(run.duration_ms / 1000).toFixed(1)}s
+                        {run.duration_ms != null ? `${(run.duration_ms / 1000).toFixed(1)}s` : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-sm">
-                        {run.tokens_used.toLocaleString()}
+                        {run.tokens_used != null ? run.tokens_used.toLocaleString() : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-sm">
-                        {(run.confidence_score * 100).toFixed(0)}%
+                        {run.confidence_score != null ? `${(run.confidence_score * 100).toFixed(0)}%` : "—"}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {formatDateTime(run.created_at)}
@@ -184,34 +187,14 @@ function AgentsMonitor() {
                       <TableRow>
                         <TableCell colSpan={9} className="bg-muted/30">
                           <div className="space-y-3 py-2">
-                            <KV label="Input" value={run.input_summary} />
-                            <KV label="Output" value={run.output_summary} />
+                            <KV label="Output" value={run.output_summary ?? "—"} />
                             <div>
                               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Tool calls ({run.tool_calls.length})
+                                Input data
                               </p>
-                              <ul className="mt-1 space-y-2">
-                                {run.tool_calls.map((tc) => (
-                                  <li
-                                    key={tc.id}
-                                    className="rounded-md border border-border bg-card p-2 text-xs"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <code className="font-mono">{tc.tool_name}</code>
-                                      <span
-                                        className={
-                                          tc.success ? "text-success" : "text-destructive"
-                                        }
-                                      >
-                                        {tc.success ? "ok" : "failed"}
-                                      </span>
-                                    </div>
-                                    <pre className="mt-1 overflow-auto text-muted-foreground">
-                                      {JSON.stringify(tc.input_params, null, 2)}
-                                    </pre>
-                                  </li>
-                                ))}
-                              </ul>
+                              <pre className="mt-1 overflow-auto rounded-md border border-border bg-card p-2 text-xs text-muted-foreground">
+                                {run.input_data ? JSON.stringify(run.input_data, null, 2) : "—"}
+                              </pre>
                             </div>
                           </div>
                         </TableCell>

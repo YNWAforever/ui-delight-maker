@@ -12,13 +12,15 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDateTime } from "@/lib/format";
-import { agentByName, agentRuns } from "@/lib/mock-data";
+import { agentByName } from "@/lib/mock-data";
+import { getAgentRuns } from "@/server-functions/agent-runs";
 
 export const Route = createFileRoute("/agents/$name")({
-  loader: ({ params }) => {
+  loader: async ({ params }) => {
     const agent = agentByName(params.name);
     if (!agent) throw notFound();
-    return { agent };
+    const runs = await getAgentRuns({ data: { agent: agent.display_name } });
+    return { agent, runs };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -56,8 +58,7 @@ const MEMORIES = [
 ];
 
 function AgentDetail() {
-  const { agent } = Route.useLoaderData();
-  const runs = agentRuns.filter((r) => r.agent_name === agent.display_name);
+  const { agent, runs } = Route.useLoaderData();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [memories, setMemories] = useState(MEMORIES);
   const [temp, setTemp] = useState([0.4]);
@@ -113,35 +114,27 @@ function AgentDetail() {
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-sm font-medium">{r.id}</span>
                                 <StatusBadge value={r.status} />
-                                <span className="text-xs text-muted-foreground">
-                                  conf {(r.confidence_score * 100).toFixed(0)}%
-                                </span>
+                                {r.confidence_score != null && (
+                                  <span className="text-xs text-muted-foreground">
+                                    conf {(r.confidence_score * 100).toFixed(0)}%
+                                  </span>
+                                )}
                               </div>
                               <p className="mt-1 text-sm text-muted-foreground">
                                 {r.output_summary}
                               </p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {formatDateTime(r.created_at)} ·{" "}
-                                {r.tokens_used.toLocaleString()} tokens
+                                {formatDateTime(r.created_at)}{r.tokens_used != null ? ` · ${r.tokens_used.toLocaleString()} tokens` : ""}
                               </p>
                             </div>
                           </button>
                           {open && (
                             <div className="mt-3 ml-11 space-y-2">
-                              {r.tool_calls.map((tc) => (
-                                <pre
-                                  key={tc.id}
-                                  className="overflow-auto rounded-md border border-border bg-muted/30 p-2 text-xs"
-                                >
-                                  <span className="font-medium text-primary">{tc.tool_name}</span>
-                                  {"\n"}
-                                  {JSON.stringify(
-                                    { input: tc.input_params, output: tc.output_result },
-                                    null,
-                                    2,
-                                  )}
-                                </pre>
-                              ))}
+                              <pre className="overflow-auto rounded-md border border-border bg-muted/30 p-2 text-xs">
+                                <span className="font-medium text-primary">Input data</span>
+                                {"\n"}
+                                {r.input_data ? JSON.stringify(r.input_data, null, 2) : "—"}
+                              </pre>
                             </div>
                           )}
                         </li>
@@ -259,6 +252,7 @@ function AgentDetail() {
                 {runs.length} runs visible · {runs.filter((r) => r.status === "failed").length}{" "}
                 failed · {runs.filter((r) => r.human_review_required).length} flagged for review.
               </p>
+              {/* human_review_required from Supabase AgentRun type */}
             </div>
           </CardContent>
         </Card>
