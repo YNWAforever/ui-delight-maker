@@ -219,6 +219,20 @@ export function LeaderboardWidget() {
     } catch {
       // ignore
     }
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+    }
+  };
+
+  const shareLink = async () => {
+    if (typeof window === "undefined") return;
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Share link copied to clipboard");
+    } catch {
+      toast.error("Couldn't copy link", { description: url });
+    }
   };
 
   const exportCSV = () => {
