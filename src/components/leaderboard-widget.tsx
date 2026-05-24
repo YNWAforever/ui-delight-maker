@@ -82,6 +82,7 @@ export function LeaderboardWidget() {
   const [thresholds, setThresholds] = useState<ThresholdState>(
     persisted?.thresholds ?? DEFAULT_THRESHOLDS
   );
+  const [sortKey, setSortKey] = useState<SortKey>(persisted?.sort ?? "value");
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
 
   useEffect(() => {
@@ -90,8 +91,9 @@ export function LeaderboardWidget() {
       from: from.toISOString(),
       to: to.toISOString(),
       thresholds,
+      sort: sortKey,
     });
-  }, [agents, from, to, thresholds]);
+  }, [agents, from, to, thresholds, sortKey]);
 
   const rows = useMemo(() => {
     const fromMs = from.getTime();
