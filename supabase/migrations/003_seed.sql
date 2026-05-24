@@ -1,0 +1,22 @@
+-- Fimmick service pricing templates (20 packages)
+insert into pricing_templates (service, description, category, unit_price) values
+  ('AI Chatbot Integration', 'Custom LLM chatbot on website/WhatsApp', 'AI transformation', 48000),
+  ('AI Lead Qualification Agent', 'Automated lead scoring and classification', 'AI transformation', 36000),
+  ('AI Email Reply Agent', 'Drafts and sends sales emails with human approval', 'AI transformation', 28000),
+  ('AI Quotation Agent', 'Auto-generates draft quotes from enquiries', 'AI transformation', 32000),
+  ('CRM Setup & Migration', 'Full CRM implementation and data migration', 'CRM', 55000),
+  ('CRM Automation Workflows', 'n8n/Zapier workflow automation for CRM', 'CRM', 18000),
+  ('CRM Training & Onboarding', '2-day team training session', 'CRM', 12000),
+  ('KOC Campaign Management', '3-month KOC influencer campaign', 'KOC', 80000),
+  ('KOC Identification & Outreach', 'Identify and recruit 20 KOCs', 'KOC', 35000),
+  ('Social Media Content Calendar', '30 posts/month across 2 platforms', 'campaign', 22000),
+  ('Performance Marketing Campaign', 'Meta/Google ads management for 3 months', 'campaign', 45000),
+  ('Brand Strategy & Positioning', 'Full brand audit and strategy document', 'campaign', 68000),
+  ('Data Analytics Dashboard', 'Custom Looker Studio or Metabase dashboard', 'data', 30000),
+  ('Customer Data Platform Setup', 'CDP implementation and integration', 'data', 75000),
+  ('Monthly Reporting Package', 'Monthly performance reports for 12 months', 'data', 15000),
+  ('Marketing Audit', 'Full digital marketing channel audit', 'custom', 18000),
+  ('AI Strategy Consulting', '2-day workshop + strategy document', 'AI transformation', 40000),
+  ('WhatsApp Business Integration', 'WhatsApp Business API setup and chatbot', 'AI transformation', 25000),
+  ('Sales Process Automation', 'End-to-end sales workflow automation', 'CRM', 42000),
+  ('Custom AI Agent Development', 'Bespoke agent for specific business process', 'AI transformation', 90000);
