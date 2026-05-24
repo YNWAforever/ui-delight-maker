@@ -67,6 +67,56 @@ function savePersisted(state: PersistedState) {
   }
 }
 
+const isValidDate = (d: Date) => !Number.isNaN(d.getTime());
+
+function loadFromQuery(): Partial<PersistedState> | null {
+  if (typeof window === "undefined") return null;
+  const sp = new URLSearchParams(window.location.search);
+  if (![...sp.keys()].some((k) => ["agents", "from", "to", "minRuns", "minSuccess", "minValue", "sort"].includes(k))) {
+    return null;
+  }
+  const out: Partial<PersistedState> = {};
+  const agents = sp.get("agents");
+  if (agents !== null) out.agents = agents ? agents.split(",").filter(Boolean) : [];
+  const from = sp.get("from");
+  if (from) {
+    const d = new Date(from);
+    if (isValidDate(d)) out.from = d.toISOString();
+  }
+  const to = sp.get("to");
+  if (to) {
+    const d = new Date(to);
+    if (isValidDate(d)) out.to = d.toISOString();
+  }
+  const minRuns = sp.get("minRuns");
+  const minSuccess = sp.get("minSuccess");
+  const minValue = sp.get("minValue");
+  if (minRuns || minSuccess || minValue) {
+    out.thresholds = {
+      minRuns: minRuns ? Number(minRuns) : DEFAULT_THRESHOLDS.minRuns,
+      minSuccess: minSuccess ? Number(minSuccess) : DEFAULT_THRESHOLDS.minSuccess,
+      minValue: minValue ? Number(minValue) : DEFAULT_THRESHOLDS.minValue,
+    };
+  }
+  const sort = sp.get("sort");
+  if (sort === "value" || sort === "runs" || sort === "successRate") out.sort = sort;
+  return out;
+}
+
+function syncQuery(state: PersistedState) {
+  if (typeof window === "undefined") return;
+  const sp = new URLSearchParams(window.location.search);
+  sp.set("agents", state.agents.join(","));
+  sp.set("from", state.from.slice(0, 10));
+  sp.set("to", state.to.slice(0, 10));
+  sp.set("minRuns", String(state.thresholds.minRuns));
+  sp.set("minSuccess", String(state.thresholds.minSuccess));
+  sp.set("minValue", String(state.thresholds.minValue));
+  sp.set("sort", state.sort);
+  const next = `${window.location.pathname}?${sp.toString()}${window.location.hash}`;
+  window.history.replaceState(null, "", next);
+}
+
 export function LeaderboardWidget() {
   const persisted = loadPersisted();
 
