@@ -119,22 +119,24 @@ function syncQuery(state: PersistedState) {
 
 export function LeaderboardWidget() {
   const persisted = loadPersisted();
+  const query = loadFromQuery();
+  const initial = { ...(persisted ?? {}), ...(query ?? {}) } as Partial<PersistedState>;
 
   const [agents, setAgents] = useState<Set<string>>(
-    new Set(persisted?.agents ?? ALL_AGENTS)
+    new Set(initial.agents ?? ALL_AGENTS)
   );
   const [from, setFrom] = useState<Date>(
-    persisted?.from ? new Date(persisted.from) : DEFAULT_FROM
+    initial.from ? new Date(initial.from) : DEFAULT_FROM
   );
   const [to, setTo] = useState<Date>(
-    persisted?.to ? new Date(persisted.to) : DEFAULT_TO
+    initial.to ? new Date(initial.to) : DEFAULT_TO
   );
   const [thresholds, setThresholds] = useState<ThresholdState>(
-    persisted?.thresholds ?? DEFAULT_THRESHOLDS
+    initial.thresholds ?? DEFAULT_THRESHOLDS
   );
-  const [sortKey, setSortKey] = useState<SortKey>(persisted?.sort ?? "value");
+  const [sortKey, setSortKey] = useState<SortKey>(initial.sort ?? "value");
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
-  const [showRestored, setShowRestored] = useState(persisted !== null);
+  const [showRestored, setShowRestored] = useState(persisted !== null || query !== null);
 
   useEffect(() => {
     if (!showRestored) return;
