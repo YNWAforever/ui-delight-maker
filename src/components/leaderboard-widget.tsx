@@ -3,6 +3,17 @@ import { format } from "date-fns";
 import { ArrowDownAZ, ArrowUpDown, CalendarIcon, CheckCircle2, ChevronRight, Download, Filter, Link2, Medal, Trophy, X } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
