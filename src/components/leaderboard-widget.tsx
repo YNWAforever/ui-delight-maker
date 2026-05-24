@@ -371,9 +371,25 @@ export function LeaderboardWidget() {
           <Button size="sm" variant="outline" onClick={shareLink}>
             <Link2 className="mr-1.5 h-3.5 w-3.5" /> Share
           </Button>
-          <Button size="sm" variant="ghost" onClick={resetAll}>
-            <X className="mr-1.5 h-3.5 w-3.5" /> Reset
-          </Button>
+          <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="ghost">
+                <X className="mr-1.5 h-3.5 w-3.5" /> Reset
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset all filters?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will clear your agent selection, date range, thresholds, sort order, and saved state. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setShowResetDialog(false)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={resetAll}>Reset</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
