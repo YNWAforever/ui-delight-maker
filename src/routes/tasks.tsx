@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Bot, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,15 +26,12 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import {
-  tasks as seedTasks,
-  userById,
-  users,
-  type Task,
-  type TaskStatus,
-} from "@/lib/mock-data";
+import { userById, users } from "@/lib/mock-data";
+import { getTasks, createTask, updateTask } from "@/server-functions/tasks";
+import type { Task, TaskStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/tasks")({
+  loader: () => getTasks({}),
   head: () => ({
     meta: [
       { title: "Tasks — Fimmick ClientOps" },
@@ -53,7 +50,9 @@ const COLUMNS: { id: TaskStatus; label: string }[] = [
 const TODAY = "2026-05-20";
 
 function TasksBoard() {
-  const [rows, setRows] = useState<Task[]>(seedTasks);
+  const loaderTasks = Route.useLoaderData();
+  const router = useRouter();
+  const [rows, setRows] = useState<Task[]>(loaderTasks);
   const [priority, setPriority] = useState("all");
   const [assignee, setAssignee] = useState("all");
   const [dragging, setDragging] = useState<string | null>(null);
@@ -68,8 +67,10 @@ function TasksBoard() {
     [rows, priority, assignee],
   );
 
-  const move = (id: string, status: TaskStatus) => {
+  const move = async (id: string, status: TaskStatus) => {
     setRows((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
+    await updateTask({ data: { id, updates: { status } } });
+    router.invalidate();
   };
 
   return (
@@ -79,8 +80,10 @@ function TasksBoard() {
         description={`${filtered.length} of ${rows.length} tasks`}
         actions={
           <NewTaskDialog
-            onCreate={(t) => {
-              setRows((prev) => [t, ...prev]);
+            onCreate={async (t) => {
+              const created = await createTask({ data: t });
+              setRows((prev) => [created, ...prev]);
+              router.invalidate();
               toast.success("Task created");
             }}
           />
@@ -140,7 +143,7 @@ function TasksBoard() {
                 <div className="flex min-h-[120px] flex-col gap-3 rounded-md bg-muted/20 p-2">
                   {colTasks.map((t) => {
                     const owner = userById(t.assigned_to);
-                    const overdue = t.due_date < TODAY && t.status !== "done";
+                    const overdue = !!t.due_date && t.due_date < TODAY && t.status !== "done";
                     return (
                       <Card
                         key={t.id}
@@ -164,7 +167,7 @@ function TasksBoard() {
                               overdue && "font-medium text-destructive",
                             )}
                           >
-                            Due {t.due_date}
+                            Due {t.due_date ?? "—"}
                             {overdue && " · overdue"}
                           </span>
                           <span className="text-muted-foreground">{owner?.name}</span>
@@ -192,31 +195,27 @@ function TasksBoard() {
   );
 }
 
-function NewTaskDialog({ onCreate }: { onCreate: (t: Task) => void }) {
+type CreateTaskPayload = { title: string; description?: string; assigned_to?: string; due_date?: string; priority?: Task["priority"] };
+
+function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [pri, setPri] = useState<Task["priority"]>("medium");
-  const [assignee, setAssignee] = useState(users[0].id);
+  const [assignee, setAssignee] = useState(users[0]?.id ?? "");
   const [due, setDue] = useState("2026-05-25");
 
-  const submit = () => {
+  const submit = async () => {
     if (!title) {
       toast.error("Title required");
       return;
     }
-    onCreate({
-      id: `T-${Math.floor(Math.random() * 9000) + 1000}`,
+    await onCreate({
       title,
-      description: desc,
-      assigned_to: assignee,
-      lead_id: null,
-      client_id: null,
-      due_date: due,
+      description: desc || undefined,
+      assigned_to: assignee || undefined,
+      due_date: due || undefined,
       priority: pri,
-      status: "open",
-      created_by_agent: null,
-      created_at: new Date("2026-05-20T10:00:00Z").toISOString(),
     });
     setOpen(false);
     setTitle("");

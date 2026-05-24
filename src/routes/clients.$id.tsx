@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, FileText, Mail, Phone, Star } from "lucide-react";
 import { toast } from "sonner";
 
@@ -14,23 +14,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatDateTime } from "@/lib/format";
 import {
   activityLogs,
-  clientById,
   clientFiles,
   contacts,
-  quotes,
   tasks,
   userById,
 } from "@/lib/mock-data";
+import { getClient, updateClient } from "@/server-functions/clients";
+import { getQuotes } from "@/server-functions/quotes";
 
 export const Route = createFileRoute("/clients/$id")({
-  loader: ({ params }) => {
-    const client = clientById(params.id);
-    if (!client) throw notFound();
-    return { client };
+  loader: async ({ params }) => {
+    const [client, allQuotes] = await Promise.all([
+      getClient({ data: { id: params.id } }),
+      getQuotes({}),
+    ]);
+    return { client, quotes: allQuotes.filter((q) => q.client_id === params.id) };
   },
   head: ({ loaderData }) => ({
     meta: [
-      { title: `${loaderData?.client.company_name ?? "Client"} — ClientOps` },
+      { title: `${loaderData?.client?.company_name ?? "Client"} — ClientOps` },
       { name: "description", content: `Client profile, tasks, and history.` },
     ],
   }),
@@ -46,14 +48,14 @@ export const Route = createFileRoute("/clients/$id")({
 });
 
 function ClientDetail() {
-  const { client } = Route.useLoaderData();
-  const owner = userById(client.account_owner);
+  const { client, quotes: clientQuotes } = Route.useLoaderData();
+  const router = useRouter();
+  const owner = userById(client.account_owner ?? "");
   const clientTasks = tasks.filter((t) => t.client_id === client.id);
   const clientHistory = activityLogs.filter(
     (a) => a.object_type === "client" && a.object_id === client.id,
   );
   const clientContacts = contacts.filter((c) => c.client_id === client.id);
-  const clientQuotes = quotes.filter((q) => q.client_id === client.id);
   const files = clientFiles.filter((f) => f.client_id === client.id);
 
   const [health, setHealth] = useState(client.health_score);
@@ -88,8 +90,8 @@ function ClientDetail() {
               <TabsContent value="overview" className="mt-4 space-y-4">
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                   <Stat label="Health score" value={String(health)} />
-                  <Stat label="ARR" value={`HKD ${client.arr.toLocaleString()}`} />
-                  <Stat label="Renewal" value={client.renewal_date} />
+                  <Stat label="ARR" value={`HKD ${(client.arr ?? 0).toLocaleString()}`} />
+                  <Stat label="Renewal" value={client.renewal_date ?? "—"} />
                   <Stat label="Onboarding" value={client.onboarding_status.replace(/_/g, " ")} />
                 </div>
                 <Card className="bg-muted/30">
@@ -256,7 +258,11 @@ function ClientDetail() {
                   <Button
                     size="sm"
                     className="mt-2 w-full"
-                    onClick={() => toast.success("Health score updated")}
+                    onClick={async () => {
+                      await updateClient({ data: { id: client.id, updates: { health_score: health } } });
+                      router.invalidate();
+                      toast.success("Health score updated");
+                    }}
                   >
                     Save
                   </Button>

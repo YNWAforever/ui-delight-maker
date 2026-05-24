@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,9 +27,12 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCompactHKD } from "@/lib/format";
-import { clients as seedClients, userById, users, type Client } from "@/lib/mock-data";
+import { userById, users } from "@/lib/mock-data";
+import { getClients, createClient } from "@/server-functions/clients";
+import type { Client } from "@/lib/types";
 
 export const Route = createFileRoute("/clients")({
+  loader: () => getClients({}),
   head: () => ({
     meta: [
       { title: "Clients — Fimmick ClientOps" },
@@ -46,7 +49,9 @@ function healthClass(score: number) {
 }
 
 function ClientsPage() {
-  const [rows, setRows] = useState<Client[]>(seedClients);
+  const loaderClients = Route.useLoaderData();
+  const router = useRouter();
+  const [rows, setRows] = useState<Client[]>(loaderClients);
   const [tier, setTier] = useState("all");
   const [sortKey, setSortKey] = useState<"arr" | "health" | "renewal">("arr");
   const [newOpen, setNewOpen] = useState(false);
@@ -54,15 +59,18 @@ function ClientsPage() {
   const filtered = useMemo(() => {
     const out = rows.filter((c) => (tier === "all" ? true : c.tier === tier));
     const sortFn = {
-      arr: (a: Client, b: Client) => b.arr - a.arr,
+      arr: (a: Client, b: Client) => (b.arr ?? 0) - (a.arr ?? 0),
       health: (a: Client, b: Client) => b.health_score - a.health_score,
-      renewal: (a: Client, b: Client) => a.renewal_date.localeCompare(b.renewal_date),
+      renewal: (a: Client, b: Client) =>
+        (a.renewal_date ?? "").localeCompare(b.renewal_date ?? ""),
     }[sortKey];
     return [...out].sort(sortFn);
   }, [rows, tier, sortKey]);
 
-  const totalARR = rows.reduce((s, c) => s + c.arr, 0);
-  const avgHealth = Math.round(rows.reduce((s, c) => s + c.health_score, 0) / rows.length);
+  const totalARR = rows.reduce((s, c) => s + (c.arr ?? 0), 0);
+  const avgHealth = rows.length
+    ? Math.round(rows.reduce((s, c) => s + c.health_score, 0) / rows.length)
+    : 0;
 
   return (
     <>
@@ -77,10 +85,12 @@ function ClientsPage() {
               </Button>
             </DialogTrigger>
             <NewClientDialog
-              onCreate={(c) => {
-                setRows((prev) => [c, ...prev]);
+              onCreate={async (c) => {
+                const created = await createClient({ data: c });
+                setRows((prev) => [created, ...prev]);
                 setNewOpen(false);
-                toast.success(`Created client ${c.company_name}`);
+                router.invalidate();
+                toast.success(`Created client ${created.company_name}`);
               }}
             />
           </Dialog>
@@ -93,7 +103,7 @@ function ClientsPage() {
           <MetricCard label="Avg health" value={`${avgHealth}/100`} hint="across portfolio" />
           <MetricCard
             label="Renewals next 90d"
-            value={rows.filter((c) => c.renewal_date <= "2026-08-20").length}
+            value={rows.filter((c) => (c.renewal_date ?? "") <= "2026-08-20").length}
             hint="schedule QBRs early"
           />
         </div>
@@ -170,7 +180,7 @@ function ClientsPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {c.arr.toLocaleString()}
+                      {(c.arr ?? 0).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-sm">{c.renewal_date}</TableCell>
                     <TableCell className="text-sm">{owner?.name ?? "—"}</TableCell>
@@ -185,11 +195,13 @@ function ClientsPage() {
   );
 }
 
-function NewClientDialog({ onCreate }: { onCreate: (c: Client) => void }) {
+type CreateClientPayload = { company_name: string; industry?: string; tier?: Client["tier"]; account_owner?: string };
+
+function NewClientDialog({ onCreate }: { onCreate: (c: CreateClientPayload) => Promise<void> }) {
   const [name, setName] = useState("");
   const [industry, setIndustry] = useState("");
   const [tier, setTier] = useState<Client["tier"]>("SME");
-  const [owner, setOwner] = useState(users[0].id);
+  const [owner, setOwner] = useState(users[0]?.id ?? "");
 
   return (
     <DialogContent>
@@ -207,7 +219,7 @@ function NewClientDialog({ onCreate }: { onCreate: (c: Client) => void }) {
         </div>
         <div>
           <Label className="text-xs">Tier</Label>
-          <Select value={tier} onValueChange={(v) => setTier(v as Client["tier"])}>
+          <Select value={tier ?? "SME"} onValueChange={(v) => setTier(v as Client["tier"])}>
             <SelectTrigger className="mt-1">
               <SelectValue />
             </SelectTrigger>
@@ -238,16 +250,10 @@ function NewClientDialog({ onCreate }: { onCreate: (c: Client) => void }) {
         <Button
           onClick={() =>
             onCreate({
-              id: `C-${Math.floor(Math.random() * 9000) + 500}`,
               company_name: name || "Untitled",
-              industry: industry || "—",
+              industry: industry || undefined,
               tier,
-              account_owner: owner,
-              health_score: 70,
-              onboarding_status: "not_started",
-              renewal_date: "2027-05-20",
-              arr: 0,
-              created_at: new Date("2026-05-20T10:00:00Z").toISOString(),
+              account_owner: owner || undefined,
             })
           }
         >

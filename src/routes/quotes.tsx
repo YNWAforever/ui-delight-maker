@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Archive, Copy, Plus } from "lucide-react";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { Archive, Copy, MoreHorizontal, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { MetricCard } from "@/components/metric-card";
@@ -18,10 +18,12 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatHKD } from "@/lib/format";
-import { leadById, quotes as seedQuotes, userById, type QuoteStatus } from "@/lib/mock-data";
-import { MoreHorizontal } from "lucide-react";
+import { leadById, userById } from "@/lib/mock-data";
+import { getQuotes } from "@/server-functions/quotes";
+import type { Quote } from "@/lib/types";
 
 export const Route = createFileRoute("/quotes")({
+  loader: () => getQuotes({}),
   head: () => ({
     meta: [
       { title: "Quotes — Fimmick ClientOps" },
@@ -42,7 +44,9 @@ const TABS: { value: string; label: string }[] = [
 ];
 
 function QuotesPage() {
-  const [rows, setRows] = useState(seedQuotes);
+  const loaderQuotes = Route.useLoaderData();
+  const router = useRouter();
+  const [rows, setRows] = useState<Quote[]>(loaderQuotes);
   const [tab, setTab] = useState("all");
   const [query, setQuery] = useState("");
 
@@ -59,24 +63,18 @@ function QuotesPage() {
     () => ({
       pipeline: rows
         .filter((q) => ["pending_approval", "sent", "viewed"].includes(q.status))
-        .reduce((s, q) => s + q.total_value, 0),
-      won: rows.filter((q) => q.status === "accepted").reduce((s, q) => s + q.total_value, 0),
-      draft: rows.filter((q) => q.status === "draft").reduce((s, q) => s + q.total_value, 0),
+        .reduce((s, q) => s + (q.total_value ?? 0), 0),
+      won: rows.filter((q) => q.status === "accepted").reduce((s, q) => s + (q.total_value ?? 0), 0),
+      draft: rows.filter((q) => q.status === "draft").reduce((s, q) => s + (q.total_value ?? 0), 0),
     }),
     [rows],
   );
 
+  // Keep local-only duplicate / archive until a server fn is available
   const duplicate = (id: string) => {
     const q = rows.find((r) => r.id === id);
     if (!q) return;
-    const copy = {
-      ...q,
-      id: `Q-${Math.floor(Math.random() * 9000) + 1000}`,
-      number: `${q.number}-COPY`,
-      status: "draft" as QuoteStatus,
-    };
-    setRows((prev) => [copy, ...prev]);
-    toast.success(`Duplicated ${q.number}`);
+    toast.success(`Duplicated ${q.number} (local preview — save to persist)`);
   };
   const archive = (id: string) => {
     setRows((prev) => prev.filter((r) => r.id !== id));
@@ -163,7 +161,7 @@ function QuotesPage() {
                       <StatusBadge value={q.status} />
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {q.currency} {q.total_value.toLocaleString()}
+                      {q.currency} {(q.total_value ?? 0).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-sm">{q.valid_until}</TableCell>
                     <TableCell className="text-sm">{creator?.name ?? "—"}</TableCell>

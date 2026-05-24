@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Check,
@@ -23,25 +23,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
 import {
   leadById,
-  quoteById,
   quoteComments,
   quoteFiles,
   quoteVersions,
   userById,
   type Comment,
   type QuoteFile,
-  type QuoteStatus,
 } from "@/lib/mock-data";
+import { getQuote, requestQuoteApproval, updateQuote } from "@/server-functions/quotes";
+import type { QuoteStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/quotes/$id")({
-  loader: ({ params }) => {
-    const quote = quoteById(params.id);
-    if (!quote) throw notFound();
-    return { quote };
-  },
+  loader: ({ params }) => getQuote({ data: { id: params.id } }),
   head: ({ loaderData }) => ({
     meta: [
-      { title: `${loaderData?.quote.number ?? "Quote"} — ClientOps` },
+      { title: `${loaderData?.number ?? "Quote"} — ClientOps` },
       { name: "description", content: `Quote details, approval status, and PDF preview.` },
     ],
   }),
@@ -66,9 +62,10 @@ const TIMELINE: QuoteStatus[] = [
 ];
 
 function QuoteDetail() {
-  const { quote } = Route.useLoaderData();
-  const lead = leadById(quote.lead_id);
-  const creator = userById(quote.created_by);
+  const quote = Route.useLoaderData();
+  const router = useRouter();
+  const lead = leadById(quote.lead_id ?? "");
+  const creator = userById(quote.created_by ?? "");
   const approver = quote.approved_by ? userById(quote.approved_by) : null;
   const initialComments = quoteComments.filter((c) => c.quote_id === quote.id);
   const versions = quoteVersions.filter((v) => v.quote_id === quote.id);
@@ -81,9 +78,18 @@ function QuoteDetail() {
 
   const reachedIdx = TIMELINE.indexOf(status);
 
-  const advance = (next: QuoteStatus, msg: string) => {
+  const advance = async (next: QuoteStatus, msg: string) => {
+    await updateQuote({ data: { id: quote.id, updates: { status: next } } });
     setStatus(next);
+    router.invalidate();
     toast.success(msg);
+  };
+
+  const handleRequestApproval = async () => {
+    await requestQuoteApproval({ data: { id: quote.id } });
+    setStatus("pending_approval");
+    router.invalidate();
+    toast.success("Submitted for approval");
   };
 
   const addComment = () => {
@@ -126,7 +132,7 @@ function QuoteDetail() {
     <>
       <PageHeader
         title={quote.number}
-        description={`${lead?.company_name ?? "—"} · ${quote.currency} ${quote.total_value.toLocaleString()}`}
+        description={`${lead?.company_name ?? "—"} · ${quote.currency} ${(quote.total_value ?? 0).toLocaleString()}`}
         actions={
           <>
             <Button variant="outline" size="sm" asChild>
@@ -137,6 +143,11 @@ function QuoteDetail() {
             <Button variant="outline" size="sm" onClick={() => toast.message("PDF download mocked")}>
               <Download className="mr-2 h-4 w-4" /> PDF
             </Button>
+            {status === "draft" && (
+              <Button size="sm" onClick={handleRequestApproval}>
+                <Send className="mr-2 h-4 w-4" /> Submit for approval
+              </Button>
+            )}
             {status === "pending_approval" && (
               <>
                 <Button
@@ -389,6 +400,8 @@ function QuoteDetail() {
                   >
                     {lead.company_name}
                   </Link>
+                ) : quote.lead_id ? (
+                  quote.lead_id
                 ) : (
                   "—"
                 )}

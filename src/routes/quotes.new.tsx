@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, Plus, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -19,12 +19,21 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { formatHKD } from "@/lib/format";
-import { leads, serviceTemplates, users } from "@/lib/mock-data";
+import { users } from "@/lib/mock-data";
+import { createQuote, getPricingTemplates } from "@/server-functions/quotes";
+import { getLeads } from "@/server-functions/leads";
 
 const searchSchema = z.object({ leadId: z.string().optional() });
 
 export const Route = createFileRoute("/quotes/new")({
   validateSearch: searchSchema,
+  loader: async () => {
+    const [templates, leads] = await Promise.all([
+      getPricingTemplates(),
+      getLeads({}),
+    ]);
+    return { templates, leads };
+  },
   head: () => ({
     meta: [
       { title: "New quote — Fimmick ClientOps" },
@@ -50,11 +59,13 @@ const STEPS = [
 
 function QuoteBuilder() {
   const { leadId: initialLeadId } = Route.useSearch();
+  const { templates, leads } = Route.useLoaderData();
   const navigate = useNavigate();
+  const router = useRouter();
 
   const [step, setStep] = useState(1);
-  const [leadId, setLeadId] = useState(initialLeadId ?? leads[0].id);
-  const [approver, setApprover] = useState(users[1].id);
+  const [leadId, setLeadId] = useState(initialLeadId ?? leads[0]?.id ?? "");
+  const [approver, setApprover] = useState(users[1]?.id ?? users[0]?.id ?? "");
   const [validUntil, setValidUntil] = useState("2026-06-30");
   const [discount, setDiscount] = useState(0);
   const [items, setItems] = useState<LineItem[]>([]);
@@ -83,26 +94,39 @@ function QuoteBuilder() {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
 
   const applyTemplate = (templateId: string) => {
-    const tpl = serviceTemplates.find((t) => t.id === templateId);
+    const tpl = templates.find((t) => t.id === templateId);
     if (!tpl) return;
     setItems((prev) => [
       ...prev,
       {
         id: `li-${prev.length + 1}-${Math.random().toString(36).slice(2, 5)}`,
-        service: tpl.name,
-        description: tpl.description,
+        service: tpl.service,
+        description: tpl.description ?? "",
         qty: 1,
-        unit_price: tpl.base_price,
+        unit_price: tpl.unit_price ?? 0,
       },
     ]);
-    toast.success(`Added template: ${tpl.name}`);
+    toast.success(`Added template: ${tpl.service}`);
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (items.length === 0) {
       toast.error("Add at least one line item.");
       return;
     }
+    await createQuote({
+      data: {
+        lead_id: leadId || null,
+        currency: "HKD",
+        valid_until: validUntil,
+        line_items: items.map(({ id: _id, ...rest }) => ({
+          id: _id,
+          ...rest,
+        })),
+        total_value: total,
+      },
+    });
+    router.invalidate();
     toast.success("Quote submitted for approval.");
     navigate({ to: "/quotes" });
   };
@@ -217,9 +241,9 @@ function QuoteBuilder() {
                       <SelectValue placeholder="Apply template…" />
                     </SelectTrigger>
                     <SelectContent>
-                      {serviceTemplates.map((t) => (
+                      {templates.map((t) => (
                         <SelectItem key={t.id} value={t.id}>
-                          {t.name}
+                          {t.service}
                         </SelectItem>
                       ))}
                     </SelectContent>
