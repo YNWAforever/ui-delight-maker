@@ -12,7 +12,15 @@ alter table activity_logs enable row level security;
 
 -- Profiles: each user reads all, updates only own row
 create policy "profiles_select" on profiles for select to authenticated using (true);
-create policy "profiles_update_own" on profiles for update to authenticated using (auth.uid() = id);
+create policy "profiles_update_own" on profiles
+  for update to authenticated
+  using (auth.uid() = id)
+  with check (
+    role = (select role from profiles where id = auth.uid())
+    or exists (
+      select 1 from profiles p where p.id = auth.uid() and p.role = 'admin'
+    )
+  );
 
 -- Leads: authenticated users can read all; insert/update for authenticated users
 create policy "leads_select" on leads for select to authenticated using (true);
@@ -36,12 +44,23 @@ create policy "tasks_update" on tasks for update to authenticated using (true);
 
 -- Pricing templates: read-only for authenticated users
 create policy "pricing_templates_select" on pricing_templates for select to authenticated using (active = true);
+create policy "pricing_templates_admin_write" on pricing_templates
+  for all to authenticated
+  using (exists (select 1 from profiles where id = auth.uid() and role = 'admin'))
+  with check (exists (select 1 from profiles where id = auth.uid() and role = 'admin'));
 
 -- Agent tables: read for authenticated users (n8n writes via service role, bypasses RLS)
 create policy "agent_runs_select" on agent_runs for select to authenticated using (true);
 create policy "agent_tool_calls_select" on agent_tool_calls for select to authenticated using (true);
 create policy "human_approvals_select" on human_approvals for select to authenticated using (true);
-create policy "human_approvals_update" on human_approvals for update to authenticated using (true);
+create policy "human_approvals_update" on human_approvals
+  for update to authenticated
+  using (
+    assigned_to = auth.uid()
+    or exists (
+      select 1 from profiles where id = auth.uid() and role in ('admin','manager')
+    )
+  );
 create policy "activity_logs_select" on activity_logs for select to authenticated using (true);
 create policy "activity_logs_insert" on activity_logs for insert to authenticated with check (true);
 

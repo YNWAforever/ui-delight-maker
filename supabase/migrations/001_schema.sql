@@ -60,8 +60,8 @@ create table clients (
 create table quotes (
   id uuid primary key default gen_random_uuid(),
   number text,
-  lead_id uuid references leads(id),
-  client_id uuid references clients(id),
+  lead_id uuid references leads(id) on delete set null,
+  client_id uuid references clients(id) on delete set null,
   status text default 'draft' check (status in ('draft','pending_approval','approved','sent','viewed','accepted','rejected')),
   total_value numeric(12,2),
   currency text default 'HKD',
@@ -71,7 +71,8 @@ create table quotes (
   created_by uuid references profiles(id),
   approved_by uuid references profiles(id),
   created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  updated_at timestamptz default now(),
+  constraint quotes_must_have_context check (lead_id is not null or client_id is not null)
 );
 
 -- Tasks
@@ -80,8 +81,8 @@ create table tasks (
   title text not null,
   description text,
   assigned_to uuid references profiles(id),
-  lead_id uuid references leads(id),
-  client_id uuid references clients(id),
+  lead_id uuid references leads(id) on delete set null,
+  client_id uuid references clients(id) on delete set null,
   due_date date,
   priority text default 'medium' check (priority in ('low','medium','high')),
   status text default 'open' check (status in ('open','in_progress','done')),
@@ -172,3 +173,14 @@ create trigger quotes_updated_at before update on quotes
   for each row execute function set_updated_at();
 create trigger clients_updated_at before update on clients
   for each row execute function set_updated_at();
+
+-- Indexes on frequently-queried FK columns
+create index leads_assigned_to_idx on leads(assigned_to);
+create index quotes_lead_id_idx on quotes(lead_id);
+create index quotes_client_id_idx on quotes(client_id);
+create index tasks_lead_id_idx on tasks(lead_id);
+create index tasks_client_id_idx on tasks(client_id);
+create index tasks_assigned_to_idx on tasks(assigned_to);
+create index agent_tool_calls_agent_run_id_idx on agent_tool_calls(agent_run_id);
+create index human_approvals_agent_run_id_idx on human_approvals(agent_run_id);
+create index human_approvals_assigned_to_idx on human_approvals(assigned_to);
