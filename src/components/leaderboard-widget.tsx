@@ -380,6 +380,9 @@ export function LeaderboardWidget() {
           <Button size="sm" variant="outline" onClick={shareLink}>
             <Link2 className="mr-1.5 h-3.5 w-3.5" /> Copy share link
           </Button>
+          <Button size="sm" variant="ghost" onClick={clearSaved}>
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Clear saved
+          </Button>
           <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
             <AlertDialogTrigger asChild>
               <Button size="sm" variant="ghost">
