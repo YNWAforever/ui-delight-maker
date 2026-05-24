@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, ChevronRight, Download, Filter, Medal, Trophy, X } from "lucide-react";
+import { ArrowDownAZ, ArrowUpDown, CalendarIcon, ChevronRight, Download, Filter, Medal, Trophy, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
