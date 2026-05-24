@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { ArrowDownAZ, ArrowUpDown, CalendarIcon, ChevronRight, Download, Filter, Medal, Trophy, X } from "lucide-react";
+import { ArrowDownAZ, ArrowUpDown, CalendarIcon, CheckCircle2, ChevronRight, Download, Filter, Medal, Trophy, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -84,6 +84,13 @@ export function LeaderboardWidget() {
   );
   const [sortKey, setSortKey] = useState<SortKey>(persisted?.sort ?? "value");
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [showRestored, setShowRestored] = useState(persisted !== null);
+
+  useEffect(() => {
+    if (!showRestored) return;
+    const t = setTimeout(() => setShowRestored(false), 3000);
+    return () => clearTimeout(t);
+  }, [showRestored]);
 
   useEffect(() => {
     savePersisted({
@@ -202,6 +209,12 @@ export function LeaderboardWidget() {
           <CardDescription>
             Ranked by {SORT_LABELS[sortKey].toLowerCase()}. Highlights respect your threshold rules.
           </CardDescription>
+          {showRestored && (
+            <div className="mt-1 inline-flex items-center gap-1 text-[11px] text-success transition-opacity duration-500">
+              <CheckCircle2 className="h-3 w-3" />
+              Filters restored from last session
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DateButton label="From" value={from} onChange={setFrom} max={to} />
