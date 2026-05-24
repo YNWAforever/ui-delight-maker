@@ -1,4 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import type { Profile } from "@/lib/types";
 import {
   LayoutDashboard,
   Inbox,
@@ -41,7 +42,12 @@ const opsItems = [
 
 const settingsItems = [{ title: "Settings", url: "/settings", icon: Settings }];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  profile: Profile | null;
+  onSignOut: () => void;
+}
+
+export function AppSidebar({ profile, onSignOut }: AppSidebarProps) {
   const currentPath = useRouterState({
     select: (s) => s.location.pathname,
   });
@@ -94,12 +100,21 @@ export function AppSidebar() {
       <SidebarFooter>
         <div className="flex items-center gap-2 rounded-md border border-sidebar-border bg-sidebar-accent/40 px-2 py-2 group-data-[collapsible=icon]:hidden">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-xs font-medium text-primary">
-            AW
+            {profile?.name?.slice(0, 2).toUpperCase() ?? "??"}
           </div>
-          <div className="flex min-w-0 flex-col leading-tight">
-            <span className="truncate text-xs font-medium">Ada Wong</span>
-            <span className="truncate text-[11px] text-muted-foreground">admin · Fimmick</span>
+          <div className="flex min-w-0 flex-1 flex-col leading-tight">
+            <span className="truncate text-xs font-medium">{profile?.name ?? "—"}</span>
+            <span className="truncate text-[11px] text-muted-foreground">
+              {profile?.role ?? "—"} · Fimmick
+            </span>
           </div>
+          <button
+            onClick={onSignOut}
+            className="ml-auto text-[11px] text-muted-foreground hover:text-foreground"
+            title="Sign out"
+          >
+            Out
+          </button>
         </div>
       </SidebarFooter>
     </Sidebar>

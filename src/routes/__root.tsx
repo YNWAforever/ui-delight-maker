@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  redirect,
 } from "@tanstack/react-router";
 import { GlobalSearch } from "@/components/global-search";
 import { NotificationBell } from "@/components/notification-bell";
@@ -14,6 +15,10 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 
 import { Toaster } from "@/components/ui/sonner";
+
+import { getSession, signOut } from "@/server-functions/auth";
+import type { Profile } from "@/lib/types";
+import type { RouterContext } from "@/router";
 
 import appCss from "../styles.css?url";
 
@@ -69,7 +74,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+export const Route = createRootRouteWithContext<RouterContext>()({
+  beforeLoad: async ({ location }) => {
+    if (location.pathname === "/login") return {};
+    const session = await getSession();
+    if (!session) throw redirect({ to: "/login" });
+    return { user: session.user, profile: session.profile as Profile | null };
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -100,13 +111,13 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
+  const { queryClient, profile } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
       <SidebarProvider>
         <div className="flex min-h-screen w-full bg-background">
-          <AppSidebar />
+          <AppSidebar profile={profile ?? null} onSignOut={() => void signOut()} />
           <div className="flex min-w-0 flex-1 flex-col">
             <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
               <SidebarTrigger />
@@ -116,7 +127,7 @@ function RootComponent() {
               <div className="ml-auto flex items-center gap-2">
                 <NotificationBell />
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-xs font-medium text-primary">
-                  AW
+                  {profile?.name?.slice(0, 2).toUpperCase() ?? "??"}
                 </div>
               </div>
             </header>
