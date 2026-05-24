@@ -208,6 +208,7 @@ export function LeaderboardWidget() {
           <DateButton label="To" value={to} onChange={setTo} min={from} />
           <AgentFilter agents={agents} all={ALL_AGENTS} onToggle={toggleAgent} onReset={() => setAgents(new Set(ALL_AGENTS))} />
           <ThresholdPopover value={thresholds} onChange={setThresholds} />
+          <SortPopover value={sortKey} onChange={setSortKey} />
           <Button size="sm" variant="outline" onClick={exportCSV}>
             <Download className="mr-1.5 h-3.5 w-3.5" /> Export
           </Button>
