@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { ArrowDownAZ, ArrowUpDown, CalendarIcon, CheckCircle2, ChevronRight, Download, Filter, Link2, Medal, Trophy, X } from "lucide-react";
+import { ArrowDownAZ, ArrowUpDown, CalendarIcon, CheckCircle2, ChevronRight, Download, Filter, Link2, Medal, Trash2, Trophy, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -299,6 +299,15 @@ export function LeaderboardWidget() {
     }
   };
 
+  const clearSaved = () => {
+    try {
+      localStorage.removeItem(LS_KEY);
+      toast.success("Saved filters cleared", { description: "Defaults will be used on next reload." });
+    } catch {
+      toast.error("Couldn't clear saved filters");
+    }
+  };
+
   const shareLink = async () => {
     if (typeof window === "undefined") return;
     const url = window.location.href;
@@ -370,6 +379,9 @@ export function LeaderboardWidget() {
           </Button>
           <Button size="sm" variant="outline" onClick={shareLink}>
             <Link2 className="mr-1.5 h-3.5 w-3.5" /> Copy share link
+          </Button>
+          <Button size="sm" variant="ghost" onClick={clearSaved}>
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Clear saved
           </Button>
           <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
             <AlertDialogTrigger asChild>
