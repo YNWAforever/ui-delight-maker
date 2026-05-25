@@ -121,6 +121,48 @@ try {
   console.error('[handler] server.cjs load failed:', e.stack || e.message);
 }
 
+// Diagnostic script injected into HTML responses to capture client-side errors
+const DIAG_SCRIPT = \`<script id="__diag">
+(function(){
+  var errs=[];
+  function show(){
+    if(!errs.length)return;
+    var d=document.getElementById('__db');
+    if(!d){d=document.createElement('div');d.id='__db';
+      Object.assign(d.style,{position:'fixed',bottom:'0',left:'0',right:'0',background:'#c0392b',
+        color:'#fff',padding:'12px',fontSize:'11px',zIndex:'999999',maxHeight:'50vh',
+        overflow:'auto',whiteSpace:'pre-wrap',fontFamily:'monospace'});
+      document.body.appendChild(d);}
+    d.textContent=errs.join('\\n---\\n');
+  }
+  window.onerror=function(m,s,l,c,e){
+    errs.push('JS Error: '+m+(e?'\\n'+e.stack:'')+'\\n  at '+s+':'+l+':'+c);show();
+  };
+  window.onunhandledrejection=function(e){
+    var r=e.reason;
+    errs.push('Unhandled rejection: '+String(r)+(r&&r.stack?'\\n'+r.stack:''));show();
+  };
+  // After 5s check if React hydrated the submit button
+  setTimeout(function(){
+    var btn=document.querySelector('button[type=submit]');
+    if(!btn){errs.push('Hydration check: no submit button found in DOM');show();return;}
+    var fiber=Object.keys(btn).find(function(k){return k.startsWith('__reactFiber')||k.startsWith('__reactInternalInstance');});
+    if(!fiber){
+      // Also dump the $_TSR state for debugging
+      var tsr='(not set)';
+      try{tsr=JSON.stringify(window.$_TSR&&window.$_TSR.router&&window.$_TSR.router[0]&&{
+        lastMatchId:window.$_TSR.router[0].lastMatchId,
+        matchIds:(window.$_TSR.router[0].matches||[]).map(function(m){return m.i;})
+      });}catch(ex){}
+      errs.push('React NOT hydrated after 5s\\nSubmit button exists but has no __reactFiber\\n$_TSR: '+tsr);
+    } else {
+      errs.push('React IS hydrated ('+fiber+' found) — but something else is wrong');
+    }
+    show();
+  },5000);
+})();
+</script>\`;
+
 module.exports = async (req, res) => {
 
   // Module-load failure — return a diagnostic JSON error
@@ -197,6 +239,8 @@ module.exports = async (req, res) => {
     // Skip Set-Cookie here — handled separately below to avoid the
     // Headers.forEach() comma-joining bug that corrupts multiple cookies.
     if (key.toLowerCase() === 'set-cookie') return;
+    // Drop content-length — we may inflate HTML with injected script
+    if (key.toLowerCase() === 'content-length') return;
     res.setHeader(key, value);
   });
   // Set-Cookie must be passed as an array; using getSetCookie() (Node 18+)
@@ -206,6 +250,34 @@ module.exports = async (req, res) => {
     if (cookies.length > 0) res.setHeader('set-cookie', cookies);
   }
 
+  // ── For HTML responses: buffer + inject diagnostic script ───────────────
+  const ct = (fetchResponse.headers.get('content-type') || '');
+  if (ct.includes('text/html') && fetchResponse.body) {
+    const chunks = [];
+    const reader = fetchResponse.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    let html = Buffer.concat(chunks).toString('utf8');
+    // Inject diagnostic script before </body>
+    html = html.includes('</body>')
+      ? html.replace('</body>', DIAG_SCRIPT + '</body>')
+      : html + DIAG_SCRIPT;
+    res.removeHeader('content-encoding'); // no double-gzip
+    const buf = Buffer.from(html, 'utf8');
+    res.setHeader('content-length', String(buf.length));
+    res.write(buf);
+    res.end();
+    return;
+  }
+
+  // ── Non-HTML: stream normally ────────────────────────────────────────────
   if (fetchResponse.body) {
     const reader = fetchResponse.body.getReader();
     try {
