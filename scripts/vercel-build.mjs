@@ -80,12 +80,31 @@ execFileSync(
 );
 console.log("✓ Server bundle created");
 
-// Write the function entry-point that wraps the TanStack Start server
+// Write the function entry-point that wraps the TanStack Start server.
+// Use a TOP-LEVEL AWAIT dynamic import so we can catch module-load failures
+// and surface them as JSON 500s instead of FUNCTION_INVOCATION_FAILED.
 writeFileSync(
   resolve(FUNC_DIR, "handler.mjs"),
-  `import server from './server.js';
+  `// Dynamic import lets us catch module-load errors (static import cannot be try/caught)
+let server = null;
+let importErr = null;
+try {
+  const mod = await import('./server.js');
+  server = mod.default;
+} catch (e) {
+  importErr = e;
+  console.error('[handler] server.js load failed:', e.stack || e.message);
+}
+
 export default async (request) => {
-  // Ensure absolute URL
+  // Surface module-load errors as JSON
+  if (importErr) {
+    return new Response(
+      JSON.stringify({ phase: 'module_load', error: importErr.message, stack: importErr.stack }, null, 2),
+      { status: 500, headers: { 'content-type': 'application/json' } }
+    );
+  }
+
   const host = request.headers.get('host') || 'localhost';
   const base = \`https://\${host}\`;
   const url = new URL(request.url.startsWith('http') ? request.url : base + request.url);
@@ -93,20 +112,13 @@ export default async (request) => {
   // Debug probe — bypasses TanStack Start entirely
   if (url.pathname === '/_debug') {
     return new Response(JSON.stringify({
-      ok: true,
-      requestUrl: request.url,
-      absoluteUrl: url.href,
+      ok: true, requestUrl: request.url, absoluteUrl: url.href,
       env: {
         SUPABASE_URL: process.env.SUPABASE_URL || '(missing)',
         SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'set' : '(missing)',
-        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'set' : '(missing)',
-        VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || '(missing)',
         NODE_ENV: process.env.NODE_ENV,
       },
-    }, null, 2), {
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-    });
+    }, null, 2), { status: 200, headers: { 'content-type': 'application/json' } });
   }
 
   const absoluteRequest = new Request(url.href, {
@@ -115,34 +127,12 @@ export default async (request) => {
     body: ['GET','HEAD'].includes(request.method) ? undefined : request.body,
   });
 
-  // Wrap the stream so errors inside it are surfaced
   try {
-    const response = await server.fetch(absoluteRequest);
-    if (!response.body) return response;
-
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter();
-    const reader = response.body.getReader();
-    (async () => {
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) { await writer.close(); break; }
-          await writer.write(value);
-        }
-      } catch (streamErr) {
-        console.error('[handler] stream error:', streamErr.stack || streamErr.message);
-        await writer.abort(streamErr);
-      }
-    })();
-    return new Response(readable, {
-      status: response.status,
-      headers: response.headers,
-    });
+    return await server.fetch(absoluteRequest);
   } catch (err) {
     console.error('[handler] SSR error:', err.stack || err.message);
     return new Response(
-      JSON.stringify({ error: err.message, stack: err.stack }, null, 2),
+      JSON.stringify({ phase: 'request', error: err.message, stack: err.stack }, null, 2),
       { status: 500, headers: { 'content-type': 'application/json' } }
     );
   }
