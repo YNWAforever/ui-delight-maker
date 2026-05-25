@@ -194,8 +194,17 @@ module.exports = async (req, res) => {
   // ── Pipe Web Fetch Response → Node.js ServerResponse ────────────────────
   res.statusCode = fetchResponse.status;
   fetchResponse.headers.forEach((value, key) => {
+    // Skip Set-Cookie here — handled separately below to avoid the
+    // Headers.forEach() comma-joining bug that corrupts multiple cookies.
+    if (key.toLowerCase() === 'set-cookie') return;
     res.setHeader(key, value);
   });
+  // Set-Cookie must be passed as an array; using getSetCookie() (Node 18+)
+  // preserves each cookie as a separate string instead of joining them.
+  if (typeof fetchResponse.headers.getSetCookie === 'function') {
+    const cookies = fetchResponse.headers.getSetCookie();
+    if (cookies.length > 0) res.setHeader('set-cookie', cookies);
+  }
 
   if (fetchResponse.body) {
     const reader = fetchResponse.body.getReader();
