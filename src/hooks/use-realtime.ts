@@ -1,8 +1,21 @@
 // src/hooks/use-realtime.ts
 import { useEffect, useRef } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase.client";
+import { createBrowserClient } from "@supabase/ssr";
 
 type RealtimeEvent = "INSERT" | "UPDATE" | "DELETE" | "*";
+
+// Module-level singleton — avoids creating multiple connections
+let realtimeClient: ReturnType<typeof createBrowserClient> | null = null;
+
+function getRealtimeClient() {
+  if (!realtimeClient) {
+    realtimeClient = createBrowserClient(
+      import.meta.env.VITE_SUPABASE_URL,
+      import.meta.env.VITE_SUPABASE_ANON_KEY,
+    );
+  }
+  return realtimeClient;
+}
 
 export function useRealtime(
   table: string,
@@ -15,7 +28,7 @@ export function useRealtime(
   onEventRef.current = onEvent;
 
   useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
+    const supabase = getRealtimeClient();
     const channelName = `${table}-${event}-${filter ?? "all"}`;
 
     const channel = supabase
