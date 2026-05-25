@@ -9,7 +9,7 @@
  * Docs: https://vercel.com/docs/build-output-api/v3
  */
 
-import { mkdirSync, cpSync, writeFileSync } from "node:fs";
+import { mkdirSync, cpSync, writeFileSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
@@ -26,61 +26,102 @@ console.log("Copying dist/client → .vercel/output/static ...");
 mkdirSync(STATIC_DIR, { recursive: true });
 cpSync(resolve(root, "dist", "client"), STATIC_DIR, { recursive: true });
 
+// ── 1b. Patch dist/server/server.js ───────────────────────────────────────
+// TanStack Start v1.167.x: the server bundle's createServerFn only exposes
+// .inputValidator() but client-side SSR stubs (included for HTML rendering)
+// call .validator() — the client-side API. Add .validator as an alias so the
+// same function chain works in both contexts.
+const serverJsPath = resolve(root, "dist", "server", "server.js");
+let serverJsCode = readFileSync(serverJsPath, "utf8");
+
+const TARGET = `    inputValidator: (inputValidator) => {
+      return createServerFn(void 0, {
+        ...resolvedOptions,
+        inputValidator
+      });
+    },
+    handler:`;
+
+const PATCHED = `    inputValidator: (inputValidator) => {
+      return createServerFn(void 0, {
+        ...resolvedOptions,
+        inputValidator
+      });
+    },
+    // Alias: client-side SSR stubs call .validator(); map it to .inputValidator()
+    validator: (validator) => {
+      return createServerFn(void 0, {
+        ...resolvedOptions,
+        inputValidator: validator
+      });
+    },
+    handler:`;
+
+if (!serverJsCode.includes(TARGET)) {
+  throw new Error(
+    "[vercel-build] Could not find createServerFn.inputValidator pattern to patch — " +
+    "check dist/server/server.js for API changes."
+  );
+}
+serverJsCode = serverJsCode.replace(TARGET, PATCHED);
+writeFileSync(serverJsPath, serverJsCode, "utf8");
+console.log("✓ Patched createServerFn: added .validator() alias for .inputValidator()");
+
 // ── 2. Serverless function ────────────────────────────────────────────────
 console.log("Creating .vercel/output/functions/index.func ...");
 mkdirSync(FUNC_DIR, { recursive: true });
 
 const esbuild = resolve(root, "node_modules", ".bin", "esbuild");
 const serverEntry = resolve(root, "dist", "server", "server.js");
-const bundleOut = resolve(FUNC_DIR, "server.mjs");
+const bundleOut = resolve(FUNC_DIR, "server.cjs");
 
-// Bundle to ESM format.
+// Bundle to CJS format.
 //
-// Why ESM and not CJS:
-//   The Vite SSR output has a circular dependency — route chunk assets import
-//   `createServerFn` back from server.js. In CJS, the entry point's exports
-//   object is partially populated when chunks first run, so createServerFn
-//   is undefined at initialisation time. ESM lazy-bindings handle the circle
-//   correctly: the binding is resolved at first USE, not at import time.
+// Why CJS and not ESM:
+//   CJS react-dom/server uses require("util") and other Node built-ins. In an
+//   ESM bundle, esbuild wraps these in __commonJS shims whose __require helper
+//   throws "Dynamic require of X is not supported" at runtime.
+//
+//   With CJS format, require() works natively and Node built-ins are resolved
+//   by the runtime. esbuild still wraps circular deps in __esm lazy-init blocks,
+//   so the createServerFn circular dependency is handled correctly.
+//
+//   We also patch dist/server/server.js before this step to add .validator()
+//   as an alias for .inputValidator(), fixing client-side SSR stubs.
 //
 // --platform=node automatically externalises all Node.js built-ins, so no
 // explicit --external:node:* flags are needed.
-console.log("Bundling dist/server/server.js → server.mjs (ESM) ...");
+console.log("Bundling dist/server/server.js → server.cjs (CJS) ...");
 execFileSync(
   esbuild,
   [
     serverEntry,
     "--bundle",
     "--platform=node",
-    "--format=esm",
+    "--format=cjs",
     `--outfile=${bundleOut}`,
   ],
   { stdio: "inherit", cwd: root }
 );
-console.log("✓ Server bundle created (ESM)");
+console.log("✓ Server bundle created (CJS)");
 
 // CJS handler — Vercel Node.js runtime calls (req, res) style.
 // Convert IncomingMessage → Web Fetch Request, then pipe Response → res.
-//
-// server.mjs is an ESM bundle; CJS cannot require() ESM, so we use a
-// top-level dynamic import() promise that resolves before the first
-// request arrives (warm path) or inside the handler (cold path).
 writeFileSync(
   resolve(FUNC_DIR, "handler.js"),
   `'use strict';
-// Start loading the ESM bundle immediately — resolves before the first
-// request in most cases (Vercel pre-warms functions).
+// Load the CJS bundle synchronously. This is safe because the bundle is
+// self-contained (all deps inlined) and doesn't use top-level await.
+let server = null;
 let importErr = null;
-const serverPromise = import('./server.mjs')
-  .then(m => m.default)
-  .catch(e => {
-    importErr = e;
-    console.error('[handler] server.mjs load failed:', e.stack || e.message);
-    return null;
-  });
+try {
+  server = require('./server.cjs').default;
+} catch (e) {
+  importErr = e;
+  console.error('[handler] server.cjs load failed:', e.stack || e.message);
+}
 
 module.exports = async (req, res) => {
-  const server = await serverPromise;
 
   // Module-load failure — return a diagnostic JSON error
   if (!server || importErr) {
