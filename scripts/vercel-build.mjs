@@ -84,7 +84,22 @@ console.log("✓ Server bundle created");
 writeFileSync(
   resolve(FUNC_DIR, "handler.mjs"),
   `import server from './server.js';
-export default (request) => server.fetch(request);
+export default async (request) => {
+  try {
+    // Ensure the URL is absolute — Vercel sometimes passes a relative path
+    const url = new URL(request.url, \`https://\${request.headers.get('host') || 'localhost'}\`);
+    const absoluteRequest = url.href === request.url
+      ? request
+      : new Request(url.href, request);
+    return await server.fetch(absoluteRequest);
+  } catch (err) {
+    console.error('[handler] SSR error:', err.stack || err.message);
+    return new Response(
+      JSON.stringify({ error: err.message, stack: err.stack }),
+      { status: 500, headers: { 'content-type': 'application/json' } }
+    );
+  }
+};
 `
 );
 
