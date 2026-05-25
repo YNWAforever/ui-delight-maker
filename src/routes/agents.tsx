@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Bot, ChevronDown, ChevronRight, Play } from "lucide-react";
 import { toast } from "sonner";
 
@@ -17,6 +17,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
+import { useRealtime } from "@/hooks/use-realtime";
 import { getAgentRuns } from "@/server-functions/agent-runs";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
 
@@ -48,6 +49,10 @@ export const Route = createFileRoute("/agents")({
 
 function AgentsMonitor() {
   const agentRuns = Route.useLoaderData();
+  const router = useRouter();
+  useRealtime("agent_runs", "*", undefined, () => {
+    router.invalidate();
+  });
   const [open, setOpen] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [agentStates, setAgentStates] = useState(() =>

@@ -37,6 +37,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
+import { useRealtime } from "@/hooks/use-realtime";
 import { getApprovals, decideApproval } from "@/server-functions/approvals";
 import type { HumanApproval } from "@/lib/types";
 import { APP_USERS, userById } from "@/lib/users";
@@ -68,6 +69,16 @@ function slaChip(createdAt: string) {
 function ApprovalsInbox() {
   const allApprovals = Route.useLoaderData();
   const router = useRouter();
+  // New approval from n8n → re-run loader
+  useRealtime("human_approvals", "INSERT", undefined, () => {
+    router.invalidate();
+    toast.info("New approval request received");
+  });
+  // Also refresh when an approval status changes
+  useRealtime("human_approvals", "UPDATE", undefined, () => {
+    router.invalidate();
+  });
+
   const [typeFilter, setTypeFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
