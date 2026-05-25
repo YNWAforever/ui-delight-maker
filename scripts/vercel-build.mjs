@@ -68,8 +68,9 @@ execFileSync(
 );
 console.log("✓ Server bundle created (CJS)");
 
-// CJS handler — no ESM, require() works directly.
-// Uses lazy initialisation so module-load errors surface as JSON 500s.
+// CJS handler — Vercel Node.js runtime calls (req, res) style.
+// Convert IncomingMessage → Web Fetch Request, then pipe Response → res.
+// Lazy require so module-load errors surface as JSON 500s instead of crashing.
 writeFileSync(
   resolve(FUNC_DIR, "handler.js"),
   `'use strict';
@@ -84,44 +85,93 @@ try {
   console.error('[handler] server.cjs load failed:', e.stack || e.message);
 }
 
-module.exports = async (request) => {
+module.exports = async (req, res) => {
+  // Module-load failure — return a diagnostic JSON error
   if (importErr) {
-    return new Response(
-      JSON.stringify({ phase: 'module_load', error: importErr.message, stack: importErr.stack }, null, 2),
-      { status: 500, headers: { 'content-type': 'application/json' } }
-    );
+    res.statusCode = 500;
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ phase: 'module_load', error: importErr.message, stack: importErr.stack }, null, 2));
+    return;
   }
 
-  const host = request.headers.get('host') || 'localhost';
-  const base = 'https://' + host;
-  const url = new URL(request.url.startsWith('http') ? request.url : base + request.url);
+  // Build absolute URL from Node.js IncomingMessage
+  const host = req.headers['host'] || 'localhost';
+  const url = new URL(req.url, 'https://' + host);
 
+  // Lightweight debug probe (no SSR needed)
   if (url.pathname === '/_debug') {
-    return new Response(JSON.stringify({
-      ok: true, requestUrl: request.url, absoluteUrl: url.href,
+    res.statusCode = 200;
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({
+      ok: true,
+      requestUrl: req.url,
+      absoluteUrl: url.href,
       env: {
         SUPABASE_URL: process.env.SUPABASE_URL || '(missing)',
         SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'set' : '(missing)',
         NODE_ENV: process.env.NODE_ENV,
       },
-    }, null, 2), { status: 200, headers: { 'content-type': 'application/json' } });
+    }, null, 2));
+    return;
   }
 
-  const absoluteRequest = new Request(url.href, {
-    method: request.method,
-    headers: request.headers,
-    body: ['GET', 'HEAD'].includes(request.method) ? undefined : request.body,
+  // ── Convert IncomingMessage → Web Fetch Request ──────────────────────────
+  const headers = new Headers();
+  for (const [key, val] of Object.entries(req.headers)) {
+    if (Array.isArray(val)) {
+      val.forEach(v => headers.append(key, v));
+    } else if (val != null) {
+      headers.set(key, val);
+    }
+  }
+
+  let body = undefined;
+  if (!['GET', 'HEAD'].includes(req.method)) {
+    body = await new Promise((resolve, reject) => {
+      const chunks = [];
+      req.on('data', chunk => chunks.push(chunk));
+      req.on('end', () => resolve(Buffer.concat(chunks)));
+      req.on('error', reject);
+    });
+  }
+
+  const fetchRequest = new Request(url.href, {
+    method: req.method,
+    headers,
+    body: body && body.length > 0 ? body : undefined,
   });
 
+  // ── Call SSR handler ─────────────────────────────────────────────────────
+  let fetchResponse;
   try {
-    return await server.fetch(absoluteRequest);
+    fetchResponse = await server.fetch(fetchRequest);
   } catch (err) {
     console.error('[handler] SSR error:', err.stack || err.message);
-    return new Response(
-      JSON.stringify({ phase: 'request', error: err.message, stack: err.stack }, null, 2),
-      { status: 500, headers: { 'content-type': 'application/json' } }
-    );
+    res.statusCode = 500;
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ phase: 'request', error: err.message, stack: err.stack }, null, 2));
+    return;
   }
+
+  // ── Pipe Web Fetch Response → Node.js ServerResponse ────────────────────
+  res.statusCode = fetchResponse.status;
+  fetchResponse.headers.forEach((value, key) => {
+    res.setHeader(key, value);
+  });
+
+  if (fetchResponse.body) {
+    const reader = fetchResponse.body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        res.write(value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+  res.end();
 };
 `
 );
@@ -135,7 +185,6 @@ writeFileSync(
       runtime: "nodejs22.x",
       handler: "handler.js",
       launcherType: "Nodejs",
-      supportsResponseStreaming: true,
     },
     null,
     2
