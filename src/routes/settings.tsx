@@ -20,7 +20,44 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { agents, pricingRules, serviceTemplates, users, type User } from "@/lib/mock-data";
+
+type User = { id: string; name: string; email: string; role: "admin" | "manager" | "sales" | "cs" };
+
+const users: User[] = [
+  { id: "u1", name: "Ada Wong", email: "ada@fimmick.com", role: "admin" },
+  { id: "u2", name: "Marcus Lee", email: "marcus@fimmick.com", role: "manager" },
+  { id: "u3", name: "Priya Shah", email: "priya@fimmick.com", role: "sales" },
+  { id: "u4", name: "Kenji Tan", email: "kenji@fimmick.com", role: "sales" },
+  { id: "u5", name: "Sara Lin", email: "sara@fimmick.com", role: "cs" },
+];
+
+const agents = [
+  { name: "orchestrator", display_name: "Orchestrator Agent", role: "Owns workflow, assigns tasks, checks state", human_approval: true, model: "claude-sonnet-4", status: "active" as const },
+  { name: "lead-intake", display_name: "Lead Intake Agent", role: "Captures and cleans new leads", human_approval: false, model: "gpt-4o-mini", status: "active" as const },
+  { name: "qualification", display_name: "Qualification Agent", role: "Scores lead, identifies need", human_approval: false, model: "claude-sonnet-4", status: "active" as const },
+  { name: "sales-reply", display_name: "Sales Reply Agent", role: "Drafts first reply and meeting follow-up", human_approval: true, model: "claude-sonnet-4", status: "active" as const },
+  { name: "quotation", display_name: "Quotation Agent", role: "Builds quote draft from package templates", human_approval: true, model: "claude-sonnet-4", status: "active" as const },
+  { name: "approval", display_name: "Approval Agent", role: "Checks discount, margin, risk, terms", human_approval: true, model: "claude-sonnet-4", status: "active" as const },
+  { name: "client-success", display_name: "Client Success Agent", role: "Creates onboarding and renewal tasks", human_approval: false, model: "claude-sonnet-4", status: "active" as const },
+  { name: "reporting", display_name: "Reporting Agent", role: "Produces pipeline and performance reports", human_approval: false, model: "claude-sonnet-4", status: "paused" as const },
+];
+
+type PricingRule = { id: string; name: string; threshold: number; unit: "%" | "HKD"; description: string };
+
+const pricingRules: PricingRule[] = [
+  { id: "pr-1", name: "Max discount without approval", threshold: 10, unit: "%", description: "Sales can apply up to this discount without manager sign-off." },
+  { id: "pr-2", name: "Manager approval threshold", threshold: 400000, unit: "HKD", description: "Quotes above this value require manager approval." },
+  { id: "pr-3", name: "Director approval threshold", threshold: 1000000, unit: "HKD", description: "Quotes above this value require director approval." },
+  { id: "pr-4", name: "Min margin", threshold: 25, unit: "%", description: "Quotes below this margin are flagged for review." },
+];
+
+const serviceTemplates = [
+  { id: "tpl-crm", name: "CRM Implementation", base_price: 250000, description: "Multi-store CRM rollout with POS integration" },
+  { id: "tpl-koc", name: "KOC / Influencer Campaign", base_price: 180000, description: "Cross-market creator activation" },
+  { id: "tpl-ai", name: "AI Transformation Roadmap", base_price: 480000, description: "12-month strategic engagement" },
+  { id: "tpl-data", name: "Data Hub & Reporting", base_price: 140000, description: "Unified data pipeline + dashboards" },
+  { id: "tpl-custom", name: "Custom Agent Build", base_price: 90000, description: "Bespoke agent for a specific workflow" },
+];
 
 export const Route = createFileRoute("/settings")({
   head: () => ({

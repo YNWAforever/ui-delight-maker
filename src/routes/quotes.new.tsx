@@ -19,8 +19,15 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { formatHKD } from "@/lib/format";
-import { users } from "@/lib/mock-data";
 import { createQuote, getPricingTemplates } from "@/server-functions/quotes";
+
+const users = [
+  { id: "u1", name: "Ada Wong" },
+  { id: "u2", name: "Marcus Lee" },
+  { id: "u3", name: "Priya Shah" },
+  { id: "u4", name: "Kenji Tan" },
+  { id: "u5", name: "Sara Lin" },
+];
 import { getLeads } from "@/server-functions/leads";
 
 const searchSchema = z.object({ leadId: z.string().optional() });

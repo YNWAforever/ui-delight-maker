@@ -37,10 +37,20 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
-import { users, userById } from "@/lib/mock-data";
 import { getApprovals, decideApproval } from "@/server-functions/approvals";
 import type { HumanApproval } from "@/lib/types";
-import type { ApprovalStatus } from "@/lib/mock-data";
+
+type ApprovalStatus = "pending" | "approved" | "rejected" | "escalated";
+
+const users = [
+  { id: "u1", name: "Ada Wong", email: "ada@fimmick.com" },
+  { id: "u2", name: "Marcus Lee", email: "marcus@fimmick.com" },
+  { id: "u3", name: "Priya Shah", email: "priya@fimmick.com" },
+  { id: "u4", name: "Kenji Tan", email: "kenji@fimmick.com" },
+  { id: "u5", name: "Sara Lin", email: "sara@fimmick.com" },
+];
+
+const userById = (id: string) => users.find((u) => u.id === id);
 
 export const Route = createFileRoute("/approvals")({
   loader: () => getApprovals({}),

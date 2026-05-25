@@ -14,6 +14,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as QuotesRouteImport } from './routes/quotes'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
@@ -48,6 +49,11 @@ const QuotesRoute = QuotesRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LeadsRoute = LeadsRouteImport.update({
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/approvals': typeof ApprovalsRoute
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
+  '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
   '/reports': typeof ReportsRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/approvals': typeof ApprovalsRoute
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
+  '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
   '/reports': typeof ReportsRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/approvals': typeof ApprovalsRoute
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
+  '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
   '/reports': typeof ReportsRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/clients'
     | '/leads'
+    | '/login'
     | '/notifications'
     | '/quotes'
     | '/reports'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/clients'
     | '/leads'
+    | '/login'
     | '/notifications'
     | '/quotes'
     | '/reports'
@@ -195,6 +206,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/clients'
     | '/leads'
+    | '/login'
     | '/notifications'
     | '/quotes'
     | '/reports'
@@ -213,6 +225,7 @@ export interface RootRouteChildren {
   ApprovalsRoute: typeof ApprovalsRoute
   ClientsRoute: typeof ClientsRouteWithChildren
   LeadsRoute: typeof LeadsRouteWithChildren
+  LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRoute
   QuotesRoute: typeof QuotesRouteWithChildren
   ReportsRoute: typeof ReportsRoute
@@ -255,6 +268,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/leads': {
@@ -381,6 +401,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApprovalsRoute: ApprovalsRoute,
   ClientsRoute: ClientsRouteWithChildren,
   LeadsRoute: LeadsRouteWithChildren,
+  LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRoute,
   QuotesRoute: QuotesRouteWithChildren,
   ReportsRoute: ReportsRoute,
@@ -390,3 +411,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

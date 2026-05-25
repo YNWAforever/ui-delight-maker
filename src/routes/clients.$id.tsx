@@ -12,14 +12,23 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatDateTime } from "@/lib/format";
-import {
-  activityLogs,
-  clientFiles,
-  contacts,
-  tasks,
-  userById,
-} from "@/lib/mock-data";
 import { getClient, updateClient } from "@/server-functions/clients";
+
+const USERS: Record<string, string> = {
+  u1: "Ada Wong", u2: "Marcus Lee", u3: "Priya Shah", u4: "Kenji Tan", u5: "Sara Lin",
+};
+const userById = (id: string) => (USERS[id] ? { name: USERS[id] } : undefined);
+
+// Static placeholder data for tabs not yet backed by server functions
+type Contact = { id: string; client_id: string; name: string; title: string; email: string; phone: string; is_primary: boolean };
+type FileAsset = { id: string; client_id: string; name: string; size: string; uploaded_at: string; uploaded_by: string };
+type ActivityLog = { id: string; actor_type: string; actor_name: string; action: string; object_type: string; object_id: string; created_at: string };
+type TaskStub = { id: string; title: string; description: string; assigned_to: string; client_id: string | null; due_date: string; priority: string; status: string };
+
+const contacts: Contact[] = [];
+const clientFiles: FileAsset[] = [];
+const activityLogs: ActivityLog[] = [];
+const tasks: TaskStub[] = [];
 import { getQuotes } from "@/server-functions/quotes";
 
 export const Route = createFileRoute("/clients/$id")({

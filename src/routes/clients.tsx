@@ -27,8 +27,17 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCompactHKD } from "@/lib/format";
-import { userById, users } from "@/lib/mock-data";
 import { getClients, createClient } from "@/server-functions/clients";
+
+const users = [
+  { id: "u1", name: "Ada Wong" },
+  { id: "u2", name: "Marcus Lee" },
+  { id: "u3", name: "Priya Shah" },
+  { id: "u4", name: "Kenji Tan" },
+  { id: "u5", name: "Sara Lin" },
+];
+
+const userById = (id: string) => users.find((u) => u.id === id);
 import type { Client } from "@/lib/types";
 
 export const Route = createFileRoute("/clients")({

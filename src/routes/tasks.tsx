@@ -26,8 +26,17 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { userById, users } from "@/lib/mock-data";
 import { getTasks, createTask, updateTask } from "@/server-functions/tasks";
+
+const users = [
+  { id: "u1", name: "Ada Wong" },
+  { id: "u2", name: "Marcus Lee" },
+  { id: "u3", name: "Priya Shah" },
+  { id: "u4", name: "Kenji Tan" },
+  { id: "u5", name: "Sara Lin" },
+];
+
+const userById = (id: string) => users.find((u) => u.id === id);
 import type { Task, TaskStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/tasks")({

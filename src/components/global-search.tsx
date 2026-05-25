@@ -3,8 +3,14 @@ import { Search } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Input } from "@/components/ui/input";
-import { leads, quotes, clients, tasks } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+
+// Search data — will be replaced with a server-side full-text search in a future task.
+// Using empty arrays until the backend search endpoint is available.
+const leads: { id: string; company_name: string; contact_name: string; contact_email: string; status: string }[] = [];
+const quotes: { id: string; number: string; status: string; currency: string; total_value: number }[] = [];
+const clients: { id: string; company_name: string; industry: string; tier: string }[] = [];
+const tasks: { id: string; title: string; description: string; status: string; priority: string; due_date: string }[] = [];
 
 type Result = {
   id: string;

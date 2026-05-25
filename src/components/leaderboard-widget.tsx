@@ -25,7 +25,50 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { formatCompactHKD } from "@/lib/format";
-import { agentLeaderboardDaily } from "@/lib/mock-data";
+
+// Daily agent performance data — deterministic seed so SSR + client match.
+// Will be replaced with a real Supabase query in a future task.
+interface AgentLeaderboardDay {
+  agent: string;
+  date: string;
+  runs: number;
+  successes: number;
+  value: number;
+}
+
+const LB_AGENT_NAMES = [
+  "Lead Intake",
+  "Qualification",
+  "Sales Reply",
+  "Quotation",
+  "Approval",
+  "Client Success",
+  "Orchestrator",
+];
+
+function lbSeed(agentIdx: number, dayIdx: number, salt: number) {
+  const x = Math.sin(agentIdx * 9301 + dayIdx * 49297 + salt * 233280) * 10000;
+  return x - Math.floor(x);
+}
+
+const agentLeaderboardDaily: AgentLeaderboardDay[] = (() => {
+  const out: AgentLeaderboardDay[] = [];
+  const end = new Date("2026-05-19T00:00:00Z").getTime();
+  for (let d = 0; d < 14; d++) {
+    const date = new Date(end - (13 - d) * 86_400_000).toISOString().slice(0, 10);
+    LB_AGENT_NAMES.forEach((agent, ai) => {
+      const base = [6, 5, 4, 2, 1, 2, 3][ai];
+      const runs = Math.max(0, Math.round(base + lbSeed(ai, d, 1) * 6 - 2));
+      const successes = Math.max(
+        0,
+        Math.min(runs, Math.round(runs * (0.78 + lbSeed(ai, d, 2) * 0.22))),
+      );
+      const value = Math.round((runs * (35 + lbSeed(ai, d, 3) * 65)) * 1000);
+      out.push({ agent, date, runs, successes, value });
+    });
+  }
+  return out;
+})();
 
 const ALL_AGENTS = Array.from(new Set(agentLeaderboardDaily.map((d) => d.agent)));
 // Data window: 2026-05-06 → 2026-05-19. Use as the default range.

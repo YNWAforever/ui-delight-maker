@@ -17,8 +17,18 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
-import { agents as seedAgents } from "@/lib/mock-data";
 import { getAgentRuns } from "@/server-functions/agent-runs";
+
+const AGENTS = [
+  { name: "orchestrator", display_name: "Orchestrator Agent", human_approval: true, avg_confidence: 0.92, runs_24h: 24, status: "active" as const },
+  { name: "lead-intake", display_name: "Lead Intake Agent", human_approval: false, avg_confidence: 0.96, runs_24h: 41, status: "active" as const },
+  { name: "qualification", display_name: "Qualification Agent", human_approval: false, avg_confidence: 0.86, runs_24h: 37, status: "active" as const },
+  { name: "sales-reply", display_name: "Sales Reply Agent", human_approval: true, avg_confidence: 0.83, runs_24h: 22, status: "active" as const },
+  { name: "quotation", display_name: "Quotation Agent", human_approval: true, avg_confidence: 0.89, runs_24h: 12, status: "active" as const },
+  { name: "approval", display_name: "Approval Agent", human_approval: true, avg_confidence: 0.91, runs_24h: 9, status: "active" as const },
+  { name: "client-success", display_name: "Client Success Agent", human_approval: false, avg_confidence: 0.9, runs_24h: 14, status: "active" as const },
+  { name: "reporting", display_name: "Reporting Agent", human_approval: false, avg_confidence: 0.94, runs_24h: 6, status: "paused" as const },
+];
 
 export const Route = createFileRoute("/agents")({
   loader: () => getAgentRuns({}),
@@ -36,7 +46,7 @@ function AgentsMonitor() {
   const [open, setOpen] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [agentStates, setAgentStates] = useState(() =>
-    Object.fromEntries(seedAgents.map((a) => [a.name, a.status === "active"])),
+    Object.fromEntries(AGENTS.map((a) => [a.name, a.status === "active"])),
   );
 
   const filteredRuns = useMemo(
@@ -50,7 +60,7 @@ function AgentsMonitor() {
 
       <div className="space-y-6 px-6 py-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {seedAgents.map((a) => (
+          {AGENTS.map((a) => (
             <Card key={a.name} className="p-4">
               <div className="flex items-start justify-between">
                 <Link
