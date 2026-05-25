@@ -28,16 +28,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCompactHKD } from "@/lib/format";
 import { getClients, createClient } from "@/server-functions/clients";
-
-const users = [
-  { id: "u1", name: "Ada Wong" },
-  { id: "u2", name: "Marcus Lee" },
-  { id: "u3", name: "Priya Shah" },
-  { id: "u4", name: "Kenji Tan" },
-  { id: "u5", name: "Sara Lin" },
-];
-
-const userById = (id: string) => users.find((u) => u.id === id);
+import { APP_USERS, userById } from "@/lib/users";
 import type { Client } from "@/lib/types";
 
 export const Route = createFileRoute("/clients")({
@@ -210,7 +201,7 @@ function NewClientDialog({ onCreate }: { onCreate: (c: CreateClientPayload) => P
   const [name, setName] = useState("");
   const [industry, setIndustry] = useState("");
   const [tier, setTier] = useState<Client["tier"]>("SME");
-  const [owner, setOwner] = useState(users[0]?.id ?? "");
+  const [owner, setOwner] = useState(APP_USERS[0]?.id ?? "");
 
   return (
     <DialogContent>
@@ -246,7 +237,7 @@ function NewClientDialog({ onCreate }: { onCreate: (c: CreateClientPayload) => P
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {users.map((u) => (
+              {APP_USERS.map((u) => (
                 <SelectItem key={u.id} value={u.id}>
                   {u.name}
                 </SelectItem>

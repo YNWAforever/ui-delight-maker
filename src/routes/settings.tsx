@@ -20,27 +20,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { APP_USERS, type AppUser } from "@/lib/users";
+import { AGENT_DEFINITIONS } from "@/lib/agents";
 
-type User = { id: string; name: string; email: string; role: "admin" | "manager" | "sales" | "cs" };
-
-const users: User[] = [
-  { id: "u1", name: "Ada Wong", email: "ada@fimmick.com", role: "admin" },
-  { id: "u2", name: "Marcus Lee", email: "marcus@fimmick.com", role: "manager" },
-  { id: "u3", name: "Priya Shah", email: "priya@fimmick.com", role: "sales" },
-  { id: "u4", name: "Kenji Tan", email: "kenji@fimmick.com", role: "sales" },
-  { id: "u5", name: "Sara Lin", email: "sara@fimmick.com", role: "cs" },
-];
-
-const agents = [
-  { name: "orchestrator", display_name: "Orchestrator Agent", role: "Owns workflow, assigns tasks, checks state", human_approval: true, model: "claude-sonnet-4", status: "active" as const },
-  { name: "lead-intake", display_name: "Lead Intake Agent", role: "Captures and cleans new leads", human_approval: false, model: "gpt-4o-mini", status: "active" as const },
-  { name: "qualification", display_name: "Qualification Agent", role: "Scores lead, identifies need", human_approval: false, model: "claude-sonnet-4", status: "active" as const },
-  { name: "sales-reply", display_name: "Sales Reply Agent", role: "Drafts first reply and meeting follow-up", human_approval: true, model: "claude-sonnet-4", status: "active" as const },
-  { name: "quotation", display_name: "Quotation Agent", role: "Builds quote draft from package templates", human_approval: true, model: "claude-sonnet-4", status: "active" as const },
-  { name: "approval", display_name: "Approval Agent", role: "Checks discount, margin, risk, terms", human_approval: true, model: "claude-sonnet-4", status: "active" as const },
-  { name: "client-success", display_name: "Client Success Agent", role: "Creates onboarding and renewal tasks", human_approval: false, model: "claude-sonnet-4", status: "active" as const },
-  { name: "reporting", display_name: "Reporting Agent", role: "Produces pipeline and performance reports", human_approval: false, model: "claude-sonnet-4", status: "paused" as const },
-];
+type User = AppUser & { role: "admin" | "manager" | "sales" | "cs" };
 
 type PricingRule = { id: string; name: string; threshold: number; unit: "%" | "HKD"; description: string };
 
@@ -144,7 +127,7 @@ function ProfileTab() {
 }
 
 function TeamTab() {
-  const [rows, setRows] = useState<User[]>(users);
+  const [rows, setRows] = useState<User[]>(APP_USERS as User[]);
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -284,7 +267,7 @@ function ServicesTab() {
 function AgentsTab() {
   const [state, setState] = useState(() =>
     Object.fromEntries(
-      agents.map((a) => [a.name, { enabled: a.status === "active", approval: a.human_approval }]),
+      AGENT_DEFINITIONS.map((a) => [a.name, { enabled: a.status === "active", approval: a.human_approval }]),
     ),
   );
   return (
@@ -294,14 +277,14 @@ function AgentsTab() {
         <CardDescription>Toggle agents and switch approval requirements.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {agents.map((a) => (
+        {AGENT_DEFINITIONS.map((a) => (
           <div
             key={a.name}
             className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3"
           >
             <div>
               <p className="text-sm font-medium">{a.display_name}</p>
-              <p className="text-xs text-muted-foreground">{a.role}</p>
+              <p className="text-xs text-muted-foreground">{a.description}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Model <code>{a.model}</code>
               </p>

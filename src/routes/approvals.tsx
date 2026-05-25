@@ -39,18 +39,9 @@ import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
 import { getApprovals, decideApproval } from "@/server-functions/approvals";
 import type { HumanApproval } from "@/lib/types";
+import { APP_USERS, userById } from "@/lib/users";
 
 type ApprovalStatus = "pending" | "approved" | "rejected" | "escalated";
-
-const users = [
-  { id: "u1", name: "Ada Wong", email: "ada@fimmick.com" },
-  { id: "u2", name: "Marcus Lee", email: "marcus@fimmick.com" },
-  { id: "u3", name: "Priya Shah", email: "priya@fimmick.com" },
-  { id: "u4", name: "Kenji Tan", email: "kenji@fimmick.com" },
-  { id: "u5", name: "Sara Lin", email: "sara@fimmick.com" },
-];
-
-const userById = (id: string) => users.find((u) => u.id === id);
 
 export const Route = createFileRoute("/approvals")({
   loader: () => getApprovals({}),
@@ -107,7 +98,7 @@ function ApprovalsInbox() {
     action: () => void;
   }>(null);
   const [assignOpen, setAssignOpen] = useState(false);
-  const [assignee, setAssignee] = useState(users[1].id);
+  const [assignee, setAssignee] = useState(APP_USERS[1].id);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
@@ -354,7 +345,7 @@ function ApprovalsInbox() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {users
+                {APP_USERS
                   .filter((u) => u.role === "admin" || u.role === "manager")
                   .map((u) => (
                     <SelectItem key={u.id} value={u.id}>

@@ -68,11 +68,14 @@ Routes live in `src/routes/`. TanStack Router auto-generates `src/routeTree.gen.
 
 ## Data Layer
 
-All data lives in `src/lib/mock-data.ts`. There is no backend or database.
+Persistence is handled by **Supabase (PostgreSQL)**. The app uses `@supabase/ssr` for server-side auth and session management.
 
-- Types in `mock-data.ts` are the source of truth (mirror spec §6 schema)
-- Mutations use component-level `useState` seeded from mock arrays — edits reset on reload
-- Do NOT add real API calls or persistence; this is documented as a frontend-only prototype
+- **Server functions** in `src/server-functions/` act as the BFF (Backend for Frontend) layer — all data fetches and mutations go through these.
+- `src/lib/supabase.server.ts` — server-side Supabase client (SSR cookies)
+- `src/lib/supabase.client.ts` — browser Supabase client (realtime / auth UI)
+- `src/lib/types.ts` is the source of truth for TypeScript types (mirrors the Supabase schema)
+- `src/lib/mock-data.ts` is kept for backward compatibility only; do not add new data or types to it
+- Shared UI constants (users, agents) live in `src/lib/users.ts` and `src/lib/agents.ts`
 
 ## Code Style
 

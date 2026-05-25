@@ -1,5 +1,13 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
-import { notifications as initialNotifications, type Notification } from "@/lib/mock-data";
+
+export interface Notification {
+  id: string;
+  type: "approval" | "task" | "lead" | "client";
+  message: string;
+  link: string;
+  created_at: string;
+  read: boolean;
+}
 
 type Store = {
   notifications: Notification[];
@@ -7,7 +15,7 @@ type Store = {
 };
 
 const store: Store = {
-  notifications: initialNotifications.map((n) => ({ ...n })),
+  notifications: [],
   listeners: new Set(),
 };
 

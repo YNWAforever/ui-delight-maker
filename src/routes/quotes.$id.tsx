@@ -22,21 +22,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
 import { getQuote, requestQuoteApproval, updateQuote } from "@/server-functions/quotes";
+import { USER_RECORD } from "@/lib/users";
+import type { QuoteStatus } from "@/lib/types";
 
 type Comment = { id: string; quote_id: string; author: string; body: string; created_at: string };
 type QuoteFile = { id: string; quote_id: string; name: string; size: string; kind: "pdf" | "docx" | "image" | "email"; uploaded_at: string; uploaded_by: string };
 type QuoteVersion = { version: number; quote_id: string; changed_by: string; summary: string; created_at: string };
 
-const USERS: Record<string, string> = {
-  u1: "Ada Wong", u2: "Marcus Lee", u3: "Priya Shah", u4: "Kenji Tan", u5: "Sara Lin",
-};
-const userById = (id: string) => (USERS[id] ? { name: USERS[id] } : undefined);
+const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
 // Lead lookups are not available client-side without a server call; return undefined gracefully
 const leadById = (_id: string) => undefined;
 const quoteComments: Comment[] = [];
 const quoteFiles: QuoteFile[] = [];
 const quoteVersions: QuoteVersion[] = [];
-import type { QuoteStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/quotes/$id")({
   loader: ({ params }) => getQuote({ data: { id: params.id } }),

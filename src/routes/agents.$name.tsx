@@ -13,17 +13,21 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDateTime } from "@/lib/format";
 import { getAgentRuns } from "@/server-functions/agent-runs";
+import { AGENT_DEFINITIONS } from "@/lib/agents";
 
-const AGENTS = [
-  { name: "orchestrator", display_name: "Orchestrator Agent", role: "Owns workflow, assigns tasks, checks state", human_approval: true, model: "claude-sonnet-4", avg_confidence: 0.92, runs_24h: 24, status: "active" as const },
-  { name: "lead-intake", display_name: "Lead Intake Agent", role: "Captures and cleans new leads", human_approval: false, model: "gpt-4o-mini", avg_confidence: 0.96, runs_24h: 41, status: "active" as const },
-  { name: "qualification", display_name: "Qualification Agent", role: "Scores lead, identifies need", human_approval: false, model: "claude-sonnet-4", avg_confidence: 0.86, runs_24h: 37, status: "active" as const },
-  { name: "sales-reply", display_name: "Sales Reply Agent", role: "Drafts first reply and meeting follow-up", human_approval: true, model: "claude-sonnet-4", avg_confidence: 0.83, runs_24h: 22, status: "active" as const },
-  { name: "quotation", display_name: "Quotation Agent", role: "Builds quote draft from package templates", human_approval: true, model: "claude-sonnet-4", avg_confidence: 0.89, runs_24h: 12, status: "active" as const },
-  { name: "approval", display_name: "Approval Agent", role: "Checks discount, margin, risk, terms", human_approval: true, model: "claude-sonnet-4", avg_confidence: 0.91, runs_24h: 9, status: "active" as const },
-  { name: "client-success", display_name: "Client Success Agent", role: "Creates onboarding and renewal tasks", human_approval: false, model: "claude-sonnet-4", avg_confidence: 0.9, runs_24h: 14, status: "active" as const },
-  { name: "reporting", display_name: "Reporting Agent", role: "Produces pipeline and performance reports", human_approval: false, model: "claude-sonnet-4", avg_confidence: 0.94, runs_24h: 6, status: "paused" as const },
-];
+// Runtime-only stats not in the shared definition
+const AGENT_STATS: Record<string, { avg_confidence: number; runs_24h: number }> = {
+  "orchestrator": { avg_confidence: 0.92, runs_24h: 24 },
+  "lead-intake": { avg_confidence: 0.96, runs_24h: 41 },
+  "qualification": { avg_confidence: 0.86, runs_24h: 37 },
+  "quotation": { avg_confidence: 0.89, runs_24h: 12 },
+};
+
+const AGENTS = AGENT_DEFINITIONS.map((a) => ({
+  ...a,
+  avg_confidence: AGENT_STATS[a.name]?.avg_confidence ?? 0.9,
+  runs_24h: AGENT_STATS[a.name]?.runs_24h ?? 0,
+}));
 
 export const Route = createFileRoute("/agents/$name")({
   loader: async ({ params }) => {
@@ -80,7 +84,7 @@ function AgentDetail() {
     <>
       <PageHeader
         title={agent.display_name}
-        description={agent.role}
+        description={agent.description}
         actions={
           <Button variant="outline" size="sm" asChild>
             <Link to="/agents">

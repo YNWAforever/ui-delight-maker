@@ -20,15 +20,8 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { formatHKD } from "@/lib/format";
 import { createQuote, getPricingTemplates } from "@/server-functions/quotes";
-
-const users = [
-  { id: "u1", name: "Ada Wong" },
-  { id: "u2", name: "Marcus Lee" },
-  { id: "u3", name: "Priya Shah" },
-  { id: "u4", name: "Kenji Tan" },
-  { id: "u5", name: "Sara Lin" },
-];
 import { getLeads } from "@/server-functions/leads";
+import { APP_USERS } from "@/lib/users";
 
 const searchSchema = z.object({ leadId: z.string().optional() });
 
@@ -72,7 +65,7 @@ function QuoteBuilder() {
 
   const [step, setStep] = useState(1);
   const [leadId, setLeadId] = useState(initialLeadId ?? leads[0]?.id ?? "");
-  const [approver, setApprover] = useState(users[1]?.id ?? users[0]?.id ?? "");
+  const [approver, setApprover] = useState(APP_USERS[1]?.id ?? APP_USERS[0]?.id ?? "");
   const [validUntil, setValidUntil] = useState("2026-06-30");
   const [discount, setDiscount] = useState(0);
   const [items, setItems] = useState<LineItem[]>([]);
@@ -224,7 +217,7 @@ function QuoteBuilder() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {users
+                      {APP_USERS
                         .filter((u) => ["manager", "admin"].includes(u.role))
                         .map((u) => (
                           <SelectItem key={u.id} value={u.id}>
@@ -353,7 +346,7 @@ function QuoteBuilder() {
                   <KV label="Client" value={lead?.company_name ?? "—"} />
                   <KV label="Lead ID" value={leadId} />
                   <KV label="Valid until" value={validUntil} />
-                  <KV label="Approver" value={users.find((u) => u.id === approver)?.name ?? "—"} />
+                  <KV label="Approver" value={APP_USERS.find((u) => u.id === approver)?.name ?? "—"} />
                   <KV label="Items" value={String(items.length)} />
                   <KV label="Discount" value={`${discount}%`} />
                 </div>

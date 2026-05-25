@@ -19,14 +19,12 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatHKD } from "@/lib/format";
 import { getQuotes } from "@/server-functions/quotes";
+import { USER_RECORD } from "@/lib/users";
+import type { Quote } from "@/lib/types";
 
-const USERS: Record<string, string> = {
-  u1: "Ada Wong", u2: "Marcus Lee", u3: "Priya Shah", u4: "Kenji Tan", u5: "Sara Lin",
-};
-const userById = (id: string) => (USERS[id] ? { name: USERS[id] } : undefined);
+const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
 // Lead names are not available here — show the lead ID directly
 const leadById = (_id: string) => undefined;
-import type { Quote } from "@/lib/types";
 
 export const Route = createFileRoute("/quotes")({
   loader: () => getQuotes({}),

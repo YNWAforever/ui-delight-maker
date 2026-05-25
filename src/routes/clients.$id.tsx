@@ -13,11 +13,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { getClient, updateClient } from "@/server-functions/clients";
+import { getQuotes } from "@/server-functions/quotes";
+import { USER_RECORD } from "@/lib/users";
 
-const USERS: Record<string, string> = {
-  u1: "Ada Wong", u2: "Marcus Lee", u3: "Priya Shah", u4: "Kenji Tan", u5: "Sara Lin",
-};
-const userById = (id: string) => (USERS[id] ? { name: USERS[id] } : undefined);
+const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
 
 // Static placeholder data for tabs not yet backed by server functions
 type Contact = { id: string; client_id: string; name: string; title: string; email: string; phone: string; is_primary: boolean };
@@ -29,7 +28,6 @@ const contacts: Contact[] = [];
 const clientFiles: FileAsset[] = [];
 const activityLogs: ActivityLog[] = [];
 const tasks: TaskStub[] = [];
-import { getQuotes } from "@/server-functions/quotes";
 
 export const Route = createFileRoute("/clients/$id")({
   loader: async ({ params }) => {

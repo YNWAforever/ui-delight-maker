@@ -27,16 +27,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { getTasks, createTask, updateTask } from "@/server-functions/tasks";
-
-const users = [
-  { id: "u1", name: "Ada Wong" },
-  { id: "u2", name: "Marcus Lee" },
-  { id: "u3", name: "Priya Shah" },
-  { id: "u4", name: "Kenji Tan" },
-  { id: "u5", name: "Sara Lin" },
-];
-
-const userById = (id: string) => users.find((u) => u.id === id);
+import { APP_USERS, userById } from "@/lib/users";
 import type { Task, TaskStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/tasks")({
@@ -119,7 +110,7 @@ function TasksBoard() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All assignees</SelectItem>
-                {users.map((u) => (
+                {APP_USERS.map((u) => (
                   <SelectItem key={u.id} value={u.id}>
                     {u.name}
                   </SelectItem>
@@ -211,7 +202,7 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [pri, setPri] = useState<Task["priority"]>("medium");
-  const [assignee, setAssignee] = useState(users[0]?.id ?? "");
+  const [assignee, setAssignee] = useState(APP_USERS[0]?.id ?? "");
   const [due, setDue] = useState("2026-05-25");
 
   const submit = async () => {
@@ -272,7 +263,7 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {users.map((u) => (
+                  {APP_USERS.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.name}
                     </SelectItem>
