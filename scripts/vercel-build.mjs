@@ -32,65 +32,62 @@ mkdirSync(FUNC_DIR, { recursive: true });
 
 const esbuild = resolve(root, "node_modules", ".bin", "esbuild");
 const serverEntry = resolve(root, "dist", "server", "server.js");
-const bundleOut = resolve(FUNC_DIR, "server.cjs");
+const bundleOut = resolve(FUNC_DIR, "server.mjs");
 
-// Bundle to CJS format — no ESM banner/import ordering issues,
-// require() works natively for any CJS packages in the dependency tree.
-console.log("Bundling dist/server/server.js → server.cjs (CommonJS) ...");
+// Bundle to ESM format.
+//
+// Why ESM and not CJS:
+//   The Vite SSR output has a circular dependency — route chunk assets import
+//   `createServerFn` back from server.js. In CJS, the entry point's exports
+//   object is partially populated when chunks first run, so createServerFn
+//   is undefined at initialisation time. ESM lazy-bindings handle the circle
+//   correctly: the binding is resolved at first USE, not at import time.
+//
+// --platform=node automatically externalises all Node.js built-ins, so no
+// explicit --external:node:* flags are needed.
+console.log("Bundling dist/server/server.js → server.mjs (ESM) ...");
 execFileSync(
   esbuild,
   [
     serverEntry,
     "--bundle",
     "--platform=node",
-    "--format=cjs",          // CJS: require() works natively, no banner needed
+    "--format=esm",
     `--outfile=${bundleOut}`,
-    // Keep Node.js built-ins external (always available at runtime)
-    "--external:node:*",
-    "--external:async_hooks",
-    "--external:buffer",
-    "--external:crypto",
-    "--external:events",
-    "--external:fs",
-    "--external:http",
-    "--external:https",
-    "--external:net",
-    "--external:os",
-    "--external:path",
-    "--external:stream",
-    "--external:string_decoder",
-    "--external:tls",
-    "--external:url",
-    "--external:util",
-    "--external:zlib",
   ],
   { stdio: "inherit", cwd: root }
 );
-console.log("✓ Server bundle created (CJS)");
+console.log("✓ Server bundle created (ESM)");
 
 // CJS handler — Vercel Node.js runtime calls (req, res) style.
 // Convert IncomingMessage → Web Fetch Request, then pipe Response → res.
-// Lazy require so module-load errors surface as JSON 500s instead of crashing.
+//
+// server.mjs is an ESM bundle; CJS cannot require() ESM, so we use a
+// top-level dynamic import() promise that resolves before the first
+// request arrives (warm path) or inside the handler (cold path).
 writeFileSync(
   resolve(FUNC_DIR, "handler.js"),
   `'use strict';
-let server = null;
+// Start loading the ESM bundle immediately — resolves before the first
+// request in most cases (Vercel pre-warms functions).
 let importErr = null;
-try {
-  const mod = require('./server.cjs');
-  // esbuild CJS output puts the default export on .default
-  server = mod.default || mod;
-} catch (e) {
-  importErr = e;
-  console.error('[handler] server.cjs load failed:', e.stack || e.message);
-}
+const serverPromise = import('./server.mjs')
+  .then(m => m.default)
+  .catch(e => {
+    importErr = e;
+    console.error('[handler] server.mjs load failed:', e.stack || e.message);
+    return null;
+  });
 
 module.exports = async (req, res) => {
+  const server = await serverPromise;
+
   // Module-load failure — return a diagnostic JSON error
-  if (importErr) {
+  if (!server || importErr) {
+    const err = importErr || new Error('server module returned null');
     res.statusCode = 500;
     res.setHeader('content-type', 'application/json');
-    res.end(JSON.stringify({ phase: 'module_load', error: importErr.message, stack: importErr.stack }, null, 2));
+    res.end(JSON.stringify({ phase: 'module_load', error: err.message, stack: err.stack }, null, 2));
     return;
   }
 
