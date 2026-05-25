@@ -37,6 +37,16 @@ const serverEntry = resolve(root, "dist", "server", "server.js");
 const bundleOut = resolve(FUNC_DIR, "server.js");
 
 console.log("Bundling dist/server/server.js with esbuild ...");
+// Banner polyfills require / __dirname / __filename for CJS packages
+// that survive esbuild's ESM conversion with dynamic require() calls.
+const banner =
+  `import { createRequire } from 'module';` +
+  `import { fileURLToPath } from 'url';` +
+  `import { dirname } from 'path';` +
+  `const require = createRequire(import.meta.url);` +
+  `const __filename = fileURLToPath(import.meta.url);` +
+  `const __dirname = dirname(__filename);`;
+
 execSync(
   [
     esbuild,
@@ -45,6 +55,7 @@ execSync(
     "--platform=node",
     "--format=esm",
     `--outfile=${bundleOut}`,
+    `--banner:js=${banner}`,
     // Keep Node.js built-ins external (they're always available at runtime)
     "--external:node:*",
     "--external:async_hooks",
