@@ -32,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
 import type { Lead, ActivityLog, LeadStatus } from "@/lib/types";
+import { useRealtime } from "@/hooks/use-realtime";
 import { getLead, updateLead } from "@/server-functions/leads";
 import { getQuotes, triggerQuoteAgent } from "@/server-functions/quotes";
 
@@ -83,6 +84,13 @@ function LeadDetail() {
   const [comments, setComments] = useState<LeadComment[]>([]);
   const [commentDraft, setCommentDraft] = useState("");
   const [files, setFiles] = useState<LeadFile[]>([]);
+
+  useRealtime(
+    "leads",
+    "UPDATE",
+    `id=eq.${lead.id}`,
+    () => router.invalidate(),
+  );
 
   const handleGenerateQuote = async () => {
     await triggerQuoteAgent({ data: { leadId: lead.id } });
@@ -380,53 +388,51 @@ function LeadDetail() {
 
                 <TabsContent value="insights" className="mt-4">
                   {lead.qualification_data ? (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <KV label="Lead type" value={lead.qualification_data.lead_type} />
-                      <KV label="Urgency" value={lead.qualification_data.urgency} />
-                      <KV label="Budget" value={lead.qualification_data.estimated_budget_range} />
-                      <KV
-                        label="Score"
-                        value={`${lead.qualification_data.qualification_score} / 100`}
-                      />
-                      <KV
-                        label="Interest"
-                        value={lead.qualification_data.service_interest.join(", ")}
-                      />
-                      <KV
-                        label="Confidence"
-                        value={`${(lead.qualification_data.confidence * 100).toFixed(0)}%`}
-                      />
-                      <div className="sm:col-span-2">
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Recommended next action
-                        </p>
-                        <p className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2 py-1 text-sm text-primary">
-                          <Sparkles className="h-3.5 w-3.5" />
-                          {lead.qualification_data.recommended_next_action.replace(/_/g, " ")}
-                        </p>
-                      </div>
-                      {lead.qualification_data.missing_information.length > 0 && (
-                        <div className="sm:col-span-2">
-                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            Missing information
-                          </p>
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            {lead.qualification_data.missing_information.map((m: string) => (
-                              <span
-                                key={m}
-                                className="rounded-md bg-warning/15 px-2 py-0.5 text-xs text-warning-foreground"
-                              >
-                                {m.replace(/_/g, " ")}
-                              </span>
-                            ))}
-                          </div>
+                    <div className="space-y-4 p-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Lead type</span>
+                          <p className="font-medium">{lead.qualification_data.lead_type}</p>
                         </div>
+                        <div>
+                          <span className="text-muted-foreground">Urgency</span>
+                          <p className="font-medium">{lead.qualification_data.urgency}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Budget</span>
+                          <p className="font-medium">{lead.qualification_data.estimated_budget_range}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Confidence</span>
+                          <p className="font-medium">{(lead.qualification_data.confidence * 100).toFixed(0)}%</p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Services of interest</p>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {lead.qualification_data.service_interest.map((s: string) => (
+                            <span key={s} className="rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">{s}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Recommended action</p>
+                        <p className="text-sm font-medium">{lead.qualification_data.recommended_next_action}</p>
+                      </div>
+                      {lead.qualification_data.human_review_required && (
+                        <p className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded">
+                          Human review required — confidence below threshold
+                        </p>
                       )}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Qualification pending. Run the Qualification Agent from the agents page.
-                    </p>
+                    <div className="flex flex-col items-center justify-center gap-2 p-8 text-center">
+                      <Bot className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        Qualification agent hasn&apos;t run yet.{" "}
+                        {lead.status === "new" && "Agent will run automatically after lead is created."}
+                      </p>
+                    </div>
                   )}
                 </TabsContent>
               </Tabs>

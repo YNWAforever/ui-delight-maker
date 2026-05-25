@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import {
   ArrowUpRight,
   Bot,
@@ -28,6 +28,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime, formatCompactHKD } from "@/lib/format";
+import { useRealtime } from "@/hooks/use-realtime";
 import { getDashboardStats, getActivityLogs, getAgentRuns } from "@/server-functions/agent-runs";
 import { getLeads } from "@/server-functions/leads";
 import { getQuotes } from "@/server-functions/quotes";
@@ -58,6 +59,11 @@ export const Route = createFileRoute("/")({
 
 function Dashboard() {
   const { stats, leads, quotes, approvals, tasks, activityLogs, agentRuns } = Route.useLoaderData();
+  const router = useRouter();
+  // Refresh loader data when a new agent_run is written by n8n
+  useRealtime("agent_runs", "*", undefined, () => {
+    router.invalidate();
+  });
   const openLeads = stats.openLeads;
   const pendingQuoteValue = stats.pendingQuoteValue;
   const pendingApprovals = stats.pendingApprovals;
