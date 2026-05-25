@@ -12,6 +12,7 @@
 import { existsSync, mkdirSync, cpSync, writeFileSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execSync } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
@@ -29,8 +30,43 @@ cpSync(resolve(root, "dist", "client"), STATIC_DIR, { recursive: true });
 console.log("Creating .vercel/output/functions/index.func ...");
 mkdirSync(FUNC_DIR, { recursive: true });
 
-// Copy the server bundle into the function directory
-cpSync(resolve(root, "dist", "server"), FUNC_DIR, { recursive: true });
+// Bundle server.js + all npm deps into a single self-contained ESM file
+// so the Vercel function has no missing module dependencies at runtime.
+const esbuild = resolve(root, "node_modules", ".bin", "esbuild");
+const serverEntry = resolve(root, "dist", "server", "server.js");
+const bundleOut = resolve(FUNC_DIR, "server.js");
+
+console.log("Bundling dist/server/server.js with esbuild ...");
+execSync(
+  [
+    esbuild,
+    serverEntry,
+    "--bundle",
+    "--platform=node",
+    "--format=esm",
+    `--outfile=${bundleOut}`,
+    // Keep Node.js built-ins external (they're always available at runtime)
+    "--external:node:*",
+    "--external:async_hooks",
+    "--external:buffer",
+    "--external:crypto",
+    "--external:events",
+    "--external:fs",
+    "--external:http",
+    "--external:https",
+    "--external:net",
+    "--external:os",
+    "--external:path",
+    "--external:stream",
+    "--external:string_decoder",
+    "--external:tls",
+    "--external:url",
+    "--external:util",
+    "--external:zlib",
+  ].join(" "),
+  { stdio: "inherit", cwd: root }
+);
+console.log("✓ Server bundle created");
 
 // Write the function entry-point that wraps the TanStack Start server
 writeFileSync(
