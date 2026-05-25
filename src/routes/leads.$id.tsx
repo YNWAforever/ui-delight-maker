@@ -406,6 +406,10 @@ function LeadDetail() {
                           <span className="text-muted-foreground">Confidence</span>
                           <p className="font-medium">{(lead.qualification_data.confidence * 100).toFixed(0)}%</p>
                         </div>
+                        <div>
+                          <span className="text-muted-foreground">Score</span>
+                          <p className="font-medium">{lead.qualification_data.qualification_score} / 100</p>
+                        </div>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Services of interest</p>
@@ -415,12 +419,22 @@ function LeadDetail() {
                           ))}
                         </div>
                       </div>
+                      {lead.qualification_data.missing_information.length > 0 && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Missing information</p>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {lead.qualification_data.missing_information.map((item) => (
+                              <span key={item} className="rounded-md bg-amber-50 px-2 py-0.5 text-xs text-amber-700">{item}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <p className="text-sm text-muted-foreground">Recommended action</p>
                         <p className="text-sm font-medium">{lead.qualification_data.recommended_next_action}</p>
                       </div>
                       {lead.qualification_data.human_review_required && (
-                        <p className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded">
+                        <p className="text-xs bg-amber-500/15 text-amber-700 px-2 py-1 rounded">
                           Human review required — confidence below threshold
                         </p>
                       )}

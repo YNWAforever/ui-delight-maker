@@ -29,7 +29,7 @@ export function useRealtime(
 
   useEffect(() => {
     const supabase = getRealtimeClient();
-    const channelName = `${table}-${event}-${filter ?? "all"}`;
+    const channelName = `${table}-${event}-${filter ?? "all"}-${Math.random().toString(36).slice(2, 7)}`;
 
     const channel = supabase
       .channel(channelName)
