@@ -1,6 +1,7 @@
 // src/server-functions/leads.ts
 import { createServerFn } from "@tanstack/react-start";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
+import { triggerN8n } from "@/lib/n8n";
 import type { Lead } from "@/lib/types";
 
 type GetLeadsInput = { status?: string; source?: string; assigned_to?: string };
@@ -47,7 +48,18 @@ export const createLead = createServerFn({ method: "POST" })
     const supabase = createSupabaseServerClient();
     const { data: lead, error } = await supabase.from("leads").insert(data).select().single();
     if (error) throw new Error(error.message);
-    // n8n trigger is added in Task 15 (Phase 2)
+    const webhookUrl = process.env.N8N_LEAD_WEBHOOK_URL;
+    if (webhookUrl) {
+      void triggerN8n(webhookUrl, {
+        trigger: "lead.created",
+        lead_id: (lead as Lead).id,
+        payload: {
+          company_name: (lead as Lead).company_name,
+          enquiry_text: (lead as Lead).enquiry_text,
+          source: (lead as Lead).source,
+        },
+      });
+    }
     return lead as Lead;
   });
 
@@ -73,7 +85,9 @@ export const updateLead = createServerFn({ method: "POST" })
 export const triggerLeadAgent = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { leadId: string })
   .handler(async ({ data }) => {
-    // Phase 2 — n8n trigger added in Task 15
-    void data;
-    return { triggered: false };
+    const webhookUrl = process.env.N8N_LEAD_WEBHOOK_URL;
+    if (webhookUrl) {
+      void triggerN8n(webhookUrl, { trigger: "lead.retrigger", lead_id: data.leadId, payload: {} });
+    }
+    return { triggered: !!webhookUrl };
   });

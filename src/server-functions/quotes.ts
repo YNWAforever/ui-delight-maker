@@ -1,6 +1,7 @@
 // src/server-functions/quotes.ts
 import { createServerFn } from "@tanstack/react-start";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
+import { triggerN8n } from "@/lib/n8n";
 import type { Quote, PricingTemplate } from "@/lib/types";
 
 type GetQuotesInput = { status?: string; lead_id?: string };
@@ -62,15 +63,28 @@ export const requestQuoteApproval = createServerFn({ method: "POST" })
     const { error } = await supabase
       .from("quotes").update({ status: "pending_approval" }).eq("id", data.id);
     if (error) throw new Error(error.message);
-    // n8n trigger added in Task 15
+    const webhookUrl = process.env.N8N_LEAD_WEBHOOK_URL;
+    if (webhookUrl) {
+      void triggerN8n(webhookUrl, {
+        trigger: "quote.approval_requested",
+        quote_id: data.id,
+        payload: {},
+      });
+    }
   });
 
 export const triggerQuoteAgent = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { leadId: string })
   .handler(async ({ data }) => {
-    // Phase 2 — n8n trigger added in Task 15
-    void data;
-    return { triggered: false };
+    const webhookUrl = process.env.N8N_LEAD_WEBHOOK_URL;
+    if (webhookUrl) {
+      void triggerN8n(webhookUrl, {
+        trigger: "quote.draft_requested",
+        lead_id: data.leadId,
+        payload: {},
+      });
+    }
+    return { triggered: !!webhookUrl };
   });
 
 export const getPricingTemplates = createServerFn({ method: "GET" }).handler(async () => {
