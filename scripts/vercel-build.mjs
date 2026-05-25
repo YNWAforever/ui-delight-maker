@@ -12,7 +12,7 @@
 import { existsSync, mkdirSync, cpSync, writeFileSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
@@ -47,16 +47,17 @@ const banner =
   `const __filename = fileURLToPath(import.meta.url);` +
   `const __dirname = dirname(__filename);`;
 
-execSync(
+// Use execFileSync (args array) — no shell, so banner's parens/quotes are safe
+execFileSync(
+  esbuild,
   [
-    esbuild,
     serverEntry,
     "--bundle",
     "--platform=node",
     "--format=esm",
     `--outfile=${bundleOut}`,
     `--banner:js=${banner}`,
-    // Keep Node.js built-ins external (they're always available at runtime)
+    // Keep Node.js built-ins external (always available at runtime)
     "--external:node:*",
     "--external:async_hooks",
     "--external:buffer",
@@ -74,7 +75,7 @@ execSync(
     "--external:url",
     "--external:util",
     "--external:zlib",
-  ].join(" "),
+  ],
   { stdio: "inherit", cwd: root }
 );
 console.log("✓ Server bundle created");
