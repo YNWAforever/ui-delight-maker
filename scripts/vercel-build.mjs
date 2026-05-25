@@ -85,17 +85,64 @@ writeFileSync(
   resolve(FUNC_DIR, "handler.mjs"),
   `import server from './server.js';
 export default async (request) => {
+  // Ensure absolute URL
+  const host = request.headers.get('host') || 'localhost';
+  const base = \`https://\${host}\`;
+  const url = new URL(request.url.startsWith('http') ? request.url : base + request.url);
+
+  // Debug probe — bypasses TanStack Start entirely
+  if (url.pathname === '/_debug') {
+    return new Response(JSON.stringify({
+      ok: true,
+      requestUrl: request.url,
+      absoluteUrl: url.href,
+      env: {
+        SUPABASE_URL: process.env.SUPABASE_URL || '(missing)',
+        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'set' : '(missing)',
+        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'set' : '(missing)',
+        VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL || '(missing)',
+        NODE_ENV: process.env.NODE_ENV,
+      },
+    }, null, 2), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  const absoluteRequest = new Request(url.href, {
+    method: request.method,
+    headers: request.headers,
+    body: ['GET','HEAD'].includes(request.method) ? undefined : request.body,
+  });
+
+  // Wrap the stream so errors inside it are surfaced
   try {
-    // Ensure the URL is absolute — Vercel sometimes passes a relative path
-    const url = new URL(request.url, \`https://\${request.headers.get('host') || 'localhost'}\`);
-    const absoluteRequest = url.href === request.url
-      ? request
-      : new Request(url.href, request);
-    return await server.fetch(absoluteRequest);
+    const response = await server.fetch(absoluteRequest);
+    if (!response.body) return response;
+
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const reader = response.body.getReader();
+    (async () => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) { await writer.close(); break; }
+          await writer.write(value);
+        }
+      } catch (streamErr) {
+        console.error('[handler] stream error:', streamErr.stack || streamErr.message);
+        await writer.abort(streamErr);
+      }
+    })();
+    return new Response(readable, {
+      status: response.status,
+      headers: response.headers,
+    });
   } catch (err) {
     console.error('[handler] SSR error:', err.stack || err.message);
     return new Response(
-      JSON.stringify({ error: err.message, stack: err.stack }),
+      JSON.stringify({ error: err.message, stack: err.stack }, null, 2),
       { status: 500, headers: { 'content-type': 'application/json' } }
     );
   }
@@ -117,7 +164,7 @@ writeFileSync(
       runtime: "nodejs22.x",
       handler: "handler.mjs",
       launcherType: "Nodejs",
-      supportsResponseStreaming: false,
+      supportsResponseStreaming: true,
     },
     null,
     2
