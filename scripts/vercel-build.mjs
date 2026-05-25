@@ -117,7 +117,7 @@ writeFileSync(
       runtime: "nodejs22.x",
       handler: "handler.mjs",
       launcherType: "Nodejs",
-      supportsResponseStreaming: true,
+      supportsResponseStreaming: false,
     },
     null,
     2
