@@ -68,7 +68,6 @@ function ApprovalsInbox() {
   const allApprovals = Route.useLoaderData();
   const router = useRouter();
   const [typeFilter, setTypeFilter] = useState("all");
-  const [agentFilter, setAgentFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [bulk, setBulk] = useState<Set<string>>(new Set());
@@ -77,14 +76,13 @@ function ApprovalsInbox() {
     () =>
       allApprovals
         .filter((a) => a.status === "pending")
-        .filter((a) => typeFilter === "all" || a.approval_type === typeFilter)
-        .filter((a) => agentFilter === "all"),
-    [allApprovals, typeFilter, agentFilter],
+        .filter((a) => typeFilter === "all" || a.approval_type === typeFilter),
+    [allApprovals, typeFilter],
   );
   const decided = allApprovals.filter((a) => a.status !== "pending");
   const selected = pending.find((a) => a.id === selectedId) ?? pending[0];
 
-  const decide = async (id: string, status: "approved" | "rejected", msg: string) => {
+  const decide = async (id: string, status: "approved" | "rejected" | "escalated", msg: string) => {
     await decideApproval({ data: { id, decision: status, notes: reason || undefined } });
     toast.success(msg);
     setReason("");
@@ -141,8 +139,6 @@ function ApprovalsInbox() {
   const toggleAll = (v: boolean) =>
     setBulk(v ? new Set(pending.map((a) => a.id)) : new Set());
 
-  const agentNames: string[] = []; // HumanApproval has no agent_name field
-
   return (
     <>
       <PageHeader
@@ -163,19 +159,6 @@ function ApprovalsInbox() {
                 <SelectItem value="message_send">Message send</SelectItem>
                 <SelectItem value="discount">Discount</SelectItem>
                 <SelectItem value="scope_change">Scope change</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={agentFilter} onValueChange={setAgentFilter}>
-              <SelectTrigger className="h-9 w-[200px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All agents</SelectItem>
-                {agentNames.map((n) => (
-                  <SelectItem key={n} value={n}>
-                    {n}
-                  </SelectItem>
-                ))}
               </SelectContent>
             </Select>
           </div>
@@ -299,7 +282,7 @@ function ApprovalsInbox() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => decide(selected.id, "rejected", "Escalated to manager")}
+                      onClick={() => decide(selected.id, "escalated", "Escalated to manager")}
                     >
                       <AlertTriangle className="mr-2 h-4 w-4" /> Escalate
                     </Button>

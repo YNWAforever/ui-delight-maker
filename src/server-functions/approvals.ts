@@ -20,7 +20,7 @@ export const getApprovals = createServerFn({ method: "GET" })
 export const decideApproval = createServerFn({ method: "POST" })
   .validator(
     (data: unknown) =>
-      data as { id: string; decision: "approved" | "rejected"; notes?: string },
+      data as { id: string; decision: "approved" | "rejected" | "escalated"; notes?: string },
   )
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();

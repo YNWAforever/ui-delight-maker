@@ -40,7 +40,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import type { Lead } from "@/lib/types";
-import { getLeads, createLead } from "@/server-functions/leads";
+import { getLeads, createLead, updateLead } from "@/server-functions/leads";
 
 export const Route = createFileRoute("/leads")({
   head: () => ({
@@ -215,14 +215,14 @@ function LeadsPage() {
         {selected.size > 0 && (
           <LeadsBulkBar
             count={selected.size}
-            onAssign={(uid) => {
-              setRows((prev) =>
-                prev.map((l) => (selected.has(l.id) ? { ...l, assigned_to: uid } : l)),
-              );
-              toast.success(
-                `Assigned ${selected.size} lead${selected.size > 1 ? "s" : ""}`,
+            onAssign={async (uid) => {
+              await Promise.all(
+                Array.from(selected).map((id) =>
+                  updateLead({ data: { id, updates: { assigned_to: uid } } })
+                )
               );
               setSelected(new Set());
+              router.invalidate();
             }}
             onMarkStatus={(s) => {
               setRows((prev) =>
