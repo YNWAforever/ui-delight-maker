@@ -40,6 +40,12 @@ export default (request) => server.fetch(request);
 `
 );
 
+// package.json so Node.js treats .js files as ESM (server.js uses import/export)
+writeFileSync(
+  resolve(FUNC_DIR, "package.json"),
+  JSON.stringify({ type: "module" }, null, 2)
+);
+
 // .vc-config.json tells Vercel this is a Node.js function using Web Fetch API
 writeFileSync(
   resolve(FUNC_DIR, ".vc-config.json"),
