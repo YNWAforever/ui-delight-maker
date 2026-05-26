@@ -124,42 +124,49 @@ try {
 // Diagnostic script injected into HTML responses to capture client-side errors
 const DIAG_SCRIPT = \`<script id="__diag">
 (function(){
-  var errs=[];
-  function show(){
-    if(!errs.length)return;
+  var lines=['__diag boot @'+new Date().toISOString().slice(11,23)];
+  function paint(){
     var d=document.getElementById('__db');
     if(!d){d=document.createElement('div');d.id='__db';
-      Object.assign(d.style,{position:'fixed',bottom:'0',left:'0',right:'0',background:'#c0392b',
-        color:'#fff',padding:'12px',fontSize:'11px',zIndex:'999999',maxHeight:'50vh',
-        overflow:'auto',whiteSpace:'pre-wrap',fontFamily:'monospace'});
-      document.body.appendChild(d);}
-    d.textContent=errs.join('\\n---\\n');
+      Object.assign(d.style,{position:'fixed',bottom:'0',left:'0',right:'0',background:'#222',
+        color:'#0f0',padding:'8px',fontSize:'10px',zIndex:'999999',maxHeight:'40vh',
+        overflow:'auto',whiteSpace:'pre-wrap',fontFamily:'monospace',pointerEvents:'auto'});
+      if(document.body)document.body.appendChild(d);
+      else document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(d);});}
+    d.textContent=lines.join('\\n');
   }
-  window.onerror=function(m,s,l,c,e){
-    errs.push('JS Error: '+m+(e?'\\n'+e.stack:'')+'\\n  at '+s+':'+l+':'+c);show();
-  };
-  window.onunhandledrejection=function(e){
-    var r=e.reason;
-    errs.push('Unhandled rejection: '+String(r)+(r&&r.stack?'\\n'+r.stack:''));show();
-  };
-  // After 5s check if React hydrated the submit button
-  setTimeout(function(){
-    var btn=document.querySelector('button[type=submit]');
-    if(!btn){errs.push('Hydration check: no submit button found in DOM');show();return;}
-    var fiber=Object.keys(btn).find(function(k){return k.startsWith('__reactFiber')||k.startsWith('__reactInternalInstance');});
-    if(!fiber){
-      // Also dump the $_TSR state for debugging
-      var tsr='(not set)';
-      try{tsr=JSON.stringify(window.$_TSR&&window.$_TSR.router&&window.$_TSR.router[0]&&{
-        lastMatchId:window.$_TSR.router[0].lastMatchId,
-        matchIds:(window.$_TSR.router[0].matches||[]).map(function(m){return m.i;})
-      });}catch(ex){}
-      errs.push('React NOT hydrated after 5s\\nSubmit button exists but has no __reactFiber\\n$_TSR: '+tsr);
-    } else {
-      errs.push('React IS hydrated ('+fiber+' found) — but something else is wrong');
+  function log(s){lines.push('['+(performance.now()|0)+'ms] '+s);paint();}
+  window.onerror=function(m,s,l,c,e){log('JS ERR: '+m+(e&&e.stack?' :: '+e.stack.split('\\n')[1]:''));};
+  window.onunhandledrejection=function(e){var r=e.reason;log('REJECT: '+(r&&r.message||String(r)));};
+  // Snapshot TSR state
+  try{var t=window.$_TSR&&window.$_TSR.router&&window.$_TSR.router[0];
+    if(t)log('TSR matches='+JSON.stringify((t.matches||[]).map(function(m){return m.i;}))+' last='+t.lastMatchId);}
+  catch(e){log('TSR snap err: '+e.message);}
+  function check(label){
+    var btn=document.querySelector('form button')||document.querySelector('button[type=submit]')||document.querySelector('button');
+    if(!btn){log(label+': no button in DOM');return;}
+    var fk=Object.keys(btn).find(function(k){return k.indexOf('__reactFiber')===0||k.indexOf('__reactProps')===0;});
+    var fp=Object.keys(btn).find(function(k){return k.indexOf('__reactProps')===0;});
+    log(label+': btn="'+btn.textContent.trim().slice(0,20)+'" fiber='+(fk||'NONE')+' props='+(fp?'YES':'NO'));
+    var form=document.querySelector('form');
+    if(form){
+      var pk=Object.keys(form).find(function(k){return k.indexOf('__reactProps')===0;});
+      var props=pk&&form[pk];
+      log(label+': form onSubmit='+(props&&typeof props.onSubmit==='function'?'BOUND':'MISSING'));
     }
-    show();
-  },5000);
+  }
+  // Multiple checkpoints
+  setTimeout(function(){check('t=200ms');},200);
+  setTimeout(function(){check('t=1s');},1000);
+  setTimeout(function(){check('t=3s');},3000);
+  // Capture submit attempts
+  document.addEventListener('submit',function(ev){log('SUBMIT fired prevented='+ev.defaultPrevented+' target='+ev.target.tagName);},true);
+  document.addEventListener('click',function(ev){
+    if(ev.target&&ev.target.closest&&ev.target.closest('button[type=submit],form button')){
+      log('CLICK on submit btn target='+ev.target.tagName+' text="'+(ev.target.textContent||'').trim().slice(0,20)+'"');
+    }
+  },true);
+  paint();
 })();
 </script>\`;
 
