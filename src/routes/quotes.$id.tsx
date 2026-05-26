@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
+import { z } from "zod";
 import {
   ArrowLeft,
   Check,
@@ -21,7 +22,8 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
-import { getQuote, requestQuoteApproval, updateQuote } from "@/server-functions/quotes";
+import { getQuote, getPricingTemplates, requestQuoteApproval, updateQuote } from "@/server-functions/quotes";
+import { decideApproval } from "@/server-functions/approvals";
 import { USER_RECORD } from "@/lib/users";
 import type { QuoteStatus } from "@/lib/types";
 
@@ -37,10 +39,20 @@ const quoteFiles: QuoteFile[] = [];
 const quoteVersions: QuoteVersion[] = [];
 
 export const Route = createFileRoute("/quotes/$id")({
-  loader: ({ params }) => getQuote({ data: { id: params.id } }),
+  validateSearch: z.object({
+    edit: z.boolean().optional(),
+    approvalId: z.string().optional(),
+  }),
+  loader: async ({ params }) => {
+    const [quote, templates] = await Promise.all([
+      getQuote({ data: { id: params.id } }),
+      getPricingTemplates(),
+    ]);
+    return { quote, templates };
+  },
   head: ({ loaderData }) => ({
     meta: [
-      { title: `${loaderData?.number ?? "Quote"} — ClientOps` },
+      { title: `${loaderData?.quote?.number ?? "Quote"} — ClientOps` },
       { name: "description", content: `Quote details, approval status, and PDF preview.` },
     ],
   }),
@@ -65,7 +77,9 @@ const TIMELINE: QuoteStatus[] = [
 ];
 
 function QuoteDetail() {
-  const quote = Route.useLoaderData();
+  const { quote, templates } = Route.useLoaderData();
+  const { edit, approvalId } = Route.useSearch();
+  const isEditMode = edit === true || quote.status === "draft";
   const router = useRouter();
   const lead = leadById(quote.lead_id ?? "");
   const creator = userById(quote.created_by ?? "");
