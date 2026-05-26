@@ -31,9 +31,9 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
-import type { Lead, ActivityLog, LeadStatus } from "@/lib/types";
+import type { Lead, LeadStatus } from "@/lib/types";
 import { useRealtime } from "@/hooks/use-realtime";
-import { getLead, updateLead } from "@/server-functions/leads";
+import { getLead } from "@/server-functions/leads";
 import { getQuotes, triggerQuoteAgent } from "@/server-functions/quotes";
 
 // Local types for UI-only state (files/comments not yet in Supabase)
@@ -509,11 +509,3 @@ function LeadDetail() {
   );
 }
 
-function KV({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm capitalize">{value}</p>
-    </div>
-  );
-}
