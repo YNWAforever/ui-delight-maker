@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { AlertTriangle, Bot, CheckCircle2, UserPlus, XCircle } from "lucide-react";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { AlertTriangle, Bot, CheckCircle2, FileText, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -69,6 +69,7 @@ function slaChip(createdAt: string) {
 function ApprovalsInbox() {
   const allApprovals = Route.useLoaderData();
   const router = useRouter();
+  const navigate = useNavigate();
   // New approval from n8n → re-run loader
   useRealtime("human_approvals", "INSERT", undefined, () => {
     router.invalidate();
@@ -99,6 +100,12 @@ function ApprovalsInbox() {
     toast.success(msg);
     setReason("");
     router.invalidate();
+  };
+
+  const getQuoteId = (approval: HumanApproval): string | null => {
+    if (approval.approval_type !== "quote_send") return null;
+    const data = approval.context_data as { quote_id?: string } | null;
+    return data?.quote_id ?? null;
   };
 
   const [confirm, setConfirm] = useState<null | {
@@ -291,26 +298,66 @@ function ApprovalsInbox() {
                     className="mt-3 h-20 text-sm"
                   />
                   <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => decide(selected.id, "escalated", "Escalated to manager")}
-                    >
-                      <AlertTriangle className="mr-2 h-4 w-4" /> Escalate
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => decide(selected.id, "rejected", "Approval rejected")}
-                    >
-                      <XCircle className="mr-2 h-4 w-4" /> Reject
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => decide(selected.id, "approved", "Approved — agent will proceed")}
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
-                    </Button>
+                    {selected.approval_type === "quote_send" && selected.status === "pending" && (() => {
+                      const quoteId = getQuoteId(selected);
+                      return (
+                        <>
+                          {quoteId && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                navigate({
+                                  to: "/quotes/$id",
+                                  params: { id: quoteId },
+                                  search: { edit: true, approvalId: selected.id },
+                                })
+                              }
+                            >
+                              <FileText className="mr-2 h-4 w-4" /> Review & Edit
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => decide(selected.id, "rejected", "Approval rejected")}
+                          >
+                            <XCircle className="mr-2 h-4 w-4" /> Reject
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => decide(selected.id, "approved", "Approved as-is — quote advanced")}
+                          >
+                            <CheckCircle2 className="mr-2 h-4 w-4" /> Approve as-is
+                          </Button>
+                        </>
+                      );
+                    })()}
+
+                    {selected.approval_type !== "quote_send" && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => decide(selected.id, "escalated", "Escalated to manager")}
+                        >
+                          <AlertTriangle className="mr-2 h-4 w-4" /> Escalate
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => decide(selected.id, "rejected", "Approval rejected")}
+                        >
+                          <XCircle className="mr-2 h-4 w-4" /> Reject
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => decide(selected.id, "approved", "Approved — agent will proceed")}
+                        >
+                          <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>
