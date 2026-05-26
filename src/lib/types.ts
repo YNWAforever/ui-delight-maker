@@ -29,15 +29,21 @@ export interface Profile {
   created_at: string;
 }
 
+export type QualificationNextAction =
+  | "Schedule discovery call"
+  | "Send intro deck"
+  | "Request more info"
+  | "Disqualify";
+
 export interface QualificationData {
-  lead_type: string;
-  urgency: "high" | "medium" | "low";
-  estimated_budget_range: string;
+  urgency_score: number;        // 0–10
+  fit_score: number;            // 0–10
+  qualification_score: number;  // 0–100
   service_interest: string[];
-  qualification_score: number;
-  missing_information: string[];
-  recommended_next_action: string;
-  confidence: number;
+  budget_range: string;         // "HKD 50k–200k" or "unknown"
+  next_action: QualificationNextAction;
+  reason: string;               // max 120 chars
+  confidence: number;           // 0.0–1.0
   human_review_required: boolean;
 }
 

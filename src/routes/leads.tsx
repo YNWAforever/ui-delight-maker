@@ -298,7 +298,7 @@ function LeadsPage() {
                       {lead.qualification_data ? (
                         <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">
                           <Sparkles className="h-3 w-3" />
-                          {lead.qualification_data.recommended_next_action.replace(/_/g, " ")}
+                          {lead.qualification_data.next_action}
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground">awaiting qualification</span>

@@ -391,16 +391,16 @@ function LeadDetail() {
                     <div className="space-y-4 p-4">
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="text-muted-foreground">Lead type</span>
-                          <p className="font-medium">{lead.qualification_data.lead_type}</p>
+                          <span className="text-muted-foreground">Urgency</span>
+                          <p className="font-medium">{lead.qualification_data.urgency_score} / 10</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Urgency</span>
-                          <p className="font-medium">{lead.qualification_data.urgency}</p>
+                          <span className="text-muted-foreground">Fit</span>
+                          <p className="font-medium">{lead.qualification_data.fit_score} / 10</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Budget</span>
-                          <p className="font-medium">{lead.qualification_data.estimated_budget_range}</p>
+                          <p className="font-medium">{lead.qualification_data.budget_range}</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Confidence</span>
@@ -419,19 +419,15 @@ function LeadDetail() {
                           ))}
                         </div>
                       </div>
-                      {lead.qualification_data.missing_information.length > 0 && (
+                      {lead.qualification_data.reason && (
                         <div>
-                          <p className="text-sm text-muted-foreground">Missing information</p>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            {lead.qualification_data.missing_information.map((item) => (
-                              <span key={item} className="rounded-md bg-amber-50 px-2 py-0.5 text-xs text-amber-700">{item}</span>
-                            ))}
-                          </div>
+                          <p className="text-sm text-muted-foreground">Reason</p>
+                          <p className="text-sm">{lead.qualification_data.reason}</p>
                         </div>
                       )}
                       <div>
                         <p className="text-sm text-muted-foreground">Recommended action</p>
-                        <p className="text-sm font-medium">{lead.qualification_data.recommended_next_action}</p>
+                        <p className="text-sm font-medium">{lead.qualification_data.next_action}</p>
                       </div>
                       {lead.qualification_data.human_review_required && (
                         <p className="text-xs bg-amber-500/15 text-amber-700 px-2 py-1 rounded">
