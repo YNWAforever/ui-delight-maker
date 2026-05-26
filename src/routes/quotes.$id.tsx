@@ -16,6 +16,7 @@ import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
+import type { Lead } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -81,7 +82,7 @@ function QuoteDetail() {
   const { edit, approvalId } = Route.useSearch();
   const isEditMode = edit === true || quote.status === "draft";
   const router = useRouter();
-  const lead = leadById(quote.lead_id ?? "");
+  const lead = leadById(quote.lead_id ?? "") as Lead | undefined;
   const creator = userById(quote.created_by ?? "");
   const approver = quote.approved_by ? userById(quote.approved_by) : null;
   const initialComments = quoteComments.filter((c) => c.quote_id === quote.id);
@@ -148,7 +149,7 @@ function QuoteDetail() {
   return (
     <>
       <PageHeader
-        title={quote.number}
+        title={quote.number ?? ""}
         description={`${lead?.company_name ?? "—"} · ${quote.currency} ${(quote.total_value ?? 0).toLocaleString()}`}
         actions={
           <>
@@ -234,7 +235,7 @@ function QuoteDetail() {
                           Total
                         </td>
                         <td className="py-3 text-right text-base font-semibold tabular-nums">
-                          {quote.currency} {quote.total_value.toLocaleString()}
+                          {quote.currency} {(quote.total_value ?? 0).toLocaleString()}
                         </td>
                       </tr>
                     </tfoot>
