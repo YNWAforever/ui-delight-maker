@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase.server";
 import type { AgentRun, AgentToolCall, ActivityLog, DashboardStats } from "@/lib/types";
 
 export const getAgentRuns = createServerFn({ method: "GET" })
-  .validator((data: unknown) => (data ?? {}) as { agent?: string; status?: string })
+  .inputValidator((data: unknown) => (data ?? {}) as { agent?: string; status?: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     let query = supabase
@@ -20,7 +20,7 @@ export const getAgentRuns = createServerFn({ method: "GET" })
   });
 
 export const getAgentRun = createServerFn({ method: "GET" })
-  .validator((data: unknown) => data as { id: string })
+  .inputValidator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const [runResult, callsResult] = await Promise.all([
@@ -73,7 +73,7 @@ export const getDashboardStats = createServerFn({ method: "GET" }).handler(async
 });
 
 export const getActivityLogs = createServerFn({ method: "GET" })
-  .validator((data: unknown) => (data ?? {}) as { object_id?: string })
+  .inputValidator((data: unknown) => (data ?? {}) as { object_id?: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     let query = supabase

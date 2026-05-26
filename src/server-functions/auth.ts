@@ -22,7 +22,7 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
 });
 
 export const signIn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { email: string; password: string })
+  .inputValidator((data: unknown) => data as { email: string; password: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { error } = await supabase.auth.signInWithPassword(data);

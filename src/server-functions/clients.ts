@@ -8,7 +8,7 @@ type CreateClientInput = Pick<Client, "company_name"> &
   Partial<Pick<Client, "industry" | "tier" | "account_owner" | "health_score" | "renewal_date" | "arr">>;
 
 export const getClients = createServerFn({ method: "GET" })
-  .validator((data: unknown) => (data ?? {}) as GetClientsInput)
+  .inputValidator((data: unknown) => (data ?? {}) as GetClientsInput)
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     let query = supabase.from("clients").select("*").order("company_name");
@@ -20,7 +20,7 @@ export const getClients = createServerFn({ method: "GET" })
   });
 
 export const getClient = createServerFn({ method: "GET" })
-  .validator((data: unknown) => data as { id: string })
+  .inputValidator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: client, error } = await supabase
@@ -30,7 +30,7 @@ export const getClient = createServerFn({ method: "GET" })
   });
 
 export const createClient = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as CreateClientInput)
+  .inputValidator((data: unknown) => data as CreateClientInput)
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: client, error } = await supabase.from("clients").insert(data).select().single();
@@ -39,7 +39,7 @@ export const createClient = createServerFn({ method: "POST" })
   });
 
 export const updateClient = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { id: string; updates: Partial<Client> })
+  .inputValidator((data: unknown) => data as { id: string; updates: Partial<Client> })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: client, error } = await supabase

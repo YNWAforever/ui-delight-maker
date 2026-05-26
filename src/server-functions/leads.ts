@@ -13,7 +13,7 @@ type UpdateLeadInput = Partial<
 >;
 
 export const getLeads = createServerFn({ method: "GET" })
-  .validator((data: unknown) => (data ?? {}) as GetLeadsInput)
+  .inputValidator((data: unknown) => (data ?? {}) as GetLeadsInput)
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     let query = supabase.from("leads").select("*").order("created_at", { ascending: false });
@@ -26,7 +26,7 @@ export const getLeads = createServerFn({ method: "GET" })
   });
 
 export const getLead = createServerFn({ method: "GET" })
-  .validator((data: unknown) => data as { id: string })
+  .inputValidator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const [leadResult, logsResult] = await Promise.all([
@@ -43,7 +43,7 @@ export const getLead = createServerFn({ method: "GET" })
   });
 
 export const createLead = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as CreateLeadInput)
+  .inputValidator((data: unknown) => data as CreateLeadInput)
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: lead, error } = await supabase.from("leads").insert(data).select().single();
@@ -64,7 +64,7 @@ export const createLead = createServerFn({ method: "POST" })
   });
 
 export const updateLead = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { id: string; updates: UpdateLeadInput })
+  .inputValidator((data: unknown) => data as { id: string; updates: UpdateLeadInput })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: lead, error } = await supabase
@@ -83,7 +83,7 @@ export const updateLead = createServerFn({ method: "POST" })
   });
 
 export const triggerLeadAgent = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { leadId: string })
+  .inputValidator((data: unknown) => data as { leadId: string })
   .handler(async ({ data }) => {
     const webhookUrl = process.env.N8N_LEAD_WEBHOOK_URL;
     if (webhookUrl) {

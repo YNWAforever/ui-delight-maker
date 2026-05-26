@@ -8,7 +8,7 @@ type CreateTaskInput = Pick<Task, "title"> &
   Partial<Pick<Task, "description" | "assigned_to" | "lead_id" | "client_id" | "due_date" | "priority">>;
 
 export const getTasks = createServerFn({ method: "GET" })
-  .validator((data: unknown) => (data ?? {}) as GetTasksInput)
+  .inputValidator((data: unknown) => (data ?? {}) as GetTasksInput)
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     let query = supabase.from("tasks").select("*").order("created_at", { ascending: false });
@@ -20,7 +20,7 @@ export const getTasks = createServerFn({ method: "GET" })
   });
 
 export const createTask = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as CreateTaskInput)
+  .inputValidator((data: unknown) => data as CreateTaskInput)
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: task, error } = await supabase.from("tasks").insert(data).select().single();
@@ -29,7 +29,7 @@ export const createTask = createServerFn({ method: "POST" })
   });
 
 export const updateTask = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { id: string; updates: Partial<Task> })
+  .inputValidator((data: unknown) => data as { id: string; updates: Partial<Task> })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: task, error } = await supabase

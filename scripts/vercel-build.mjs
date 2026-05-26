@@ -293,10 +293,6 @@ module.exports = async (req, res) => {
       return 'lastMatchId:"' + fixSsrId(id) + '"';
     });
 
-    // Inject diagnostic script before </body>
-    html = html.includes('</body>')
-      ? html.replace('</body>', DIAG_SCRIPT + '</body>')
-      : html + DIAG_SCRIPT;
     res.removeHeader('content-encoding'); // no double-gzip
     const buf = Buffer.from(html, 'utf8');
     res.setHeader('content-length', String(buf.length));
