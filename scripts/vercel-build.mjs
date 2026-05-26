@@ -265,6 +265,35 @@ module.exports = async (req, res) => {
       reader.releaseLock();
     }
     let html = Buffer.concat(chunks).toString('utf8');
+
+    // ── Patch $_TSR match IDs for correct React hydration ─────────────────
+    // TanStack Router SSR serializes route match `i` fields using null-byte
+    // (U+0000) separators, e.g. "\0login\0login" for the /login route.
+    // The client hydration code does: r.matches.find(M => M.i === S.id)
+    // where S.id is the client route ID like "/login". These never match,
+    // causing every route to get ssr:false → _displayPending=true → stall.
+    //
+    // Fix: transform `i` values and `lastMatchId` to client route ID format:
+    //   "\0login\0login" → "/login"  (take after last NUL, prepend /)
+    //   "__root__\0"     → "__root__" (strip trailing NUL)
+    var NUL = String.fromCharCode(0);
+    function fixSsrId(s) {
+      if (!s.includes(NUL)) return s;
+      if (s.charCodeAt(0) === 0) {
+        // Path-based route: take segment after last NUL, prepend /
+        var last = s.lastIndexOf(NUL);
+        return '/' + s.slice(last + 1);
+      }
+      // Root-style: strip all trailing NUL bytes
+      return s.replace(/\0+$/, '');
+    }
+    html = html.replace(/\bi:"([^"]*)"/g, function(m, id) {
+      return 'i:"' + fixSsrId(id) + '"';
+    });
+    html = html.replace(/lastMatchId:"([^"]*)"/g, function(m, id) {
+      return 'lastMatchId:"' + fixSsrId(id) + '"';
+    });
+
     // Inject diagnostic script before </body>
     html = html.includes('</body>')
       ? html.replace('</body>', DIAG_SCRIPT + '</body>')
