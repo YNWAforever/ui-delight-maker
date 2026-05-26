@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 import {
   ArrowLeft,
@@ -19,14 +19,18 @@ import { StatusBadge } from "@/components/status-badge";
 import type { Lead } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
+import { calculateTotal, newLineItem } from "@/lib/quote-utils";
+import type { PricingTemplate, QuoteLineItem, QuoteStatus } from "@/lib/types";
 import { getQuote, getPricingTemplates, requestQuoteApproval, updateQuote } from "@/server-functions/quotes";
 import { decideApproval } from "@/server-functions/approvals";
 import { USER_RECORD } from "@/lib/users";
-import type { QuoteStatus } from "@/lib/types";
 
 type Comment = { id: string; quote_id: string; author: string; body: string; created_at: string };
 type QuoteFile = { id: string; quote_id: string; name: string; size: string; kind: "pdf" | "docx" | "image" | "email"; uploaded_at: string; uploaded_by: string };
@@ -89,10 +93,62 @@ function QuoteDetail() {
   const versions = quoteVersions.filter((v) => v.quote_id === quote.id);
   const initialFiles = quoteFiles.filter((f) => f.quote_id === quote.id);
 
+  const navigate = useNavigate();
   const [status, setStatus] = useState<QuoteStatus>(quote.status as QuoteStatus);
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [composer, setComposer] = useState("");
   const [files, setFiles] = useState<QuoteFile[]>(initialFiles);
+  const [editItems, setEditItems] = useState<QuoteLineItem[]>(quote.line_items ?? []);
+  const [saving, setSaving] = useState(false);
+  const [catalogueOpen, setCatalogueOpen] = useState(false);
+
+  const totalValue = calculateTotal(editItems);
+
+  const updateItemQty = (idx: number, qty: number) => {
+    setEditItems((prev) => prev.map((li, i) => (i === idx ? { ...li, qty: Math.max(1, qty) } : li)));
+  };
+
+  const updateItemPrice = (idx: number, unit_price: number) => {
+    setEditItems((prev) => prev.map((li, i) => (i === idx ? { ...li, unit_price: Math.max(0, unit_price) } : li)));
+  };
+
+  const removeItem = (idx: number) => {
+    setEditItems((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const addFromTemplate = (template: PricingTemplate) => {
+    setEditItems((prev) => [...prev, newLineItem(template)]);
+    setCatalogueOpen(false);
+  };
+
+  const handleSaveDraft = async () => {
+    setSaving(true);
+    try {
+      await updateQuote({ data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } } });
+      toast.success("Draft saved");
+      router.invalidate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSubmitForApproval = async () => {
+    setSaving(true);
+    try {
+      await updateQuote({ data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } } });
+      if (approvalId) {
+        await decideApproval({ data: { id: approvalId, decision: "approved" } });
+      }
+      toast.success("Quote submitted for approval");
+      navigate({ to: "/approvals" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Submit failed");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const reachedIdx = TIMELINE.indexOf(status);
 
@@ -203,43 +259,150 @@ function QuoteDetail() {
                 </TabsList>
 
                 <TabsContent value="items" className="mt-4">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
-                        <th className="py-2 text-left font-medium">Service</th>
-                        <th className="py-2 text-right font-medium">Qty</th>
-                        <th className="py-2 text-right font-medium">Unit</th>
-                        <th className="py-2 text-right font-medium">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {quote.line_items.map((li: typeof quote.line_items[number]) => (
-                        <tr key={li.id}>
-                          <td className="py-3">
-                            <div className="font-medium">{li.service}</div>
-                            <div className="text-xs text-muted-foreground">{li.description}</div>
+                  {isEditMode ? (
+                    <div className="space-y-4">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                            <th className="py-2 text-left font-medium">Service</th>
+                            <th className="py-2 text-right font-medium w-20">Qty</th>
+                            <th className="py-2 text-right font-medium w-28">Unit (HKD)</th>
+                            <th className="py-2 text-right font-medium w-28">Subtotal</th>
+                            <th className="w-8" />
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {editItems.map((li, idx) => (
+                            <tr key={li.id}>
+                              <td className="py-3">
+                                <div className="font-medium">{li.service}</div>
+                                <div className="text-xs text-muted-foreground">{li.description}</div>
+                              </td>
+                              <td className="py-2 text-right">
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  value={li.qty}
+                                  onChange={(e) => updateItemQty(idx, parseInt(e.target.value, 10) || 1)}
+                                  className="h-8 w-16 text-right tabular-nums"
+                                />
+                              </td>
+                              <td className="py-2 text-right">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  value={li.unit_price}
+                                  onChange={(e) => updateItemPrice(idx, parseFloat(e.target.value) || 0)}
+                                  className="h-8 w-24 text-right tabular-nums"
+                                />
+                              </td>
+                              <td className="py-3 text-right tabular-nums font-medium">
+                                {(li.qty * li.unit_price).toLocaleString()}
+                              </td>
+                              <td className="py-3 text-right">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                                  onClick={() => removeItem(idx)}
+                                >
+                                  ×
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t border-border">
+                            <td colSpan={3} className="py-3 text-right text-sm font-semibold">
+                              Total
+                            </td>
+                            <td className="py-3 text-right text-base font-semibold tabular-nums">
+                              {quote.currency ?? "HKD"} {totalValue.toLocaleString()}
+                            </td>
+                            <td />
+                          </tr>
+                        </tfoot>
+                      </table>
+
+                      <Sheet open={catalogueOpen} onOpenChange={setCatalogueOpen}>
+                        <SheetTrigger asChild>
+                          <Button variant="outline" size="sm">+ Add service from catalogue</Button>
+                        </SheetTrigger>
+                        <SheetContent>
+                          <SheetHeader>
+                            <SheetTitle>Service Catalogue</SheetTitle>
+                          </SheetHeader>
+                          <ScrollArea className="mt-4 h-[calc(100vh-120px)]">
+                            <ul className="space-y-2 pr-4">
+                              {templates.map((tpl) => (
+                                <li key={tpl.id}>
+                                  <button
+                                    onClick={() => addFromTemplate(tpl)}
+                                    className="w-full rounded-md border border-border p-3 text-left text-sm hover:bg-muted/50 transition-colors"
+                                  >
+                                    <div className="font-medium">{tpl.service}</div>
+                                    <div className="text-xs text-muted-foreground mt-0.5">{tpl.description}</div>
+                                    <div className="text-xs font-medium text-primary mt-1">
+                                      HKD {(tpl.unit_price ?? 0).toLocaleString()}
+                                    </div>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </ScrollArea>
+                        </SheetContent>
+                      </Sheet>
+
+                      <div className="flex gap-2 pt-2 border-t border-border">
+                        <Button onClick={handleSubmitForApproval} disabled={saving || editItems.length === 0}>
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          {approvalId ? "Submit for Approval" : "Save & Request Approval"}
+                        </Button>
+                        <Button variant="outline" onClick={handleSaveDraft} disabled={saving}>
+                          Save draft
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                          <th className="py-2 text-left font-medium">Service</th>
+                          <th className="py-2 text-right font-medium">Qty</th>
+                          <th className="py-2 text-right font-medium">Unit</th>
+                          <th className="py-2 text-right font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {quote.line_items.map((li: typeof quote.line_items[number]) => (
+                          <tr key={li.id}>
+                            <td className="py-3">
+                              <div className="font-medium">{li.service}</div>
+                              <div className="text-xs text-muted-foreground">{li.description}</div>
+                            </td>
+                            <td className="py-3 text-right tabular-nums">{li.qty}</td>
+                            <td className="py-3 text-right tabular-nums">
+                              {li.unit_price.toLocaleString()}
+                            </td>
+                            <td className="py-3 text-right font-medium tabular-nums">
+                              {(li.qty * li.unit_price).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t border-border">
+                          <td colSpan={3} className="py-3 text-right text-sm font-semibold">
+                            Total
                           </td>
-                          <td className="py-3 text-right tabular-nums">{li.qty}</td>
-                          <td className="py-3 text-right tabular-nums">
-                            {li.unit_price.toLocaleString()}
-                          </td>
-                          <td className="py-3 text-right font-medium tabular-nums">
-                            {(li.qty * li.unit_price).toLocaleString()}
+                          <td className="py-3 text-right text-base font-semibold tabular-nums">
+                            {quote.currency} {(quote.total_value ?? 0).toLocaleString()}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="border-t border-border">
-                        <td colSpan={3} className="py-3 text-right text-sm font-semibold">
-                          Total
-                        </td>
-                        <td className="py-3 text-right text-base font-semibold tabular-nums">
-                          {quote.currency} {(quote.total_value ?? 0).toLocaleString()}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                      </tfoot>
+                    </table>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="comments" className="mt-4">
