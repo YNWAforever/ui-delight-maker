@@ -20,21 +20,40 @@ import { formatDateTime } from "@/lib/format";
 import { useRealtime } from "@/hooks/use-realtime";
 import { getAgentRuns } from "@/server-functions/agent-runs";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
+import type { AgentRun } from "@/lib/types";
 
-// Runtime-only stats not in the shared definition
-const AGENT_STATS: Record<string, { avg_confidence: number; runs_24h: number; status: "active" | "paused" }> = {
-  "orchestrator": { avg_confidence: 0.92, runs_24h: 24, status: "active" },
-  "lead-intake": { avg_confidence: 0.96, runs_24h: 41, status: "active" },
-  "qualification": { avg_confidence: 0.86, runs_24h: 37, status: "active" },
-  "quotation": { avg_confidence: 0.89, runs_24h: 12, status: "active" },
-};
+const SPARKLINE_HOURS = 14;
 
-const AGENTS = AGENT_DEFINITIONS.map((a) => ({
-  ...a,
-  avg_confidence: AGENT_STATS[a.name]?.avg_confidence ?? 0.9,
-  runs_24h: AGENT_STATS[a.name]?.runs_24h ?? 0,
-  status: (AGENT_STATS[a.name]?.status ?? a.status === "active" ? "active" : "paused") as "active" | "paused",
-}));
+/** Compute per-agent stats from the raw run list. */
+function computeAgentStats(runs: AgentRun[]) {
+  const now = Date.now();
+  const since24h = now - 24 * 60 * 60 * 1000;
+  const sinceSparkline = now - SPARKLINE_HOURS * 60 * 60 * 1000;
+
+  const map: Record<
+    string,
+    { runs24h: number; confidences: number[]; sparkline: number[] }
+  > = {};
+
+  for (const run of runs) {
+    const key = run.agent_name;
+    if (!map[key]) {
+      map[key] = { runs24h: 0, confidences: [], sparkline: Array(SPARKLINE_HOURS).fill(0) };
+    }
+    const ts = new Date(run.created_at).getTime();
+    if (ts >= since24h) map[key].runs24h++;
+    if (run.confidence_score != null) map[key].confidences.push(run.confidence_score);
+    if (ts >= sinceSparkline) {
+      const bucket = Math.min(
+        SPARKLINE_HOURS - 1,
+        Math.floor((ts - sinceSparkline) / (60 * 60 * 1000)),
+      );
+      map[key].sparkline[bucket]++;
+    }
+  }
+
+  return map;
+}
 
 export const Route = createFileRoute("/agents")({
   loader: () => getAgentRuns({}),
@@ -48,15 +67,37 @@ export const Route = createFileRoute("/agents")({
 });
 
 function AgentsMonitor() {
-  const agentRuns = Route.useLoaderData();
+  const agentRuns = Route.useLoaderData() as AgentRun[];
   const router = useRouter();
   useRealtime("agent_runs", "*", undefined, () => {
     router.invalidate();
   });
   const [open, setOpen] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
+
+  const stats = useMemo(() => computeAgentStats(agentRuns), [agentRuns]);
+
+  const agents = useMemo(
+    () =>
+      AGENT_DEFINITIONS.map((a) => {
+        const s = stats[a.display_name];
+        const confidences = s?.confidences ?? [];
+        const avg_confidence =
+          confidences.length > 0
+            ? confidences.reduce((acc, c) => acc + c, 0) / confidences.length
+            : null;
+        return {
+          ...a,
+          runs_24h: s?.runs24h ?? 0,
+          avg_confidence,
+          sparkline: s?.sparkline ?? Array(SPARKLINE_HOURS).fill(0),
+        };
+      }),
+    [stats],
+  );
+
   const [agentStates, setAgentStates] = useState(() =>
-    Object.fromEntries(AGENTS.map((a) => [a.name, a.status === "active"])),
+    Object.fromEntries(agents.map((a) => [a.name, a.status === "active"])),
   );
 
   const filteredRuns = useMemo(
@@ -70,7 +111,7 @@ function AgentsMonitor() {
 
       <div className="space-y-6 px-6 py-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {AGENTS.map((a) => (
+          {agents.map((a) => (
             <Card key={a.name} className="p-4">
               <div className="flex items-start justify-between">
                 <Link
@@ -97,21 +138,28 @@ function AgentsMonitor() {
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <p className="text-muted-foreground">Confidence</p>
-                  <p className="font-medium">{(a.avg_confidence * 100).toFixed(0)}%</p>
+                  <p className="font-medium">
+                    {a.avg_confidence != null
+                      ? `${(a.avg_confidence * 100).toFixed(0)}%`
+                      : "—"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Approval</p>
                   <p className="font-medium">{a.human_approval ? "Required" : "Auto"}</p>
                 </div>
               </div>
+              {/* Real sparkline — last 14 hours of activity */}
               <div className="mt-3 flex h-6 items-end gap-0.5">
-                {Array.from({ length: 14 }).map((_, i) => {
-                  const h = 20 + ((i * 13 + a.runs_24h * 7) % 80);
+                {a.sparkline.map((count, i) => {
+                  const maxCount = Math.max(...a.sparkline, 1);
+                  const heightPct = Math.max(8, Math.round((count / maxCount) * 100));
                   return (
                     <div
                       key={i}
-                      className="flex-1 rounded-sm bg-primary/30"
-                      style={{ height: `${h}%` }}
+                      title={`${count} run${count !== 1 ? "s" : ""}`}
+                      className={`flex-1 rounded-sm transition-all ${count > 0 ? "bg-primary/60" : "bg-muted"}`}
+                      style={{ height: `${heightPct}%` }}
                     />
                   );
                 })}
@@ -135,7 +183,8 @@ function AgentsMonitor() {
               </SelectContent>
             </Select>
             <span className="text-xs text-muted-foreground">
-              {filteredRuns.length} run{filteredRuns.length !== 1 ? "s" : ""} · click a row to inspect
+              {filteredRuns.length} run{filteredRuns.length !== 1 ? "s" : ""} · click a row to
+              inspect
             </span>
           </div>
         </Card>
@@ -156,73 +205,83 @@ function AgentsMonitor() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRuns.map((run) => {
-                const expanded = open === run.id;
-                return (
-                  <Fragment key={run.id}>
-                    <TableRow
-                      className="cursor-pointer"
-                      onClick={() => setOpen(expanded ? null : run.id)}
-                    >
-                      <TableCell>
-                        {expanded ? (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </TableCell>
-                      <TableCell className="font-medium">{run.agent_name}</TableCell>
-                      <TableCell className="text-xs capitalize text-muted-foreground">
-                        {run.trigger_type}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge value={run.status} />
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-sm">
-                        {run.duration_ms != null ? `${(run.duration_ms / 1000).toFixed(1)}s` : "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-sm">
-                        {run.tokens_used != null ? run.tokens_used.toLocaleString() : "—"}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-sm">
-                        {run.confidence_score != null ? `${(run.confidence_score * 100).toFixed(0)}%` : "—"}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {formatDateTime(run.created_at)}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toast.message(`Replaying ${run.id}`);
-                          }}
-                        >
-                          <Play className="mr-1 h-3 w-3" /> Replay
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    {expanded && (
-                      <TableRow>
-                        <TableCell colSpan={9} className="bg-muted/30">
-                          <div className="space-y-3 py-2">
-                            <KV label="Output" value={run.output_summary ?? "—"} />
-                            <div>
-                              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Input data
-                              </p>
-                              <pre className="mt-1 overflow-auto rounded-md border border-border bg-card p-2 text-xs text-muted-foreground">
-                                {run.input_data ? JSON.stringify(run.input_data, null, 2) : "—"}
-                              </pre>
-                            </div>
-                          </div>
+              {filteredRuns.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                    No agent runs yet. Trigger a lead to start the pipeline.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredRuns.map((run) => {
+                  const expanded = open === run.id;
+                  return (
+                    <Fragment key={run.id}>
+                      <TableRow
+                        className="cursor-pointer"
+                        onClick={() => setOpen(expanded ? null : run.id)}
+                      >
+                        <TableCell>
+                          {expanded ? (
+                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">{run.agent_name}</TableCell>
+                        <TableCell className="text-xs capitalize text-muted-foreground">
+                          {run.trigger_type ?? "—"}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge value={run.status} />
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-sm">
+                          {run.duration_ms != null ? `${(run.duration_ms / 1000).toFixed(1)}s` : "—"}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-sm">
+                          {run.tokens_used != null ? run.tokens_used.toLocaleString() : "—"}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-sm">
+                          {run.confidence_score != null
+                            ? `${(run.confidence_score * 100).toFixed(0)}%`
+                            : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {formatDateTime(run.created_at)}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toast.message(`Replaying ${run.id}`);
+                            }}
+                          >
+                            <Play className="mr-1 h-3 w-3" /> Replay
+                          </Button>
                         </TableCell>
                       </TableRow>
-                    )}
-                  </Fragment>
-                );
-              })}
+                      {expanded && (
+                        <TableRow>
+                          <TableCell colSpan={9} className="bg-muted/30">
+                            <div className="space-y-3 py-2">
+                              <KV label="Output" value={run.output_summary ?? "—"} />
+                              <div>
+                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                  Input data
+                                </p>
+                                <pre className="mt-1 overflow-auto rounded-md border border-border bg-card p-2 text-xs text-muted-foreground">
+                                  {run.input_data ? JSON.stringify(run.input_data, null, 2) : "—"}
+                                </pre>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
         </Card>

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowLeft, Bot, ChevronDown, ChevronRight, Pin } from "lucide-react";
+import { ArrowLeft, Bot, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -15,23 +15,9 @@ import { formatDateTime } from "@/lib/format";
 import { getAgentRuns } from "@/server-functions/agent-runs";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
 
-// Runtime-only stats not in the shared definition
-const AGENT_STATS: Record<string, { avg_confidence: number; runs_24h: number }> = {
-  "orchestrator": { avg_confidence: 0.92, runs_24h: 24 },
-  "lead-intake": { avg_confidence: 0.96, runs_24h: 41 },
-  "qualification": { avg_confidence: 0.86, runs_24h: 37 },
-  "quotation": { avg_confidence: 0.89, runs_24h: 12 },
-};
-
-const AGENTS = AGENT_DEFINITIONS.map((a) => ({
-  ...a,
-  avg_confidence: AGENT_STATS[a.name]?.avg_confidence ?? 0.9,
-  runs_24h: AGENT_STATS[a.name]?.runs_24h ?? 0,
-}));
-
 export const Route = createFileRoute("/agents/$name")({
   loader: async ({ params }) => {
-    const agent = AGENTS.find((a) => a.name === params.name);
+    const agent = AGENT_DEFINITIONS.find((a) => a.name === params.name);
     if (!agent) throw notFound();
     const runs = await getAgentRuns({ data: { agent: agent.display_name } });
     return { agent, runs };
@@ -53,32 +39,25 @@ export const Route = createFileRoute("/agents/$name")({
   component: AgentDetail,
 });
 
-const MEMORIES = [
-  {
-    kind: "long_term",
-    text: "Aurora Retail prefers Cantonese in client-facing materials; CFO needs ROI estimate within 48h of first call.",
-    pinned: true,
-  },
-  {
-    kind: "episodic",
-    text: "Last quote to Helix Biotech accepted at full price — anchor future biotech quotes higher.",
-    pinned: false,
-  },
-  {
-    kind: "short_term",
-    text: "Currently routing 3 leads through qualification with pending discovery calls.",
-    pinned: false,
-  },
-];
-
 function AgentDetail() {
-  const { agent, runs } = Route.useLoaderData();
+  const loaderData = Route.useLoaderData() as { agent: typeof AGENT_DEFINITIONS[0]; runs: import("@/lib/types").AgentRun[] };
+  const { agent, runs } = loaderData;
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [memories, setMemories] = useState(MEMORIES);
   const [temp, setTemp] = useState([0.4]);
   const [confThreshold, setConfThreshold] = useState([0.75]);
   const [enabled, setEnabled] = useState(agent.status === "active");
   const [autoApprove, setAutoApprove] = useState(!agent.human_approval);
+
+  const { runs_24h, avg_confidence } = useMemo(() => {
+    const since24h = Date.now() - 24 * 60 * 60 * 1000;
+    const recent = runs.filter((r) => new Date(r.created_at).getTime() >= since24h);
+    const scores = runs.filter((r) => r.confidence_score != null).map((r) => r.confidence_score!);
+    return {
+      runs_24h: recent.length,
+      avg_confidence:
+        scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null,
+    };
+  }, [runs]);
 
   return (
     <>
@@ -158,33 +137,11 @@ function AgentDetail() {
                 )}
               </TabsContent>
 
-              <TabsContent value="memory" className="mt-4 space-y-2">
-                {memories.map((m, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-md border border-border bg-muted/30 p-3 text-sm"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-secondary-foreground">
-                        {m.kind.replace(/_/g, " ")}
-                      </span>
-                      <button
-                        onClick={() =>
-                          setMemories((prev) =>
-                            prev.map((p, i) => (i === idx ? { ...p, pinned: !p.pinned } : p)),
-                          )
-                        }
-                        className={
-                          m.pinned ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                        }
-                        aria-label="Pin"
-                      >
-                        <Pin className="h-3.5 w-3.5" fill={m.pinned ? "currentColor" : "none"} />
-                      </button>
-                    </div>
-                    <p className="mt-1.5 leading-snug">{m.text}</p>
-                  </div>
-                ))}
+              <TabsContent value="memory" className="mt-4">
+                <p className="text-sm text-muted-foreground">
+                  Agent memory is not yet persisted. Long-term and episodic memory will appear here
+                  once the memory system is enabled.
+                </p>
               </TabsContent>
 
               <TabsContent value="config" className="mt-4 space-y-5">
@@ -254,8 +211,11 @@ function AgentDetail() {
             <Row label="Model">
               <code className="text-xs">{agent.model}</code>
             </Row>
-            <Row label="Avg confidence" value={`${(agent.avg_confidence * 100).toFixed(0)}%`} />
-            <Row label="Runs (24h)" value={String(agent.runs_24h)} />
+            <Row
+              label="Avg confidence"
+              value={avg_confidence != null ? `${(avg_confidence * 100).toFixed(0)}%` : "—"}
+            />
+            <Row label="Runs (24h)" value={String(runs_24h)} />
             <Row label="Human approval" value={autoApprove ? "Auto-execute" : "Required"} />
             <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
               <p className="font-medium text-foreground">

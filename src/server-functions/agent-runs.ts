@@ -11,7 +11,7 @@ export const getAgentRuns = createServerFn({ method: "GET" })
       .from("agent_runs")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(200);
     if (data.agent) query = query.eq("agent_name", data.agent);
     if (data.status) query = query.eq("status", data.status);
     const { data: runs, error } = await query;
