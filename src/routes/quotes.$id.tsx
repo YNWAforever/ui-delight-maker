@@ -137,12 +137,23 @@ function QuoteDetail() {
   const handleSubmitForApproval = async () => {
     setSaving(true);
     try {
-      await updateQuote({ data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } } });
       if (approvalId) {
+        // Coming from Approvals "Review & Edit" flow:
+        // 1. Save edits + advance quote to "sent"
+        await updateQuote({ data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue, status: "sent" } } });
+        // 2. Mark the human_approval record as approved
         await decideApproval({ data: { id: approvalId, decision: "approved" } });
+        setStatus("sent");
+        toast.success("Quote approved and marked as sent");
+        navigate({ to: "/approvals" });
+      } else {
+        // Plain draft edit: save + request approval (moves to pending_approval + triggers n8n)
+        await updateQuote({ data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } } });
+        await requestQuoteApproval({ data: { id: quote.id } });
+        setStatus("pending_approval");
+        toast.success("Quote submitted for approval");
+        router.invalidate();
       }
-      toast.success("Quote submitted for approval");
-      navigate({ to: "/approvals" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Submit failed");
     } finally {
