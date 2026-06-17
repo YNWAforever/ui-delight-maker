@@ -1,9 +1,14 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import {
   ArrowUpRight,
+  BarChart3,
   Bot,
+  Building2,
+  CalendarClock,
   FileText,
+  HeartPulse,
   Inbox,
+  Megaphone,
   Plus,
   ShieldCheck,
   TrendingUp,
@@ -60,14 +65,58 @@ export const Route = createFileRoute("/")({
 function Dashboard() {
   const { stats, leads, quotes, approvals, tasks, activityLogs, agentRuns } = Route.useLoaderData();
   const router = useRouter();
-  // Refresh loader data when a new agent_run is written by n8n
+  // Refresh loader data when n8n or users update lifecycle records.
   useRealtime("agent_runs", "*", undefined, () => {
+    router.invalidate();
+  });
+  useRealtime("engagement_events", "*", undefined, () => {
+    router.invalidate();
+  });
+  useRealtime("deals", "*", undefined, () => {
+    router.invalidate();
+  });
+  useRealtime("campaign_members", "*", undefined, () => {
+    router.invalidate();
+  });
+  useRealtime("customer_success_profiles", "*", undefined, () => {
     router.invalidate();
   });
   const openLeads = stats.openLeads;
   const pendingQuoteValue = stats.pendingQuoteValue;
   const pendingApprovals = stats.pendingApprovals;
   const runs24h = stats.runs24h;
+  const lifecycleSignals = [
+    {
+      label: "Open pipeline",
+      value: formatCompactHKD(stats.openPipeline),
+      icon: TrendingUp,
+    },
+    {
+      label: "Weighted forecast",
+      value: formatCompactHKD(stats.weightedForecast),
+      icon: BarChart3,
+    },
+    {
+      label: "Campaign revenue",
+      value: formatCompactHKD(stats.campaignSourcedRevenue),
+      icon: Megaphone,
+    },
+    {
+      label: "Avg health",
+      value: `${stats.averageAccountHealth}/100`,
+      icon: HeartPulse,
+    },
+    {
+      label: "Renewals 30d",
+      value: stats.renewalsDue30,
+      icon: CalendarClock,
+    },
+    {
+      label: "High-risk accounts",
+      value: stats.highRiskAccounts,
+      icon: Building2,
+    },
+  ];
   const needsAttention = [
     ...approvals.filter((a) => a.status === "pending").map((a) => ({
       kind: "Approval",
@@ -120,6 +169,26 @@ function Dashboard() {
           />
           <MetricCard label="Agent runs (24h)" value={runs24h} icon={Bot} delta={6} hint="1 needs review" />
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Lifecycle command center</CardTitle>
+            <CardDescription>Sales forecast, marketing attribution, and CS risk in one view.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+              {lifecycleSignals.map((signal) => (
+                <div key={signal.label} className="rounded-md border border-border bg-card p-3">
+                  <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <signal.icon className="h-4 w-4" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">{signal.label}</p>
+                  <p className="mt-1 truncate text-lg font-semibold">{signal.value}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">

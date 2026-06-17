@@ -3,24 +3,37 @@ import { createServerFn } from "@tanstack/react-start";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
 import type { Client } from "@/lib/types";
 
-type GetClientsInput = { tier?: string; health_min?: number };
+type GetClientsInput = { tier?: string; health_min?: number; account_id?: string };
 type CreateClientInput = Pick<Client, "company_name"> &
-  Partial<Pick<Client, "industry" | "tier" | "account_owner" | "health_score" | "renewal_date" | "arr">>;
+  Partial<
+    Pick<
+      Client,
+      | "industry"
+      | "tier"
+      | "account_owner"
+      | "health_score"
+      | "renewal_date"
+      | "arr"
+      | "account_id"
+      | "primary_contact_id"
+    >
+  >;
 
 export const getClients = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => (data ?? {}) as GetClientsInput)
+  .validator((data: unknown) => (data ?? {}) as GetClientsInput)
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     let query = supabase.from("clients").select("*").order("company_name");
     if (data.tier) query = query.eq("tier", data.tier);
     if (data.health_min !== undefined) query = query.gte("health_score", data.health_min);
+    if (data.account_id) query = query.eq("account_id", data.account_id);
     const { data: clients, error } = await query;
     if (error) throw new Error(error.message);
     return clients as Client[];
   });
 
 export const getClient = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => data as { id: string })
+  .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: client, error } = await supabase
@@ -30,7 +43,7 @@ export const getClient = createServerFn({ method: "GET" })
   });
 
 export const createClient = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => data as CreateClientInput)
+  .validator((data: unknown) => data as CreateClientInput)
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: client, error } = await supabase.from("clients").insert(data).select().single();
@@ -39,7 +52,7 @@ export const createClient = createServerFn({ method: "POST" })
   });
 
 export const updateClient = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => data as { id: string; updates: Partial<Client> })
+  .validator((data: unknown) => data as { id: string; updates: Partial<Client> })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: client, error } = await supabase
@@ -51,6 +64,10 @@ export const updateClient = createServerFn({ method: "POST" })
         ...(data.updates.onboarding_status !== undefined && { onboarding_status: data.updates.onboarding_status }),
         ...(data.updates.renewal_date !== undefined && { renewal_date: data.updates.renewal_date }),
         ...(data.updates.arr !== undefined && { arr: data.updates.arr }),
+        ...(data.updates.account_id !== undefined && { account_id: data.updates.account_id }),
+        ...(data.updates.primary_contact_id !== undefined && {
+          primary_contact_id: data.updates.primary_contact_id,
+        }),
       }).eq("id", data.id).select().single();
     if (error) throw new Error(error.message);
     return client as Client;

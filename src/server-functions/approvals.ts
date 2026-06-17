@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase.server";
 import type { HumanApproval } from "@/lib/types";
 
 export const getApprovals = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => (data ?? {}) as { status?: string })
+  .validator((data: unknown) => (data ?? {}) as { status?: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     let query = supabase
@@ -18,7 +18,7 @@ export const getApprovals = createServerFn({ method: "GET" })
   });
 
 export const decideApproval = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     (data: unknown) =>
       data as { id: string; decision: "approved" | "rejected" | "escalated"; notes?: string },
   )

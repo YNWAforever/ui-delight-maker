@@ -5,7 +5,7 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
-  cloudflare: false,
+  nitro: false,
   tanstackStart: {
     server: { preset: "vercel" },
   },
