@@ -4,24 +4,47 @@ import { createSupabaseServerClient } from "@/lib/supabase.server";
 import { triggerN8n } from "@/lib/n8n";
 import type { Quote, PricingTemplate } from "@/lib/types";
 
-type GetQuotesInput = { status?: string; lead_id?: string };
+type GetQuotesInput = {
+  status?: string;
+  lead_id?: string;
+  client_id?: string;
+  contact_id?: string;
+  account_id?: string;
+  deal_id?: string;
+};
 type CreateQuoteInput = Pick<Quote, "lead_id" | "currency"> &
-  Partial<Pick<Quote, "client_id" | "line_items" | "total_value" | "valid_until" | "number">>;
+  Partial<
+    Pick<
+      Quote,
+      | "client_id"
+      | "contact_id"
+      | "account_id"
+      | "deal_id"
+      | "line_items"
+      | "total_value"
+      | "valid_until"
+      | "number"
+    >
+  >;
 
 export const getQuotes = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => (data ?? {}) as GetQuotesInput)
+  .validator((data: unknown) => (data ?? {}) as GetQuotesInput)
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     let query = supabase.from("quotes").select("*").order("created_at", { ascending: false });
     if (data.status) query = query.eq("status", data.status);
     if (data.lead_id) query = query.eq("lead_id", data.lead_id);
+    if (data.client_id) query = query.eq("client_id", data.client_id);
+    if (data.contact_id) query = query.eq("contact_id", data.contact_id);
+    if (data.account_id) query = query.eq("account_id", data.account_id);
+    if (data.deal_id) query = query.eq("deal_id", data.deal_id);
     const { data: quotes, error } = await query;
     if (error) throw new Error(error.message);
     return quotes as Quote[];
   });
 
 export const getQuote = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => data as { id: string })
+  .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: quote, error } = await supabase
@@ -31,7 +54,7 @@ export const getQuote = createServerFn({ method: "GET" })
   });
 
 export const createQuote = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => data as CreateQuoteInput)
+  .validator((data: unknown) => data as CreateQuoteInput)
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: quote, error } = await supabase.from("quotes").insert(data).select().single();
@@ -40,7 +63,7 @@ export const createQuote = createServerFn({ method: "POST" })
   });
 
 export const updateQuote = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => data as { id: string; updates: Partial<Quote> })
+  .validator((data: unknown) => data as { id: string; updates: Partial<Quote> })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { data: quote, error } = await supabase
@@ -51,13 +74,16 @@ export const updateQuote = createServerFn({ method: "POST" })
         ...(data.updates.line_items !== undefined && { line_items: data.updates.line_items }),
         ...(data.updates.pdf_url !== undefined && { pdf_url: data.updates.pdf_url }),
         ...(data.updates.approved_by !== undefined && { approved_by: data.updates.approved_by }),
+        ...(data.updates.contact_id !== undefined && { contact_id: data.updates.contact_id }),
+        ...(data.updates.account_id !== undefined && { account_id: data.updates.account_id }),
+        ...(data.updates.deal_id !== undefined && { deal_id: data.updates.deal_id }),
       }).eq("id", data.id).select().single();
     if (error) throw new Error(error.message);
     return quote as Quote;
   });
 
 export const requestQuoteApproval = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => data as { id: string })
+  .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { error } = await supabase
@@ -74,7 +100,7 @@ export const requestQuoteApproval = createServerFn({ method: "POST" })
   });
 
 export const triggerQuoteAgent = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => data as { leadId: string })
+  .validator((data: unknown) => data as { leadId: string })
   .handler(async ({ data }) => {
     const webhookUrl = process.env.N8N_LEAD_WEBHOOK_URL;
     if (webhookUrl) {

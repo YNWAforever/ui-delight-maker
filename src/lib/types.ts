@@ -3,7 +3,9 @@
 // mock-data.ts types are kept for backward compat during migration but will be removed.
 
 export type LeadStatus = "new" | "qualified" | "replied" | "quoted" | "approved" | "won" | "lost";
-export type LeadSource = "website" | "whatsapp" | "email" | "linkedin" | "csv" | "event";
+export type LeadSource = "website" | "whatsapp" | "email" | "linkedin" | "csv" | "event" | "manual";
+export type LifecycleChannel = LeadSource;
+export type CampaignChannel = LifecycleChannel | "omnichannel";
 export type QuoteStatus =
   | "draft"
   | "pending_approval"
@@ -15,11 +17,75 @@ export type QuoteStatus =
 export type TaskStatus = "open" | "in_progress" | "done";
 export type TaskPriority = "low" | "medium" | "high";
 export type ApprovalStatus = "pending" | "approved" | "rejected" | "escalated";
-export type ApprovalType = "quote_send" | "message_send" | "discount" | "qualification_review";
+export type ApprovalType =
+  | "quote_send"
+  | "message_send"
+  | "discount"
+  | "qualification_review"
+  | "campaign_send"
+  | "forecast_review"
+  | "cs_risk_review";
 export type AgentRunStatus = "running" | "completed" | "failed" | "waiting_approval";
 export type UserRole = "admin" | "manager" | "sales" | "cs";
 
 export type PricingCategory = "AI transformation" | "CRM" | "KOC" | "campaign" | "data" | "custom";
+export type AccountLifecycleStage = "prospect" | "active_client" | "at_risk" | "churned";
+export type ContactLifecycleStage =
+  | "subscriber"
+  | "lead"
+  | "marketing_qualified"
+  | "sales_qualified"
+  | "customer"
+  | "evangelist"
+  | "unsubscribed";
+export type ConsentStatus = "unknown" | "opted_in" | "opted_out";
+export type EngagementDirection = "inbound" | "outbound" | "internal";
+export type CampaignStatus = "draft" | "scheduled" | "active" | "paused" | "completed";
+export type CampaignMemberStatus =
+  | "queued"
+  | "sent"
+  | "opened"
+  | "clicked"
+  | "replied"
+  | "converted"
+  | "unsubscribed"
+  | "failed";
+export type AutomationTriggerType =
+  | "manual"
+  | "engagement_event"
+  | "lead_created"
+  | "deal_stage_changed"
+  | "renewal_risk"
+  | "schedule";
+export type AutomationPlaybookStatus = "draft" | "active" | "paused" | "archived";
+export type AutomationRunStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
+export type DealStage =
+  | "new"
+  | "discovery"
+  | "qualified"
+  | "proposal"
+  | "negotiation"
+  | "won"
+  | "lost";
+export type DealStatus = "open" | "won" | "lost";
+export type ProjectStatus =
+  | "not_started"
+  | "onboarding"
+  | "in_progress"
+  | "blocked"
+  | "completed"
+  | "cancelled";
+export type OnboardingStatus = "not_started" | "onboarding" | "live" | "stalled";
+export type RenewalRisk = "low" | "medium" | "high";
+export type TouchpointType =
+  | "onboarding"
+  | "check_in"
+  | "qbr"
+  | "renewal"
+  | "support"
+  | "expansion"
+  | "other";
+export type TouchpointSentiment = "positive" | "neutral" | "negative";
 
 export interface Profile {
   id: string;
@@ -49,6 +115,10 @@ export interface QualificationData {
 
 export interface Lead {
   id: string;
+  contact_id: string | null;
+  account_id: string | null;
+  source_campaign_id: string | null;
+  campaign_member_id: string | null;
   company_name: string;
   contact_name: string | null;
   contact_email: string | null;
@@ -76,6 +146,9 @@ export interface Quote {
   number: string | null;
   lead_id: string | null;
   client_id: string | null;
+  contact_id: string | null;
+  account_id: string | null;
+  deal_id: string | null;
   status: QuoteStatus;
   total_value: number | null;
   currency: string;
@@ -90,6 +163,8 @@ export interface Quote {
 
 export interface Client {
   id: string;
+  account_id: string | null;
+  primary_contact_id: string | null;
   company_name: string;
   industry: string | null;
   tier: "SME" | "mid-market" | "enterprise" | null;
@@ -109,6 +184,10 @@ export interface Task {
   assigned_to: string | null;
   lead_id: string | null;
   client_id: string | null;
+  contact_id: string | null;
+  account_id: string | null;
+  deal_id: string | null;
+  project_id: string | null;
   due_date: string | null;
   priority: TaskPriority;
   status: TaskStatus;
@@ -184,4 +263,194 @@ export interface DashboardStats {
   pendingQuoteValue: number;
   pendingApprovals: number;
   runs24h: number;
+  openPipeline: number;
+  weightedForecast: number;
+  campaignSourcedRevenue: number;
+  averageAccountHealth: number;
+  renewalsDue30: number;
+  highRiskAccounts: number;
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  domain: string | null;
+  industry: string | null;
+  tier: "SME" | "mid-market" | "enterprise" | null;
+  account_owner: string | null;
+  lifecycle_stage: AccountLifecycleStage;
+  health_score: number;
+  renewal_date: string | null;
+  arr: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Contact {
+  id: string;
+  account_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  title: string | null;
+  owner: string | null;
+  lifecycle_stage: ContactLifecycleStage;
+  source: LifecycleChannel | null;
+  consent_status: ConsentStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChannelIdentity {
+  id: string;
+  contact_id: string | null;
+  account_id: string | null;
+  channel: LifecycleChannel;
+  external_id: string | null;
+  handle: string | null;
+  is_primary: boolean;
+  last_seen_at: string | null;
+  metadata: unknown;
+  created_at: string;
+}
+
+export interface Campaign {
+  id: string;
+  name: string;
+  channel: CampaignChannel;
+  status: CampaignStatus;
+  objective: string | null;
+  audience_filter: unknown;
+  scheduled_at: string | null;
+  owner: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignMember {
+  id: string;
+  campaign_id: string;
+  contact_id: string | null;
+  account_id: string | null;
+  status: CampaignMemberStatus;
+  joined_at: string;
+  last_event_at: string | null;
+  metadata: unknown;
+}
+
+export interface EngagementEvent {
+  id: string;
+  contact_id: string | null;
+  account_id: string | null;
+  campaign_id: string | null;
+  campaign_member_id: string | null;
+  deal_id: string | null;
+  project_id: string | null;
+  channel: LifecycleChannel;
+  direction: EngagementDirection;
+  event_type: string;
+  subject: string | null;
+  body_preview: string | null;
+  occurred_at: string;
+  created_by: string | null;
+  created_by_agent: string | null;
+  metadata: unknown;
+  created_at: string;
+}
+
+export interface AutomationPlaybook {
+  id: string;
+  name: string;
+  description: string | null;
+  trigger_type: AutomationTriggerType;
+  status: AutomationPlaybookStatus;
+  steps: unknown;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AutomationRun {
+  id: string;
+  playbook_id: string | null;
+  contact_id: string | null;
+  account_id: string | null;
+  deal_id: string | null;
+  project_id: string | null;
+  trigger_event_id: string | null;
+  status: AutomationRunStatus;
+  context_data: unknown;
+  output_data: unknown;
+  error_message: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string;
+}
+
+export interface Deal {
+  id: string;
+  account_id: string | null;
+  contact_id: string | null;
+  lead_id: string | null;
+  quote_id: string | null;
+  source_campaign_id: string | null;
+  name: string;
+  stage: DealStage;
+  status: DealStatus;
+  probability: number;
+  value: number | null;
+  currency: string;
+  expected_close_date: string | null;
+  owner: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Project {
+  id: string;
+  account_id: string | null;
+  contact_id: string | null;
+  deal_id: string | null;
+  quote_id: string | null;
+  name: string;
+  status: ProjectStatus;
+  start_date: string | null;
+  target_end_date: string | null;
+  owner: string | null;
+  value: number | null;
+  currency: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerSuccessProfile {
+  id: string;
+  account_id: string;
+  primary_contact_id: string | null;
+  project_id: string | null;
+  cs_owner: string | null;
+  health_score: number;
+  onboarding_status: OnboardingStatus;
+  renewal_date: string | null;
+  renewal_risk: RenewalRisk;
+  next_best_action: string | null;
+  expansion_signal: string | null;
+  last_touch_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SuccessTouchpoint {
+  id: string;
+  account_id: string;
+  contact_id: string | null;
+  project_id: string | null;
+  touchpoint_type: TouchpointType;
+  sentiment: TouchpointSentiment;
+  notes: string | null;
+  occurred_at: string;
+  created_by: string | null;
+  created_at: string;
 }

@@ -26,15 +26,15 @@ console.log("Copying dist/client → .vercel/output/static ...");
 mkdirSync(STATIC_DIR, { recursive: true });
 cpSync(resolve(root, "dist", "client"), STATIC_DIR, { recursive: true });
 
-// ── 1b. Patch dist/server/server.js ───────────────────────────────────────
-// TanStack Start v1.167.x: the server bundle's createServerFn only exposes
-// .inputValidator() but client-side SSR stubs (included for HTML rendering)
-// call .validator() — the client-side API. Add .validator as an alias so the
-// same function chain works in both contexts.
+// ── 1b. Patch dist/server/server.js when needed ───────────────────────────
+// TanStack Start v1.167.x emitted a server bundle where createServerFn only
+// exposed .inputValidator(), while client-side SSR stubs called .validator().
+// Newer bundles expose both names. Keep the compatibility patch for older
+// output, but skip it when the current bundle shape is already fixed upstream.
 const serverJsPath = resolve(root, "dist", "server", "server.js");
 let serverJsCode = readFileSync(serverJsPath, "utf8");
 
-const TARGET = `    inputValidator: (inputValidator) => {
+const LEGACY_TARGET = `    inputValidator: (inputValidator) => {
       return createServerFn(void 0, {
         ...resolvedOptions,
         inputValidator
@@ -42,7 +42,7 @@ const TARGET = `    inputValidator: (inputValidator) => {
     },
     handler:`;
 
-const PATCHED = `    inputValidator: (inputValidator) => {
+const LEGACY_PATCHED = `    inputValidator: (inputValidator) => {
       return createServerFn(void 0, {
         ...resolvedOptions,
         inputValidator
@@ -57,15 +57,22 @@ const PATCHED = `    inputValidator: (inputValidator) => {
     },
     handler:`;
 
-if (!serverJsCode.includes(TARGET)) {
+const hasCurrentValidatorAlias =
+  serverJsCode.includes("validator: setValidator") &&
+  serverJsCode.includes("inputValidator: setValidator");
+
+if (serverJsCode.includes(LEGACY_TARGET)) {
+  serverJsCode = serverJsCode.replace(LEGACY_TARGET, LEGACY_PATCHED);
+  writeFileSync(serverJsPath, serverJsCode, "utf8");
+  console.log("✓ Patched createServerFn: added .validator() alias for .inputValidator()");
+} else if (hasCurrentValidatorAlias) {
+  console.log("✓ createServerFn already exposes .validator(); compatibility patch skipped");
+} else {
   throw new Error(
-    "[vercel-build] Could not find createServerFn.inputValidator pattern to patch — " +
+    "[vercel-build] Could not find a known createServerFn validator shape — " +
     "check dist/server/server.js for API changes."
   );
 }
-serverJsCode = serverJsCode.replace(TARGET, PATCHED);
-writeFileSync(serverJsPath, serverJsCode, "utf8");
-console.log("✓ Patched createServerFn: added .validator() alias for .inputValidator()");
 
 // ── 2. Serverless function ────────────────────────────────────────────────
 console.log("Creating .vercel/output/functions/index.func ...");

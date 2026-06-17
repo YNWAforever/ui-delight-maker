@@ -1,10 +1,18 @@
 // src/server-functions/agent-runs.ts
 import { createServerFn } from "@tanstack/react-start";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
-import type { AgentRun, AgentToolCall, ActivityLog, DashboardStats } from "@/lib/types";
+import { calculateWeightedForecast } from "@/lib/lifecycle-utils";
+import type {
+  ActivityLog,
+  AgentRun,
+  AgentToolCall,
+  CustomerSuccessProfile,
+  DashboardStats,
+  Deal,
+} from "@/lib/types";
 
 export const getAgentRuns = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => (data ?? {}) as { agent?: string; status?: string })
+  .validator((data: unknown) => (data ?? {}) as { agent?: string; status?: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     let query = supabase
@@ -20,7 +28,7 @@ export const getAgentRuns = createServerFn({ method: "GET" })
   });
 
 export const getAgentRun = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => data as { id: string })
+  .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const [runResult, callsResult] = await Promise.all([
@@ -42,38 +50,66 @@ export const getDashboardStats = createServerFn({ method: "GET" }).handler(async
   const supabase = createSupabaseServerClient();
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const [leadsRes, quotesRes, approvalsRes, runsRes] = await Promise.all([
-    supabase
-      .from("leads")
-      .select("id", { count: "exact", head: true })
-      .not("status", "in", '("won","lost")'),
-    supabase
-      .from("quotes")
-      .select("total_value")
-      .in("status", ["pending_approval", "sent", "viewed"]),
-    supabase
-      .from("human_approvals")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pending"),
-    supabase
-      .from("agent_runs")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", since24h),
-  ]);
+  const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const [leadsRes, quotesRes, approvalsRes, runsRes, dealsRes, campaignDealsRes, csProfilesRes] =
+    await Promise.all([
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .not("status", "in", '("won","lost")'),
+      supabase
+        .from("quotes")
+        .select("total_value")
+        .in("status", ["pending_approval", "sent", "viewed"]),
+      supabase
+        .from("human_approvals")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending"),
+      supabase
+        .from("agent_runs")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", since24h),
+      supabase
+        .from("deals")
+        .select("id, stage, status, value, probability, expected_close_date")
+        .eq("status", "open"),
+      supabase
+        .from("deals")
+        .select("id, source_campaign_id, status, value")
+        .eq("status", "won")
+        .not("source_campaign_id", "is", null),
+      supabase
+        .from("customer_success_profiles")
+        .select("health_score, renewal_date, renewal_risk"),
+    ]);
 
   const pendingQuoteValue =
     quotesRes.data?.reduce((sum, q) => sum + (q.total_value ?? 0), 0) ?? 0;
+  const forecast = calculateWeightedForecast((dealsRes.data ?? []) as Deal[]);
+  const campaignSourcedRevenue =
+    campaignDealsRes.data?.reduce((sum, deal) => sum + (deal.value ?? 0), 0) ?? 0;
+  const csProfiles = (csProfilesRes.data ?? []) as CustomerSuccessProfile[];
+  const healthTotal = csProfiles.reduce((sum, profile) => sum + profile.health_score, 0);
 
   return {
     openLeads: leadsRes.count ?? 0,
     pendingQuoteValue,
     pendingApprovals: approvalsRes.count ?? 0,
     runs24h: runsRes.count ?? 0,
+    openPipeline: forecast.openValue,
+    weightedForecast: forecast.weightedValue,
+    campaignSourcedRevenue,
+    averageAccountHealth: csProfiles.length > 0 ? Math.round(healthTotal / csProfiles.length) : 0,
+    renewalsDue30: csProfiles.filter(
+      (profile) => profile.renewal_date !== null && profile.renewal_date <= in30Days,
+    ).length,
+    highRiskAccounts: csProfiles.filter((profile) => profile.renewal_risk === "high").length,
   } satisfies DashboardStats;
 });
 
 export const getActivityLogs = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => (data ?? {}) as { object_id?: string })
+  .validator((data: unknown) => (data ?? {}) as { object_id?: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     let query = supabase

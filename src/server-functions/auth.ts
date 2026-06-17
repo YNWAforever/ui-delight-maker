@@ -5,6 +5,10 @@ import { createSupabaseServerClient } from "@/lib/supabase.server";
 import type { Profile } from "@/lib/types";
 
 export const getSession = createServerFn({ method: "GET" }).handler(async () => {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+    return null;
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
@@ -22,7 +26,7 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
 });
 
 export const signIn = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => data as { email: string; password: string })
+  .validator((data: unknown) => data as { email: string; password: string })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { error } = await supabase.auth.signInWithPassword(data);
