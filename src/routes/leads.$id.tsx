@@ -32,6 +32,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
+import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
 import type { Lead, LeadStatus } from "@/lib/types";
 import { getLead, triggerLeadAgent, updateLead } from "@/server-functions/leads";
 import { getQuotes, triggerQuoteAgent } from "@/server-functions/quotes";
@@ -91,6 +92,7 @@ function LeadDetail() {
   const { lead, activityLogs, quotes: relatedQuotes } = Route.useLoaderData();
   const navigate = useNavigate();
   const router = useRouter();
+  useRoutePollingRefresh();
 
   const [status, setStatus] = useState<LeadStatus>(lead.status);
   const [notes, setNotes] = useState<

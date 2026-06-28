@@ -37,6 +37,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
+import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
 import { getApprovals, decideApproval } from "@/server-functions/approvals";
 import type { HumanApproval } from "@/lib/types";
 import { APP_USERS, userById } from "@/lib/users";
@@ -77,6 +78,7 @@ function ApprovalsInbox() {
   const allApprovals = Route.useLoaderData();
   const router = useRouter();
   const navigate = useNavigate();
+  useRoutePollingRefresh();
 
   const [typeFilter, setTypeFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);

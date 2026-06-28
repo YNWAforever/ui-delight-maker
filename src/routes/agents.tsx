@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
+import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
 import { getAgentRuns } from "@/server-functions/agent-runs";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
 import type { AgentRun } from "@/lib/types";
@@ -74,6 +75,8 @@ function AgentsMonitor() {
   const router = useRouter();
   const [open, setOpen] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
+
+  useRoutePollingRefresh();
 
   const stats = useMemo(() => computeAgentStats(agentRuns), [agentRuns]);
 
