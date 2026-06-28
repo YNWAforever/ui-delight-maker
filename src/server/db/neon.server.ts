@@ -1,6 +1,6 @@
 import { Pool } from "@neondatabase/serverless";
 
-type Queryable = {
+export type Queryable = {
   query<T = unknown>(text: string, values?: readonly unknown[]): Promise<{ rows: T[] }>;
 };
 
@@ -26,13 +26,17 @@ function getPool() {
   return pool;
 }
 
-export async function query<T>(text: string, values: readonly unknown[] = []) {
-  const result = await getPool().query(text, values as unknown[]);
+export async function query<T>(
+  text: string,
+  values: readonly unknown[] = [],
+  db: Queryable = getPool(),
+) {
+  const result = await db.query(text, values);
   return result.rows as T[];
 }
 
-export async function queryOne<T>(text: string, values: readonly unknown[] = []) {
-  const rows = await query<T>(text, values);
+export async function queryOne<T>(text: string, values: readonly unknown[] = [], db?: Queryable) {
+  const rows = await query<T>(text, values, db);
   return rows[0] ?? null;
 }
 

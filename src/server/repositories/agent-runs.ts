@@ -1,4 +1,4 @@
-import { query, queryOne } from "@/server/db/neon.server";
+import { query, queryOne, type Queryable } from "@/server/db/neon.server";
 import type { AgentRun, AgentToolCall } from "@/lib/types";
 
 export type WorkflowType = "qualify_lead" | "draft_reply" | "draft_quote";
@@ -30,10 +30,7 @@ export async function listAgentRuns(input: { agent?: string; status?: string } =
 }
 
 export async function listRecentAgentRuns(limit = 50) {
-  return query<AgentRun>(
-    "select * from agent_runs order by created_at desc limit $1",
-    [limit],
-  );
+  return query<AgentRun>("select * from agent_runs order by created_at desc limit $1", [limit]);
 }
 
 export async function getAgentRunWithCalls(id: string) {
@@ -111,6 +108,7 @@ export async function updateAgentRunResult(
     tokens_used?: number | null;
     model_used?: string | null;
   },
+  db?: Queryable,
 ) {
   const run = await queryOne<AgentRun>(
     `
@@ -137,6 +135,7 @@ export async function updateAgentRunResult(
       input.tokens_used ?? null,
       input.model_used ?? null,
     ],
+    db,
   );
 
   if (!run) throw new Error("Agent run not found");

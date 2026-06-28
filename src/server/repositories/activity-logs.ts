@@ -1,4 +1,4 @@
-import { query } from "@/server/db/neon.server";
+import { query, type Queryable } from "@/server/db/neon.server";
 import type { ActivityLog } from "@/lib/types";
 
 export type CreateActivityLogInput = {
@@ -11,7 +11,7 @@ export type CreateActivityLogInput = {
   diff_data?: unknown;
 };
 
-export async function createActivityLog(input: CreateActivityLogInput) {
+export async function createActivityLog(input: CreateActivityLogInput, db?: Queryable) {
   await query(
     `
       insert into activity_logs
@@ -27,6 +27,7 @@ export async function createActivityLog(input: CreateActivityLogInput) {
       input.object_id ?? null,
       JSON.stringify(input.diff_data ?? null),
     ],
+    db,
   );
 }
 

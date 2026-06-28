@@ -1,5 +1,5 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
-import { query, queryOne } from "@/server/db/neon.server";
+import { query, queryOne, type Queryable } from "@/server/db/neon.server";
 import type { PricingTemplate, Quote } from "@/lib/types";
 
 type QuoteFilters = {
@@ -66,7 +66,7 @@ export async function getQuote(id: string) {
   return quote;
 }
 
-export async function createQuote(input: CreateQuoteInput) {
+export async function createQuote(input: CreateQuoteInput, db?: Queryable) {
   const quote = await queryOne<Quote>(
     `
       insert into quotes
@@ -88,6 +88,7 @@ export async function createQuote(input: CreateQuoteInput) {
       input.line_items === undefined ? null : JSON.stringify(input.line_items),
       input.created_by ?? null,
     ],
+    db,
   );
 
   if (!quote) throw new Error("Failed to create quote");

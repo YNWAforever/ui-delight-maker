@@ -1,5 +1,5 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
-import { query, queryOne, transaction } from "@/server/db/neon.server";
+import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
 import type { ActivityLog, Lead, LeadStatus } from "@/lib/types";
 
 type LeadFilters = {
@@ -93,6 +93,12 @@ export async function getLeadWithActivity(id: string) {
   return { lead, activityLogs };
 }
 
+export async function assertLeadExists(id: string, db?: Queryable) {
+  const lead = await queryOne<Pick<Lead, "id">>("select id from leads where id = $1", [id], db);
+
+  if (!lead) throw new Error("Lead not found");
+}
+
 export async function createLead(input: CreateLeadInput) {
   const lead = await queryOne<Lead>(
     `
@@ -121,7 +127,7 @@ export async function createLead(input: CreateLeadInput) {
   return lead;
 }
 
-export async function updateLead(id: string, updates: UpdateLeadInput) {
+export async function updateLead(id: string, updates: UpdateLeadInput, db?: Queryable) {
   const normalizedUpdates = {
     ...updates,
     qualification_data:
@@ -139,6 +145,7 @@ export async function updateLead(id: string, updates: UpdateLeadInput) {
       returning *
     `,
     [...update.values, id],
+    db,
   );
 
   if (!lead) throw new Error("Lead not found");

@@ -1,5 +1,5 @@
 import { buildFilters } from "@/server/db/query-builders";
-import { query, queryOne, transaction } from "@/server/db/neon.server";
+import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
 import type { ApprovalStatus, HumanApproval } from "@/lib/types";
 
 export async function listApprovals(input: { status?: string } = {}) {
@@ -26,15 +26,18 @@ export async function listActiveApprovals() {
   );
 }
 
-export async function createApproval(input: {
-  agent_run_id?: string | null;
-  approval_type: "quote_send" | "message_send" | "discount" | "qualification_review";
-  requested_by?: string | null;
-  assigned_to?: string | null;
-  context_data: unknown;
-  context_summary?: string | null;
-  status?: ApprovalStatus;
-}) {
+export async function createApproval(
+  input: {
+    agent_run_id?: string | null;
+    approval_type: "quote_send" | "message_send" | "discount" | "qualification_review";
+    requested_by?: string | null;
+    assigned_to?: string | null;
+    context_data: unknown;
+    context_summary?: string | null;
+    status?: ApprovalStatus;
+  },
+  db?: Queryable,
+) {
   const approval = await queryOne<HumanApproval>(
     `
       insert into human_approvals
@@ -52,6 +55,7 @@ export async function createApproval(input: {
       JSON.stringify(input.context_data),
       input.context_summary ?? null,
     ],
+    db,
   );
 
   if (!approval) throw new Error("Failed to create approval");
