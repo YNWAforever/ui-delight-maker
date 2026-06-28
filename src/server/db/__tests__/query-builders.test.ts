@@ -30,7 +30,8 @@ describe("query-builders", () => {
   });
 
   it("throws when an update has no allowed defined values", () => {
-    expect(() => buildUpdate({ ignored: "no" }, ["status"], 1)).toThrow(
+    const updates = { ignored: "no", status: undefined as string | undefined };
+    expect(() => buildUpdate(updates, ["status"], 1)).toThrow(
       "No allowed update fields were provided",
     );
   });

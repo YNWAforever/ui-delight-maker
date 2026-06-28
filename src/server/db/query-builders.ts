@@ -25,7 +25,7 @@ export function buildFilters(filters: Array<[string, FilterValue]>, startIndex =
 
 export function buildUpdate<T extends Record<string, unknown>>(
   updates: T,
-  allowedColumns: string[],
+  allowedColumns: Array<keyof T & string>,
   startIndex = 1,
 ) {
   const values: unknown[] = [];
