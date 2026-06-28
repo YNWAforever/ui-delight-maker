@@ -55,18 +55,28 @@ export const signIn = createServerFn({ method: "POST" })
 export const signOut = createServerFn({ method: "POST" }).handler(async () => {
   const cookie = getRequest().headers.get("cookie");
 
-  if (cookie) {
-    try {
-      const response = await fetch(`${getNeonAuthUrl()}/api/auth/sign-out`, {
-        method: "POST",
-        headers: { cookie },
-        redirect: "manual",
-      });
-      forwardSetCookieHeaders(response);
-    } catch (error) {
-      console.error("[auth] Neon sign-out failed", error);
-    }
+  if (!cookie) {
+    return { ok: true } as const;
   }
 
-  return { ok: true } as const;
+  let response: Response;
+
+  try {
+    response = await fetch(`${getNeonAuthUrl()}/api/auth/sign-out`, {
+      method: "POST",
+      headers: { cookie },
+      redirect: "manual",
+    });
+  } catch (error) {
+    console.error("[auth] Neon sign-out failed", error);
+    throw new Error("Neon Auth sign-out failed");
+  }
+
+  forwardSetCookieHeaders(response);
+
+  if (response.ok || (response.status >= 300 && response.status < 400)) {
+    return { ok: true } as const;
+  }
+
+  throw new Error(await readAuthError(response, "Neon Auth sign-out failed"));
 });

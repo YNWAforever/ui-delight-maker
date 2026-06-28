@@ -16,6 +16,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 
 import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 import { getSession, signOut } from "@/server-functions/auth";
 import type { Profile } from "@/lib/types";
@@ -135,9 +136,13 @@ function RootComponent() {
           <AppSidebar
             profile={profile ?? null}
             onSignOut={async () => {
-              await signOut();
-              await router.invalidate();
-              await router.navigate({ to: "/login" });
+              try {
+                await signOut();
+                await router.invalidate();
+                await router.navigate({ to: "/login" });
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Neon Auth sign-out failed");
+              }
             }}
           />
           <div className="flex min-w-0 flex-1 flex-col">
