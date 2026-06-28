@@ -1,3 +1,17 @@
+-- Reset app-owned runtime schema to ensure clean rebuild on empty/upgraded Neon DBs.
+drop table if exists agent_tool_calls cascade;
+drop table if exists human_approvals cascade;
+drop table if exists activity_logs cascade;
+drop table if exists tasks cascade;
+drop table if exists quotes cascade;
+drop table if exists agent_runs cascade;
+drop table if exists pricing_templates cascade;
+drop table if exists clients cascade;
+drop table if exists leads cascade;
+drop table if exists profiles cascade;
+
+drop function if exists set_updated_at() cascade;
+
 create extension if not exists pgcrypto;
 create extension if not exists vector;
 
