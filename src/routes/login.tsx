@@ -1,80 +1,35 @@
-// src/routes/login.tsx
-import { useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { AuthView } from "@neondatabase/auth-ui";
+import { createFileRoute } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
-import { toast } from "sonner";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { signIn } from "@/server-functions/auth";
+import { NeonAuthProvider } from "@/components/auth/neon-auth-provider";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
-    meta: [{ title: "Login — Fimmick ClientOps" }],
+    meta: [{ title: "Login - Fimmick ClientOps" }],
   }),
   component: LoginPage,
 });
 
 function LoginPage() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await signIn({ data: { email, password } });
-      await navigate({ to: "/" });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Sparkles className="h-6 w-6" />
+    <NeonAuthProvider
+      redirectTo="/"
+      signUp={false}
+      emailOTP={false}
+      credentials={{ forgotPassword: false }}
+    >
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <h1 className="text-xl font-semibold">Fimmick ClientOps</h1>
+            <p className="text-sm text-muted-foreground">Sign in to your workspace</p>
           </div>
-          <h1 className="text-xl font-semibold">Fimmick ClientOps</h1>
-          <p className="text-sm text-muted-foreground">Sign in to your workspace</p>
+          <AuthView view="SIGN_IN" cardFooter={false} />
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@fimmick.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in…" : "Sign in"}
-          </Button>
-        </form>
       </div>
-    </div>
+    </NeonAuthProvider>
   );
 }
