@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
+    "test": "vitest run",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -91,14 +92,12 @@
     "esbuild": "0.28.1",
     "vite": "7.3.5",
     "@babel/core": "7.29.7",
-    "brace-expansion": "5.0.6",
     "js-yaml": "4.2.0"
   },
   "resolutions": {
     "vite": "7.3.5",
     "esbuild": "0.28.1",
     "@babel/core": "7.29.7",
-    "brace-expansion": "5.0.6",
     "js-yaml": "4.2.0"
   }
 }

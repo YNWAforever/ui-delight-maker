@@ -1,5 +1,4 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import { describe, expect, it } from "vitest";
 
 import {
   assessRenewalRisk,
@@ -9,145 +8,147 @@ import {
   findIdentityMatch,
 } from "../lifecycle-utils.ts";
 
-test("findIdentityMatch matches an existing contact by normalized email", () => {
-  const match = findIdentityMatch(
-    [
+describe("lifecycle utils", () => {
+  it("matches an existing contact by normalized email", () => {
+    const match = findIdentityMatch(
+      [
+        {
+          id: "contact-1",
+          account_id: "account-1",
+          email: "ada@fimmick.com",
+          phone: "+85291234567",
+        },
+      ],
       {
-        id: "contact-1",
-        account_id: "account-1",
-        email: "ada@fimmick.com",
-        phone: "+85291234567",
+        company_name: "Fimmick",
+        contact_email: " ADA@FIMMICK.COM ",
+        contact_phone: "9123 4567",
       },
-    ],
-    {
-      company_name: "Fimmick",
-      contact_email: " ADA@FIMMICK.COM ",
-      contact_phone: "9123 4567",
-    },
-  );
+    );
 
-  assert.equal(match?.contactId, "contact-1");
-  assert.equal(match?.accountId, "account-1");
-  assert.equal(match?.reason, "email");
-});
+    expect(match?.contactId).toBe("contact-1");
+    expect(match?.accountId).toBe("account-1");
+    expect(match?.reason).toBe("email");
+  });
 
-test("findIdentityMatch falls back to phone when no email matches", () => {
-  const match = findIdentityMatch(
-    [
+  it("falls back to phone when no email matches", () => {
+    const match = findIdentityMatch(
+      [
+        {
+          id: "contact-2",
+          account_id: "account-2",
+          email: "unknown@example.com",
+          phone: "+85291234567",
+        },
+      ],
       {
-        id: "contact-2",
-        account_id: "account-2",
-        email: "unknown@example.com",
-        phone: "+85291234567",
+        company_name: "Fimmick",
+        contact_phone: "9123-4567",
       },
-    ],
-    {
-      company_name: "Fimmick",
-      contact_phone: "9123-4567",
-    },
-  );
+    );
 
-  assert.equal(match?.contactId, "contact-2");
-  assert.equal(match?.reason, "phone");
-});
+    expect(match?.contactId).toBe("contact-2");
+    expect(match?.reason).toBe("phone");
+  });
 
-test("calculateWeightedForecast totals open weighted pipeline and ignores lost deals", () => {
-  const forecast = calculateWeightedForecast([
-    {
+  it("totals open weighted pipeline and ignores lost deals", () => {
+    const forecast = calculateWeightedForecast([
+      {
+        id: "deal-1",
+        stage: "proposal",
+        status: "open",
+        value: 100000,
+        probability: 60,
+        expected_close_date: "2026-07-15",
+      },
+      {
+        id: "deal-2",
+        stage: "discovery",
+        status: "open",
+        value: 50000,
+        probability: 20,
+        expected_close_date: "2026-08-01",
+      },
+      {
+        id: "deal-3",
+        stage: "lost",
+        status: "lost",
+        value: 90000,
+        probability: 0,
+        expected_close_date: "2026-08-15",
+      },
+    ]);
+
+    expect(forecast.openValue).toBe(150000);
+    expect(forecast.weightedValue).toBe(70000);
+    expect(forecast.byStage).toEqual({
+      proposal: { openValue: 100000, weightedValue: 60000, count: 1 },
+      discovery: { openValue: 50000, weightedValue: 10000, count: 1 },
+    });
+  });
+
+  it("counts won revenue from source campaign deals", () => {
+    const attribution = attributeCampaignRevenue("campaign-1", [
+      {
+        id: "deal-1",
+        source_campaign_id: "campaign-1",
+        status: "won",
+        value: 120000,
+      },
+      {
+        id: "deal-2",
+        source_campaign_id: "campaign-1",
+        status: "open",
+        value: 80000,
+      },
+      {
+        id: "deal-3",
+        source_campaign_id: "campaign-2",
+        status: "won",
+        value: 40000,
+      },
+    ]);
+
+    expect(attribution.wonRevenue).toBe(120000);
+    expect(attribution.openPipeline).toBe(80000);
+    expect(attribution.wonDeals).toBe(1);
+    expect(attribution.openDeals).toBe(1);
+  });
+
+  it("creates a project only from a won deal", () => {
+    const project = buildProjectFromWonDeal({
       id: "deal-1",
-      stage: "proposal",
-      status: "open",
-      value: 100000,
-      probability: 60,
-      expected_close_date: "2026-07-15",
-    },
-    {
-      id: "deal-2",
-      stage: "discovery",
-      status: "open",
-      value: 50000,
-      probability: 20,
-      expected_close_date: "2026-08-01",
-    },
-    {
-      id: "deal-3",
-      stage: "lost",
-      status: "lost",
-      value: 90000,
-      probability: 0,
-      expected_close_date: "2026-08-15",
-    },
-  ]);
-
-  assert.equal(forecast.openValue, 150000);
-  assert.equal(forecast.weightedValue, 70000);
-  assert.deepEqual(forecast.byStage, {
-    proposal: { openValue: 100000, weightedValue: 60000, count: 1 },
-    discovery: { openValue: 50000, weightedValue: 10000, count: 1 },
-  });
-});
-
-test("attributeCampaignRevenue counts won revenue from source campaign deals", () => {
-  const attribution = attributeCampaignRevenue("campaign-1", [
-    {
-      id: "deal-1",
-      source_campaign_id: "campaign-1",
+      name: "CRM implementation",
+      account_id: "account-1",
+      contact_id: "contact-1",
+      quote_id: "quote-1",
+      owner: "profile-1",
       status: "won",
-      value: 120000,
-    },
-    {
-      id: "deal-2",
-      source_campaign_id: "campaign-1",
-      status: "open",
-      value: 80000,
-    },
-    {
-      id: "deal-3",
-      source_campaign_id: "campaign-2",
-      status: "won",
-      value: 40000,
-    },
-  ]);
+      value: 250000,
+      currency: "HKD",
+    });
 
-  assert.equal(attribution.wonRevenue, 120000);
-  assert.equal(attribution.openPipeline, 80000);
-  assert.equal(attribution.wonDeals, 1);
-  assert.equal(attribution.openDeals, 1);
-});
-
-test("buildProjectFromWonDeal creates a project only from a won deal", () => {
-  const project = buildProjectFromWonDeal({
-    id: "deal-1",
-    name: "CRM implementation",
-    account_id: "account-1",
-    contact_id: "contact-1",
-    quote_id: "quote-1",
-    owner: "profile-1",
-    status: "won",
-    value: 250000,
-    currency: "HKD",
+    expect(project).toEqual({
+      account_id: "account-1",
+      contact_id: "contact-1",
+      deal_id: "deal-1",
+      quote_id: "quote-1",
+      name: "CRM implementation",
+      owner: "profile-1",
+      status: "onboarding",
+      value: 250000,
+      currency: "HKD",
+    });
   });
 
-  assert.deepEqual(project, {
-    account_id: "account-1",
-    contact_id: "contact-1",
-    deal_id: "deal-1",
-    quote_id: "quote-1",
-    name: "CRM implementation",
-    owner: "profile-1",
-    status: "onboarding",
-    value: 250000,
-    currency: "HKD",
-  });
-});
+  it("marks near-renewal unhealthy accounts as high risk", () => {
+    const risk = assessRenewalRisk({
+      health_score: 38,
+      renewal_date: "2026-07-01",
+      today: "2026-06-17",
+    });
 
-test("assessRenewalRisk marks near-renewal unhealthy accounts as high risk", () => {
-  const risk = assessRenewalRisk({
-    health_score: 38,
-    renewal_date: "2026-07-01",
-    today: "2026-06-17",
+    expect(risk.level).toBe("high");
+    expect(risk.nextBestAction).toBe("Schedule executive check-in before renewal");
   });
-
-  assert.equal(risk.level, "high");
-  assert.equal(risk.nextBestAction, "Schedule executive check-in before renewal");
 });
