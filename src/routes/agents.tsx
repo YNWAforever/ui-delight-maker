@@ -64,7 +64,7 @@ export const Route = createFileRoute("/agents")({
   head: () => ({
     meta: [
       { title: "Agents — Fimmick ClientOps" },
-      { name: "description", content: "Live agent runs, tool calls, and confidence scores." },
+      { name: "description", content: "Agent runs, tool calls, and confidence scores." },
     ],
   }),
   component: AgentsMonitor,
