@@ -37,7 +37,7 @@ import type { Lead, LeadStatus } from "@/lib/types";
 import { getLead, triggerLeadAgent, updateLead } from "@/server-functions/leads";
 import { getQuotes, triggerQuoteAgent } from "@/server-functions/quotes";
 
-// Local types for UI-only state (files/comments not yet in Supabase)
+// Local types for UI-only state that is not yet persisted server-side.
 type LeadComment = {
   id: string;
   lead_id: string;
