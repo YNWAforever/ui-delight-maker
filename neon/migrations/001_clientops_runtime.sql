@@ -209,7 +209,7 @@ create index if not exists tasks_client_id_idx on tasks(client_id);
 create index if not exists tasks_assigned_to_idx on tasks(assigned_to);
 create index if not exists tasks_status_due_date_idx on tasks(status, due_date);
 create index if not exists agent_runs_subject_idx on agent_runs(subject_type, subject_id);
-create index if not exists agent_runs_active_idx on agent_runs(subject_type, subject_id, workflow_type, status)
+create unique index if not exists agent_runs_active_idx on agent_runs(subject_type, subject_id, workflow_type)
   where status in ('running','waiting_approval');
 create index if not exists agent_tool_calls_agent_run_id_idx on agent_tool_calls(agent_run_id);
 create index if not exists human_approvals_agent_run_id_idx on human_approvals(agent_run_id);

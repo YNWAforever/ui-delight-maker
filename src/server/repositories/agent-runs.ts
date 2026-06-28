@@ -77,6 +77,9 @@ export async function createAgentRun(input: {
       insert into agent_runs
         (agent_name, workflow_type, trigger_type, subject_type, subject_id, input_data, status, created_by)
       values ($1, $2, 'manual', 'lead', $3, $4::jsonb, 'running', $5)
+      on conflict (subject_type, subject_id, workflow_type)
+        where status in ('running','waiting_approval')
+        do nothing
       returning *
     `,
     [
@@ -88,8 +91,12 @@ export async function createAgentRun(input: {
     ],
   );
 
-  if (!run) throw new Error("Failed to create agent run");
-  return run;
+  if (run) return run;
+
+  const activeRun = await findActiveRun(input.subject_id, input.workflow_type);
+  if (activeRun) return activeRun;
+
+  throw new Error("Failed to create agent run");
 }
 
 export async function updateAgentRunResult(
