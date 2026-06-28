@@ -127,7 +127,7 @@ export const triggerLeadAgent = createServerFn({ method: "POST" })
 
     const workflowToken = process.env.N8N_WORKFLOW_TOKEN;
     await triggerN8n(webhookUrl, {
-      trigger: "lead.retrigger",
+      trigger: "lead.qualify_requested",
       lead_id: data.leadId,
       agent_run_id: run.id,
       ...(workflowToken ? { workflow_token: workflowToken } : {}),
