@@ -37,7 +37,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
-import { useRealtime } from "@/hooks/use-realtime";
+import { useSupabaseSubscription } from "@/hooks/use-supabase-subscription";
 import { getApprovals, decideApproval } from "@/server-functions/approvals";
 import type { HumanApproval } from "@/lib/types";
 import { APP_USERS, userById } from "@/lib/users";
@@ -79,12 +79,12 @@ function ApprovalsInbox() {
   const router = useRouter();
   const navigate = useNavigate();
   // New approval from n8n → re-run loader
-  useRealtime("human_approvals", "INSERT", undefined, () => {
+  useSupabaseSubscription("human_approvals", "INSERT", undefined, () => {
     router.invalidate();
     toast.info("New approval request received");
   });
   // Also refresh when an approval status changes
-  useRealtime("human_approvals", "UPDATE", undefined, () => {
+  useSupabaseSubscription("human_approvals", "UPDATE", undefined, () => {
     router.invalidate();
   });
 

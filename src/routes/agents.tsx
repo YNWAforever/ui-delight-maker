@@ -15,9 +15,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
-import { useRealtime } from "@/hooks/use-realtime";
+import { useSupabaseSubscription } from "@/hooks/use-supabase-subscription";
 import { getAgentRuns } from "@/server-functions/agent-runs";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
 import type { AgentRun } from "@/lib/types";
@@ -30,10 +37,7 @@ function computeAgentStats(runs: AgentRun[]) {
   const since24h = now - 24 * 60 * 60 * 1000;
   const sinceSparkline = now - SPARKLINE_HOURS * 60 * 60 * 1000;
 
-  const map: Record<
-    string,
-    { runs24h: number; confidences: number[]; sparkline: number[] }
-  > = {};
+  const map: Record<string, { runs24h: number; confidences: number[]; sparkline: number[] }> = {};
 
   for (const run of runs) {
     const key = run.agent_name;
@@ -69,7 +73,7 @@ export const Route = createFileRoute("/agents")({
 function AgentsMonitor() {
   const agentRuns = Route.useLoaderData() as AgentRun[];
   const router = useRouter();
-  useRealtime("agent_runs", "*", undefined, () => {
+  useSupabaseSubscription("agent_runs", "*", undefined, () => {
     router.invalidate();
   });
   const [open, setOpen] = useState<string | null>(null);
@@ -139,9 +143,7 @@ function AgentsMonitor() {
                 <div>
                   <p className="text-muted-foreground">Confidence</p>
                   <p className="font-medium">
-                    {a.avg_confidence != null
-                      ? `${(a.avg_confidence * 100).toFixed(0)}%`
-                      : "—"}
+                    {a.avg_confidence != null ? `${(a.avg_confidence * 100).toFixed(0)}%` : "—"}
                   </p>
                 </div>
                 <div>
@@ -207,7 +209,10 @@ function AgentsMonitor() {
             <TableBody>
               {filteredRuns.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    colSpan={9}
+                    className="py-10 text-center text-sm text-muted-foreground"
+                  >
                     No agent runs yet. Trigger a lead to start the pipeline.
                   </TableCell>
                 </TableRow>
@@ -235,7 +240,9 @@ function AgentsMonitor() {
                           <StatusBadge value={run.status} />
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-sm">
-                          {run.duration_ms != null ? `${(run.duration_ms / 1000).toFixed(1)}s` : "—"}
+                          {run.duration_ms != null
+                            ? `${(run.duration_ms / 1000).toFixed(1)}s`
+                            : "—"}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-sm">
                           {run.tokens_used != null ? run.tokens_used.toLocaleString() : "—"}

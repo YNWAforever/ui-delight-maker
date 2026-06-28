@@ -31,8 +31,8 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
+import { useSupabaseSubscription } from "@/hooks/use-supabase-subscription";
 import type { Lead, LeadStatus } from "@/lib/types";
-import { useRealtime } from "@/hooks/use-realtime";
 import { getLead, triggerLeadAgent, updateLead } from "@/server-functions/leads";
 import { getQuotes, triggerQuoteAgent } from "@/server-functions/quotes";
 
@@ -101,7 +101,7 @@ function LeadDetail() {
   const [commentDraft, setCommentDraft] = useState("");
   const [files, setFiles] = useState<LeadFile[]>([]);
 
-  useRealtime("leads", "UPDATE", `id=eq.${lead.id}`, () => router.invalidate());
+  useSupabaseSubscription("leads", "UPDATE", `id=eq.${lead.id}`, () => router.invalidate());
 
   const handleGenerateQuote = async () => {
     await triggerQuoteAgent({ data: { leadId: lead.id } });
