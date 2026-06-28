@@ -1,5 +1,6 @@
 import { AccountView } from "@neondatabase/auth-ui";
 import { createFileRoute } from "@tanstack/react-router";
+import { NeonAuthProvider } from "@/components/auth/neon-auth-provider";
 
 export const Route = createFileRoute("/account")({
   head: () => ({
@@ -10,9 +11,11 @@ export const Route = createFileRoute("/account")({
 
 function AccountPage() {
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-6">
-      <h1 className="mb-4 text-xl font-semibold tracking-tight">Account</h1>
-      <AccountView />
-    </div>
+    <NeonAuthProvider redirectTo="/">
+      <div className="mx-auto w-full max-w-3xl px-6 py-6">
+        <h1 className="mb-4 text-xl font-semibold tracking-tight">Account</h1>
+        <AccountView />
+      </div>
+    </NeonAuthProvider>
   );
 }

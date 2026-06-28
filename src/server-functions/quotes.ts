@@ -1,8 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { triggerN8n } from "@/lib/n8n";
+import { getN8nDispatchConfig, triggerN8n } from "@/lib/n8n";
 import { buildQuoteDraftPayload } from "@/lib/workflows/payloads";
-import { createAgentRun, findActiveRun } from "@/server/repositories/agent-runs";
+import {
+  createAgentRun,
+  findActiveRun,
+  updateAgentRunResult,
+} from "@/server/repositories/agent-runs";
 import {
   createQuote as createQuoteInNeon,
   getQuote as getQuoteFromNeon,
@@ -85,7 +89,15 @@ export const triggerQuoteAgent = createServerFn({ method: "POST" })
       };
     }
 
-    const run = await createAgentRun({
+    const dispatchConfig = getN8nDispatchConfig(process.env.N8N_DRAFT_QUOTE_WEBHOOK_URL);
+    if (!dispatchConfig) {
+      return {
+        triggered: false,
+        reason: "missing_webhook" as const,
+      };
+    }
+
+    const { run, created } = await createAgentRun({
       agent_name: "Quote Draft Agent",
       workflow_type: "draft_quote",
       subject_id: data.leadId,
@@ -93,19 +105,30 @@ export const triggerQuoteAgent = createServerFn({ method: "POST" })
       created_by: session.user.id,
     });
 
-    const webhookUrl = process.env.N8N_DRAFT_QUOTE_WEBHOOK_URL;
-    if (!webhookUrl) {
+    if (!created) {
       return {
         triggered: false,
         run: serializeAgentRun(run),
-        reason: "missing_webhook" as const,
+        reason: "already_running" as const,
       };
     }
 
-    await triggerN8n(
-      webhookUrl,
-      buildQuoteDraftPayload({ leadId: data.leadId, agentRunId: run.id }),
-    );
+    try {
+      await triggerN8n(
+        dispatchConfig,
+        buildQuoteDraftPayload({ leadId: data.leadId, agentRunId: run.id }),
+      );
+    } catch (error) {
+      await updateAgentRunResult(run.id, {
+        status: "failed",
+        output_data: {
+          dispatch_error: error instanceof Error ? error.message : "Unknown n8n dispatch error",
+        },
+        output_summary: "Failed to dispatch quote draft workflow.",
+      });
+      throw error;
+    }
+
     return { triggered: true, run: serializeAgentRun(run) };
   });
 

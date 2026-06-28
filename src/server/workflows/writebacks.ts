@@ -6,7 +6,7 @@ import type {
 } from "@/lib/workflows/types";
 import { transaction } from "@/server/db/neon.server";
 import { createActivityLog } from "@/server/repositories/activity-logs";
-import { updateAgentRunResult } from "@/server/repositories/agent-runs";
+import { getAgentRunForUpdate, updateAgentRunResult } from "@/server/repositories/agent-runs";
 import { createApproval } from "@/server/repositories/approvals";
 import { assertLeadExists, updateLead } from "@/server/repositories/leads";
 import { createQuote } from "@/server/repositories/quotes";
@@ -23,6 +23,31 @@ function getHumanReviewRequired(qualificationData: unknown, confidenceScore: num
   }
 
   return confidenceScore < 0.7;
+}
+
+function getExistingApprovalId(outputData: unknown) {
+  if (!outputData || typeof outputData !== "object") {
+    return null;
+  }
+
+  const approvalId = (outputData as { approval_id?: unknown }).approval_id;
+  return typeof approvalId === "string" && approvalId.length > 0 ? approvalId : null;
+}
+
+function getExistingQuoteDraftResult(outputData: unknown) {
+  if (!outputData || typeof outputData !== "object") {
+    return null;
+  }
+
+  const result = outputData as { quote_id?: unknown; approval_id?: unknown };
+  if (typeof result.quote_id !== "string" || result.quote_id.length === 0) {
+    return null;
+  }
+
+  return {
+    quoteId: result.quote_id,
+    approvalId: typeof result.approval_id === "string" ? result.approval_id : null,
+  };
 }
 
 export async function writeQualificationResult(payload: QualificationWritebackPayload) {
@@ -76,6 +101,18 @@ export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload)
   return transaction(async (db) => {
     await assertLeadExists(payload.lead_id, db);
 
+    const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
+    if (!agentRun) {
+      throw new Error("Agent run not found");
+    }
+
+    if (agentRun.status === "waiting_approval" || agentRun.status === "completed") {
+      const approvalId = getExistingApprovalId(agentRun.output_data);
+      if (approvalId) {
+        return approvalId;
+      }
+    }
+
     const approval = await createApproval(
       {
         agent_run_id: payload.agent_run_id,
@@ -128,6 +165,18 @@ export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload)
 export async function writeQuoteDraftResult(payload: QuoteDraftWritebackPayload) {
   return transaction(async (db) => {
     await assertLeadExists(payload.lead_id, db);
+
+    const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
+    if (!agentRun) {
+      throw new Error("Agent run not found");
+    }
+
+    if (agentRun.status === "waiting_approval" || agentRun.status === "completed") {
+      const existingResult = getExistingQuoteDraftResult(agentRun.output_data);
+      if (existingResult) {
+        return existingResult;
+      }
+    }
 
     const quote = await createQuote(
       {

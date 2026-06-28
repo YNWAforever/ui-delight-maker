@@ -7,7 +7,6 @@ export type WorkflowRequestPayload = {
   trigger: WorkflowTrigger;
   lead_id: string;
   agent_run_id: string;
-  workflow_token: string;
 };
 
 export type QualificationWritebackPayload = {

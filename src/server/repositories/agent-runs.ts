@@ -62,6 +62,10 @@ export async function findActiveRun(subjectId: string, workflowType: WorkflowTyp
   );
 }
 
+export async function getAgentRunForUpdate(id: string, db: Queryable) {
+  return queryOne<AgentRun>("select * from agent_runs where id = $1 for update", [id], db);
+}
+
 export async function createAgentRun(input: {
   agent_name: string;
   workflow_type: WorkflowType;
@@ -88,10 +92,14 @@ export async function createAgentRun(input: {
     ],
   );
 
-  if (run) return run;
+  if (run) {
+    return { run, created: true as const };
+  }
 
   const activeRun = await findActiveRun(input.subject_id, input.workflow_type);
-  if (activeRun) return activeRun;
+  if (activeRun) {
+    return { run: activeRun, created: false as const };
+  }
 
   throw new Error("Failed to create agent run");
 }

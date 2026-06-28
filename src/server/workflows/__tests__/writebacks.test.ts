@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => {
     fakeDb,
     transactionMock: vi.fn(async (work: (db: typeof fakeDb) => Promise<unknown>) => work(fakeDb)),
     assertLeadExistsMock: vi.fn(),
+    getAgentRunForUpdateMock: vi.fn(),
     updateLeadMock: vi.fn(),
     updateAgentRunResultMock: vi.fn(),
     createActivityLogMock: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock("@/server/repositories/leads", () => ({
 }));
 
 vi.mock("@/server/repositories/agent-runs", () => ({
+  getAgentRunForUpdate: mocks.getAgentRunForUpdateMock,
   updateAgentRunResult: mocks.updateAgentRunResultMock,
 }));
 
@@ -52,6 +54,11 @@ describe("workflow writebacks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.fakeDb.query.mockReset();
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-default",
+      status: "running",
+      output_data: null,
+    });
   });
 
   it("wraps qualification writebacks in one transaction client", async () => {
@@ -128,6 +135,28 @@ describe("workflow writebacks", () => {
     );
   });
 
+  it("reuses an existing reply approval for retried writebacks", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-2",
+      status: "waiting_approval",
+      output_data: { approval_id: "approval-1" },
+    });
+
+    await expect(
+      writeReplyDraftResult({
+        lead_id: "lead-2",
+        agent_run_id: "run-2",
+        draft_message: "Here is a draft reply",
+        context_summary: "Review before sending",
+        confidence_score: 0.61,
+      }),
+    ).resolves.toBe("approval-1");
+
+    expect(mocks.createApprovalMock).not.toHaveBeenCalled();
+    expect(mocks.updateAgentRunResultMock).not.toHaveBeenCalled();
+    expect(mocks.createActivityLogMock).not.toHaveBeenCalled();
+  });
+
   it("skips quote approvals when send approval is not requested", async () => {
     mocks.createQuoteMock.mockResolvedValue({ id: "quote-1" });
 
@@ -179,5 +208,43 @@ describe("workflow writebacks", () => {
       expect.objectContaining({ object_id: "quote-1", object_type: "quote" }),
       mocks.fakeDb,
     );
+  });
+
+  it("reuses an existing quote draft result for retried writebacks", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-3",
+      status: "completed",
+      output_data: { quote_id: "quote-1", approval_id: "approval-2" },
+    });
+
+    await expect(
+      writeQuoteDraftResult({
+        lead_id: "lead-3",
+        agent_run_id: "run-3",
+        quote: {
+          currency: "HKD",
+          total_value: 20000,
+          line_items: [
+            {
+              id: "line-1",
+              service: "Retainer",
+              description: "Monthly support",
+              qty: 1,
+              unit_price: 20000,
+            },
+          ],
+        },
+        create_send_approval: true,
+        confidence_score: 0.73,
+      }),
+    ).resolves.toEqual({
+      quoteId: "quote-1",
+      approvalId: "approval-2",
+    });
+
+    expect(mocks.createQuoteMock).not.toHaveBeenCalled();
+    expect(mocks.createApprovalMock).not.toHaveBeenCalled();
+    expect(mocks.updateAgentRunResultMock).not.toHaveBeenCalled();
+    expect(mocks.createActivityLogMock).not.toHaveBeenCalled();
   });
 });
