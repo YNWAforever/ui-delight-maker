@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
-import { redirect } from "@tanstack/react-router";
 import { getNeonAuthSession } from "@/lib/auth/neon-auth.server";
 
 function getNeonAuthUrl() {
@@ -69,5 +68,5 @@ export const signOut = createServerFn({ method: "POST" }).handler(async () => {
     }
   }
 
-  throw redirect({ to: "/login" });
+  return { ok: true } as const;
 });
