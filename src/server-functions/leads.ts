@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import { triggerN8n } from "@/lib/n8n";
+import { buildQualificationPayload, buildReplyDraftPayload } from "@/lib/workflows/payloads";
 import { findActiveRun, createAgentRun } from "@/server/repositories/agent-runs";
 import {
   createLead as createLeadInNeon,
@@ -125,13 +126,46 @@ export const triggerLeadAgent = createServerFn({ method: "POST" })
       };
     }
 
-    const workflowToken = process.env.N8N_WORKFLOW_TOKEN;
-    await triggerN8n(webhookUrl, {
-      trigger: "lead.qualify_requested",
-      lead_id: data.leadId,
-      agent_run_id: run.id,
-      ...(workflowToken ? { workflow_token: workflowToken } : {}),
-      payload: {},
+    await triggerN8n(
+      webhookUrl,
+      buildQualificationPayload({ leadId: data.leadId, agentRunId: run.id }),
+    );
+    return { triggered: true, run: serializeAgentRun(run) };
+  });
+
+export const triggerLeadReplyDraft = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as { leadId: string })
+  .handler(async ({ data }) => {
+    const session = await requireNeonAuthSession();
+    const existingRun = await findActiveRun(data.leadId, "draft_reply");
+    if (existingRun) {
+      return {
+        triggered: false,
+        run: serializeAgentRun(existingRun),
+        reason: "already_running" as const,
+      };
+    }
+
+    const run = await createAgentRun({
+      agent_name: "Reply Draft Agent",
+      workflow_type: "draft_reply",
+      subject_id: data.leadId,
+      input_data: { lead_id: data.leadId },
+      created_by: session.user.id,
     });
+
+    const webhookUrl = process.env.N8N_DRAFT_REPLY_WEBHOOK_URL;
+    if (!webhookUrl) {
+      return {
+        triggered: false,
+        run: serializeAgentRun(run),
+        reason: "missing_webhook" as const,
+      };
+    }
+
+    await triggerN8n(
+      webhookUrl,
+      buildReplyDraftPayload({ leadId: data.leadId, agentRunId: run.id }),
+    );
     return { triggered: true, run: serializeAgentRun(run) };
   });

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import { triggerN8n } from "@/lib/n8n";
+import { buildQuoteDraftPayload } from "@/lib/workflows/payloads";
 import { createAgentRun, findActiveRun } from "@/server/repositories/agent-runs";
 import {
   createQuote as createQuoteInNeon,
@@ -101,14 +102,10 @@ export const triggerQuoteAgent = createServerFn({ method: "POST" })
       };
     }
 
-    const workflowToken = process.env.N8N_WORKFLOW_TOKEN;
-    await triggerN8n(webhookUrl, {
-      trigger: "quote.draft_requested",
-      lead_id: data.leadId,
-      agent_run_id: run.id,
-      ...(workflowToken ? { workflow_token: workflowToken } : {}),
-      payload: {},
-    });
+    await triggerN8n(
+      webhookUrl,
+      buildQuoteDraftPayload({ leadId: data.leadId, agentRunId: run.id }),
+    );
     return { triggered: true, run: serializeAgentRun(run) };
   });
 
