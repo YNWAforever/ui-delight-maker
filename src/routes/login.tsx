@@ -12,12 +12,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   return (
-    <NeonAuthProvider
-      redirectTo="/"
-      signUp={false}
-      emailOTP={false}
-      credentials={{ forgotPassword: false }}
-    >
+    <NeonAuthProvider redirectTo="/" emailOTP={false}>
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="w-full max-w-sm space-y-6">
           <div className="flex flex-col items-center gap-2 text-center">
