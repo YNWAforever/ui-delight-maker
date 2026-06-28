@@ -80,7 +80,8 @@ export async function getLeadWithActivity(id: string) {
       `
         select *
         from activity_logs
-        where object_id = $1
+        where object_type = 'lead'
+          and object_id = $1
         order by created_at desc
         limit 20
       `,
