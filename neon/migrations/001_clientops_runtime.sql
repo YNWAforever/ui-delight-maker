@@ -21,6 +21,8 @@ create table if not exists profiles (
   name text,
   role text not null default 'sales' check (role in ('admin','manager','sales','cs')),
   avatar_url text,
+  assignment_labels text[] not null default '{}'::text[],
+  permissions jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
