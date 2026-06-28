@@ -33,12 +33,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
 import type { Lead, LeadStatus } from "@/lib/types";
 import { useRealtime } from "@/hooks/use-realtime";
-import { getLead } from "@/server-functions/leads";
+import { getLead, triggerLeadAgent, updateLead } from "@/server-functions/leads";
 import { getQuotes, triggerQuoteAgent } from "@/server-functions/quotes";
 
 // Local types for UI-only state (files/comments not yet in Supabase)
-type LeadComment = { id: string; lead_id: string; author: string; body: string; created_at: string };
-type LeadFile = { id: string; lead_id: string; name: string; size: string; kind: string; uploaded_at: string; uploaded_by: string };
+type LeadComment = {
+  id: string;
+  lead_id: string;
+  author: string;
+  body: string;
+  created_at: string;
+};
+type LeadFile = {
+  id: string;
+  lead_id: string;
+  name: string;
+  size: string;
+  kind: string;
+  uploaded_at: string;
+  uploaded_by: string;
+};
 
 export const Route = createFileRoute("/leads/$id")({
   loader: async ({ params }) => {
@@ -79,22 +93,31 @@ function LeadDetail() {
   const router = useRouter();
 
   const [status, setStatus] = useState<LeadStatus>(lead.status);
-  const [notes, setNotes] = useState<{ id: string; lead_id: string; author: string; body: string; created_at: string }[]>([]);
+  const [notes, setNotes] = useState<
+    { id: string; lead_id: string; author: string; body: string; created_at: string }[]
+  >([]);
   const [composer, setComposer] = useState("");
   const [comments, setComments] = useState<LeadComment[]>([]);
   const [commentDraft, setCommentDraft] = useState("");
   const [files, setFiles] = useState<LeadFile[]>([]);
 
-  useRealtime(
-    "leads",
-    "UPDATE",
-    `id=eq.${lead.id}`,
-    () => router.invalidate(),
-  );
+  useRealtime("leads", "UPDATE", `id=eq.${lead.id}`, () => router.invalidate());
 
   const handleGenerateQuote = async () => {
     await triggerQuoteAgent({ data: { leadId: lead.id } });
     toast.success("Quote agent triggered — quote will appear shortly");
+  };
+
+  const handleStatusChange = async (nextStatus: LeadStatus) => {
+    setStatus(nextStatus);
+    await updateLead({ data: { id: lead.id, updates: { status: nextStatus } } });
+    toast.success(`Status updated to ${nextStatus.replace(/_/g, " ")}`);
+    router.invalidate();
+  };
+
+  const handleQualifyLead = async () => {
+    await triggerLeadAgent({ data: { leadId: lead.id } });
+    toast.success("Qualification agent queued");
   };
 
   const addNote = () => {
@@ -160,6 +183,9 @@ function LeadDetail() {
               <Link to="/leads">
                 <ArrowLeft className="mr-2 h-4 w-4" /> All leads
               </Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleQualifyLead}>
+              <Sparkles className="mr-2 h-4 w-4" /> Qualify
             </Button>
             <Button variant="outline" size="sm" onClick={handleGenerateQuote}>
               <Sparkles className="mr-2 h-4 w-4" /> Generate Quote
@@ -392,7 +418,9 @@ function LeadDetail() {
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-muted-foreground">Urgency</span>
-                          <p className="font-medium">{lead.qualification_data.urgency_score} / 10</p>
+                          <p className="font-medium">
+                            {lead.qualification_data.urgency_score} / 10
+                          </p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Fit</span>
@@ -404,18 +432,27 @@ function LeadDetail() {
                         </div>
                         <div>
                           <span className="text-muted-foreground">Confidence</span>
-                          <p className="font-medium">{(lead.qualification_data.confidence * 100).toFixed(0)}%</p>
+                          <p className="font-medium">
+                            {(lead.qualification_data.confidence * 100).toFixed(0)}%
+                          </p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Score</span>
-                          <p className="font-medium">{lead.qualification_data.qualification_score} / 100</p>
+                          <p className="font-medium">
+                            {lead.qualification_data.qualification_score} / 100
+                          </p>
                         </div>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Services of interest</p>
                         <div className="mt-1 flex flex-wrap gap-1">
                           {lead.qualification_data.service_interest.map((s: string) => (
-                            <span key={s} className="rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">{s}</span>
+                            <span
+                              key={s}
+                              className="rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary"
+                            >
+                              {s}
+                            </span>
                           ))}
                         </div>
                       </div>
@@ -440,7 +477,8 @@ function LeadDetail() {
                       <Bot className="h-8 w-8 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">
                         Qualification agent hasn&apos;t run yet.{" "}
-                        {lead.status === "new" && "Agent will run automatically after lead is created."}
+                        {lead.status === "new" &&
+                          "Agent will run automatically after lead is created."}
                       </p>
                     </div>
                   )}
@@ -460,10 +498,7 @@ function LeadDetail() {
                 <p className="text-xs text-muted-foreground">Status</p>
                 <Select
                   value={status}
-                  onValueChange={(v) => {
-                    setStatus(v as LeadStatus);
-                    toast.success(`Status updated to ${v.replace(/_/g, " ")}`);
-                  }}
+                  onValueChange={(v) => void handleStatusChange(v as LeadStatus)}
                 >
                   <SelectTrigger className="mt-1 h-9">
                     <SelectValue />
@@ -508,4 +543,3 @@ function LeadDetail() {
     </>
   );
 }
-
