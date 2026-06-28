@@ -1,4 +1,3 @@
-// src/lib/supabase.server.ts
 import { createServerClient } from "@supabase/ssr";
 import { getCookies, setCookie } from "@tanstack/react-start/server";
 

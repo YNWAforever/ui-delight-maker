@@ -1,6 +1,6 @@
 // src/server-functions/engagement-events.ts
 import { createServerFn } from "@tanstack/react-start";
-import { createSupabaseServerClient } from "@/lib/supabase.server";
+import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import type { ChannelIdentity, EngagementEvent } from "@/lib/types";
 
 type GetEngagementEventsInput = {

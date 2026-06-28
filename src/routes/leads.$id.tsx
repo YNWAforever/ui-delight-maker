@@ -9,6 +9,7 @@ import {
   Mail,
   MessageSquare,
   Phone,
+  RefreshCw,
   Send,
   Sparkles,
   Upload,
@@ -31,7 +32,6 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
-import { useSupabaseSubscription } from "@/hooks/use-supabase-subscription";
 import type { Lead, LeadStatus } from "@/lib/types";
 import { getLead, triggerLeadAgent, updateLead } from "@/server-functions/leads";
 import { getQuotes, triggerQuoteAgent } from "@/server-functions/quotes";
@@ -100,8 +100,6 @@ function LeadDetail() {
   const [comments, setComments] = useState<LeadComment[]>([]);
   const [commentDraft, setCommentDraft] = useState("");
   const [files, setFiles] = useState<LeadFile[]>([]);
-
-  useSupabaseSubscription("leads", "UPDATE", `id=eq.${lead.id}`, () => router.invalidate());
 
   const handleGenerateQuote = async () => {
     await triggerQuoteAgent({ data: { leadId: lead.id } });
@@ -183,6 +181,9 @@ function LeadDetail() {
               <Link to="/leads">
                 <ArrowLeft className="mr-2 h-4 w-4" /> All leads
               </Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => router.invalidate()}>
+              <RefreshCw className="mr-2 h-4 w-4" /> Refresh
             </Button>
             <Button variant="outline" size="sm" onClick={handleQualifyLead}>
               <Sparkles className="mr-2 h-4 w-4" /> Qualify

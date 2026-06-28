@@ -1,6 +1,6 @@
 // src/server-functions/projects.ts
 import { createServerFn } from "@tanstack/react-start";
-import { createSupabaseServerClient } from "@/lib/supabase.server";
+import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import { buildProjectFromWonDeal } from "@/lib/lifecycle-utils";
 import type { Deal, Project } from "@/lib/types";
 

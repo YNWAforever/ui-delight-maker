@@ -1,6 +1,6 @@
 // src/server-functions/automation-playbooks.ts
 import { createServerFn } from "@tanstack/react-start";
-import { createSupabaseServerClient } from "@/lib/supabase.server";
+import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import type { AutomationPlaybook, AutomationRun } from "@/lib/types";
 
 type GetAutomationPlaybooksInput = {

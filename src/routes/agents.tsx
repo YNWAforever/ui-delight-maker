@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { Bot, ChevronDown, ChevronRight, Play } from "lucide-react";
+import { Bot, ChevronDown, ChevronRight, Play, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -24,7 +24,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
-import { useSupabaseSubscription } from "@/hooks/use-supabase-subscription";
 import { getAgentRuns } from "@/server-functions/agent-runs";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
 import type { AgentRun } from "@/lib/types";
@@ -73,9 +72,6 @@ export const Route = createFileRoute("/agents")({
 function AgentsMonitor() {
   const agentRuns = Route.useLoaderData() as AgentRun[];
   const router = useRouter();
-  useSupabaseSubscription("agent_runs", "*", undefined, () => {
-    router.invalidate();
-  });
   const [open, setOpen] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -111,7 +107,15 @@ function AgentsMonitor() {
 
   return (
     <>
-      <PageHeader title="Agent Monitor" description="Live runs across the multi-agent system." />
+      <PageHeader
+        title="Agent Monitor"
+        description="Agent runs across the multi-agent system."
+        actions={
+          <Button size="sm" variant="outline" onClick={() => router.invalidate()}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+          </Button>
+        }
+      />
 
       <div className="space-y-6 px-6 py-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

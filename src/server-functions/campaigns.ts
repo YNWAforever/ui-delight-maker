@@ -1,6 +1,6 @@
 // src/server-functions/campaigns.ts
 import { createServerFn } from "@tanstack/react-start";
-import { createSupabaseServerClient } from "@/lib/supabase.server";
+import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import { attributeCampaignRevenue } from "@/lib/lifecycle-utils";
 import type { Campaign, CampaignMember, Deal, EngagementEvent } from "@/lib/types";
 
