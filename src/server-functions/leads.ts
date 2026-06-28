@@ -2,7 +2,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createSupabaseServerClient } from "@/lib/supabase.server";
 import { triggerN8n } from "@/lib/n8n";
-import type { Lead } from "@/lib/types";
+import type { Lead, LeadStatus } from "@/lib/types";
 
 type GetLeadsInput = {
   status?: string;
@@ -15,18 +15,18 @@ type GetLeadsInput = {
 type CreateLeadInput = Pick<Lead, "company_name" | "source"> & {
   enquiry_text?: string | null;
 } & Partial<
-  Pick<
-    Lead,
-    | "contact_name"
-    | "contact_email"
-    | "contact_phone"
-    | "assigned_to"
-    | "contact_id"
-    | "account_id"
-    | "source_campaign_id"
-    | "campaign_member_id"
-  >
->;
+    Pick<
+      Lead,
+      | "contact_name"
+      | "contact_email"
+      | "contact_phone"
+      | "assigned_to"
+      | "contact_id"
+      | "account_id"
+      | "source_campaign_id"
+      | "campaign_member_id"
+    >
+  >;
 type UpdateLeadInput = Partial<
   Pick<
     Lead,
@@ -105,16 +105,51 @@ export const updateLead = createServerFn({ method: "POST" })
         ...(data.updates.status !== undefined && { status: data.updates.status }),
         ...(data.updates.assigned_to !== undefined && { assigned_to: data.updates.assigned_to }),
         ...(data.updates.lead_score !== undefined && { lead_score: data.updates.lead_score }),
-        ...(data.updates.qualification_data !== undefined && { qualification_data: data.updates.qualification_data }),
+        ...(data.updates.qualification_data !== undefined && {
+          qualification_data: data.updates.qualification_data,
+        }),
         ...(data.updates.contact_id !== undefined && { contact_id: data.updates.contact_id }),
         ...(data.updates.account_id !== undefined && { account_id: data.updates.account_id }),
-        ...(data.updates.source_campaign_id !== undefined && { source_campaign_id: data.updates.source_campaign_id }),
-        ...(data.updates.campaign_member_id !== undefined && { campaign_member_id: data.updates.campaign_member_id }),
+        ...(data.updates.source_campaign_id !== undefined && {
+          source_campaign_id: data.updates.source_campaign_id,
+        }),
+        ...(data.updates.campaign_member_id !== undefined && {
+          campaign_member_id: data.updates.campaign_member_id,
+        }),
       })
       .eq("id", data.id)
       .select()
       .single();
     if (error) throw new Error(error.message);
+    return lead as Lead;
+  });
+
+export const moveLeadStage = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as { id: string; status: LeadStatus; reason?: string })
+  .handler(async ({ data }) => {
+    const supabase = createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data: lead, error } = await supabase
+      .from("leads")
+      .update({ status: data.status })
+      .eq("id", data.id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+
+    await supabase.from("activity_logs").insert({
+      actor_type: "user",
+      actor_id: user?.id ?? null,
+      actor_name: null,
+      action: `moved lead to ${data.status.replace(/_/g, " ")}`,
+      object_type: "lead",
+      object_id: data.id,
+      diff_data: { status: data.status, reason: data.reason ?? null },
+    });
+
     return lead as Lead;
   });
 
