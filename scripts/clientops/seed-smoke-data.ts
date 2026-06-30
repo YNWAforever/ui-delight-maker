@@ -39,6 +39,10 @@ function assertStagingSeedAllowed(databaseUrl: string) {
     throw new Error("Refusing to seed: CLIENTOPS_ALLOW_STAGING_SEED must be 1");
   }
 
+  if (process.env.CLIENTOPS_SEED_TARGET !== "staging") {
+    throw new Error("Refusing to seed: CLIENTOPS_SEED_TARGET must be staging");
+  }
+
   const lowered = databaseUrl.toLowerCase();
   if (lowered.includes("prod") || lowered.includes("production")) {
     throw new Error("Refusing to seed: DATABASE_URL looks like production");
@@ -186,7 +190,11 @@ async function main() {
       ),
     );
   } catch (error) {
-    await client.query("rollback");
+    try {
+      await client.query("rollback");
+    } catch (rollbackError) {
+      console.error("Failed to rollback seed transaction", rollbackError);
+    }
     throw error;
   } finally {
     client.release();

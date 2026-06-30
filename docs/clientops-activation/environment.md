@@ -17,6 +17,7 @@
 | n8n apply script | `N8N_API_BASE_URL`              |       No | n8n        | Required only for direct apply/update.    |
 | n8n apply script | `N8N_API_KEY`                   |       No | n8n        | Required only for direct apply/update.    |
 | Seed script      | `CLIENTOPS_ALLOW_STAGING_SEED`  |      Yes | App ops    | Must be `1` before writes run.            |
+| Seed script      | `CLIENTOPS_SEED_TARGET`         |      Yes | App ops    | Must be `staging` before writes run.      |
 | Seed script      | `CLIENTOPS_SMOKE_PROFILE_ID`    |      Yes | Neon Auth  | Real staging user id.                     |
 | Seed script      | `CLIENTOPS_SMOKE_PROFILE_EMAIL` |      Yes | App ops    | Staging profile email.                    |
 | Seed script      | `CLIENTOPS_SMOKE_PROFILE_NAME`  |      Yes | App ops    | Staging display name.                     |
