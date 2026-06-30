@@ -10,13 +10,18 @@ type WorkflowTemplate = {
   nodes: Array<{
     name?: string;
     type?: string;
+    continueOnFail?: boolean;
     parameters?: {
       path?: string;
       httpMethod?: string;
       responseMode?: string;
+      jsCode?: string;
     };
   }>;
-  connections: Record<string, unknown>;
+  connections: Record<
+    string,
+    Record<string, Array<Array<{ node?: string; type?: string; index?: number }>>>
+  >;
   settings: Record<string, unknown>;
 };
 
@@ -59,6 +64,35 @@ describe("ClientOps n8n workflow templates", () => {
 
     expect(json.nodes.some((node) => node.type === "n8n-nodes-base.httpRequest")).toBe(true);
     expect(json.nodes.some((node) => node.type === "n8n-nodes-base.respondToWebhook")).toBe(true);
+
+    const nodeNames = new Set(json.nodes.map((node) => node.name).filter(Boolean));
+    for (const [sourceNodeName, outputs] of Object.entries(json.connections)) {
+      expect(nodeNames.has(sourceNodeName)).toBe(true);
+      for (const connectionGroups of Object.values(outputs)) {
+        for (const connectionGroup of connectionGroups) {
+          for (const connection of connectionGroup) {
+            expect(nodeNames.has(connection.node)).toBe(true);
+          }
+        }
+      }
+    }
+
+    const codeNodes = json.nodes.filter((node) => node.type === "n8n-nodes-base.code");
+    expect(codeNodes.length).toBeGreaterThan(0);
+    for (const node of codeNodes) {
+      expect(node.parameters?.jsCode).toBeTruthy();
+      expect(() => new Function(node.parameters?.jsCode)).not.toThrow();
+    }
+
+    const openRouterNode = json.nodes.find((node) => node.name === "OpenRouter Request");
+    expect(openRouterNode?.type).toBe("n8n-nodes-base.httpRequest");
+    expect(openRouterNode?.continueOnFail).toBe(true);
+
+    const resolveOutputCode = json.nodes.find((node) => node.name === "Resolve Output")?.parameters
+      ?.jsCode;
+    expect(resolveOutputCode).toContain("lead_id: fallback.lead_id");
+    expect(resolveOutputCode).toContain("agent_run_id: fallback.agent_run_id");
+    expect(resolveOutputCode).not.toContain("...fallback, ...parsed");
 
     expect(raw).toContain(testCase.trigger);
     expect(raw).toContain("/api/workflows/context/lead");
