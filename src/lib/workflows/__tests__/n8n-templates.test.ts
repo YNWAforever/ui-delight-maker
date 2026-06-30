@@ -80,8 +80,12 @@ describe("ClientOps n8n workflow templates", () => {
     const codeNodes = json.nodes.filter((node) => node.type === "n8n-nodes-base.code");
     expect(codeNodes.length).toBeGreaterThan(0);
     for (const node of codeNodes) {
-      expect(node.parameters?.jsCode).toBeTruthy();
-      expect(() => new Function(node.parameters?.jsCode)).not.toThrow();
+      const jsCode = node.parameters?.jsCode;
+      expect(typeof jsCode).toBe("string");
+      if (typeof jsCode !== "string") {
+        throw new Error(`${node.name ?? "Code node"} is missing jsCode`);
+      }
+      expect(() => new Function(jsCode)).not.toThrow();
     }
 
     const openRouterNode = json.nodes.find((node) => node.name === "OpenRouter Request");
