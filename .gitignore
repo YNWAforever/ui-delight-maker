@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 .worktrees/
+.superpowers/
 dist
 dist-ssr
 .output

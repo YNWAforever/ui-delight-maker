@@ -1,0 +1,38 @@
+import type { WorkflowRequestPayload } from "./types";
+
+function basePayload(input: { leadId: string; agentRunId: string }) {
+  return {
+    lead_id: input.leadId,
+    agent_run_id: input.agentRunId,
+  };
+}
+
+export function buildQualificationPayload(input: {
+  leadId: string;
+  agentRunId: string;
+}): WorkflowRequestPayload {
+  return {
+    trigger: "lead.qualify_requested",
+    ...basePayload(input),
+  };
+}
+
+export function buildReplyDraftPayload(input: {
+  leadId: string;
+  agentRunId: string;
+}): WorkflowRequestPayload {
+  return {
+    trigger: "lead.reply_draft_requested",
+    ...basePayload(input),
+  };
+}
+
+export function buildQuoteDraftPayload(input: {
+  leadId: string;
+  agentRunId: string;
+}): WorkflowRequestPayload {
+  return {
+    trigger: "quote.draft_requested",
+    ...basePayload(input),
+  };
+}

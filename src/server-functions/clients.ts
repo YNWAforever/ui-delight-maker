@@ -1,6 +1,6 @@
 // src/server-functions/clients.ts
 import { createServerFn } from "@tanstack/react-start";
-import { createSupabaseServerClient } from "@/lib/supabase.server";
+import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import type { Client } from "@/lib/types";
 
 type GetClientsInput = { tier?: string; health_min?: number; account_id?: string };

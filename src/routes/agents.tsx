@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { Bot, ChevronDown, ChevronRight, Play } from "lucide-react";
+import { Bot, ChevronDown, ChevronRight, Play, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -15,9 +15,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
-import { useRealtime } from "@/hooks/use-realtime";
+import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
 import { getAgentRuns } from "@/server-functions/agent-runs";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
 import type { AgentRun } from "@/lib/types";
@@ -30,10 +37,7 @@ function computeAgentStats(runs: AgentRun[]) {
   const since24h = now - 24 * 60 * 60 * 1000;
   const sinceSparkline = now - SPARKLINE_HOURS * 60 * 60 * 1000;
 
-  const map: Record<
-    string,
-    { runs24h: number; confidences: number[]; sparkline: number[] }
-  > = {};
+  const map: Record<string, { runs24h: number; confidences: number[]; sparkline: number[] }> = {};
 
   for (const run of runs) {
     const key = run.agent_name;
@@ -60,7 +64,7 @@ export const Route = createFileRoute("/agents")({
   head: () => ({
     meta: [
       { title: "Agents — Fimmick ClientOps" },
-      { name: "description", content: "Live agent runs, tool calls, and confidence scores." },
+      { name: "description", content: "Agent runs, tool calls, and confidence scores." },
     ],
   }),
   component: AgentsMonitor,
@@ -69,11 +73,10 @@ export const Route = createFileRoute("/agents")({
 function AgentsMonitor() {
   const agentRuns = Route.useLoaderData() as AgentRun[];
   const router = useRouter();
-  useRealtime("agent_runs", "*", undefined, () => {
-    router.invalidate();
-  });
   const [open, setOpen] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
+
+  useRoutePollingRefresh();
 
   const stats = useMemo(() => computeAgentStats(agentRuns), [agentRuns]);
 
@@ -107,7 +110,15 @@ function AgentsMonitor() {
 
   return (
     <>
-      <PageHeader title="Agent Monitor" description="Live runs across the multi-agent system." />
+      <PageHeader
+        title="Agent Monitor"
+        description="Agent runs across the multi-agent system."
+        actions={
+          <Button size="sm" variant="outline" onClick={() => router.invalidate()}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+          </Button>
+        }
+      />
 
       <div className="space-y-6 px-6 py-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -139,9 +150,7 @@ function AgentsMonitor() {
                 <div>
                   <p className="text-muted-foreground">Confidence</p>
                   <p className="font-medium">
-                    {a.avg_confidence != null
-                      ? `${(a.avg_confidence * 100).toFixed(0)}%`
-                      : "—"}
+                    {a.avg_confidence != null ? `${(a.avg_confidence * 100).toFixed(0)}%` : "—"}
                   </p>
                 </div>
                 <div>
@@ -207,7 +216,10 @@ function AgentsMonitor() {
             <TableBody>
               {filteredRuns.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    colSpan={9}
+                    className="py-10 text-center text-sm text-muted-foreground"
+                  >
                     No agent runs yet. Trigger a lead to start the pipeline.
                   </TableCell>
                 </TableRow>
@@ -235,7 +247,9 @@ function AgentsMonitor() {
                           <StatusBadge value={run.status} />
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-sm">
-                          {run.duration_ms != null ? `${(run.duration_ms / 1000).toFixed(1)}s` : "—"}
+                          {run.duration_ms != null
+                            ? `${(run.duration_ms / 1000).toFixed(1)}s`
+                            : "—"}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-sm">
                           {run.tokens_used != null ? run.tokens_used.toLocaleString() : "—"}

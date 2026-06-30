@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
   redirect,
@@ -15,6 +16,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 
 import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 
 import { getSession, signOut } from "@/server-functions/auth";
 import type { Profile } from "@/lib/types";
@@ -118,16 +120,35 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient, profile } = Route.useRouteContext();
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const router = useRouter();
+
+  if (pathname === "/login") {
+    return <Outlet />;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
       <SidebarProvider>
         <div className="flex min-h-screen w-full bg-background">
-          <AppSidebar profile={profile ?? null} onSignOut={() => void signOut()} />
+          <AppSidebar
+            profile={profile ?? null}
+            onSignOut={async () => {
+              try {
+                await signOut();
+                await router.invalidate();
+                await router.navigate({ to: "/login" });
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Neon Auth sign-out failed");
+              }
+            }}
+          />
           <div className="flex min-w-0 flex-1 flex-col">
             <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
               <SidebarTrigger />
-              <div className="hidden flex-1 max-w-md md:block">
+              <div className="hidden max-w-md flex-1 md:block">
                 <GlobalSearch />
               </div>
               <div className="ml-auto flex items-center gap-2">

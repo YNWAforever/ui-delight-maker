@@ -9,6 +9,7 @@ import {
   Mail,
   MessageSquare,
   Phone,
+  RefreshCw,
   Send,
   Sparkles,
   Upload,
@@ -31,12 +32,12 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
+import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
 import type { Lead, LeadStatus } from "@/lib/types";
-import { useRealtime } from "@/hooks/use-realtime";
 import { getLead, triggerLeadAgent, updateLead } from "@/server-functions/leads";
 import { getQuotes, triggerQuoteAgent } from "@/server-functions/quotes";
 
-// Local types for UI-only state (files/comments not yet in Supabase)
+// Local types for UI-only state that is not yet persisted server-side.
 type LeadComment = {
   id: string;
   lead_id: string;
@@ -91,6 +92,7 @@ function LeadDetail() {
   const { lead, activityLogs, quotes: relatedQuotes } = Route.useLoaderData();
   const navigate = useNavigate();
   const router = useRouter();
+  useRoutePollingRefresh();
 
   const [status, setStatus] = useState<LeadStatus>(lead.status);
   const [notes, setNotes] = useState<
@@ -100,8 +102,6 @@ function LeadDetail() {
   const [comments, setComments] = useState<LeadComment[]>([]);
   const [commentDraft, setCommentDraft] = useState("");
   const [files, setFiles] = useState<LeadFile[]>([]);
-
-  useRealtime("leads", "UPDATE", `id=eq.${lead.id}`, () => router.invalidate());
 
   const handleGenerateQuote = async () => {
     await triggerQuoteAgent({ data: { leadId: lead.id } });
@@ -183,6 +183,9 @@ function LeadDetail() {
               <Link to="/leads">
                 <ArrowLeft className="mr-2 h-4 w-4" /> All leads
               </Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => router.invalidate()}>
+              <RefreshCw className="mr-2 h-4 w-4" /> Refresh
             </Button>
             <Button variant="outline" size="sm" onClick={handleQualifyLead}>
               <Sparkles className="mr-2 h-4 w-4" /> Qualify

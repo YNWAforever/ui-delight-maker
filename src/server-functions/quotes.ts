@@ -1,8 +1,21 @@
-// src/server-functions/quotes.ts
 import { createServerFn } from "@tanstack/react-start";
-import { createSupabaseServerClient } from "@/lib/supabase.server";
-import { triggerN8n } from "@/lib/n8n";
-import type { Quote, PricingTemplate } from "@/lib/types";
+import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
+import { getN8nDispatchConfig, triggerN8n } from "@/lib/n8n";
+import { buildQuoteDraftPayload } from "@/lib/workflows/payloads";
+import {
+  createAgentRun,
+  findActiveRun,
+  updateAgentRunResult,
+} from "@/server/repositories/agent-runs";
+import {
+  createQuote as createQuoteInNeon,
+  getQuote as getQuoteFromNeon,
+  listActivePricingTemplates,
+  listQuotes,
+  updateQuote as updateQuoteInNeon,
+} from "@/server/repositories/quotes";
+import { serializeAgentRun } from "@/server-functions/serializers";
+import type { PricingTemplate, Quote } from "@/lib/types";
 
 type GetQuotesInput = {
   status?: string;
@@ -12,6 +25,7 @@ type GetQuotesInput = {
   account_id?: string;
   deal_id?: string;
 };
+
 type CreateQuoteInput = Pick<Quote, "lead_id" | "currency"> &
   Partial<
     Pick<
@@ -30,93 +44,95 @@ type CreateQuoteInput = Pick<Quote, "lead_id" | "currency"> &
 export const getQuotes = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as GetQuotesInput)
   .handler(async ({ data }) => {
-    const supabase = createSupabaseServerClient();
-    let query = supabase.from("quotes").select("*").order("created_at", { ascending: false });
-    if (data.status) query = query.eq("status", data.status);
-    if (data.lead_id) query = query.eq("lead_id", data.lead_id);
-    if (data.client_id) query = query.eq("client_id", data.client_id);
-    if (data.contact_id) query = query.eq("contact_id", data.contact_id);
-    if (data.account_id) query = query.eq("account_id", data.account_id);
-    if (data.deal_id) query = query.eq("deal_id", data.deal_id);
-    const { data: quotes, error } = await query;
-    if (error) throw new Error(error.message);
-    return quotes as Quote[];
+    await requireNeonAuthSession();
+    return listQuotes(data);
   });
 
 export const getQuote = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
-    const supabase = createSupabaseServerClient();
-    const { data: quote, error } = await supabase
-      .from("quotes").select("*").eq("id", data.id).single();
-    if (error) throw new Error(error.message);
-    return quote as Quote;
+    await requireNeonAuthSession();
+    return getQuoteFromNeon(data.id);
   });
 
 export const createQuote = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateQuoteInput)
   .handler(async ({ data }) => {
-    const supabase = createSupabaseServerClient();
-    const { data: quote, error } = await supabase.from("quotes").insert(data).select().single();
-    if (error) throw new Error(error.message);
-    return quote as Quote;
+    const session = await requireNeonAuthSession();
+    return createQuoteInNeon({ ...data, created_by: session.user.id });
   });
 
 export const updateQuote = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: Partial<Quote> })
   .handler(async ({ data }) => {
-    const supabase = createSupabaseServerClient();
-    const { data: quote, error } = await supabase
-      .from("quotes").update({
-        ...(data.updates.status !== undefined && { status: data.updates.status }),
-        ...(data.updates.total_value !== undefined && { total_value: data.updates.total_value }),
-        ...(data.updates.valid_until !== undefined && { valid_until: data.updates.valid_until }),
-        ...(data.updates.line_items !== undefined && { line_items: data.updates.line_items }),
-        ...(data.updates.pdf_url !== undefined && { pdf_url: data.updates.pdf_url }),
-        ...(data.updates.approved_by !== undefined && { approved_by: data.updates.approved_by }),
-        ...(data.updates.contact_id !== undefined && { contact_id: data.updates.contact_id }),
-        ...(data.updates.account_id !== undefined && { account_id: data.updates.account_id }),
-        ...(data.updates.deal_id !== undefined && { deal_id: data.updates.deal_id }),
-      }).eq("id", data.id).select().single();
-    if (error) throw new Error(error.message);
-    return quote as Quote;
+    await requireNeonAuthSession();
+    return updateQuoteInNeon(data.id, data.updates);
   });
 
 export const requestQuoteApproval = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
-    const supabase = createSupabaseServerClient();
-    const { error } = await supabase
-      .from("quotes").update({ status: "pending_approval" }).eq("id", data.id);
-    if (error) throw new Error(error.message);
-    const webhookUrl = process.env.N8N_LEAD_WEBHOOK_URL;
-    if (webhookUrl) {
-      void triggerN8n(webhookUrl, {
-        trigger: "quote.approval_requested",
-        quote_id: data.id,
-        payload: {},
-      });
-    }
+    await requireNeonAuthSession();
+    return updateQuoteInNeon(data.id, { status: "pending_approval" });
   });
 
 export const triggerQuoteAgent = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { leadId: string })
   .handler(async ({ data }) => {
-    const webhookUrl = process.env.N8N_LEAD_WEBHOOK_URL;
-    if (webhookUrl) {
-      void triggerN8n(webhookUrl, {
-        trigger: "quote.draft_requested",
-        lead_id: data.leadId,
-        payload: {},
-      });
+    const session = await requireNeonAuthSession();
+    const existingRun = await findActiveRun(data.leadId, "draft_quote");
+    if (existingRun) {
+      return {
+        triggered: false,
+        run: serializeAgentRun(existingRun),
+        reason: "already_running" as const,
+      };
     }
-    return { triggered: !!webhookUrl };
+
+    const dispatchConfig = getN8nDispatchConfig(process.env.N8N_DRAFT_QUOTE_WEBHOOK_URL);
+    if (!dispatchConfig) {
+      return {
+        triggered: false,
+        reason: "missing_webhook" as const,
+      };
+    }
+
+    const { run, created } = await createAgentRun({
+      agent_name: "Quote Draft Agent",
+      workflow_type: "draft_quote",
+      subject_id: data.leadId,
+      input_data: { lead_id: data.leadId },
+      created_by: session.user.id,
+    });
+
+    if (!created) {
+      return {
+        triggered: false,
+        run: serializeAgentRun(run),
+        reason: "already_running" as const,
+      };
+    }
+
+    try {
+      await triggerN8n(
+        dispatchConfig,
+        buildQuoteDraftPayload({ leadId: data.leadId, agentRunId: run.id }),
+      );
+    } catch (error) {
+      await updateAgentRunResult(run.id, {
+        status: "failed",
+        output_data: {
+          dispatch_error: error instanceof Error ? error.message : "Unknown n8n dispatch error",
+        },
+        output_summary: "Failed to dispatch quote draft workflow.",
+      });
+      throw error;
+    }
+
+    return { triggered: true, run: serializeAgentRun(run) };
   });
 
 export const getPricingTemplates = createServerFn({ method: "GET" }).handler(async () => {
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("pricing_templates").select("*").eq("active", true).order("service");
-  if (error) throw new Error(error.message);
-  return data as PricingTemplate[];
+  await requireNeonAuthSession();
+  return listActivePricingTemplates() as Promise<PricingTemplate[]>;
 });

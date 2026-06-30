@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { AlertTriangle, Bot, CheckCircle2, FileText, UserPlus, XCircle } from "lucide-react";
+import { AlertTriangle, Bot, CheckCircle2, FileText, RefreshCw, UserPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -37,7 +37,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
-import { useRealtime } from "@/hooks/use-realtime";
+import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
 import { getApprovals, decideApproval } from "@/server-functions/approvals";
 import type { HumanApproval } from "@/lib/types";
 import { APP_USERS, userById } from "@/lib/users";
@@ -78,15 +78,7 @@ function ApprovalsInbox() {
   const allApprovals = Route.useLoaderData();
   const router = useRouter();
   const navigate = useNavigate();
-  // New approval from n8n → re-run loader
-  useRealtime("human_approvals", "INSERT", undefined, () => {
-    router.invalidate();
-    toast.info("New approval request received");
-  });
-  // Also refresh when an approval status changes
-  useRealtime("human_approvals", "UPDATE", undefined, () => {
-    router.invalidate();
-  });
+  useRoutePollingRefresh();
 
   const [typeFilter, setTypeFilter] = useState("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -170,6 +162,11 @@ function ApprovalsInbox() {
       <PageHeader
         title="Approval Inbox"
         description={`${pending.length} pending · ${decided.length} decided`}
+        actions={
+          <Button size="sm" variant="outline" onClick={() => router.invalidate()}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+          </Button>
+        }
       />
 
       <div className="space-y-4 px-6 py-6">

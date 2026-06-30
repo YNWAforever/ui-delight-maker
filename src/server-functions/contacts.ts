@@ -1,6 +1,6 @@
 // src/server-functions/contacts.ts
 import { createServerFn } from "@tanstack/react-start";
-import { createSupabaseServerClient } from "@/lib/supabase.server";
+import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import { normalizeEmail, normalizePhone } from "@/lib/lifecycle-utils";
 import type {
   Account,

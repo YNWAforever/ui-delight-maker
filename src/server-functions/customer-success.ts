@@ -1,6 +1,6 @@
 // src/server-functions/customer-success.ts
 import { createServerFn } from "@tanstack/react-start";
-import { createSupabaseServerClient } from "@/lib/supabase.server";
+import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import { assessRenewalRisk } from "@/lib/lifecycle-utils";
 import type { CustomerSuccessProfile, SuccessTouchpoint } from "@/lib/types";
 
