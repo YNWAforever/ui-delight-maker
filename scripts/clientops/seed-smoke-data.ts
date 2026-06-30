@@ -53,7 +53,13 @@ async function upsertProfile(db: Queryable, profile: ProfileSeed) {
       on conflict (id) do update set
         email = excluded.email,
         name = excluded.name,
-        assignment_labels = excluded.assignment_labels
+        role = 'sales',
+        assignment_labels = (
+          select array_agg(distinct label)
+          from unnest(
+            coalesce(profiles.assignment_labels, '{}'::text[]) || excluded.assignment_labels
+          ) as label
+        )
       returning id
     `,
     [profile.id, profile.email, profile.name],
