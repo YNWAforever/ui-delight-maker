@@ -15,10 +15,13 @@ export type WorkflowFallbackContext = {
   >;
 };
 
-type FallbackInput = {
+type WorkflowFallbackInput = {
   context: WorkflowFallbackContext;
   agentRunId: string;
-  now?: Date;
+};
+
+type QuoteFallbackInput = WorkflowFallbackInput & {
+  now: Date;
 };
 
 const DEFAULT_PRICE = 18000;
@@ -64,7 +67,7 @@ function quoteNumber(agentRunId: string) {
 export function buildQualificationFallback({
   context,
   agentRunId,
-}: FallbackInput): QualificationWritebackPayload {
+}: WorkflowFallbackInput): QualificationWritebackPayload {
   const text = textForLead(context.lead);
   const selected = pickPricingTemplates(context);
   const urgencyScore = /urgent|asap|launch|deadline|this month|q[1-4]/i.test(text) ? 8 : 6;
@@ -95,7 +98,7 @@ export function buildQualificationFallback({
 export function buildReplyDraftFallback({
   context,
   agentRunId,
-}: FallbackInput): ReplyDraftWritebackPayload {
+}: WorkflowFallbackInput): ReplyDraftWritebackPayload {
   const firstName = context.lead.contact_name?.split(/\s+/)[0] ?? "there";
   const selected = pickPricingTemplates(context);
   const services =
@@ -125,8 +128,8 @@ export function buildReplyDraftFallback({
 export function buildQuoteDraftFallback({
   context,
   agentRunId,
-  now = new Date(),
-}: FallbackInput): QuoteDraftWritebackPayload {
+  now,
+}: QuoteFallbackInput): QuoteDraftWritebackPayload {
   const matches = matchingPricingTemplates(context);
   const selected = (matches.length > 0 ? matches : context.pricing_templates).slice(
     0,
