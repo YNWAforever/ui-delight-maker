@@ -36,7 +36,7 @@ function NotFoundComponent() {
             to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Go to dashboard
+            Go to pipeline
           </Link>
         </div>
       </div>
@@ -86,7 +86,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Fimmick ClientOps" },
-      { name: "description", content: "Multi-agent client operations workspace" },
+      { name: "description", content: "Lead follow-up client operations workspace" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
@@ -103,6 +103,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:shadow"
+        >
+          Skip to main content
+        </a>
         {children}
         <Scripts />
       </body>
@@ -131,7 +137,7 @@ function RootComponent() {
                 </div>
               </div>
             </header>
-            <main className="flex-1">
+            <main id="main-content" className="flex-1">
               <Outlet />
             </main>
           </div>

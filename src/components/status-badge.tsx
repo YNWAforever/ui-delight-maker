@@ -25,9 +25,11 @@ const STATUS_STYLES: Record<string, string> = {
   escalated: "bg-destructive/15 text-destructive border-destructive/30",
   // agent runs
   running: "bg-info/10 text-info border-info/20",
+  ready_for_review: "bg-info/10 text-info border-info/20",
   completed: "bg-success/15 text-success border-success/30",
   failed: "bg-destructive/15 text-destructive border-destructive/30",
   waiting_approval: "bg-warning/15 text-warning-foreground border-warning/30",
+  idle: "bg-muted text-muted-foreground border-border",
   // priority
   high: "bg-destructive/10 text-destructive border-destructive/30",
   medium: "bg-warning/15 text-warning-foreground border-warning/30",
@@ -36,7 +38,15 @@ const STATUS_STYLES: Record<string, string> = {
   paused: "bg-muted text-muted-foreground border-border",
 };
 
-export function StatusBadge({ value, className }: { value: string; className?: string }) {
+export function StatusBadge({
+  value,
+  className,
+  label,
+}: {
+  value: string;
+  className?: string;
+  label?: string;
+}) {
   const style = STATUS_STYLES[value] ?? "bg-muted text-muted-foreground border-border";
   return (
     <span
@@ -46,7 +56,7 @@ export function StatusBadge({ value, className }: { value: string; className?: s
         className,
       )}
     >
-      {value.replace(/_/g, " ")}
+      {label ?? value.replace(/_/g, " ")}
     </span>
   );
 }

@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const workspaceItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Pipeline", url: "/", icon: LayoutDashboard },
   { title: "Leads", url: "/leads", icon: Inbox },
   { title: "Quotes", url: "/quotes", icon: FileText },
   { title: "Clients", url: "/clients", icon: Building2 },
@@ -86,7 +86,7 @@ export function AppSidebar({ profile, onSignOut }: AppSidebarProps) {
           </div>
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold">Fimmick ClientOps</span>
-            <span className="text-[11px] text-muted-foreground">Multi-agent workspace</span>
+            <span className="text-[11px] text-muted-foreground">Lead follow-up workspace</span>
           </div>
         </div>
       </SidebarHeader>
