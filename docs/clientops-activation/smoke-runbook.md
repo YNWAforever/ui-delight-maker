@@ -34,17 +34,22 @@ Record the returned `lead_id`.
 
 ## AI Workflow Smoke
 
-- [ ] Click Qualify Lead.
-- [ ] Click Draft Reply.
-- [ ] Click Draft Quote.
+- [ ] Click Qualify Lead and record the agent run id as `SMOKE_QUALIFY_RUN_ID`.
+- [ ] Click Draft Reply and record the agent run id as `SMOKE_REPLY_RUN_ID`.
+- [ ] Click Draft Quote and record the agent run id as `SMOKE_QUOTE_RUN_ID`.
 - [ ] Repeat Draft Reply once to verify no duplicate `message_send` approval.
 - [ ] Repeat Draft Quote once to verify no duplicate quote for the same active run.
+
+The smoke checker scopes approval and quote checks to these run IDs. Quote idempotency is verified through the draft quote run's `output_data.quote_id`, which is the scoped smoke quote artifact.
 
 ## Database Smoke
 
 ```bash
 DATABASE_URL="$STAGING_DATABASE_URL" \
 CLIENTOPS_SMOKE_LEAD_ID="$SMOKE_LEAD_ID" \
+CLIENTOPS_SMOKE_QUALIFY_RUN_ID="$SMOKE_QUALIFY_RUN_ID" \
+CLIENTOPS_SMOKE_REPLY_RUN_ID="$SMOKE_REPLY_RUN_ID" \
+CLIENTOPS_SMOKE_QUOTE_RUN_ID="$SMOKE_QUOTE_RUN_ID" \
 bun scripts/clientops/smoke-check.ts
 ```
 
