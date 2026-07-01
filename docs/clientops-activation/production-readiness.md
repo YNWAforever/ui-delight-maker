@@ -16,7 +16,7 @@
 ## Environment Confirmation
 
 - [ ] Production `DATABASE_URL` points to Neon production.
-- [ ] Production `VITE_NEON_AUTH_URL` and `NEON_AUTH_URL` point to the production Neon Auth integration.
+- [ ] Production `NEON_AUTH_URL` points to the production Neon Auth integration; browser auth uses the same-origin `/api/auth` proxy.
 - [ ] Production `APP_BASE_URL` is the production Vercel URL/custom domain.
 - [ ] Production n8n workflows are separate from staging workflows or have production-safe webhook paths.
 - [ ] Production `N8N_WORKFLOW_TOKEN` is different from staging.

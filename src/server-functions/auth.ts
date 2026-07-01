@@ -1,14 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
-import { getNeonAuthSession } from "@/lib/auth/neon-auth.server";
-
-function getNeonAuthUrl() {
-  const url = process.env.NEON_AUTH_URL ?? process.env.VITE_NEON_AUTH_URL;
-  if (!url) {
-    throw new Error("Missing required env var: NEON_AUTH_URL or VITE_NEON_AUTH_URL");
-  }
-  return url.replace(/\/$/, "");
-}
+import {
+  getNeonAuthCookieHeader,
+  getNeonAuthSession,
+  getNeonAuthUrl,
+} from "@/lib/auth/neon-auth.server";
 
 function forwardSetCookieHeaders(response: Response) {
   const cookies = response.headers.getSetCookie?.() ?? [];
@@ -36,7 +32,7 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
 export const signIn = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { email: string; password: string })
   .handler(async ({ data }) => {
-    const response = await fetch(`${getNeonAuthUrl()}/api/auth/sign-in/email`, {
+    const response = await fetch(`${getNeonAuthUrl()}/sign-in/email`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -53,7 +49,7 @@ export const signIn = createServerFn({ method: "POST" })
   });
 
 export const signOut = createServerFn({ method: "POST" }).handler(async () => {
-  const cookie = getRequest().headers.get("cookie");
+  const cookie = getNeonAuthCookieHeader(getRequest().headers.get("cookie"));
 
   if (!cookie) {
     return { ok: true } as const;
@@ -62,9 +58,9 @@ export const signOut = createServerFn({ method: "POST" }).handler(async () => {
   let response: Response;
 
   try {
-    response = await fetch(`${getNeonAuthUrl()}/api/auth/sign-out`, {
+    response = await fetch(`${getNeonAuthUrl()}/sign-out`, {
       method: "POST",
-      headers: { cookie },
+      headers: { Cookie: cookie },
       redirect: "manual",
     });
   } catch (error) {
