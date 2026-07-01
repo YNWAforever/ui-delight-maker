@@ -12,7 +12,7 @@ describe("Neon browser auth client config", () => {
     });
     vi.resetModules();
 
-    const { getAuthClientBaseUrl } = await import("@/lib/auth/neon-auth");
+    const { getAuthClientBaseUrl } = await import("@/lib/auth/neon-auth-url");
 
     expect(getAuthClientBaseUrl()).toBe("https://clientops.example.com/api/auth");
   });

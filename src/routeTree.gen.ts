@@ -23,6 +23,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as QuotesNewRouteImport } from './routes/quotes.new'
 import { Route as QuotesIdRouteImport } from './routes/quotes.$id'
+import { Route as LoginAuthPathRouteImport } from './routes/login.$authPath'
 import { Route as LeadsIdRouteImport } from './routes/leads.$id'
 import { Route as ClientsIdRouteImport } from './routes/clients.$id'
 import { Route as AgentsNameRouteImport } from './routes/agents.$name'
@@ -102,6 +103,11 @@ const QuotesIdRoute = QuotesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => QuotesRoute,
 } as any)
+const LoginAuthPathRoute = LoginAuthPathRouteImport.update({
+  id: '/$authPath',
+  path: '/$authPath',
+  getParentRoute: () => LoginRoute,
+} as any)
 const LeadsIdRoute = LeadsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -150,7 +156,7 @@ export interface FileRoutesByFullPath {
   '/approvals': typeof ApprovalsRoute
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
-  '/login': typeof LoginRoute
+  '/login': typeof LoginRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
   '/reports': typeof ReportsRoute
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/agents/$name': typeof AgentsNameRoute
   '/clients/$id': typeof ClientsIdRoute
   '/leads/$id': typeof LeadsIdRoute
+  '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -174,7 +181,7 @@ export interface FileRoutesByTo {
   '/approvals': typeof ApprovalsRoute
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
-  '/login': typeof LoginRoute
+  '/login': typeof LoginRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
   '/reports': typeof ReportsRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByTo {
   '/agents/$name': typeof AgentsNameRoute
   '/clients/$id': typeof ClientsIdRoute
   '/leads/$id': typeof LeadsIdRoute
+  '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -199,7 +207,7 @@ export interface FileRoutesById {
   '/approvals': typeof ApprovalsRoute
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
-  '/login': typeof LoginRoute
+  '/login': typeof LoginRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
   '/reports': typeof ReportsRoute
@@ -208,6 +216,7 @@ export interface FileRoutesById {
   '/agents/$name': typeof AgentsNameRoute
   '/clients/$id': typeof ClientsIdRoute
   '/leads/$id': typeof LeadsIdRoute
+  '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -234,6 +243,7 @@ export interface FileRouteTypes {
     | '/agents/$name'
     | '/clients/$id'
     | '/leads/$id'
+    | '/login/$authPath'
     | '/quotes/$id'
     | '/quotes/new'
     | '/api/auth/$'
@@ -258,6 +268,7 @@ export interface FileRouteTypes {
     | '/agents/$name'
     | '/clients/$id'
     | '/leads/$id'
+    | '/login/$authPath'
     | '/quotes/$id'
     | '/quotes/new'
     | '/api/auth/$'
@@ -282,6 +293,7 @@ export interface FileRouteTypes {
     | '/agents/$name'
     | '/clients/$id'
     | '/leads/$id'
+    | '/login/$authPath'
     | '/quotes/$id'
     | '/quotes/new'
     | '/api/auth/$'
@@ -298,7 +310,7 @@ export interface RootRouteChildren {
   ApprovalsRoute: typeof ApprovalsRoute
   ClientsRoute: typeof ClientsRouteWithChildren
   LeadsRoute: typeof LeadsRouteWithChildren
-  LoginRoute: typeof LoginRoute
+  LoginRoute: typeof LoginRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
   QuotesRoute: typeof QuotesRouteWithChildren
   ReportsRoute: typeof ReportsRoute
@@ -411,6 +423,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QuotesIdRouteImport
       parentRoute: typeof QuotesRoute
     }
+    '/login/$authPath': {
+      id: '/login/$authPath'
+      path: '/$authPath'
+      fullPath: '/login/$authPath'
+      preLoaderRoute: typeof LoginAuthPathRouteImport
+      parentRoute: typeof LoginRoute
+    }
     '/leads/$id': {
       id: '/leads/$id'
       path: '/$id'
@@ -502,6 +521,16 @@ const LeadsRouteChildren: LeadsRouteChildren = {
 
 const LeadsRouteWithChildren = LeadsRoute._addFileChildren(LeadsRouteChildren)
 
+interface LoginRouteChildren {
+  LoginAuthPathRoute: typeof LoginAuthPathRoute
+}
+
+const LoginRouteChildren: LoginRouteChildren = {
+  LoginAuthPathRoute: LoginAuthPathRoute,
+}
+
+const LoginRouteWithChildren = LoginRoute._addFileChildren(LoginRouteChildren)
+
 interface QuotesRouteChildren {
   QuotesIdRoute: typeof QuotesIdRoute
   QuotesNewRoute: typeof QuotesNewRoute
@@ -522,7 +551,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApprovalsRoute: ApprovalsRoute,
   ClientsRoute: ClientsRouteWithChildren,
   LeadsRoute: LeadsRouteWithChildren,
-  LoginRoute: LoginRoute,
+  LoginRoute: LoginRouteWithChildren,
   NotificationsRoute: NotificationsRoute,
   QuotesRoute: QuotesRouteWithChildren,
   ReportsRoute: ReportsRoute,

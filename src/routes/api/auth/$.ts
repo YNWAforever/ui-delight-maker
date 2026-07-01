@@ -3,6 +3,9 @@ import { getNeonAuthCookieHeader, getNeonAuthUrl } from "@/lib/auth/neon-auth.se
 
 const BODYLESS_METHODS = new Set(["GET", "HEAD"]);
 const REQUEST_HEADERS = ["accept", "authorization", "content-type", "referer", "user-agent"];
+const SIGN_UP_EMAIL_PATH = "sign-up/email";
+const SIGN_UP_DOMAIN = "fimmick.com";
+const SIGN_UP_DOMAIN_ERROR = "Sign up is only available for @fimmick.com email addresses.";
 
 type AuthProxyArgs = {
   request: Request;
@@ -48,8 +51,34 @@ function getProxyRequestHeaders(request: Request) {
   return headers;
 }
 
+function isAllowedSignUpEmail(email: unknown) {
+  return typeof email === "string" && email.trim().toLowerCase().endsWith(`@${SIGN_UP_DOMAIN}`);
+}
+
+async function validateSignUpRequest(request: Request, path: string) {
+  if (request.method !== "POST" || path !== SIGN_UP_EMAIL_PATH) return null;
+
+  const payload = (await request
+    .clone()
+    .json()
+    .catch(() => null)) as { email?: unknown } | null;
+
+  if (isAllowedSignUpEmail(payload?.email)) return null;
+
+  return Response.json(
+    { message: SIGN_UP_DOMAIN_ERROR },
+    {
+      status: 403,
+      headers: { "cache-control": "no-store" },
+    },
+  );
+}
+
 export async function proxyNeonAuthRequest({ request, params }: AuthProxyArgs) {
   const path = params._splat ?? "";
+  const signUpRejection = await validateSignUpRequest(request, path);
+  if (signUpRejection) return signUpRejection;
+
   const upstreamUrl = new URL(`${getNeonAuthUrl()}/${path}`);
   upstreamUrl.search = new URL(request.url).search;
 
