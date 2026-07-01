@@ -1,7 +1,70 @@
+import type { ActivityLog, AgentRun, Lead, PricingTemplate } from "@/lib/types";
+
 export type WorkflowTrigger =
   | "lead.qualify_requested"
   | "lead.reply_draft_requested"
   | "quote.draft_requested";
+
+export type WorkflowContextRequestPayload = {
+  lead_id: string;
+  agent_run_id: string;
+};
+
+export type WorkflowContextAgentRun = Pick<
+  AgentRun,
+  | "id"
+  | "agent_name"
+  | "input_data"
+  | "output_data"
+  | "output_summary"
+  | "status"
+  | "model_used"
+  | "confidence_score"
+  | "human_review_required"
+  | "created_at"
+> & {
+  workflow_type: "qualify_lead" | "draft_reply" | "draft_quote";
+  subject_type: "lead";
+  subject_id: string;
+};
+
+export type WorkflowContextResponse = {
+  lead: Pick<
+    Lead,
+    | "id"
+    | "company_name"
+    | "contact_name"
+    | "contact_email"
+    | "contact_phone"
+    | "source"
+    | "status"
+    | "assigned_to"
+    | "lead_score"
+    | "qualification_data"
+    | "enquiry_text"
+    | "created_at"
+    | "updated_at"
+  >;
+  agent_run: WorkflowContextAgentRun;
+  pricing_templates: Array<
+    Pick<
+      PricingTemplate,
+      "id" | "service" | "description" | "category" | "unit_price" | "currency" | "active"
+    >
+  >;
+  recent_activity: Array<
+    Pick<
+      ActivityLog,
+      | "actor_type"
+      | "actor_name"
+      | "action"
+      | "object_type"
+      | "object_id"
+      | "diff_data"
+      | "created_at"
+    >
+  >;
+};
 
 export type WorkflowRequestPayload = {
   trigger: WorkflowTrigger;

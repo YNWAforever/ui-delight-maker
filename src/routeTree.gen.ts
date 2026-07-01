@@ -29,6 +29,8 @@ import { Route as AgentsNameRouteImport } from './routes/agents.$name'
 import { Route as ApiWorkflowsQualifyLeadRouteImport } from './routes/api/workflows/qualify-lead'
 import { Route as ApiWorkflowsDraftReplyRouteImport } from './routes/api/workflows/draft-reply'
 import { Route as ApiWorkflowsDraftQuoteRouteImport } from './routes/api/workflows/draft-quote'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiWorkflowsContextLeadRouteImport } from './routes/api/workflows/context/lead'
 
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
@@ -130,6 +132,16 @@ const ApiWorkflowsDraftQuoteRoute = ApiWorkflowsDraftQuoteRouteImport.update({
   path: '/api/workflows/draft-quote',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkflowsContextLeadRoute = ApiWorkflowsContextLeadRouteImport.update({
+  id: '/api/workflows/context/lead',
+  path: '/api/workflows/context/lead',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -149,9 +161,11 @@ export interface FileRoutesByFullPath {
   '/leads/$id': typeof LeadsIdRoute
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
+  '/api/workflows/context/lead': typeof ApiWorkflowsContextLeadRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -171,9 +185,11 @@ export interface FileRoutesByTo {
   '/leads/$id': typeof LeadsIdRoute
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
+  '/api/workflows/context/lead': typeof ApiWorkflowsContextLeadRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -194,9 +210,11 @@ export interface FileRoutesById {
   '/leads/$id': typeof LeadsIdRoute
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
+  '/api/workflows/context/lead': typeof ApiWorkflowsContextLeadRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -218,9 +236,11 @@ export interface FileRouteTypes {
     | '/leads/$id'
     | '/quotes/$id'
     | '/quotes/new'
+    | '/api/auth/$'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
+    | '/api/workflows/context/lead'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -240,9 +260,11 @@ export interface FileRouteTypes {
     | '/leads/$id'
     | '/quotes/$id'
     | '/quotes/new'
+    | '/api/auth/$'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
+    | '/api/workflows/context/lead'
   id:
     | '__root__'
     | '/'
@@ -262,9 +284,11 @@ export interface FileRouteTypes {
     | '/leads/$id'
     | '/quotes/$id'
     | '/quotes/new'
+    | '/api/auth/$'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
+    | '/api/workflows/context/lead'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -280,9 +304,11 @@ export interface RootRouteChildren {
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
   TasksRoute: typeof TasksRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiWorkflowsDraftQuoteRoute: typeof ApiWorkflowsDraftQuoteRoute
   ApiWorkflowsDraftReplyRoute: typeof ApiWorkflowsDraftReplyRoute
   ApiWorkflowsQualifyLeadRoute: typeof ApiWorkflowsQualifyLeadRoute
+  ApiWorkflowsContextLeadRoute: typeof ApiWorkflowsContextLeadRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -427,6 +453,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWorkflowsDraftQuoteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workflows/context/lead': {
+      id: '/api/workflows/context/lead'
+      path: '/api/workflows/context/lead'
+      fullPath: '/api/workflows/context/lead'
+      preLoaderRoute: typeof ApiWorkflowsContextLeadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -488,9 +528,11 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
   TasksRoute: TasksRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiWorkflowsDraftQuoteRoute: ApiWorkflowsDraftQuoteRoute,
   ApiWorkflowsDraftReplyRoute: ApiWorkflowsDraftReplyRoute,
   ApiWorkflowsQualifyLeadRoute: ApiWorkflowsQualifyLeadRoute,
+  ApiWorkflowsContextLeadRoute: ApiWorkflowsContextLeadRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

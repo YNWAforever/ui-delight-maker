@@ -20,9 +20,18 @@ type NeonSessionResponse = {
     user?: NeonAuthUser | null;
     expiresAt?: string | null;
   } | null;
+  data?: {
+    user?: NeonAuthUser | null;
+    session?: {
+      user?: NeonAuthUser | null;
+      expiresAt?: string | null;
+    } | null;
+  } | null;
 };
 
-function getNeonAuthUrl() {
+const NEON_AUTH_COOKIE_PREFIX = "__Secure-neon-auth";
+
+export function getNeonAuthUrl() {
   const url = process.env.NEON_AUTH_URL ?? process.env.VITE_NEON_AUTH_URL;
   if (!url) {
     throw new Error("Missing required env var: NEON_AUTH_URL or VITE_NEON_AUTH_URL");
@@ -30,14 +39,24 @@ function getNeonAuthUrl() {
   return url.replace(/\/$/, "");
 }
 
+export function getNeonAuthCookieHeader(cookieHeader: string | null) {
+  if (!cookieHeader) return "";
+
+  return cookieHeader
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .filter((cookie) => cookie.startsWith(`${NEON_AUTH_COOKIE_PREFIX}.`))
+    .join("; ");
+}
+
 export async function getNeonAuthSession(): Promise<AppSession | null> {
   const request = getRequest();
-  const cookie = request.headers.get("cookie");
+  const cookie = getNeonAuthCookieHeader(request.headers.get("cookie"));
 
   if (!cookie) return null;
 
-  const response = await fetch(`${getNeonAuthUrl()}/api/auth/get-session`, {
-    headers: { cookie },
+  const response = await fetch(`${getNeonAuthUrl()}/get-session`, {
+    headers: { Cookie: cookie },
     cache: "no-store",
   });
 
@@ -47,7 +66,12 @@ export async function getNeonAuthSession(): Promise<AppSession | null> {
   }
 
   const payload = (await response.json()) as NeonSessionResponse;
-  const user = payload.user ?? payload.session?.user ?? null;
+  const user =
+    payload.user ??
+    payload.session?.user ??
+    payload.data?.user ??
+    payload.data?.session?.user ??
+    null;
 
   if (!user?.id) return null;
 

@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 import { NeonAuthUIProvider } from "@neondatabase/auth-ui";
-import { authClient } from "@/lib/auth/neon-auth";
+import { getAuthClient } from "@/lib/auth/neon-auth";
 
 type NeonAuthProviderProps = Omit<
   ComponentProps<typeof NeonAuthUIProvider>,
@@ -11,7 +11,7 @@ type NeonAuthProviderProps = Omit<
 
 export function NeonAuthProvider({ children, ...props }: NeonAuthProviderProps) {
   return (
-    <NeonAuthUIProvider authClient={authClient} {...props}>
+    <NeonAuthUIProvider authClient={getAuthClient()} {...props}>
       {children}
     </NeonAuthUIProvider>
   );
