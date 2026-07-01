@@ -6,7 +6,11 @@ const originalNeonAuthUrl = process.env.NEON_AUTH_URL;
 function makeSignUpRequest(email: string) {
   return new Request("https://clientops.example.com/api/auth/sign-up/email", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      origin: "https://ui-delight-maker.vercel.app",
+      referer: "https://ui-delight-maker.vercel.app/login/sign-up",
+    },
     body: JSON.stringify({
       email,
       password: "correct-password",
@@ -63,5 +67,9 @@ describe("Neon auth proxy", () => {
       body: expect.any(ArrayBuffer),
       redirect: "manual",
     });
+
+    const [, init] = fetchMock.mock.calls[0];
+    const headers = init?.headers as Headers;
+    expect(headers.get("Origin")).toBe("https://auth.example.com");
   });
 });
