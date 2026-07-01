@@ -46,7 +46,8 @@ function getProxyRequestHeaders(request: Request) {
   const cookie = getNeonAuthCookieHeader(request.headers.get("cookie"));
   if (cookie) headers.set("Cookie", cookie);
 
-  headers.set("Origin", new URL(request.url).origin);
+  // Neon Auth validates relative callbackURL values against the upstream Origin.
+  headers.set("Origin", new URL(getNeonAuthUrl()).origin);
   headers.set("x-neon-auth-middleware", "true");
   return headers;
 }
