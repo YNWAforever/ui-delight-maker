@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouterState } from "@tanstack/react-router";
 import { LoginAuthPage } from "@/components/auth/login-auth-page";
+import { getLoginAuthPath } from "@/lib/auth/auth-routes";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -9,5 +10,9 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  return <LoginAuthPage authPath="sign-in" />;
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+
+  return <LoginAuthPage authPath={getLoginAuthPath(pathname)} />;
 }
