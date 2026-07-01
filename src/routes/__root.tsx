@@ -19,6 +19,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 
 import { getSession, signOut } from "@/server-functions/auth";
+import { isPublicAuthPath } from "@/lib/auth/auth-routes";
 import type { Profile } from "@/lib/types";
 import type { RouterContext } from "@/router";
 
@@ -78,7 +79,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ location }) => {
-    if (location.pathname === "/login") return {};
+    if (isPublicAuthPath(location.pathname)) return {};
     const session = await getSession();
     if (!session) throw redirect({ to: "/login" });
     return { user: session.user, profile: session.profile as Profile | null };
@@ -125,7 +126,7 @@ function RootComponent() {
   });
   const router = useRouter();
 
-  if (pathname === "/login") {
+  if (isPublicAuthPath(pathname)) {
     return <Outlet />;
   }
 
