@@ -70,7 +70,7 @@ if (serverJsCode.includes(LEGACY_TARGET)) {
 } else {
   throw new Error(
     "[vercel-build] Could not find a known createServerFn validator shape — " +
-    "check dist/server/server.js for API changes."
+      "check dist/server/server.js for API changes.",
   );
 }
 
@@ -101,14 +101,8 @@ const bundleOut = resolve(FUNC_DIR, "server.cjs");
 console.log("Bundling dist/server/server.js → server.cjs (CJS) ...");
 execFileSync(
   esbuild,
-  [
-    serverEntry,
-    "--bundle",
-    "--platform=node",
-    "--format=cjs",
-    `--outfile=${bundleOut}`,
-  ],
-  { stdio: "inherit", cwd: root }
+  [serverEntry, "--bundle", "--platform=node", "--format=cjs", `--outfile=${bundleOut}`],
+  { stdio: "inherit", cwd: root },
 );
 console.log("✓ Server bundle created (CJS)");
 
@@ -127,55 +121,6 @@ try {
   importErr = e;
   console.error('[handler] server.cjs load failed:', e.stack || e.message);
 }
-
-// Diagnostic script injected into HTML responses to capture client-side errors
-const DIAG_SCRIPT = \`<script id="__diag">
-(function(){
-  var lines=['__diag boot @'+new Date().toISOString().slice(11,23)];
-  function paint(){
-    var d=document.getElementById('__db');
-    if(!d){d=document.createElement('div');d.id='__db';
-      Object.assign(d.style,{position:'fixed',bottom:'0',left:'0',right:'0',background:'#222',
-        color:'#0f0',padding:'8px',fontSize:'10px',zIndex:'999999',maxHeight:'40vh',
-        overflow:'auto',whiteSpace:'pre-wrap',fontFamily:'monospace',pointerEvents:'auto'});
-      if(document.body)document.body.appendChild(d);
-      else document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(d);});}
-    d.textContent=lines.join('\\n');
-  }
-  function log(s){lines.push('['+(performance.now()|0)+'ms] '+s);paint();}
-  window.onerror=function(m,s,l,c,e){log('JS ERR: '+m+(e&&e.stack?' :: '+e.stack.split('\\n')[1]:''));};
-  window.onunhandledrejection=function(e){var r=e.reason;log('REJECT: '+(r&&r.message||String(r)));};
-  // Snapshot TSR state
-  try{var t=window.$_TSR&&window.$_TSR.router&&window.$_TSR.router[0];
-    if(t)log('TSR matches='+JSON.stringify((t.matches||[]).map(function(m){return m.i;}))+' last='+t.lastMatchId);}
-  catch(e){log('TSR snap err: '+e.message);}
-  function check(label){
-    var btn=document.querySelector('form button')||document.querySelector('button[type=submit]')||document.querySelector('button');
-    if(!btn){log(label+': no button in DOM');return;}
-    var fk=Object.keys(btn).find(function(k){return k.indexOf('__reactFiber')===0||k.indexOf('__reactProps')===0;});
-    var fp=Object.keys(btn).find(function(k){return k.indexOf('__reactProps')===0;});
-    log(label+': btn="'+btn.textContent.trim().slice(0,20)+'" fiber='+(fk||'NONE')+' props='+(fp?'YES':'NO'));
-    var form=document.querySelector('form');
-    if(form){
-      var pk=Object.keys(form).find(function(k){return k.indexOf('__reactProps')===0;});
-      var props=pk&&form[pk];
-      log(label+': form onSubmit='+(props&&typeof props.onSubmit==='function'?'BOUND':'MISSING'));
-    }
-  }
-  // Multiple checkpoints
-  setTimeout(function(){check('t=200ms');},200);
-  setTimeout(function(){check('t=1s');},1000);
-  setTimeout(function(){check('t=3s');},3000);
-  // Capture submit attempts
-  document.addEventListener('submit',function(ev){log('SUBMIT fired prevented='+ev.defaultPrevented+' target='+ev.target.tagName);},true);
-  document.addEventListener('click',function(ev){
-    if(ev.target&&ev.target.closest&&ev.target.closest('button[type=submit],form button')){
-      log('CLICK on submit btn target='+ev.target.tagName+' text="'+(ev.target.textContent||'').trim().slice(0,20)+'"');
-    }
-  },true);
-  paint();
-})();
-</script>\`;
 
 module.exports = async (req, res) => {
 
@@ -253,7 +198,7 @@ module.exports = async (req, res) => {
     // Skip Set-Cookie here — handled separately below to avoid the
     // Headers.forEach() comma-joining bug that corrupts multiple cookies.
     if (key.toLowerCase() === 'set-cookie') return;
-    // Drop content-length — we may inflate HTML with injected script
+    // Drop content-length — HTML is buffered below before being written.
     if (key.toLowerCase() === 'content-length') return;
     res.setHeader(key, value);
   });
@@ -264,7 +209,7 @@ module.exports = async (req, res) => {
     if (cookies.length > 0) res.setHeader('set-cookie', cookies);
   }
 
-  // ── For HTML responses: buffer + inject diagnostic script ───────────────
+  // ── For HTML responses: buffer before writing content-length ─────────────
   const ct = (fetchResponse.headers.get('content-type') || '');
   if (ct.includes('text/html') && fetchResponse.body) {
     const chunks = [];
@@ -279,26 +224,6 @@ module.exports = async (req, res) => {
       reader.releaseLock();
     }
     let html = Buffer.concat(chunks).toString('utf8');
-
-    // Patch TSR match IDs for correct React hydration.
-    // SSR serializes route match i fields with null-byte separators.
-    // Client hydration compares M.i === S.id where S.id is like /login.
-    // Without patching, every match gets ssr:false and hydration stalls.
-    var NUL = String.fromCharCode(0);
-    function fixSsrId(s) {
-      if (s.indexOf(NUL) === -1) return s;
-      if (s.charCodeAt(0) === 0) {
-        var last = s.lastIndexOf(NUL);
-        return '/' + s.slice(last + 1);
-      }
-      return s.replace(/\\0+$/, '');
-    }
-    html = html.replace(/([,{])i:"([^"]*)"/g, function(m, pre, id) {
-      return pre + 'i:"' + fixSsrId(id) + '"';
-    });
-    html = html.replace(/lastMatchId:"([^"]*)"/g, function(m, id) {
-      return 'lastMatchId:"' + fixSsrId(id) + '"';
-    });
 
     res.removeHeader('content-encoding'); // no double-gzip
     const buf = Buffer.from(html, 'utf8');
@@ -323,7 +248,7 @@ module.exports = async (req, res) => {
   }
   res.end();
 };
-`
+`,
 );
 
 // No package.json needed — without type:module, .js defaults to CJS
@@ -337,8 +262,8 @@ writeFileSync(
       launcherType: "Nodejs",
     },
     null,
-    2
-  )
+    2,
+  ),
 );
 
 // ── 3. Routing config ─────────────────────────────────────────────────────
@@ -359,8 +284,8 @@ writeFileSync(
       ],
     },
     null,
-    2
-  )
+    2,
+  ),
 );
 
 console.log("✓ Vercel Build Output API structure created");
