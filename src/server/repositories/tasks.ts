@@ -5,6 +5,7 @@ import type { Task } from "@/lib/types";
 type TaskFilters = {
   status?: string;
   assigned_to?: string;
+  client_id?: string;
   contact_id?: string;
   account_id?: string;
   deal_id?: string;
@@ -47,6 +48,7 @@ export async function listTasks(filters: TaskFilters = {}) {
   const where = buildFilters([
     ["status", filters.status],
     ["assigned_to", filters.assigned_to],
+    ["client_id", filters.client_id],
     ["contact_id", filters.contact_id],
     ["account_id", filters.account_id],
     ["deal_id", filters.deal_id],

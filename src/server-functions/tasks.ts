@@ -10,6 +10,7 @@ import type { Task } from "@/lib/types";
 type GetTasksInput = {
   status?: string;
   assigned_to?: string;
+  client_id?: string;
   contact_id?: string;
   account_id?: string;
   deal_id?: string;

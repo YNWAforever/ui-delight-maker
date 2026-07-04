@@ -18,30 +18,37 @@ import { getEngagementsByClient } from "@/server-functions/engagements";
 import { getClientContacts, createClientContact, deleteClientContact } from "@/server-functions/client-contacts";
 import { getTouchpointsByClient } from "@/server-functions/touchpoints";
 import { getProducts } from "@/server-functions/products";
+import { getActivityLogsForClient } from "@/server-functions/activity-logs";
+import { getTasks } from "@/server-functions/tasks";
+import type { SerializableActivityLog } from "@/server-functions/serializers";
 import { USER_RECORD } from "@/lib/users";
-import type { ClientContact } from "@/lib/types";
+import type { ClientContact, Task, TouchpointRecord } from "@/lib/types";
 
 const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
 
 // Static placeholder data for tabs not yet backed by server functions
 type FileAsset = { id: string; client_id: string; name: string; size: string; uploaded_at: string; uploaded_by: string };
-type ActivityLog = { id: string; actor_type: string; actor_name: string; action: string; object_type: string; object_id: string; created_at: string };
-type TaskStub = { id: string; title: string; description: string; assigned_to: string; client_id: string | null; due_date: string; priority: string; status: string };
 
 const clientFiles: FileAsset[] = [];
-const activityLogs: ActivityLog[] = [];
-const tasks: TaskStub[] = [];
 
 export const Route = createFileRoute("/clients/$id")({
   loader: async ({ params }) => {
-    const [client, allQuotes, engagements, contacts, touchpoints, products] = await Promise.all([
+    const [client, allQuotes, engagements, contacts, touchpoints, products, tasks] = await Promise.all([
       getClient({ data: { id: params.id } }),
       getQuotes({}),
       getEngagementsByClient({ data: { clientId: params.id } }),
       getClientContacts({ data: { clientId: params.id } }),
       getTouchpointsByClient({ data: { clientId: params.id } }),
       getProducts({ data: { activeOnly: true } }),
+      getTasks({ data: { client_id: params.id } }),
     ]);
+
+    const [clientLogs, ...engagementLogLists] = await Promise.all([
+      getActivityLogsForClient({ data: { clientId: params.id } }),
+      ...engagements.map((e) => getActivityLogsForClient({ data: { clientId: e.id } })),
+    ]);
+    const activityLogs = [...clientLogs, ...engagementLogLists.flat()];
+
     return {
       client,
       quotes: allQuotes.filter((q) => q.client_id === params.id),
@@ -49,6 +56,8 @@ export const Route = createFileRoute("/clients/$id")({
       contacts,
       touchpoints,
       products,
+      tasks,
+      activityLogs,
     };
   },
   head: ({ loaderData }) => ({
@@ -69,12 +78,8 @@ export const Route = createFileRoute("/clients/$id")({
 });
 
 function ClientDetail() {
-  const { client, quotes: clientQuotes, engagements, contacts, products } = Route.useLoaderData();
+  const { client, quotes: clientQuotes, engagements, contacts, products, touchpoints, tasks: clientTasks, activityLogs } = Route.useLoaderData();
   const owner = userById(client.account_owner ?? "");
-  const clientTasks = tasks.filter((t) => t.client_id === client.id);
-  const clientHistory = activityLogs.filter(
-    (a) => a.object_type === "client" && a.object_id === client.id,
-  );
   const clientContacts = contacts.filter((c) => c.client_id === client.id);
   const files = clientFiles.filter((f) => f.client_id === client.id);
 
@@ -109,7 +114,7 @@ function ClientDetail() {
                 <TabsTrigger value="quotes">Quotes ({clientQuotes.length})</TabsTrigger>
                 <TabsTrigger value="tasks">Tasks ({clientTasks.length})</TabsTrigger>
                 <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
-                <TabsTrigger value="history">History</TabsTrigger>
+                <TabsTrigger value="timeline">Timeline</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="mt-4 space-y-4">
@@ -189,26 +194,7 @@ function ClientDetail() {
               </TabsContent>
 
               <TabsContent value="tasks" className="mt-4">
-                {clientTasks.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No tasks.</p>
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {clientTasks.map((t) => (
-                      <li key={t.id} className="flex items-center justify-between py-3">
-                        <div>
-                          <p className="text-sm font-medium">{t.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Due {t.due_date} · {userById(t.assigned_to)?.name}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <StatusBadge value={t.priority} />
-                          <StatusBadge value={t.status} />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <ClientTasksPanel tasks={clientTasks} />
               </TabsContent>
 
               <TabsContent value="files" className="mt-4">
@@ -236,22 +222,8 @@ function ClientDetail() {
                 )}
               </TabsContent>
 
-              <TabsContent value="history" className="mt-4">
-                {clientHistory.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No history events yet.</p>
-                ) : (
-                  <ul className="space-y-3">
-                    {clientHistory.map((a) => (
-                      <li key={a.id} className="text-sm">
-                        <span className="font-medium">{a.actor_name}</span>{" "}
-                        <span className="text-muted-foreground">{a.action}</span>
-                        <div className="text-xs text-muted-foreground">
-                          {formatDateTime(a.created_at)}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              <TabsContent value="timeline" className="mt-4">
+                <ClientTimeline touchpoints={touchpoints} activityLogs={activityLogs} />
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -365,6 +337,80 @@ function ClientContactsPanel({ clientId, initialContacts }: { clientId: string; 
         </ul>
       )}
     </div>
+  );
+}
+
+function ClientTasksPanel({ tasks }: { tasks: Task[] }) {
+  if (tasks.length === 0) {
+    return <p className="text-sm text-muted-foreground">No tasks.</p>;
+  }
+
+  return (
+    <ul className="divide-y divide-border">
+      {tasks.map((t) => (
+        <li key={t.id} className="flex items-center justify-between py-3">
+          <div>
+            <p className="text-sm font-medium">{t.title}</p>
+            <p className="text-xs text-muted-foreground">
+              Due {t.due_date ?? "—"} · {userById(t.assigned_to ?? "")?.name ?? "Unassigned"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <StatusBadge value={t.priority} />
+            <StatusBadge value={t.status} />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+type TimelineEntry = {
+  id: string;
+  kind: "touchpoint" | "activity";
+  occurredAt: string;
+  label: string;
+  detail: string | null;
+};
+
+function ClientTimeline({
+  touchpoints,
+  activityLogs,
+}: {
+  touchpoints: TouchpointRecord[];
+  activityLogs: SerializableActivityLog[];
+}) {
+  const entries: TimelineEntry[] = [
+    ...touchpoints.map((t) => ({
+      id: `tp-${t.id}`,
+      kind: "touchpoint" as const,
+      occurredAt: t.occurred_at,
+      label: `${t.type.replace("_", " ")} (${t.sentiment})`,
+      detail: t.notes,
+    })),
+    ...activityLogs.map((a) => ({
+      id: `al-${a.id}`,
+      kind: "activity" as const,
+      occurredAt: a.created_at,
+      label: `${a.actor_name ?? a.actor_type ?? "System"} ${a.action}`,
+      detail: null,
+    })),
+  ].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+
+  if (entries.length === 0) {
+    return <p className="text-sm text-muted-foreground">No timeline events yet.</p>;
+  }
+
+  return (
+    <ul className="space-y-3">
+      {entries.map((e) => (
+        <li key={e.id} className="text-sm">
+          <span className="font-medium capitalize">{e.label}</span>
+          {e.detail && <p className="text-muted-foreground">{e.detail}</p>}
+          <div className="text-xs text-muted-foreground">{formatDateTime(e.occurredAt)}</div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
