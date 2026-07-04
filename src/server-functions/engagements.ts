@@ -36,7 +36,12 @@ export const createEngagement = createServerFn({ method: "POST" })
   .validator(
     (data: unknown) =>
       data as Pick<Engagement, "client_id" | "product_id" | "billing_period"> &
-        Partial<Pick<Engagement, "owner" | "value" | "start_date" | "renewal_date" | "lead_id" | "quote_id">>,
+        Partial<
+          Pick<
+            Engagement,
+            "owner" | "value" | "start_date" | "renewal_date" | "lead_id" | "quote_id"
+          >
+        >,
   )
   .handler(async ({ data }) => {
     await requireNeonAuthSession();
@@ -63,7 +68,11 @@ export const triggerRiskScoreAgent = createServerFn({ method: "POST" })
     const session = await requireNeonAuthSession();
     const existingRun = await findActiveRun(data.engagementId, "score_renewal_risk", "engagement");
     if (existingRun) {
-      return { triggered: false, run: serializeAgentRun(existingRun), reason: "already_running" as const };
+      return {
+        triggered: false,
+        run: serializeAgentRun(existingRun),
+        reason: "already_running" as const,
+      };
     }
 
     const dispatchConfig = getN8nDispatchConfig(process.env.N8N_SCORE_RENEWAL_RISK_WEBHOOK_URL);
@@ -92,7 +101,9 @@ export const triggerRiskScoreAgent = createServerFn({ method: "POST" })
     } catch (error) {
       await updateAgentRunResult(run.id, {
         status: "failed",
-        output_data: { dispatch_error: error instanceof Error ? error.message : "Unknown n8n dispatch error" },
+        output_data: {
+          dispatch_error: error instanceof Error ? error.message : "Unknown n8n dispatch error",
+        },
         output_summary: "Failed to dispatch renewal risk scoring workflow.",
       });
       throw error;

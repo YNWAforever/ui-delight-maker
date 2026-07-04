@@ -199,7 +199,9 @@ export async function convertWonLeadToEngagement(input: {
   quoteId?: string;
 }) {
   return transaction(async (client) => {
-    const leadResult = await client.query<Lead>("select * from leads where id = $1", [input.leadId]);
+    const leadResult = await client.query<Lead>("select * from leads where id = $1", [
+      input.leadId,
+    ]);
     const lead = leadResult.rows[0];
     if (!lead) throw new Error("Lead not found");
 
@@ -223,7 +225,11 @@ export async function convertWonLeadToEngagement(input: {
       );
       if (existingContact.rows.length === 0) {
         await createClientContact(
-          { client_id: clientId, name: lead.contact_name ?? "Unnamed", email: lead.contact_email ?? undefined },
+          {
+            client_id: clientId,
+            name: lead.contact_name ?? "Unnamed",
+            email: lead.contact_email ?? undefined,
+          },
           client,
         );
       }
@@ -249,7 +255,11 @@ export async function convertWonLeadToEngagement(input: {
           (actor_type, actor_id, action, object_type, object_id, diff_data)
         values ('user', $1, 'converted won lead to engagement', 'engagement', $2, $3::jsonb)
       `,
-      [input.actorId, engagement.id, JSON.stringify({ lead_id: input.leadId, client_id: clientId })],
+      [
+        input.actorId,
+        engagement.id,
+        JSON.stringify({ lead_id: input.leadId, client_id: clientId }),
+      ],
     );
 
     return { clientId, engagementId: engagement.id };

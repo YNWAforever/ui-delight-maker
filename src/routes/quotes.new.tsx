@@ -84,10 +84,7 @@ function QuoteBuilder() {
   const [discount, setDiscount] = useState(0);
   const [items, setItems] = useState<LineItem[]>([]);
 
-  const subtotal = useMemo(
-    () => items.reduce((sum, i) => sum + i.qty * i.unit_price, 0),
-    [items],
-  );
+  const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unit_price, 0), [items]);
   const total = Math.round(subtotal * (1 - discount / 100));
   const lead = leads.find((l) => l.id === leadId);
   const client = clients.find((c) => c.id === clientId);
@@ -140,13 +137,9 @@ function QuoteBuilder() {
     appliedInitialProduct.current = true;
     const tpl =
       templates.find((t) => t.product_id === initialProductId) ??
-      templates.find(
-        (t) => t.service.trim().toLowerCase() === product.name.trim().toLowerCase(),
-      );
+      templates.find((t) => t.service.trim().toLowerCase() === product.name.trim().toLowerCase());
     if (!tpl) {
-      toast.warning(
-        `No pricing template found for "${product.name}" — add line items manually.`,
-      );
+      toast.warning(`No pricing template found for "${product.name}" — add line items manually.`);
       return;
     }
     applyTemplate(tpl.id);
@@ -319,13 +312,11 @@ function QuoteBuilder() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {APP_USERS
-                        .filter((u) => ["manager", "admin"].includes(u.role))
-                        .map((u) => (
-                          <SelectItem key={u.id} value={u.id}>
-                            {u.name} · {u.role}
-                          </SelectItem>
-                        ))}
+                      {APP_USERS.filter((u) => ["manager", "admin"].includes(u.role)).map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name} · {u.role}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -447,7 +438,11 @@ function QuoteBuilder() {
                 <div className="grid grid-cols-2 gap-3">
                   <KV
                     label="Client"
-                    value={mode === "client" ? client?.company_name ?? "—" : lead?.company_name ?? "—"}
+                    value={
+                      mode === "client"
+                        ? (client?.company_name ?? "—")
+                        : (lead?.company_name ?? "—")
+                    }
                   />
                   {mode === "client" ? (
                     <KV label="Client ID" value={clientId} />
@@ -455,7 +450,10 @@ function QuoteBuilder() {
                     <KV label="Lead ID" value={leadId} />
                   )}
                   <KV label="Valid until" value={validUntil} />
-                  <KV label="Approver" value={APP_USERS.find((u) => u.id === approver)?.name ?? "—"} />
+                  <KV
+                    label="Approver"
+                    value={APP_USERS.find((u) => u.id === approver)?.name ?? "—"}
+                  />
                   <KV label="Items" value={String(items.length)} />
                   <KV label="Discount" value={`${discount}%`} />
                 </div>

@@ -1,5 +1,8 @@
 import { query, transaction } from "@/server/db/neon.server";
-import { touchAllActiveEngagementsForClient, touchEngagement } from "@/server/repositories/engagements";
+import {
+  touchAllActiveEngagementsForClient,
+  touchEngagement,
+} from "@/server/repositories/engagements";
 import type { TouchpointNewSentiment, TouchpointNewType, TouchpointRecord } from "@/lib/types";
 
 type CreateTouchpointInput = {

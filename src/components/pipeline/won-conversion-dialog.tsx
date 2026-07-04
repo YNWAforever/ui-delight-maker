@@ -11,7 +11,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { convertWonLead } from "@/server-functions/leads";
 import type { Engagement, Lead, Product, Quote } from "@/lib/types";
 
@@ -23,7 +29,13 @@ interface WonConversionDialogProps {
   onDone: () => void;
 }
 
-export function WonConversionDialog({ lead, products, matchingQuote, onClose, onDone }: WonConversionDialogProps) {
+export function WonConversionDialog({
+  lead,
+  products,
+  matchingQuote,
+  onClose,
+  onDone,
+}: WonConversionDialogProps) {
   const navigate = useNavigate();
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [value, setValue] = useState(matchingQuote?.total_value ?? 0);
@@ -71,11 +83,19 @@ export function WonConversionDialog({ lead, products, matchingQuote, onClose, on
           </div>
           <div>
             <Label className="text-xs">Value (HKD)</Label>
-            <Input type="number" className="mt-1" value={value} onChange={(e) => setValue(Number(e.target.value) || 0)} />
+            <Input
+              type="number"
+              className="mt-1"
+              value={value}
+              onChange={(e) => setValue(Number(e.target.value) || 0)}
+            />
           </div>
           <div>
             <Label className="text-xs">Billing period</Label>
-            <Select value={billingPeriod} onValueChange={(v) => setBillingPeriod(v as Engagement["billing_period"])}>
+            <Select
+              value={billingPeriod}
+              onValueChange={(v) => setBillingPeriod(v as Engagement["billing_period"])}
+            >
               <SelectTrigger className="mt-1">
                 <SelectValue />
               </SelectTrigger>
@@ -89,7 +109,12 @@ export function WonConversionDialog({ lead, products, matchingQuote, onClose, on
           </div>
           <div className="sm:col-span-2">
             <Label className="text-xs">Start date</Label>
-            <Input type="date" className="mt-1" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <Input
+              type="date"
+              className="mt-1"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
           </div>
         </div>
         <DialogFooter>

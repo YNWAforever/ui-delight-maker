@@ -75,6 +75,10 @@ export function buildContactDedupeKey(clientDedupeKey: string, email: string): s
   return `${clientDedupeKey}:${email.trim().toLowerCase()}`;
 }
 
-export function buildEngagementDedupeKey(clientDedupeKey: string, productName: string, startDate: string): string {
+export function buildEngagementDedupeKey(
+  clientDedupeKey: string,
+  productName: string,
+  startDate: string,
+): string {
   return `${clientDedupeKey}:${productName.trim().toLowerCase()}:${startDate.trim()}`;
 }

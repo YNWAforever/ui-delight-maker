@@ -18,12 +18,16 @@ export type RiskScoringResult = {
 
 function daysSince(dateIso: string | null, today: string): number | null {
   if (!dateIso) return null;
-  return Math.floor((new Date(today).getTime() - new Date(dateIso).getTime()) / (1000 * 60 * 60 * 24));
+  return Math.floor(
+    (new Date(today).getTime() - new Date(dateIso).getTime()) / (1000 * 60 * 60 * 24),
+  );
 }
 
 function daysUntil(dateIso: string | null, today: string): number | null {
   if (!dateIso) return null;
-  return Math.floor((new Date(dateIso).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24));
+  return Math.floor(
+    (new Date(dateIso).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24),
+  );
 }
 
 export function scoreRenewalRiskFallback(input: RiskScoringInput): RiskScoringResult {
@@ -33,7 +37,9 @@ export function scoreRenewalRiskFallback(input: RiskScoringInput): RiskScoringRe
   const sinceTouch = daysSince(input.lastTouchAt, input.today);
   if (sinceTouch === null || sinceTouch > 30) {
     score -= 25;
-    reasons.push(sinceTouch === null ? "no touchpoint on record" : `${sinceTouch} days since last touch`);
+    reasons.push(
+      sinceTouch === null ? "no touchpoint on record" : `${sinceTouch} days since last touch`,
+    );
   } else if (sinceTouch <= 14) {
     score += 5;
   }

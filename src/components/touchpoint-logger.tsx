@@ -12,12 +12,31 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createTouchpoint } from "@/server-functions/touchpoints";
 import { isAiNoteTidyAvailable, tidyTouchpointNote } from "@/server-functions/ai-note-tidy";
-import type { ClientContact, Engagement, TouchpointNewSentiment, TouchpointNewType } from "@/lib/types";
+import type {
+  ClientContact,
+  Engagement,
+  TouchpointNewSentiment,
+  TouchpointNewType,
+} from "@/lib/types";
 
-const TYPES: TouchpointNewType[] = ["check_in", "qbr", "meeting", "call", "whatsapp", "email", "note"];
+const TYPES: TouchpointNewType[] = [
+  "check_in",
+  "qbr",
+  "meeting",
+  "call",
+  "whatsapp",
+  "email",
+  "note",
+];
 const SENTIMENTS: TouchpointNewSentiment[] = ["positive", "neutral", "negative"];
 
 interface TouchpointLoggerProps {
@@ -105,7 +124,10 @@ export function TouchpointLogger({
           </div>
           <div>
             <Label className="text-xs">Sentiment</Label>
-            <Select value={sentiment} onValueChange={(v) => setSentiment(v as TouchpointNewSentiment)}>
+            <Select
+              value={sentiment}
+              onValueChange={(v) => setSentiment(v as TouchpointNewSentiment)}
+            >
               <SelectTrigger className="mt-1">
                 <SelectValue />
               </SelectTrigger>
@@ -165,7 +187,12 @@ export function TouchpointLogger({
                 </Button>
               )}
             </div>
-            <Textarea className="mt-1" value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} />
+            <Textarea
+              className="mt-1"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={4}
+            />
           </div>
         </div>
         <DialogFooter>

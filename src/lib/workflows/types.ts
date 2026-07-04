@@ -1,4 +1,11 @@
-import type { ActivityLog, AgentRun, Engagement, Lead, PricingTemplate, TouchpointRecord } from "@/lib/types";
+import type {
+  ActivityLog,
+  AgentRun,
+  Engagement,
+  Lead,
+  PricingTemplate,
+  TouchpointRecord,
+} from "@/lib/types";
 
 export type WorkflowTrigger =
   | "lead.qualify_requested"

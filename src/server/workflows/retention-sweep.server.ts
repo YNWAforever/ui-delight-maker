@@ -1,6 +1,10 @@
 import { query } from "@/server/db/neon.server";
 import { createNotification } from "@/server/repositories/notifications";
-import { createAgentRun, findActiveRun, updateAgentRunResult } from "@/server/repositories/agent-runs";
+import {
+  createAgentRun,
+  findActiveRun,
+  updateAgentRunResult,
+} from "@/server/repositories/agent-runs";
 import { getN8nDispatchConfig, triggerN8n } from "@/lib/n8n";
 import { buildScoreRenewalRiskPayload } from "@/lib/workflows/payloads";
 import {
@@ -51,7 +55,11 @@ export async function runRetentionSweep(today: string) {
 
     const boundary = getBoundaryCrossed(engagement.renewal_date, today);
     if (boundary && engagement.renewal_date) {
-      const dedupeKey = buildRenewalWindowDedupeKey(engagement.id, boundary, engagement.renewal_date);
+      const dedupeKey = buildRenewalWindowDedupeKey(
+        engagement.id,
+        boundary,
+        engagement.renewal_date,
+      );
       for (const userId of recipients) {
         const inserted = await createNotification({
           user_id: userId,
@@ -90,7 +98,10 @@ export async function runRetentionSweep(today: string) {
             // run failed and move on; it becomes retryable from the Renewals panel's "Re-score risk" button.
             await updateAgentRunResult(run.id, {
               status: "failed",
-              output_data: { dispatch_error: error instanceof Error ? error.message : "Unknown n8n dispatch error" },
+              output_data: {
+                dispatch_error:
+                  error instanceof Error ? error.message : "Unknown n8n dispatch error",
+              },
               output_summary: "Retention sweep failed to dispatch renewal risk scoring.",
             });
           }
@@ -98,7 +109,13 @@ export async function runRetentionSweep(today: string) {
       }
     }
 
-    if (isEngagementStale({ lastTouchAt: engagement.last_touch_at, startDate: engagement.start_date, today })) {
+    if (
+      isEngagementStale({
+        lastTouchAt: engagement.last_touch_at,
+        startDate: engagement.start_date,
+        today,
+      })
+    ) {
       const episodeAnchor = engagement.last_touch_at ?? null;
       const dedupeKey = buildStaleTouchpointDedupeKey(engagement.id, episodeAnchor);
       for (const userId of recipients) {
@@ -116,5 +133,10 @@ export async function runRetentionSweep(today: string) {
     }
   }
 
-  return { engagementsScanned: engagements.length, renewalNotified, staleNotified, rescoreDispatched };
+  return {
+    engagementsScanned: engagements.length,
+    renewalNotified,
+    staleNotified,
+    rescoreDispatched,
+  };
 }

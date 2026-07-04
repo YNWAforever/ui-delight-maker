@@ -8,14 +8,25 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { getClient } from "@/server-functions/clients";
 import { getQuotes } from "@/server-functions/quotes";
 import { getEngagementsByClient } from "@/server-functions/engagements";
-import { getClientContacts, createClientContact, deleteClientContact } from "@/server-functions/client-contacts";
+import {
+  getClientContacts,
+  createClientContact,
+  deleteClientContact,
+} from "@/server-functions/client-contacts";
 import { getTouchpointsByClient } from "@/server-functions/touchpoints";
 import { getProducts } from "@/server-functions/products";
 import { getActivityLogsForClient } from "@/server-functions/activity-logs";
@@ -26,18 +37,18 @@ import type { ClientContact, Task, TouchpointRecord } from "@/lib/types";
 
 const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
 
-
 export const Route = createFileRoute("/clients/$id")({
   loader: async ({ params }) => {
-    const [client, allQuotes, engagements, contacts, touchpoints, products, tasks] = await Promise.all([
-      getClient({ data: { id: params.id } }),
-      getQuotes({}),
-      getEngagementsByClient({ data: { clientId: params.id } }),
-      getClientContacts({ data: { clientId: params.id } }),
-      getTouchpointsByClient({ data: { clientId: params.id } }),
-      getProducts({ data: { activeOnly: true } }),
-      getTasks({ data: { client_id: params.id } }),
-    ]);
+    const [client, allQuotes, engagements, contacts, touchpoints, products, tasks] =
+      await Promise.all([
+        getClient({ data: { id: params.id } }),
+        getQuotes({}),
+        getEngagementsByClient({ data: { clientId: params.id } }),
+        getClientContacts({ data: { clientId: params.id } }),
+        getTouchpointsByClient({ data: { clientId: params.id } }),
+        getProducts({ data: { activeOnly: true } }),
+        getTasks({ data: { client_id: params.id } }),
+      ]);
 
     const [clientLogs, ...engagementLogLists] = await Promise.all([
       getActivityLogsForClient({ data: { clientId: params.id } }),
@@ -74,16 +85,28 @@ export const Route = createFileRoute("/clients/$id")({
 });
 
 function ClientDetail() {
-  const { client, quotes: clientQuotes, engagements, contacts, products, touchpoints, tasks: clientTasks, activityLogs } = Route.useLoaderData();
+  const {
+    client,
+    quotes: clientQuotes,
+    engagements,
+    contacts,
+    products,
+    touchpoints,
+    tasks: clientTasks,
+    activityLogs,
+  } = Route.useLoaderData();
   const owner = userById(client.account_owner ?? "");
   const clientContacts = contacts.filter((c) => c.client_id === client.id);
 
   const productById = (id: string) => products.find((p) => p.id === id);
-  const activeProductIds = new Set(engagements.filter((e) => e.status === "active").map((e) => e.product_id));
+  const activeProductIds = new Set(
+    engagements.filter((e) => e.status === "active").map((e) => e.product_id),
+  );
   const missingProducts = products.filter((p) => !activeProductIds.has(p.id));
-  const latestRiskReasoning = engagements
-    .filter((e) => e.risk_reasoning)
-    .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]?.risk_reasoning ?? null;
+  const latestRiskReasoning =
+    engagements
+      .filter((e) => e.risk_reasoning)
+      .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]?.risk_reasoning ?? null;
 
   return (
     <>
@@ -121,7 +144,9 @@ function ClientDetail() {
 
                 {latestRiskReasoning && (
                   <Card className="bg-muted/30">
-                    <CardContent className="p-4 text-sm text-muted-foreground">{latestRiskReasoning}</CardContent>
+                    <CardContent className="p-4 text-sm text-muted-foreground">
+                      {latestRiskReasoning}
+                    </CardContent>
                   </Card>
                 )}
 
@@ -133,13 +158,17 @@ function ClientDetail() {
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {engagements.map((e) => (
                         <Card key={e.id} className="p-3">
-                          <p className="text-sm font-medium">{productById(e.product_id)?.name ?? e.product_id}</p>
+                          <p className="text-sm font-medium">
+                            {productById(e.product_id)?.name ?? e.product_id}
+                          </p>
                           <p className="text-xs text-muted-foreground">
                             {e.status} · {e.billing_period} · HKD {(e.value ?? 0).toLocaleString()}
                           </p>
                           <div className="mt-2 flex items-center justify-between">
                             <StatusBadge value={e.renewal_risk} />
-                            <span className="text-xs text-muted-foreground">{e.renewal_date ?? "—"}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {e.renewal_date ?? "—"}
+                            </span>
                           </div>
                         </Card>
                       ))}
@@ -149,9 +178,13 @@ function ClientDetail() {
 
                 <Card className="border-dashed">
                   <CardContent className="p-4 text-sm">
-                    <span className="font-medium">Uses {activeProductIds.size} of {products.length} products.</span>{" "}
+                    <span className="font-medium">
+                      Uses {activeProductIds.size} of {products.length} products.
+                    </span>{" "}
                     {missingProducts.length > 0 && (
-                      <span className="text-muted-foreground">Gaps: {missingProducts.map((p) => p.name).join(", ")}.</span>
+                      <span className="text-muted-foreground">
+                        Gaps: {missingProducts.map((p) => p.name).join(", ")}.
+                      </span>
                     )}
                   </CardContent>
                 </Card>
@@ -215,7 +248,13 @@ function ClientDetail() {
   );
 }
 
-function ClientContactsPanel({ clientId, initialContacts }: { clientId: string; initialContacts: ClientContact[] }) {
+function ClientContactsPanel({
+  clientId,
+  initialContacts,
+}: {
+  clientId: string;
+  initialContacts: ClientContact[];
+}) {
   const [rows, setRows] = useState(initialContacts);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -224,7 +263,9 @@ function ClientContactsPanel({ clientId, initialContacts }: { clientId: string; 
   const [phone, setPhone] = useState("");
 
   const create = async () => {
-    const created = await createClientContact({ data: { client_id: clientId, name: name || "Unnamed", title, email, phone } });
+    const created = await createClientContact({
+      data: { client_id: clientId, name: name || "Unnamed", title, email, phone },
+    });
     setRows((prev) => [...prev, created]);
     setOpen(false);
     setName("");

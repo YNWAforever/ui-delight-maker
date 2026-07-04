@@ -20,7 +20,10 @@ function normalizeBillingPeriod(value: string | undefined): EngagementBillingPer
   return value && VALID_BILLING_PERIODS.has(value) ? (value as EngagementBillingPeriod) : "monthly";
 }
 
-export async function commitClientImport(rows: ImportRow[], actorId: string): Promise<ImportCommitResult> {
+export async function commitClientImport(
+  rows: ImportRow[],
+  actorId: string,
+): Promise<ImportCommitResult> {
   return transaction(async (db) => {
     const result: ImportCommitResult = { created: 0, updated: 0, skipped: 0 };
     const clientIdByKey = new Map<string, string>();
@@ -75,11 +78,15 @@ export async function commitClientImport(rows: ImportRow[], actorId: string): Pr
       }
 
       if (row.product_name) {
-        const product = await db.query<{ id: string }>("select id from products where name = $1", [row.product_name]);
+        const product = await db.query<{ id: string }>("select id from products where name = $1", [
+          row.product_name,
+        ]);
         const productId = product.rows[0]?.id;
         if (productId && row.start_date) {
           const owner = row.owner_email
-            ? await db.query<{ id: string }>("select id from profiles where email = $1", [row.owner_email])
+            ? await db.query<{ id: string }>("select id from profiles where email = $1", [
+                row.owner_email,
+              ])
             : { rows: [] };
           const existingEngagement = await db.query<{ id: string }>(
             "select id from engagements where client_id = $1 and product_id = $2 and start_date = $3",

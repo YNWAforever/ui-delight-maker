@@ -59,10 +59,14 @@ export async function markNotificationRead(id: string, userId: string) {
 }
 
 export async function markAllNotificationsRead(userId: string) {
-  await query("update notifications set read_at = now() where user_id = $1 and read_at is null", [userId]);
+  await query("update notifications set read_at = now() where user_id = $1 and read_at is null", [
+    userId,
+  ]);
 }
 
 export async function listApproverProfileIds() {
-  const rows = await query<{ id: string }>("select id from profiles where role in ('admin', 'manager')");
+  const rows = await query<{ id: string }>(
+    "select id from profiles where role in ('admin', 'manager')",
+  );
   return rows.map((r) => r.id);
 }

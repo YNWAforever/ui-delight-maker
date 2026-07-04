@@ -6,7 +6,14 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { parseClientImportCsv, type ImportRow, type ImportRowError } from "@/lib/csv-import";
 import { commitClientImportFn, validateClientImportRows } from "@/server-functions/client-import";
 
@@ -19,7 +26,11 @@ function ImportWizard() {
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [valid, setValid] = useState<ImportRow[]>([]);
   const [errors, setErrors] = useState<ImportRowError[]>([]);
-  const [summary, setSummary] = useState<{ created: number; updated: number; skipped: number } | null>(null);
+  const [summary, setSummary] = useState<{
+    created: number;
+    updated: number;
+    skipped: number;
+  } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [isCommitting, setIsCommitting] = useState(false);
 
@@ -91,7 +102,8 @@ function ImportWizard() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                2. Preview — {valid.length} valid, {errors.length} error{errors.length === 1 ? "" : "s"}
+                2. Preview — {valid.length} valid, {errors.length} error
+                {errors.length === 1 ? "" : "s"}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -124,8 +136,14 @@ function ImportWizard() {
                   ))}
                 </TableBody>
               </Table>
-              <Button className="mt-4" onClick={commit} disabled={valid.length === 0 || isCommitting}>
-                {isCommitting ? "Committing…" : `Commit ${valid.length} row${valid.length === 1 ? "" : "s"}`}
+              <Button
+                className="mt-4"
+                onClick={commit}
+                disabled={valid.length === 0 || isCommitting}
+              >
+                {isCommitting
+                  ? "Committing…"
+                  : `Commit ${valid.length} row${valid.length === 1 ? "" : "s"}`}
               </Button>
             </CardContent>
           </Card>
@@ -134,7 +152,8 @@ function ImportWizard() {
         {summary && (
           <Card>
             <CardContent className="p-4 text-sm">
-              3. Done — Created {summary.created}, updated {summary.updated}, skipped {summary.skipped}.
+              3. Done — Created {summary.created}, updated {summary.updated}, skipped{" "}
+              {summary.skipped}.
             </CardContent>
           </Card>
         )}

@@ -46,7 +46,8 @@ export const Route = createFileRoute("/")({
 const TODAY = "2026-06-28";
 
 function PipelineCommandCenter() {
-  const { leads, quotes, tasks, approvals, agentRuns, activityLogs, products } = Route.useLoaderData();
+  const { leads, quotes, tasks, approvals, agentRuns, activityLogs, products } =
+    Route.useLoaderData();
   const router = useRouter();
   const [filters, setFilters] = useState<PipelineFilters>({
     search: "",

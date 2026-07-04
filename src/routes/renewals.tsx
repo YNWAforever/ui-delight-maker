@@ -5,7 +5,13 @@ import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getEngagementsForRenewals } from "@/server-functions/engagements";
 import { getProducts } from "@/server-functions/products";
 import { annualizeValue, getRenewalWindow } from "@/lib/engagement-utils";
@@ -13,7 +19,11 @@ import { RenewalsPreviewPanel } from "@/components/renewals/renewals-preview-pan
 import { RenewalCard } from "@/components/renewals/renewal-card";
 import type { Engagement, RenewalRisk, RenewalWindowBucket } from "@/lib/types";
 
-type RenewalRow = Engagement & { client_company_name: string; client_tier: string | null; product_name: string };
+type RenewalRow = Engagement & {
+  client_company_name: string;
+  client_tier: string | null;
+  product_name: string;
+};
 
 const COLUMNS: { key: RenewalWindowBucket; label: string }[] = [
   { key: "overdue", label: "Overdue" },
@@ -34,7 +44,10 @@ export const Route = createFileRoute("/renewals")({
   head: () => ({
     meta: [
       { title: "Renewals — Fimmick ClientOps" },
-      { name: "description", content: "Engagements by renewal window with risk and health signals." },
+      {
+        name: "description",
+        content: "Engagements by renewal window with risk and health signals.",
+      },
     ],
   }),
   component: RenewalsPage,
@@ -53,7 +66,8 @@ function RenewalsPage() {
     () =>
       rows.filter(
         (e) =>
-          (risk === "all" || e.renewal_risk === risk) && (productId === "all" || e.product_id === productId),
+          (risk === "all" || e.renewal_risk === risk) &&
+          (productId === "all" || e.product_id === productId),
       ),
     [rows, risk, productId],
   );
@@ -75,7 +89,9 @@ function RenewalsPage() {
   const arrAtRisk = filtered
     .filter((e) => e.renewal_risk === "high")
     .reduce((sum, e) => sum + annualizeValue(e.value, e.billing_period), 0);
-  const dueSoon = filtered.filter((e) => ["overdue", "30", "60", "90"].includes(getRenewalWindow(e.renewal_date, today))).length;
+  const dueSoon = filtered.filter((e) =>
+    ["overdue", "30", "60", "90"].includes(getRenewalWindow(e.renewal_date, today)),
+  ).length;
   const stale = filtered.filter((e) => {
     if (!e.last_touch_at) return true;
     const days = Math.floor((Date.parse(today) - Date.parse(e.last_touch_at)) / 86400000);
@@ -90,7 +106,11 @@ function RenewalsPage() {
 
       <div className="space-y-4 px-6 py-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard label="ARR at risk" value={`HKD ${arrAtRisk.toLocaleString()}`} hint="high-risk active engagements" />
+          <MetricCard
+            label="ARR at risk"
+            value={`HKD ${arrAtRisk.toLocaleString()}`}
+            hint="high-risk active engagements"
+          />
           <MetricCard label="Due within 90 days" value={dueSoon} hint="overdue + 30/60/90" />
           <MetricCard label="Stale engagements" value={stale} hint="30+ days without touch" />
         </div>
@@ -154,7 +174,12 @@ function RenewalsPage() {
                     </p>
                   ) : (
                     byColumn[col.key].map((e) => (
-                      <RenewalCard key={e.id} engagement={e} selected={e.id === selectedId} onSelect={() => setSelectedId(e.id)} />
+                      <RenewalCard
+                        key={e.id}
+                        engagement={e}
+                        selected={e.id === selectedId}
+                        onSelect={() => setSelectedId(e.id)}
+                      />
                     ))
                   )}
                 </div>

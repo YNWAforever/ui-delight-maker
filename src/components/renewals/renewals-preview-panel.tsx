@@ -86,13 +86,17 @@ export function RenewalsPreviewPanel({
                 ) : (
                   <>
                     <p>
-                      <span className="text-muted-foreground">Health score:</span> {engagement.health_score}/100
+                      <span className="text-muted-foreground">Health score:</span>{" "}
+                      {engagement.health_score}/100
                     </p>
                     <p>
-                      <span className="text-muted-foreground">Renewal risk:</span> {engagement.renewal_risk}
+                      <span className="text-muted-foreground">Renewal risk:</span>{" "}
+                      {engagement.renewal_risk}
                     </p>
                     <p className="text-muted-foreground">{engagement.risk_reasoning}</p>
-                    {engagement.next_action && <p className="font-medium">Next: {engagement.next_action}</p>}
+                    {engagement.next_action && (
+                      <p className="font-medium">Next: {engagement.next_action}</p>
+                    )}
                   </>
                 )}
                 {scoreStatus === "failed" && (
@@ -102,9 +106,22 @@ export function RenewalsPreviewPanel({
             </Card>
 
             <div className="grid grid-cols-2 gap-2">
-              <TouchpointLoggerLoader clientId={engagement.client_id} engagementId={engagement.id} onLogged={() => router.invalidate()} />
-              <Button variant="outline" size="sm" onClick={rescore} disabled={scoreStatus === "running"}>
-                {scoreStatus === "running" ? "Scoring…" : scoreStatus === "failed" ? "Retry re-score" : "Re-score risk"}
+              <TouchpointLoggerLoader
+                clientId={engagement.client_id}
+                engagementId={engagement.id}
+                onLogged={() => router.invalidate()}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={rescore}
+                disabled={scoreStatus === "running"}
+              >
+                {scoreStatus === "running"
+                  ? "Scoring…"
+                  : scoreStatus === "failed"
+                    ? "Retry re-score"
+                    : "Re-score risk"}
               </Button>
               <Button
                 variant="outline"
@@ -156,7 +173,10 @@ function TouchpointLoggerLoader({
 }) {
   // Contacts/engagements are fetched lazily on click via TouchpointLogger's own
   // trigger-wrapped dialog rather than blocking the panel's initial render.
-  const [data, setData] = useState<{ engagements: Engagement[]; contacts: Awaited<ReturnType<typeof getClientContacts>> } | null>(null);
+  const [data, setData] = useState<{
+    engagements: Engagement[];
+    contacts: Awaited<ReturnType<typeof getClientContacts>>;
+  } | null>(null);
 
   return (
     <TouchpointLogger

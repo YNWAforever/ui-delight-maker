@@ -20,7 +20,11 @@ export async function listEngagementsByClient(clientId: string) {
 }
 
 export async function getEngagement(id: string, db?: Queryable) {
-  const engagement = await queryOne<Engagement>("select * from engagements where id = $1", [id], db);
+  const engagement = await queryOne<Engagement>(
+    "select * from engagements where id = $1",
+    [id],
+    db,
+  );
   if (!engagement) throw new Error("Engagement not found");
   return engagement;
 }
@@ -97,7 +101,10 @@ export async function createEngagement(input: CreateEngagementInput, db?: Querya
 
 export async function applyEngagementScore(
   id: string,
-  updates: Pick<Partial<Engagement>, "health_score" | "renewal_risk" | "risk_reasoning" | "next_action">,
+  updates: Pick<
+    Partial<Engagement>,
+    "health_score" | "renewal_risk" | "risk_reasoning" | "next_action"
+  >,
   db?: Queryable,
 ) {
   const update = buildUpdate(updates, engagementScoreColumns, 1);
@@ -116,7 +123,11 @@ export async function applyEngagementScore(
   return engagement;
 }
 
-export async function markEngagementRenewed(input: { id: string; actorId: string; reason?: string }) {
+export async function markEngagementRenewed(input: {
+  id: string;
+  actorId: string;
+  reason?: string;
+}) {
   return transaction(async (client) => {
     const productResult = await client.query<{ default_term_months: number | null }>(
       `
@@ -148,7 +159,11 @@ export async function markEngagementRenewed(input: { id: string; actorId: string
           (actor_type, actor_id, action, object_type, object_id, diff_data)
         values ('user', $1, 'renewed engagement', 'engagement', $2, $3::jsonb)
       `,
-      [input.actorId, input.id, JSON.stringify({ reason: input.reason ?? null, new_renewal_date: engagement.renewal_date })],
+      [
+        input.actorId,
+        input.id,
+        JSON.stringify({ reason: input.reason ?? null, new_renewal_date: engagement.renewal_date }),
+      ],
     );
 
     return engagement;
@@ -185,7 +200,11 @@ export async function touchEngagement(id: string, occurredAt: string, db?: Query
   );
 }
 
-export async function touchAllActiveEngagementsForClient(clientId: string, occurredAt: string, db?: Queryable) {
+export async function touchAllActiveEngagementsForClient(
+  clientId: string,
+  occurredAt: string,
+  db?: Queryable,
+) {
   await query(
     "update engagements set last_touch_at = greatest(coalesce(last_touch_at, $2), $2) where client_id = $1 and status = 'active'",
     [clientId, occurredAt],

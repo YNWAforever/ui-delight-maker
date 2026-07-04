@@ -102,14 +102,14 @@ export type QualificationNextAction =
   | "Disqualify";
 
 export interface QualificationData {
-  urgency_score: number;        // 0–10
-  fit_score: number;            // 0–10
-  qualification_score: number;  // 0–100
+  urgency_score: number; // 0–10
+  fit_score: number; // 0–10
+  qualification_score: number; // 0–100
   service_interest: string[];
-  budget_range: string;         // "HKD 50k–200k" or "unknown"
+  budget_range: string; // "HKD 50k–200k" or "unknown"
   next_action: QualificationNextAction;
-  reason: string;               // max 120 chars
-  confidence: number;           // 0.0–1.0
+  reason: string; // max 120 chars
+  confidence: number; // 0.0–1.0
   human_review_required: boolean;
 }
 
@@ -469,7 +469,11 @@ export type TouchpointNewType =
   | "email"
   | "note";
 export type TouchpointNewSentiment = "positive" | "neutral" | "negative";
-export type NotificationType = "renewal_window" | "risk_change" | "stale_touchpoint" | "approval_pending";
+export type NotificationType =
+  | "renewal_window"
+  | "risk_change"
+  | "stale_touchpoint"
+  | "approval_pending";
 export type RenewalWindowBucket = "overdue" | "30" | "60" | "90" | "later";
 
 export interface Product {

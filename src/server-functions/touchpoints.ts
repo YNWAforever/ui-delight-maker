@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { createTouchpoint as createTouchpointInNeon, listTouchpointsByClient } from "@/server/repositories/touchpoints";
+import {
+  createTouchpoint as createTouchpointInNeon,
+  listTouchpointsByClient,
+} from "@/server/repositories/touchpoints";
 import type { TouchpointNewSentiment, TouchpointNewType } from "@/lib/types";
 
 export const getTouchpointsByClient = createServerFn({ method: "GET" })

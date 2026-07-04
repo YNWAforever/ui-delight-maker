@@ -25,7 +25,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatCompactHKD } from "@/lib/format";
 import { getRenewalWindow } from "@/lib/engagement-utils";
 import { getClients, createClient } from "@/server-functions/clients";
@@ -66,7 +73,8 @@ function ClientsPage() {
     const out = rows.filter((c) => {
       if (tier !== "all" && c.tier !== tier) return false;
       if (riskFilter !== "all" && c.renewal_risk !== riskFilter) return false;
-      if (windowFilter !== "all" && getRenewalWindow(c.renewal_date, today) !== windowFilter) return false;
+      if (windowFilter !== "all" && getRenewalWindow(c.renewal_date, today) !== windowFilter)
+        return false;
       return true;
     });
     const sortFn = {
@@ -115,7 +123,11 @@ function ClientsPage() {
 
       <div className="space-y-4 px-6 py-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard label="Total ARR" value={formatCompactHKD(totalARR)} hint="all active accounts" />
+          <MetricCard
+            label="Total ARR"
+            value={formatCompactHKD(totalARR)}
+            hint="all active accounts"
+          />
           <MetricCard label="Avg health" value={`${avgHealth}/100`} hint="across portfolio" />
           <MetricCard
             label="Renewals next 90d"
@@ -148,7 +160,10 @@ function ClientsPage() {
                 <SelectItem value="low">Low</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={windowFilter} onValueChange={(v) => setWindowFilter(v as typeof windowFilter)}>
+            <Select
+              value={windowFilter}
+              onValueChange={(v) => setWindowFilter(v as typeof windowFilter)}
+            >
               <SelectTrigger className="h-9 w-[180px]">
                 <SelectValue placeholder="Renewal window" />
               </SelectTrigger>
@@ -238,7 +253,12 @@ function ClientsPage() {
   );
 }
 
-type CreateClientPayload = { company_name: string; industry?: string; tier?: Client["tier"]; account_owner?: string };
+type CreateClientPayload = {
+  company_name: string;
+  industry?: string;
+  tier?: Client["tier"];
+  account_owner?: string;
+};
 
 function NewClientDialog({ onCreate }: { onCreate: (c: CreateClientPayload) => Promise<void> }) {
   const [name, setName] = useState("");

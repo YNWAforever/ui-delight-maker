@@ -30,7 +30,12 @@ export async function listActiveApprovals() {
 export async function createApproval(
   input: {
     agent_run_id?: string | null;
-    approval_type: "quote_send" | "message_send" | "discount" | "qualification_review" | "cs_risk_review";
+    approval_type:
+      | "quote_send"
+      | "message_send"
+      | "discount"
+      | "qualification_review"
+      | "cs_risk_review";
     requested_by?: string | null;
     assigned_to?: string | null;
     context_data: unknown;

@@ -21,7 +21,12 @@ interface MarkRenewedEndedDialogProps {
   onDone: () => void;
 }
 
-export function MarkRenewedEndedDialog({ engagementId, action, onClose, onDone }: MarkRenewedEndedDialogProps) {
+export function MarkRenewedEndedDialog({
+  engagementId,
+  action,
+  onClose,
+  onDone,
+}: MarkRenewedEndedDialogProps) {
   const [reason, setReason] = useState("");
 
   const confirm = async () => {
@@ -49,7 +54,11 @@ export function MarkRenewedEndedDialog({ engagementId, action, onClose, onDone }
         </AlertDialogHeader>
         <div className="space-y-2">
           <Label htmlFor="renewal-reason">Reason {action === "end" && "(required)"}</Label>
-          <Textarea id="renewal-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Textarea
+            id="renewal-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
         </div>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>

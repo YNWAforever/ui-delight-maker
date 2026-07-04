@@ -106,13 +106,13 @@ export function NotificationBell() {
                     }}
                     className={cn(
                       "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-accent",
-                      isUnread && "bg-accent/40"
+                      isUnread && "bg-accent/40",
                     )}
                   >
                     <div
                       className={cn(
                         "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                        typeColor[n.type]
+                        typeColor[n.type],
                       )}
                     >
                       {typeIcon[n.type]}
@@ -121,7 +121,7 @@ export function NotificationBell() {
                       <p
                         className={cn(
                           "text-sm leading-snug",
-                          isUnread ? "font-medium" : "text-muted-foreground"
+                          isUnread ? "font-medium" : "text-muted-foreground",
                         )}
                       >
                         {n.title}

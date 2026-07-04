@@ -108,7 +108,9 @@ describe("ClientOps n8n workflow templates", () => {
 
     const resolveOutputCode = json.nodes.find((node) => node.name === "Resolve Output")?.parameters
       ?.jsCode;
-    expect(resolveOutputCode).toContain(`${testCase.subjectIdField}: fallback.${testCase.subjectIdField}`);
+    expect(resolveOutputCode).toContain(
+      `${testCase.subjectIdField}: fallback.${testCase.subjectIdField}`,
+    );
     expect(resolveOutputCode).toContain("agent_run_id: fallback.agent_run_id");
     expect(resolveOutputCode).not.toContain("...fallback, ...parsed");
 

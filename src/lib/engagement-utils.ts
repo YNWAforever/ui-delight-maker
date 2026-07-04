@@ -1,6 +1,9 @@
 import type { Engagement, EngagementBillingPeriod, RenewalWindowBucket } from "./types";
 
-export function annualizeValue(value: number | null, billingPeriod: EngagementBillingPeriod): number {
+export function annualizeValue(
+  value: number | null,
+  billingPeriod: EngagementBillingPeriod,
+): number {
   if (value === null) return 0;
   switch (billingPeriod) {
     case "monthly":
