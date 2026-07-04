@@ -32,6 +32,7 @@ import { Route as ApiWorkflowsDraftReplyRouteImport } from './routes/api/workflo
 import { Route as ApiWorkflowsDraftQuoteRouteImport } from './routes/api/workflows/draft-quote'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiWorkflowsContextLeadRouteImport } from './routes/api/workflows/context/lead'
+import { Route as ApiWorkflowsContextEngagementRouteImport } from './routes/api/workflows/context/engagement'
 
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
@@ -148,6 +149,12 @@ const ApiWorkflowsContextLeadRoute = ApiWorkflowsContextLeadRouteImport.update({
   path: '/api/workflows/context/lead',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWorkflowsContextEngagementRoute =
+  ApiWorkflowsContextEngagementRouteImport.update({
+    id: '/api/workflows/context/engagement',
+    path: '/api/workflows/context/engagement',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -172,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
+  '/api/workflows/context/engagement': typeof ApiWorkflowsContextEngagementRoute
   '/api/workflows/context/lead': typeof ApiWorkflowsContextLeadRoute
 }
 export interface FileRoutesByTo {
@@ -197,6 +205,7 @@ export interface FileRoutesByTo {
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
+  '/api/workflows/context/engagement': typeof ApiWorkflowsContextEngagementRoute
   '/api/workflows/context/lead': typeof ApiWorkflowsContextLeadRoute
 }
 export interface FileRoutesById {
@@ -223,6 +232,7 @@ export interface FileRoutesById {
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
+  '/api/workflows/context/engagement': typeof ApiWorkflowsContextEngagementRoute
   '/api/workflows/context/lead': typeof ApiWorkflowsContextLeadRoute
 }
 export interface FileRouteTypes {
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
+    | '/api/workflows/context/engagement'
     | '/api/workflows/context/lead'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -275,6 +286,7 @@ export interface FileRouteTypes {
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
+    | '/api/workflows/context/engagement'
     | '/api/workflows/context/lead'
   id:
     | '__root__'
@@ -300,6 +312,7 @@ export interface FileRouteTypes {
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
+    | '/api/workflows/context/engagement'
     | '/api/workflows/context/lead'
   fileRoutesById: FileRoutesById
 }
@@ -320,6 +333,7 @@ export interface RootRouteChildren {
   ApiWorkflowsDraftQuoteRoute: typeof ApiWorkflowsDraftQuoteRoute
   ApiWorkflowsDraftReplyRoute: typeof ApiWorkflowsDraftReplyRoute
   ApiWorkflowsQualifyLeadRoute: typeof ApiWorkflowsQualifyLeadRoute
+  ApiWorkflowsContextEngagementRoute: typeof ApiWorkflowsContextEngagementRoute
   ApiWorkflowsContextLeadRoute: typeof ApiWorkflowsContextLeadRoute
 }
 
@@ -486,6 +500,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWorkflowsContextLeadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/workflows/context/engagement': {
+      id: '/api/workflows/context/engagement'
+      path: '/api/workflows/context/engagement'
+      fullPath: '/api/workflows/context/engagement'
+      preLoaderRoute: typeof ApiWorkflowsContextEngagementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -561,6 +582,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWorkflowsDraftQuoteRoute: ApiWorkflowsDraftQuoteRoute,
   ApiWorkflowsDraftReplyRoute: ApiWorkflowsDraftReplyRoute,
   ApiWorkflowsQualifyLeadRoute: ApiWorkflowsQualifyLeadRoute,
+  ApiWorkflowsContextEngagementRoute: ApiWorkflowsContextEngagementRoute,
   ApiWorkflowsContextLeadRoute: ApiWorkflowsContextLeadRoute,
 }
 export const routeTree = rootRouteImport
