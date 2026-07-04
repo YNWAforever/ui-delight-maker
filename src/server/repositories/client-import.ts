@@ -5,7 +5,10 @@ import { createClientContact } from "@/server/repositories/client-contacts";
 import { createEngagement } from "@/server/repositories/engagements";
 import type { ImportRow } from "@/lib/csv-import";
 import { buildClientDedupeKey } from "@/lib/csv-import";
+import { addMonthsToDateString } from "@/lib/engagement-utils";
 import type { Client, EngagementBillingPeriod } from "@/lib/types";
+
+const DEFAULT_TERM_MONTHS = 12;
 
 export type ImportCommitResult = { created: number; updated: number; skipped: number };
 
@@ -78,9 +81,10 @@ export async function commitClientImport(
       }
 
       if (row.product_name) {
-        const product = await db.query<{ id: string }>("select id from products where name = $1", [
-          row.product_name,
-        ]);
+        const product = await db.query<{ id: string; default_term_months: number | null }>(
+          "select id, default_term_months from products where name = $1",
+          [row.product_name],
+        );
         const productId = product.rows[0]?.id;
         if (productId && row.start_date) {
           const owner = row.owner_email
@@ -93,6 +97,8 @@ export async function commitClientImport(
             [clientId, productId, row.start_date],
           );
           if (!existingEngagement.rows[0]) {
+            const termMonths = product.rows[0]?.default_term_months ?? DEFAULT_TERM_MONTHS;
+            const renewalDate = addMonthsToDateString(row.start_date, termMonths);
             await createEngagement(
               {
                 client_id: clientId,
@@ -101,6 +107,7 @@ export async function commitClientImport(
                 value: row.value ? Number(row.value) : undefined,
                 billing_period: normalizeBillingPeriod(row.billing_period),
                 start_date: row.start_date,
+                renewal_date: renewalDate,
               },
               db,
             );

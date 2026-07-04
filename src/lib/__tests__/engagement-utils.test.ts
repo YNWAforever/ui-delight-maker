@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { annualizeValue, rollupClientStats, getRenewalWindow } from "../engagement-utils";
+import {
+  annualizeValue,
+  rollupClientStats,
+  getRenewalWindow,
+  addMonthsToDateString,
+} from "../engagement-utils";
 import type { Engagement } from "../types";
 
 function engagement(overrides: Partial<Engagement>): Engagement {
@@ -97,5 +102,32 @@ describe("getRenewalWindow", () => {
   });
   it("buckets null renewal date as later", () => {
     expect(getRenewalWindow(null, "2026-07-04")).toBe("later");
+  });
+});
+
+describe("addMonthsToDateString", () => {
+  it("adds whole months within the same year", () => {
+    expect(addMonthsToDateString("2026-01-15", 6)).toBe("2026-07-15");
+  });
+
+  it("rolls over into the next year", () => {
+    expect(addMonthsToDateString("2026-08-01", 6)).toBe("2027-02-01");
+  });
+
+  it("falls back to a 12-month default term", () => {
+    expect(addMonthsToDateString("2026-01-15", 12)).toBe("2027-01-15");
+  });
+
+  it("clamps day-of-month at a month-end boundary (Jan 31 + 1 month)", () => {
+    expect(addMonthsToDateString("2026-01-31", 1)).toBe("2026-02-28");
+  });
+
+  it("clamps into a leap-year February correctly", () => {
+    expect(addMonthsToDateString("2027-01-31", 1)).toBe("2027-02-28");
+    expect(addMonthsToDateString("2028-01-31", 1)).toBe("2028-02-29");
+  });
+
+  it("handles zero months as a no-op", () => {
+    expect(addMonthsToDateString("2026-03-10", 0)).toBe("2026-03-10");
   });
 });

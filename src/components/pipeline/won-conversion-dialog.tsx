@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -19,7 +19,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { convertWonLead } from "@/server-functions/leads";
+import { addMonthsToDateString } from "@/lib/engagement-utils";
 import type { Engagement, Lead, Product, Quote } from "@/lib/types";
+
+const DEFAULT_TERM_MONTHS = 12;
 
 interface WonConversionDialogProps {
   lead: Lead | null;
@@ -41,6 +44,21 @@ export function WonConversionDialog({
   const [value, setValue] = useState(matchingQuote?.total_value ?? 0);
   const [billingPeriod, setBillingPeriod] = useState<Engagement["billing_period"]>("monthly");
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [renewalDate, setRenewalDate] = useState("");
+  const [renewalDateTouched, setRenewalDateTouched] = useState(false);
+
+  // Auto-fill the renewal date from start_date + the selected product's
+  // default_term_months (falling back to 12 months), matching the same
+  // date-math markEngagementRenewed uses for existing engagements. Once the
+  // user edits the field directly we stop overwriting their choice — a
+  // salesperson may need to override it for a negotiated term.
+  useEffect(() => {
+    if (renewalDateTouched) return;
+    if (!startDate) return;
+    const selectedProduct = products.find((p) => p.id === productId);
+    const termMonths = selectedProduct?.default_term_months ?? DEFAULT_TERM_MONTHS;
+    setRenewalDate(addMonthsToDateString(startDate, termMonths));
+  }, [productId, startDate, products, renewalDateTouched]);
 
   const confirm = async () => {
     if (!lead) return;
@@ -51,6 +69,7 @@ export function WonConversionDialog({
         value,
         billingPeriod,
         startDate,
+        renewalDate: renewalDate || undefined,
         quoteId: matchingQuote?.id,
       },
     });
@@ -107,13 +126,25 @@ export function WonConversionDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="sm:col-span-2">
+          <div>
             <Label className="text-xs">Start date</Label>
             <Input
               type="date"
               className="mt-1"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Renewal date</Label>
+            <Input
+              type="date"
+              className="mt-1"
+              value={renewalDate}
+              onChange={(e) => {
+                setRenewalDateTouched(true);
+                setRenewalDate(e.target.value);
+              }}
             />
           </div>
         </div>
