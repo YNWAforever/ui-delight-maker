@@ -166,8 +166,43 @@ export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload)
 
 export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWritebackPayload) {
   return transaction(async (db) => {
+    const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
+    if (!agentRun) {
+      throw new Error("Agent run not found");
+    }
+
+    if (agentRun.status === "waiting_approval") {
+      const approvalId = getExistingApprovalId(agentRun.output_data);
+      if (approvalId) {
+        return { applied: false as const, approvalId };
+      }
+    }
+
+    if (agentRun.status === "completed") {
+      return { applied: true as const };
+    }
+
     const engagement = await getEngagement(payload.engagement_id, db);
     const isRaiseToHigh = payload.renewal_risk === "high" && engagement.renewal_risk !== "high";
+
+    const approval = isRaiseToHigh
+      ? await createApproval(
+          {
+            agent_run_id: payload.agent_run_id,
+            approval_type: "cs_risk_review",
+            requested_by: "Renewal Risk Agent",
+            context_data: {
+              engagement_id: payload.engagement_id,
+              health_score: payload.health_score,
+              renewal_risk: payload.renewal_risk,
+              risk_reasoning: payload.risk_reasoning,
+              suggested_next_action: payload.suggested_next_action,
+            },
+            context_summary: payload.output_summary,
+          },
+          db,
+        )
+      : null;
 
     await updateAgentRunResult(
       payload.agent_run_id,
@@ -178,6 +213,7 @@ export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWrite
           renewal_risk: payload.renewal_risk,
           risk_reasoning: payload.risk_reasoning,
           suggested_next_action: payload.suggested_next_action,
+          ...(approval ? { approval_id: approval.id } : {}),
         },
         output_summary: payload.output_summary,
         confidence_score: payload.confidence,
@@ -187,24 +223,7 @@ export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWrite
       db,
     );
 
-    if (isRaiseToHigh) {
-      const approval = await createApproval(
-        {
-          agent_run_id: payload.agent_run_id,
-          approval_type: "cs_risk_review",
-          requested_by: "Renewal Risk Agent",
-          context_data: {
-            engagement_id: payload.engagement_id,
-            health_score: payload.health_score,
-            renewal_risk: payload.renewal_risk,
-            risk_reasoning: payload.risk_reasoning,
-            suggested_next_action: payload.suggested_next_action,
-          },
-          context_summary: payload.output_summary,
-        },
-        db,
-      );
-
+    if (isRaiseToHigh && approval) {
       await createActivityLog(
         {
           actor_type: "agent",
