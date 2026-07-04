@@ -1,6 +1,7 @@
 import { buildFilters } from "@/server/db/query-builders";
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
 import type { ApprovalStatus, HumanApproval } from "@/lib/types";
+import { createNotification, listApproverProfileIds } from "@/server/repositories/notifications";
 
 export async function listApprovals(input: { status?: string } = {}) {
   const where = buildFilters([["status", input.status]]);
@@ -59,6 +60,23 @@ export async function createApproval(
   );
 
   if (!approval) throw new Error("Failed to create approval");
+
+  const approverIds = await listApproverProfileIds();
+  for (const userId of approverIds) {
+    await createNotification(
+      {
+        user_id: userId,
+        type: "approval_pending",
+        title: `New approval: ${input.approval_type.replace(/_/g, " ")}`,
+        body: input.context_summary ?? null,
+        object_type: "approval",
+        object_id: approval.id,
+        dedupe_key: `approval_pending:${approval.id}:${userId}`,
+      },
+      db,
+    );
+  }
+
   return approval;
 }
 
