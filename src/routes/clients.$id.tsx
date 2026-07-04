@@ -1,19 +1,25 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { FileText, Mail, Phone, Star, ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { getClient } from "@/server-functions/clients";
 import { getQuotes } from "@/server-functions/quotes";
 import { getEngagementsByClient } from "@/server-functions/engagements";
-import { getClientContacts } from "@/server-functions/client-contacts";
+import { getClientContacts, createClientContact, deleteClientContact } from "@/server-functions/client-contacts";
 import { getTouchpointsByClient } from "@/server-functions/touchpoints";
 import { getProducts } from "@/server-functions/products";
 import { USER_RECORD } from "@/lib/users";
+import type { ClientContact } from "@/lib/types";
 
 const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
 
@@ -153,33 +159,7 @@ function ClientDetail() {
               </TabsContent>
 
               <TabsContent value="contacts" className="mt-4">
-                {clientContacts.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No contacts yet.</p>
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {clientContacts.map((c) => (
-                      <li key={c.id} className="flex items-center justify-between py-3">
-                        <div>
-                          <p className="text-sm font-medium">
-                            {c.name}
-                            {c.is_primary && (
-                              <Star className="ml-1 inline h-3 w-3 text-warning-foreground" />
-                            )}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{c.title}</p>
-                        </div>
-                        <div className="flex flex-col items-end text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" /> {c.email}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" /> {c.phone}
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <ClientContactsPanel clientId={client.id} initialContacts={clientContacts} />
               </TabsContent>
 
               <TabsContent value="quotes" className="mt-4">
@@ -291,6 +271,100 @@ function ClientDetail() {
         </Card>
       </div>
     </>
+  );
+}
+
+function ClientContactsPanel({ clientId, initialContacts }: { clientId: string; initialContacts: ClientContact[] }) {
+  const [rows, setRows] = useState(initialContacts);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [title, setTitle] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+
+  const create = async () => {
+    const created = await createClientContact({ data: { client_id: clientId, name: name || "Unnamed", title, email, phone } });
+    setRows((prev) => [...prev, created]);
+    setOpen(false);
+    setName("");
+    setTitle("");
+    setEmail("");
+    setPhone("");
+    toast.success(`Added contact ${created.name}`);
+  };
+
+  const remove = async (id: string) => {
+    await deleteClientContact({ data: { id } });
+    setRows((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm">Add contact</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>New contact</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <Label className="text-xs">Name</Label>
+                <Input className="mt-1" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Title</Label>
+                <Input className="mt-1" value={title} onChange={(e) => setTitle(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Email</Label>
+                <Input className="mt-1" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-xs">Phone</Label>
+                <Input className="mt-1" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={create}>Create</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No contacts yet.</p>
+      ) : (
+        <ul className="divide-y divide-border">
+          {rows.map((c) => (
+            <li key={c.id} className="flex items-center justify-between py-3">
+              <div>
+                <p className="text-sm font-medium">
+                  {c.name}
+                  {c.is_primary && <Star className="ml-1 inline h-3 w-3 text-warning-foreground" />}
+                </p>
+                <p className="text-xs text-muted-foreground">{c.title}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-end text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Mail className="h-3 w-3" /> {c.email}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Phone className="h-3 w-3" /> {c.phone}
+                  </span>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => remove(c.id)}>
+                  Remove
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
