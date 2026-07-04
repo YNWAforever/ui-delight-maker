@@ -8,6 +8,7 @@ import {
   updateAgentRunResult,
 } from "@/server/repositories/agent-runs";
 import {
+  convertWonLeadToEngagement,
   createLead as createLeadInNeon,
   getLeadWithActivity,
   listLeads,
@@ -15,7 +16,7 @@ import {
   updateLead as updateLeadInNeon,
 } from "@/server/repositories/leads";
 import { serializeActivityLog, serializeAgentRun } from "@/server-functions/serializers";
-import type { Lead, LeadStatus } from "@/lib/types";
+import type { Engagement, Lead, LeadStatus } from "@/lib/types";
 
 type GetLeadsInput = {
   status?: string;
@@ -98,6 +99,24 @@ export const moveLeadStage = createServerFn({ method: "POST" })
       reason: data.reason,
       actorId: session.user.id,
     });
+  });
+
+export const convertWonLead = createServerFn({ method: "POST" })
+  .validator(
+    (data: unknown) =>
+      data as {
+        leadId: string;
+        productId: string;
+        value?: number;
+        billingPeriod: Engagement["billing_period"];
+        startDate?: string;
+        renewalDate?: string;
+        quoteId?: string;
+      },
+  )
+  .handler(async ({ data }) => {
+    const session = await requireNeonAuthSession();
+    return convertWonLeadToEngagement({ ...data, actorId: session.user.id });
   });
 
 export const triggerLeadAgent = createServerFn({ method: "POST" })

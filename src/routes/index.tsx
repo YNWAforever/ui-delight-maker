@@ -8,6 +8,7 @@ import { LeadPreviewPanel } from "@/components/pipeline/lead-preview-panel";
 import { PipelineBoard } from "@/components/pipeline/pipeline-board";
 import { PipelineToolbar } from "@/components/pipeline/pipeline-toolbar";
 import { StageMoveDialog } from "@/components/pipeline/stage-move-dialog";
+import { WonConversionDialog } from "@/components/pipeline/won-conversion-dialog";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { filterPipelineLeads, getPipelineSummary } from "@/lib/pipeline";
@@ -17,13 +18,18 @@ import { APP_USERS } from "@/lib/users";
 import { getActivityLogs } from "@/server-functions/agent-runs";
 import { moveLeadStage, triggerLeadAgent, triggerLeadReplyDraft } from "@/server-functions/leads";
 import { getPipelineData } from "@/server-functions/pipeline";
+import { getProducts } from "@/server-functions/products";
 import { triggerQuoteAgent } from "@/server-functions/quotes";
 import { createTask } from "@/server-functions/tasks";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
-    const [pipeline, activityLogs] = await Promise.all([getPipelineData(), getActivityLogs({})]);
-    return { ...pipeline, activityLogs };
+    const [pipeline, activityLogs, products] = await Promise.all([
+      getPipelineData(),
+      getActivityLogs({}),
+      getProducts({ data: { activeOnly: true } }),
+    ]);
+    return { ...pipeline, activityLogs, products };
   },
   head: () => ({
     meta: [
@@ -40,7 +46,7 @@ export const Route = createFileRoute("/")({
 const TODAY = "2026-06-28";
 
 function PipelineCommandCenter() {
-  const { leads, quotes, tasks, approvals, agentRuns, activityLogs } = Route.useLoaderData();
+  const { leads, quotes, tasks, approvals, agentRuns, activityLogs, products } = Route.useLoaderData();
   const router = useRouter();
   const [filters, setFilters] = useState<PipelineFilters>({
     search: "",
@@ -52,6 +58,7 @@ function PipelineCommandCenter() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(leads[0]?.id ?? null);
   const [moveDialog, setMoveDialog] = useState<{ lead: Lead; status: LeadStatus } | null>(null);
   const [moveReason, setMoveReason] = useState("");
+  const [wonLead, setWonLead] = useState<Lead | null>(null);
 
   const filteredLeads = useMemo(
     () =>
@@ -84,6 +91,11 @@ function PipelineCommandCenter() {
     toast.success(
       `${moveDialog.lead.company_name} moved to ${moveDialog.status.replace(/_/g, " ")}`,
     );
+
+    if (moveDialog.status === "won") {
+      setWonLead(moveDialog.lead);
+    }
+
     setSelectedLeadId(moveDialog.lead.id);
     setMoveDialog(null);
     setMoveReason("");
@@ -259,6 +271,14 @@ function PipelineCommandCenter() {
           setMoveReason("");
         }}
         onConfirm={confirmMove}
+      />
+
+      <WonConversionDialog
+        lead={wonLead}
+        products={products}
+        matchingQuote={quotes.find((q) => q.lead_id === wonLead?.id) ?? null}
+        onClose={() => setWonLead(null)}
+        onDone={() => setWonLead(null)}
       />
     </>
   );
