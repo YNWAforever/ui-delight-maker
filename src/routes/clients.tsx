@@ -89,22 +89,27 @@ function ClientsPage() {
         title="Clients"
         description={`${rows.length} active accounts`}
         actions={
-          <Dialog open={newOpen} onOpenChange={setNewOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="mr-2 h-4 w-4" /> New client
-              </Button>
-            </DialogTrigger>
-            <NewClientDialog
-              onCreate={async (c) => {
-                const created = await createClient({ data: c });
-                setRows((prev) => [{ ...created, renewal_risk: "low" }, ...prev]);
-                setNewOpen(false);
-                router.invalidate();
-                toast.success(`Created client ${created.company_name}`);
-              }}
-            />
-          </Dialog>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/clients/import">Import CSV</Link>
+            </Button>
+            <Dialog open={newOpen} onOpenChange={setNewOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Plus className="mr-2 h-4 w-4" /> New client
+                </Button>
+              </DialogTrigger>
+              <NewClientDialog
+                onCreate={async (c) => {
+                  const created = await createClient({ data: c });
+                  setRows((prev) => [{ ...created, renewal_risk: "low" }, ...prev]);
+                  setNewOpen(false);
+                  router.invalidate();
+                  toast.success(`Created client ${created.company_name}`);
+                }}
+              />
+            </Dialog>
+          </div>
         }
       />
 

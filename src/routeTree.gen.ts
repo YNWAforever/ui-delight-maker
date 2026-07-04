@@ -26,6 +26,7 @@ import { Route as QuotesNewRouteImport } from './routes/quotes.new'
 import { Route as QuotesIdRouteImport } from './routes/quotes.$id'
 import { Route as LoginAuthPathRouteImport } from './routes/login.$authPath'
 import { Route as LeadsIdRouteImport } from './routes/leads.$id'
+import { Route as ClientsImportRouteImport } from './routes/clients.import'
 import { Route as ClientsIdRouteImport } from './routes/clients.$id'
 import { Route as AgentsNameRouteImport } from './routes/agents.$name'
 import { Route as ApiWorkflowsScoreRenewalRiskRouteImport } from './routes/api/workflows/score-renewal-risk'
@@ -122,6 +123,11 @@ const LeadsIdRoute = LeadsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => LeadsRoute,
 } as any)
+const ClientsImportRoute = ClientsImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => ClientsRoute,
+} as any)
 const ClientsIdRoute = ClientsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -192,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof TasksRoute
   '/agents/$name': typeof AgentsNameRoute
   '/clients/$id': typeof ClientsIdRoute
+  '/clients/import': typeof ClientsImportRoute
   '/leads/$id': typeof LeadsIdRoute
   '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksRoute
   '/agents/$name': typeof AgentsNameRoute
   '/clients/$id': typeof ClientsIdRoute
+  '/clients/import': typeof ClientsImportRoute
   '/leads/$id': typeof LeadsIdRoute
   '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
@@ -251,6 +259,7 @@ export interface FileRoutesById {
   '/tasks': typeof TasksRoute
   '/agents/$name': typeof AgentsNameRoute
   '/clients/$id': typeof ClientsIdRoute
+  '/clients/import': typeof ClientsImportRoute
   '/leads/$id': typeof LeadsIdRoute
   '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
@@ -282,6 +291,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/agents/$name'
     | '/clients/$id'
+    | '/clients/import'
     | '/leads/$id'
     | '/login/$authPath'
     | '/quotes/$id'
@@ -311,6 +321,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/agents/$name'
     | '/clients/$id'
+    | '/clients/import'
     | '/leads/$id'
     | '/login/$authPath'
     | '/quotes/$id'
@@ -340,6 +351,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/agents/$name'
     | '/clients/$id'
+    | '/clients/import'
     | '/leads/$id'
     | '/login/$authPath'
     | '/quotes/$id'
@@ -499,6 +511,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeadsIdRouteImport
       parentRoute: typeof LeadsRoute
     }
+    '/clients/import': {
+      id: '/clients/import'
+      path: '/import'
+      fullPath: '/clients/import'
+      preLoaderRoute: typeof ClientsImportRouteImport
+      parentRoute: typeof ClientsRoute
+    }
     '/clients/$id': {
       id: '/clients/$id'
       path: '/$id'
@@ -585,10 +604,12 @@ const AgentsRouteWithChildren =
 
 interface ClientsRouteChildren {
   ClientsIdRoute: typeof ClientsIdRoute
+  ClientsImportRoute: typeof ClientsImportRoute
 }
 
 const ClientsRouteChildren: ClientsRouteChildren = {
   ClientsIdRoute: ClientsIdRoute,
+  ClientsImportRoute: ClientsImportRoute,
 }
 
 const ClientsRouteWithChildren =
