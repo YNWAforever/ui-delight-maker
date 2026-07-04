@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createTouchpoint } from "@/server-functions/touchpoints";
+import { isAiNoteTidyAvailable, tidyTouchpointNote } from "@/server-functions/ai-note-tidy";
 import type { ClientContact, Engagement, TouchpointNewSentiment, TouchpointNewType } from "@/lib/types";
 
 const TYPES: TouchpointNewType[] = ["check_in", "qbr", "meeting", "call", "whatsapp", "email", "note"];
@@ -42,6 +43,25 @@ export function TouchpointLogger({
   const [engagementId, setEngagementId] = useState<string>(defaultEngagementId ?? "none");
   const [contactId, setContactId] = useState<string>("none");
   const [notes, setNotes] = useState("");
+  const [aiAvailable, setAiAvailable] = useState(false);
+  const [tidying, setTidying] = useState(false);
+
+  useEffect(() => {
+    isAiNoteTidyAvailable().then((r) => setAiAvailable(r.available));
+  }, []);
+
+  const tidy = async () => {
+    if (!notes.trim()) return;
+    setTidying(true);
+    try {
+      const result = await tidyTouchpointNote({ data: { notes } });
+      setNotes(result.tidied);
+    } catch {
+      toast.error("Couldn't tidy notes right now.");
+    } finally {
+      setTidying(false);
+    }
+  };
 
   const save = async () => {
     await createTouchpoint({
@@ -131,7 +151,20 @@ export function TouchpointLogger({
             </Select>
           </div>
           <div className="sm:col-span-2">
-            <Label className="text-xs">Notes</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Notes</Label>
+              {aiAvailable && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={tidy}
+                  disabled={tidying || !notes.trim()}
+                >
+                  {tidying ? "Tidying…" : "Tidy with AI"}
+                </Button>
+              )}
+            </div>
             <Textarea className="mt-1" value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} />
           </div>
         </div>
