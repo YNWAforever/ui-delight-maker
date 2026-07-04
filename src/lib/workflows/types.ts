@@ -1,9 +1,10 @@
-import type { ActivityLog, AgentRun, Lead, PricingTemplate } from "@/lib/types";
+import type { ActivityLog, AgentRun, Engagement, Lead, PricingTemplate, TouchpointRecord } from "@/lib/types";
 
 export type WorkflowTrigger =
   | "lead.qualify_requested"
   | "lead.reply_draft_requested"
-  | "quote.draft_requested";
+  | "quote.draft_requested"
+  | "engagement.score_renewal_risk_requested";
 
 export type WorkflowContextRequestPayload = {
   lead_id: string;
@@ -112,4 +113,47 @@ export type QuoteDraftWritebackPayload = {
   create_send_approval: boolean;
   context_summary?: string | null;
   confidence_score: number;
+};
+
+export type EngagementWorkflowContextRequestPayload = {
+  engagement_id: string;
+  agent_run_id: string;
+};
+
+export type EngagementWorkflowContextResponse = {
+  engagement: Pick<
+    Engagement,
+    | "id"
+    | "client_id"
+    | "product_id"
+    | "renewal_date"
+    | "last_touch_at"
+    | "health_score"
+    | "renewal_risk"
+    | "created_at"
+  >;
+  recent_touchpoints: Array<Pick<TouchpointRecord, "type" | "sentiment" | "notes" | "occurred_at">>;
+  open_overdue_task_count: number;
+  agent_run: Pick<
+    AgentRun,
+    "id" | "agent_name" | "input_data" | "status" | "model_used" | "created_at"
+  > & { workflow_type: "score_renewal_risk"; subject_type: "engagement"; subject_id: string };
+};
+
+export type EngagementWorkflowRequestPayload = {
+  trigger: "engagement.score_renewal_risk_requested";
+  engagement_id: string;
+  agent_run_id: string;
+};
+
+export type ScoreRenewalRiskWritebackPayload = {
+  engagement_id: string;
+  agent_run_id: string;
+  health_score: number;
+  renewal_risk: "low" | "medium" | "high";
+  risk_reasoning: string;
+  suggested_next_action: string;
+  confidence: number;
+  output_summary: string;
+  model_used?: string;
 };
