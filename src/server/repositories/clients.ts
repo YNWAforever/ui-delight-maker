@@ -23,42 +23,77 @@ const clientUpdateColumns: Array<keyof Partial<Client> & string> = [
   "company_name",
   "industry",
   "tier",
-  "health_score",
   "onboarding_status",
-  "renewal_date",
-  "arr",
   "account_id",
   "primary_contact_id",
 ];
 
+const ROLLUP_SELECT = `
+  select
+    c.*,
+    coalesce(r.arr, 0) as rollup_arr,
+    coalesce(r.health_score, 50) as rollup_health_score,
+    r.renewal_date as rollup_renewal_date
+  from clients c
+  left join (
+    select
+      e.client_id,
+      sum(
+        case e.billing_period
+          when 'monthly' then coalesce(e.value, 0) * 12
+          when 'quarterly' then coalesce(e.value, 0) * 4
+          when 'annual' then coalesce(e.value, 0)
+          else 0
+        end
+      ) as arr,
+      min(e.health_score) as health_score,
+      min(e.renewal_date) as renewal_date
+    from engagements e
+    where e.status = 'active'
+    group by e.client_id
+  ) r on r.client_id = c.id
+`;
+
+type ClientRollupRow = Client & {
+  rollup_arr: string;
+  rollup_health_score: number;
+  rollup_renewal_date: string | null;
+};
+
+function mapRollupRow(row: ClientRollupRow): Client {
+  return {
+    ...row,
+    arr: Number(row.rollup_arr),
+    health_score: row.rollup_health_score,
+    renewal_date: row.rollup_renewal_date,
+  };
+}
+
 export async function listClients(filters: ClientFilters = {}) {
   const where = buildFilters([
-    ["tier", filters.tier],
-    ["account_id", filters.account_id],
+    ["c.tier", filters.tier],
+    ["c.account_id", filters.account_id],
   ]);
-  const havingHealth =
-    filters.health_min !== undefined ? [...where.values, filters.health_min] : where.values;
 
-  return query<Client>(
+  const rows = await query<ClientRollupRow>(
     `
-      select *
-      from clients
+      ${ROLLUP_SELECT}
       ${where.sql}
-      ${
-        filters.health_min !== undefined
-          ? (where.sql ? "and" : "where") + ` health_score >= $${where.values.length + 1}`
-          : ""
-      }
-      order by company_name
+      order by c.company_name
     `,
-    havingHealth,
+    where.values,
   );
+
+  const mapped = rows.map(mapRollupRow);
+  return filters.health_min !== undefined
+    ? mapped.filter((c) => c.health_score >= filters.health_min!)
+    : mapped;
 }
 
 export async function getClient(id: string) {
-  const client = await queryOne<Client>("select * from clients where id = $1", [id]);
-  if (!client) throw new Error("Client not found");
-  return client;
+  const row = await queryOne<ClientRollupRow>(`${ROLLUP_SELECT} where c.id = $1`, [id]);
+  if (!row) throw new Error("Client not found");
+  return mapRollupRow(row);
 }
 
 export async function createClient(input: CreateClientInput, db?: Queryable) {
