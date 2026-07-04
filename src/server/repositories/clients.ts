@@ -1,6 +1,6 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
 import { query, queryOne, type Queryable } from "@/server/db/neon.server";
-import type { Client } from "@/lib/types";
+import type { Client, RenewalRisk } from "@/lib/types";
 
 type ClientFilters = { tier?: string; health_min?: number; account_id?: string };
 
@@ -33,7 +33,8 @@ const ROLLUP_SELECT = `
     c.*,
     coalesce(r.arr, 0) as rollup_arr,
     coalesce(r.health_score, 50) as rollup_health_score,
-    r.renewal_date as rollup_renewal_date
+    r.renewal_date as rollup_renewal_date,
+    coalesce(r.renewal_risk, 'low') as rollup_renewal_risk
   from clients c
   left join (
     select
@@ -47,7 +48,12 @@ const ROLLUP_SELECT = `
         end
       ) as arr,
       min(e.health_score) as health_score,
-      min(e.renewal_date) as renewal_date
+      min(e.renewal_date) as renewal_date,
+      case
+        when bool_or(e.renewal_risk = 'high') then 'high'
+        when bool_or(e.renewal_risk = 'medium') then 'medium'
+        else 'low'
+      end as renewal_risk
     from engagements e
     where e.status = 'active'
     group by e.client_id
@@ -58,14 +64,16 @@ type ClientRollupRow = Client & {
   rollup_arr: string;
   rollup_health_score: number;
   rollup_renewal_date: string | null;
+  rollup_renewal_risk: RenewalRisk;
 };
 
-function mapRollupRow(row: ClientRollupRow): Client {
+function mapRollupRow(row: ClientRollupRow): Client & { renewal_risk: RenewalRisk } {
   return {
     ...row,
     arr: Number(row.rollup_arr),
     health_score: row.rollup_health_score,
     renewal_date: row.rollup_renewal_date,
+    renewal_risk: row.rollup_renewal_risk,
   };
 }
 

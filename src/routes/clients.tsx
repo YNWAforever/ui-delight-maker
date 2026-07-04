@@ -27,9 +27,12 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCompactHKD } from "@/lib/format";
+import { getRenewalWindow } from "@/lib/engagement-utils";
 import { getClients, createClient } from "@/server-functions/clients";
 import { APP_USERS, userById } from "@/lib/users";
-import type { Client } from "@/lib/types";
+import type { Client, RenewalRisk } from "@/lib/types";
+
+type ClientRow = Client & { renewal_risk: RenewalRisk };
 
 export const Route = createFileRoute("/clients")({
   loader: () => getClients({}),
@@ -51,21 +54,29 @@ function healthClass(score: number) {
 function ClientsPage() {
   const loaderClients = Route.useLoaderData();
   const router = useRouter();
-  const [rows, setRows] = useState<Client[]>(loaderClients);
+  const [rows, setRows] = useState<ClientRow[]>(loaderClients);
   const [tier, setTier] = useState("all");
+  const [riskFilter, setRiskFilter] = useState<"all" | RenewalRisk>("all");
+  const [windowFilter, setWindowFilter] = useState<"all" | "overdue" | "30" | "60" | "90">("all");
   const [sortKey, setSortKey] = useState<"arr" | "health" | "renewal">("arr");
   const [newOpen, setNewOpen] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
 
   const filtered = useMemo(() => {
-    const out = rows.filter((c) => (tier === "all" ? true : c.tier === tier));
+    const out = rows.filter((c) => {
+      if (tier !== "all" && c.tier !== tier) return false;
+      if (riskFilter !== "all" && c.renewal_risk !== riskFilter) return false;
+      if (windowFilter !== "all" && getRenewalWindow(c.renewal_date, today) !== windowFilter) return false;
+      return true;
+    });
     const sortFn = {
-      arr: (a: Client, b: Client) => (b.arr ?? 0) - (a.arr ?? 0),
-      health: (a: Client, b: Client) => b.health_score - a.health_score,
-      renewal: (a: Client, b: Client) =>
+      arr: (a: ClientRow, b: ClientRow) => (b.arr ?? 0) - (a.arr ?? 0),
+      health: (a: ClientRow, b: ClientRow) => b.health_score - a.health_score,
+      renewal: (a: ClientRow, b: ClientRow) =>
         (a.renewal_date ?? "").localeCompare(b.renewal_date ?? ""),
     }[sortKey];
     return [...out].sort(sortFn);
-  }, [rows, tier, sortKey]);
+  }, [rows, tier, riskFilter, windowFilter, today, sortKey]);
 
   const totalARR = rows.reduce((s, c) => s + (c.arr ?? 0), 0);
   const avgHealth = rows.length
@@ -87,7 +98,7 @@ function ClientsPage() {
             <NewClientDialog
               onCreate={async (c) => {
                 const created = await createClient({ data: c });
-                setRows((prev) => [created, ...prev]);
+                setRows((prev) => [{ ...created, renewal_risk: "low" }, ...prev]);
                 setNewOpen(false);
                 router.invalidate();
                 toast.success(`Created client ${created.company_name}`);
@@ -121,6 +132,29 @@ function ClientsPage() {
                 <SelectItem value="enterprise">Enterprise</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={riskFilter} onValueChange={(v) => setRiskFilter(v as typeof riskFilter)}>
+              <SelectTrigger className="h-9 w-[160px]">
+                <SelectValue placeholder="Risk" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All risk</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={windowFilter} onValueChange={(v) => setWindowFilter(v as typeof windowFilter)}>
+              <SelectTrigger className="h-9 w-[180px]">
+                <SelectValue placeholder="Renewal window" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All renewal windows</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+                <SelectItem value="30">≤30 days</SelectItem>
+                <SelectItem value="60">≤60 days</SelectItem>
+                <SelectItem value="90">≤90 days</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={sortKey} onValueChange={(v) => setSortKey(v as typeof sortKey)}>
               <SelectTrigger className="h-9 w-[180px]">
                 <SelectValue />
@@ -145,6 +179,7 @@ function ClientsPage() {
                 <TableHead className="text-right">Health</TableHead>
                 <TableHead className="text-right">ARR (HKD)</TableHead>
                 <TableHead>Renewal</TableHead>
+                <TableHead>Risk</TableHead>
                 <TableHead>Owner</TableHead>
               </TableRow>
             </TableHeader>
@@ -183,6 +218,9 @@ function ClientsPage() {
                       {(c.arr ?? 0).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-sm">{c.renewal_date}</TableCell>
+                    <TableCell>
+                      <StatusBadge value={c.renewal_risk} />
+                    </TableCell>
                     <TableCell className="text-sm">{owner?.name ?? "—"}</TableCell>
                   </TableRow>
                 );
