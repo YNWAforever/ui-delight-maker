@@ -256,6 +256,7 @@ export interface PricingTemplate {
   unit_price: number | null;
   currency: string;
   active: boolean;
+  product_id: string | null;
 }
 
 export interface DashboardStats {

@@ -126,21 +126,29 @@ function QuoteBuilder() {
 
   // Auto-apply the pricing template matching the pre-selected product (from the
   // Renewals preview panel's "Draft renewal quote" action) exactly once on mount.
-  // Note: pricing_templates has no product_id column in the schema (it predates
-  // the `products` table added for retention/client-360), so there is no FK to
-  // join on. We fall back to matching on name (template.service vs product.name)
-  // as the closest available correlation; if nothing matches, this is a no-op.
+  // pricing_templates.product_id is a real FK to products(id) (added in
+  // 002_retention_client_360.sql), so match on that first. Fall back to a
+  // name-based match (template.service vs product.name) for legacy templates
+  // that predate the FK backfill. If neither matches, surface it — otherwise a
+  // salesperson lands on the builder with no visible sign the product wasn't applied.
   const appliedInitialProduct = useRef(false);
   useEffect(() => {
     if (appliedInitialProduct.current) return;
     if (!initialProductId) return;
     const product = products.find((p) => p.id === initialProductId);
     if (!product) return;
-    const tpl = templates.find(
-      (t) => t.service.trim().toLowerCase() === product.name.trim().toLowerCase(),
-    );
-    if (!tpl) return;
     appliedInitialProduct.current = true;
+    const tpl =
+      templates.find((t) => t.product_id === initialProductId) ??
+      templates.find(
+        (t) => t.service.trim().toLowerCase() === product.name.trim().toLowerCase(),
+      );
+    if (!tpl) {
+      toast.warning(
+        `No pricing template found for "${product.name}" — add line items manually.`,
+      );
+      return;
+    }
     applyTemplate(tpl.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialProductId, products, templates]);
