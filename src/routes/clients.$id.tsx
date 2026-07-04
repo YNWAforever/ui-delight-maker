@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { FileText, Mail, Phone, Star, ArrowLeft } from "lucide-react";
+import { Mail, Phone, Star, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -26,10 +26,6 @@ import type { ClientContact, Task, TouchpointRecord } from "@/lib/types";
 
 const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
 
-// Static placeholder data for tabs not yet backed by server functions
-type FileAsset = { id: string; client_id: string; name: string; size: string; uploaded_at: string; uploaded_by: string };
-
-const clientFiles: FileAsset[] = [];
 
 export const Route = createFileRoute("/clients/$id")({
   loader: async ({ params }) => {
@@ -81,7 +77,6 @@ function ClientDetail() {
   const { client, quotes: clientQuotes, engagements, contacts, products, touchpoints, tasks: clientTasks, activityLogs } = Route.useLoaderData();
   const owner = userById(client.account_owner ?? "");
   const clientContacts = contacts.filter((c) => c.client_id === client.id);
-  const files = clientFiles.filter((f) => f.client_id === client.id);
 
   const productById = (id: string) => products.find((p) => p.id === id);
   const activeProductIds = new Set(engagements.filter((e) => e.status === "active").map((e) => e.product_id));
@@ -113,7 +108,6 @@ function ClientDetail() {
                 <TabsTrigger value="contacts">Contacts ({clientContacts.length})</TabsTrigger>
                 <TabsTrigger value="quotes">Quotes ({clientQuotes.length})</TabsTrigger>
                 <TabsTrigger value="tasks">Tasks ({clientTasks.length})</TabsTrigger>
-                <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
                 <TabsTrigger value="timeline">Timeline</TabsTrigger>
               </TabsList>
 
@@ -195,31 +189,6 @@ function ClientDetail() {
 
               <TabsContent value="tasks" className="mt-4">
                 <ClientTasksPanel tasks={clientTasks} />
-              </TabsContent>
-
-              <TabsContent value="files" className="mt-4">
-                {files.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No files yet.</p>
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {files.map((f) => (
-                      <li key={f.id} className="flex items-center justify-between py-3">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">{f.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {f.size} · uploaded by {f.uploaded_by} · {formatDate(f.uploaded_at)}
-                            </p>
-                          </div>
-                        </div>
-                        <Button variant="ghost" size="sm">
-                          Download
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </TabsContent>
 
               <TabsContent value="timeline" className="mt-4">
