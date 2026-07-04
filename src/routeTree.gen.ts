@@ -27,6 +27,7 @@ import { Route as LoginAuthPathRouteImport } from './routes/login.$authPath'
 import { Route as LeadsIdRouteImport } from './routes/leads.$id'
 import { Route as ClientsIdRouteImport } from './routes/clients.$id'
 import { Route as AgentsNameRouteImport } from './routes/agents.$name'
+import { Route as ApiWorkflowsScoreRenewalRiskRouteImport } from './routes/api/workflows/score-renewal-risk'
 import { Route as ApiWorkflowsQualifyLeadRouteImport } from './routes/api/workflows/qualify-lead'
 import { Route as ApiWorkflowsDraftReplyRouteImport } from './routes/api/workflows/draft-reply'
 import { Route as ApiWorkflowsDraftQuoteRouteImport } from './routes/api/workflows/draft-quote'
@@ -124,6 +125,12 @@ const AgentsNameRoute = AgentsNameRouteImport.update({
   path: '/$name',
   getParentRoute: () => AgentsRoute,
 } as any)
+const ApiWorkflowsScoreRenewalRiskRoute =
+  ApiWorkflowsScoreRenewalRiskRouteImport.update({
+    id: '/api/workflows/score-renewal-risk',
+    path: '/api/workflows/score-renewal-risk',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiWorkflowsQualifyLeadRoute = ApiWorkflowsQualifyLeadRouteImport.update({
   id: '/api/workflows/qualify-lead',
   path: '/api/workflows/qualify-lead',
@@ -179,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
+  '/api/workflows/score-renewal-risk': typeof ApiWorkflowsScoreRenewalRiskRoute
   '/api/workflows/context/engagement': typeof ApiWorkflowsContextEngagementRoute
   '/api/workflows/context/lead': typeof ApiWorkflowsContextLeadRoute
 }
@@ -205,6 +213,7 @@ export interface FileRoutesByTo {
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
+  '/api/workflows/score-renewal-risk': typeof ApiWorkflowsScoreRenewalRiskRoute
   '/api/workflows/context/engagement': typeof ApiWorkflowsContextEngagementRoute
   '/api/workflows/context/lead': typeof ApiWorkflowsContextLeadRoute
 }
@@ -232,6 +241,7 @@ export interface FileRoutesById {
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
+  '/api/workflows/score-renewal-risk': typeof ApiWorkflowsScoreRenewalRiskRoute
   '/api/workflows/context/engagement': typeof ApiWorkflowsContextEngagementRoute
   '/api/workflows/context/lead': typeof ApiWorkflowsContextLeadRoute
 }
@@ -260,6 +270,7 @@ export interface FileRouteTypes {
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
+    | '/api/workflows/score-renewal-risk'
     | '/api/workflows/context/engagement'
     | '/api/workflows/context/lead'
   fileRoutesByTo: FileRoutesByTo
@@ -286,6 +297,7 @@ export interface FileRouteTypes {
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
+    | '/api/workflows/score-renewal-risk'
     | '/api/workflows/context/engagement'
     | '/api/workflows/context/lead'
   id:
@@ -312,6 +324,7 @@ export interface FileRouteTypes {
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
+    | '/api/workflows/score-renewal-risk'
     | '/api/workflows/context/engagement'
     | '/api/workflows/context/lead'
   fileRoutesById: FileRoutesById
@@ -333,6 +346,7 @@ export interface RootRouteChildren {
   ApiWorkflowsDraftQuoteRoute: typeof ApiWorkflowsDraftQuoteRoute
   ApiWorkflowsDraftReplyRoute: typeof ApiWorkflowsDraftReplyRoute
   ApiWorkflowsQualifyLeadRoute: typeof ApiWorkflowsQualifyLeadRoute
+  ApiWorkflowsScoreRenewalRiskRoute: typeof ApiWorkflowsScoreRenewalRiskRoute
   ApiWorkflowsContextEngagementRoute: typeof ApiWorkflowsContextEngagementRoute
   ApiWorkflowsContextLeadRoute: typeof ApiWorkflowsContextLeadRoute
 }
@@ -465,6 +479,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentsNameRouteImport
       parentRoute: typeof AgentsRoute
     }
+    '/api/workflows/score-renewal-risk': {
+      id: '/api/workflows/score-renewal-risk'
+      path: '/api/workflows/score-renewal-risk'
+      fullPath: '/api/workflows/score-renewal-risk'
+      preLoaderRoute: typeof ApiWorkflowsScoreRenewalRiskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/workflows/qualify-lead': {
       id: '/api/workflows/qualify-lead'
       path: '/api/workflows/qualify-lead'
@@ -582,6 +603,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWorkflowsDraftQuoteRoute: ApiWorkflowsDraftQuoteRoute,
   ApiWorkflowsDraftReplyRoute: ApiWorkflowsDraftReplyRoute,
   ApiWorkflowsQualifyLeadRoute: ApiWorkflowsQualifyLeadRoute,
+  ApiWorkflowsScoreRenewalRiskRoute: ApiWorkflowsScoreRenewalRiskRoute,
   ApiWorkflowsContextEngagementRoute: ApiWorkflowsContextEngagementRoute,
   ApiWorkflowsContextLeadRoute: ApiWorkflowsContextLeadRoute,
 }
