@@ -1,61 +1,38 @@
-import { useCallback, useMemo, useSyncExternalStore } from "react";
-
-export interface Notification {
-  id: string;
-  type: "approval" | "task" | "lead" | "client";
-  message: string;
-  link: string;
-  created_at: string;
-  read: boolean;
-}
-
-type Store = {
-  notifications: Notification[];
-  listeners: Set<() => void>;
-};
-
-const store: Store = {
-  notifications: [],
-  listeners: new Set(),
-};
-
-function emit() {
-  store.listeners.forEach((l) => l());
-}
-
-function getSnapshot() {
-  return store.notifications;
-}
-
-function subscribe(listener: () => void) {
-  store.listeners.add(listener);
-  return () => store.listeners.delete(listener);
-}
+// src/hooks/use-notifications.ts
+import { useCallback, useEffect, useState } from "react";
+import {
+  getNotifications,
+  markAllNotificationsReadFn,
+  markNotificationReadFn,
+} from "@/server-functions/notifications";
+import type { NotificationRecord } from "@/lib/types";
 
 export function useNotifications() {
-  const notes = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const unreadCount = useMemo(
-    () => notes.filter((n) => !n.read).length,
-    [notes]
+  const refresh = useCallback(async () => {
+    const result = await getNotifications();
+    setNotifications(result.notifications);
+    setUnreadCount(result.unreadCount);
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const markAsRead = useCallback(
+    async (id: string) => {
+      await markNotificationReadFn({ data: { id } });
+      await refresh();
+    },
+    [refresh],
   );
 
-  const markAsRead = useCallback((id: string) => {
-    const idx = store.notifications.findIndex((n) => n.id === id);
-    if (idx !== -1 && !store.notifications[idx].read) {
-      store.notifications = store.notifications.map((n) =>
-        n.id === id ? { ...n, read: true } : n
-      );
-      emit();
-    }
-  }, []);
+  const markAllRead = useCallback(async () => {
+    await markAllNotificationsReadFn();
+    await refresh();
+  }, [refresh]);
 
-  const markAllRead = useCallback(() => {
-    if (store.notifications.some((n) => !n.read)) {
-      store.notifications = store.notifications.map((n) => ({ ...n, read: true }));
-      emit();
-    }
-  }, []);
-
-  return { notifications: notes, unreadCount, markAsRead, markAllRead };
+  return { notifications, unreadCount, markAsRead, markAllRead, refresh };
 }

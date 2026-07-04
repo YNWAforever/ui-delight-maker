@@ -4,9 +4,9 @@ import {
   Bell,
   CheckCheck,
   ShieldAlert,
-  FileText,
-  User,
-  Building2,
+  CalendarClock,
+  AlertTriangle,
+  Clock,
   MailOpen,
   Filter,
 } from "lucide-react";
@@ -17,26 +17,41 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { relativeTime, formatDateTime } from "@/lib/format";
+import type { NotificationRecord } from "@/lib/types";
 
 export const Route = createFileRoute("/notifications")({
   component: NotificationsPage,
 });
 
 const typeIcon: Record<string, React.ReactNode> = {
-  approval: <ShieldAlert className="h-4 w-4" />,
-  task: <FileText className="h-4 w-4" />,
-  lead: <User className="h-4 w-4" />,
-  client: <Building2 className="h-4 w-4" />,
+  approval_pending: <ShieldAlert className="h-4 w-4" />,
+  renewal_window: <CalendarClock className="h-4 w-4" />,
+  risk_change: <AlertTriangle className="h-4 w-4" />,
+  stale_touchpoint: <Clock className="h-4 w-4" />,
 };
 
 const typeColor: Record<string, string> = {
-  approval: "text-amber-500 bg-amber-500/10",
-  task: "text-blue-500 bg-blue-500/10",
-  lead: "text-emerald-500 bg-emerald-500/10",
-  client: "text-violet-500 bg-violet-500/10",
+  approval_pending: "text-amber-500 bg-amber-500/10",
+  renewal_window: "text-blue-500 bg-blue-500/10",
+  risk_change: "text-red-500 bg-red-500/10",
+  stale_touchpoint: "text-slate-500 bg-slate-500/10",
 };
 
-type FilterTab = "all" | "unread" | "approval" | "task" | "lead" | "client";
+function notificationLink(n: NotificationRecord): string {
+  if (n.object_type === "engagement") return `/renewals`;
+  if (n.object_type === "approval") return "/approvals";
+  if (n.object_type === "client") return `/clients/${n.object_id}`;
+  if (n.object_type === "lead") return `/leads/${n.object_id}`;
+  return "/notifications";
+}
+
+type FilterTab =
+  | "all"
+  | "unread"
+  | "approval_pending"
+  | "renewal_window"
+  | "risk_change"
+  | "stale_touchpoint";
 
 function NotificationsPage() {
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
@@ -44,9 +59,9 @@ function NotificationsPage() {
 
   const filtered = useMemo(() => {
     let list = [...notifications].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
-    if (filter === "unread") list = list.filter((n) => !n.read);
+    if (filter === "unread") list = list.filter((n) => !n.read_at);
     if (filter !== "all" && filter !== "unread") list = list.filter((n) => n.type === filter);
     return list;
   }, [notifications, filter]);
@@ -54,10 +69,10 @@ function NotificationsPage() {
   const tabs: { key: FilterTab; label: string; count?: number }[] = [
     { key: "all", label: "All" },
     { key: "unread", label: "Unread", count: unreadCount },
-    { key: "approval", label: "Approvals" },
-    { key: "task", label: "Tasks" },
-    { key: "lead", label: "Leads" },
-    { key: "client", label: "Clients" },
+    { key: "approval_pending", label: "Approvals" },
+    { key: "renewal_window", label: "Renewals" },
+    { key: "risk_change", label: "Risk changes" },
+    { key: "stale_touchpoint", label: "Stale touchpoints" },
   ];
 
   return (
@@ -84,7 +99,7 @@ function NotificationsPage() {
               "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
               filter === t.key
                 ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground",
             )}
           >
             {t.label}
@@ -106,19 +121,19 @@ function NotificationsPage() {
           </div>
         ) : (
           filtered.map((n) => {
-            const isUnread = !n.read;
+            const isUnread = !n.read_at;
             return (
               <div
                 key={n.id}
                 className={cn(
                   "flex items-start gap-4 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30",
-                  isUnread && "bg-accent/20 border-primary/20"
+                  isUnread && "bg-accent/20 border-primary/20",
                 )}
               >
                 <div
                   className={cn(
                     "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                    typeColor[n.type]
+                    typeColor[n.type],
                   )}
                 >
                   {typeIcon[n.type]}
@@ -127,11 +142,9 @@ function NotificationsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-3">
                     <p className={cn("text-sm leading-snug", isUnread && "font-medium")}>
-                      {n.message}
+                      {n.title}
                     </p>
-                    {isUnread && (
-                      <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                    )}
+                    {isUnread && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {formatDateTime(n.created_at)} · {relativeTime(n.created_at)}
@@ -146,7 +159,7 @@ function NotificationsPage() {
                     </Button>
                   )}
                   <Button variant="outline" size="sm" asChild>
-                    <Link to={n.link as never}>Open</Link>
+                    <Link to={notificationLink(n) as never}>Open</Link>
                   </Button>
                 </div>
               </div>

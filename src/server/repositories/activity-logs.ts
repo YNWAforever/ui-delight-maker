@@ -6,7 +6,7 @@ export type CreateActivityLogInput = {
   actor_id?: string | null;
   actor_name?: string | null;
   action: string;
-  object_type: "lead" | "quote" | "client" | "task" | "approval";
+  object_type: "lead" | "quote" | "client" | "task" | "approval" | "engagement";
   object_id?: string | null;
   diff_data?: unknown;
 };

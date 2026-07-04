@@ -6,29 +6,38 @@ import {
   CheckCheck,
   MailOpen,
   ShieldAlert,
-  User,
-  FileText,
-  Building2,
+  CalendarClock,
+  AlertTriangle,
+  Clock,
 } from "lucide-react";
 
 import { useNotifications } from "@/hooks/use-notifications";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { relativeTime } from "@/lib/format";
+import type { NotificationRecord } from "@/lib/types";
 
 const typeIcon: Record<string, React.ReactNode> = {
-  approval: <ShieldAlert className="h-4 w-4" />,
-  task: <FileText className="h-4 w-4" />,
-  lead: <User className="h-4 w-4" />,
-  client: <Building2 className="h-4 w-4" />,
+  approval_pending: <ShieldAlert className="h-4 w-4" />,
+  renewal_window: <CalendarClock className="h-4 w-4" />,
+  risk_change: <AlertTriangle className="h-4 w-4" />,
+  stale_touchpoint: <Clock className="h-4 w-4" />,
 };
 
 const typeColor: Record<string, string> = {
-  approval: "text-amber-500 bg-amber-500/10",
-  task: "text-blue-500 bg-blue-500/10",
-  lead: "text-emerald-500 bg-emerald-500/10",
-  client: "text-violet-500 bg-violet-500/10",
+  approval_pending: "text-amber-500 bg-amber-500/10",
+  renewal_window: "text-blue-500 bg-blue-500/10",
+  risk_change: "text-red-500 bg-red-500/10",
+  stale_touchpoint: "text-slate-500 bg-slate-500/10",
 };
+
+function notificationLink(n: NotificationRecord): string {
+  if (n.object_type === "engagement") return `/renewals`;
+  if (n.object_type === "approval") return "/approvals";
+  if (n.object_type === "client") return `/clients/${n.object_id}`;
+  if (n.object_type === "lead") return `/leads/${n.object_id}`;
+  return "/notifications";
+}
 
 export function NotificationBell() {
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
@@ -86,24 +95,24 @@ export function NotificationBell() {
               </div>
             ) : (
               visible.map((n) => {
-                const isUnread = !n.read;
+                const isUnread = !n.read_at;
                 return (
                   <button
                     key={n.id}
                     onClick={() => {
                       markAsRead(n.id);
                       setOpen(false);
-                      navigate({ to: n.link as never });
+                      navigate({ to: notificationLink(n) as never });
                     }}
                     className={cn(
                       "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-accent",
-                      isUnread && "bg-accent/40"
+                      isUnread && "bg-accent/40",
                     )}
                   >
                     <div
                       className={cn(
                         "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                        typeColor[n.type]
+                        typeColor[n.type],
                       )}
                     >
                       {typeIcon[n.type]}
@@ -112,10 +121,10 @@ export function NotificationBell() {
                       <p
                         className={cn(
                           "text-sm leading-snug",
-                          isUnread ? "font-medium" : "text-muted-foreground"
+                          isUnread ? "font-medium" : "text-muted-foreground",
                         )}
                       >
-                        {n.message}
+                        {n.title}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {relativeTime(n.created_at)}

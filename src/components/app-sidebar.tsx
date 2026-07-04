@@ -11,6 +11,7 @@ import {
   BarChart3,
   Settings,
   Sparkles,
+  RefreshCw,
 } from "lucide-react";
 
 import {
@@ -28,6 +29,7 @@ import {
 
 const workspaceItems = [
   { title: "Pipeline", url: "/", icon: LayoutDashboard },
+  { title: "Renewals", url: "/renewals", icon: RefreshCw },
   { title: "Leads", url: "/leads", icon: Inbox },
   { title: "Quotes", url: "/quotes", icon: FileText },
   { title: "Clients", url: "/clients", icon: Building2 },

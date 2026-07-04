@@ -5,6 +5,7 @@ import {
   listApprovals,
 } from "@/server/repositories/approvals";
 import { serializeHumanApproval } from "@/server-functions/serializers";
+import { applyRiskReviewDecision } from "@/server/workflows/decide-risk-review.server";
 
 export const getApprovals = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as { status?: string })
@@ -21,7 +22,9 @@ export const decideApproval = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const session = await requireNeonAuthSession();
-    return serializeHumanApproval(
-      await decideApprovalInNeon({ ...data, actorId: session.user.id }),
-    );
+    const approval = await decideApprovalInNeon({ ...data, actorId: session.user.id });
+
+    await applyRiskReviewDecision(approval, session.user.id);
+
+    return serializeHumanApproval(approval);
   });

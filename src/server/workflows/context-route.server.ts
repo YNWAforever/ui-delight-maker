@@ -1,9 +1,17 @@
-import type { WorkflowContextRequestPayload } from "@/lib/workflows/types";
+import type {
+  EngagementWorkflowContextRequestPayload,
+  WorkflowContextRequestPayload,
+} from "@/lib/workflows/types";
 
 const MISSING_CONTEXT_IDS_MESSAGE = "Missing lead_id or agent_run_id";
+const MISSING_ENGAGEMENT_CONTEXT_IDS_MESSAGE = "Missing engagement_id or agent_run_id";
 
 function badContextRequestResponse() {
   return new Response(MISSING_CONTEXT_IDS_MESSAGE, { status: 400 });
+}
+
+function badEngagementContextRequestResponse() {
+  return new Response(MISSING_ENGAGEMENT_CONTEXT_IDS_MESSAGE, { status: 400 });
 }
 
 function isValidContextRequestPayload(value: unknown): value is WorkflowContextRequestPayload {
@@ -47,6 +55,55 @@ export function getWorkflowContextErrorResponse(error: unknown) {
   }
 
   if (error.message === "Agent run does not belong to lead") {
+    return new Response(error.message, { status: 400 });
+  }
+
+  return null;
+}
+
+function isValidEngagementContextRequestPayload(
+  value: unknown,
+): value is EngagementWorkflowContextRequestPayload {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const payload = value as Partial<Record<keyof EngagementWorkflowContextRequestPayload, unknown>>;
+
+  return (
+    typeof payload.engagement_id === "string" &&
+    payload.engagement_id.length > 0 &&
+    typeof payload.agent_run_id === "string" &&
+    payload.agent_run_id.length > 0
+  );
+}
+
+export async function readEngagementWorkflowContextRequestPayload(request: Request) {
+  let payload: unknown;
+
+  try {
+    payload = await request.json();
+  } catch {
+    return badEngagementContextRequestResponse();
+  }
+
+  if (!isValidEngagementContextRequestPayload(payload)) {
+    return badEngagementContextRequestResponse();
+  }
+
+  return payload;
+}
+
+export function getEngagementWorkflowContextErrorResponse(error: unknown) {
+  if (!(error instanceof Error)) {
+    return null;
+  }
+
+  if (error.message === "Engagement not found" || error.message === "Agent run not found") {
+    return new Response(error.message, { status: 404 });
+  }
+
+  if (error.message === "Agent run does not belong to this engagement") {
     return new Response(error.message, { status: 400 });
   }
 

@@ -3,11 +3,13 @@ import type {
   QualificationWritebackPayload,
   QuoteDraftWritebackPayload,
   ReplyDraftWritebackPayload,
+  ScoreRenewalRiskWritebackPayload,
 } from "@/lib/workflows/types";
 import { transaction } from "@/server/db/neon.server";
 import { createActivityLog } from "@/server/repositories/activity-logs";
 import { getAgentRunForUpdate, updateAgentRunResult } from "@/server/repositories/agent-runs";
 import { createApproval } from "@/server/repositories/approvals";
+import { applyEngagementScore, getEngagement } from "@/server/repositories/engagements";
 import { assertLeadExists, updateLead } from "@/server/repositories/leads";
 import { createQuote } from "@/server/repositories/quotes";
 
@@ -159,6 +161,110 @@ export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload)
     );
 
     return approval.id;
+  });
+}
+
+export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWritebackPayload) {
+  return transaction(async (db) => {
+    const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
+    if (!agentRun) {
+      throw new Error("Agent run not found");
+    }
+
+    if (agentRun.status === "waiting_approval") {
+      const approvalId = getExistingApprovalId(agentRun.output_data);
+      if (approvalId) {
+        return { applied: false as const, approvalId };
+      }
+    }
+
+    if (agentRun.status === "completed") {
+      return { applied: true as const };
+    }
+
+    const engagement = await getEngagement(payload.engagement_id, db);
+    const isRaiseToHigh = payload.renewal_risk === "high" && engagement.renewal_risk !== "high";
+
+    const approval = isRaiseToHigh
+      ? await createApproval(
+          {
+            agent_run_id: payload.agent_run_id,
+            approval_type: "cs_risk_review",
+            requested_by: "Renewal Risk Agent",
+            context_data: {
+              engagement_id: payload.engagement_id,
+              health_score: payload.health_score,
+              renewal_risk: payload.renewal_risk,
+              risk_reasoning: payload.risk_reasoning,
+              suggested_next_action: payload.suggested_next_action,
+            },
+            context_summary: payload.output_summary,
+          },
+          db,
+        )
+      : null;
+
+    await updateAgentRunResult(
+      payload.agent_run_id,
+      {
+        status: isRaiseToHigh ? "waiting_approval" : "completed",
+        output_data: {
+          health_score: payload.health_score,
+          renewal_risk: payload.renewal_risk,
+          risk_reasoning: payload.risk_reasoning,
+          suggested_next_action: payload.suggested_next_action,
+          ...(approval ? { approval_id: approval.id } : {}),
+        },
+        output_summary: payload.output_summary,
+        confidence_score: payload.confidence,
+        human_review_required: isRaiseToHigh,
+        model_used: payload.model_used ?? null,
+      },
+      db,
+    );
+
+    if (isRaiseToHigh && approval) {
+      await createActivityLog(
+        {
+          actor_type: "agent",
+          actor_id: payload.agent_run_id,
+          actor_name: "Renewal Risk Agent",
+          action: "flagged high renewal risk for review",
+          object_type: "engagement",
+          object_id: payload.engagement_id,
+          diff_data: { approval_id: approval.id },
+        },
+        db,
+      );
+
+      return { applied: false as const, approvalId: approval.id };
+    }
+
+    await applyEngagementScore(
+      payload.engagement_id,
+      {
+        health_score: payload.health_score,
+        renewal_risk: payload.renewal_risk,
+        risk_reasoning: payload.risk_reasoning,
+        next_action: payload.suggested_next_action,
+      },
+      db,
+    );
+
+    await createActivityLog(
+      {
+        actor_type: "agent",
+        actor_id: payload.agent_run_id,
+        actor_name: "Renewal Risk Agent",
+        action: "scored renewal risk",
+        object_type: "engagement",
+        object_id: payload.engagement_id,
+        diff_data: { health_score: payload.health_score, renewal_risk: payload.renewal_risk },
+      },
+      db,
+    );
+
+    return { applied: true as const };
   });
 }
 
