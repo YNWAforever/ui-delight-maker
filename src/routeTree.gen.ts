@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as RenewalsRouteImport } from './routes/renewals'
 import { Route as QuotesRouteImport } from './routes/quotes'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
@@ -49,6 +50,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RenewalsRoute = RenewalsRouteImport.update({
+  id: '/renewals',
+  path: '/renewals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QuotesRoute = QuotesRouteImport.update({
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
+  '/renewals': typeof RenewalsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
@@ -208,6 +215,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
+  '/renewals': typeof RenewalsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
+  '/renewals': typeof RenewalsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
@@ -267,6 +276,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/quotes'
+    | '/renewals'
     | '/reports'
     | '/settings'
     | '/tasks'
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/quotes'
+    | '/renewals'
     | '/reports'
     | '/settings'
     | '/tasks'
@@ -323,6 +334,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/quotes'
+    | '/renewals'
     | '/reports'
     | '/settings'
     | '/tasks'
@@ -352,6 +364,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
   QuotesRoute: typeof QuotesRouteWithChildren
+  RenewalsRoute: typeof RenewalsRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
   TasksRoute: typeof TasksRoute
@@ -386,6 +399,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/renewals': {
+      id: '/renewals'
+      path: '/renewals'
+      fullPath: '/renewals'
+      preLoaderRoute: typeof RenewalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/quotes': {
@@ -617,6 +637,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRouteWithChildren,
   NotificationsRoute: NotificationsRoute,
   QuotesRoute: QuotesRouteWithChildren,
+  RenewalsRoute: RenewalsRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
   TasksRoute: TasksRoute,
