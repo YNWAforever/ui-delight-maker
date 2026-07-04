@@ -19,7 +19,14 @@ type SweepCandidate = Pick<
 async function listActiveEngagementsForSweep(): Promise<SweepCandidate[]> {
   return query<SweepCandidate>(
     `
-      select e.id, e.client_id, e.owner, e.renewal_date, e.last_touch_at, e.start_date, c.company_name as client_company_name
+      select
+        e.id,
+        e.client_id,
+        e.owner,
+        e.renewal_date::text as renewal_date,
+        e.last_touch_at::text as last_touch_at,
+        e.start_date::text as start_date,
+        c.company_name as client_company_name
       from engagements e
       join clients c on c.id = e.client_id
       where e.status = 'active'
