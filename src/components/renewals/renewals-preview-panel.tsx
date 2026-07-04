@@ -109,7 +109,12 @@ export function RenewalsPreviewPanel({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate({ to: "/quotes/new" })}
+                onClick={() =>
+                  navigate({
+                    to: "/quotes/new",
+                    search: { clientId: engagement.client_id, productId: engagement.product_id },
+                  })
+                }
               >
                 Draft renewal quote
               </Button>

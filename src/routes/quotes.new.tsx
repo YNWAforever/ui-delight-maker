@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, Plus, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -21,18 +21,26 @@ import { cn } from "@/lib/utils";
 import { formatHKD } from "@/lib/format";
 import { createQuote, getPricingTemplates } from "@/server-functions/quotes";
 import { getLeads } from "@/server-functions/leads";
+import { getClients } from "@/server-functions/clients";
+import { getProducts } from "@/server-functions/products";
 import { APP_USERS } from "@/lib/users";
 
-const searchSchema = z.object({ leadId: z.string().optional() });
+const searchSchema = z.object({
+  leadId: z.string().optional(),
+  clientId: z.string().optional(),
+  productId: z.string().optional(),
+});
 
 export const Route = createFileRoute("/quotes/new")({
   validateSearch: searchSchema,
   loader: async () => {
-    const [templates, leads] = await Promise.all([
+    const [templates, leads, clients, products] = await Promise.all([
       getPricingTemplates(),
       getLeads({}),
+      getClients({}),
+      getProducts({}),
     ]);
-    return { templates, leads };
+    return { templates, leads, clients, products };
   },
   head: () => ({
     meta: [
@@ -58,13 +66,19 @@ const STEPS = [
 ];
 
 function QuoteBuilder() {
-  const { leadId: initialLeadId } = Route.useSearch();
-  const { templates, leads } = Route.useLoaderData();
+  const {
+    leadId: initialLeadId,
+    clientId: initialClientId,
+    productId: initialProductId,
+  } = Route.useSearch();
+  const { templates, leads, clients, products } = Route.useLoaderData();
   const navigate = useNavigate();
   const router = useRouter();
 
   const [step, setStep] = useState(1);
+  const [mode, setMode] = useState<"lead" | "client">(initialClientId ? "client" : "lead");
   const [leadId, setLeadId] = useState(initialLeadId ?? leads[0]?.id ?? "");
+  const [clientId, setClientId] = useState(initialClientId ?? clients[0]?.id ?? "");
   const [approver, setApprover] = useState(APP_USERS[1]?.id ?? APP_USERS[0]?.id ?? "");
   const [validUntil, setValidUntil] = useState("2026-06-30");
   const [discount, setDiscount] = useState(0);
@@ -76,6 +90,7 @@ function QuoteBuilder() {
   );
   const total = Math.round(subtotal * (1 - discount / 100));
   const lead = leads.find((l) => l.id === leadId);
+  const client = clients.find((c) => c.id === clientId);
 
   const addItem = () =>
     setItems((prev) => [
@@ -109,14 +124,44 @@ function QuoteBuilder() {
     toast.success(`Added template: ${tpl.service}`);
   };
 
+  // Auto-apply the pricing template matching the pre-selected product (from the
+  // Renewals preview panel's "Draft renewal quote" action) exactly once on mount.
+  // Note: pricing_templates has no product_id column in the schema (it predates
+  // the `products` table added for retention/client-360), so there is no FK to
+  // join on. We fall back to matching on name (template.service vs product.name)
+  // as the closest available correlation; if nothing matches, this is a no-op.
+  const appliedInitialProduct = useRef(false);
+  useEffect(() => {
+    if (appliedInitialProduct.current) return;
+    if (!initialProductId) return;
+    const product = products.find((p) => p.id === initialProductId);
+    if (!product) return;
+    const tpl = templates.find(
+      (t) => t.service.trim().toLowerCase() === product.name.trim().toLowerCase(),
+    );
+    if (!tpl) return;
+    appliedInitialProduct.current = true;
+    applyTemplate(tpl.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProductId, products, templates]);
+
   const submit = async () => {
     if (items.length === 0) {
       toast.error("Add at least one line item.");
       return;
     }
+    if (mode === "lead" && !leadId) {
+      toast.error("Select a lead.");
+      return;
+    }
+    if (mode === "client" && !clientId) {
+      toast.error("Select a client.");
+      return;
+    }
     await createQuote({
       data: {
-        lead_id: leadId || null,
+        lead_id: mode === "lead" ? leadId || null : null,
+        client_id: mode === "client" ? clientId || null : null,
         currency: "HKD",
         valid_until: validUntil,
         line_items: items.map(({ id: _id, ...rest }) => ({
@@ -128,14 +173,26 @@ function QuoteBuilder() {
     });
     router.invalidate();
     toast.success("Quote submitted for approval.");
-    navigate({ to: "/quotes" });
+    if (mode === "client") {
+      navigate({ to: "/clients/$id", params: { id: clientId } });
+    } else {
+      navigate({ to: "/quotes" });
+    }
   };
 
   return (
     <>
       <PageHeader
         title="New quote"
-        description={lead ? `For ${lead.company_name}` : "Draft a quote using approved templates."}
+        description={
+          mode === "client"
+            ? client
+              ? `For ${client.company_name}`
+              : "Draft a quote using approved templates."
+            : lead
+              ? `For ${lead.company_name}`
+              : "Draft a quote using approved templates."
+        }
         actions={
           <Button variant="outline" size="sm" asChild>
             <Link to="/quotes">
@@ -186,21 +243,58 @@ function QuoteBuilder() {
                 <CardTitle className="text-base">Client & terms</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <Label className="text-xs">Lead</Label>
-                  <Select value={leadId} onValueChange={setLeadId}>
-                    <SelectTrigger className="mt-1.5">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {leads.map((l) => (
-                        <SelectItem key={l.id} value={l.id}>
-                          {l.company_name} ({l.id})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="sm:col-span-2 flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={mode === "lead" ? "default" : "outline"}
+                    onClick={() => setMode("lead")}
+                  >
+                    From lead
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={mode === "client" ? "default" : "outline"}
+                    onClick={() => setMode("client")}
+                  >
+                    From client
+                  </Button>
                 </div>
+
+                {mode === "client" ? (
+                  <div className="sm:col-span-2">
+                    <Label className="text-xs">Client</Label>
+                    <Select value={clientId} onValueChange={setClientId}>
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.company_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="sm:col-span-2">
+                    <Label className="text-xs">Lead</Label>
+                    <Select value={leadId} onValueChange={setLeadId}>
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {leads.map((l) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.company_name} ({l.id})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div>
                   <Label className="text-xs">Valid until</Label>
                   <Input
@@ -343,8 +437,15 @@ function QuoteBuilder() {
               </CardHeader>
               <CardContent className="space-y-4 text-sm">
                 <div className="grid grid-cols-2 gap-3">
-                  <KV label="Client" value={lead?.company_name ?? "—"} />
-                  <KV label="Lead ID" value={leadId} />
+                  <KV
+                    label="Client"
+                    value={mode === "client" ? client?.company_name ?? "—" : lead?.company_name ?? "—"}
+                  />
+                  {mode === "client" ? (
+                    <KV label="Client ID" value={clientId} />
+                  ) : (
+                    <KV label="Lead ID" value={leadId} />
+                  )}
                   <KV label="Valid until" value={validUntil} />
                   <KV label="Approver" value={APP_USERS.find((u) => u.id === approver)?.name ?? "—"} />
                   <KV label="Items" value={String(items.length)} />
