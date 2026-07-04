@@ -20,6 +20,12 @@ describe("parseClientImportCsv", () => {
     const rows = parseClientImportCsv(csv);
     expect(rows[0].company_name).toBe("Acme, Ltd");
   });
+
+  it("handles escaped double-quotes inside a quoted field", () => {
+    const csv = `${HEADER}\n"Say ""hi"" Ltd",Retail,SME,ada@fimmick.com,Jane Doe,jane@acme.com,CRM,10000,monthly,2026-01-01`;
+    const rows = parseClientImportCsv(csv);
+    expect(rows[0].company_name).toBe('Say "hi" Ltd');
+  });
 });
 
 describe("validateImportRows", () => {
