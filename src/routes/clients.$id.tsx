@@ -1,41 +1,49 @@
-import { useState } from "react";
-import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
-import { ArrowLeft, FileText, Mail, Phone, Star } from "lucide-react";
-import { toast } from "sonner";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { FileText, Mail, Phone, Star, ArrowLeft } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatDateTime } from "@/lib/format";
-import { getClient, updateClient } from "@/server-functions/clients";
+import { getClient } from "@/server-functions/clients";
 import { getQuotes } from "@/server-functions/quotes";
+import { getEngagementsByClient } from "@/server-functions/engagements";
+import { getClientContacts } from "@/server-functions/client-contacts";
+import { getTouchpointsByClient } from "@/server-functions/touchpoints";
+import { getProducts } from "@/server-functions/products";
 import { USER_RECORD } from "@/lib/users";
 
 const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
 
 // Static placeholder data for tabs not yet backed by server functions
-type Contact = { id: string; client_id: string; name: string; title: string; email: string; phone: string; is_primary: boolean };
 type FileAsset = { id: string; client_id: string; name: string; size: string; uploaded_at: string; uploaded_by: string };
 type ActivityLog = { id: string; actor_type: string; actor_name: string; action: string; object_type: string; object_id: string; created_at: string };
 type TaskStub = { id: string; title: string; description: string; assigned_to: string; client_id: string | null; due_date: string; priority: string; status: string };
 
-const contacts: Contact[] = [];
 const clientFiles: FileAsset[] = [];
 const activityLogs: ActivityLog[] = [];
 const tasks: TaskStub[] = [];
 
 export const Route = createFileRoute("/clients/$id")({
   loader: async ({ params }) => {
-    const [client, allQuotes] = await Promise.all([
+    const [client, allQuotes, engagements, contacts, touchpoints, products] = await Promise.all([
       getClient({ data: { id: params.id } }),
       getQuotes({}),
+      getEngagementsByClient({ data: { clientId: params.id } }),
+      getClientContacts({ data: { clientId: params.id } }),
+      getTouchpointsByClient({ data: { clientId: params.id } }),
+      getProducts({ data: { activeOnly: true } }),
     ]);
-    return { client, quotes: allQuotes.filter((q) => q.client_id === params.id) };
+    return {
+      client,
+      quotes: allQuotes.filter((q) => q.client_id === params.id),
+      engagements,
+      contacts,
+      touchpoints,
+      products,
+    };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -55,8 +63,7 @@ export const Route = createFileRoute("/clients/$id")({
 });
 
 function ClientDetail() {
-  const { client, quotes: clientQuotes } = Route.useLoaderData();
-  const router = useRouter();
+  const { client, quotes: clientQuotes, engagements, contacts, products } = Route.useLoaderData();
   const owner = userById(client.account_owner ?? "");
   const clientTasks = tasks.filter((t) => t.client_id === client.id);
   const clientHistory = activityLogs.filter(
@@ -65,7 +72,12 @@ function ClientDetail() {
   const clientContacts = contacts.filter((c) => c.client_id === client.id);
   const files = clientFiles.filter((f) => f.client_id === client.id);
 
-  const [health, setHealth] = useState(client.health_score);
+  const productById = (id: string) => products.find((p) => p.id === id);
+  const activeProductIds = new Set(engagements.filter((e) => e.status === "active").map((e) => e.product_id));
+  const missingProducts = products.filter((p) => !activeProductIds.has(p.id));
+  const latestRiskReasoning = engagements
+    .filter((e) => e.risk_reasoning)
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]?.risk_reasoning ?? null;
 
   return (
     <>
@@ -96,16 +108,46 @@ function ClientDetail() {
 
               <TabsContent value="overview" className="mt-4 space-y-4">
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  <Stat label="Health score" value={String(health)} />
+                  <Stat label="Health score" value={String(client.health_score)} />
                   <Stat label="ARR" value={`HKD ${(client.arr ?? 0).toLocaleString()}`} />
                   <Stat label="Renewal" value={client.renewal_date ?? "—"} />
                   <Stat label="Onboarding" value={client.onboarding_status.replace(/_/g, " ")} />
                 </div>
-                <Card className="bg-muted/30">
-                  <CardContent className="p-4 text-sm text-muted-foreground">
-                    Client Success Agent notes: account is on track for renewal. Last QBR captured
-                    strong NPS but flagged a gap in adoption among R&D team. Recommended action:
-                    schedule enablement workshop in Q3.
+
+                {latestRiskReasoning && (
+                  <Card className="bg-muted/30">
+                    <CardContent className="p-4 text-sm text-muted-foreground">{latestRiskReasoning}</CardContent>
+                  </Card>
+                )}
+
+                <div>
+                  <h3 className="mb-2 text-sm font-semibold">Engagements</h3>
+                  {engagements.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No engagements yet.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {engagements.map((e) => (
+                        <Card key={e.id} className="p-3">
+                          <p className="text-sm font-medium">{productById(e.product_id)?.name ?? e.product_id}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {e.status} · {e.billing_period} · HKD {(e.value ?? 0).toLocaleString()}
+                          </p>
+                          <div className="mt-2 flex items-center justify-between">
+                            <StatusBadge value={e.renewal_risk} />
+                            <span className="text-xs text-muted-foreground">{e.renewal_date ?? "—"}</span>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <Card className="border-dashed">
+                  <CardContent className="p-4 text-sm">
+                    <span className="font-medium">Uses {activeProductIds.size} of {products.length} products.</span>{" "}
+                    {missingProducts.length > 0 && (
+                      <span className="text-muted-foreground">Gaps: {missingProducts.map((p) => p.name).join(", ")}.</span>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -244,38 +286,7 @@ function ClientDetail() {
             <Row label="Industry" value={client.industry} />
             <Row label="Tier" value={client.tier} />
             <Row label="Customer since" value={formatDate(client.created_at)} />
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Health score</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="rounded-md bg-secondary px-2 py-0.5 text-xs font-medium hover:bg-secondary/70">
-                    {health} · edit
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48">
-                  <Label className="text-xs">Set score (0-100)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    className="mt-1"
-                    value={health}
-                    onChange={(e) => setHealth(Number(e.target.value) || 0)}
-                  />
-                  <Button
-                    size="sm"
-                    className="mt-2 w-full"
-                    onClick={async () => {
-                      await updateClient({ data: { id: client.id, updates: { health_score: health } } });
-                      router.invalidate();
-                      toast.success("Health score updated");
-                    }}
-                  >
-                    Save
-                  </Button>
-                </PopoverContent>
-              </Popover>
-            </div>
+            <Row label="Health score" value={String(client.health_score)} />
           </CardContent>
         </Card>
       </div>
