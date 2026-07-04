@@ -203,14 +203,16 @@ export async function convertWonLeadToEngagement(input: {
     const lead = leadResult.rows[0];
     if (!lead) throw new Error("Lead not found");
 
+    const normalizedCompanyName = lead.company_name.trim();
+
     const existingClientResult = await client.query<{ id: string }>(
-      "select id from clients where lower(company_name) = lower($1) limit 1",
-      [lead.company_name],
+      "select id from clients where lower(trim(company_name)) = lower(trim($1)) limit 1",
+      [normalizedCompanyName],
     );
     let clientId = existingClientResult.rows[0]?.id ?? null;
 
     if (!clientId) {
-      const newClient = await createClient({ company_name: lead.company_name }, client);
+      const newClient = await createClient({ company_name: normalizedCompanyName }, client);
       clientId = newClient.id;
     }
 
