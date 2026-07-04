@@ -29,19 +29,31 @@ describe("getBoundaryCrossed", () => {
 
 describe("isEngagementStale", () => {
   it("is stale when never touched and started 30+ days ago", () => {
-    expect(isEngagementStale({ lastTouchAt: null, startDate: "2026-06-01", today: "2026-07-04" })).toBe(true);
+    expect(
+      isEngagementStale({ lastTouchAt: null, startDate: "2026-06-01", today: "2026-07-04" }),
+    ).toBe(true);
   });
   it("is not stale when never touched but started recently", () => {
-    expect(isEngagementStale({ lastTouchAt: null, startDate: "2026-06-30", today: "2026-07-04" })).toBe(false);
+    expect(
+      isEngagementStale({ lastTouchAt: null, startDate: "2026-06-30", today: "2026-07-04" }),
+    ).toBe(false);
   });
   it("is stale after 30+ days since last touch", () => {
     expect(
-      isEngagementStale({ lastTouchAt: "2026-06-01T00:00:00Z", startDate: "2026-01-01", today: "2026-07-04" }),
+      isEngagementStale({
+        lastTouchAt: "2026-06-01T00:00:00Z",
+        startDate: "2026-01-01",
+        today: "2026-07-04",
+      }),
     ).toBe(true);
   });
   it("is not stale within 30 days of last touch", () => {
     expect(
-      isEngagementStale({ lastTouchAt: "2026-06-20T00:00:00Z", startDate: "2026-01-01", today: "2026-07-04" }),
+      isEngagementStale({
+        lastTouchAt: "2026-06-20T00:00:00Z",
+        startDate: "2026-01-01",
+        today: "2026-07-04",
+      }),
     ).toBe(false);
   });
 });
