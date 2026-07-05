@@ -1,17 +1,18 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { CheckCircle2, Clock, Flame, Plus, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, Clock, Flame, Plus, ShieldCheck, Target } from "lucide-react";
 import { toast } from "sonner";
 
-import { MetricCard } from "@/components/metric-card";
 import { LeadPreviewPanel } from "@/components/pipeline/lead-preview-panel";
 import { PipelineBoard } from "@/components/pipeline/pipeline-board";
 import { PipelineToolbar } from "@/components/pipeline/pipeline-toolbar";
 import { StageMoveDialog } from "@/components/pipeline/stage-move-dialog";
 import { WonConversionDialog } from "@/components/pipeline/won-conversion-dialog";
-import { PageHeader } from "@/components/page-header";
+import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
 import { Button } from "@/components/ui/button";
+import { formatCompactHKD } from "@/lib/format";
 import { filterPipelineLeads, getPipelineSummary } from "@/lib/pipeline";
+import { buildRevenueActions } from "@/lib/sales-workspace";
 import type { PipelineFilters } from "@/lib/pipeline";
 import type { ActivityLog, Lead, LeadStatus } from "@/lib/types";
 import { APP_USERS } from "@/lib/users";
@@ -33,10 +34,11 @@ export const Route = createFileRoute("/")({
   },
   head: () => ({
     meta: [
-      { title: "Pipeline - Fimmick ClientOps" },
+      { title: "Revenue Desk - Fimmick ClientOps" },
       {
         name: "description",
-        content: "Lead pipeline command center with AI-assisted follow-up.",
+        content:
+          "Daily sales operating desk for actions, pipeline, approvals, and account context.",
       },
     ],
   }),
@@ -77,6 +79,18 @@ function PipelineCommandCenter() {
   const selectedLead =
     filteredLeads.find((lead) => lead.id === selectedLeadId) ?? filteredLeads[0] ?? null;
   const summary = getPipelineSummary({ leads: filteredLeads, tasks, approvals, today: TODAY });
+  const revenueActions = buildRevenueActions({
+    leads,
+    tasks,
+    quotes,
+    approvals,
+    agentRuns,
+    today: TODAY,
+  });
+
+  const quoteValue = quotes
+    .filter((quote) => ["pending_approval", "sent", "viewed"].includes(quote.status))
+    .reduce((sum, quote) => sum + (quote.total_value ?? 0), 0);
 
   const confirmMove = async () => {
     if (!moveDialog) return;
@@ -188,9 +202,10 @@ function PipelineCommandCenter() {
 
   return (
     <>
-      <PageHeader
-        title="Pipeline"
-        description="Lead follow-up command center with AI-prepared next actions."
+      <CommandHeader
+        title="Revenue Desk"
+        status="Today"
+        description={`${revenueActions.length} revenue actions need attention. Prioritized by SLA, lead score, quote value, and approval risk.`}
         actions={
           <Button size="sm" asChild>
             <Link to="/leads">
@@ -202,38 +217,77 @@ function PipelineCommandCenter() {
       />
 
       <div className="space-y-4 px-6 py-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            label="Overdue"
-            value={summary.overdue}
-            icon={Flame}
-            hint="follow-ups past due"
-          />
-          <MetricCard
-            label="Due today"
-            value={summary.dueToday}
-            icon={Clock}
-            hint="needs action today"
-          />
-          <MetricCard
-            label="High score"
-            value={summary.highScore}
-            icon={CheckCircle2}
-            hint="score 75+"
-          />
-          <MetricCard
-            label="Pending approval"
-            value={summary.pendingApproval}
-            icon={ShieldCheck}
-            hint="AI work to review"
-          />
-        </div>
-
-        <PipelineToolbar
-          filters={filters}
-          owners={APP_USERS.map((user) => ({ id: user.id, name: user.name }))}
-          onFiltersChange={setFilters}
+        <MetricStrip
+          metrics={[
+            { label: "Overdue", value: summary.overdue, icon: Flame, hint: "follow-ups past due" },
+            {
+              label: "Due today",
+              value: summary.dueToday,
+              icon: Clock,
+              hint: "needs action today",
+            },
+            { label: "Hot leads", value: summary.highScore, icon: Target, hint: "score 75+" },
+            {
+              label: "Quote value",
+              value: formatCompactHKD(quoteValue),
+              icon: ShieldCheck,
+              hint: "pending + sent + viewed",
+            },
+          ]}
         />
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <section className="rounded-md border border-border bg-card">
+            <div className="border-b border-border px-4 py-3">
+              <h2 className="text-sm font-semibold">Today queue</h2>
+              <p className="text-xs text-muted-foreground">
+                Fastest safe next steps across revenue work.
+              </p>
+            </div>
+            <div className="divide-y divide-border">
+              {revenueActions.length === 0 ? (
+                <div className="p-4">
+                  <WorkSurfaceEmpty
+                    title="No urgent revenue actions"
+                    description="New leads, approvals, overdue tasks, and renewal risks will appear here."
+                    action={
+                      <Button size="sm" variant="outline" asChild>
+                        <Link to="/leads">Review leads</Link>
+                      </Button>
+                    }
+                  />
+                </div>
+              ) : (
+                revenueActions.slice(0, 6).map((action) => (
+                  <a
+                    key={action.id}
+                    href={action.href}
+                    className="block px-4 py-3 transition-colors hover:bg-muted/40"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{action.title}</p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          {action.accountName}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">{action.description}</p>
+                      </div>
+                      <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    </div>
+                  </a>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="space-y-4">
+            <PipelineToolbar
+              filters={filters}
+              owners={APP_USERS.map((user) => ({ id: user.id, name: user.name }))}
+              onFiltersChange={setFilters}
+            />
+          </section>
+        </div>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
           <PipelineBoard
