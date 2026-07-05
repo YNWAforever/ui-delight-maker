@@ -112,11 +112,16 @@ function AgentsMonitor() {
     <>
       <PageHeader
         title="Agent Monitor"
-        description="Agent runs across the multi-agent system."
+        description="Operational logs and run health. Use AI Review for human decisions."
         actions={
-          <Button size="sm" variant="outline" onClick={() => router.invalidate()}>
-            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" asChild>
+              <Link to="/ai-review">Open AI Review</Link>
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => router.invalidate()}>
+              <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+            </Button>
+          </div>
         }
       />
 

@@ -16,6 +16,10 @@ describe("sidebar responsive display", () => {
       new URL("../../app-sidebar.tsx", import.meta.url),
       "utf8",
     );
+    const routeTreeSource = readFileSync(
+      new URL("../../../routeTree.gen.ts", import.meta.url),
+      "utf8",
+    );
 
     expect(appSidebarSource).toContain('renderGroup("Today"');
     expect(appSidebarSource).toContain('renderGroup("Acquire"');
@@ -39,6 +43,10 @@ describe("sidebar responsive display", () => {
 
     for (const item of expectedItems) {
       expect(appSidebarSource).toContain(`title: "${item.title}", url: "${item.url}"`);
+
+      if (item.url !== "/") {
+        expect(routeTreeSource).toContain(`'${item.url}': {`);
+      }
     }
   });
 
