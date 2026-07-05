@@ -206,6 +206,23 @@ describe("sales metrics", () => {
     });
   });
 
+  it("normalizes ISO today values when counting upcoming renewals", () => {
+    expect(
+      getClientPortfolioMetrics(
+        [
+          client({ id: "same-day", health_score: 90, renewal_date: "2026-07-12", arr: 100000 }),
+          client({ id: "day-90", health_score: 80, renewal_date: "2026-10-10", arr: 200000 }),
+        ],
+        "2026-07-12T15:30:00.000Z",
+      ),
+    ).toEqual({
+      totalArr: 300000,
+      averageHealth: 85,
+      renewalsNext90Days: 2,
+      atRiskAccounts: 0,
+    });
+  });
+
   it("calculates task board metrics", () => {
     expect(
       getTaskBoardMetrics(

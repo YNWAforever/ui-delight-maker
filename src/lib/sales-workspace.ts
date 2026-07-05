@@ -36,15 +36,26 @@ export interface RevenueDeskInput {
 const DAY_MS = 86_400_000;
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}/;
 
-const daysBetween = (from: string, to: string) =>
-  Math.floor((Date.parse(to) - Date.parse(from)) / DAY_MS);
-
 const dateKey = (value: string | null | undefined): string | null => {
   if (!value) return null;
   const isoDate = DATE_KEY_PATTERN.exec(value)?.[0];
   if (isoDate) return isoDate;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+};
+
+const dateKeyTime = (key: string) => {
+  const year = Number(key.slice(0, 4));
+  const month = Number(key.slice(5, 7));
+  const day = Number(key.slice(8, 10));
+  return Date.UTC(year, month - 1, day);
+};
+
+const daysBetween = (from: string, to: string) => {
+  const fromKey = dateKey(from);
+  const toKey = dateKey(to);
+  if (fromKey == null || toKey == null) return Number.NaN;
+  return Math.floor((dateKeyTime(toKey) - dateKeyTime(fromKey)) / DAY_MS);
 };
 
 const leadById = (leads: Lead[]) => new Map(leads.map((lead) => [lead.id, lead]));
