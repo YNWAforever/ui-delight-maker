@@ -25,7 +25,10 @@ export const Route = createFileRoute("/agents/$name")({
   head: ({ loaderData }) => ({
     meta: [
       { title: `${loaderData?.agent.display_name ?? "Agent"} — ClientOps` },
-      { name: "description", content: `Run history, memory, and config for ${loaderData?.agent.display_name}.` },
+      {
+        name: "description",
+        content: `Run history, memory, and config for ${loaderData?.agent.display_name}.`,
+      },
     ],
   }),
   notFoundComponent: () => (
@@ -40,7 +43,10 @@ export const Route = createFileRoute("/agents/$name")({
 });
 
 function AgentDetail() {
-  const loaderData = Route.useLoaderData() as { agent: typeof AGENT_DEFINITIONS[0]; runs: import("@/lib/types").AgentRun[] };
+  const loaderData = Route.useLoaderData() as {
+    agent: (typeof AGENT_DEFINITIONS)[0];
+    runs: import("@/lib/types").AgentRun[];
+  };
   const { agent, runs } = loaderData;
   const [expanded, setExpanded] = useState<string | null>(null);
   const [temp, setTemp] = useState([0.4]);
@@ -54,8 +60,7 @@ function AgentDetail() {
     const scores = runs.filter((r) => r.confidence_score != null).map((r) => r.confidence_score!);
     return {
       runs_24h: recent.length,
-      avg_confidence:
-        scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null,
+      avg_confidence: scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null,
     };
   }, [runs]);
 
@@ -117,7 +122,10 @@ function AgentDetail() {
                                 {r.output_summary}
                               </p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {formatDateTime(r.created_at)}{r.tokens_used != null ? ` · ${r.tokens_used.toLocaleString()} tokens` : ""}
+                                {formatDateTime(r.created_at)}
+                                {r.tokens_used != null
+                                  ? ` · ${r.tokens_used.toLocaleString()} tokens`
+                                  : ""}
                               </p>
                             </div>
                           </button>

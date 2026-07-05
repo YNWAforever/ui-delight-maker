@@ -3,7 +3,14 @@
 
 export type LeadStatus = "new" | "qualified" | "replied" | "quoted" | "approved" | "won" | "lost";
 export type LeadSource = "website" | "whatsapp" | "email" | "linkedin" | "csv" | "event";
-export type QuoteStatus = "draft" | "pending_approval" | "approved" | "sent" | "viewed" | "accepted" | "rejected";
+export type QuoteStatus =
+  | "draft"
+  | "pending_approval"
+  | "approved"
+  | "sent"
+  | "viewed"
+  | "accepted"
+  | "rejected";
 export type TaskStatus = "open" | "in_progress" | "done";
 export type ApprovalStatus = "pending" | "approved" | "rejected" | "escalated";
 export type AgentRunStatus = "running" | "completed" | "failed" | "waiting_approval";
@@ -356,9 +363,27 @@ export const quotes: Quote[] = [
     currency: "HKD",
     valid_until: "2026-06-30",
     line_items: [
-      { id: "li1", service: "Data Hub setup", description: "Telematics + SLA pipeline", qty: 1, unit_price: 95000 },
-      { id: "li2", service: "Dashboard templates", description: "Board-ready reporting pack ×4", qty: 4, unit_price: 12000 },
-      { id: "li3", service: "Training & enablement", description: "2 sessions, hybrid", qty: 1, unit_price: 41000 },
+      {
+        id: "li1",
+        service: "Data Hub setup",
+        description: "Telematics + SLA pipeline",
+        qty: 1,
+        unit_price: 95000,
+      },
+      {
+        id: "li2",
+        service: "Dashboard templates",
+        description: "Board-ready reporting pack ×4",
+        qty: 4,
+        unit_price: 12000,
+      },
+      {
+        id: "li3",
+        service: "Training & enablement",
+        description: "2 sessions, hybrid",
+        qty: 1,
+        unit_price: 41000,
+      },
     ],
     created_by: "u4",
     approved_by: "u2",
@@ -375,8 +400,20 @@ export const quotes: Quote[] = [
     currency: "HKD",
     valid_until: "2026-06-15",
     line_items: [
-      { id: "li1", service: "Custom agent build", description: "Slack intake agent", qty: 1, unit_price: 72000 },
-      { id: "li2", service: "Maintenance retainer", description: "3 months", qty: 3, unit_price: 6667 },
+      {
+        id: "li1",
+        service: "Custom agent build",
+        description: "Slack intake agent",
+        qty: 1,
+        unit_price: 72000,
+      },
+      {
+        id: "li2",
+        service: "Maintenance retainer",
+        description: "3 months",
+        qty: 3,
+        unit_price: 6667,
+      },
     ],
     created_by: "u3",
     approved_by: "u2",
@@ -393,8 +430,20 @@ export const quotes: Quote[] = [
     currency: "HKD",
     valid_until: "2026-07-01",
     line_items: [
-      { id: "li1", service: "CRM rollout", description: "14-store implementation", qty: 1, unit_price: 320000 },
-      { id: "li2", service: "AI store-manager assistant", description: "Pilot in 3 stores", qty: 1, unit_price: 92000 },
+      {
+        id: "li1",
+        service: "CRM rollout",
+        description: "14-store implementation",
+        qty: 1,
+        unit_price: 320000,
+      },
+      {
+        id: "li2",
+        service: "AI store-manager assistant",
+        description: "Pilot in 3 stores",
+        qty: 1,
+        unit_price: 92000,
+      },
     ],
     created_by: "u3",
     approved_by: null,
@@ -411,8 +460,20 @@ export const quotes: Quote[] = [
     currency: "HKD",
     valid_until: "2026-06-20",
     line_items: [
-      { id: "li1", service: "KOC campaign", description: "60 creators × 3 markets", qty: 60, unit_price: 2800 },
-      { id: "li2", service: "Campaign reporting", description: "Weekly insight reports", qty: 1, unit_price: 47000 },
+      {
+        id: "li1",
+        service: "KOC campaign",
+        description: "60 creators × 3 markets",
+        qty: 60,
+        unit_price: 2800,
+      },
+      {
+        id: "li2",
+        service: "Campaign reporting",
+        description: "Weekly insight reports",
+        qty: 1,
+        unit_price: 47000,
+      },
     ],
     created_by: "u3",
     approved_by: null,
@@ -429,7 +490,13 @@ export const quotes: Quote[] = [
     currency: "HKD",
     valid_until: "2026-05-30",
     line_items: [
-      { id: "li1", service: "AI transformation roadmap", description: "12-month engagement", qty: 1, unit_price: 680000 },
+      {
+        id: "li1",
+        service: "AI transformation roadmap",
+        description: "12-month engagement",
+        qty: 1,
+        unit_price: 680000,
+      },
     ],
     created_by: "u3",
     approved_by: "u1",
@@ -851,27 +918,155 @@ export const agentRuns: AgentRun[] = [
 // Activity log
 // ────────────────────────────────────────────────────────────────────────────
 export const activityLogs: ActivityLog[] = [
-  { id: "AL-1", actor_type: "agent", actor_name: "Quotation Agent", action: "Drafted quote FIM-Q-2029", object_type: "quote", object_id: "Q-2029", created_at: "2026-05-19T08:31:00Z" },
-  { id: "AL-2", actor_type: "agent", actor_name: "Qualification Agent", action: "Qualified lead — score 82", object_type: "lead", object_id: "L-1042", created_at: "2026-05-18T09:48:00Z" },
-  { id: "AL-3", actor_type: "user", actor_name: "Marcus Lee", action: "Approved quote FIM-Q-2030", object_type: "quote", object_id: "Q-2030", created_at: "2026-05-18T16:25:00Z" },
-  { id: "AL-4", actor_type: "agent", actor_name: "Lead Intake Agent", action: "Created lead from email", object_type: "lead", object_id: "L-1039", created_at: "2026-05-19T07:55:00Z" },
-  { id: "AL-5", actor_type: "agent", actor_name: "Sales Reply Agent", action: "Drafted email reply", object_type: "lead", object_id: "L-1039", created_at: "2026-05-19T07:57:00Z" },
-  { id: "AL-6", actor_type: "user", actor_name: "Priya Shah", action: "Assigned lead to herself", object_type: "lead", object_id: "L-1042", created_at: "2026-05-18T09:15:00Z" },
-  { id: "AL-7", actor_type: "agent", actor_name: "Client Success Agent", action: "Created 4 onboarding tasks", object_type: "client", object_id: "C-501", created_at: "2026-05-17T10:00:00Z" },
+  {
+    id: "AL-1",
+    actor_type: "agent",
+    actor_name: "Quotation Agent",
+    action: "Drafted quote FIM-Q-2029",
+    object_type: "quote",
+    object_id: "Q-2029",
+    created_at: "2026-05-19T08:31:00Z",
+  },
+  {
+    id: "AL-2",
+    actor_type: "agent",
+    actor_name: "Qualification Agent",
+    action: "Qualified lead — score 82",
+    object_type: "lead",
+    object_id: "L-1042",
+    created_at: "2026-05-18T09:48:00Z",
+  },
+  {
+    id: "AL-3",
+    actor_type: "user",
+    actor_name: "Marcus Lee",
+    action: "Approved quote FIM-Q-2030",
+    object_type: "quote",
+    object_id: "Q-2030",
+    created_at: "2026-05-18T16:25:00Z",
+  },
+  {
+    id: "AL-4",
+    actor_type: "agent",
+    actor_name: "Lead Intake Agent",
+    action: "Created lead from email",
+    object_type: "lead",
+    object_id: "L-1039",
+    created_at: "2026-05-19T07:55:00Z",
+  },
+  {
+    id: "AL-5",
+    actor_type: "agent",
+    actor_name: "Sales Reply Agent",
+    action: "Drafted email reply",
+    object_type: "lead",
+    object_id: "L-1039",
+    created_at: "2026-05-19T07:57:00Z",
+  },
+  {
+    id: "AL-6",
+    actor_type: "user",
+    actor_name: "Priya Shah",
+    action: "Assigned lead to herself",
+    object_type: "lead",
+    object_id: "L-1042",
+    created_at: "2026-05-18T09:15:00Z",
+  },
+  {
+    id: "AL-7",
+    actor_type: "agent",
+    actor_name: "Client Success Agent",
+    action: "Created 4 onboarding tasks",
+    object_type: "client",
+    object_id: "C-501",
+    created_at: "2026-05-17T10:00:00Z",
+  },
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
 // Agent registry
 // ────────────────────────────────────────────────────────────────────────────
 export const agents: AgentConfig[] = [
-  { name: "orchestrator", display_name: "Orchestrator Agent", role: "Owns workflow, assigns tasks, checks state", human_approval: true, model: "claude-sonnet-4", avg_confidence: 0.92, runs_24h: 24, status: "active" },
-  { name: "lead-intake", display_name: "Lead Intake Agent", role: "Captures and cleans new leads", human_approval: false, model: "gpt-4o-mini", avg_confidence: 0.96, runs_24h: 41, status: "active" },
-  { name: "qualification", display_name: "Qualification Agent", role: "Scores lead, identifies need", human_approval: false, model: "claude-sonnet-4", avg_confidence: 0.86, runs_24h: 37, status: "active" },
-  { name: "sales-reply", display_name: "Sales Reply Agent", role: "Drafts first reply and meeting follow-up", human_approval: true, model: "claude-sonnet-4", avg_confidence: 0.83, runs_24h: 22, status: "active" },
-  { name: "quotation", display_name: "Quotation Agent", role: "Builds quote draft from package templates", human_approval: true, model: "claude-sonnet-4", avg_confidence: 0.89, runs_24h: 12, status: "active" },
-  { name: "approval", display_name: "Approval Agent", role: "Checks discount, margin, risk, terms", human_approval: true, model: "claude-sonnet-4", avg_confidence: 0.91, runs_24h: 9, status: "active" },
-  { name: "client-success", display_name: "Client Success Agent", role: "Creates onboarding and renewal tasks", human_approval: false, model: "claude-sonnet-4", avg_confidence: 0.9, runs_24h: 14, status: "active" },
-  { name: "reporting", display_name: "Reporting Agent", role: "Produces pipeline and performance reports", human_approval: false, model: "claude-sonnet-4", avg_confidence: 0.94, runs_24h: 6, status: "paused" },
+  {
+    name: "orchestrator",
+    display_name: "Orchestrator Agent",
+    role: "Owns workflow, assigns tasks, checks state",
+    human_approval: true,
+    model: "claude-sonnet-4",
+    avg_confidence: 0.92,
+    runs_24h: 24,
+    status: "active",
+  },
+  {
+    name: "lead-intake",
+    display_name: "Lead Intake Agent",
+    role: "Captures and cleans new leads",
+    human_approval: false,
+    model: "gpt-4o-mini",
+    avg_confidence: 0.96,
+    runs_24h: 41,
+    status: "active",
+  },
+  {
+    name: "qualification",
+    display_name: "Qualification Agent",
+    role: "Scores lead, identifies need",
+    human_approval: false,
+    model: "claude-sonnet-4",
+    avg_confidence: 0.86,
+    runs_24h: 37,
+    status: "active",
+  },
+  {
+    name: "sales-reply",
+    display_name: "Sales Reply Agent",
+    role: "Drafts first reply and meeting follow-up",
+    human_approval: true,
+    model: "claude-sonnet-4",
+    avg_confidence: 0.83,
+    runs_24h: 22,
+    status: "active",
+  },
+  {
+    name: "quotation",
+    display_name: "Quotation Agent",
+    role: "Builds quote draft from package templates",
+    human_approval: true,
+    model: "claude-sonnet-4",
+    avg_confidence: 0.89,
+    runs_24h: 12,
+    status: "active",
+  },
+  {
+    name: "approval",
+    display_name: "Approval Agent",
+    role: "Checks discount, margin, risk, terms",
+    human_approval: true,
+    model: "claude-sonnet-4",
+    avg_confidence: 0.91,
+    runs_24h: 9,
+    status: "active",
+  },
+  {
+    name: "client-success",
+    display_name: "Client Success Agent",
+    role: "Creates onboarding and renewal tasks",
+    human_approval: false,
+    model: "claude-sonnet-4",
+    avg_confidence: 0.9,
+    runs_24h: 14,
+    status: "active",
+  },
+  {
+    name: "reporting",
+    display_name: "Reporting Agent",
+    role: "Produces pipeline and performance reports",
+    human_approval: false,
+    model: "claude-sonnet-4",
+    avg_confidence: 0.94,
+    runs_24h: 6,
+    status: "paused",
+  },
 ];
 
 export const agentByName = (name: string) => agents.find((a) => a.name === name);
@@ -880,11 +1075,36 @@ export const agentByName = (name: string) => agents.find((a) => a.name === name)
 // Service templates (for quote builder)
 // ────────────────────────────────────────────────────────────────────────────
 export const serviceTemplates = [
-  { id: "tpl-crm", name: "CRM Implementation", base_price: 250000, description: "Multi-store CRM rollout with POS integration" },
-  { id: "tpl-koc", name: "KOC / Influencer Campaign", base_price: 180000, description: "Cross-market creator activation" },
-  { id: "tpl-ai", name: "AI Transformation Roadmap", base_price: 480000, description: "12-month strategic engagement" },
-  { id: "tpl-data", name: "Data Hub & Reporting", base_price: 140000, description: "Unified data pipeline + dashboards" },
-  { id: "tpl-custom", name: "Custom Agent Build", base_price: 90000, description: "Bespoke agent for a specific workflow" },
+  {
+    id: "tpl-crm",
+    name: "CRM Implementation",
+    base_price: 250000,
+    description: "Multi-store CRM rollout with POS integration",
+  },
+  {
+    id: "tpl-koc",
+    name: "KOC / Influencer Campaign",
+    base_price: 180000,
+    description: "Cross-market creator activation",
+  },
+  {
+    id: "tpl-ai",
+    name: "AI Transformation Roadmap",
+    base_price: 480000,
+    description: "12-month strategic engagement",
+  },
+  {
+    id: "tpl-data",
+    name: "Data Hub & Reporting",
+    base_price: 140000,
+    description: "Unified data pipeline + dashboards",
+  },
+  {
+    id: "tpl-custom",
+    name: "Custom Agent Build",
+    base_price: 90000,
+    description: "Bespoke agent for a specific workflow",
+  },
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -988,13 +1208,12 @@ export const agentLeaderboardDaily: AgentLeaderboardDay[] = (() => {
         0,
         Math.min(runs, Math.round(runs * (0.78 + lbSeed(ai, d, 2) * 0.22))),
       );
-      const value = Math.round((runs * (35 + lbSeed(ai, d, 3) * 65)) * 1000);
+      const value = Math.round(runs * (35 + lbSeed(ai, d, 3) * 65) * 1000);
       out.push({ agent, date, runs, successes, value });
     });
   }
   return out;
 })();
-
 
 export const taskThroughput = [
   { day: "Mon", created: 14, completed: 10 },
@@ -1019,10 +1238,38 @@ export interface Notification {
 }
 
 export const notifications: Notification[] = [
-  { id: "N-1", type: "approval", message: "Quotation Agent waiting on FIM-Q-2029 approval", link: "/approvals", created_at: "2026-05-19T08:32:00Z", read: false },
-  { id: "N-2", type: "lead", message: "New high-score lead: Aurora Retail (82)", link: "/leads/L-1042", created_at: "2026-05-18T09:48:00Z", read: false },
-  { id: "N-3", type: "task", message: "3 tasks overdue", link: "/tasks", created_at: "2026-05-19T07:00:00Z", read: true },
-  { id: "N-4", type: "client", message: "Lumen Education health score dropped to 58", link: "/clients/C-503", created_at: "2026-05-19T07:00:00Z", read: false },
+  {
+    id: "N-1",
+    type: "approval",
+    message: "Quotation Agent waiting on FIM-Q-2029 approval",
+    link: "/approvals",
+    created_at: "2026-05-19T08:32:00Z",
+    read: false,
+  },
+  {
+    id: "N-2",
+    type: "lead",
+    message: "New high-score lead: Aurora Retail (82)",
+    link: "/leads/L-1042",
+    created_at: "2026-05-18T09:48:00Z",
+    read: false,
+  },
+  {
+    id: "N-3",
+    type: "task",
+    message: "3 tasks overdue",
+    link: "/tasks",
+    created_at: "2026-05-19T07:00:00Z",
+    read: true,
+  },
+  {
+    id: "N-4",
+    type: "client",
+    message: "Lumen Education health score dropped to 58",
+    link: "/clients/C-503",
+    created_at: "2026-05-19T07:00:00Z",
+    read: false,
+  },
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1037,10 +1284,34 @@ export interface PricingRule {
 }
 
 export const pricingRules: PricingRule[] = [
-  { id: "pr-1", name: "Max discount without approval", threshold: 10, unit: "%", description: "Sales can apply up to this discount without manager sign-off." },
-  { id: "pr-2", name: "Manager approval threshold", threshold: 400000, unit: "HKD", description: "Quotes above this value require manager approval." },
-  { id: "pr-3", name: "Director approval threshold", threshold: 1000000, unit: "HKD", description: "Quotes above this value require director approval." },
-  { id: "pr-4", name: "Min margin", threshold: 25, unit: "%", description: "Quotes below this margin are flagged for review." },
+  {
+    id: "pr-1",
+    name: "Max discount without approval",
+    threshold: 10,
+    unit: "%",
+    description: "Sales can apply up to this discount without manager sign-off.",
+  },
+  {
+    id: "pr-2",
+    name: "Manager approval threshold",
+    threshold: 400000,
+    unit: "HKD",
+    description: "Quotes above this value require manager approval.",
+  },
+  {
+    id: "pr-3",
+    name: "Director approval threshold",
+    threshold: 1000000,
+    unit: "HKD",
+    description: "Quotes above this value require director approval.",
+  },
+  {
+    id: "pr-4",
+    name: "Min margin",
+    threshold: 25,
+    unit: "%",
+    description: "Quotes below this margin are flagged for review.",
+  },
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1057,11 +1328,51 @@ export interface Contact {
 }
 
 export const contacts: Contact[] = [
-  { id: "CT-1", client_id: "C-501", name: "Dr. Lillian Park", title: "Head of R&D Ops", email: "lpark@helixbio.com", phone: "+852 9234 5678", is_primary: true },
-  { id: "CT-2", client_id: "C-501", name: "Marco Wei", title: "CFO", email: "mwei@helixbio.com", phone: "+852 9111 2222", is_primary: false },
-  { id: "CT-3", client_id: "C-502", name: "Joanna Tse", title: "Brand Director", email: "jtse@northwindapparel.com", phone: "+852 9001 7766", is_primary: true },
-  { id: "CT-4", client_id: "C-503", name: "Edwin Ho", title: "VP Product", email: "edwin@lumen.edu", phone: "+852 9087 1234", is_primary: true },
-  { id: "CT-5", client_id: "C-504", name: "Annette Kwok", title: "COO", email: "akwok@tesserabank.com", phone: "+852 9555 0001", is_primary: true },
+  {
+    id: "CT-1",
+    client_id: "C-501",
+    name: "Dr. Lillian Park",
+    title: "Head of R&D Ops",
+    email: "lpark@helixbio.com",
+    phone: "+852 9234 5678",
+    is_primary: true,
+  },
+  {
+    id: "CT-2",
+    client_id: "C-501",
+    name: "Marco Wei",
+    title: "CFO",
+    email: "mwei@helixbio.com",
+    phone: "+852 9111 2222",
+    is_primary: false,
+  },
+  {
+    id: "CT-3",
+    client_id: "C-502",
+    name: "Joanna Tse",
+    title: "Brand Director",
+    email: "jtse@northwindapparel.com",
+    phone: "+852 9001 7766",
+    is_primary: true,
+  },
+  {
+    id: "CT-4",
+    client_id: "C-503",
+    name: "Edwin Ho",
+    title: "VP Product",
+    email: "edwin@lumen.edu",
+    phone: "+852 9087 1234",
+    is_primary: true,
+  },
+  {
+    id: "CT-5",
+    client_id: "C-504",
+    name: "Annette Kwok",
+    title: "COO",
+    email: "akwok@tesserabank.com",
+    phone: "+852 9555 0001",
+    is_primary: true,
+  },
 ];
 
 export interface FileAsset {
@@ -1074,10 +1385,38 @@ export interface FileAsset {
 }
 
 export const clientFiles: FileAsset[] = [
-  { id: "F-1", client_id: "C-501", name: "MSA_Helix_v3.pdf", size: "412 KB", uploaded_at: "2026-05-12T10:00:00Z", uploaded_by: "Priya Shah" },
-  { id: "F-2", client_id: "C-501", name: "Discovery_notes.docx", size: "84 KB", uploaded_at: "2026-05-10T14:00:00Z", uploaded_by: "Priya Shah" },
-  { id: "F-3", client_id: "C-502", name: "Brand_guidelines.pdf", size: "2.1 MB", uploaded_at: "2025-09-01T09:00:00Z", uploaded_by: "Kenji Tan" },
-  { id: "F-4", client_id: "C-504", name: "SOC2_report_2026.pdf", size: "1.4 MB", uploaded_at: "2026-03-12T11:00:00Z", uploaded_by: "Marcus Lee" },
+  {
+    id: "F-1",
+    client_id: "C-501",
+    name: "MSA_Helix_v3.pdf",
+    size: "412 KB",
+    uploaded_at: "2026-05-12T10:00:00Z",
+    uploaded_by: "Priya Shah",
+  },
+  {
+    id: "F-2",
+    client_id: "C-501",
+    name: "Discovery_notes.docx",
+    size: "84 KB",
+    uploaded_at: "2026-05-10T14:00:00Z",
+    uploaded_by: "Priya Shah",
+  },
+  {
+    id: "F-3",
+    client_id: "C-502",
+    name: "Brand_guidelines.pdf",
+    size: "2.1 MB",
+    uploaded_at: "2025-09-01T09:00:00Z",
+    uploaded_by: "Kenji Tan",
+  },
+  {
+    id: "F-4",
+    client_id: "C-504",
+    name: "SOC2_report_2026.pdf",
+    size: "1.4 MB",
+    uploaded_at: "2026-03-12T11:00:00Z",
+    uploaded_by: "Marcus Lee",
+  },
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1092,9 +1431,27 @@ export interface Comment {
 }
 
 export const quoteComments: Comment[] = [
-  { id: "QC-1", quote_id: "Q-2029", author: "Marcus Lee", body: "Looks good — please double-check the AI pilot scope before sending.", created_at: "2026-05-19T09:00:00Z" },
-  { id: "QC-2", quote_id: "Q-2029", author: "Quotation Agent", body: "Pilot scope verified against template tpl-crm and lead requirements.", created_at: "2026-05-19T09:05:00Z" },
-  { id: "QC-3", quote_id: "Q-2030", author: "Ada Wong", body: "Approved — proceed.", created_at: "2026-05-18T16:20:00Z" },
+  {
+    id: "QC-1",
+    quote_id: "Q-2029",
+    author: "Marcus Lee",
+    body: "Looks good — please double-check the AI pilot scope before sending.",
+    created_at: "2026-05-19T09:00:00Z",
+  },
+  {
+    id: "QC-2",
+    quote_id: "Q-2029",
+    author: "Quotation Agent",
+    body: "Pilot scope verified against template tpl-crm and lead requirements.",
+    created_at: "2026-05-19T09:05:00Z",
+  },
+  {
+    id: "QC-3",
+    quote_id: "Q-2030",
+    author: "Ada Wong",
+    body: "Approved — proceed.",
+    created_at: "2026-05-18T16:20:00Z",
+  },
 ];
 
 export interface QuoteVersion {
@@ -1106,8 +1463,20 @@ export interface QuoteVersion {
 }
 
 export const quoteVersions: QuoteVersion[] = [
-  { version: 1, quote_id: "Q-2029", changed_by: "Quotation Agent", summary: "Initial draft from template", created_at: "2026-05-19T08:30:00Z" },
-  { version: 2, quote_id: "Q-2029", changed_by: "Priya Shah", summary: "Added AI pilot line item", created_at: "2026-05-19T08:55:00Z" },
+  {
+    version: 1,
+    quote_id: "Q-2029",
+    changed_by: "Quotation Agent",
+    summary: "Initial draft from template",
+    created_at: "2026-05-19T08:30:00Z",
+  },
+  {
+    version: 2,
+    quote_id: "Q-2029",
+    changed_by: "Priya Shah",
+    summary: "Added AI pilot line item",
+    created_at: "2026-05-19T08:55:00Z",
+  },
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1122,9 +1491,27 @@ export interface Note {
 }
 
 export const leadNotes: Note[] = [
-  { id: "LN-1", lead_id: "L-1042", author: "Priya Shah", body: "Spoke with Jonathan. Decision committee includes COO + Head of Retail Tech.", created_at: "2026-05-18T11:00:00Z" },
-  { id: "LN-2", lead_id: "L-1042", author: "Qualification Agent", body: "Cross-checked LinkedIn — confirmed 14 stores, ~120 store managers.", created_at: "2026-05-18T09:50:00Z" },
-  { id: "LN-3", lead_id: "L-1040", author: "Priya Shah", body: "Iris asked for case study in Traditional Chinese.", created_at: "2026-05-18T11:30:00Z" },
+  {
+    id: "LN-1",
+    lead_id: "L-1042",
+    author: "Priya Shah",
+    body: "Spoke with Jonathan. Decision committee includes COO + Head of Retail Tech.",
+    created_at: "2026-05-18T11:00:00Z",
+  },
+  {
+    id: "LN-2",
+    lead_id: "L-1042",
+    author: "Qualification Agent",
+    body: "Cross-checked LinkedIn — confirmed 14 stores, ~120 store managers.",
+    created_at: "2026-05-18T09:50:00Z",
+  },
+  {
+    id: "LN-3",
+    lead_id: "L-1040",
+    author: "Priya Shah",
+    body: "Iris asked for case study in Traditional Chinese.",
+    created_at: "2026-05-18T11:30:00Z",
+  },
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1141,12 +1528,60 @@ export interface LeadFile {
 }
 
 export const leadFiles: LeadFile[] = [
-  { id: "LF-1", lead_id: "L-1042", name: "Aurora_RFP_v2.pdf", size: "1.2 MB", kind: "pdf", uploaded_at: "2026-05-18T09:20:00Z", uploaded_by: "Jonathan Cheung" },
-  { id: "LF-2", lead_id: "L-1042", name: "Store_list_HK_Macau.xlsx", size: "84 KB", kind: "docx", uploaded_at: "2026-05-18T09:45:00Z", uploaded_by: "Priya Shah" },
-  { id: "LF-3", lead_id: "L-1042", name: "Discovery_intro_email.eml", size: "12 KB", kind: "email", uploaded_at: "2026-05-18T10:01:00Z", uploaded_by: "Priya Shah" },
-  { id: "LF-4", lead_id: "L-1041", name: "Nimbus_fleet_brief.pdf", size: "640 KB", kind: "pdf", uploaded_at: "2026-05-17T14:30:00Z", uploaded_by: "Sandra Wu" },
-  { id: "LF-5", lead_id: "L-1040", name: "Sunscreen_campaign_deck.pdf", size: "3.4 MB", kind: "deck", uploaded_at: "2026-05-17T09:10:00Z", uploaded_by: "Iris Mak" },
-  { id: "LF-6", lead_id: "L-1038", name: "Helix_AI_roadmap_signed.pdf", size: "2.1 MB", kind: "pdf", uploaded_at: "2026-05-16T09:00:00Z", uploaded_by: "Dr. Lillian Park" },
+  {
+    id: "LF-1",
+    lead_id: "L-1042",
+    name: "Aurora_RFP_v2.pdf",
+    size: "1.2 MB",
+    kind: "pdf",
+    uploaded_at: "2026-05-18T09:20:00Z",
+    uploaded_by: "Jonathan Cheung",
+  },
+  {
+    id: "LF-2",
+    lead_id: "L-1042",
+    name: "Store_list_HK_Macau.xlsx",
+    size: "84 KB",
+    kind: "docx",
+    uploaded_at: "2026-05-18T09:45:00Z",
+    uploaded_by: "Priya Shah",
+  },
+  {
+    id: "LF-3",
+    lead_id: "L-1042",
+    name: "Discovery_intro_email.eml",
+    size: "12 KB",
+    kind: "email",
+    uploaded_at: "2026-05-18T10:01:00Z",
+    uploaded_by: "Priya Shah",
+  },
+  {
+    id: "LF-4",
+    lead_id: "L-1041",
+    name: "Nimbus_fleet_brief.pdf",
+    size: "640 KB",
+    kind: "pdf",
+    uploaded_at: "2026-05-17T14:30:00Z",
+    uploaded_by: "Sandra Wu",
+  },
+  {
+    id: "LF-5",
+    lead_id: "L-1040",
+    name: "Sunscreen_campaign_deck.pdf",
+    size: "3.4 MB",
+    kind: "deck",
+    uploaded_at: "2026-05-17T09:10:00Z",
+    uploaded_by: "Iris Mak",
+  },
+  {
+    id: "LF-6",
+    lead_id: "L-1038",
+    name: "Helix_AI_roadmap_signed.pdf",
+    size: "2.1 MB",
+    kind: "pdf",
+    uploaded_at: "2026-05-16T09:00:00Z",
+    uploaded_by: "Dr. Lillian Park",
+  },
 ];
 
 export interface LeadComment {
@@ -1158,10 +1593,34 @@ export interface LeadComment {
 }
 
 export const leadComments: LeadComment[] = [
-  { id: "LC-1", lead_id: "L-1042", author: "Marcus Lee", body: "Looped in Ada — she'll review the AI pilot scope before we quote.", created_at: "2026-05-18T10:15:00Z" },
-  { id: "LC-2", lead_id: "L-1042", author: "Priya Shah", body: "Sent calendar invite for discovery call on Thursday.", created_at: "2026-05-18T11:10:00Z" },
-  { id: "LC-3", lead_id: "L-1041", author: "Kenji Tan", body: "They want quarterly board reporting — pull the Tessera case study.", created_at: "2026-05-17T15:00:00Z" },
-  { id: "LC-4", lead_id: "L-1040", author: "Outreach Agent", body: "Drafted reply in zh-HK pending human review.", created_at: "2026-05-18T11:45:00Z" },
+  {
+    id: "LC-1",
+    lead_id: "L-1042",
+    author: "Marcus Lee",
+    body: "Looped in Ada — she'll review the AI pilot scope before we quote.",
+    created_at: "2026-05-18T10:15:00Z",
+  },
+  {
+    id: "LC-2",
+    lead_id: "L-1042",
+    author: "Priya Shah",
+    body: "Sent calendar invite for discovery call on Thursday.",
+    created_at: "2026-05-18T11:10:00Z",
+  },
+  {
+    id: "LC-3",
+    lead_id: "L-1041",
+    author: "Kenji Tan",
+    body: "They want quarterly board reporting — pull the Tessera case study.",
+    created_at: "2026-05-17T15:00:00Z",
+  },
+  {
+    id: "LC-4",
+    lead_id: "L-1040",
+    author: "Outreach Agent",
+    body: "Drafted reply in zh-HK pending human review.",
+    created_at: "2026-05-18T11:45:00Z",
+  },
 ];
 
 export interface QuoteFile {
@@ -1175,11 +1634,49 @@ export interface QuoteFile {
 }
 
 export const quoteFiles: QuoteFile[] = [
-  { id: "QF-1", quote_id: "Q-2029", name: "FIM-Q-2029_draft.pdf", size: "320 KB", kind: "pdf", uploaded_at: "2026-05-19T08:31:00Z", uploaded_by: "Quotation Agent" },
-  { id: "QF-2", quote_id: "Q-2029", name: "Pilot_scope_addendum.docx", size: "48 KB", kind: "docx", uploaded_at: "2026-05-19T08:56:00Z", uploaded_by: "Priya Shah" },
-  { id: "QF-3", quote_id: "Q-2030", name: "FIM-Q-2030_signed.pdf", size: "412 KB", kind: "pdf", uploaded_at: "2026-05-18T16:35:00Z", uploaded_by: "Ada Wong" },
-  { id: "QF-4", quote_id: "Q-2031", name: "Nimbus_quote_cover_email.eml", size: "9 KB", kind: "email", uploaded_at: "2026-05-19T10:22:00Z", uploaded_by: "Kenji Tan" },
-  { id: "QF-5", quote_id: "Q-2027", name: "Helix_AI_roadmap_MSA.pdf", size: "1.8 MB", kind: "pdf", uploaded_at: "2026-05-16T09:00:00Z", uploaded_by: "Ada Wong" },
+  {
+    id: "QF-1",
+    quote_id: "Q-2029",
+    name: "FIM-Q-2029_draft.pdf",
+    size: "320 KB",
+    kind: "pdf",
+    uploaded_at: "2026-05-19T08:31:00Z",
+    uploaded_by: "Quotation Agent",
+  },
+  {
+    id: "QF-2",
+    quote_id: "Q-2029",
+    name: "Pilot_scope_addendum.docx",
+    size: "48 KB",
+    kind: "docx",
+    uploaded_at: "2026-05-19T08:56:00Z",
+    uploaded_by: "Priya Shah",
+  },
+  {
+    id: "QF-3",
+    quote_id: "Q-2030",
+    name: "FIM-Q-2030_signed.pdf",
+    size: "412 KB",
+    kind: "pdf",
+    uploaded_at: "2026-05-18T16:35:00Z",
+    uploaded_by: "Ada Wong",
+  },
+  {
+    id: "QF-4",
+    quote_id: "Q-2031",
+    name: "Nimbus_quote_cover_email.eml",
+    size: "9 KB",
+    kind: "email",
+    uploaded_at: "2026-05-19T10:22:00Z",
+    uploaded_by: "Kenji Tan",
+  },
+  {
+    id: "QF-5",
+    quote_id: "Q-2027",
+    name: "Helix_AI_roadmap_MSA.pdf",
+    size: "1.8 MB",
+    kind: "pdf",
+    uploaded_at: "2026-05-16T09:00:00Z",
+    uploaded_by: "Ada Wong",
+  },
 ];
-
-

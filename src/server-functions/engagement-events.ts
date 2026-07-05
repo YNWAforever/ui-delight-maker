@@ -37,7 +37,13 @@ type UpsertChannelIdentityInput = Pick<ChannelIdentity, "channel"> &
   Partial<
     Pick<
       ChannelIdentity,
-      "contact_id" | "account_id" | "external_id" | "handle" | "is_primary" | "last_seen_at" | "metadata"
+      | "contact_id"
+      | "account_id"
+      | "external_id"
+      | "handle"
+      | "is_primary"
+      | "last_seen_at"
+      | "metadata"
     >
   >;
 

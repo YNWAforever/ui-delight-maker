@@ -32,7 +32,13 @@ type CreateSuccessTouchpointInput = Pick<SuccessTouchpoint, "account_id"> &
   Partial<
     Pick<
       SuccessTouchpoint,
-      "contact_id" | "project_id" | "touchpoint_type" | "sentiment" | "notes" | "occurred_at" | "created_by"
+      | "contact_id"
+      | "project_id"
+      | "touchpoint_type"
+      | "sentiment"
+      | "notes"
+      | "occurred_at"
+      | "created_by"
     >
   >;
 
@@ -165,7 +171,9 @@ export const updateCustomerSuccessProfile = createServerFn({ method: "POST" })
         ...(data.updates.expansion_signal !== undefined && {
           expansion_signal: data.updates.expansion_signal,
         }),
-        ...(data.updates.last_touch_at !== undefined && { last_touch_at: data.updates.last_touch_at }),
+        ...(data.updates.last_touch_at !== undefined && {
+          last_touch_at: data.updates.last_touch_at,
+        }),
         ...(risk && { renewal_risk: risk.level, next_best_action: risk.nextBestAction }),
       })
       .eq("id", data.id)

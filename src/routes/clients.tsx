@@ -3,8 +3,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
-import { MetricCard } from "@/components/metric-card";
-import { PageHeader } from "@/components/page-header";
+import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -33,8 +32,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCompactHKD } from "@/lib/format";
+import { formatCompactHKD, formatDate } from "@/lib/format";
 import { getRenewalWindow } from "@/lib/engagement-utils";
+import { getClientPortfolioMetrics } from "@/lib/sales-workspace";
 import { getClients, createClient } from "@/server-functions/clients";
 import { APP_USERS, userById } from "@/lib/users";
 import type { Client, RenewalRisk } from "@/lib/types";
@@ -68,6 +68,7 @@ function ClientsPage() {
   const [sortKey, setSortKey] = useState<"arr" | "health" | "renewal">("arr");
   const [newOpen, setNewOpen] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
+  const portfolio = getClientPortfolioMetrics(rows, today);
 
   const filtered = useMemo(() => {
     const out = rows.filter((c) => {
@@ -86,16 +87,12 @@ function ClientsPage() {
     return [...out].sort(sortFn);
   }, [rows, tier, riskFilter, windowFilter, today, sortKey]);
 
-  const totalARR = rows.reduce((s, c) => s + (c.arr ?? 0), 0);
-  const avgHealth = rows.length
-    ? Math.round(rows.reduce((s, c) => s + c.health_score, 0) / rows.length)
-    : 0;
-
   return (
     <>
-      <PageHeader
-        title="Clients"
-        description={`${rows.length} active accounts`}
+      <CommandHeader
+        title="Account 360"
+        status="Retain"
+        description={`${rows.length} active accounts with health, renewal, and owner signals.`}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild>
@@ -122,19 +119,26 @@ function ClientsPage() {
       />
 
       <div className="space-y-4 px-6 py-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard
-            label="Total ARR"
-            value={formatCompactHKD(totalARR)}
-            hint="all active accounts"
-          />
-          <MetricCard label="Avg health" value={`${avgHealth}/100`} hint="across portfolio" />
-          <MetricCard
-            label="Renewals next 90d"
-            value={rows.filter((c) => (c.renewal_date ?? "") <= "2026-08-20").length}
-            hint="schedule QBRs early"
-          />
-        </div>
+        <MetricStrip
+          metrics={[
+            {
+              label: "Total ARR",
+              value: formatCompactHKD(portfolio.totalArr),
+              hint: "all active accounts",
+            },
+            {
+              label: "Avg health",
+              value: `${portfolio.averageHealth}/100`,
+              hint: "portfolio health",
+            },
+            { label: "At risk", value: portfolio.atRiskAccounts, hint: "health below 55" },
+            {
+              label: "Renewals 90d",
+              value: portfolio.renewalsNext90Days,
+              hint: "upcoming decisions",
+            },
+          ]}
+        />
 
         <Card className="p-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -237,7 +241,7 @@ function ClientsPage() {
                     <TableCell className="text-right tabular-nums">
                       {(c.arr ?? 0).toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-sm">{c.renewal_date}</TableCell>
+                    <TableCell className="text-sm">{formatDate(c.renewal_date)}</TableCell>
                     <TableCell>
                       <StatusBadge value={c.renewal_risk} />
                     </TableCell>
@@ -245,6 +249,29 @@ function ClientsPage() {
                   </TableRow>
                 );
               })}
+              {filtered.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={9} className="p-4">
+                    <WorkSurfaceEmpty
+                      title="No accounts match this Account 360 view"
+                      description="Clear filters or import clients to review retention work."
+                      action={
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setTier("all");
+                            setRiskFilter("all");
+                            setWindowFilter("all");
+                          }}
+                        >
+                          Clear filters
+                        </Button>
+                      }
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </Card>

@@ -1,6 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { cn } from "@/lib/utils";
+import { annualizeValue } from "@/lib/engagement-utils";
+import { formatCompactHKD, formatDate } from "@/lib/format";
 import type { Engagement } from "@/lib/types";
 
 type RenewalRow = Engagement & { client_company_name: string; product_name: string };
@@ -20,6 +22,8 @@ export function RenewalCard({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const annualizedValue = annualizeValue(engagement.value, engagement.billing_period);
+
   return (
     <Card
       role="button"
@@ -37,9 +41,12 @@ export function RenewalCard({
       <div className="mt-2 flex items-center justify-between">
         <StatusBadge value={engagement.renewal_risk} />
         <span className="text-xs tabular-nums text-muted-foreground">
-          {engagement.renewal_date ?? "no date"}
+          {formatDate(engagement.renewal_date)}
         </span>
       </div>
+      <p className="mt-2 text-xs font-medium tabular-nums">
+        {formatCompactHKD(annualizedValue)} annualized
+      </p>
       {engagement.next_action && (
         <p className="mt-1 truncate text-xs text-muted-foreground">{engagement.next_action}</p>
       )}

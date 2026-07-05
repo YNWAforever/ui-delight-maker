@@ -45,7 +45,7 @@ export function PipelineBoard({
   }
 
   return (
-    <div className="overflow-x-auto pb-3">
+    <div className="w-full min-w-0 max-w-full overflow-x-auto pb-3">
       <div className="grid min-w-[1040px] grid-cols-5 gap-3">
         {LEAD_PIPELINE_STAGES.map((stage) => {
           const stageLeads = grouped[stage.id];

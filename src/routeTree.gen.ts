@@ -19,6 +19,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
+import { Route as AiReviewRouteImport } from './routes/ai-review'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
@@ -86,6 +87,11 @@ const ClientsRoute = ClientsRouteImport.update({
 const ApprovalsRoute = ApprovalsRouteImport.update({
   id: '/approvals',
   path: '/approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiReviewRoute = AiReviewRouteImport.update({
+  id: '/ai-review',
+  path: '/ai-review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgentsRoute = AgentsRouteImport.update({
@@ -186,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/agents': typeof AgentsRouteWithChildren
+  '/ai-review': typeof AiReviewRoute
   '/approvals': typeof ApprovalsRoute
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
@@ -216,6 +223,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/agents': typeof AgentsRouteWithChildren
+  '/ai-review': typeof AiReviewRoute
   '/approvals': typeof ApprovalsRoute
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
@@ -247,6 +255,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/agents': typeof AgentsRouteWithChildren
+  '/ai-review': typeof AiReviewRoute
   '/approvals': typeof ApprovalsRoute
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
@@ -279,6 +288,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/agents'
+    | '/ai-review'
     | '/approvals'
     | '/clients'
     | '/leads'
@@ -309,6 +319,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/agents'
+    | '/ai-review'
     | '/approvals'
     | '/clients'
     | '/leads'
@@ -339,6 +350,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/agents'
+    | '/ai-review'
     | '/approvals'
     | '/clients'
     | '/leads'
@@ -370,6 +382,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
   AgentsRoute: typeof AgentsRouteWithChildren
+  AiReviewRoute: typeof AiReviewRoute
   ApprovalsRoute: typeof ApprovalsRoute
   ClientsRoute: typeof ClientsRouteWithChildren
   LeadsRoute: typeof LeadsRouteWithChildren
@@ -460,6 +473,13 @@ declare module '@tanstack/react-router' {
       path: '/approvals'
       fullPath: '/approvals'
       preLoaderRoute: typeof ApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-review': {
+      id: '/ai-review'
+      path: '/ai-review'
+      fullPath: '/ai-review'
+      preLoaderRoute: typeof AiReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agents': {
@@ -652,6 +672,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
   AgentsRoute: AgentsRouteWithChildren,
+  AiReviewRoute: AiReviewRoute,
   ApprovalsRoute: ApprovalsRoute,
   ClientsRoute: ClientsRouteWithChildren,
   LeadsRoute: LeadsRouteWithChildren,

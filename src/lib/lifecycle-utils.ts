@@ -232,7 +232,10 @@ export function assessRenewalRisk(input: RenewalRiskInput): RenewalRiskAssessmen
   };
 }
 
-function getDaysUntilRenewal(renewalDate: string | null, today = new Date().toISOString()): number | null {
+function getDaysUntilRenewal(
+  renewalDate: string | null,
+  today = new Date().toISOString(),
+): number | null {
   if (!renewalDate) return null;
 
   const renewal = Date.parse(renewalDate);

@@ -11,6 +11,8 @@ import { MarkRenewedEndedDialog } from "@/components/renewals/mark-renewed-ended
 import { triggerRiskScoreAgent } from "@/server-functions/engagements";
 import { getClientContacts } from "@/server-functions/client-contacts";
 import { getEngagementsByClient } from "@/server-functions/engagements";
+import { annualizeValue } from "@/lib/engagement-utils";
+import { formatCompactHKD, formatDate } from "@/lib/format";
 import type { Engagement } from "@/lib/types";
 
 type RenewalRow = Engagement & { client_company_name: string; product_name: string };
@@ -26,6 +28,9 @@ export function RenewalsPreviewPanel({
   const navigate = useNavigate();
   const [dialogAction, setDialogAction] = useState<"renew" | "end" | null>(null);
   const [scoreStatus, setScoreStatus] = useState<"idle" | "running" | "failed">("idle");
+  const annualizedValue = engagement
+    ? annualizeValue(engagement.value, engagement.billing_period)
+    : 0;
 
   useEffect(() => {
     setScoreStatus("idle");
@@ -73,6 +78,14 @@ export function RenewalsPreviewPanel({
                 <CardTitle className="text-base">Risk</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
+                <p>
+                  <span className="text-muted-foreground">Renewal date:</span>{" "}
+                  {formatDate(engagement.renewal_date)}
+                </p>
+                <p>
+                  <span className="text-muted-foreground">Annualized value:</span>{" "}
+                  {formatCompactHKD(annualizedValue)}
+                </p>
                 {scoreStatus === "running" ? (
                   <div className="space-y-2">
                     <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />

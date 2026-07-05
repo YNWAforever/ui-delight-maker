@@ -78,11 +78,7 @@ function ReportsPage() {
                 </button>
               ))}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => toast.success("CSV export queued")}
-            >
+            <Button variant="outline" size="sm" onClick={() => toast.success("CSV export queued")}>
               <Download className="mr-2 h-4 w-4" /> Export CSV
             </Button>
           </>
@@ -93,18 +89,47 @@ function ReportsPage() {
         <ChartCard title="Revenue trend" description="Weekly closed-won revenue (HKD K).">
           <AreaChart data={revenueTrend}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-            <XAxis dataKey="week" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-            <YAxis stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+            <XAxis
+              dataKey="week"
+              stroke="var(--color-muted-foreground)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              stroke="var(--color-muted-foreground)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
             <Tooltip contentStyle={tooltipStyle} />
-            <Area type="monotone" dataKey="revenue" stroke="var(--color-primary)" fill="var(--color-primary)" fillOpacity={0.15} strokeWidth={2} />
+            <Area
+              type="monotone"
+              dataKey="revenue"
+              stroke="var(--color-primary)"
+              fill="var(--color-primary)"
+              fillOpacity={0.15}
+              strokeWidth={2}
+            />
           </AreaChart>
         </ChartCard>
 
         <ChartCard title="Pipeline funnel" description="Lead counts by stage.">
           <BarChart data={pipelineFunnel}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-            <XAxis dataKey="stage" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-            <YAxis stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+            <XAxis
+              dataKey="stage"
+              stroke="var(--color-muted-foreground)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              stroke="var(--color-muted-foreground)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
             <Tooltip contentStyle={tooltipStyle} />
             <Bar dataKey="count" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
           </BarChart>
@@ -113,20 +138,57 @@ function ReportsPage() {
         <ChartCard title="Lead → Won conversion" description="Weekly leads vs closed-won.">
           <LineChart data={conversionTrend}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-            <XAxis dataKey="week" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-            <YAxis stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+            <XAxis
+              dataKey="week"
+              stroke="var(--color-muted-foreground)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              stroke="var(--color-muted-foreground)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
             <Tooltip contentStyle={tooltipStyle} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Line type="monotone" dataKey="leads" stroke="var(--color-primary)" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="won" stroke="var(--color-success)" strokeWidth={2} dot={false} />
+            <Line
+              type="monotone"
+              dataKey="leads"
+              stroke="var(--color-primary)"
+              strokeWidth={2}
+              dot={false}
+            />
+            <Line
+              type="monotone"
+              dataKey="won"
+              stroke="var(--color-success)"
+              strokeWidth={2}
+              dot={false}
+            />
           </LineChart>
         </ChartCard>
 
         <ChartCard title="Agent leaderboard" description="Runs and success rate (24h).">
           <BarChart data={agentLeaderboard} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-            <XAxis type="number" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-            <YAxis dataKey="name" type="category" width={100} stroke="var(--color-muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+            <XAxis
+              type="number"
+              stroke="var(--color-muted-foreground)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              dataKey="name"
+              type="category"
+              width={100}
+              stroke="var(--color-muted-foreground)"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+            />
             <Tooltip contentStyle={tooltipStyle} />
             <Bar dataKey="runs" fill="var(--color-primary)" radius={[0, 6, 6, 0]} />
           </BarChart>
@@ -135,8 +197,19 @@ function ReportsPage() {
         <ChartCard title="Task throughput" description="Created vs completed by day.">
           <BarChart data={taskThroughput}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-            <XAxis dataKey="day" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-            <YAxis stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+            <XAxis
+              dataKey="day"
+              stroke="var(--color-muted-foreground)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              stroke="var(--color-muted-foreground)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
             <Tooltip contentStyle={tooltipStyle} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
             <Bar dataKey="created" fill="var(--color-info)" radius={[6, 6, 0, 0]} />
@@ -147,8 +220,24 @@ function ReportsPage() {
         <ChartCard title="Agent success rate" description="Per-agent completion rate.">
           <BarChart data={agentLeaderboard}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-            <XAxis dataKey="name" stroke="var(--color-muted-foreground)" fontSize={10} tickLine={false} axisLine={false} interval={0} angle={-20} textAnchor="end" height={60} />
-            <YAxis domain={[80, 100]} stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+            <XAxis
+              dataKey="name"
+              stroke="var(--color-muted-foreground)"
+              fontSize={10}
+              tickLine={false}
+              axisLine={false}
+              interval={0}
+              angle={-20}
+              textAnchor="end"
+              height={60}
+            />
+            <YAxis
+              domain={[80, 100]}
+              stroke="var(--color-muted-foreground)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
             <Tooltip contentStyle={tooltipStyle} />
             <Bar dataKey="success" fill="var(--color-success)" radius={[6, 6, 0, 0]} />
           </BarChart>

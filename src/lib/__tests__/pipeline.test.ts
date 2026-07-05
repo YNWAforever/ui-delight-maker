@@ -195,6 +195,27 @@ describe("getLeadNextAction", () => {
   });
 });
 
+describe("Revenue Desk display safety", () => {
+  it("keeps next actions renderable as strings", () => {
+    const lead = baseLead({
+      qualification_data: {
+        urgency_score: 7,
+        fit_score: 8,
+        qualification_score: 80,
+        service_interest: ["CRM"],
+        budget_range: "HKD 50k-100k",
+        next_action: "Schedule discovery call",
+        reason: "Good fit",
+        confidence: 0.8,
+        human_review_required: false,
+      },
+    });
+
+    expect(typeof getLeadNextAction(lead, [])).toBe("string");
+    expect(getLeadNextAction(lead, [])).toBe("Schedule discovery call");
+  });
+});
+
 describe("filterPipelineLeads", () => {
   it("filters by search, source, owner, urgency, and AI status", () => {
     const leads = [
