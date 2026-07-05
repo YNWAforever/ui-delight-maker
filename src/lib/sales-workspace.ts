@@ -34,9 +34,18 @@ export interface RevenueDeskInput {
 }
 
 const DAY_MS = 86_400_000;
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}/;
 
 const daysBetween = (from: string, to: string) =>
   Math.floor((Date.parse(to) - Date.parse(from)) / DAY_MS);
+
+const dateKey = (value: string | null | undefined): string | null => {
+  if (!value) return null;
+  const isoDate = DATE_KEY_PATTERN.exec(value)?.[0];
+  if (isoDate) return isoDate;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+};
 
 const leadById = (leads: Lead[]) => new Map(leads.map((lead) => [lead.id, lead]));
 
@@ -60,12 +69,14 @@ const scoreRank: Record<RevenueActionKind, number> = {
 export function buildRevenueActions(input: RevenueDeskInput): RevenueAction[] {
   const leads = leadById(input.leads);
   const actions: RevenueAction[] = [];
+  const todayKey = dateKey(input.today);
 
   for (const task of input.tasks) {
     if (task.status === "done" || !task.due_date) continue;
     const linkedLead = task.lead_id ? leads.get(task.lead_id) : undefined;
-    const overdue = task.due_date < input.today;
-    const dueToday = task.due_date === input.today;
+    const dueDateKey = dateKey(task.due_date);
+    const overdue = dueDateKey != null && todayKey != null && dueDateKey < todayKey;
+    const dueToday = dueDateKey != null && todayKey != null && dueDateKey === todayKey;
     if (!overdue && !dueToday) continue;
 
     actions.push({
@@ -175,10 +186,17 @@ export function getClientPortfolioMetrics(clients: Client[], today: string) {
 
 export function getTaskBoardMetrics(tasks: Task[], today: string) {
   const openTasks = tasks.filter((task) => task.status !== "done");
+  const todayKey = dateKey(today);
   return {
     open: openTasks.length,
-    overdue: openTasks.filter((task) => task.due_date != null && task.due_date < today).length,
-    dueToday: openTasks.filter((task) => task.due_date === today).length,
+    overdue: openTasks.filter((task) => {
+      const dueDateKey = dateKey(task.due_date);
+      return dueDateKey != null && todayKey != null && dueDateKey < todayKey;
+    }).length,
+    dueToday: openTasks.filter((task) => {
+      const dueDateKey = dateKey(task.due_date);
+      return dueDateKey != null && todayKey != null && dueDateKey === todayKey;
+    }).length,
     highPriority: openTasks.filter((task) => task.priority === "high").length,
   };
 }

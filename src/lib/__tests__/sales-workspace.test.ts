@@ -148,6 +148,28 @@ describe("buildRevenueActions", () => {
       urgency: "critical",
     });
   });
+
+  it("normalizes ISO due dates before identifying tasks due today", () => {
+    const actions = buildRevenueActions({
+      leads: [lead({ id: "lead-iso", company_name: "ISO Lead Co" })],
+      tasks: [
+        task({
+          id: "task-iso-today",
+          lead_id: "lead-iso",
+          due_date: "2026-07-12T00:00:00.000Z",
+        }),
+      ],
+      quotes: [],
+      approvals: [],
+      today: "2026-07-12",
+    });
+
+    expect(actions.find((action) => action.id === "task:task-iso-today")).toMatchObject({
+      kind: "due_today",
+      description: "Due today",
+      urgency: "high",
+    });
+  });
 });
 
 describe("sales metrics", () => {
@@ -193,6 +215,31 @@ describe("sales metrics", () => {
           task({ id: "done", status: "done", due_date: "2026-06-27", priority: "high" }),
         ],
         "2026-06-28",
+      ),
+    ).toEqual({
+      open: 2,
+      overdue: 1,
+      dueToday: 1,
+      highPriority: 1,
+    });
+  });
+
+  it("normalizes ISO due dates when calculating task board metrics", () => {
+    expect(
+      getTaskBoardMetrics(
+        [
+          task({
+            id: "iso-today",
+            due_date: "2026-07-12T00:00:00.000Z",
+            priority: "medium",
+          }),
+          task({
+            id: "iso-overdue",
+            due_date: "2026-07-11T00:00:00.000Z",
+            priority: "high",
+          }),
+        ],
+        "2026-07-12T15:30:00.000Z",
       ),
     ).toEqual({
       open: 2,
