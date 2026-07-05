@@ -23,4 +23,11 @@ describe("sales route source copy", () => {
     expect(homeSource).not.toContain("hero");
     expect(homeSource).not.toContain("landing");
   });
+
+  it("keeps the lead empty state useful for filtered and genuinely empty inboxes", () => {
+    const leadsSource = readFileSync(new URL("../leads.tsx", import.meta.url), "utf8");
+
+    expect(leadsSource).toContain("hasActiveFilters");
+    expect(leadsSource).toContain("setNewOpen(true)");
+  });
 });

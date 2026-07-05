@@ -135,6 +135,8 @@ function LeadsPage() {
       clear: () => setOwner("all"),
     },
   ].filter(Boolean) as { key: string; label: string; clear: () => void }[];
+  const hasActiveFilters =
+    query.trim() !== "" || status !== "all" || source !== "all" || owner !== "all";
 
   return (
     <>
@@ -356,9 +358,15 @@ function LeadsPage() {
                       title="No leads match this view"
                       description="Clear filters or add a new lead to keep the sales queue moving."
                       action={
-                        <Button size="sm" variant="outline" onClick={clearFilters}>
-                          Clear filters
-                        </Button>
+                        rows.length === 0 || !hasActiveFilters ? (
+                          <Button size="sm" variant="outline" onClick={() => setNewOpen(true)}>
+                            <Plus className="mr-2 h-4 w-4" /> New lead
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={clearFilters}>
+                            Clear filters
+                          </Button>
+                        )
                       }
                     />
                   </TableCell>
