@@ -258,7 +258,7 @@ function PipelineCommandCenter() {
           ]}
         />
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
           <section className="rounded-md border border-border bg-card">
             <div className="border-b border-border px-4 py-3">
               <h2 className="text-sm font-semibold">Today queue</h2>
@@ -303,7 +303,7 @@ function PipelineCommandCenter() {
             </div>
           </section>
 
-          <section className="space-y-4">
+          <section className="min-w-0 space-y-4">
             <PipelineToolbar
               filters={filters}
               owners={APP_USERS.map((user) => ({ id: user.id, name: user.name }))}
@@ -312,17 +312,19 @@ function PipelineCommandCenter() {
           </section>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <PipelineBoard
-            leads={filteredLeads}
-            tasks={tasks}
-            quotes={quotes}
-            approvals={approvals}
-            agentRuns={agentRuns}
-            selectedLeadId={selectedLead?.id ?? null}
-            onSelectLead={(lead) => setSelectedLeadId(lead.id)}
-            onMoveLead={moveLead}
-          />
+        <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0 overflow-hidden">
+            <PipelineBoard
+              leads={filteredLeads}
+              tasks={tasks}
+              quotes={quotes}
+              approvals={approvals}
+              agentRuns={agentRuns}
+              selectedLeadId={selectedLead?.id ?? null}
+              onSelectLead={(lead) => setSelectedLeadId(lead.id)}
+              onMoveLead={moveLead}
+            />
+          </div>
           <LeadPreviewPanel
             lead={selectedLead}
             tasks={tasks}
