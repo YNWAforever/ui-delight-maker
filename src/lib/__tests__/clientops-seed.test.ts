@@ -5,6 +5,7 @@ import {
   assertSeedAllowed,
   buildSeedDates,
   databaseUrlLooksProductionLike,
+  getDeploySeedDecision,
   getSeedMode,
 } from "../clientops-seed";
 
@@ -106,6 +107,46 @@ describe("assertSeedAllowed", () => {
         },
       }),
     ).toThrow("DATABASE_URL looks like production");
+  });
+});
+
+describe("getDeploySeedDecision", () => {
+  it("skips deploy seeding unless explicitly enabled", () => {
+    expect(getDeploySeedDecision({})).toEqual({
+      shouldSeed: false,
+      reason: "CLIENTOPS_SEED_ON_DEPLOY is not 1",
+    });
+  });
+
+  it("uses non-destructive staging demo defaults when deploy seeding is enabled", () => {
+    expect(getDeploySeedDecision({ CLIENTOPS_SEED_ON_DEPLOY: "1" })).toEqual({
+      shouldSeed: true,
+      env: {
+        CLIENTOPS_ALLOW_STAGING_SEED: "1",
+        CLIENTOPS_SEED_MODE: "staging-demo",
+        CLIENTOPS_SEED_TARGET: "staging",
+      },
+    });
+  });
+
+  it("preserves explicit deploy seed env overrides", () => {
+    expect(
+      getDeploySeedDecision({
+        CLIENTOPS_SEED_ON_DEPLOY: "1",
+        CLIENTOPS_ALLOW_STAGING_SEED: "0",
+        CLIENTOPS_SEED_MODE: "staging-smoke",
+        CLIENTOPS_SEED_TARGET: "staging",
+        CLIENTOPS_SEED_TODAY: "2026-07-05",
+      }),
+    ).toEqual({
+      shouldSeed: true,
+      env: {
+        CLIENTOPS_ALLOW_STAGING_SEED: "0",
+        CLIENTOPS_SEED_MODE: "staging-smoke",
+        CLIENTOPS_SEED_TARGET: "staging",
+        CLIENTOPS_SEED_TODAY: "2026-07-05",
+      },
+    });
   });
 });
 
