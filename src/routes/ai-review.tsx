@@ -7,9 +7,11 @@ import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime, formatPercent } from "@/lib/format";
 import type { HumanApproval } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { getAgentRuns } from "@/server-functions/agent-runs";
 import { decideApproval, getApprovals } from "@/server-functions/approvals";
 
@@ -34,20 +36,32 @@ function AiReviewPage() {
   const humanReviewRuns = agentRuns.filter((run) => run.human_review_required);
   const [selectedId, setSelectedId] = useState<string | null>(pending[0]?.id ?? null);
   const [notes, setNotes] = useState("");
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
 
   const selected = useMemo(
     () => pending.find((approval) => approval.id === selectedId) ?? pending[0] ?? null,
     [pending, selectedId],
   );
+  const isSubmitting = submittingId != null;
 
   const decide = async (
     approval: HumanApproval,
     decision: "approved" | "rejected" | "escalated",
   ) => {
-    await decideApproval({ data: { id: approval.id, decision, notes: notes || undefined } });
-    toast.success(decision === "approved" ? "AI action approved" : "AI action updated");
-    setNotes("");
-    router.invalidate();
+    if (submittingId) return;
+
+    setSubmittingId(approval.id);
+
+    try {
+      await decideApproval({ data: { id: approval.id, decision, notes: notes || undefined } });
+      await router.invalidate();
+      toast.success(decision === "approved" ? "AI action approved" : "AI action updated");
+      setNotes("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update AI action");
+    } finally {
+      setSubmittingId(null);
+    }
   };
 
   return (
@@ -102,25 +116,36 @@ function AiReviewPage() {
               </div>
             ) : (
               <ul className="divide-y divide-border">
-                {pending.map((approval) => (
-                  <li key={approval.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(approval.id)}
-                      className="block w-full px-4 py-3 text-left transition-colors hover:bg-muted/40"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="truncate text-sm font-medium">
-                          {approval.approval_type?.replace(/_/g, " ") ?? "AI review"}
+                {pending.map((approval) => {
+                  const isSelected = selected?.id === approval.id;
+
+                  return (
+                    <li key={approval.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedId(approval.id);
+                          setNotes("");
+                        }}
+                        aria-pressed={selected?.id === approval.id}
+                        className={cn(
+                          "block w-full px-4 py-3 text-left transition-colors hover:bg-muted/40",
+                          isSelected && "bg-primary/5 ring-1 ring-inset ring-primary/20",
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="truncate text-sm font-medium">
+                            {approval.approval_type?.replace(/_/g, " ") ?? "AI review"}
+                          </p>
+                          <StatusBadge value={approval.status} />
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          {approval.context_summary ?? "Review agent-proposed action."}
                         </p>
-                        <StatusBadge value={approval.status} />
-                      </div>
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                        {approval.context_summary ?? "Review agent-proposed action."}
-                      </p>
-                    </button>
-                  </li>
-                ))}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Card>
@@ -144,17 +169,24 @@ function AiReviewPage() {
                     <StatusBadge value={selected.status} className="ml-auto" />
                   </div>
 
-                  <p className="text-sm">{selected.context_summary ?? "No summary provided."}</p>
-                  <Textarea
-                    value={notes}
-                    onChange={(event) => setNotes(event.target.value)}
-                    placeholder="Reviewer notes"
-                    className="h-24"
-                  />
+                  <p className="break-words text-sm">
+                    {selected.context_summary ?? "No summary provided."}
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="reviewer-notes">Reviewer notes</Label>
+                    <Textarea
+                      id="reviewer-notes"
+                      value={notes}
+                      onChange={(event) => setNotes(event.target.value)}
+                      placeholder="Reviewer notes"
+                      className="h-24"
+                    />
+                  </div>
                   <div className="flex flex-wrap justify-end gap-2">
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={isSubmitting}
                       onClick={() => decide(selected, "escalated")}
                     >
                       Request changes
@@ -162,11 +194,16 @@ function AiReviewPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={isSubmitting}
                       onClick={() => decide(selected, "rejected")}
                     >
                       Reject
                     </Button>
-                    <Button size="sm" onClick={() => decide(selected, "approved")}>
+                    <Button
+                      size="sm"
+                      disabled={isSubmitting}
+                      onClick={() => decide(selected, "approved")}
+                    >
                       <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
                     </Button>
                   </div>
