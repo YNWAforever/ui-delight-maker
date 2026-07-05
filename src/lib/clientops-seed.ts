@@ -4,6 +4,16 @@ export const CLIENTOPS_DESTRUCTIVE_RESET_CONFIRMATION = "I_UNDERSTAND";
 
 type SeedEnv = Record<string, string | undefined>;
 
+export type DeploySeedDecision =
+  | {
+      shouldSeed: false;
+      reason: string;
+    }
+  | {
+      shouldSeed: true;
+      env: Record<string, string>;
+    };
+
 export function getSeedMode(env: SeedEnv): ClientOpsSeedMode {
   const mode = env.CLIENTOPS_SEED_MODE ?? "staging-smoke";
   if (mode === "staging-smoke" || mode === "staging-demo" || mode === "local-demo-reset") {
@@ -18,6 +28,25 @@ export function isStagingSeedMode(mode: ClientOpsSeedMode) {
 
 export function isFullDemoSeedMode(mode: ClientOpsSeedMode) {
   return mode === "staging-demo" || mode === "local-demo-reset";
+}
+
+export function getDeploySeedDecision(env: SeedEnv): DeploySeedDecision {
+  if (env.CLIENTOPS_SEED_ON_DEPLOY !== "1") {
+    return {
+      shouldSeed: false,
+      reason: "CLIENTOPS_SEED_ON_DEPLOY is not 1",
+    };
+  }
+
+  return {
+    shouldSeed: true,
+    env: {
+      CLIENTOPS_ALLOW_STAGING_SEED: env.CLIENTOPS_ALLOW_STAGING_SEED ?? "1",
+      CLIENTOPS_SEED_MODE: env.CLIENTOPS_SEED_MODE ?? "staging-demo",
+      CLIENTOPS_SEED_TARGET: env.CLIENTOPS_SEED_TARGET ?? "staging",
+      ...(env.CLIENTOPS_SEED_TODAY ? { CLIENTOPS_SEED_TODAY: env.CLIENTOPS_SEED_TODAY } : {}),
+    },
+  };
 }
 
 export function databaseUrlLooksProductionLike(databaseUrl: string) {

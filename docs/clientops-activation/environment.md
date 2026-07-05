@@ -18,6 +18,7 @@
 | n8n apply script | `N8N_API_BASE_URL`                   |          No | n8n        | Required only for direct apply/update.                                    |
 | n8n apply script | `N8N_API_KEY`                        |          No | n8n        | Required only for direct apply/update.                                    |
 | Seed script      | `CLIENTOPS_ALLOW_STAGING_SEED`       |         Yes | App ops    | Must be `1` before either seed mode writes data.                          |
+| Seed script      | `CLIENTOPS_SEED_ON_DEPLOY`           |          No | App ops    | Set to `1` in Vercel to run the non-destructive seed after each build.    |
 | Seed script      | `CLIENTOPS_SEED_MODE`                |         Yes | App ops    | `staging-smoke`, `staging-demo`, or `local-demo-reset`.                   |
 | Seed script      | `CLIENTOPS_SEED_TARGET`              |         Yes | App ops    | `staging` for staging modes; `local` for destructive local reset.         |
 | Seed script      | `CLIENTOPS_DESTRUCTIVE_RESET`        | Local reset | App ops    | Must be `I_UNDERSTAND` for `local-demo-reset`; leave blank otherwise.     |
