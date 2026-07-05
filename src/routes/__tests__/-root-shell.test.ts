@@ -75,4 +75,13 @@ describe("sales route source copy", () => {
     expect(approvalsSource).toContain("Quote sends");
     expect(approvalsSource).toContain("Decided");
   });
+
+  it("keeps approval pending metrics scoped to the active type filter", () => {
+    const approvalsSource = readFileSync(new URL("../approvals.tsx", import.meta.url), "utf8");
+
+    expect(approvalsSource).toMatch(/const pendingCount = pending\.length;/);
+    expect(approvalsSource).toMatch(
+      /const pendingQuoteSends = pending\.filter\(\s*\(a\) => a\.approval_type === "quote_send",?\s*\)\.length;/s,
+    );
+  });
 });

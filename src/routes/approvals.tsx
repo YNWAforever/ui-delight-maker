@@ -101,10 +101,8 @@ function ApprovalsInbox() {
     [allApprovals, typeFilter],
   );
   const decided = allApprovals.filter((a) => a.status !== "pending");
-  const pendingCount = allApprovals.filter((a) => a.status === "pending").length;
-  const pendingQuoteSends = allApprovals.filter(
-    (a) => a.status === "pending" && a.approval_type === "quote_send",
-  ).length;
+  const pendingCount = pending.length;
+  const pendingQuoteSends = pending.filter((a) => a.approval_type === "quote_send").length;
   const selected = pending.find((a) => a.id === selectedId) ?? pending[0];
 
   const decide = async (id: string, status: "approved" | "rejected" | "escalated", msg: string) => {
