@@ -24,9 +24,32 @@ const TIME = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
-export const formatDateTime = (iso: string) => DATETIME.format(new Date(iso));
-export const formatDate = (iso: string) => DATE.format(new Date(iso));
-export const formatTime = (iso: string) => TIME.format(new Date(iso));
+const parseDate = (value: string | Date | null | undefined): Date | null => {
+  if (value == null) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+export const formatDateTime = (value: string | Date | null | undefined) => {
+  const date = parseDate(value);
+  return date ? DATETIME.format(date) : "—";
+};
+
+export const formatDate = (value: string | Date | null | undefined) => {
+  const date = parseDate(value);
+  return date ? DATE.format(date) : "—";
+};
+
+export const formatTime = (value: string | Date | null | undefined) => {
+  const date = parseDate(value);
+  return date ? TIME.format(date) : "—";
+};
+
+export const formatPercent = (value: number | null | undefined) =>
+  value == null ? "—" : `${Math.round(value * 100)}%`;
+
+export const formatCount = (value: number | null | undefined) =>
+  (value ?? 0).toLocaleString("en-US");
 
 export const formatHKD = (n: number) =>
   `HKD ${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;

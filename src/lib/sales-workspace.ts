@@ -1,0 +1,186 @@
+import { formatDate } from "./format";
+import type { AgentRun, Client, HumanApproval, Lead, Quote, Task } from "./types";
+
+export type RevenueActionKind =
+  | "overdue_task"
+  | "due_today"
+  | "pending_approval"
+  | "renewal_risk"
+  | "hot_lead";
+
+export type RevenueActionUrgency = "critical" | "high" | "medium";
+
+export interface RevenueAction {
+  id: string;
+  kind: RevenueActionKind;
+  title: string;
+  accountName: string;
+  description: string;
+  href: string;
+  urgency: RevenueActionUrgency;
+  value: number | null;
+  ownerId: string | null;
+  score: number;
+}
+
+export interface RevenueDeskInput {
+  leads: Lead[];
+  tasks: Task[];
+  quotes: Quote[];
+  approvals: HumanApproval[];
+  clients?: Client[];
+  agentRuns?: AgentRun[];
+  today: string;
+}
+
+const DAY_MS = 86_400_000;
+
+const daysBetween = (from: string, to: string) =>
+  Math.floor((Date.parse(to) - Date.parse(from)) / DAY_MS);
+
+const leadById = (leads: Lead[]) => new Map(leads.map((lead) => [lead.id, lead]));
+
+const quoteValueForLead = (leadId: string, quotes: Quote[]) =>
+  quotes.find((quote) => quote.lead_id === leadId)?.total_value ?? null;
+
+const approvalLeadId = (approval: HumanApproval): string | null => {
+  if (approval.context_data == null || typeof approval.context_data !== "object") return null;
+  const context = approval.context_data as { lead_id?: unknown };
+  return typeof context.lead_id === "string" ? context.lead_id : null;
+};
+
+const scoreRank: Record<RevenueActionKind, number> = {
+  overdue_task: 500,
+  pending_approval: 420,
+  renewal_risk: 340,
+  due_today: 300,
+  hot_lead: 220,
+};
+
+export function buildRevenueActions(input: RevenueDeskInput): RevenueAction[] {
+  const leads = leadById(input.leads);
+  const actions: RevenueAction[] = [];
+
+  for (const task of input.tasks) {
+    if (task.status === "done" || !task.due_date) continue;
+    const linkedLead = task.lead_id ? leads.get(task.lead_id) : undefined;
+    const overdue = task.due_date < input.today;
+    const dueToday = task.due_date === input.today;
+    if (!overdue && !dueToday) continue;
+
+    actions.push({
+      id: `task:${task.id}`,
+      kind: overdue ? "overdue_task" : "due_today",
+      title: task.title,
+      accountName: linkedLead?.company_name ?? "Unlinked task",
+      description: overdue ? `Overdue since ${formatDate(task.due_date)}` : "Due today",
+      href: linkedLead ? `/leads/${linkedLead.id}` : "/tasks",
+      urgency: overdue ? "critical" : "high",
+      value: linkedLead ? quoteValueForLead(linkedLead.id, input.quotes) : null,
+      ownerId: task.assigned_to,
+      score: scoreRank[overdue ? "overdue_task" : "due_today"] + (linkedLead?.lead_score ?? 0),
+    });
+  }
+
+  for (const approval of input.approvals) {
+    if (approval.status !== "pending") continue;
+    const leadId = approvalLeadId(approval);
+    const linkedLead = leadId ? leads.get(leadId) : undefined;
+    actions.push({
+      id: `approval:${approval.id}`,
+      kind: "pending_approval",
+      title: approval.context_summary ?? "Review approval request",
+      accountName: linkedLead?.company_name ?? "Approval request",
+      description: approval.approval_type?.replace(/_/g, " ") ?? "Human review required",
+      href: "/approvals",
+      urgency: "high",
+      value: linkedLead ? quoteValueForLead(linkedLead.id, input.quotes) : null,
+      ownerId: approval.assigned_to,
+      score: scoreRank.pending_approval + (linkedLead?.lead_score ?? 0),
+    });
+  }
+
+  for (const client of input.clients ?? []) {
+    const renewalDate = client.renewal_date;
+    if (!renewalDate) continue;
+    const daysUntilRenewal = daysBetween(input.today, renewalDate);
+    const risky = client.health_score < 55 || daysUntilRenewal <= 30;
+    if (!risky) continue;
+    actions.push({
+      id: `client:${client.id}`,
+      kind: "renewal_risk",
+      title: `Protect renewal for ${client.company_name}`,
+      accountName: client.company_name,
+      description: `${formatDate(renewalDate)} renewal · health ${client.health_score}/100`,
+      href: `/clients/${client.id}`,
+      urgency: client.health_score < 50 || daysUntilRenewal <= 14 ? "critical" : "medium",
+      value: client.arr,
+      ownerId: client.account_owner,
+      score: scoreRank.renewal_risk + Math.max(0, 100 - client.health_score),
+    });
+  }
+
+  for (const lead of input.leads) {
+    if (lead.lead_score < 75 || lead.status === "won" || lead.status === "lost") continue;
+    actions.push({
+      id: `lead:${lead.id}`,
+      kind: "hot_lead",
+      title: lead.qualification_data?.next_action ?? "Review hot lead",
+      accountName: lead.company_name,
+      description: `Score ${lead.lead_score} · ${lead.source ?? "unknown source"}`,
+      href: `/leads/${lead.id}`,
+      urgency: "medium",
+      value: quoteValueForLead(lead.id, input.quotes),
+      ownerId: lead.assigned_to,
+      score: scoreRank.hot_lead + lead.lead_score,
+    });
+  }
+
+  return actions.sort((a, b) => b.score - a.score).slice(0, 12);
+}
+
+export function getQuoteDeskMetrics(quotes: Quote[]) {
+  return {
+    activeValue: quotes
+      .filter((quote) => ["pending_approval", "sent", "viewed"].includes(quote.status))
+      .reduce((sum, quote) => sum + (quote.total_value ?? 0), 0),
+    acceptedValue: quotes
+      .filter((quote) => quote.status === "accepted")
+      .reduce((sum, quote) => sum + (quote.total_value ?? 0), 0),
+    draftValue: quotes
+      .filter((quote) => quote.status === "draft")
+      .reduce((sum, quote) => sum + (quote.total_value ?? 0), 0),
+    pendingApproval: quotes.filter((quote) => quote.status === "pending_approval").length,
+  };
+}
+
+export function getClientPortfolioMetrics(clients: Client[], today: string) {
+  const totalArr = clients.reduce((sum, client) => sum + (client.arr ?? 0), 0);
+  const averageHealth =
+    clients.length === 0
+      ? 0
+      : Math.round(clients.reduce((sum, client) => sum + client.health_score, 0) / clients.length);
+
+  return {
+    totalArr,
+    averageHealth,
+    renewalsNext90Days: clients.filter((client) => {
+      if (!client.renewal_date) return false;
+      const days = daysBetween(today, client.renewal_date);
+      return days >= 0 && days <= 90;
+    }).length,
+    atRiskAccounts: clients.filter((client) => client.health_score < 55).length,
+  };
+}
+
+export function getTaskBoardMetrics(tasks: Task[], today: string) {
+  const openTasks = tasks.filter((task) => task.status !== "done");
+  return {
+    open: openTasks.length,
+    overdue: openTasks.filter((task) => task.due_date != null && task.due_date < today).length,
+    dueToday: openTasks.filter((task) => task.due_date === today).length,
+    highPriority: openTasks.filter((task) => task.priority === "high").length,
+  };
+}
+
+export const getSalesDisplayDate = (value: string | Date | null | undefined) => formatDate(value);
