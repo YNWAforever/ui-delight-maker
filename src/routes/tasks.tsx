@@ -3,7 +3,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Bot, Plus } from "lucide-react";
 import { toast } from "sonner";
 
-import { PageHeader } from "@/components/page-header";
+import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,6 +25,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { formatDate } from "@/lib/format";
+import { getTaskBoardMetrics } from "@/lib/sales-workspace";
 import { cn } from "@/lib/utils";
 import { getTasks, createTask, updateTask } from "@/server-functions/tasks";
 import { APP_USERS, userById } from "@/lib/users";
@@ -35,7 +37,10 @@ export const Route = createFileRoute("/tasks")({
   head: () => ({
     meta: [
       { title: "Tasks — Fimmick ClientOps" },
-      { name: "description", content: "Kanban view of all open, in-progress, and completed tasks." },
+      {
+        name: "description",
+        content: "Kanban view of all open, in-progress, and completed tasks.",
+      },
     ],
   }),
   component: TasksBoard,
@@ -48,6 +53,13 @@ const COLUMNS: { id: TaskStatus; label: string }[] = [
 ];
 
 const TODAY = "2026-05-20";
+
+const isTaskOverdue = (task: Task) => {
+  if (!task.due_date || task.status === "done") return false;
+  const dueTime = Date.parse(task.due_date);
+  const todayTime = Date.parse(TODAY);
+  return !Number.isNaN(dueTime) && !Number.isNaN(todayTime) && dueTime < todayTime;
+};
 
 function TasksBoard() {
   const loaderTasks = Route.useLoaderData();
@@ -66,6 +78,7 @@ function TasksBoard() {
       }),
     [rows, priority, assignee],
   );
+  const metrics = getTaskBoardMetrics(rows, TODAY);
 
   const move = async (id: string, status: TaskStatus) => {
     setRows((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
@@ -75,9 +88,10 @@ function TasksBoard() {
 
   return (
     <>
-      <PageHeader
-        title="Task Board"
-        description={`${filtered.length} of ${rows.length} tasks`}
+      <CommandHeader
+        title="Task Queue"
+        status="Retain"
+        description={`${filtered.length} of ${rows.length} tasks across follow-up, renewal, and client success work.`}
         actions={
           <NewTaskDialog
             onCreate={async (t) => {
@@ -91,6 +105,15 @@ function TasksBoard() {
       />
 
       <div className="space-y-4 px-6 py-6">
+        <MetricStrip
+          metrics={[
+            { label: "Open", value: metrics.open, hint: "not completed" },
+            { label: "Overdue", value: metrics.overdue, hint: "past due date" },
+            { label: "Due today", value: metrics.dueToday, hint: "needs action today" },
+            { label: "High priority", value: metrics.highPriority, hint: "open high priority" },
+          ]}
+        />
+
         <Card className="p-3">
           <div className="flex flex-wrap items-center gap-2">
             <Select value={priority} onValueChange={setPriority}>
@@ -117,7 +140,9 @@ function TasksBoard() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="ml-auto text-xs text-muted-foreground">Tip: drag a card between columns.</p>
+            <p className="ml-auto text-xs text-muted-foreground">
+              Tip: drag a card between columns.
+            </p>
           </div>
         </Card>
 
@@ -143,7 +168,7 @@ function TasksBoard() {
                 <div className="flex min-h-[120px] flex-col gap-3 rounded-md bg-muted/20 p-2">
                   {colTasks.map((t) => {
                     const owner = userById(t.assigned_to);
-                    const overdue = !!t.due_date && t.due_date < TODAY && t.status !== "done";
+                    const overdue = isTaskOverdue(t);
                     return (
                       <Card
                         key={t.id}
@@ -167,7 +192,7 @@ function TasksBoard() {
                               overdue && "font-medium text-destructive",
                             )}
                           >
-                            Due {t.due_date ?? "—"}
+                            Due {formatDate(t.due_date)}
                             {overdue && " · overdue"}
                           </span>
                           <span className="text-muted-foreground">{owner?.name}</span>
@@ -181,9 +206,10 @@ function TasksBoard() {
                     );
                   })}
                   {colTasks.length === 0 && (
-                    <div className="rounded-md border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-                      Drop tasks here.
-                    </div>
+                    <WorkSurfaceEmpty
+                      title={`No ${col.label.toLowerCase()} tasks`}
+                      description="Drop tasks here or create a task when retention work appears."
+                    />
                   )}
                 </div>
               </div>
@@ -195,7 +221,13 @@ function TasksBoard() {
   );
 }
 
-type CreateTaskPayload = { title: string; description?: string; assigned_to?: string; due_date?: string; priority?: Task["priority"] };
+type CreateTaskPayload = {
+  title: string;
+  description?: string;
+  assigned_to?: string;
+  due_date?: string;
+  priority?: Task["priority"];
+};
 
 function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promise<void> }) {
   const [open, setOpen] = useState(false);
@@ -273,7 +305,12 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
             </div>
             <div>
               <Label className="text-xs">Due</Label>
-              <Input type="date" className="mt-1" value={due} onChange={(e) => setDue(e.target.value)} />
+              <Input
+                type="date"
+                className="mt-1"
+                value={due}
+                onChange={(e) => setDue(e.target.value)}
+              />
             </div>
           </div>
         </div>
