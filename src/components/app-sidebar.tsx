@@ -12,6 +12,7 @@ import {
   Settings,
   Sparkles,
   RefreshCw,
+  type LucideIcon,
 } from "lucide-react";
 
 import {
@@ -27,22 +28,36 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-const workspaceItems = [
-  { title: "Pipeline", url: "/", icon: LayoutDashboard },
-  { title: "Renewals", url: "/renewals", icon: RefreshCw },
+const todayItems = [{ title: "Revenue Desk", url: "/", icon: LayoutDashboard }];
+
+const acquireItems = [
   { title: "Leads", url: "/leads", icon: Inbox },
+  { title: "AI Review", url: "/ai-review", icon: Sparkles },
+];
+
+const convertItems = [
+  { title: "Pipeline", url: "/", icon: LayoutDashboard },
   { title: "Quotes", url: "/quotes", icon: FileText },
+  { title: "Approvals", url: "/approvals", icon: ShieldCheck },
+];
+
+const retainItems = [
   { title: "Clients", url: "/clients", icon: Building2 },
+  { title: "Renewals", url: "/renewals", icon: RefreshCw },
   { title: "Tasks", url: "/tasks", icon: CheckSquare },
 ];
 
-const opsItems = [
-  { title: "Approvals", url: "/approvals", icon: ShieldCheck },
+const operateItems = [
   { title: "Agents", url: "/agents", icon: Bot },
   { title: "Reports", url: "/reports", icon: BarChart3 },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
-const settingsItems = [{ title: "Settings", url: "/settings", icon: Settings }];
+type SidebarItem = {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+};
 
 interface AppSidebarProps {
   profile: Profile | null;
@@ -59,7 +74,7 @@ export function AppSidebar({ profile, onSignOut }: AppSidebarProps) {
     return currentPath === path || currentPath.startsWith(path + "/");
   };
 
-  const renderGroup = (label: string, items: typeof workspaceItems) => (
+  const renderGroup = (label: string, items: SidebarItem[]) => (
     <SidebarGroup>
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarGroupContent>
@@ -88,15 +103,17 @@ export function AppSidebar({ profile, onSignOut }: AppSidebarProps) {
           </div>
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold">Fimmick ClientOps</span>
-            <span className="text-[11px] text-muted-foreground">Lead follow-up workspace</span>
+            <span className="text-[11px] text-muted-foreground">Revenue operations desk</span>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-        {renderGroup("Workspace", workspaceItems)}
-        {renderGroup("Operations", opsItems)}
-        {renderGroup("System", settingsItems)}
+        {renderGroup("Today", todayItems)}
+        {renderGroup("Acquire", acquireItems)}
+        {renderGroup("Convert", convertItems)}
+        {renderGroup("Retain", retainItems)}
+        {renderGroup("Operate", operateItems)}
       </SidebarContent>
 
       <SidebarFooter>

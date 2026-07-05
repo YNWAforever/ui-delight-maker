@@ -10,4 +10,19 @@ describe("sidebar responsive display", () => {
     expect(sidebarSource).not.toContain("z-10 hidden h-svh");
     expect(sidebarSource).not.toContain("group peer hidden");
   });
+
+  it("groups navigation around the approved sales motions", () => {
+    const appSidebarSource = readFileSync(
+      new URL("../../app-sidebar.tsx", import.meta.url),
+      "utf8",
+    );
+
+    expect(appSidebarSource).toContain('renderGroup("Today"');
+    expect(appSidebarSource).toContain('renderGroup("Acquire"');
+    expect(appSidebarSource).toContain('renderGroup("Convert"');
+    expect(appSidebarSource).toContain('renderGroup("Retain"');
+    expect(appSidebarSource).toContain('renderGroup("Operate"');
+    expect(appSidebarSource).toContain('title: "Revenue Desk", url: "/"');
+    expect(appSidebarSource).toContain('title: "AI Review", url: "/ai-review"');
+  });
 });
