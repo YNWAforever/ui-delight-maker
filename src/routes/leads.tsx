@@ -13,8 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { EmptyState } from "@/components/empty-state";
-import { PageHeader } from "@/components/page-header";
+import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -37,7 +36,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import type { Lead } from "@/lib/types";
 import { getLeads, createLead, updateLead } from "@/server-functions/leads";
@@ -46,7 +52,10 @@ export const Route = createFileRoute("/leads")({
   head: () => ({
     meta: [
       { title: "Leads — Fimmick ClientOps" },
-      { name: "description", content: "All inbound leads with status, source, and qualification score." },
+      {
+        name: "description",
+        content: "All inbound leads with status, source, and qualification score.",
+      },
     ],
   }),
   loader: () => getLeads({}),
@@ -68,7 +77,13 @@ function LeadsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [newOpen, setNewOpen] = useState(false);
 
-  const handleCreateLead = async (formData: { company_name: string; enquiry_text?: string; source?: Lead["source"]; contact_name?: string; contact_email?: string }) => {
+  const handleCreateLead = async (formData: {
+    company_name: string;
+    enquiry_text?: string;
+    source?: Lead["source"];
+    contact_name?: string;
+    contact_email?: string;
+  }) => {
     await createLead({ data: formData });
     router.invalidate();
     setNewOpen(false);
@@ -97,7 +112,11 @@ function LeadsPage() {
   const toggle = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };
@@ -119,9 +138,10 @@ function LeadsPage() {
 
   return (
     <>
-      <PageHeader
+      <CommandHeader
         title="Lead Inbox"
-        description={`${filtered.length} of ${rows.length} leads`}
+        status="Acquire"
+        description={`${filtered.length} of ${rows.length} leads ready for triage, assignment, or follow-up.`}
         actions={
           <>
             <Button
@@ -131,16 +151,33 @@ function LeadsPage() {
             >
               <Download className="mr-2 h-4 w-4" /> Import CSV
             </Button>
-            <NewLeadDialog
-              open={newOpen}
-              onOpenChange={setNewOpen}
-              onCreate={handleCreateLead}
-            />
+            <NewLeadDialog open={newOpen} onOpenChange={setNewOpen} onCreate={handleCreateLead} />
           </>
         }
       />
 
       <div className="space-y-4 px-6 py-6">
+        <MetricStrip
+          metrics={[
+            {
+              label: "Hot leads",
+              value: rows.filter((lead) => lead.lead_score >= 75).length,
+              hint: "score 75+",
+            },
+            {
+              label: "Unassigned",
+              value: rows.filter((lead) => !lead.assigned_to).length,
+              hint: "needs owner",
+            },
+            {
+              label: "Qualified",
+              value: rows.filter((lead) => lead.status === "qualified").length,
+              hint: "ready to convert",
+            },
+          ]}
+          columns={3}
+        />
+
         <Card className="p-3">
           <div className="flex flex-wrap items-center gap-2">
             <Input
@@ -205,7 +242,10 @@ function LeadsPage() {
                   <X className="h-3 w-3" />
                 </button>
               ))}
-              <button onClick={clearFilters} className="text-xs text-muted-foreground hover:underline">
+              <button
+                onClick={clearFilters}
+                className="text-xs text-muted-foreground hover:underline"
+              >
                 Clear all
               </button>
             </div>
@@ -218,16 +258,14 @@ function LeadsPage() {
             onAssign={async (uid) => {
               await Promise.all(
                 Array.from(selected).map((id) =>
-                  updateLead({ data: { id, updates: { assigned_to: uid } } })
-                )
+                  updateLead({ data: { id, updates: { assigned_to: uid } } }),
+                ),
               );
               setSelected(new Set());
               router.invalidate();
             }}
             onMarkStatus={(s) => {
-              setRows((prev) =>
-                prev.map((l) => (selected.has(l.id) ? { ...l, status: s } : l)),
-              );
+              setRows((prev) => prev.map((l) => (selected.has(l.id) ? { ...l, status: s } : l)));
               toast.success(`Marked ${selected.size} lead${selected.size > 1 ? "s" : ""} as ${s}`);
               setSelected(new Set());
             }}
@@ -285,7 +323,9 @@ function LeadsPage() {
                       <div className="text-xs text-muted-foreground">{lead.contact_email}</div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs capitalize text-muted-foreground">{lead.source}</span>
+                      <span className="text-xs capitalize text-muted-foreground">
+                        {lead.source}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <StatusBadge value={lead.status} />
@@ -301,7 +341,9 @@ function LeadsPage() {
                           {lead.qualification_data.next_action}
                         </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">awaiting qualification</span>
+                        <span className="text-xs text-muted-foreground">
+                          awaiting qualification
+                        </span>
                       )}
                     </TableCell>
                   </TableRow>
@@ -309,13 +351,13 @@ function LeadsPage() {
               })}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10">
-                    <EmptyState
-                      title="No leads match your filters"
-                      description="Try clearing a filter or adding a new lead."
+                  <TableCell colSpan={8} className="p-4">
+                    <WorkSurfaceEmpty
+                      title="No leads match this view"
+                      description="Clear filters or add a new lead to keep the sales queue moving."
                       action={
-                        <Button size="sm" onClick={() => setNewOpen(true)}>
-                          <Plus className="mr-2 h-4 w-4" /> New lead
+                        <Button size="sm" variant="outline" onClick={clearFilters}>
+                          Clear filters
                         </Button>
                       }
                     />
@@ -337,7 +379,13 @@ function NewLeadDialog({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onCreate: (formData: { company_name: string; enquiry_text?: string; source?: Lead["source"]; contact_name?: string; contact_email?: string }) => Promise<void>;
+  onCreate: (formData: {
+    company_name: string;
+    enquiry_text?: string;
+    source?: Lead["source"];
+    contact_name?: string;
+    contact_email?: string;
+  }) => Promise<void>;
 }) {
   const [company, setCompany] = useState("");
   const [contact, setContact] = useState("");
@@ -503,7 +551,9 @@ function LeadsBulkBar({
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign {count} lead{count > 1 ? "s" : ""}</DialogTitle>
+            <DialogTitle>
+              Assign {count} lead{count > 1 ? "s" : ""}
+            </DialogTitle>
             <DialogDescription>Pick a new owner. Reassignment is logged.</DialogDescription>
           </DialogHeader>
           <div>
