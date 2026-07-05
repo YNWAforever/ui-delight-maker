@@ -22,7 +22,36 @@ describe("sidebar responsive display", () => {
     expect(appSidebarSource).toContain('renderGroup("Convert"');
     expect(appSidebarSource).toContain('renderGroup("Retain"');
     expect(appSidebarSource).toContain('renderGroup("Operate"');
-    expect(appSidebarSource).toContain('title: "Revenue Desk", url: "/"');
-    expect(appSidebarSource).toContain('title: "AI Review", url: "/ai-review"');
+    const expectedItems = [
+      { title: "Revenue Desk", url: "/" },
+      { title: "Leads", url: "/leads" },
+      { title: "AI Review", url: "/ai-review" },
+      { title: "Pipeline", url: "/" },
+      { title: "Quotes", url: "/quotes" },
+      { title: "Approvals", url: "/approvals" },
+      { title: "Clients", url: "/clients" },
+      { title: "Renewals", url: "/renewals" },
+      { title: "Tasks", url: "/tasks" },
+      { title: "Agents", url: "/agents" },
+      { title: "Reports", url: "/reports" },
+      { title: "Settings", url: "/settings" },
+    ];
+
+    for (const item of expectedItems) {
+      expect(appSidebarSource).toContain(`title: "${item.title}", url: "${item.url}"`);
+    }
+  });
+
+  it("does not mark Pipeline active on the Revenue Desk route", () => {
+    const appSidebarSource = readFileSync(
+      new URL("../../app-sidebar.tsx", import.meta.url),
+      "utf8",
+    );
+
+    expect(appSidebarSource).toContain(
+      '{ title: "Pipeline", url: "/", icon: LayoutDashboard, activePath: null }',
+    );
+    expect(appSidebarSource).toContain("const isActive = (item: SidebarItem)");
+    expect(appSidebarSource).toContain("isActive(item)");
   });
 });

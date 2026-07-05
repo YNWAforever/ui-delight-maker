@@ -36,7 +36,7 @@ const acquireItems = [
 ];
 
 const convertItems = [
-  { title: "Pipeline", url: "/", icon: LayoutDashboard },
+  { title: "Pipeline", url: "/", icon: LayoutDashboard, activePath: null },
   { title: "Quotes", url: "/quotes", icon: FileText },
   { title: "Approvals", url: "/approvals", icon: ShieldCheck },
 ];
@@ -57,6 +57,7 @@ type SidebarItem = {
   title: string;
   url: string;
   icon: LucideIcon;
+  activePath?: string | null;
 };
 
 interface AppSidebarProps {
@@ -69,7 +70,11 @@ export function AppSidebar({ profile, onSignOut }: AppSidebarProps) {
     select: (s) => s.location.pathname,
   });
 
-  const isActive = (path: string) => {
+  const isActive = (item: SidebarItem) => {
+    if (item.activePath === null) return false;
+
+    const path = item.activePath ?? item.url;
+
     if (path === "/") return currentPath === "/";
     return currentPath === path || currentPath.startsWith(path + "/");
   };
@@ -81,7 +86,7 @@ export function AppSidebar({ profile, onSignOut }: AppSidebarProps) {
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+              <SidebarMenuButton asChild isActive={isActive(item)} tooltip={item.title}>
                 <Link to={item.url}>
                   <item.icon className="h-4 w-4" />
                   <span>{item.title}</span>
