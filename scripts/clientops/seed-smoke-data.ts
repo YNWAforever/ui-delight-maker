@@ -4,6 +4,7 @@ import {
   assertSeedAllowed,
   buildSeedDates,
   getSeedMode,
+  isFullDemoSeedMode,
   type ClientOpsSeedMode,
 } from "../../src/lib/clientops-seed";
 import {
@@ -422,65 +423,172 @@ async function seedLeads(db: Queryable, ctx: SeedContext) {
 }
 
 async function seedClients(db: Queryable, ctx: SeedContext) {
-  if (ctx.mode !== "local-demo-reset") return;
+  if (!isFullDemoSeedMode(ctx.mode)) return;
 
   for (const client of DEMO_CLIENTS) {
-    const result = await db.query<{ id: string }>(
-      `
-        insert into clients (company_name, industry, tier, account_owner, health_score, onboarding_status)
-        values ($1, $2, $3, $4, 50, 'live')
-        returning id
-      `,
-      [client.company_name, client.industry, client.tier, ctx.profileIds.get(client.ownerKey)],
+    const ownerId = ctx.profileIds.get(client.ownerKey) ?? null;
+    const existing = await db.query<{ id: string }>(
+      "select id from clients where lower(company_name) = lower($1) limit 1",
+      [client.company_name],
     );
-    ctx.clientIds.set(client.key, result.rows[0].id);
+    let id = existing.rows[0]?.id;
+
+    if (!id) {
+      const inserted = await db.query<{ id: string }>(
+        `
+          insert into clients
+            (company_name, industry, tier, account_owner, health_score, onboarding_status)
+          values
+            ($1, $2, $3, $4, 50, 'live')
+          returning id
+        `,
+        [client.company_name, client.industry, client.tier, ownerId],
+      );
+      id = inserted.rows[0].id;
+    }
+
+    await db.query(
+      `
+        update clients
+        set company_name = $2,
+            industry = $3,
+            tier = $4,
+            account_owner = $5,
+            health_score = 50,
+            onboarding_status = 'live'
+        where id = $1
+      `,
+      [id, client.company_name, client.industry, client.tier, ownerId],
+    );
+
+    ctx.clientIds.set(client.key, id);
   }
 }
 
 async function seedClientContacts(db: Queryable, ctx: SeedContext, hasClientContacts: boolean) {
-  if (ctx.mode !== "local-demo-reset" || !hasClientContacts) return;
+  if (!isFullDemoSeedMode(ctx.mode) || !hasClientContacts) return;
 
   for (const contact of DEMO_CONTACTS) {
-    const result = await db.query<{ id: string }>(
+    const clientId = ctx.clientIds.get(contact.clientKey);
+    if (!clientId) continue;
+
+    const existing = await db.query<{ id: string }>(
       `
-        insert into client_contacts (client_id, name, title, email, phone, is_primary)
-        values ($1, $2, $3, $4, $5, $6)
-        returning id
+        select id
+        from client_contacts
+        where client_id = $1
+          and lower(coalesce(email, '')) = lower($2)
+        limit 1
       `,
-      [
-        ctx.clientIds.get(contact.clientKey),
-        contact.name,
-        contact.title,
-        contact.email,
-        contact.phone,
-        contact.is_primary,
-      ],
+      [clientId, contact.email],
     );
-    ctx.contactIds.set(contact.key, result.rows[0].id);
+    let id = existing.rows[0]?.id;
+
+    if (!id) {
+      const inserted = await db.query<{ id: string }>(
+        `
+          insert into client_contacts (client_id, name, title, email, phone, is_primary)
+          values ($1, $2, $3, $4, $5, $6)
+          returning id
+        `,
+        [clientId, contact.name, contact.title, contact.email, contact.phone, contact.is_primary],
+      );
+      id = inserted.rows[0].id;
+    }
+
+    await db.query(
+      `
+        update client_contacts
+        set client_id = $2,
+            name = $3,
+            title = $4,
+            email = $5,
+            phone = $6,
+            is_primary = $7
+        where id = $1
+      `,
+      [id, clientId, contact.name, contact.title, contact.email, contact.phone, contact.is_primary],
+    );
+
+    ctx.contactIds.set(contact.key, id);
   }
 }
 
 async function seedEngagements(db: Queryable, ctx: SeedContext, hasEngagements: boolean) {
-  if (ctx.mode !== "local-demo-reset" || !hasEngagements) return;
+  if (!isFullDemoSeedMode(ctx.mode) || !hasEngagements) return;
 
   for (const engagement of DEMO_ENGAGEMENTS) {
     const productId = ctx.productIds.get(engagement.productKey);
     const clientId = ctx.clientIds.get(engagement.clientKey);
     if (!productId || !clientId) continue;
+    const leadId = engagement.leadKey ? (ctx.leadIds.get(engagement.leadKey) ?? null) : null;
 
-    const result = await db.query<{ id: string }>(
+    const existing = await db.query<{ id: string }>(
       `
-        insert into engagements
-          (client_id, product_id, owner, value, billing_period, start_date, renewal_date, status,
-           health_score, renewal_risk, risk_reasoning, next_action, last_touch_at, lead_id)
-        values
-          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-        returning id
+        select id
+        from engagements
+        where client_id = $1
+          and product_id = $2
+        limit 1
+      `,
+      [clientId, productId],
+    );
+    let id = existing.rows[0]?.id;
+
+    if (!id) {
+      const inserted = await db.query<{ id: string }>(
+        `
+          insert into engagements
+            (client_id, product_id, owner, value, billing_period, start_date, renewal_date, status,
+             health_score, renewal_risk, risk_reasoning, next_action, last_touch_at, lead_id)
+          values
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          returning id
+        `,
+        [
+          clientId,
+          productId,
+          ctx.profileIds.get(engagement.ownerKey) ?? null,
+          engagement.value,
+          engagement.billing_period,
+          ctx.dates[engagement.startDateKey],
+          ctx.dates[engagement.renewalDateKey],
+          engagement.status,
+          engagement.health_score,
+          engagement.renewal_risk,
+          engagement.risk_reasoning,
+          engagement.next_action,
+          engagement.lastTouchKey ? ctx.dates[engagement.lastTouchKey] : null,
+          leadId,
+        ],
+      );
+      id = inserted.rows[0].id;
+    }
+
+    await db.query(
+      `
+        update engagements
+        set client_id = $2,
+            product_id = $3,
+            owner = $4,
+            value = $5,
+            billing_period = $6,
+            start_date = $7,
+            renewal_date = $8,
+            status = $9,
+            health_score = $10,
+            renewal_risk = $11,
+            risk_reasoning = $12,
+            next_action = $13,
+            last_touch_at = $14,
+            lead_id = $15
+        where id = $1
       `,
       [
+        id,
         clientId,
         productId,
-        ctx.profileIds.get(engagement.ownerKey),
+        ctx.profileIds.get(engagement.ownerKey) ?? null,
         engagement.value,
         engagement.billing_period,
         ctx.dates[engagement.startDateKey],
@@ -491,42 +599,85 @@ async function seedEngagements(db: Queryable, ctx: SeedContext, hasEngagements: 
         engagement.risk_reasoning,
         engagement.next_action,
         engagement.lastTouchKey ? ctx.dates[engagement.lastTouchKey] : null,
-        engagement.leadKey ? (ctx.leadIds.get(engagement.leadKey) ?? null) : null,
+        leadId,
       ],
     );
-    ctx.engagementIds.set(engagement.key, result.rows[0].id);
+
+    ctx.engagementIds.set(engagement.key, id);
   }
 }
 
 async function seedQuotes(db: Queryable, ctx: SeedContext) {
-  if (ctx.mode !== "local-demo-reset") return;
+  if (!isFullDemoSeedMode(ctx.mode)) return;
 
   for (const quote of DEMO_QUOTES) {
-    const result = await db.query<{ id: string }>(
+    const leadId = quote.leadKey ? (ctx.leadIds.get(quote.leadKey) ?? null) : null;
+    const clientId = quote.clientKey ? (ctx.clientIds.get(quote.clientKey) ?? null) : null;
+    const validUntil = addDaysToDateString(ctx.dates.today, quote.validUntilOffsetDays);
+    const createdBy = ctx.profileIds.get(quote.createdByKey) ?? null;
+    const lineItems = jsonb(quote.line_items);
+    const existing = await db.query<{ id: string }>(
+      "select id from quotes where number = $1 limit 1",
+      [quote.number],
+    );
+    let id = existing.rows[0]?.id;
+
+    if (!id) {
+      const inserted = await db.query<{ id: string }>(
+        `
+          insert into quotes
+            (number, lead_id, client_id, status, total_value, currency, valid_until, line_items, created_by)
+          values
+            ($1, $2, $3, $4, $5, 'HKD', $6, $7::jsonb, $8)
+          returning id
+        `,
+        [
+          quote.number,
+          leadId,
+          clientId,
+          quote.status,
+          quote.total_value,
+          validUntil,
+          lineItems,
+          createdBy,
+        ],
+      );
+      id = inserted.rows[0].id;
+    }
+
+    await db.query(
       `
-        insert into quotes
-          (number, lead_id, client_id, status, total_value, currency, valid_until, line_items, created_by)
-        values
-          ($1, $2, $3, $4, $5, 'HKD', $6, $7::jsonb, $8)
-        returning id
+        update quotes
+        set number = $2,
+            lead_id = $3,
+            client_id = $4,
+            status = $5,
+            total_value = $6,
+            currency = 'HKD',
+            valid_until = $7,
+            line_items = $8::jsonb,
+            created_by = $9
+        where id = $1
       `,
       [
+        id,
         quote.number,
-        quote.leadKey ? (ctx.leadIds.get(quote.leadKey) ?? null) : null,
-        quote.clientKey ? (ctx.clientIds.get(quote.clientKey) ?? null) : null,
+        leadId,
+        clientId,
         quote.status,
         quote.total_value,
-        addDaysToDateString(ctx.dates.today, quote.validUntilOffsetDays),
-        jsonb(quote.line_items),
-        ctx.profileIds.get(quote.createdByKey),
+        validUntil,
+        lineItems,
+        createdBy,
       ],
     );
-    ctx.quoteIds.set(quote.key, result.rows[0].id);
+
+    ctx.quoteIds.set(quote.key, id);
   }
 }
 
 async function seedAgentRuns(db: Queryable, ctx: SeedContext) {
-  if (ctx.mode !== "local-demo-reset") return;
+  if (!isFullDemoSeedMode(ctx.mode)) return;
 
   for (const run of DEMO_AGENT_RUNS) {
     const subjectId =
@@ -534,81 +685,231 @@ async function seedAgentRuns(db: Queryable, ctx: SeedContext) {
         ? ctx.leadIds.get(run.subjectKey)
         : ctx.engagementIds.get(run.subjectKey);
     if (!subjectId) continue;
+    const inputData = jsonb({ demo: true, demo_key: run.key, subject_key: run.subjectKey });
+    const outputData = jsonb({ demo: true, demo_key: run.key, summary: run.output_summary });
 
-    const result = await db.query<{ id: string }>(
+    const existing = await db.query<{ id: string }>(
       `
-        insert into agent_runs
-          (agent_name, workflow_type, trigger_type, subject_type, subject_id, input_data,
-           output_data, output_summary, status, confidence_score, human_review_required, model_used, created_by)
-        values
-          ($1, $2, 'manual', $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9, $10, $11, $12)
-        returning id
+        select id
+        from agent_runs
+        where input_data->>'demo_key' = $1
+           or (
+             agent_name = $2
+             and workflow_type = $3
+             and subject_type = $4
+             and subject_id = $5
+             and input_data->>'subject_key' = $6
+           )
+        limit 1
+      `,
+      [run.key, run.agent_name, run.workflow_type, run.subjectType, subjectId, run.subjectKey],
+    );
+    let id = existing.rows[0]?.id;
+
+    if (!id) {
+      const inserted = await db.query<{ id: string }>(
+        `
+          insert into agent_runs
+            (agent_name, workflow_type, trigger_type, subject_type, subject_id, input_data,
+             output_data, output_summary, status, confidence_score, human_review_required, model_used, created_by)
+          values
+            ($1, $2, 'manual', $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9, $10, $11, $12)
+          returning id
+        `,
+        [
+          run.agent_name,
+          run.workflow_type,
+          run.subjectType,
+          subjectId,
+          inputData,
+          outputData,
+          run.output_summary,
+          run.status,
+          run.confidence_score,
+          run.human_review_required,
+          run.model_used,
+          ctx.profileIds.get("sales") ?? null,
+        ],
+      );
+      id = inserted.rows[0].id;
+    }
+
+    await db.query(
+      `
+        update agent_runs
+        set agent_name = $2,
+            workflow_type = $3,
+            trigger_type = 'manual',
+            subject_type = $4,
+            subject_id = $5,
+            input_data = $6::jsonb,
+            output_data = $7::jsonb,
+            output_summary = $8,
+            status = $9,
+            confidence_score = $10,
+            human_review_required = $11,
+            model_used = $12,
+            created_by = $13
+        where id = $1
       `,
       [
+        id,
         run.agent_name,
         run.workflow_type,
         run.subjectType,
         subjectId,
-        jsonb({ demo: true, subject_key: run.subjectKey }),
-        jsonb({ demo: true, summary: run.output_summary }),
+        inputData,
+        outputData,
         run.output_summary,
         run.status,
         run.confidence_score,
         run.human_review_required,
         run.model_used,
-        ctx.profileIds.get("sales"),
+        ctx.profileIds.get("sales") ?? null,
       ],
     );
-    ctx.agentRunIds.set(run.key, result.rows[0].id);
+
+    ctx.agentRunIds.set(run.key, id);
   }
 }
 
 async function seedApprovals(db: Queryable, ctx: SeedContext) {
-  if (ctx.mode !== "local-demo-reset") return;
+  if (!isFullDemoSeedMode(ctx.mode)) return;
 
   for (const approval of DEMO_APPROVALS) {
     const agentRunId = ctx.agentRunIds.get(approval.runKey);
     if (!agentRunId) continue;
+    const contextData = jsonb({ demo: true, demo_key: approval.key, approval_key: approval.key });
+    const assignedTo = ctx.profileIds.get(approval.assignedToKey) ?? null;
 
-    const result = await db.query<{ id: string }>(
+    const existing = await db.query<{ id: string }>(
       `
-        insert into human_approvals
-          (agent_run_id, approval_type, requested_by, assigned_to, status, context_data, context_summary)
-        values
-          ($1, $2, 'Demo Agent', $3, $4, $5::jsonb, $6)
-        returning id
+        select id
+        from human_approvals
+        where context_data->>'demo_key' = $1
+           or (
+             agent_run_id = $2
+             and approval_type = $3
+             and context_data->>'approval_key' = $1
+           )
+        limit 1
+      `,
+      [approval.key, agentRunId, approval.approval_type],
+    );
+    let id = existing.rows[0]?.id;
+
+    if (!id) {
+      const inserted = await db.query<{ id: string }>(
+        `
+          insert into human_approvals
+            (agent_run_id, approval_type, requested_by, assigned_to, status, context_data, context_summary)
+          values
+            ($1, $2, 'Demo Agent', $3, $4, $5::jsonb, $6)
+          returning id
+        `,
+        [
+          agentRunId,
+          approval.approval_type,
+          assignedTo,
+          approval.status,
+          contextData,
+          approval.context_summary,
+        ],
+      );
+      id = inserted.rows[0].id;
+    }
+
+    await db.query(
+      `
+        update human_approvals
+        set agent_run_id = $2,
+            approval_type = $3,
+            requested_by = 'Demo Agent',
+            assigned_to = $4,
+            status = $5,
+            context_data = $6::jsonb,
+            context_summary = $7
+        where id = $1
       `,
       [
+        id,
         agentRunId,
         approval.approval_type,
-        ctx.profileIds.get(approval.assignedToKey),
+        assignedTo,
         approval.status,
-        jsonb({ demo: true, approval_key: approval.key }),
+        contextData,
         approval.context_summary,
       ],
     );
-    ctx.approvalIds.set(approval.key, result.rows[0].id);
+
+    ctx.approvalIds.set(approval.key, id);
   }
 }
 
 async function seedTasks(db: Queryable, ctx: SeedContext) {
-  if (ctx.mode !== "local-demo-reset") return;
+  if (!isFullDemoSeedMode(ctx.mode)) return;
 
   for (const task of DEMO_TASKS) {
+    const leadId = task.leadKey ? (ctx.leadIds.get(task.leadKey) ?? null) : null;
+    const clientId = task.clientKey ? (ctx.clientIds.get(task.clientKey) ?? null) : null;
+    const dueDate = task.dueDateKey ? ctx.dates[task.dueDateKey] : null;
+    const assignedTo = ctx.profileIds.get(task.assignedToKey) ?? null;
+    const existing = await db.query<{ id: string }>(
+      `
+        select id
+        from tasks
+        where title = $1
+          and lead_id is not distinct from $2::uuid
+          and client_id is not distinct from $3::uuid
+        limit 1
+      `,
+      [task.title, leadId, clientId],
+    );
+    const id = existing.rows[0]?.id;
+
+    if (!id) {
+      await db.query(
+        `
+          insert into tasks
+            (title, description, assigned_to, lead_id, client_id, due_date, priority, status)
+          values
+            ($1, $2, $3, $4, $5, $6, $7, $8)
+        `,
+        [
+          task.title,
+          task.description,
+          assignedTo,
+          leadId,
+          clientId,
+          dueDate,
+          task.priority,
+          task.status,
+        ],
+      );
+      continue;
+    }
+
     await db.query(
       `
-        insert into tasks
-          (title, description, assigned_to, lead_id, client_id, due_date, priority, status)
-        values
-          ($1, $2, $3, $4, $5, $6, $7, $8)
+        update tasks
+        set title = $2,
+            description = $3,
+            assigned_to = $4,
+            lead_id = $5,
+            client_id = $6,
+            due_date = $7,
+            priority = $8,
+            status = $9
+        where id = $1
       `,
       [
+        id,
         task.title,
         task.description,
-        ctx.profileIds.get(task.assignedToKey),
-        task.leadKey ? (ctx.leadIds.get(task.leadKey) ?? null) : null,
-        task.clientKey ? (ctx.clientIds.get(task.clientKey) ?? null) : null,
-        task.dueDateKey ? ctx.dates[task.dueDateKey] : null,
+        assignedTo,
+        leadId,
+        clientId,
+        dueDate,
         task.priority,
         task.status,
       ],
@@ -617,32 +918,84 @@ async function seedTasks(db: Queryable, ctx: SeedContext) {
 }
 
 async function seedTouchpoints(db: Queryable, ctx: SeedContext, hasTouchpoints: boolean) {
-  if (ctx.mode !== "local-demo-reset" || !hasTouchpoints) return;
+  if (!isFullDemoSeedMode(ctx.mode) || !hasTouchpoints) return;
 
   for (const touchpoint of DEMO_TOUCHPOINTS) {
+    const clientId = ctx.clientIds.get(touchpoint.clientKey);
+    if (!clientId) continue;
+    const engagementId = touchpoint.engagementKey
+      ? (ctx.engagementIds.get(touchpoint.engagementKey) ?? null)
+      : null;
+    const contactId = touchpoint.contactKey
+      ? (ctx.contactIds.get(touchpoint.contactKey) ?? null)
+      : null;
+    const occurredAt = ctx.dates[touchpoint.occurredAtKey];
+    const loggedBy = ctx.profileIds.get(touchpoint.loggedByKey) ?? null;
+    const existing = await db.query<{ id: string }>(
+      `
+        select id
+        from touchpoints
+        where client_id = $1
+          and type = $2
+          and notes = $3
+        limit 1
+      `,
+      [clientId, touchpoint.type, touchpoint.notes],
+    );
+    const id = existing.rows[0]?.id;
+
+    if (!id) {
+      await db.query(
+        `
+          insert into touchpoints
+            (client_id, engagement_id, contact_id, type, sentiment, notes, occurred_at, logged_by)
+          values
+            ($1, $2, $3, $4, $5, $6, $7, $8)
+        `,
+        [
+          clientId,
+          engagementId,
+          contactId,
+          touchpoint.type,
+          touchpoint.sentiment,
+          touchpoint.notes,
+          occurredAt,
+          loggedBy,
+        ],
+      );
+      continue;
+    }
+
     await db.query(
       `
-        insert into touchpoints
-          (client_id, engagement_id, contact_id, type, sentiment, notes, occurred_at, logged_by)
-        values
-          ($1, $2, $3, $4, $5, $6, $7, $8)
+        update touchpoints
+        set client_id = $2,
+            engagement_id = $3,
+            contact_id = $4,
+            type = $5,
+            sentiment = $6,
+            notes = $7,
+            occurred_at = $8,
+            logged_by = $9
+        where id = $1
       `,
       [
-        ctx.clientIds.get(touchpoint.clientKey),
-        touchpoint.engagementKey ? (ctx.engagementIds.get(touchpoint.engagementKey) ?? null) : null,
-        touchpoint.contactKey ? (ctx.contactIds.get(touchpoint.contactKey) ?? null) : null,
+        id,
+        clientId,
+        engagementId,
+        contactId,
         touchpoint.type,
         touchpoint.sentiment,
         touchpoint.notes,
-        ctx.dates[touchpoint.occurredAtKey],
-        ctx.profileIds.get(touchpoint.loggedByKey),
+        occurredAt,
+        loggedBy,
       ],
     );
   }
 }
 
 async function seedNotifications(db: Queryable, ctx: SeedContext, hasNotifications: boolean) {
-  if (ctx.mode !== "local-demo-reset" || !hasNotifications) return;
+  if (!isFullDemoSeedMode(ctx.mode) || !hasNotifications) return;
 
   for (const notification of DEMO_NOTIFICATIONS) {
     const objectId =
@@ -650,40 +1003,85 @@ async function seedNotifications(db: Queryable, ctx: SeedContext, hasNotificatio
         ? ctx.engagementIds.get(notification.objectKey)
         : ctx.approvalIds.get(notification.objectKey);
     if (!objectId) continue;
+    const userId = ctx.profileIds.get(notification.userKey);
+    if (!userId) continue;
+    const dedupeKey = `demo:${notification.key}`;
+    const readAt = notification.read ? ctx.dates.recentTouch : null;
+    const existing = await db.query<{ id: string }>(
+      "select id from notifications where dedupe_key = $1 limit 1",
+      [dedupeKey],
+    );
+    const id = existing.rows[0]?.id;
+
+    if (!id) {
+      await db.query(
+        `
+          insert into notifications
+            (user_id, type, title, body, object_type, object_id, dedupe_key, read_at)
+          values
+            ($1, $2, $3, $4, $5, $6, $7, $8)
+        `,
+        [
+          userId,
+          notification.type,
+          notification.title,
+          notification.body,
+          notification.objectType,
+          objectId,
+          dedupeKey,
+          readAt,
+        ],
+      );
+      continue;
+    }
 
     await db.query(
       `
-        insert into notifications
-          (user_id, type, title, body, object_type, object_id, dedupe_key, read_at)
-        values
-          ($1, $2, $3, $4, $5, $6, $7, $8)
+        update notifications
+        set user_id = $2,
+            type = $3,
+            title = $4,
+            body = $5,
+            object_type = $6,
+            object_id = $7,
+            dedupe_key = $8,
+            read_at = $9
+        where id = $1
       `,
       [
-        ctx.profileIds.get(notification.userKey),
+        id,
+        userId,
         notification.type,
         notification.title,
         notification.body,
         notification.objectType,
         objectId,
-        `demo:${notification.key}`,
-        notification.read ? ctx.dates.recentTouch : null,
+        dedupeKey,
+        readAt,
       ],
     );
   }
 }
 
 async function seedActivityLogs(db: Queryable, ctx: SeedContext) {
-  if (ctx.mode !== "local-demo-reset") return;
+  if (!isFullDemoSeedMode(ctx.mode)) return;
 
   const logs = [
-    ["agent", "run-qualify-beauty", "qualified lead", "lead", "lead-beauty"],
-    ["agent", "run-quote-fitness", "drafted quote", "quote", "quote-fitness"],
-    ["user", "manager", "escalated approval", "approval", "approval-risk-apex"],
-    ["user", "cs", "logged renewal touchpoint", "engagement", "apex-crm"],
-    ["user", "sales", "converted won lead to engagement", "engagement", "cafe-whatsapp"],
+    ["log-qualify-beauty", "agent", "run-qualify-beauty", "qualified lead", "lead", "lead-beauty"],
+    ["log-quote-fitness", "agent", "run-quote-fitness", "drafted quote", "quote", "quote-fitness"],
+    ["log-risk-apex", "user", "manager", "escalated approval", "approval", "approval-risk-apex"],
+    ["log-touch-apex", "user", "cs", "logged renewal touchpoint", "engagement", "apex-crm"],
+    [
+      "log-won-cafe",
+      "user",
+      "sales",
+      "converted won lead to engagement",
+      "engagement",
+      "cafe-whatsapp",
+    ],
   ] as const;
 
-  for (const [actorType, actorKey, action, objectType, objectKey] of logs) {
+  for (const [logKey, actorType, actorKey, action, objectType, objectKey] of logs) {
     const actorId =
       actorType === "agent" ? ctx.agentRunIds.get(actorKey) : ctx.profileIds.get(actorKey);
     const objectId =
@@ -696,22 +1094,55 @@ async function seedActivityLogs(db: Queryable, ctx: SeedContext) {
             : ctx.engagementIds.get(objectKey);
 
     if (!objectId) continue;
+    const diffData = jsonb({ demo: true, demo_key: logKey });
+    const existing = await db.query<{ id: string }>(
+      "select id from activity_logs where diff_data->>'demo_key' = $1 limit 1",
+      [logKey],
+    );
+    const id = existing.rows[0]?.id;
+
+    if (!id) {
+      await db.query(
+        `
+          insert into activity_logs
+            (actor_type, actor_id, actor_name, action, object_type, object_id, diff_data)
+          values
+            ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        `,
+        [
+          actorType,
+          actorId ?? null,
+          actorType === "agent" ? "Demo Agent" : "Demo User",
+          action,
+          objectType,
+          objectId,
+          diffData,
+        ],
+      );
+      continue;
+    }
 
     await db.query(
       `
-        insert into activity_logs
-          (actor_type, actor_id, actor_name, action, object_type, object_id, diff_data)
-        values
-          ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        update activity_logs
+        set actor_type = $2,
+            actor_id = $3,
+            actor_name = $4,
+            action = $5,
+            object_type = $6,
+            object_id = $7,
+            diff_data = $8::jsonb
+        where id = $1
       `,
       [
+        id,
         actorType,
         actorId ?? null,
         actorType === "agent" ? "Demo Agent" : "Demo User",
         action,
         objectType,
         objectId,
-        jsonb({ demo: true }),
+        diffData,
       ],
     );
   }

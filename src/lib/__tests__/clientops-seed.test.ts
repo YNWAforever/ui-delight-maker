@@ -13,8 +13,9 @@ describe("getSeedMode", () => {
     expect(getSeedMode({})).toBe("staging-smoke");
   });
 
-  it("accepts staging-smoke and local-demo-reset", () => {
+  it("accepts staging-smoke, staging-demo, and local-demo-reset", () => {
     expect(getSeedMode({ CLIENTOPS_SEED_MODE: "staging-smoke" })).toBe("staging-smoke");
+    expect(getSeedMode({ CLIENTOPS_SEED_MODE: "staging-demo" })).toBe("staging-demo");
     expect(getSeedMode({ CLIENTOPS_SEED_MODE: "local-demo-reset" })).toBe("local-demo-reset");
   });
 
@@ -45,6 +46,19 @@ describe("assertSeedAllowed", () => {
     expect(() =>
       assertSeedAllowed({
         mode: "staging-smoke",
+        databaseUrl,
+        env: {
+          CLIENTOPS_ALLOW_STAGING_SEED: "1",
+          CLIENTOPS_SEED_TARGET: "staging",
+        },
+      }),
+    ).not.toThrow();
+  });
+
+  it("allows staging-demo with staging gates and no destructive confirmation", () => {
+    expect(() =>
+      assertSeedAllowed({
+        mode: "staging-demo",
         databaseUrl,
         env: {
           CLIENTOPS_ALLOW_STAGING_SEED: "1",

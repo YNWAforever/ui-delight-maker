@@ -24,6 +24,21 @@ bun scripts/clientops/seed-smoke-data.ts
 
 The seed script prints a JSON summary. Record `lead_ids["lead-retail"]` as `SMOKE_LEAD_ID`.
 
+## Staging Demo Data
+
+Use this when the staging or preview app should show the full ClientOps mock dataset. It upserts demo records without truncating existing staging data.
+
+```bash
+CLIENTOPS_ALLOW_STAGING_SEED=1 \
+CLIENTOPS_SEED_MODE=staging-demo \
+CLIENTOPS_SEED_TARGET=staging \
+CLIENTOPS_SEED_TODAY=2026-07-05 \
+DATABASE_URL="$STAGING_DATABASE_URL" \
+bun scripts/clientops/seed-smoke-data.ts
+```
+
+Staging demo uses built-in `DEMO_PROFILES`; do not set the staging smoke profile env vars for this mode.
+
 ## Local Demo Reset
 
 Use this only against a local or disposable database. It truncates demo-facing CRM tables and rebuilds a full lead-flow plus retention dataset.
