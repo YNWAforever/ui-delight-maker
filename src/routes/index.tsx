@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowUpRight, Clock, Flame, Plus, ShieldCheck, Target } from "lucide-react";
 import { toast } from "sonner";
 
@@ -51,6 +51,7 @@ function PipelineCommandCenter() {
   const { leads, quotes, tasks, approvals, agentRuns, activityLogs, products } =
     Route.useLoaderData();
   const router = useRouter();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<PipelineFilters>({
     search: "",
     source: "all",
@@ -200,6 +201,27 @@ function PipelineCommandCenter() {
     router.invalidate();
   };
 
+  const openRevenueAction = (href: string) => {
+    if (href.startsWith("/leads/")) {
+      navigate({ to: "/leads/$id", params: { id: href.slice("/leads/".length) } });
+      return;
+    }
+
+    if (href.startsWith("/clients/")) {
+      navigate({ to: "/clients/$id", params: { id: href.slice("/clients/".length) } });
+      return;
+    }
+
+    if (href === "/approvals") {
+      navigate({ to: "/approvals" });
+      return;
+    }
+
+    if (href === "/tasks") {
+      navigate({ to: "/tasks" });
+    }
+  };
+
   return (
     <>
       <CommandHeader
@@ -249,7 +271,7 @@ function PipelineCommandCenter() {
                 <div className="p-4">
                   <WorkSurfaceEmpty
                     title="No urgent revenue actions"
-                    description="New leads, approvals, overdue tasks, and renewal risks will appear here."
+                    description="New leads, approvals, and overdue tasks will appear here."
                     action={
                       <Button size="sm" variant="outline" asChild>
                         <Link to="/leads">Review leads</Link>
@@ -259,10 +281,11 @@ function PipelineCommandCenter() {
                 </div>
               ) : (
                 revenueActions.slice(0, 6).map((action) => (
-                  <a
+                  <button
                     key={action.id}
-                    href={action.href}
-                    className="block px-4 py-3 transition-colors hover:bg-muted/40"
+                    type="button"
+                    className="block w-full px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                    onClick={() => openRevenueAction(action.href)}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -274,7 +297,7 @@ function PipelineCommandCenter() {
                       </div>
                       <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                     </div>
-                  </a>
+                  </button>
                 ))
               )}
             </div>
