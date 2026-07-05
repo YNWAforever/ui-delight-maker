@@ -1,4 +1,4 @@
-export type ClientOpsSeedMode = "staging-smoke" | "local-demo-reset";
+export type ClientOpsSeedMode = "staging-smoke" | "staging-demo" | "local-demo-reset";
 
 export const CLIENTOPS_DESTRUCTIVE_RESET_CONFIRMATION = "I_UNDERSTAND";
 
@@ -6,8 +6,18 @@ type SeedEnv = Record<string, string | undefined>;
 
 export function getSeedMode(env: SeedEnv): ClientOpsSeedMode {
   const mode = env.CLIENTOPS_SEED_MODE ?? "staging-smoke";
-  if (mode === "staging-smoke" || mode === "local-demo-reset") return mode;
+  if (mode === "staging-smoke" || mode === "staging-demo" || mode === "local-demo-reset") {
+    return mode;
+  }
   throw new Error(`Unsupported CLIENTOPS_SEED_MODE: ${mode}`);
+}
+
+export function isStagingSeedMode(mode: ClientOpsSeedMode) {
+  return mode === "staging-smoke" || mode === "staging-demo";
+}
+
+export function isFullDemoSeedMode(mode: ClientOpsSeedMode) {
+  return mode === "staging-demo" || mode === "local-demo-reset";
 }
 
 export function databaseUrlLooksProductionLike(databaseUrl: string) {
@@ -32,7 +42,7 @@ export function assertSeedAllowed(input: {
     throw new Error("DATABASE_URL looks like production");
   }
 
-  if (input.mode === "staging-smoke") {
+  if (isStagingSeedMode(input.mode)) {
     if (input.env.CLIENTOPS_SEED_TARGET !== "staging") {
       throw new Error("CLIENTOPS_SEED_TARGET must be staging");
     }
