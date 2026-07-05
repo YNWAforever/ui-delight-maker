@@ -7,10 +7,29 @@ import { cn } from "@/lib/utils";
 
 // Search data — will be replaced with a server-side full-text search in a future task.
 // Using empty arrays until the backend search endpoint is available.
-const leads: { id: string; company_name: string; contact_name: string; contact_email: string; status: string }[] = [];
-const quotes: { id: string; number: string; status: string; currency: string; total_value: number }[] = [];
+const leads: {
+  id: string;
+  company_name: string;
+  contact_name: string;
+  contact_email: string;
+  status: string;
+}[] = [];
+const quotes: {
+  id: string;
+  number: string;
+  status: string;
+  currency: string;
+  total_value: number;
+}[] = [];
 const clients: { id: string; company_name: string; industry: string; tier: string }[] = [];
-const tasks: { id: string; title: string; description: string; status: string; priority: string; due_date: string }[] = [];
+const tasks: {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  due_date: string;
+}[] = [];
 
 type Result = {
   id: string;
@@ -85,10 +104,7 @@ export function GlobalSearch() {
       }
     }
     for (const c of clients) {
-      if (
-        c.company_name.toLowerCase().includes(term) ||
-        c.industry.toLowerCase().includes(term)
-      ) {
+      if (c.company_name.toLowerCase().includes(term) || c.industry.toLowerCase().includes(term)) {
         out.push({
           id: c.id,
           type: "Client",
@@ -100,10 +116,7 @@ export function GlobalSearch() {
       }
     }
     for (const t of tasks) {
-      if (
-        t.title.toLowerCase().includes(term) ||
-        t.description.toLowerCase().includes(term)
-      ) {
+      if (t.title.toLowerCase().includes(term) || t.description.toLowerCase().includes(term)) {
         out.push({
           id: t.id,
           type: "Task",
@@ -172,9 +185,7 @@ export function GlobalSearch() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{r.title}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {r.subtitle}
-                  </div>
+                  <div className="truncate text-xs text-muted-foreground">{r.subtitle}</div>
                 </div>
                 <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   {r.type}

@@ -28,13 +28,32 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/format";
 import { calculateTotal, newLineItem } from "@/lib/quote-utils";
 import type { PricingTemplate, QuoteLineItem, QuoteStatus } from "@/lib/types";
-import { getQuote, getPricingTemplates, requestQuoteApproval, updateQuote } from "@/server-functions/quotes";
+import {
+  getQuote,
+  getPricingTemplates,
+  requestQuoteApproval,
+  updateQuote,
+} from "@/server-functions/quotes";
 import { decideApproval } from "@/server-functions/approvals";
 import { USER_RECORD } from "@/lib/users";
 
 type Comment = { id: string; quote_id: string; author: string; body: string; created_at: string };
-type QuoteFile = { id: string; quote_id: string; name: string; size: string; kind: "pdf" | "docx" | "image" | "email"; uploaded_at: string; uploaded_by: string };
-type QuoteVersion = { version: number; quote_id: string; changed_by: string; summary: string; created_at: string };
+type QuoteFile = {
+  id: string;
+  quote_id: string;
+  name: string;
+  size: string;
+  kind: "pdf" | "docx" | "image" | "email";
+  uploaded_at: string;
+  uploaded_by: string;
+};
+type QuoteVersion = {
+  version: number;
+  quote_id: string;
+  changed_by: string;
+  summary: string;
+  created_at: string;
+};
 
 const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
 // Lead lookups are not available client-side without a server call; return undefined gracefully
@@ -105,11 +124,15 @@ function QuoteDetail() {
   const totalValue = calculateTotal(editItems);
 
   const updateItemQty = (idx: number, qty: number) => {
-    setEditItems((prev) => prev.map((li, i) => (i === idx ? { ...li, qty: Math.max(1, qty) } : li)));
+    setEditItems((prev) =>
+      prev.map((li, i) => (i === idx ? { ...li, qty: Math.max(1, qty) } : li)),
+    );
   };
 
   const updateItemPrice = (idx: number, unit_price: number) => {
-    setEditItems((prev) => prev.map((li, i) => (i === idx ? { ...li, unit_price: Math.max(0, unit_price) } : li)));
+    setEditItems((prev) =>
+      prev.map((li, i) => (i === idx ? { ...li, unit_price: Math.max(0, unit_price) } : li)),
+    );
   };
 
   const removeItem = (idx: number) => {
@@ -124,7 +147,9 @@ function QuoteDetail() {
   const handleSaveDraft = async () => {
     setSaving(true);
     try {
-      await updateQuote({ data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } } });
+      await updateQuote({
+        data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } },
+      });
       toast.success("Draft saved");
       router.invalidate();
     } catch (err) {
@@ -140,7 +165,12 @@ function QuoteDetail() {
       if (approvalId) {
         // Coming from Approvals "Review & Edit" flow:
         // 1. Save edits + advance quote to "sent"
-        await updateQuote({ data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue, status: "sent" } } });
+        await updateQuote({
+          data: {
+            id: quote.id,
+            updates: { line_items: editItems, total_value: totalValue, status: "sent" },
+          },
+        });
         // 2. Mark the human_approval record as approved
         await decideApproval({ data: { id: approvalId, decision: "approved" } });
         setStatus("sent");
@@ -148,7 +178,9 @@ function QuoteDetail() {
         navigate({ to: "/approvals" });
       } else {
         // Plain draft edit: save + request approval (moves to pending_approval + triggers n8n)
-        await updateQuote({ data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } } });
+        await updateQuote({
+          data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } },
+        });
         await requestQuoteApproval({ data: { id: quote.id } });
         setStatus("pending_approval");
         toast.success("Quote submitted for approval");
@@ -225,7 +257,11 @@ function QuoteDetail() {
                 <ArrowLeft className="mr-2 h-4 w-4" /> All
               </Link>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => toast.message("PDF download mocked")}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast.message("PDF download mocked")}
+            >
               <Download className="mr-2 h-4 w-4" /> PDF
             </Button>
             {status === "draft" && (
@@ -287,14 +323,18 @@ function QuoteDetail() {
                             <tr key={li.id}>
                               <td className="py-3">
                                 <div className="font-medium">{li.service}</div>
-                                <div className="text-xs text-muted-foreground">{li.description}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {li.description}
+                                </div>
                               </td>
                               <td className="py-2 text-right">
                                 <Input
                                   type="number"
                                   min={1}
                                   value={li.qty}
-                                  onChange={(e) => updateItemQty(idx, parseInt(e.target.value, 10) || 1)}
+                                  onChange={(e) =>
+                                    updateItemQty(idx, parseInt(e.target.value, 10) || 1)
+                                  }
                                   className="h-8 w-16 text-right tabular-nums"
                                 />
                               </td>
@@ -303,7 +343,9 @@ function QuoteDetail() {
                                   type="number"
                                   min={0}
                                   value={li.unit_price}
-                                  onChange={(e) => updateItemPrice(idx, parseFloat(e.target.value) || 0)}
+                                  onChange={(e) =>
+                                    updateItemPrice(idx, parseFloat(e.target.value) || 0)
+                                  }
                                   className="h-8 w-24 text-right tabular-nums"
                                 />
                               </td>
@@ -338,7 +380,9 @@ function QuoteDetail() {
 
                       <Sheet open={catalogueOpen} onOpenChange={setCatalogueOpen}>
                         <SheetTrigger asChild>
-                          <Button variant="outline" size="sm">+ Add service from catalogue</Button>
+                          <Button variant="outline" size="sm">
+                            + Add service from catalogue
+                          </Button>
                         </SheetTrigger>
                         <SheetContent>
                           <SheetHeader>
@@ -353,7 +397,9 @@ function QuoteDetail() {
                                     className="w-full rounded-md border border-border p-3 text-left text-sm hover:bg-muted/50 transition-colors"
                                   >
                                     <div className="font-medium">{tpl.service}</div>
-                                    <div className="text-xs text-muted-foreground mt-0.5">{tpl.description}</div>
+                                    <div className="text-xs text-muted-foreground mt-0.5">
+                                      {tpl.description}
+                                    </div>
                                     <div className="text-xs font-medium text-primary mt-1">
                                       HKD {(tpl.unit_price ?? 0).toLocaleString()}
                                     </div>
@@ -366,7 +412,10 @@ function QuoteDetail() {
                       </Sheet>
 
                       <div className="flex gap-2 pt-2 border-t border-border">
-                        <Button onClick={handleSubmitForApproval} disabled={saving || editItems.length === 0}>
+                        <Button
+                          onClick={handleSubmitForApproval}
+                          disabled={saving || editItems.length === 0}
+                        >
                           <CheckCircle2 className="mr-2 h-4 w-4" />
                           {approvalId ? "Submit for Approval" : "Save & Request Approval"}
                         </Button>
@@ -386,7 +435,7 @@ function QuoteDetail() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {quote.line_items.map((li: typeof quote.line_items[number]) => (
+                        {quote.line_items.map((li: (typeof quote.line_items)[number]) => (
                           <tr key={li.id}>
                             <td className="py-3">
                               <div className="font-medium">{li.service}</div>
@@ -419,7 +468,10 @@ function QuoteDetail() {
                 <TabsContent value="comments" className="mt-4">
                   <div className="space-y-3">
                     {comments.map((c) => (
-                      <div key={c.id} className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+                      <div
+                        key={c.id}
+                        className="rounded-md border border-border bg-muted/30 p-3 text-sm"
+                      >
                         <div className="flex items-center justify-between">
                           <span className="font-medium">{c.author}</span>
                           <span className="text-xs text-muted-foreground">
@@ -514,7 +566,6 @@ function QuoteDetail() {
                     </ul>
                   )}
                 </TabsContent>
-
 
                 <TabsContent value="preview" className="mt-4">
                   <div className="flex aspect-[1/1.2] items-center justify-center rounded-md border-2 border-dashed border-border bg-muted/30">

@@ -23,7 +23,9 @@ export function createSupabaseServerClient() {
 
 export function createSupabaseServiceClient() {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("Missing required env vars: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
+    throw new Error(
+      "Missing required env vars: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set",
+    );
   }
 
   return createServerClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
