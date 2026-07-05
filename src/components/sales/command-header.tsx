@@ -10,7 +10,7 @@ interface CommandHeaderProps {
 
 export function CommandHeader({ title, status, description, actions, meta }: CommandHeaderProps) {
   return (
-    <div className="border-b border-border bg-background/80 px-6 py-5 backdrop-blur">
+    <header className="border-b border-border bg-background/80 px-6 py-5 backdrop-blur">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           {status && (
@@ -26,6 +26,6 @@ export function CommandHeader({ title, status, description, actions, meta }: Com
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
       {meta && <div className="mt-4">{meta}</div>}
-    </div>
+    </header>
   );
 }

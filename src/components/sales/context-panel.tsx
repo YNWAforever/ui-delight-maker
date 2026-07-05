@@ -1,22 +1,38 @@
 import type { ReactNode } from "react";
 
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
-interface SalesContextPanelProps {
+interface SalesContextPanelBaseProps {
   title: string;
   subtitle?: string;
   children: ReactNode;
-  mobileOpen?: boolean;
-  onMobileOpenChange?: (open: boolean) => void;
 }
 
-export function SalesContextPanel({
-  title,
-  subtitle,
-  children,
-  mobileOpen = false,
-  onMobileOpenChange,
-}: SalesContextPanelProps) {
+interface ControlledSalesContextPanelProps extends SalesContextPanelBaseProps {
+  mobileOpen: boolean;
+  onMobileOpenChange: (open: boolean) => void;
+}
+
+interface UncontrolledSalesContextPanelProps extends SalesContextPanelBaseProps {
+  mobileOpen?: never;
+  onMobileOpenChange?: never;
+}
+
+type SalesContextPanelProps = ControlledSalesContextPanelProps | UncontrolledSalesContextPanelProps;
+
+export function SalesContextPanel(props: SalesContextPanelProps) {
+  const { title, subtitle, children } = props;
+  const sheetProps =
+    props.mobileOpen !== undefined
+      ? { open: props.mobileOpen, onOpenChange: props.onMobileOpenChange }
+      : { defaultOpen: false };
+
   return (
     <>
       <aside
@@ -31,11 +47,13 @@ export function SalesContextPanel({
           {children}
         </div>
       </aside>
-      <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
+      <Sheet {...sheetProps}>
         <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{title}</SheetTitle>
-            {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+            <SheetDescription className={subtitle ? undefined : "sr-only"}>
+              {subtitle ?? `${title} context details`}
+            </SheetDescription>
           </SheetHeader>
           <div className="mt-4">{children}</div>
         </SheetContent>
