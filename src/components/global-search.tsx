@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Input } from "@/components/ui/input";
+import { formatCurrencyAmount } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 // Search data — will be replaced with a server-side full-text search in a future task.
@@ -36,8 +37,7 @@ type Result = {
   type: "Lead" | "Quote" | "Client" | "Task";
   title: string;
   subtitle: string;
-  to: string;
-  params?: Record<string, string>;
+  href: string;
 };
 
 export function GlobalSearch() {
@@ -82,8 +82,7 @@ export function GlobalSearch() {
           type: "Lead",
           title: l.company_name,
           subtitle: `${l.contact_name} · ${l.status}`,
-          to: "/leads/$id",
-          params: { id: l.id },
+          href: `/leads/${l.id}`,
         });
       }
     }
@@ -97,9 +96,8 @@ export function GlobalSearch() {
           id: qt.id,
           type: "Quote",
           title: qt.number,
-          subtitle: `${qt.status} · ${qt.currency} ${qt.total_value.toLocaleString()}`,
-          to: "/quotes/$id",
-          params: { id: qt.id },
+          subtitle: `${qt.status} · ${formatCurrencyAmount(qt.total_value, qt.currency)}`,
+          href: `/quotes/${qt.id}`,
         });
       }
     }
@@ -110,8 +108,7 @@ export function GlobalSearch() {
           type: "Client",
           title: c.company_name,
           subtitle: `${c.industry} · ${c.tier}`,
-          to: "/clients/$id",
-          params: { id: c.id },
+          href: `/clients/${c.id}`,
         });
       }
     }
@@ -122,7 +119,7 @@ export function GlobalSearch() {
           type: "Task",
           title: t.title,
           subtitle: `${t.status} · ${t.priority} · due ${t.due_date}`,
-          to: "/tasks",
+          href: "/tasks",
         });
       }
     }
@@ -134,7 +131,22 @@ export function GlobalSearch() {
   const go = (r: Result) => {
     setOpen(false);
     setQ("");
-    navigate({ to: r.to, params: r.params as never });
+    navigate({ to: r.href as never });
+  };
+
+  const onResultClick = (event: React.MouseEvent<HTMLAnchorElement>, r: Result) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.shiftKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    go(r);
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -154,8 +166,14 @@ export function GlobalSearch() {
 
   return (
     <div ref={wrapRef} className="relative w-full">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Search
+        aria-hidden="true"
+        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+      />
       <Input
+        aria-label="Search workspace"
+        name="global-search"
+        autoComplete="off"
         value={q}
         onChange={(e) => {
           setQ(e.target.value);
@@ -174,10 +192,11 @@ export function GlobalSearch() {
             </div>
           ) : (
             results.map((r, i) => (
-              <button
+              <a
                 key={`${r.type}-${r.id}`}
+                href={r.href}
                 onMouseEnter={() => setActive(i)}
-                onClick={() => go(r)}
+                onClick={(event) => onResultClick(event, r)}
                 className={cn(
                   "flex w-full items-center justify-between gap-3 rounded-sm px-3 py-2 text-left text-sm",
                   i === active && "bg-accent text-accent-foreground",
@@ -190,7 +209,7 @@ export function GlobalSearch() {
                 <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   {r.type}
                 </span>
-              </button>
+              </a>
             ))
           )}
         </div>

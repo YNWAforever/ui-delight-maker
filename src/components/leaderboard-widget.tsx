@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
-import { formatCompactHKD } from "@/lib/format";
+import { formatCompactHKD, formatCount } from "@/lib/format";
 
 // Daily agent performance data — deterministic seed so SSR + client match.
 // Will be replaced with a real Supabase query in a future task.
@@ -644,7 +644,7 @@ function AgentDetailSheet({
         {data && (
           <div className="mt-4 space-y-4">
             <div className="grid grid-cols-3 gap-2">
-              <SummaryStat label="Runs" value={data.totals.runs.toLocaleString()} />
+              <SummaryStat label="Runs" value={formatCount(data.totals.runs)} />
               <SummaryStat label="Success rate" value={`${data.successRate}%`} />
               <SummaryStat label="Value" value={formatCompactHKD(data.totals.value)} />
             </div>
@@ -800,12 +800,14 @@ function AgentFilter({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-3">
         <div className="mb-2 flex items-center justify-between">
-          <Label className="text-xs">Include agents</Label>
+          <p id="leaderboard-agent-filter-label" className="text-xs font-medium">
+            Include agents
+          </p>
           <button onClick={onReset} className="text-[11px] text-muted-foreground hover:underline">
             All
           </button>
         </div>
-        <ul className="space-y-1.5">
+        <ul aria-labelledby="leaderboard-agent-filter-label" className="space-y-1.5">
           {all.map((name) => (
             <li key={name} className="flex items-center gap-2">
               <Checkbox
@@ -841,10 +843,11 @@ function ThresholdPopover({
       <PopoverContent align="end" className="w-72 space-y-4 p-4">
         <div>
           <div className="mb-1 flex items-center justify-between text-xs">
-            <Label>Min runs</Label>
+            <Label htmlFor="leaderboard-min-runs">Min runs</Label>
             <span className="tabular-nums text-muted-foreground">{value.minRuns}</span>
           </div>
           <Slider
+            id="leaderboard-min-runs"
             value={[value.minRuns]}
             min={0}
             max={80}
@@ -854,10 +857,11 @@ function ThresholdPopover({
         </div>
         <div>
           <div className="mb-1 flex items-center justify-between text-xs">
-            <Label>Min success rate</Label>
+            <Label htmlFor="leaderboard-min-success">Min success rate</Label>
             <span className="tabular-nums text-muted-foreground">{value.minSuccess}%</span>
           </div>
           <Slider
+            id="leaderboard-min-success"
             value={[value.minSuccess]}
             min={50}
             max={100}
@@ -867,12 +871,13 @@ function ThresholdPopover({
         </div>
         <div>
           <div className="mb-1 flex items-center justify-between text-xs">
-            <Label>Min attributed value</Label>
+            <Label htmlFor="leaderboard-min-value">Min attributed value</Label>
             <span className="tabular-nums text-muted-foreground">
               {formatCompactHKD(value.minValue)}
             </span>
           </div>
           <Slider
+            id="leaderboard-min-value"
             value={[value.minValue]}
             min={0}
             max={1_500_000}
@@ -899,9 +904,11 @@ function SortPopover({ value, onChange }: { value: SortKey; onChange: (v: SortKe
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-3">
         <div className="mb-2 flex items-center justify-between">
-          <Label className="text-xs">Rank by</Label>
+          <p id="leaderboard-sort-label" className="text-xs font-medium">
+            Rank by
+          </p>
         </div>
-        <ul className="space-y-1">
+        <ul aria-labelledby="leaderboard-sort-label" className="space-y-1">
           {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
             <li key={key}>
               <button

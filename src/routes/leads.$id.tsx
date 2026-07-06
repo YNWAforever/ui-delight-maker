@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Bot,
@@ -31,7 +31,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { formatDateTime } from "@/lib/format";
+import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
 import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
 import type { Lead, LeadStatus } from "@/lib/types";
 import { getLead, triggerLeadAgent, updateLead } from "@/server-functions/leads";
@@ -90,7 +90,6 @@ const STATUSES: LeadStatus[] = ["new", "qualified", "replied", "quoted", "approv
 
 function LeadDetail() {
   const { lead, activityLogs, quotes: relatedQuotes } = Route.useLoaderData();
-  const navigate = useNavigate();
   const router = useRouter();
   useRoutePollingRefresh();
 
@@ -181,23 +180,22 @@ function LeadDetail() {
           <>
             <Button variant="outline" size="sm" asChild>
               <Link to="/leads">
-                <ArrowLeft className="mr-2 h-4 w-4" /> All leads
+                <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" /> All leads
               </Link>
             </Button>
             <Button variant="outline" size="sm" onClick={() => router.invalidate()}>
-              <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+              <RefreshCw aria-hidden="true" className="mr-2 h-4 w-4" /> Refresh
             </Button>
             <Button variant="outline" size="sm" onClick={handleQualifyLead}>
-              <Sparkles className="mr-2 h-4 w-4" /> Qualify
+              <Sparkles aria-hidden="true" className="mr-2 h-4 w-4" /> Qualify
             </Button>
             <Button variant="outline" size="sm" onClick={handleGenerateQuote}>
-              <Sparkles className="mr-2 h-4 w-4" /> Generate Quote
+              <Sparkles aria-hidden="true" className="mr-2 h-4 w-4" /> Generate Quote
             </Button>
-            <Button
-              size="sm"
-              onClick={() => navigate({ to: "/quotes/new", search: { leadId: lead.id } as never })}
-            >
-              <FileText className="mr-2 h-4 w-4" /> New quote
+            <Button size="sm" asChild>
+              <Link to="/quotes/new" search={{ leadId: lead.id }}>
+                <FileText aria-hidden="true" className="mr-2 h-4 w-4" /> New quote
+              </Link>
             </Button>
           </>
         }
@@ -208,14 +206,16 @@ function LeadDetail() {
           <Card>
             <CardContent className="p-5">
               <Tabs defaultValue="overview">
-                <TabsList>
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="activity">Activity</TabsTrigger>
-                  <TabsTrigger value="quotes">Quotes ({relatedQuotes.length})</TabsTrigger>
-                  <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
-                  <TabsTrigger value="comments">Comments ({comments.length})</TabsTrigger>
-                  <TabsTrigger value="insights">AI insights</TabsTrigger>
-                </TabsList>
+                <div className="max-w-full overflow-x-auto pb-1">
+                  <TabsList className="w-max">
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="activity">Activity</TabsTrigger>
+                    <TabsTrigger value="quotes">Quotes ({relatedQuotes.length})</TabsTrigger>
+                    <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
+                    <TabsTrigger value="comments">Comments ({comments.length})</TabsTrigger>
+                    <TabsTrigger value="insights">AI insights</TabsTrigger>
+                  </TabsList>
+                </div>
 
                 <TabsContent value="overview" className="mt-4 space-y-4">
                   <div>
@@ -235,13 +235,15 @@ function LeadDetail() {
                     </p>
                     <div className="mt-2 flex gap-2">
                       <Textarea
+                        aria-label="Add lead note"
+                        name="lead-note"
                         placeholder="Add a note…"
                         value={composer}
                         onChange={(e) => setComposer(e.target.value)}
                         className="min-h-[60px] flex-1"
                       />
-                      <Button size="sm" onClick={addNote}>
-                        <Send className="h-3.5 w-3.5" />
+                      <Button size="sm" aria-label="Send lead note" onClick={addNote}>
+                        <Send aria-hidden="true" className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                     <ul className="mt-3 space-y-3">
@@ -319,7 +321,7 @@ function LeadDetail() {
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-sm tabular-nums">
-                              {q.currency} {q.total_value.toLocaleString()}
+                              {formatCurrencyAmount(q.total_value, q.currency)}
                             </span>
                             <StatusBadge value={q.status} />
                           </div>
@@ -335,7 +337,7 @@ function LeadDetail() {
                       Discovery decks, RFPs, signed proposals, and email threads.
                     </p>
                     <Button size="sm" variant="outline" onClick={uploadMockFile}>
-                      <Upload className="mr-2 h-3.5 w-3.5" /> Upload
+                      <Upload aria-hidden="true" className="mr-2 h-3.5 w-3.5" /> Upload
                     </Button>
                   </div>
                   {files.length === 0 ? (
@@ -347,7 +349,7 @@ function LeadDetail() {
                       {files.map((f) => (
                         <li key={f.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
                           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                            <FileIcon className="h-4 w-4" />
+                            <FileIcon aria-hidden="true" className="h-4 w-4" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-medium">{f.name}</p>
@@ -359,9 +361,10 @@ function LeadDetail() {
                           <Button
                             size="sm"
                             variant="ghost"
+                            aria-label={`Download ${f.name}`}
                             onClick={() => toast.message(`Downloading ${f.name}…`)}
                           >
-                            <Download className="h-3.5 w-3.5" />
+                            <Download aria-hidden="true" className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             size="sm"
@@ -404,13 +407,15 @@ function LeadDetail() {
                   </ul>
                   <div className="flex gap-2">
                     <Textarea
+                      aria-label="Reply to lead thread"
+                      name="lead-thread-reply"
                       placeholder="Reply to the thread…"
                       value={commentDraft}
                       onChange={(e) => setCommentDraft(e.target.value)}
                       className="min-h-[60px] flex-1"
                     />
-                    <Button size="sm" onClick={addComment}>
-                      <Send className="h-3.5 w-3.5" />
+                    <Button size="sm" aria-label="Send lead reply" onClick={addComment}>
+                      <Send aria-hidden="true" className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </TabsContent>
@@ -503,7 +508,7 @@ function LeadDetail() {
                   value={status}
                   onValueChange={(v) => void handleStatusChange(v as LeadStatus)}
                 >
-                  <SelectTrigger className="mt-1 h-9">
+                  <SelectTrigger className="mt-1 h-9" aria-label="Lead status">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

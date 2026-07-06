@@ -45,9 +45,10 @@ export function StageMoveDialog({
           <Label htmlFor="stage-reason">Reason</Label>
           <Textarea
             id="stage-reason"
+            name="stage-reason"
             value={reason}
             onChange={(event) => onReasonChange(event.target.value)}
-            placeholder="Client accepted proposal, budget mismatch, no response after follow-up..."
+            placeholder="Client accepted proposal, budget mismatch, no response after follow-up…"
           />
         </div>
         <AlertDialogFooter>

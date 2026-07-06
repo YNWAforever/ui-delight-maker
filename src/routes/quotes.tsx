@@ -23,14 +23,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate, formatHKD } from "@/lib/format";
+import { formatCurrencyAmount, formatDate, formatHKD } from "@/lib/format";
 import { getQuotes } from "@/server-functions/quotes";
 import { USER_RECORD } from "@/lib/users";
 import type { Quote } from "@/lib/types";
 
-const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
+const userById = (id: string | null | undefined) =>
+  id && USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined;
 // Lead names are not available here — show the lead ID directly
-const leadById = (_id: string) => undefined;
+const leadById = (_id: string | null | undefined): { company_name: string } | undefined =>
+  undefined;
 
 export const Route = createFileRoute("/quotes")({
   loader: () => getQuotes({}),
@@ -135,6 +137,9 @@ function QuotesPage() {
               </div>
             </Tabs>
             <Input
+              aria-label="Search quotes"
+              name="quote-search"
+              autoComplete="off"
               placeholder="Search number, lead…"
               className="h-9 max-w-xs"
               value={query}
@@ -183,7 +188,7 @@ function QuotesPage() {
                         <StatusBadge value={q.status} />
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {q.currency} {(q.total_value ?? 0).toLocaleString()}
+                        {formatCurrencyAmount(q.total_value, q.currency)}
                       </TableCell>
                       <TableCell className="text-sm">{formatDate(q.valid_until)}</TableCell>
                       <TableCell className="text-sm">{creator?.name ?? "—"}</TableCell>

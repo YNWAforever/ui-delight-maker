@@ -193,7 +193,7 @@ function ApprovalsInbox() {
         <Card className="p-3">
           <div className="flex flex-wrap items-center gap-2">
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-9 w-[180px]">
+              <SelectTrigger className="h-9 w-[180px]" aria-label="Filter approvals by type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -352,6 +352,8 @@ function ApprovalsInbox() {
                           : "No payload data"}
                       </pre>
                       <Textarea
+                        aria-label="Reviewer notes or decision reason"
+                        name="decision-reason"
                         placeholder="Reviewer notes / reason for decision"
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
@@ -516,9 +518,11 @@ function ApprovalsInbox() {
             <DialogDescription>Route these approvals to a specific reviewer.</DialogDescription>
           </DialogHeader>
           <div>
-            <Label className="text-xs">Reviewer</Label>
+            <Label htmlFor="bulk-reviewer" className="text-xs">
+              Reviewer
+            </Label>
             <Select value={assignee} onValueChange={setAssignee}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger id="bulk-reviewer" className="mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -550,6 +554,8 @@ function ApprovalsInbox() {
             </DialogDescription>
           </DialogHeader>
           <Textarea
+            aria-label="Reason for rejection"
+            name="reject-reason"
             placeholder="Reason for rejection (optional)"
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}

@@ -110,15 +110,17 @@ function SettingsPage() {
 
       <div className="px-6 py-6">
         <Tabs defaultValue="profile">
-          <TabsList>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="team">Team</TabsTrigger>
-            <TabsTrigger value="pricing">Pricing</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="agents">Agents</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="apikeys">API keys</TabsTrigger>
-          </TabsList>
+          <div className="max-w-full overflow-x-auto pb-1">
+            <TabsList className="w-max">
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="team">Team</TabsTrigger>
+              <TabsTrigger value="pricing">Pricing</TabsTrigger>
+              <TabsTrigger value="products">Products</TabsTrigger>
+              <TabsTrigger value="agents">Agents</TabsTrigger>
+              <TabsTrigger value="notifications">Notifications</TabsTrigger>
+              <TabsTrigger value="apikeys">API keys</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="profile" className="mt-4">
             <ProfileTab />
@@ -157,12 +159,32 @@ function ProfileTab() {
       </CardHeader>
       <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <Label className="text-xs">Name</Label>
-          <Input className="mt-1" value={name} onChange={(e) => setName(e.target.value)} />
+          <Label htmlFor="profile-name" className="text-xs">
+            Name
+          </Label>
+          <Input
+            id="profile-name"
+            name="name"
+            autoComplete="name"
+            className="mt-1"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         <div>
-          <Label className="text-xs">Email</Label>
-          <Input className="mt-1" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Label htmlFor="profile-email" className="text-xs">
+            Email
+          </Label>
+          <Input
+            id="profile-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            spellCheck={false}
+            className="mt-1"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
         <div className="sm:col-span-2">
           <Button size="sm" onClick={() => toast.success("Profile saved")}>
@@ -188,7 +210,7 @@ function TeamTab() {
         </Button>
       </CardHeader>
       <CardContent>
-        <Table>
+        <Table className="min-w-[720px]">
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
@@ -211,7 +233,7 @@ function TeamTab() {
                       )
                     }
                   >
-                    <SelectTrigger className="h-8 w-[140px]">
+                    <SelectTrigger className="h-8 w-[140px]" aria-label={`Role for ${u.name}`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -256,7 +278,10 @@ function PricingTab() {
             </div>
             <div className="flex items-center gap-1">
               <Input
+                aria-label={`${r.name} threshold`}
+                name={`pricing-${r.id}`}
                 type="number"
+                inputMode="numeric"
                 className="h-9"
                 value={r.threshold}
                 onChange={(e) =>
@@ -325,7 +350,7 @@ function ProductsTab() {
         <Dialog open={newOpen} onOpenChange={setNewOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" /> New product
+              <Plus aria-hidden="true" className="mr-2 h-4 w-4" /> New product
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -334,16 +359,27 @@ function ProductsTab() {
             </DialogHeader>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <Label className="text-xs">Name</Label>
-                <Input className="mt-1" value={name} onChange={(e) => setName(e.target.value)} />
+                <Label htmlFor="product-name" className="text-xs">
+                  Name
+                </Label>
+                <Input
+                  id="product-name"
+                  name="product-name"
+                  autoComplete="off"
+                  className="mt-1"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
               </div>
               <div>
-                <Label className="text-xs">Category</Label>
+                <Label htmlFor="product-category" className="text-xs">
+                  Category
+                </Label>
                 <Select
                   value={category ?? "custom"}
                   onValueChange={(v) => setCategory(v as Product["category"])}
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger id="product-category" className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -356,12 +392,14 @@ function ProductsTab() {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs">Billing type</Label>
+                <Label htmlFor="product-billing-type" className="text-xs">
+                  Billing type
+                </Label>
                 <Select
                   value={billingType}
                   onValueChange={(v) => setBillingType(v as Product["billing_type"])}
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger id="product-billing-type" className="mt-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -372,9 +410,14 @@ function ProductsTab() {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs">Default term (months)</Label>
+                <Label htmlFor="product-term-months" className="text-xs">
+                  Default term (months)
+                </Label>
                 <Input
+                  id="product-term-months"
+                  name="term-months"
                   type="number"
+                  inputMode="numeric"
                   min={1}
                   className="mt-1"
                   value={termMonths}
@@ -389,7 +432,7 @@ function ProductsTab() {
         </Dialog>
       </CardHeader>
       <CardContent>
-        <Table>
+        <Table className="min-w-[760px]">
           <TableHeader>
             <TableRow>
               <TableHead>Product</TableHead>
@@ -570,11 +613,11 @@ function ApiKeysTab() {
           <CardDescription>Used for webhooks and external integrations.</CardDescription>
         </div>
         <Button size="sm" onClick={generate}>
-          <KeyRound className="mr-2 h-4 w-4" /> Generate key
+          <KeyRound aria-hidden="true" className="mr-2 h-4 w-4" /> Generate key
         </Button>
       </CardHeader>
       <CardContent>
-        <Table>
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
@@ -597,16 +640,26 @@ function ApiKeysTab() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label={k.revealed ? "Hide API key" : "Reveal API key"}
                     onClick={() =>
                       setKeys((prev) =>
                         prev.map((x) => (x.id === k.id ? { ...x, revealed: !x.revealed } : x)),
                       )
                     }
                   >
-                    {k.revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {k.revealed ? (
+                      <EyeOff aria-hidden="true" className="h-4 w-4" />
+                    ) : (
+                      <Eye aria-hidden="true" className="h-4 w-4" />
+                    )}
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => toast.success("Copied")}>
-                    <Copy className="h-4 w-4" />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Copy API key"
+                    onClick={() => toast.success("Copied")}
+                  >
+                    <Copy aria-hidden="true" className="h-4 w-4" />
                   </Button>
                 </TableCell>
               </TableRow>

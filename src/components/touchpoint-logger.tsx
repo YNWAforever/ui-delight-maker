@@ -108,9 +108,11 @@ export function TouchpointLogger({
         </DialogHeader>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <Label className="text-xs">Type</Label>
+            <Label htmlFor="touchpoint-type" className="text-xs">
+              Type
+            </Label>
             <Select value={type} onValueChange={(v) => setType(v as TouchpointNewType)}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger id="touchpoint-type" className="mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -123,12 +125,14 @@ export function TouchpointLogger({
             </Select>
           </div>
           <div>
-            <Label className="text-xs">Sentiment</Label>
+            <Label htmlFor="touchpoint-sentiment" className="text-xs">
+              Sentiment
+            </Label>
             <Select
               value={sentiment}
               onValueChange={(v) => setSentiment(v as TouchpointNewSentiment)}
             >
-              <SelectTrigger className="mt-1">
+              <SelectTrigger id="touchpoint-sentiment" className="mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -141,9 +145,11 @@ export function TouchpointLogger({
             </Select>
           </div>
           <div>
-            <Label className="text-xs">Engagement</Label>
+            <Label htmlFor="touchpoint-engagement" className="text-xs">
+              Engagement
+            </Label>
             <Select value={engagementId} onValueChange={setEngagementId}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger id="touchpoint-engagement" className="mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -157,9 +163,11 @@ export function TouchpointLogger({
             </Select>
           </div>
           <div>
-            <Label className="text-xs">Contact</Label>
+            <Label htmlFor="touchpoint-contact" className="text-xs">
+              Contact
+            </Label>
             <Select value={contactId} onValueChange={setContactId}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger id="touchpoint-contact" className="mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -174,7 +182,9 @@ export function TouchpointLogger({
           </div>
           <div className="sm:col-span-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs">Notes</Label>
+              <Label htmlFor="touchpoint-notes" className="text-xs">
+                Notes
+              </Label>
               {aiAvailable && (
                 <Button
                   type="button"
@@ -188,6 +198,8 @@ export function TouchpointLogger({
               )}
             </div>
             <Textarea
+              id="touchpoint-notes"
+              name="notes"
               className="mt-1"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}

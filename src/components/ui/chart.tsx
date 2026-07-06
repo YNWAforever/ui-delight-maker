@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
+const TOOLTIP_NUMBER = new Intl.NumberFormat("en-US");
 
 export type ChartConfig = {
   [k in string]: {
@@ -222,7 +223,7 @@ const ChartTooltipContent = React.forwardRef<
                         </div>
                         {item.value && (
                           <span className="font-mono font-medium tabular-nums text-foreground">
-                            {item.value.toLocaleString()}
+                            {TOOLTIP_NUMBER.format(Number(item.value))}
                           </span>
                         )}
                       </div>

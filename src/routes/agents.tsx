@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDateTime } from "@/lib/format";
+import { formatCount, formatDateTime } from "@/lib/format";
 import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
 import { getAgentRuns } from "@/server-functions/agent-runs";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
@@ -172,7 +172,7 @@ function AgentsMonitor() {
                     <div
                       key={i}
                       title={`${count} run${count !== 1 ? "s" : ""}`}
-                      className={`flex-1 rounded-sm transition-all ${count > 0 ? "bg-primary/60" : "bg-muted"}`}
+                      className={`flex-1 rounded-sm transition-[height,background-color] ${count > 0 ? "bg-primary/60" : "bg-muted"}`}
                       style={{ height: `${heightPct}%` }}
                     />
                   );
@@ -185,7 +185,7 @@ function AgentsMonitor() {
         <Card className="p-3">
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-9 w-[200px]">
+              <SelectTrigger className="h-9 w-[200px]" aria-label="Filter agent runs by status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -204,7 +204,7 @@ function AgentsMonitor() {
         </Card>
 
         <Card>
-          <Table>
+          <Table className="min-w-[980px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-8" />
@@ -257,7 +257,7 @@ function AgentsMonitor() {
                             : "—"}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-sm">
-                          {run.tokens_used != null ? run.tokens_used.toLocaleString() : "—"}
+                          {run.tokens_used != null ? formatCount(run.tokens_used) : "—"}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-sm">
                           {run.confidence_score != null
