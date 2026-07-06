@@ -56,6 +56,7 @@ export function MarkRenewedEndedDialog({
           <Label htmlFor="renewal-reason">Reason {action === "end" && "(required)"}</Label>
           <Textarea
             id="renewal-reason"
+            name="renewal-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />

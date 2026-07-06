@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatDateTime } from "@/lib/format";
+import { formatCount, formatDateTime } from "@/lib/format";
 import { getAgentRuns } from "@/server-functions/agent-runs";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
 
@@ -72,7 +72,7 @@ function AgentDetail() {
         actions={
           <Button variant="outline" size="sm" asChild>
             <Link to="/agents">
-              <ArrowLeft className="mr-2 h-4 w-4" /> All agents
+              <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" /> All agents
             </Link>
           </Button>
         }
@@ -82,11 +82,13 @@ function AgentDetail() {
         <Card className="lg:col-span-2">
           <CardContent className="p-5">
             <Tabs defaultValue="runs">
-              <TabsList>
-                <TabsTrigger value="runs">Runs</TabsTrigger>
-                <TabsTrigger value="memory">Memory</TabsTrigger>
-                <TabsTrigger value="config">Config</TabsTrigger>
-              </TabsList>
+              <div className="max-w-full overflow-x-auto pb-1">
+                <TabsList className="w-max">
+                  <TabsTrigger value="runs">Runs</TabsTrigger>
+                  <TabsTrigger value="memory">Memory</TabsTrigger>
+                  <TabsTrigger value="config">Config</TabsTrigger>
+                </TabsList>
+              </div>
 
               <TabsContent value="runs" className="mt-4">
                 {runs.length === 0 ? (
@@ -124,7 +126,7 @@ function AgentDetail() {
                               <p className="mt-1 text-xs text-muted-foreground">
                                 {formatDateTime(r.created_at)}
                                 {r.tokens_used != null
-                                  ? ` · ${r.tokens_used.toLocaleString()} tokens`
+                                  ? ` · ${formatCount(r.tokens_used)} tokens`
                                   : ""}
                               </p>
                             </div>
@@ -173,14 +175,21 @@ function AgentDetail() {
                       When off, all actions go to the approval inbox.
                     </p>
                   </div>
-                  <Switch checked={autoApprove} onCheckedChange={setAutoApprove} />
+                  <Switch
+                    aria-label="Auto-execute without human approval"
+                    checked={autoApprove}
+                    onCheckedChange={setAutoApprove}
+                  />
                 </div>
                 <div className="rounded-md border border-border p-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm">Temperature</Label>
+                    <Label htmlFor="agent-temperature" className="text-sm">
+                      Temperature
+                    </Label>
                     <span className="text-sm tabular-nums">{temp[0].toFixed(2)}</span>
                   </div>
                   <Slider
+                    id="agent-temperature"
                     value={temp}
                     onValueChange={setTemp}
                     min={0}
@@ -191,10 +200,13 @@ function AgentDetail() {
                 </div>
                 <div className="rounded-md border border-border p-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm">Confidence threshold (escalate below)</Label>
+                    <Label htmlFor="agent-confidence-threshold" className="text-sm">
+                      Confidence threshold (escalate below)
+                    </Label>
                     <span className="text-sm tabular-nums">{confThreshold[0].toFixed(2)}</span>
                   </div>
                   <Slider
+                    id="agent-confidence-threshold"
                     value={confThreshold}
                     onValueChange={setConfThreshold}
                     min={0.5}

@@ -32,7 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCompactHKD, formatDate } from "@/lib/format";
+import { formatCompactHKD, formatCount, formatDate } from "@/lib/format";
 import { getRenewalWindow } from "@/lib/engagement-utils";
 import { getClientPortfolioMetrics } from "@/lib/sales-workspace";
 import { getClients, createClient } from "@/server-functions/clients";
@@ -143,7 +143,7 @@ function ClientsPage() {
         <Card className="p-3">
           <div className="flex flex-wrap items-center gap-2">
             <Select value={tier} onValueChange={setTier}>
-              <SelectTrigger className="h-9 w-[160px]">
+              <SelectTrigger className="h-9 w-[160px]" aria-label="Filter by tier">
                 <SelectValue placeholder="Tier" />
               </SelectTrigger>
               <SelectContent>
@@ -154,7 +154,7 @@ function ClientsPage() {
               </SelectContent>
             </Select>
             <Select value={riskFilter} onValueChange={(v) => setRiskFilter(v as typeof riskFilter)}>
-              <SelectTrigger className="h-9 w-[160px]">
+              <SelectTrigger className="h-9 w-[160px]" aria-label="Filter by renewal risk">
                 <SelectValue placeholder="Risk" />
               </SelectTrigger>
               <SelectContent>
@@ -168,7 +168,7 @@ function ClientsPage() {
               value={windowFilter}
               onValueChange={(v) => setWindowFilter(v as typeof windowFilter)}
             >
-              <SelectTrigger className="h-9 w-[180px]">
+              <SelectTrigger className="h-9 w-[180px]" aria-label="Filter by renewal window">
                 <SelectValue placeholder="Renewal window" />
               </SelectTrigger>
               <SelectContent>
@@ -180,7 +180,7 @@ function ClientsPage() {
               </SelectContent>
             </Select>
             <Select value={sortKey} onValueChange={(v) => setSortKey(v as typeof sortKey)}>
-              <SelectTrigger className="h-9 w-[180px]">
+              <SelectTrigger className="h-9 w-[180px]" aria-label="Sort clients">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -193,7 +193,7 @@ function ClientsPage() {
         </Card>
 
         <Card>
-          <Table>
+          <Table className="min-w-[1040px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Company</TableHead>
@@ -209,7 +209,7 @@ function ClientsPage() {
             </TableHeader>
             <TableBody>
               {filtered.map((c) => {
-                const owner = userById(c.account_owner);
+                const owner = c.account_owner ? userById(c.account_owner) : undefined;
                 return (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">
@@ -238,9 +238,7 @@ function ClientsPage() {
                         {c.health_score}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {(c.arr ?? 0).toLocaleString()}
-                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{formatCount(c.arr)}</TableCell>
                     <TableCell className="text-sm">{formatDate(c.renewal_date)}</TableCell>
                     <TableCell>
                       <StatusBadge value={c.renewal_risk} />
@@ -300,17 +298,37 @@ function NewClientDialog({ onCreate }: { onCreate: (c: CreateClientPayload) => P
       </DialogHeader>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <Label className="text-xs">Company</Label>
-          <Input className="mt-1" value={name} onChange={(e) => setName(e.target.value)} />
+          <Label htmlFor="new-client-company" className="text-xs">
+            Company
+          </Label>
+          <Input
+            id="new-client-company"
+            name="company"
+            autoComplete="organization"
+            className="mt-1"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         <div>
-          <Label className="text-xs">Industry</Label>
-          <Input className="mt-1" value={industry} onChange={(e) => setIndustry(e.target.value)} />
+          <Label htmlFor="new-client-industry" className="text-xs">
+            Industry
+          </Label>
+          <Input
+            id="new-client-industry"
+            name="industry"
+            autoComplete="off"
+            className="mt-1"
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+          />
         </div>
         <div>
-          <Label className="text-xs">Tier</Label>
+          <Label htmlFor="new-client-tier" className="text-xs">
+            Tier
+          </Label>
           <Select value={tier ?? "SME"} onValueChange={(v) => setTier(v as Client["tier"])}>
-            <SelectTrigger className="mt-1">
+            <SelectTrigger id="new-client-tier" className="mt-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -321,9 +339,11 @@ function NewClientDialog({ onCreate }: { onCreate: (c: CreateClientPayload) => P
           </Select>
         </div>
         <div className="sm:col-span-2">
-          <Label className="text-xs">Account owner</Label>
+          <Label htmlFor="new-client-owner" className="text-xs">
+            Account owner
+          </Label>
           <Select value={owner} onValueChange={setOwner}>
-            <SelectTrigger className="mt-1">
+            <SelectTrigger id="new-client-owner" className="mt-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

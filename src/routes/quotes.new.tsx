@@ -197,7 +197,7 @@ function QuoteBuilder() {
         actions={
           <Button variant="outline" size="sm" asChild>
             <Link to="/quotes">
-              <ArrowLeft className="mr-2 h-4 w-4" /> All quotes
+              <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" /> All quotes
             </Link>
           </Button>
         }
@@ -206,36 +206,39 @@ function QuoteBuilder() {
       <div className="grid grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card className="p-4">
-            <ol className="flex items-center gap-2">
-              {STEPS.map((s, i) => {
-                const reached = step >= s.id;
-                return (
-                  <div key={s.id} className="flex flex-1 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setStep(s.id)}
-                      className={cn(
-                        "flex h-7 w-7 items-center justify-center rounded-full border text-xs font-medium transition-colors",
-                        reached
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-background text-muted-foreground",
-                      )}
-                    >
-                      {step > s.id ? <Check className="h-3.5 w-3.5" /> : s.id}
-                    </button>
-                    <span
-                      className={cn(
-                        "text-sm",
-                        reached ? "font-medium text-foreground" : "text-muted-foreground",
-                      )}
-                    >
-                      {s.label}
-                    </span>
-                    {i < STEPS.length - 1 && <div className="ml-1 h-px flex-1 bg-border" />}
-                  </div>
-                );
-              })}
-            </ol>
+            <div className="max-w-full overflow-x-auto">
+              <ol className="flex min-w-max items-center gap-2">
+                {STEPS.map((s, i) => {
+                  const reached = step >= s.id;
+                  return (
+                    <li key={s.id} className="flex flex-1 items-center gap-2">
+                      <button
+                        type="button"
+                        aria-label={`Go to step ${s.id}: ${s.label}`}
+                        onClick={() => setStep(s.id)}
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded-full border text-xs font-medium transition-colors",
+                          reached
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-muted-foreground",
+                        )}
+                      >
+                        {step > s.id ? <Check aria-hidden="true" className="h-3.5 w-3.5" /> : s.id}
+                      </button>
+                      <span
+                        className={cn(
+                          "text-sm",
+                          reached ? "font-medium text-foreground" : "text-muted-foreground",
+                        )}
+                      >
+                        {s.label}
+                      </span>
+                      {i < STEPS.length - 1 && <div className="ml-1 h-px flex-1 bg-border" />}
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
           </Card>
 
           {step === 1 && (
@@ -265,9 +268,11 @@ function QuoteBuilder() {
 
                 {mode === "client" ? (
                   <div className="sm:col-span-2">
-                    <Label className="text-xs">Client</Label>
+                    <Label htmlFor="quote-client" className="text-xs">
+                      Client
+                    </Label>
                     <Select value={clientId} onValueChange={setClientId}>
-                      <SelectTrigger className="mt-1.5">
+                      <SelectTrigger id="quote-client" className="mt-1.5">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -281,9 +286,11 @@ function QuoteBuilder() {
                   </div>
                 ) : (
                   <div className="sm:col-span-2">
-                    <Label className="text-xs">Lead</Label>
+                    <Label htmlFor="quote-lead" className="text-xs">
+                      Lead
+                    </Label>
                     <Select value={leadId} onValueChange={setLeadId}>
-                      <SelectTrigger className="mt-1.5">
+                      <SelectTrigger id="quote-lead" className="mt-1.5">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -297,8 +304,12 @@ function QuoteBuilder() {
                   </div>
                 )}
                 <div>
-                  <Label className="text-xs">Valid until</Label>
+                  <Label htmlFor="quote-valid-until" className="text-xs">
+                    Valid until
+                  </Label>
                   <Input
+                    id="quote-valid-until"
+                    name="valid-until"
                     type="date"
                     className="mt-1.5"
                     value={validUntil}
@@ -306,9 +317,11 @@ function QuoteBuilder() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Approver</Label>
+                  <Label htmlFor="quote-approver" className="text-xs">
+                    Approver
+                  </Label>
                   <Select value={approver} onValueChange={setApprover}>
-                    <SelectTrigger className="mt-1.5">
+                    <SelectTrigger id="quote-approver" className="mt-1.5">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -330,7 +343,7 @@ function QuoteBuilder() {
                 <CardTitle className="text-base">Line items</CardTitle>
                 <div className="flex items-center gap-2">
                   <Select onValueChange={applyTemplate}>
-                    <SelectTrigger className="h-9 w-[220px]">
+                    <SelectTrigger className="h-9 w-[220px]" aria-label="Apply pricing template">
                       <SelectValue placeholder="Apply template…" />
                     </SelectTrigger>
                     <SelectContent>
@@ -342,7 +355,7 @@ function QuoteBuilder() {
                     </SelectContent>
                   </Select>
                   <Button variant="outline" size="sm" onClick={addItem}>
-                    <Plus className="mr-2 h-4 w-4" /> Row
+                    <Plus aria-hidden="true" className="mr-2 h-4 w-4" /> Row
                   </Button>
                 </div>
               </CardHeader>
@@ -358,25 +371,40 @@ function QuoteBuilder() {
                     className="grid grid-cols-12 gap-2 rounded-md border border-border p-3"
                   >
                     <div className="col-span-12 sm:col-span-4">
-                      <Label className="text-xs">Service</Label>
+                      <Label htmlFor={`item-${item.id}-service`} className="text-xs">
+                        Service
+                      </Label>
                       <Input
+                        id={`item-${item.id}-service`}
+                        name={`item-${item.id}-service`}
+                        autoComplete="off"
                         className="mt-1"
                         value={item.service}
                         onChange={(e) => updateItem(item.id, { service: e.target.value })}
                       />
                     </div>
                     <div className="col-span-12 sm:col-span-4">
-                      <Label className="text-xs">Description</Label>
+                      <Label htmlFor={`item-${item.id}-description`} className="text-xs">
+                        Description
+                      </Label>
                       <Input
+                        id={`item-${item.id}-description`}
+                        name={`item-${item.id}-description`}
+                        autoComplete="off"
                         className="mt-1"
                         value={item.description}
                         onChange={(e) => updateItem(item.id, { description: e.target.value })}
                       />
                     </div>
                     <div className="col-span-4 sm:col-span-1">
-                      <Label className="text-xs">Qty</Label>
+                      <Label htmlFor={`item-${item.id}-qty`} className="text-xs">
+                        Qty
+                      </Label>
                       <Input
+                        id={`item-${item.id}-qty`}
+                        name={`item-${item.id}-qty`}
                         type="number"
+                        inputMode="numeric"
                         min={1}
                         className="mt-1"
                         value={item.qty}
@@ -384,9 +412,14 @@ function QuoteBuilder() {
                       />
                     </div>
                     <div className="col-span-6 sm:col-span-2">
-                      <Label className="text-xs">Unit (HKD)</Label>
+                      <Label htmlFor={`item-${item.id}-unit`} className="text-xs">
+                        Unit (HKD)
+                      </Label>
                       <Input
+                        id={`item-${item.id}-unit`}
+                        name={`item-${item.id}-unit`}
                         type="number"
+                        inputMode="decimal"
                         min={0}
                         className="mt-1"
                         value={item.unit_price}
@@ -402,16 +435,21 @@ function QuoteBuilder() {
                         aria-label="Remove"
                         onClick={() => removeItem(item.id)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 aria-hidden="true" className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                 ))}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">Discount %</Label>
+                    <Label htmlFor="quote-discount" className="text-xs">
+                      Discount %
+                    </Label>
                     <Input
+                      id="quote-discount"
+                      name="discount"
                       type="number"
+                      inputMode="decimal"
                       min={0}
                       max={100}
                       className="mt-1"
@@ -469,7 +507,7 @@ function QuoteBuilder() {
                         <p className="text-xs text-muted-foreground">{i.description}</p>
                       </div>
                       <span className="tabular-nums">
-                        {i.qty} × {i.unit_price.toLocaleString()}
+                        {i.qty} × {formatHKD(i.unit_price)}
                       </span>
                     </li>
                   ))}
@@ -485,11 +523,11 @@ function QuoteBuilder() {
               disabled={step === 1}
               onClick={() => setStep((s) => s - 1)}
             >
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" /> Back
             </Button>
             {step < 3 ? (
               <Button size="sm" onClick={() => setStep((s) => s + 1)}>
-                Continue <ArrowRight className="ml-2 h-4 w-4" />
+                Continue <ArrowRight aria-hidden="true" className="ml-2 h-4 w-4" />
               </Button>
             ) : (
               <div className="flex items-center gap-2">
@@ -497,7 +535,7 @@ function QuoteBuilder() {
                   Save draft
                 </Button>
                 <Button size="sm" onClick={submit}>
-                  <Send className="mr-2 h-4 w-4" /> Submit for approval
+                  <Send aria-hidden="true" className="mr-2 h-4 w-4" /> Submit for approval
                 </Button>
               </div>
             )}

@@ -133,7 +133,7 @@ function RenewalsPage() {
         <Card className="p-3">
           <div className="flex flex-wrap items-center gap-2">
             <Select value={risk} onValueChange={(v) => setRisk(v as typeof risk)}>
-              <SelectTrigger className="h-9 w-[160px]">
+              <SelectTrigger className="h-9 w-[160px]" aria-label="Filter renewals by risk">
                 <SelectValue placeholder="Risk" />
               </SelectTrigger>
               <SelectContent>
@@ -144,7 +144,7 @@ function RenewalsPage() {
               </SelectContent>
             </Select>
             <Select value={productId} onValueChange={setProductId}>
-              <SelectTrigger className="h-9 w-[200px]">
+              <SelectTrigger className="h-9 w-[200px]" aria-label="Filter renewals by product">
                 <SelectValue placeholder="Product" />
               </SelectTrigger>
               <SelectContent>

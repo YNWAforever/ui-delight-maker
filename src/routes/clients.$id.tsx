@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
 import { getClient } from "@/server-functions/clients";
 import { getQuotes } from "@/server-functions/quotes";
 import { getEngagementsByClient } from "@/server-functions/engagements";
@@ -126,18 +126,20 @@ function ClientDetail() {
         <Card className="lg:col-span-2">
           <CardContent className="p-6">
             <Tabs defaultValue="overview">
-              <TabsList>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="contacts">Contacts ({clientContacts.length})</TabsTrigger>
-                <TabsTrigger value="quotes">Quotes ({clientQuotes.length})</TabsTrigger>
-                <TabsTrigger value="tasks">Tasks ({clientTasks.length})</TabsTrigger>
-                <TabsTrigger value="timeline">Timeline</TabsTrigger>
-              </TabsList>
+              <div className="max-w-full overflow-x-auto pb-1">
+                <TabsList className="w-max">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="contacts">Contacts ({clientContacts.length})</TabsTrigger>
+                  <TabsTrigger value="quotes">Quotes ({clientQuotes.length})</TabsTrigger>
+                  <TabsTrigger value="tasks">Tasks ({clientTasks.length})</TabsTrigger>
+                  <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                </TabsList>
+              </div>
 
               <TabsContent value="overview" className="mt-4 space-y-4">
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                   <Stat label="Health score" value={String(client.health_score)} />
-                  <Stat label="ARR" value={`HKD ${(client.arr ?? 0).toLocaleString()}`} />
+                  <Stat label="ARR" value={formatCurrencyAmount(client.arr, "HKD")} />
                   <Stat label="Renewal" value={client.renewal_date ?? "—"} />
                   <Stat label="Onboarding" value={client.onboarding_status.replace(/_/g, " ")} />
                 </div>
@@ -162,7 +164,7 @@ function ClientDetail() {
                             {productById(e.product_id)?.name ?? e.product_id}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {e.status} · {e.billing_period} · HKD {(e.value ?? 0).toLocaleString()}
+                            {e.status} · {e.billing_period} · {formatCurrencyAmount(e.value, "HKD")}
                           </p>
                           <div className="mt-2 flex items-center justify-between">
                             <StatusBadge value={e.renewal_risk} />
@@ -210,7 +212,7 @@ function ClientDetail() {
                         </Link>
                         <div className="flex items-center gap-2">
                           <span className="text-sm tabular-nums">
-                            {q.currency} {q.total_value.toLocaleString()}
+                            {formatCurrencyAmount(q.total_value, q.currency)}
                           </span>
                           <StatusBadge value={q.status} />
                         </div>
@@ -237,8 +239,8 @@ function ClientDetail() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <Row label="Owner" value={owner?.name ?? "—"} />
-            <Row label="Industry" value={client.industry} />
-            <Row label="Tier" value={client.tier} />
+            <Row label="Industry" value={client.industry ?? "—"} />
+            <Row label="Tier" value={client.tier ?? "—"} />
             <Row label="Customer since" value={formatDate(client.created_at)} />
             <Row label="Health score" value={String(client.health_score)} />
           </CardContent>
@@ -293,20 +295,59 @@ function ClientContactsPanel({
             </DialogHeader>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <Label className="text-xs">Name</Label>
-                <Input className="mt-1" value={name} onChange={(e) => setName(e.target.value)} />
+                <Label htmlFor="new-contact-name" className="text-xs">
+                  Name
+                </Label>
+                <Input
+                  id="new-contact-name"
+                  name="name"
+                  autoComplete="name"
+                  className="mt-1"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
               </div>
               <div>
-                <Label className="text-xs">Title</Label>
-                <Input className="mt-1" value={title} onChange={(e) => setTitle(e.target.value)} />
+                <Label htmlFor="new-contact-title" className="text-xs">
+                  Title
+                </Label>
+                <Input
+                  id="new-contact-title"
+                  name="organization-title"
+                  autoComplete="organization-title"
+                  className="mt-1"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
               </div>
               <div>
-                <Label className="text-xs">Email</Label>
-                <Input className="mt-1" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Label htmlFor="new-contact-email" className="text-xs">
+                  Email
+                </Label>
+                <Input
+                  id="new-contact-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  spellCheck={false}
+                  className="mt-1"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
               <div>
-                <Label className="text-xs">Phone</Label>
-                <Input className="mt-1" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <Label htmlFor="new-contact-phone" className="text-xs">
+                  Phone
+                </Label>
+                <Input
+                  id="new-contact-phone"
+                  name="tel"
+                  type="tel"
+                  autoComplete="tel"
+                  className="mt-1"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
               </div>
             </div>
             <DialogFooter>

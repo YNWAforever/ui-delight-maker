@@ -176,6 +176,7 @@ function AiReviewPage() {
                     <Label htmlFor="reviewer-notes">Reviewer notes</Label>
                     <Textarea
                       id="reviewer-notes"
+                      name="reviewer-notes"
                       value={notes}
                       onChange={(event) => setNotes(event.target.value)}
                       placeholder="Reviewer notes"

@@ -117,7 +117,7 @@ function TasksBoard() {
         <Card className="p-3">
           <div className="flex flex-wrap items-center gap-2">
             <Select value={priority} onValueChange={setPriority}>
-              <SelectTrigger className="h-9 w-[150px]">
+              <SelectTrigger className="h-9 w-[150px]" aria-label="Filter tasks by priority">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -128,7 +128,7 @@ function TasksBoard() {
               </SelectContent>
             </Select>
             <Select value={assignee} onValueChange={setAssignee}>
-              <SelectTrigger className="h-9 w-[160px]">
+              <SelectTrigger className="h-9 w-[160px]" aria-label="Filter tasks by assignee">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -167,7 +167,7 @@ function TasksBoard() {
                 </div>
                 <div className="flex min-h-[120px] flex-col gap-3 rounded-md bg-muted/20 p-2">
                   {colTasks.map((t) => {
-                    const owner = userById(t.assigned_to);
+                    const owner = t.assigned_to ? userById(t.assigned_to) : undefined;
                     const overdue = isTaskOverdue(t);
                     return (
                       <Card
@@ -267,18 +267,37 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label className="text-xs">Title</Label>
-            <Input className="mt-1" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <Label htmlFor="new-task-title" className="text-xs">
+              Title
+            </Label>
+            <Input
+              id="new-task-title"
+              name="title"
+              autoComplete="off"
+              className="mt-1"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </div>
           <div>
-            <Label className="text-xs">Description</Label>
-            <Textarea className="mt-1" value={desc} onChange={(e) => setDesc(e.target.value)} />
+            <Label htmlFor="new-task-description" className="text-xs">
+              Description
+            </Label>
+            <Textarea
+              id="new-task-description"
+              name="description"
+              className="mt-1"
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+            />
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <Label className="text-xs">Priority</Label>
+              <Label htmlFor="new-task-priority" className="text-xs">
+                Priority
+              </Label>
               <Select value={pri} onValueChange={(v) => setPri(v as Task["priority"])}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger id="new-task-priority" className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -289,9 +308,11 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Assignee</Label>
+              <Label htmlFor="new-task-assignee" className="text-xs">
+                Assignee
+              </Label>
               <Select value={assignee} onValueChange={setAssignee}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger id="new-task-assignee" className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -304,8 +325,12 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Due</Label>
+              <Label htmlFor="new-task-due" className="text-xs">
+                Due
+              </Label>
               <Input
+                id="new-task-due"
+                name="due"
                 type="date"
                 className="mt-1"
                 value={due}

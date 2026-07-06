@@ -86,9 +86,11 @@ export function WonConversionDialog({
         </DialogHeader>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Label className="text-xs">Product</Label>
+            <Label htmlFor="conversion-product" className="text-xs">
+              Product
+            </Label>
             <Select value={productId} onValueChange={setProductId}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger id="conversion-product" className="mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -101,21 +103,28 @@ export function WonConversionDialog({
             </Select>
           </div>
           <div>
-            <Label className="text-xs">Value (HKD)</Label>
+            <Label htmlFor="conversion-value" className="text-xs">
+              Value (HKD)
+            </Label>
             <Input
+              id="conversion-value"
+              name="value"
               type="number"
+              inputMode="numeric"
               className="mt-1"
               value={value}
               onChange={(e) => setValue(Number(e.target.value) || 0)}
             />
           </div>
           <div>
-            <Label className="text-xs">Billing period</Label>
+            <Label htmlFor="conversion-billing-period" className="text-xs">
+              Billing period
+            </Label>
             <Select
               value={billingPeriod}
               onValueChange={(v) => setBillingPeriod(v as Engagement["billing_period"])}
             >
-              <SelectTrigger className="mt-1">
+              <SelectTrigger id="conversion-billing-period" className="mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -127,8 +136,12 @@ export function WonConversionDialog({
             </Select>
           </div>
           <div>
-            <Label className="text-xs">Start date</Label>
+            <Label htmlFor="conversion-start-date" className="text-xs">
+              Start date
+            </Label>
             <Input
+              id="conversion-start-date"
+              name="start-date"
               type="date"
               className="mt-1"
               value={startDate}
@@ -136,8 +149,12 @@ export function WonConversionDialog({
             />
           </div>
           <div>
-            <Label className="text-xs">Renewal date</Label>
+            <Label htmlFor="conversion-renewal-date" className="text-xs">
+              Renewal date
+            </Label>
             <Input
+              id="conversion-renewal-date"
+              name="renewal-date"
               type="date"
               className="mt-1"
               value={renewalDate}
