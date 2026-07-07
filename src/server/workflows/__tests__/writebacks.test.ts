@@ -77,6 +77,8 @@ describe("workflow writebacks", () => {
       id: "run-default",
       status: "running",
       output_data: null,
+      subject_type: "account",
+      subject_id: "account-9",
     });
     mocks.getEngagementMock.mockResolvedValue({
       id: "engagement-default",
@@ -273,6 +275,13 @@ describe("workflow writebacks", () => {
   });
 
   it("writes relationship intelligence results atomically and records signal output", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-9",
+      status: "running",
+      output_data: null,
+      subject_type: "account",
+      subject_id: "account-9",
+    });
     mocks.upsertRelationshipSignalsMock.mockResolvedValue([
       {
         id: "signal-1",
@@ -362,6 +371,8 @@ describe("workflow writebacks", () => {
       id: "run-9",
       status: "completed",
       output_data: { signals: [] },
+      subject_type: "account",
+      subject_id: "account-9",
     });
 
     await expect(
@@ -376,6 +387,32 @@ describe("workflow writebacks", () => {
     ).resolves.toEqual({
       applied: true,
     });
+
+    expect(mocks.updateAccountMock).not.toHaveBeenCalled();
+    expect(mocks.upsertRelationshipSignalsMock).not.toHaveBeenCalled();
+    expect(mocks.updateAgentRunResultMock).not.toHaveBeenCalled();
+    expect(mocks.createActivityLogMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects relationship intelligence writebacks for a mismatched account run before writes", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-9",
+      status: "running",
+      output_data: null,
+      subject_type: "account",
+      subject_id: "account-22",
+    });
+
+    await expect(
+      writeRelationshipIntelligenceResult({
+        account_id: "account-9",
+        agent_run_id: "run-9",
+        output_summary: "Analyzed relationship health.",
+        next_action: "Book an executive alignment call.",
+        signals: [],
+        confidence_score: 0.81,
+      }),
+    ).rejects.toThrow("Agent run does not belong to this account");
 
     expect(mocks.updateAccountMock).not.toHaveBeenCalled();
     expect(mocks.upsertRelationshipSignalsMock).not.toHaveBeenCalled();

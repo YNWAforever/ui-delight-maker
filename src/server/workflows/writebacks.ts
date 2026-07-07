@@ -355,9 +355,17 @@ export async function writeRelationshipIntelligenceResult(
   payload: RelationshipIntelligenceWritebackPayload,
 ) {
   return transaction(async (db) => {
-    const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
+    const agentRun = (await getAgentRunForUpdate(payload.agent_run_id, db)) as
+      | ({ subject_type?: unknown; subject_id?: unknown; status: string; output_data: unknown } & {
+          id: string;
+        })
+      | null;
     if (!agentRun) {
       throw new Error("Agent run not found");
+    }
+
+    if (agentRun.subject_type !== "account" || agentRun.subject_id !== payload.account_id) {
+      throw new Error("Agent run does not belong to this account");
     }
 
     if (agentRun.status === "completed") {
