@@ -105,6 +105,70 @@ alter table leads add column if not exists account_id uuid references accounts(i
 alter table quotes add column if not exists account_id uuid references accounts(id) on delete set null;
 alter table tasks add column if not exists account_id uuid references accounts(id) on delete set null;
 
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'clients_account_id_fkey'
+      and conrelid = 'clients'::regclass
+  ) then
+    alter table clients
+      add constraint clients_account_id_fkey
+      foreign key (account_id) references accounts(id) on delete set null
+      not valid;
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'leads_account_id_fkey'
+      and conrelid = 'leads'::regclass
+  ) then
+    alter table leads
+      add constraint leads_account_id_fkey
+      foreign key (account_id) references accounts(id) on delete set null
+      not valid;
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'quotes_account_id_fkey'
+      and conrelid = 'quotes'::regclass
+  ) then
+    alter table quotes
+      add constraint quotes_account_id_fkey
+      foreign key (account_id) references accounts(id) on delete set null
+      not valid;
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'tasks_account_id_fkey'
+      and conrelid = 'tasks'::regclass
+  ) then
+    alter table tasks
+      add constraint tasks_account_id_fkey
+      foreign key (account_id) references accounts(id) on delete set null
+      not valid;
+  end if;
+end $$;
+
+alter table relationship_signals drop constraint if exists relationship_signals_dismissal_reason_check;
+alter table relationship_signals add constraint relationship_signals_dismissal_reason_check
+  check (dismissed_at is null or nullif(btrim(dismissal_reason), '') is not null);
+
 alter table activity_logs drop constraint if exists activity_logs_object_type_check;
 alter table activity_logs add constraint activity_logs_object_type_check
   check (object_type in ('lead','quote','client','task','approval','engagement','account','contact','campaign','campaign_member','relationship_signal'));
@@ -145,6 +209,8 @@ create index if not exists accounts_last_activity_idx on accounts(last_activity_
 create index if not exists account_contacts_account_id_idx on account_contacts(account_id);
 create unique index if not exists account_contacts_account_email_unique_idx
   on account_contacts(account_id, lower(email)) where email is not null;
+create unique index if not exists account_contacts_one_primary_per_account_idx
+  on account_contacts(account_id) where is_primary;
 create index if not exists account_contacts_role_idx on account_contacts(account_id, relationship_role);
 create index if not exists campaigns_status_idx on campaigns(status);
 create index if not exists campaigns_owner_idx on campaigns(owner);
