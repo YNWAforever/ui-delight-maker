@@ -72,4 +72,32 @@ describe("buildAccountTimeline", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0].kind).toBe("task");
   });
+
+  it("formats quote detail deterministically", () => {
+    const entries = buildAccountTimeline({
+      touchpoints: [],
+      activityLogs: [],
+      tasks: [],
+      quotes: [
+        {
+          id: "q1",
+          number: "Q-001",
+          status: "sent",
+          total_value: 1234567.89,
+          currency: "HKD",
+          created_at: "2026-07-03T09:00:00.000Z",
+        },
+      ],
+      approvals: [],
+      agentRuns: [],
+      campaignMembers: [],
+    });
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      kind: "quote",
+      title: "Quote Q-001",
+      detail: "HKD 1,234,567.89",
+    });
+  });
 });

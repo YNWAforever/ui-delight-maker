@@ -2,6 +2,8 @@ import type {
   ActivityLog,
   AgentRun,
   ApprovalStatus,
+  AttendeeStatus,
+  FollowUpStatus,
   Quote,
   QuoteStatus,
   TaskPriority,
@@ -74,8 +76,8 @@ export type ProductLite = {
 export type CampaignMemberLite = {
   id: string;
   campaign_id: string;
-  attendee_status: string;
-  follow_up_status: string;
+  attendee_status: AttendeeStatus;
+  follow_up_status: FollowUpStatus;
   created_at: string;
 };
 
@@ -107,7 +109,7 @@ export type AccountTimelineEntry = {
   detail: string | null;
   object_type: string;
   object_id: string | null;
-  status?: TaskStatus | QuoteStatus | ApprovalStatus | string | null;
+  status?: TaskStatus | QuoteStatus | ApprovalStatus | AttendeeStatus | FollowUpStatus | string | null;
 };
 
 export type AccountTimelineInput = {
@@ -139,8 +141,8 @@ export type AccountTimelineInput = {
   campaignMembers: Array<{
     id: string;
     campaign_id: string;
-    attendee_status: string;
-    follow_up_status: string;
+    attendee_status: AttendeeStatus;
+    follow_up_status: FollowUpStatus;
     created_at: string;
   }>;
   kinds?: AccountTimelineKind[];

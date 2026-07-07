@@ -1,7 +1,20 @@
 import type { AccountTimelineEntry, AccountTimelineInput, AccountTimelineKind } from "./types";
 
+const QUOTE_VALUE_FORMATTER = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+});
+
 function includeKind(kind: AccountTimelineKind, kinds?: AccountTimelineKind[]): boolean {
   return !kinds || kinds.includes(kind);
+}
+
+function formatQuoteDetail(currency: string, totalValue: number | null): string | null {
+  if (totalValue == null) {
+    return null;
+  }
+
+  return `${currency} ${QUOTE_VALUE_FORMATTER.format(Number(totalValue))}`;
 }
 
 export function buildAccountTimeline(input: AccountTimelineInput): AccountTimelineEntry[] {
@@ -58,10 +71,7 @@ export function buildAccountTimeline(input: AccountTimelineInput): AccountTimeli
         kind: "quote" as const,
         occurred_at: quote.created_at,
         title: quote.number ? `Quote ${quote.number}` : "Quote created",
-        detail:
-          quote.total_value == null
-            ? null
-            : `${quote.currency} ${Number(quote.total_value).toLocaleString()}`,
+        detail: formatQuoteDetail(quote.currency, quote.total_value),
         object_type: "quote",
         object_id: quote.id,
         status: quote.status,

@@ -50,7 +50,7 @@ describe("buildRelationshipSignals", () => {
           campaign_id: "camp1",
           attendee_status: "attended",
           follow_up_status: "not_started",
-          created_at: "2026-07-01T00:00:00.000Z",
+          created_at: "2026-07-03T00:00:00.000Z",
         },
       ],
       products: [],
@@ -63,6 +63,75 @@ describe("buildRelationshipSignals", () => {
         severity: "high",
       }),
     );
+  });
+
+  it("does not flag post-event follow-up before three business days when a weekend intervenes", () => {
+    const weekendBoundaryNow = new Date("2026-07-06T00:00:00.000Z");
+
+    const signals = buildRelationshipSignals({
+      account: { id: "a1", name: "Acme", lifecycle_stage: "prospect", account_owner: "u1" },
+      contacts: [
+        {
+          id: "c1",
+          relationship_role: "decision_maker",
+          influence_level: "high",
+          sentiment: "positive",
+          last_contacted_at: null,
+        },
+      ],
+      engagements: [],
+      quotes: [],
+      campaignMembers: [
+        {
+          id: "m1",
+          campaign_id: "camp1",
+          attendee_status: "attended",
+          follow_up_status: "not_started",
+          created_at: "2026-07-03T00:00:00.000Z",
+        },
+      ],
+      products: [],
+      now: weekendBoundaryNow,
+    });
+
+    expect(signals.map((signal) => signal.signal_type)).not.toContain("post_event_follow_up_due");
+  });
+
+  it("ignores invalid legacy attendee statuses for post-event follow-up", () => {
+    const signals = buildRelationshipSignals({
+      account: { id: "a1", name: "Acme", lifecycle_stage: "prospect", account_owner: "u1" },
+      contacts: [
+        {
+          id: "c1",
+          relationship_role: "decision_maker",
+          influence_level: "high",
+          sentiment: "positive",
+          last_contacted_at: null,
+        },
+      ],
+      engagements: [],
+      quotes: [],
+      campaignMembers: [
+        {
+          id: "m1",
+          campaign_id: "camp1",
+          attendee_status: "opened" as never,
+          follow_up_status: "not_started",
+          created_at: "2026-07-01T00:00:00.000Z",
+        },
+        {
+          id: "m2",
+          campaign_id: "camp1",
+          attendee_status: "sent" as never,
+          follow_up_status: "not_started",
+          created_at: "2026-07-01T00:00:00.000Z",
+        },
+      ],
+      products: [],
+      now,
+    });
+
+    expect(signals.map((signal) => signal.signal_type)).not.toContain("post_event_follow_up_due");
   });
 
   it("suggests cross-sell when active account uses only one product", () => {

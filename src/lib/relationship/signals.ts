@@ -7,6 +7,13 @@ import type {
   StakeholderLite,
 } from "./types";
 
+const BUSINESS_DAY_MS = 86_400_000;
+const FOLLOW_UP_ELIGIBLE_ATTENDEE_STATUSES: ReadonlySet<CampaignMemberLite["attendee_status"]> = new Set([
+  "attended",
+  "met",
+  "high_intent",
+]);
+
 export type RelationshipSignalInput = {
   account: AccountLite;
   contacts: StakeholderLite[];
@@ -19,7 +26,36 @@ export type RelationshipSignalInput = {
 
 function daysBetween(from: string, to: Date): number {
   const ms = to.getTime() - new Date(from).getTime();
-  return Math.floor(ms / 86_400_000);
+  return Math.floor(ms / BUSINESS_DAY_MS);
+}
+
+function toUtcDateOnly(value: string | Date): Date {
+  const date = typeof value === "string" ? new Date(value) : new Date(value.getTime());
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function isWeekday(date: Date): boolean {
+  const day = date.getUTCDay();
+  return day >= 1 && day <= 5;
+}
+
+function countBusinessDaysBetween(from: string, to: Date): number {
+  let cursor = toUtcDateOnly(from);
+  const end = toUtcDateOnly(to);
+  let businessDays = 0;
+
+  while (cursor < end) {
+    cursor = new Date(cursor.getTime() + BUSINESS_DAY_MS);
+    if (isWeekday(cursor) && cursor <= end) {
+      businessDays += 1;
+    }
+  }
+
+  return businessDays;
+}
+
+function isEligibleForPostEventFollowUp(member: CampaignMemberLite): boolean {
+  return member.attendee_status !== "unknown" && FOLLOW_UP_ELIGIBLE_ATTENDEE_STATUSES.has(member.attendee_status);
 }
 
 function addSignal(
@@ -80,9 +116,9 @@ export function buildRelationshipSignals(input: RelationshipSignalInput): Relati
 
   for (const member of input.campaignMembers) {
     if (
-      member.attendee_status !== "unknown" &&
+      isEligibleForPostEventFollowUp(member) &&
       member.follow_up_status === "not_started" &&
-      daysBetween(member.created_at, input.now) >= 3
+      countBusinessDaysBetween(member.created_at, input.now) >= 3
     ) {
       addSignal(signals, accountId, {
         signal_type: "post_event_follow_up_due",

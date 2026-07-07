@@ -42,4 +42,40 @@ describe("relationship matching", () => {
 
     expect(result.kind).toBe("ambiguous");
   });
+
+  it("matches accounts by normalized domain when name does not match", () => {
+    const result = findAccountMatch({
+      companyName: "Different Company",
+      domain: "https://www.fimmick.com/hk",
+      accounts: [
+        { id: "a1", name: "Other", domain: "https://fimmick.com" },
+        { id: "a2", name: "Other Two", domain: "other.example" },
+      ],
+    });
+
+    expect(result).toEqual({ kind: "matched", accountId: "a1", matchedBy: "domain" });
+  });
+
+  it("returns ambiguous when several accounts share the same normalized domain", () => {
+    const result = findAccountMatch({
+      companyName: "Different Company",
+      domain: "fimmick.com",
+      accounts: [
+        { id: "a1", name: "One", domain: "https://www.fimmick.com" },
+        { id: "a2", name: "Two", domain: "fimmick.com/path" },
+      ],
+    });
+
+    expect(result).toEqual({ kind: "ambiguous", accountIds: ["a1", "a2"] });
+  });
+
+  it("returns new when no normalized name or domain matches", () => {
+    const result = findAccountMatch({
+      companyName: "Brand New Co",
+      domain: "brandnew.example",
+      accounts: [{ id: "a1", name: "Existing", domain: "existing.example" }],
+    });
+
+    expect(result).toEqual({ kind: "new" });
+  });
 });
