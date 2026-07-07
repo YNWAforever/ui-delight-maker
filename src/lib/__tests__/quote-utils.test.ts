@@ -30,6 +30,7 @@ describe("newLineItem", () => {
       unit_price: 80000,
       currency: "HKD",
       active: true,
+      product_id: null,
     };
     const item = newLineItem(template);
     expect(item.service).toBe("AI Chatbot Integration");
@@ -48,6 +49,7 @@ describe("newLineItem", () => {
       unit_price: 10000,
       currency: "HKD",
       active: true,
+      product_id: null,
     };
     const item = newLineItem(template);
     expect(item.description).toBe("");

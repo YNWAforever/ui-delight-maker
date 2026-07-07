@@ -13,8 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { EmptyState } from "@/components/empty-state";
-import { PageHeader } from "@/components/page-header";
+import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -136,12 +135,15 @@ function LeadsPage() {
       clear: () => setOwner("all"),
     },
   ].filter(Boolean) as { key: string; label: string; clear: () => void }[];
+  const hasActiveFilters =
+    query.trim() !== "" || status !== "all" || source !== "all" || owner !== "all";
 
   return (
     <>
-      <PageHeader
+      <CommandHeader
         title="Lead Inbox"
-        description={`${filtered.length} of ${rows.length} leads`}
+        status="Acquire"
+        description={`${filtered.length} of ${rows.length} leads ready for triage, assignment, or follow-up.`}
         actions={
           <>
             <Button
@@ -157,16 +159,40 @@ function LeadsPage() {
       />
 
       <div className="space-y-4 px-6 py-6">
+        <MetricStrip
+          metrics={[
+            {
+              label: "Hot leads",
+              value: rows.filter((lead) => lead.lead_score >= 75).length,
+              hint: "score 75+",
+            },
+            {
+              label: "Unassigned",
+              value: rows.filter((lead) => !lead.assigned_to).length,
+              hint: "needs owner",
+            },
+            {
+              label: "Qualified",
+              value: rows.filter((lead) => lead.status === "qualified").length,
+              hint: "ready to convert",
+            },
+          ]}
+          columns={3}
+        />
+
         <Card className="p-3">
           <div className="flex flex-wrap items-center gap-2">
             <Input
+              aria-label="Search leads"
+              name="lead-search"
+              autoComplete="off"
               placeholder="Search company, contact, email…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="h-9 min-w-[220px] flex-1"
             />
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="h-9 w-[150px]">
+              <SelectTrigger className="h-9 w-[150px]" aria-label="Filter by status">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -179,7 +205,7 @@ function LeadsPage() {
               </SelectContent>
             </Select>
             <Select value={source} onValueChange={setSource}>
-              <SelectTrigger className="h-9 w-[150px]">
+              <SelectTrigger className="h-9 w-[150px]" aria-label="Filter by source">
                 <SelectValue placeholder="Source" />
               </SelectTrigger>
               <SelectContent>
@@ -192,7 +218,7 @@ function LeadsPage() {
               </SelectContent>
             </Select>
             <Select value={owner} onValueChange={setOwner}>
-              <SelectTrigger className="h-9 w-[150px]">
+              <SelectTrigger className="h-9 w-[150px]" aria-label="Filter by owner">
                 <SelectValue placeholder="Owner" />
               </SelectTrigger>
               <SelectContent>
@@ -200,7 +226,7 @@ function LeadsPage() {
               </SelectContent>
             </Select>
             <Select value={sort} onValueChange={(v) => setSort(v as "recent" | "score")}>
-              <SelectTrigger className="h-9 w-[150px]">
+              <SelectTrigger className="h-9 w-[150px]" aria-label="Sort leads">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -257,11 +283,12 @@ function LeadsPage() {
         )}
 
         <Card className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[980px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-8">
                   <Checkbox
+                    aria-label="Select all visible leads"
                     checked={selected.size === filtered.length && filtered.length > 0}
                     onCheckedChange={(v) =>
                       setSelected(v ? new Set(filtered.map((l) => l.id)) : new Set())
@@ -294,6 +321,7 @@ function LeadsPage() {
                   >
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
+                        aria-label={`Select ${lead.company_name}`}
                         checked={selected.has(lead.id)}
                         onCheckedChange={() => toggle(lead.id)}
                       />
@@ -341,14 +369,20 @@ function LeadsPage() {
               })}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10">
-                    <EmptyState
-                      title="No leads match your filters"
-                      description="Try clearing a filter or adding a new lead."
+                  <TableCell colSpan={8} className="p-4">
+                    <WorkSurfaceEmpty
+                      title="No leads match this view"
+                      description="Clear filters or add a new lead to keep the sales queue moving."
                       action={
-                        <Button size="sm" onClick={() => setNewOpen(true)}>
-                          <Plus className="mr-2 h-4 w-4" /> New lead
-                        </Button>
+                        rows.length === 0 || !hasActiveFilters ? (
+                          <Button size="sm" variant="outline" onClick={() => setNewOpen(true)}>
+                            <Plus className="mr-2 h-4 w-4" /> New lead
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={clearFilters}>
+                            Clear filters
+                          </Button>
+                        )
                       }
                     />
                   </TableCell>
@@ -417,21 +451,52 @@ function NewLeadDialog({
         </DialogHeader>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <Label className="text-xs">Company</Label>
-            <Input className="mt-1" value={company} onChange={(e) => setCompany(e.target.value)} />
+            <Label htmlFor="new-lead-company" className="text-xs">
+              Company
+            </Label>
+            <Input
+              id="new-lead-company"
+              name="company"
+              autoComplete="organization"
+              className="mt-1"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+            />
           </div>
           <div>
-            <Label className="text-xs">Contact name</Label>
-            <Input className="mt-1" value={contact} onChange={(e) => setContact(e.target.value)} />
+            <Label htmlFor="new-lead-contact" className="text-xs">
+              Contact name
+            </Label>
+            <Input
+              id="new-lead-contact"
+              name="contact-name"
+              autoComplete="name"
+              className="mt-1"
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+            />
           </div>
           <div>
-            <Label className="text-xs">Contact email</Label>
-            <Input className="mt-1" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Label htmlFor="new-lead-email" className="text-xs">
+              Contact email
+            </Label>
+            <Input
+              id="new-lead-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              spellCheck={false}
+              className="mt-1"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div>
-            <Label className="text-xs">Source</Label>
+            <Label htmlFor="new-lead-source" className="text-xs">
+              Source
+            </Label>
             <Select value={source} onValueChange={setSource}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger id="new-lead-source" className="mt-1">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -444,8 +509,12 @@ function NewLeadDialog({
             </Select>
           </div>
           <div className="sm:col-span-2">
-            <Label className="text-xs">Enquiry</Label>
+            <Label htmlFor="new-lead-enquiry" className="text-xs">
+              Enquiry
+            </Label>
             <Textarea
+              id="new-lead-enquiry"
+              name="enquiry"
               className="mt-1"
               rows={3}
               value={enquiry}
@@ -547,8 +616,14 @@ function LeadsBulkBar({
             <DialogDescription>Pick a new owner. Reassignment is logged.</DialogDescription>
           </DialogHeader>
           <div>
-            <Label className="text-xs">Owner UUID</Label>
+            <Label htmlFor="owner-uuid" className="text-xs">
+              Owner UUID
+            </Label>
             <Input
+              id="owner-uuid"
+              name="owner-uuid"
+              autoComplete="off"
+              spellCheck={false}
               className="mt-1"
               placeholder="Paste user UUID…"
               value={assignee}

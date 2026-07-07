@@ -3,8 +3,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
-import { MetricCard } from "@/components/metric-card";
-import { PageHeader } from "@/components/page-header";
+import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -33,10 +32,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCompactHKD } from "@/lib/format";
+import { formatCompactHKD, formatCount, formatDate } from "@/lib/format";
+import { getRenewalWindow } from "@/lib/engagement-utils";
+import { getClientPortfolioMetrics } from "@/lib/sales-workspace";
 import { getClients, createClient } from "@/server-functions/clients";
 import { APP_USERS, userById } from "@/lib/users";
-import type { Client } from "@/lib/types";
+import type { Client, RenewalRisk } from "@/lib/types";
+
+type ClientRow = Client & { renewal_risk: RenewalRisk };
 
 export const Route = createFileRoute("/clients")({
   loader: () => getClients({}),
@@ -58,70 +61,89 @@ function healthClass(score: number) {
 function ClientsPage() {
   const loaderClients = Route.useLoaderData();
   const router = useRouter();
-  const [rows, setRows] = useState<Client[]>(loaderClients);
+  const [rows, setRows] = useState<ClientRow[]>(loaderClients);
   const [tier, setTier] = useState("all");
+  const [riskFilter, setRiskFilter] = useState<"all" | RenewalRisk>("all");
+  const [windowFilter, setWindowFilter] = useState<"all" | "overdue" | "30" | "60" | "90">("all");
   const [sortKey, setSortKey] = useState<"arr" | "health" | "renewal">("arr");
   const [newOpen, setNewOpen] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const portfolio = getClientPortfolioMetrics(rows, today);
 
   const filtered = useMemo(() => {
-    const out = rows.filter((c) => (tier === "all" ? true : c.tier === tier));
+    const out = rows.filter((c) => {
+      if (tier !== "all" && c.tier !== tier) return false;
+      if (riskFilter !== "all" && c.renewal_risk !== riskFilter) return false;
+      if (windowFilter !== "all" && getRenewalWindow(c.renewal_date, today) !== windowFilter)
+        return false;
+      return true;
+    });
     const sortFn = {
-      arr: (a: Client, b: Client) => (b.arr ?? 0) - (a.arr ?? 0),
-      health: (a: Client, b: Client) => b.health_score - a.health_score,
-      renewal: (a: Client, b: Client) => (a.renewal_date ?? "").localeCompare(b.renewal_date ?? ""),
+      arr: (a: ClientRow, b: ClientRow) => (b.arr ?? 0) - (a.arr ?? 0),
+      health: (a: ClientRow, b: ClientRow) => b.health_score - a.health_score,
+      renewal: (a: ClientRow, b: ClientRow) =>
+        (a.renewal_date ?? "").localeCompare(b.renewal_date ?? ""),
     }[sortKey];
     return [...out].sort(sortFn);
-  }, [rows, tier, sortKey]);
-
-  const totalARR = rows.reduce((s, c) => s + (c.arr ?? 0), 0);
-  const avgHealth = rows.length
-    ? Math.round(rows.reduce((s, c) => s + c.health_score, 0) / rows.length)
-    : 0;
+  }, [rows, tier, riskFilter, windowFilter, today, sortKey]);
 
   return (
     <>
-      <PageHeader
-        title="Clients"
-        description={`${rows.length} active accounts`}
+      <CommandHeader
+        title="Account 360"
+        status="Retain"
+        description={`${rows.length} active accounts with health, renewal, and owner signals.`}
         actions={
-          <Dialog open={newOpen} onOpenChange={setNewOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="mr-2 h-4 w-4" /> New client
-              </Button>
-            </DialogTrigger>
-            <NewClientDialog
-              onCreate={async (c) => {
-                const created = await createClient({ data: c });
-                setRows((prev) => [created, ...prev]);
-                setNewOpen(false);
-                router.invalidate();
-                toast.success(`Created client ${created.company_name}`);
-              }}
-            />
-          </Dialog>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/clients/import">Import CSV</Link>
+            </Button>
+            <Dialog open={newOpen} onOpenChange={setNewOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Plus className="mr-2 h-4 w-4" /> New client
+                </Button>
+              </DialogTrigger>
+              <NewClientDialog
+                onCreate={async (c) => {
+                  const created = await createClient({ data: c });
+                  setRows((prev) => [{ ...created, renewal_risk: "low" }, ...prev]);
+                  setNewOpen(false);
+                  router.invalidate();
+                  toast.success(`Created client ${created.company_name}`);
+                }}
+              />
+            </Dialog>
+          </div>
         }
       />
 
       <div className="space-y-4 px-6 py-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard
-            label="Total ARR"
-            value={formatCompactHKD(totalARR)}
-            hint="all active accounts"
-          />
-          <MetricCard label="Avg health" value={`${avgHealth}/100`} hint="across portfolio" />
-          <MetricCard
-            label="Renewals next 90d"
-            value={rows.filter((c) => (c.renewal_date ?? "") <= "2026-08-20").length}
-            hint="schedule QBRs early"
-          />
-        </div>
+        <MetricStrip
+          metrics={[
+            {
+              label: "Total ARR",
+              value: formatCompactHKD(portfolio.totalArr),
+              hint: "all active accounts",
+            },
+            {
+              label: "Avg health",
+              value: `${portfolio.averageHealth}/100`,
+              hint: "portfolio health",
+            },
+            { label: "At risk", value: portfolio.atRiskAccounts, hint: "health below 55" },
+            {
+              label: "Renewals 90d",
+              value: portfolio.renewalsNext90Days,
+              hint: "upcoming decisions",
+            },
+          ]}
+        />
 
         <Card className="p-3">
           <div className="flex flex-wrap items-center gap-2">
             <Select value={tier} onValueChange={setTier}>
-              <SelectTrigger className="h-9 w-[160px]">
+              <SelectTrigger className="h-9 w-[160px]" aria-label="Filter by tier">
                 <SelectValue placeholder="Tier" />
               </SelectTrigger>
               <SelectContent>
@@ -131,8 +153,34 @@ function ClientsPage() {
                 <SelectItem value="enterprise">Enterprise</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={riskFilter} onValueChange={(v) => setRiskFilter(v as typeof riskFilter)}>
+              <SelectTrigger className="h-9 w-[160px]" aria-label="Filter by renewal risk">
+                <SelectValue placeholder="Risk" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All risk</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={windowFilter}
+              onValueChange={(v) => setWindowFilter(v as typeof windowFilter)}
+            >
+              <SelectTrigger className="h-9 w-[180px]" aria-label="Filter by renewal window">
+                <SelectValue placeholder="Renewal window" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All renewal windows</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+                <SelectItem value="30">≤30 days</SelectItem>
+                <SelectItem value="60">≤60 days</SelectItem>
+                <SelectItem value="90">≤90 days</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={sortKey} onValueChange={(v) => setSortKey(v as typeof sortKey)}>
-              <SelectTrigger className="h-9 w-[180px]">
+              <SelectTrigger className="h-9 w-[180px]" aria-label="Sort clients">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -145,7 +193,7 @@ function ClientsPage() {
         </Card>
 
         <Card className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[1040px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Company</TableHead>
@@ -155,12 +203,13 @@ function ClientsPage() {
                 <TableHead className="text-right">Health</TableHead>
                 <TableHead className="text-right">ARR (HKD)</TableHead>
                 <TableHead>Renewal</TableHead>
+                <TableHead>Risk</TableHead>
                 <TableHead>Owner</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((c) => {
-                const owner = userById(c.account_owner);
+                const owner = c.account_owner ? userById(c.account_owner) : undefined;
                 return (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">
@@ -189,14 +238,38 @@ function ClientsPage() {
                         {c.health_score}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {(c.arr ?? 0).toLocaleString()}
+                    <TableCell className="text-right tabular-nums">{formatCount(c.arr)}</TableCell>
+                    <TableCell className="text-sm">{formatDate(c.renewal_date)}</TableCell>
+                    <TableCell>
+                      <StatusBadge value={c.renewal_risk} />
                     </TableCell>
-                    <TableCell className="text-sm">{c.renewal_date}</TableCell>
                     <TableCell className="text-sm">{owner?.name ?? "—"}</TableCell>
                   </TableRow>
                 );
               })}
+              {filtered.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={9} className="p-4">
+                    <WorkSurfaceEmpty
+                      title="No accounts match this Account 360 view"
+                      description="Clear filters or import clients to review retention work."
+                      action={
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setTier("all");
+                            setRiskFilter("all");
+                            setWindowFilter("all");
+                          }}
+                        >
+                          Clear filters
+                        </Button>
+                      }
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </Card>
@@ -225,17 +298,37 @@ function NewClientDialog({ onCreate }: { onCreate: (c: CreateClientPayload) => P
       </DialogHeader>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <Label className="text-xs">Company</Label>
-          <Input className="mt-1" value={name} onChange={(e) => setName(e.target.value)} />
+          <Label htmlFor="new-client-company" className="text-xs">
+            Company
+          </Label>
+          <Input
+            id="new-client-company"
+            name="company"
+            autoComplete="organization"
+            className="mt-1"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         <div>
-          <Label className="text-xs">Industry</Label>
-          <Input className="mt-1" value={industry} onChange={(e) => setIndustry(e.target.value)} />
+          <Label htmlFor="new-client-industry" className="text-xs">
+            Industry
+          </Label>
+          <Input
+            id="new-client-industry"
+            name="industry"
+            autoComplete="off"
+            className="mt-1"
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+          />
         </div>
         <div>
-          <Label className="text-xs">Tier</Label>
+          <Label htmlFor="new-client-tier" className="text-xs">
+            Tier
+          </Label>
           <Select value={tier ?? "SME"} onValueChange={(v) => setTier(v as Client["tier"])}>
-            <SelectTrigger className="mt-1">
+            <SelectTrigger id="new-client-tier" className="mt-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -246,9 +339,11 @@ function NewClientDialog({ onCreate }: { onCreate: (c: CreateClientPayload) => P
           </Select>
         </div>
         <div className="sm:col-span-2">
-          <Label className="text-xs">Account owner</Label>
+          <Label htmlFor="new-client-owner" className="text-xs">
+            Account owner
+          </Label>
           <Select value={owner} onValueChange={setOwner}>
-            <SelectTrigger className="mt-1">
+            <SelectTrigger id="new-client-owner" className="mt-1">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

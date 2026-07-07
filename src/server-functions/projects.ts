@@ -59,7 +59,11 @@ export const getProject = createServerFn({ method: "GET" })
         .order("occurred_at", { ascending: false })
         .limit(50),
       supabase.from("tasks").select("*").eq("project_id", data.id),
-      supabase.from("customer_success_profiles").select("*").eq("project_id", data.id).maybeSingle(),
+      supabase
+        .from("customer_success_profiles")
+        .select("*")
+        .eq("project_id", data.id)
+        .maybeSingle(),
     ]);
 
     if (projectResult.error) throw new Error(projectResult.error.message);

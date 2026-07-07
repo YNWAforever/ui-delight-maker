@@ -4,7 +4,7 @@
 
 - [ ] Staging Neon migration is applied.
 - [ ] Vercel preview/staging has Neon Auth env vars.
-- [ ] Vercel preview/staging has the three n8n webhook URLs.
+- [ ] Vercel preview/staging has the four n8n webhook URLs.
 - [ ] Vercel preview/staging and n8n share the same `N8N_WORKFLOW_TOKEN`.
 - [ ] n8n staging has `APP_BASE_URL` pointed to the app staging URL.
 - [ ] OpenRouter env is either configured for live-path smoke or intentionally absent for fallback smoke.
@@ -13,6 +13,7 @@
 
 ```bash
 CLIENTOPS_ALLOW_STAGING_SEED=1 \
+CLIENTOPS_SEED_MODE=staging-smoke \
 CLIENTOPS_SEED_TARGET=staging \
 DATABASE_URL="$STAGING_DATABASE_URL" \
 CLIENTOPS_SMOKE_PROFILE_ID="$STAGING_NEON_AUTH_USER_ID" \
@@ -21,7 +22,54 @@ CLIENTOPS_SMOKE_PROFILE_NAME="ClientOps Smoke User" \
 bun scripts/clientops/seed-smoke-data.ts
 ```
 
-Record the returned `lead_id`.
+The seed script prints a JSON summary. Record `lead_ids["lead-retail"]` as `SMOKE_LEAD_ID`.
+
+## Staging Demo Data
+
+Use this when the staging or preview app should show the full ClientOps mock dataset. It upserts demo records without truncating existing staging data.
+
+```bash
+CLIENTOPS_ALLOW_STAGING_SEED=1 \
+CLIENTOPS_SEED_MODE=staging-demo \
+CLIENTOPS_SEED_TARGET=staging \
+CLIENTOPS_SEED_TODAY=2026-07-05 \
+DATABASE_URL="$STAGING_DATABASE_URL" \
+bun scripts/clientops/seed-smoke-data.ts
+```
+
+Staging demo uses built-in `DEMO_PROFILES`; do not set the staging smoke profile env vars for this mode.
+
+## Vercel Deploy Seed
+
+Vercel production/preview databases use Vercel-managed sensitive env vars, so local seed runs do not populate them. To seed the deployed app database during build, configure these Vercel env vars and redeploy:
+
+```bash
+CLIENTOPS_SEED_ON_DEPLOY=1
+CLIENTOPS_ALLOW_STAGING_SEED=1
+CLIENTOPS_SEED_MODE=staging-demo
+CLIENTOPS_SEED_TARGET=staging
+CLIENTOPS_SEED_TODAY=2026-07-05
+```
+
+The deploy seed is non-destructive and idempotent. If `CLIENTOPS_SEED_ON_DEPLOY` is unset or not `1`, the build skips seeding.
+
+## Local Demo Reset
+
+Use this only against a local or disposable database. It truncates demo-facing CRM tables and rebuilds a full lead-flow plus retention dataset.
+
+```bash
+CLIENTOPS_ALLOW_STAGING_SEED=1 \
+CLIENTOPS_SEED_MODE=local-demo-reset \
+CLIENTOPS_SEED_TARGET=local \
+CLIENTOPS_DESTRUCTIVE_RESET=I_UNDERSTAND \
+CLIENTOPS_SEED_TODAY=2026-07-05 \
+DATABASE_URL="$LOCAL_DATABASE_URL" \
+bun scripts/clientops/seed-smoke-data.ts
+```
+
+Local demo reset uses built-in `DEMO_PROFILES`; do not set the staging smoke profile env vars for this mode.
+
+After it finishes, open the app locally and inspect Pipeline, Leads, Quotes, Approvals, Tasks, Renewals, Clients, Notifications, Agents, and Settings products.
 
 ## App Smoke
 

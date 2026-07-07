@@ -6,6 +6,42 @@ export type Queryable = {
 
 let pool: Pool | null = null;
 
+function normalizeDbValue(value: unknown): unknown {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(normalizeDbValue);
+  }
+
+  if (value && typeof value === "object") {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      return value;
+    }
+
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, normalizeDbValue(entry)]),
+    );
+  }
+
+  return value;
+}
+
+function normalizeRows<T>(rows: T[]) {
+  return rows.map((row) => normalizeDbValue(row)) as T[];
+}
+
+function withNormalizedRows(db: Queryable): Queryable {
+  return {
+    async query<T = unknown>(text: string, values?: readonly unknown[]) {
+      const result = await db.query<T>(text, values);
+      return { ...result, rows: normalizeRows(result.rows) };
+    },
+  };
+}
+
 export function getDatabaseUrl() {
   const url = process.env.DATABASE_URL;
   if (!url) {
@@ -31,8 +67,8 @@ export async function query<T>(
   values: readonly unknown[] = [],
   db: Queryable = getPool(),
 ) {
-  const result = await db.query(text, values);
-  return result.rows as T[];
+  const result = await withNormalizedRows(db).query<T>(text, values);
+  return result.rows;
 }
 
 export async function queryOne<T>(text: string, values: readonly unknown[] = [], db?: Queryable) {
@@ -44,7 +80,7 @@ export async function transaction<T>(work: (client: Queryable) => Promise<T>) {
   const client = await getPool().connect();
   try {
     await client.query("begin");
-    const result = await work(client);
+    const result = await work(withNormalizedRows(client));
     await client.query("commit");
     return result;
   } catch (error) {

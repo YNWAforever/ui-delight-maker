@@ -1,6 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { ArrowDownAZ, ArrowUpDown, CalendarIcon, CheckCircle2, ChevronRight, Download, Filter, Link2, Medal, Trash2, Trophy, X } from "lucide-react";
+import {
+  ArrowDownAZ,
+  ArrowUpDown,
+  CalendarIcon,
+  CheckCircle2,
+  ChevronRight,
+  Download,
+  Filter,
+  Link2,
+  Medal,
+  Trash2,
+  Trophy,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -21,10 +34,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
-import { formatCompactHKD } from "@/lib/format";
+import { formatCompactHKD, formatCount } from "@/lib/format";
 
 // Daily agent performance data — deterministic seed so SSR + client match.
 // Will be replaced with a real Supabase query in a future task.
@@ -63,7 +82,7 @@ const agentLeaderboardDaily: AgentLeaderboardDay[] = (() => {
         0,
         Math.min(runs, Math.round(runs * (0.78 + lbSeed(ai, d, 2) * 0.22))),
       );
-      const value = Math.round((runs * (35 + lbSeed(ai, d, 3) * 65)) * 1000);
+      const value = Math.round(runs * (35 + lbSeed(ai, d, 3) * 65) * 1000);
       out.push({ agent, date, runs, successes, value });
     });
   }
@@ -117,23 +136,39 @@ function coerceState(raw: unknown): PersistedState | null {
   const r = raw as Record<string, unknown>;
 
   const agents = Array.isArray(r.agents)
-    ? (r.agents.filter((a): a is string => typeof a === "string"))
+    ? r.agents.filter((a): a is string => typeof a === "string")
     : null;
 
-  const from = typeof r.from === "string" && !Number.isNaN(new Date(r.from).getTime()) ? r.from : null;
+  const from =
+    typeof r.from === "string" && !Number.isNaN(new Date(r.from).getTime()) ? r.from : null;
   const to = typeof r.to === "string" && !Number.isNaN(new Date(r.to).getTime()) ? r.to : null;
 
   const tRaw = (r.thresholds ?? {}) as Record<string, unknown>;
   const thresholds: ThresholdState = {
-    minRuns: typeof tRaw.minRuns === "number" && Number.isFinite(tRaw.minRuns) ? tRaw.minRuns : DEFAULT_THRESHOLDS.minRuns,
-    minSuccess: typeof tRaw.minSuccess === "number" && Number.isFinite(tRaw.minSuccess) ? tRaw.minSuccess : DEFAULT_THRESHOLDS.minSuccess,
-    minValue: typeof tRaw.minValue === "number" && Number.isFinite(tRaw.minValue) ? tRaw.minValue : DEFAULT_THRESHOLDS.minValue,
+    minRuns:
+      typeof tRaw.minRuns === "number" && Number.isFinite(tRaw.minRuns)
+        ? tRaw.minRuns
+        : DEFAULT_THRESHOLDS.minRuns,
+    minSuccess:
+      typeof tRaw.minSuccess === "number" && Number.isFinite(tRaw.minSuccess)
+        ? tRaw.minSuccess
+        : DEFAULT_THRESHOLDS.minSuccess,
+    minValue:
+      typeof tRaw.minValue === "number" && Number.isFinite(tRaw.minValue)
+        ? tRaw.minValue
+        : DEFAULT_THRESHOLDS.minValue,
   };
 
   const sort = SORT_KEYS.includes(r.sort as SortKey) ? (r.sort as SortKey) : "value";
 
   // Require at least one identifying field to consider this a real persisted record.
-  if (agents === null && from === null && to === null && r.thresholds === undefined && r.sort === undefined) {
+  if (
+    agents === null &&
+    from === null &&
+    to === null &&
+    r.thresholds === undefined &&
+    r.sort === undefined
+  ) {
     return null;
   }
 
@@ -189,7 +224,11 @@ const isValidDate = (d: Date) => !Number.isNaN(d.getTime());
 function loadFromQuery(): Partial<PersistedState> | null {
   if (typeof window === "undefined") return null;
   const sp = new URLSearchParams(window.location.search);
-  if (![...sp.keys()].some((k) => ["agents", "from", "to", "minRuns", "minSuccess", "minValue", "sort"].includes(k))) {
+  if (
+    ![...sp.keys()].some((k) =>
+      ["agents", "from", "to", "minRuns", "minSuccess", "minValue", "sort"].includes(k),
+    )
+  ) {
     return null;
   }
   const out: Partial<PersistedState> = {};
@@ -239,17 +278,11 @@ export function LeaderboardWidget() {
   const query = loadFromQuery();
   const initial = { ...(persisted ?? {}), ...(query ?? {}) } as Partial<PersistedState>;
 
-  const [agents, setAgents] = useState<Set<string>>(
-    new Set(initial.agents ?? ALL_AGENTS)
-  );
-  const [from, setFrom] = useState<Date>(
-    initial.from ? new Date(initial.from) : DEFAULT_FROM
-  );
-  const [to, setTo] = useState<Date>(
-    initial.to ? new Date(initial.to) : DEFAULT_TO
-  );
+  const [agents, setAgents] = useState<Set<string>>(new Set(initial.agents ?? ALL_AGENTS));
+  const [from, setFrom] = useState<Date>(initial.from ? new Date(initial.from) : DEFAULT_FROM);
+  const [to, setTo] = useState<Date>(initial.to ? new Date(initial.to) : DEFAULT_TO);
   const [thresholds, setThresholds] = useState<ThresholdState>(
-    initial.thresholds ?? DEFAULT_THRESHOLDS
+    initial.thresholds ?? DEFAULT_THRESHOLDS,
   );
   const [sortKey, setSortKey] = useState<SortKey>(initial.sort ?? "value");
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
@@ -285,9 +318,13 @@ export function LeaderboardWidget() {
       if (!agents.has(d.agent)) continue;
       const ms = new Date(d.date + "T00:00:00Z").getTime();
       if (ms < fromMs || ms > toMs) continue;
-      const existing =
-        agg.get(d.agent) ??
-        { agent: d.agent, runs: 0, successes: 0, value: 0, days: new Set<string>() };
+      const existing = agg.get(d.agent) ?? {
+        agent: d.agent,
+        runs: 0,
+        successes: 0,
+        value: 0,
+        days: new Set<string>(),
+      };
       existing.runs += d.runs;
       existing.successes += d.successes;
       existing.value += d.value;
@@ -321,7 +358,11 @@ export function LeaderboardWidget() {
   const toggleAgent = (name: string) => {
     setAgents((prev) => {
       const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
       return next;
     });
   };
@@ -345,7 +386,9 @@ export function LeaderboardWidget() {
   const clearSaved = () => {
     try {
       localStorage.removeItem(LS_KEY);
-      toast.success("Saved filters cleared", { description: "Defaults will be used on next reload." });
+      toast.success("Saved filters cleared", {
+        description: "Defaults will be used on next reload.",
+      });
     } catch {
       toast.error("Couldn't clear saved filters");
     }
@@ -363,7 +406,15 @@ export function LeaderboardWidget() {
   };
 
   const exportCSV = () => {
-    const headers = ["Rank", "Agent", "Runs", "SuccessRate", "ActiveDays", "AttributedValue", "OnTarget"];
+    const headers = [
+      "Rank",
+      "Agent",
+      "Runs",
+      "SuccessRate",
+      "ActiveDays",
+      "AttributedValue",
+      "OnTarget",
+    ];
     const lines = rows.map((r, idx) => {
       const ok = passes(r);
       return [
@@ -414,7 +465,12 @@ export function LeaderboardWidget() {
         <div className="flex flex-wrap items-center gap-2">
           <DateButton label="From" value={from} onChange={setFrom} max={to} />
           <DateButton label="To" value={to} onChange={setTo} min={from} />
-          <AgentFilter agents={agents} all={ALL_AGENTS} onToggle={toggleAgent} onReset={() => setAgents(new Set(ALL_AGENTS))} />
+          <AgentFilter
+            agents={agents}
+            all={ALL_AGENTS}
+            onToggle={toggleAgent}
+            onReset={() => setAgents(new Set(ALL_AGENTS))}
+          />
           <ThresholdPopover value={thresholds} onChange={setThresholds} />
           <SortPopover value={sortKey} onChange={setSortKey} />
           <Button size="sm" variant="outline" onClick={exportCSV}>
@@ -436,11 +492,14 @@ export function LeaderboardWidget() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Reset all filters?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will clear your agent selection, date range, thresholds, sort order, and saved state. This action cannot be undone.
+                  This will clear your agent selection, date range, thresholds, sort order, and
+                  saved state. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setShowResetDialog(false)}>Cancel</AlertDialogCancel>
+                <AlertDialogCancel onClick={() => setShowResetDialog(false)}>
+                  Cancel
+                </AlertDialogCancel>
                 <AlertDialogAction onClick={resetAll}>Reset</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -482,7 +541,10 @@ export function LeaderboardWidget() {
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{r.agent}</span>
                         {ok && (
-                          <Badge variant="outline" className="border-success/40 bg-success/10 text-success">
+                          <Badge
+                            variant="outline"
+                            className="border-success/40 bg-success/10 text-success"
+                          >
                             On target
                           </Badge>
                         )}
@@ -491,7 +553,12 @@ export function LeaderboardWidget() {
                         {r.activeDays} active day{r.activeDays === 1 ? "" : "s"} ·{" "}
                         <ThresholdHint label="runs" value={r.runs} min={thresholds.minRuns} />
                         {" · "}
-                        <ThresholdHint label="success" value={r.successRate} min={thresholds.minSuccess} suffix="%" />
+                        <ThresholdHint
+                          label="success"
+                          value={r.successRate}
+                          min={thresholds.minSuccess}
+                          suffix="%"
+                        />
                       </p>
                     </div>
                     <div className="text-right">
@@ -577,7 +644,7 @@ function AgentDetailSheet({
         {data && (
           <div className="mt-4 space-y-4">
             <div className="grid grid-cols-3 gap-2">
-              <SummaryStat label="Runs" value={data.totals.runs.toLocaleString()} />
+              <SummaryStat label="Runs" value={formatCount(data.totals.runs)} />
               <SummaryStat label="Success rate" value={`${data.successRate}%`} />
               <SummaryStat label="Value" value={formatCompactHKD(data.totals.value)} />
             </div>
@@ -604,10 +671,17 @@ function AgentDetailSheet({
                             {format(new Date(d.date + "T00:00:00Z"), "EEE, MMM d")}
                           </span>
                           <span className="text-right">{d.runs}</span>
-                          <span className={cn("text-right", rate >= 90 ? "text-success" : "text-muted-foreground")}>
+                          <span
+                            className={cn(
+                              "text-right",
+                              rate >= 90 ? "text-success" : "text-muted-foreground",
+                            )}
+                          >
                             {rate}%
                           </span>
-                          <span className="text-right font-medium">{formatCompactHKD(d.value)}</span>
+                          <span className="text-right font-medium">
+                            {formatCompactHKD(d.value)}
+                          </span>
                         </div>
                         <div className="mt-1.5 flex gap-1">
                           <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
@@ -726,12 +800,14 @@ function AgentFilter({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-3">
         <div className="mb-2 flex items-center justify-between">
-          <Label className="text-xs">Include agents</Label>
+          <p id="leaderboard-agent-filter-label" className="text-xs font-medium">
+            Include agents
+          </p>
           <button onClick={onReset} className="text-[11px] text-muted-foreground hover:underline">
             All
           </button>
         </div>
-        <ul className="space-y-1.5">
+        <ul aria-labelledby="leaderboard-agent-filter-label" className="space-y-1.5">
           {all.map((name) => (
             <li key={name} className="flex items-center gap-2">
               <Checkbox
@@ -767,10 +843,11 @@ function ThresholdPopover({
       <PopoverContent align="end" className="w-72 space-y-4 p-4">
         <div>
           <div className="mb-1 flex items-center justify-between text-xs">
-            <Label>Min runs</Label>
+            <Label htmlFor="leaderboard-min-runs">Min runs</Label>
             <span className="tabular-nums text-muted-foreground">{value.minRuns}</span>
           </div>
           <Slider
+            id="leaderboard-min-runs"
             value={[value.minRuns]}
             min={0}
             max={80}
@@ -780,10 +857,11 @@ function ThresholdPopover({
         </div>
         <div>
           <div className="mb-1 flex items-center justify-between text-xs">
-            <Label>Min success rate</Label>
+            <Label htmlFor="leaderboard-min-success">Min success rate</Label>
             <span className="tabular-nums text-muted-foreground">{value.minSuccess}%</span>
           </div>
           <Slider
+            id="leaderboard-min-success"
             value={[value.minSuccess]}
             min={50}
             max={100}
@@ -793,12 +871,13 @@ function ThresholdPopover({
         </div>
         <div>
           <div className="mb-1 flex items-center justify-between text-xs">
-            <Label>Min attributed value</Label>
+            <Label htmlFor="leaderboard-min-value">Min attributed value</Label>
             <span className="tabular-nums text-muted-foreground">
               {formatCompactHKD(value.minValue)}
             </span>
           </div>
           <Slider
+            id="leaderboard-min-value"
             value={[value.minValue]}
             min={0}
             max={1_500_000}
@@ -814,13 +893,7 @@ function ThresholdPopover({
   );
 }
 
-function SortPopover({
-  value,
-  onChange,
-}: {
-  value: SortKey;
-  onChange: (v: SortKey) => void;
-}) {
+function SortPopover({ value, onChange }: { value: SortKey; onChange: (v: SortKey) => void }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -831,9 +904,11 @@ function SortPopover({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-3">
         <div className="mb-2 flex items-center justify-between">
-          <Label className="text-xs">Rank by</Label>
+          <p id="leaderboard-sort-label" className="text-xs font-medium">
+            Rank by
+          </p>
         </div>
-        <ul className="space-y-1">
+        <ul aria-labelledby="leaderboard-sort-label" className="space-y-1">
           {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
             <li key={key}>
               <button
@@ -843,7 +918,7 @@ function SortPopover({
                   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
                   value === key
                     ? "bg-primary/10 font-medium text-primary"
-                    : "hover:bg-muted/60 text-foreground"
+                    : "hover:bg-muted/60 text-foreground",
                 )}
               >
                 {value === key && <ArrowUpDown className="h-3.5 w-3.5" />}

@@ -12,13 +12,14 @@ Mini CRM runtime paths migrated in Tasks 1-11 must stay free of Supabase imports
 - `src/server-functions/quotes.ts`
 - `src/server-functions/approvals.ts`
 - `src/server-functions/agent-runs.ts`
+- `src/server-functions/clients.ts`
 - `src/server/repositories/**`
 - `src/lib/auth/**`
 - `src/lib/workflows/**`
 
 What remains here is intentionally out of scope for Task 12:
 
-- Legacy server-functions for accounts, clients, contacts, campaigns, projects, deals,
+- Legacy server-functions for accounts, contacts, campaigns, projects, deals,
   customer success, automation playbooks, and engagement events.
 
 Why the packages are still installed:

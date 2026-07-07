@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { formatCompactHKD, formatDateTime } from "@/lib/format";
+import { formatCompactHKD, formatDate, formatDateTime } from "@/lib/format";
 import {
   getLeadNextAction,
   getLeadOpenTasks,
@@ -148,12 +148,10 @@ export function LeadPreviewPanel({
                 <p className="font-medium">{task.title}</p>
                 <StatusBadge value={task.priority} />
               </div>
-              {task.due_date && (
-                <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <CalendarClock className="h-3.5 w-3.5" />
-                  {task.due_date}
-                </p>
-              )}
+              <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <CalendarClock className="h-3.5 w-3.5" />
+                {task.due_date ? formatDate(task.due_date) : "No due date"}
+              </p>
             </div>
           ))}
         </CardContent>

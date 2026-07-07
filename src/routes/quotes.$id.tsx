@@ -25,16 +25,35 @@ import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { formatDateTime } from "@/lib/format";
+import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
 import { calculateTotal, newLineItem } from "@/lib/quote-utils";
 import type { PricingTemplate, QuoteLineItem, QuoteStatus } from "@/lib/types";
-import { getQuote, getPricingTemplates, requestQuoteApproval, updateQuote } from "@/server-functions/quotes";
+import {
+  getQuote,
+  getPricingTemplates,
+  requestQuoteApproval,
+  updateQuote,
+} from "@/server-functions/quotes";
 import { decideApproval } from "@/server-functions/approvals";
 import { USER_RECORD } from "@/lib/users";
 
 type Comment = { id: string; quote_id: string; author: string; body: string; created_at: string };
-type QuoteFile = { id: string; quote_id: string; name: string; size: string; kind: "pdf" | "docx" | "image" | "email"; uploaded_at: string; uploaded_by: string };
-type QuoteVersion = { version: number; quote_id: string; changed_by: string; summary: string; created_at: string };
+type QuoteFile = {
+  id: string;
+  quote_id: string;
+  name: string;
+  size: string;
+  kind: "pdf" | "docx" | "image" | "email";
+  uploaded_at: string;
+  uploaded_by: string;
+};
+type QuoteVersion = {
+  version: number;
+  quote_id: string;
+  changed_by: string;
+  summary: string;
+  created_at: string;
+};
 
 const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
 // Lead lookups are not available client-side without a server call; return undefined gracefully
@@ -105,11 +124,15 @@ function QuoteDetail() {
   const totalValue = calculateTotal(editItems);
 
   const updateItemQty = (idx: number, qty: number) => {
-    setEditItems((prev) => prev.map((li, i) => (i === idx ? { ...li, qty: Math.max(1, qty) } : li)));
+    setEditItems((prev) =>
+      prev.map((li, i) => (i === idx ? { ...li, qty: Math.max(1, qty) } : li)),
+    );
   };
 
   const updateItemPrice = (idx: number, unit_price: number) => {
-    setEditItems((prev) => prev.map((li, i) => (i === idx ? { ...li, unit_price: Math.max(0, unit_price) } : li)));
+    setEditItems((prev) =>
+      prev.map((li, i) => (i === idx ? { ...li, unit_price: Math.max(0, unit_price) } : li)),
+    );
   };
 
   const removeItem = (idx: number) => {
@@ -124,7 +147,9 @@ function QuoteDetail() {
   const handleSaveDraft = async () => {
     setSaving(true);
     try {
-      await updateQuote({ data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } } });
+      await updateQuote({
+        data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } },
+      });
       toast.success("Draft saved");
       router.invalidate();
     } catch (err) {
@@ -140,7 +165,12 @@ function QuoteDetail() {
       if (approvalId) {
         // Coming from Approvals "Review & Edit" flow:
         // 1. Save edits + advance quote to "sent"
-        await updateQuote({ data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue, status: "sent" } } });
+        await updateQuote({
+          data: {
+            id: quote.id,
+            updates: { line_items: editItems, total_value: totalValue, status: "sent" },
+          },
+        });
         // 2. Mark the human_approval record as approved
         await decideApproval({ data: { id: approvalId, decision: "approved" } });
         setStatus("sent");
@@ -148,7 +178,9 @@ function QuoteDetail() {
         navigate({ to: "/approvals" });
       } else {
         // Plain draft edit: save + request approval (moves to pending_approval + triggers n8n)
-        await updateQuote({ data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } } });
+        await updateQuote({
+          data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } },
+        });
         await requestQuoteApproval({ data: { id: quote.id } });
         setStatus("pending_approval");
         toast.success("Quote submitted for approval");
@@ -217,20 +249,27 @@ function QuoteDetail() {
     <>
       <PageHeader
         title={quote.number ?? ""}
-        description={`${lead?.company_name ?? "—"} · ${quote.currency} ${(quote.total_value ?? 0).toLocaleString()}`}
+        description={`${lead?.company_name ?? "—"} · ${formatCurrencyAmount(
+          quote.total_value,
+          quote.currency,
+        )}`}
         actions={
           <>
             <Button variant="outline" size="sm" asChild>
               <Link to="/quotes">
-                <ArrowLeft className="mr-2 h-4 w-4" /> All
+                <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" /> All
               </Link>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => toast.message("PDF download mocked")}>
-              <Download className="mr-2 h-4 w-4" /> PDF
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast.message("PDF download mocked")}
+            >
+              <Download aria-hidden="true" className="mr-2 h-4 w-4" /> PDF
             </Button>
             {status === "draft" && (
               <Button size="sm" onClick={handleRequestApproval}>
-                <Send className="mr-2 h-4 w-4" /> Submit for approval
+                <Send aria-hidden="true" className="mr-2 h-4 w-4" /> Submit for approval
               </Button>
             )}
             {status === "pending_approval" && (
@@ -240,16 +279,16 @@ function QuoteDetail() {
                   size="sm"
                   onClick={() => advance("rejected", "Quote rejected")}
                 >
-                  <XCircle className="mr-2 h-4 w-4" /> Reject
+                  <XCircle aria-hidden="true" className="mr-2 h-4 w-4" /> Reject
                 </Button>
                 <Button size="sm" onClick={() => advance("approved", "Quote approved")}>
-                  <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
+                  <CheckCircle2 aria-hidden="true" className="mr-2 h-4 w-4" /> Approve
                 </Button>
               </>
             )}
             {status === "approved" && (
               <Button size="sm" onClick={() => advance("sent", "Sent to client")}>
-                <Send className="mr-2 h-4 w-4" /> Send to client
+                <Send aria-hidden="true" className="mr-2 h-4 w-4" /> Send to client
               </Button>
             )}
           </>
@@ -261,84 +300,103 @@ function QuoteDetail() {
           <Card>
             <CardContent className="p-5">
               <Tabs defaultValue="items">
-                <TabsList>
-                  <TabsTrigger value="items">Line items</TabsTrigger>
-                  <TabsTrigger value="comments">Comments ({comments.length})</TabsTrigger>
-                  <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
-                  <TabsTrigger value="versions">Versions ({versions.length})</TabsTrigger>
-                  <TabsTrigger value="preview">PDF preview</TabsTrigger>
-                </TabsList>
+                <div className="max-w-full overflow-x-auto pb-1">
+                  <TabsList className="w-max">
+                    <TabsTrigger value="items">Line items</TabsTrigger>
+                    <TabsTrigger value="comments">Comments ({comments.length})</TabsTrigger>
+                    <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
+                    <TabsTrigger value="versions">Versions ({versions.length})</TabsTrigger>
+                    <TabsTrigger value="preview">PDF preview</TabsTrigger>
+                  </TabsList>
+                </div>
 
                 <TabsContent value="items" className="mt-4">
                   {isEditMode ? (
                     <div className="space-y-4">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
-                            <th className="py-2 text-left font-medium">Service</th>
-                            <th className="py-2 text-right font-medium w-20">Qty</th>
-                            <th className="py-2 text-right font-medium w-28">Unit (HKD)</th>
-                            <th className="py-2 text-right font-medium w-28">Subtotal</th>
-                            <th className="w-8" />
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                          {editItems.map((li, idx) => (
-                            <tr key={li.id}>
-                              <td className="py-3">
-                                <div className="font-medium">{li.service}</div>
-                                <div className="text-xs text-muted-foreground">{li.description}</div>
-                              </td>
-                              <td className="py-2 text-right">
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  value={li.qty}
-                                  onChange={(e) => updateItemQty(idx, parseInt(e.target.value, 10) || 1)}
-                                  className="h-8 w-16 text-right tabular-nums"
-                                />
-                              </td>
-                              <td className="py-2 text-right">
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  value={li.unit_price}
-                                  onChange={(e) => updateItemPrice(idx, parseFloat(e.target.value) || 0)}
-                                  className="h-8 w-24 text-right tabular-nums"
-                                />
-                              </td>
-                              <td className="py-3 text-right tabular-nums font-medium">
-                                {(li.qty * li.unit_price).toLocaleString()}
-                              </td>
-                              <td className="py-3 text-right">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                                  onClick={() => removeItem(idx)}
-                                >
-                                  ×
-                                </Button>
-                              </td>
+                      <div className="max-w-full overflow-x-auto">
+                        <table className="min-w-[640px] w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                              <th className="py-2 text-left font-medium">Service</th>
+                              <th className="py-2 text-right font-medium w-20">Qty</th>
+                              <th className="py-2 text-right font-medium w-28">Unit (HKD)</th>
+                              <th className="py-2 text-right font-medium w-28">Subtotal</th>
+                              <th className="w-8" />
                             </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="border-t border-border">
-                            <td colSpan={3} className="py-3 text-right text-sm font-semibold">
-                              Total
-                            </td>
-                            <td className="py-3 text-right text-base font-semibold tabular-nums">
-                              {quote.currency ?? "HKD"} {totalValue.toLocaleString()}
-                            </td>
-                            <td />
-                          </tr>
-                        </tfoot>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-border">
+                            {editItems.map((li, idx) => (
+                              <tr key={li.id}>
+                                <td className="py-3">
+                                  <div className="font-medium">{li.service}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {li.description}
+                                  </div>
+                                </td>
+                                <td className="py-2 text-right">
+                                  <Input
+                                    aria-label={`Quantity for ${li.service}`}
+                                    name={`line-${idx}-qty`}
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={1}
+                                    value={li.qty}
+                                    onChange={(e) =>
+                                      updateItemQty(idx, parseInt(e.target.value, 10) || 1)
+                                    }
+                                    className="h-8 w-16 text-right tabular-nums"
+                                  />
+                                </td>
+                                <td className="py-2 text-right">
+                                  <Input
+                                    aria-label={`Unit price for ${li.service}`}
+                                    name={`line-${idx}-unit-price`}
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={0}
+                                    value={li.unit_price}
+                                    onChange={(e) =>
+                                      updateItemPrice(idx, parseFloat(e.target.value) || 0)
+                                    }
+                                    className="h-8 w-24 text-right tabular-nums"
+                                  />
+                                </td>
+                                <td className="py-3 text-right tabular-nums font-medium">
+                                  {formatCurrencyAmount(li.qty * li.unit_price, quote.currency)}
+                                </td>
+                                <td className="py-3 text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    aria-label={`Remove ${li.service}`}
+                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                                    onClick={() => removeItem(idx)}
+                                  >
+                                    ×
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t border-border">
+                              <td colSpan={3} className="py-3 text-right text-sm font-semibold">
+                                Total
+                              </td>
+                              <td className="py-3 text-right text-base font-semibold tabular-nums">
+                                {formatCurrencyAmount(totalValue, quote.currency)}
+                              </td>
+                              <td />
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
 
                       <Sheet open={catalogueOpen} onOpenChange={setCatalogueOpen}>
                         <SheetTrigger asChild>
-                          <Button variant="outline" size="sm">+ Add service from catalogue</Button>
+                          <Button variant="outline" size="sm">
+                            + Add service from catalogue
+                          </Button>
                         </SheetTrigger>
                         <SheetContent>
                           <SheetHeader>
@@ -353,9 +411,11 @@ function QuoteDetail() {
                                     className="w-full rounded-md border border-border p-3 text-left text-sm hover:bg-muted/50 transition-colors"
                                   >
                                     <div className="font-medium">{tpl.service}</div>
-                                    <div className="text-xs text-muted-foreground mt-0.5">{tpl.description}</div>
+                                    <div className="text-xs text-muted-foreground mt-0.5">
+                                      {tpl.description}
+                                    </div>
                                     <div className="text-xs font-medium text-primary mt-1">
-                                      HKD {(tpl.unit_price ?? 0).toLocaleString()}
+                                      {formatCurrencyAmount(tpl.unit_price, "HKD")}
                                     </div>
                                   </button>
                                 </li>
@@ -366,8 +426,11 @@ function QuoteDetail() {
                       </Sheet>
 
                       <div className="flex gap-2 pt-2 border-t border-border">
-                        <Button onClick={handleSubmitForApproval} disabled={saving || editItems.length === 0}>
-                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                        <Button
+                          onClick={handleSubmitForApproval}
+                          disabled={saving || editItems.length === 0}
+                        >
+                          <CheckCircle2 aria-hidden="true" className="mr-2 h-4 w-4" />
                           {approvalId ? "Submit for Approval" : "Save & Request Approval"}
                         </Button>
                         <Button variant="outline" onClick={handleSaveDraft} disabled={saving}>
@@ -376,50 +439,57 @@ function QuoteDetail() {
                       </div>
                     </div>
                   ) : (
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
-                          <th className="py-2 text-left font-medium">Service</th>
-                          <th className="py-2 text-right font-medium">Qty</th>
-                          <th className="py-2 text-right font-medium">Unit</th>
-                          <th className="py-2 text-right font-medium">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {quote.line_items.map((li: typeof quote.line_items[number]) => (
-                          <tr key={li.id}>
-                            <td className="py-3">
-                              <div className="font-medium">{li.service}</div>
-                              <div className="text-xs text-muted-foreground">{li.description}</div>
+                    <div className="max-w-full overflow-x-auto">
+                      <table className="min-w-[560px] w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
+                            <th className="py-2 text-left font-medium">Service</th>
+                            <th className="py-2 text-right font-medium">Qty</th>
+                            <th className="py-2 text-right font-medium">Unit</th>
+                            <th className="py-2 text-right font-medium">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {quote.line_items.map((li: (typeof quote.line_items)[number]) => (
+                            <tr key={li.id}>
+                              <td className="py-3">
+                                <div className="font-medium">{li.service}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {li.description}
+                                </div>
+                              </td>
+                              <td className="py-3 text-right tabular-nums">{li.qty}</td>
+                              <td className="py-3 text-right tabular-nums">
+                                {formatCurrencyAmount(li.unit_price, quote.currency)}
+                              </td>
+                              <td className="py-3 text-right font-medium tabular-nums">
+                                {formatCurrencyAmount(li.qty * li.unit_price, quote.currency)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t border-border">
+                            <td colSpan={3} className="py-3 text-right text-sm font-semibold">
+                              Total
                             </td>
-                            <td className="py-3 text-right tabular-nums">{li.qty}</td>
-                            <td className="py-3 text-right tabular-nums">
-                              {li.unit_price.toLocaleString()}
-                            </td>
-                            <td className="py-3 text-right font-medium tabular-nums">
-                              {(li.qty * li.unit_price).toLocaleString()}
+                            <td className="py-3 text-right text-base font-semibold tabular-nums">
+                              {formatCurrencyAmount(quote.total_value, quote.currency)}
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t border-border">
-                          <td colSpan={3} className="py-3 text-right text-sm font-semibold">
-                            Total
-                          </td>
-                          <td className="py-3 text-right text-base font-semibold tabular-nums">
-                            {quote.currency} {(quote.total_value ?? 0).toLocaleString()}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                        </tfoot>
+                      </table>
+                    </div>
                   )}
                 </TabsContent>
 
                 <TabsContent value="comments" className="mt-4">
                   <div className="space-y-3">
                     {comments.map((c) => (
-                      <div key={c.id} className="rounded-md border border-border bg-muted/30 p-3 text-sm">
+                      <div
+                        key={c.id}
+                        className="rounded-md border border-border bg-muted/30 p-3 text-sm"
+                      >
                         <div className="flex items-center justify-between">
                           <span className="font-medium">{c.author}</span>
                           <span className="text-xs text-muted-foreground">
@@ -434,13 +504,15 @@ function QuoteDetail() {
                     )}
                     <div className="flex gap-2">
                       <Textarea
+                        aria-label="Add a quote comment"
+                        name="quote-comment"
                         placeholder="Add a comment…"
                         value={composer}
                         onChange={(e) => setComposer(e.target.value)}
                         className="min-h-[60px] flex-1"
                       />
-                      <Button size="sm" onClick={addComment}>
-                        <Send className="h-3.5 w-3.5" />
+                      <Button size="sm" aria-label="Send quote comment" onClick={addComment}>
+                        <Send aria-hidden="true" className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -473,7 +545,7 @@ function QuoteDetail() {
                       Signed PDFs, scope addenda, and cover emails for this quote.
                     </p>
                     <Button size="sm" variant="outline" onClick={uploadMockFile}>
-                      <Upload className="mr-2 h-3.5 w-3.5" /> Upload
+                      <Upload aria-hidden="true" className="mr-2 h-3.5 w-3.5" /> Upload
                     </Button>
                   </div>
                   {files.length === 0 ? (
@@ -485,7 +557,7 @@ function QuoteDetail() {
                       {files.map((f) => (
                         <li key={f.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
                           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                            <FileIcon className="h-4 w-4" />
+                            <FileIcon aria-hidden="true" className="h-4 w-4" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-medium">{f.name}</p>
@@ -497,9 +569,10 @@ function QuoteDetail() {
                           <Button
                             size="sm"
                             variant="ghost"
+                            aria-label={`Download ${f.name}`}
                             onClick={() => toast.message(`Downloading ${f.name}…`)}
                           >
-                            <Download className="h-3.5 w-3.5" />
+                            <Download aria-hidden="true" className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             size="sm"
@@ -514,7 +587,6 @@ function QuoteDetail() {
                     </ul>
                   )}
                 </TabsContent>
-
 
                 <TabsContent value="preview" className="mt-4">
                   <div className="flex aspect-[1/1.2] items-center justify-center rounded-md border-2 border-dashed border-border bg-muted/30">
@@ -552,7 +624,7 @@ function QuoteDetail() {
                         }`}
                       >
                         {reached ? (
-                          <Check className="h-3 w-3" />
+                          <Check aria-hidden="true" className="h-3 w-3" />
                         ) : (
                           <span className="text-[10px]">{idx + 1}</span>
                         )}

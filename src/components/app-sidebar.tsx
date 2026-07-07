@@ -12,6 +12,8 @@ import {
   Settings,
   Sparkles,
   LogOut,
+  RefreshCw,
+  type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -29,21 +31,37 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
-const workspaceItems = [
-  { title: "Pipeline", url: "/", icon: LayoutDashboard },
+const todayItems = [{ title: "Revenue Desk", url: "/", icon: LayoutDashboard }];
+
+const acquireItems = [
   { title: "Leads", url: "/leads", icon: Inbox },
+  { title: "AI Review", url: "/ai-review", icon: Sparkles },
+];
+
+const convertItems = [
+  { title: "Pipeline", url: "/", icon: LayoutDashboard, activePath: null },
   { title: "Quotes", url: "/quotes", icon: FileText },
+  { title: "Approvals", url: "/approvals", icon: ShieldCheck },
+];
+
+const retainItems = [
   { title: "Clients", url: "/clients", icon: Building2 },
+  { title: "Renewals", url: "/renewals", icon: RefreshCw },
   { title: "Tasks", url: "/tasks", icon: CheckSquare },
 ];
 
-const opsItems = [
-  { title: "Approvals", url: "/approvals", icon: ShieldCheck },
+const operateItems = [
   { title: "Agents", url: "/agents", icon: Bot },
   { title: "Reports", url: "/reports", icon: BarChart3 },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
-const settingsItems = [{ title: "Settings", url: "/settings", icon: Settings }];
+type SidebarItem = {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+  activePath?: string | null;
+};
 
 interface AppSidebarProps {
   profile: Profile | null;
@@ -55,19 +73,23 @@ export function AppSidebar({ profile, onSignOut }: AppSidebarProps) {
     select: (s) => s.location.pathname,
   });
 
-  const isActive = (path: string) => {
+  const isActive = (item: SidebarItem) => {
+    if (item.activePath === null) return false;
+
+    const path = item.activePath ?? item.url;
+
     if (path === "/") return currentPath === "/";
     return currentPath === path || currentPath.startsWith(path + "/");
   };
 
-  const renderGroup = (label: string, items: typeof workspaceItems) => (
+  const renderGroup = (label: string, items: SidebarItem[]) => (
     <SidebarGroup>
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+              <SidebarMenuButton asChild isActive={isActive(item)} tooltip={item.title}>
                 <Link to={item.url}>
                   <item.icon className="h-4 w-4" />
                   <span>{item.title}</span>
@@ -89,15 +111,17 @@ export function AppSidebar({ profile, onSignOut }: AppSidebarProps) {
           </div>
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold">Fimmick ClientOps</span>
-            <span className="text-[11px] text-muted-foreground">Lead follow-up workspace</span>
+            <span className="text-[11px] text-muted-foreground">Revenue operations desk</span>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-        {renderGroup("Workspace", workspaceItems)}
-        {renderGroup("Operations", opsItems)}
-        {renderGroup("System", settingsItems)}
+        {renderGroup("Today", todayItems)}
+        {renderGroup("Acquire", acquireItems)}
+        {renderGroup("Convert", convertItems)}
+        {renderGroup("Retain", retainItems)}
+        {renderGroup("Operate", operateItems)}
       </SidebarContent>
 
       <SidebarFooter>

@@ -1,6 +1,9 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
-import type { ActivityLog, Lead, LeadStatus } from "@/lib/types";
+import { createClient } from "@/server/repositories/clients";
+import { createClientContact } from "@/server/repositories/client-contacts";
+import { createEngagement } from "@/server/repositories/engagements";
+import type { ActivityLog, Engagement, Lead, LeadStatus } from "@/lib/types";
 
 type LeadFilters = {
   status?: string;
@@ -182,5 +185,83 @@ export async function moveLeadStage(input: {
     );
 
     return lead;
+  });
+}
+
+export async function convertWonLeadToEngagement(input: {
+  leadId: string;
+  actorId: string;
+  productId: string;
+  value?: number;
+  billingPeriod: Engagement["billing_period"];
+  startDate?: string;
+  renewalDate?: string;
+  quoteId?: string;
+}) {
+  return transaction(async (client) => {
+    const leadResult = await client.query<Lead>("select * from leads where id = $1", [
+      input.leadId,
+    ]);
+    const lead = leadResult.rows[0];
+    if (!lead) throw new Error("Lead not found");
+
+    const normalizedCompanyName = lead.company_name.trim();
+
+    const existingClientResult = await client.query<{ id: string }>(
+      "select id from clients where lower(trim(company_name)) = lower(trim($1)) limit 1",
+      [normalizedCompanyName],
+    );
+    let clientId = existingClientResult.rows[0]?.id ?? null;
+
+    if (!clientId) {
+      const newClient = await createClient({ company_name: normalizedCompanyName }, client);
+      clientId = newClient.id;
+    }
+
+    if (lead.contact_name || lead.contact_email) {
+      const existingContact = await client.query<{ id: string }>(
+        "select id from client_contacts where client_id = $1 and email = $2",
+        [clientId, lead.contact_email ?? ""],
+      );
+      if (existingContact.rows.length === 0) {
+        await createClientContact(
+          {
+            client_id: clientId,
+            name: lead.contact_name ?? "Unnamed",
+            email: lead.contact_email ?? undefined,
+          },
+          client,
+        );
+      }
+    }
+
+    const engagement = await createEngagement(
+      {
+        client_id: clientId,
+        product_id: input.productId,
+        value: input.value,
+        billing_period: input.billingPeriod,
+        start_date: input.startDate,
+        renewal_date: input.renewalDate,
+        lead_id: input.leadId,
+        quote_id: input.quoteId,
+      },
+      client,
+    );
+
+    await client.query(
+      `
+        insert into activity_logs
+          (actor_type, actor_id, action, object_type, object_id, diff_data)
+        values ('user', $1, 'converted won lead to engagement', 'engagement', $2, $3::jsonb)
+      `,
+      [
+        input.actorId,
+        engagement.id,
+        JSON.stringify({ lead_id: input.leadId, client_id: clientId }),
+      ],
+    );
+
+    return { clientId, engagementId: engagement.id };
   });
 }

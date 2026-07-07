@@ -3,7 +3,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Bot, Plus } from "lucide-react";
 import { toast } from "sonner";
 
-import { PageHeader } from "@/components/page-header";
+import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,6 +25,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { formatDate } from "@/lib/format";
+import { getTaskBoardMetrics } from "@/lib/sales-workspace";
 import { cn } from "@/lib/utils";
 import { getTasks, createTask, updateTask } from "@/server-functions/tasks";
 import { APP_USERS, userById } from "@/lib/users";
@@ -52,6 +54,13 @@ const COLUMNS: { id: TaskStatus; label: string }[] = [
 
 const TODAY = "2026-05-20";
 
+const isTaskOverdue = (task: Task) => {
+  if (!task.due_date || task.status === "done") return false;
+  const dueTime = Date.parse(task.due_date);
+  const todayTime = Date.parse(TODAY);
+  return !Number.isNaN(dueTime) && !Number.isNaN(todayTime) && dueTime < todayTime;
+};
+
 function TasksBoard() {
   const loaderTasks = Route.useLoaderData();
   const router = useRouter();
@@ -69,6 +78,7 @@ function TasksBoard() {
       }),
     [rows, priority, assignee],
   );
+  const metrics = getTaskBoardMetrics(rows, TODAY);
 
   const move = async (id: string, status: TaskStatus) => {
     setRows((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
@@ -78,9 +88,10 @@ function TasksBoard() {
 
   return (
     <>
-      <PageHeader
-        title="Task Board"
-        description={`${filtered.length} of ${rows.length} tasks`}
+      <CommandHeader
+        title="Task Queue"
+        status="Retain"
+        description={`${filtered.length} of ${rows.length} tasks across follow-up, renewal, and client success work.`}
         actions={
           <NewTaskDialog
             onCreate={async (t) => {
@@ -94,10 +105,19 @@ function TasksBoard() {
       />
 
       <div className="space-y-4 px-6 py-6">
+        <MetricStrip
+          metrics={[
+            { label: "Open", value: metrics.open, hint: "not completed" },
+            { label: "Overdue", value: metrics.overdue, hint: "past due date" },
+            { label: "Due today", value: metrics.dueToday, hint: "needs action today" },
+            { label: "High priority", value: metrics.highPriority, hint: "open high priority" },
+          ]}
+        />
+
         <Card className="p-3">
           <div className="flex flex-wrap items-center gap-2">
             <Select value={priority} onValueChange={setPriority}>
-              <SelectTrigger className="h-9 w-[150px]">
+              <SelectTrigger className="h-9 w-[150px]" aria-label="Filter tasks by priority">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -108,7 +128,7 @@ function TasksBoard() {
               </SelectContent>
             </Select>
             <Select value={assignee} onValueChange={setAssignee}>
-              <SelectTrigger className="h-9 w-[160px]">
+              <SelectTrigger className="h-9 w-[160px]" aria-label="Filter tasks by assignee">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -147,8 +167,8 @@ function TasksBoard() {
                 </div>
                 <div className="flex min-h-[120px] flex-col gap-3 rounded-md bg-muted/20 p-2">
                   {colTasks.map((t) => {
-                    const owner = userById(t.assigned_to);
-                    const overdue = !!t.due_date && t.due_date < TODAY && t.status !== "done";
+                    const owner = t.assigned_to ? userById(t.assigned_to) : undefined;
+                    const overdue = isTaskOverdue(t);
                     return (
                       <Card
                         key={t.id}
@@ -182,7 +202,7 @@ function TasksBoard() {
                               overdue && "font-medium text-destructive",
                             )}
                           >
-                            Due {t.due_date ?? "—"}
+                            Due {formatDate(t.due_date)}
                             {overdue && " · overdue"}
                           </span>
                           <span className="text-muted-foreground">{owner?.name}</span>
@@ -196,9 +216,10 @@ function TasksBoard() {
                     );
                   })}
                   {colTasks.length === 0 && (
-                    <div className="rounded-md border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-                      Drop tasks here.
-                    </div>
+                    <WorkSurfaceEmpty
+                      title={`No ${col.label.toLowerCase()} tasks`}
+                      description="Drop tasks here or create a task when retention work appears."
+                    />
                   )}
                 </div>
               </div>
@@ -256,18 +277,37 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label className="text-xs">Title</Label>
-            <Input className="mt-1" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <Label htmlFor="new-task-title" className="text-xs">
+              Title
+            </Label>
+            <Input
+              id="new-task-title"
+              name="title"
+              autoComplete="off"
+              className="mt-1"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </div>
           <div>
-            <Label className="text-xs">Description</Label>
-            <Textarea className="mt-1" value={desc} onChange={(e) => setDesc(e.target.value)} />
+            <Label htmlFor="new-task-description" className="text-xs">
+              Description
+            </Label>
+            <Textarea
+              id="new-task-description"
+              name="description"
+              className="mt-1"
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+            />
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <Label className="text-xs">Priority</Label>
+              <Label htmlFor="new-task-priority" className="text-xs">
+                Priority
+              </Label>
               <Select value={pri} onValueChange={(v) => setPri(v as Task["priority"])}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger id="new-task-priority" className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -278,9 +318,11 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Assignee</Label>
+              <Label htmlFor="new-task-assignee" className="text-xs">
+                Assignee
+              </Label>
               <Select value={assignee} onValueChange={setAssignee}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger id="new-task-assignee" className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -293,8 +335,12 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Due</Label>
+              <Label htmlFor="new-task-due" className="text-xs">
+                Due
+              </Label>
               <Input
+                id="new-task-due"
+                name="due"
                 type="date"
                 className="mt-1"
                 value={due}

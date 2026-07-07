@@ -1,4 +1,4 @@
-import type { WorkflowRequestPayload } from "./types";
+import type { EngagementWorkflowRequestPayload, WorkflowRequestPayload } from "./types";
 
 function basePayload(input: { leadId: string; agentRunId: string }) {
   return {
@@ -34,5 +34,16 @@ export function buildQuoteDraftPayload(input: {
   return {
     trigger: "quote.draft_requested",
     ...basePayload(input),
+  };
+}
+
+export function buildScoreRenewalRiskPayload(input: {
+  engagementId: string;
+  agentRunId: string;
+}): EngagementWorkflowRequestPayload {
+  return {
+    trigger: "engagement.score_renewal_risk_requested",
+    engagement_id: input.engagementId,
+    agent_run_id: input.agentRunId,
   };
 }

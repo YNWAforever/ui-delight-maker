@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Archive, Copy, MoreHorizontal, Plus } from "lucide-react";
 import { toast } from "sonner";
 
-import { MetricCard } from "@/components/metric-card";
-import { PageHeader } from "@/components/page-header";
+import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,14 +23,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatHKD } from "@/lib/format";
+import { formatCurrencyAmount, formatDate, formatHKD } from "@/lib/format";
 import { getQuotes } from "@/server-functions/quotes";
 import { USER_RECORD } from "@/lib/users";
 import type { Quote } from "@/lib/types";
 
-const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
+const userById = (id: string | null | undefined) =>
+  id && USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined;
 // Lead names are not available here — show the lead ID directly
-const leadById = (_id: string) => undefined;
+const leadById = (_id: string | null | undefined): { company_name: string } | undefined =>
+  undefined;
 
 export const Route = createFileRoute("/quotes")({
   loader: () => getQuotes({}),
@@ -56,7 +57,6 @@ const TABS: { value: string; label: string }[] = [
 
 function QuotesPage() {
   const loaderQuotes = Route.useLoaderData();
-  const router = useRouter();
   const [rows, setRows] = useState<Quote[]>(loaderQuotes);
   const [tab, setTab] = useState("all");
   const [query, setQuery] = useState("");
@@ -96,9 +96,10 @@ function QuotesPage() {
 
   return (
     <>
-      <PageHeader
-        title="Quotes"
-        description={`${filtered.length} of ${rows.length} quotes`}
+      <CommandHeader
+        title="Deal Desk"
+        status="Convert"
+        description={`${filtered.length} of ${rows.length} quotes across draft, approval, sent, and accepted states.`}
         actions={
           <Button size="sm" asChild>
             <Link to="/quotes/new">
@@ -109,28 +110,36 @@ function QuotesPage() {
       />
 
       <div className="space-y-4 px-6 py-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard
-            label="In pipeline"
-            value={formatHKD(totals.pipeline)}
-            hint="pending + sent + viewed"
-          />
-          <MetricCard label="Won" value={formatHKD(totals.won)} hint="this quarter" />
-          <MetricCard label="In draft" value={formatHKD(totals.draft)} hint="not yet submitted" />
-        </div>
+        <MetricStrip
+          metrics={[
+            {
+              label: "Active value",
+              value: formatHKD(totals.pipeline),
+              hint: "pending + sent + viewed",
+            },
+            { label: "Won", value: formatHKD(totals.won), hint: "accepted quotes" },
+            { label: "Draft", value: formatHKD(totals.draft), hint: "not yet submitted" },
+          ]}
+          columns={3}
+        />
 
-        <Card className="p-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <Tabs value={tab} onValueChange={setTab}>
-              <TabsList>
-                {TABS.map((t) => (
-                  <TabsTrigger key={t.value} value={t.value}>
-                    {t.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+        <Card className="min-w-0 p-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <Tabs value={tab} onValueChange={setTab} className="min-w-0 max-w-full">
+              <div className="max-w-full overflow-x-auto pb-1">
+                <TabsList className="w-max">
+                  {TABS.map((t) => (
+                    <TabsTrigger key={t.value} value={t.value}>
+                      {t.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
             </Tabs>
             <Input
+              aria-label="Search quotes"
+              name="quote-search"
+              autoComplete="off"
               placeholder="Search number, lead…"
               className="h-9 max-w-xs"
               value={query}
@@ -140,7 +149,7 @@ function QuotesPage() {
         </Card>
 
         <Card className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[720px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Quote</TableHead>
@@ -178,14 +187,19 @@ function QuotesPage() {
                       <StatusBadge value={q.status} />
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {q.currency} {(q.total_value ?? 0).toLocaleString()}
+                      {formatCurrencyAmount(q.total_value, q.currency)}
                     </TableCell>
-                    <TableCell className="text-sm">{q.valid_until}</TableCell>
+                    <TableCell className="text-sm">{formatDate(q.valid_until)}</TableCell>
                     <TableCell className="text-sm">{creator?.name ?? "—"}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label={`Open actions for ${q.number}`}
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -204,11 +218,16 @@ function QuotesPage() {
               })}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="py-10 text-center text-sm text-muted-foreground"
-                  >
-                    No quotes match.
+                  <TableCell colSpan={7} className="p-4">
+                    <WorkSurfaceEmpty
+                      title="No quotes match this deal desk view"
+                      description="Change the status tab or create a new quote from an active lead."
+                      action={
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to="/quotes/new">Create quote</Link>
+                        </Button>
+                      }
+                    />
                   </TableCell>
                 </TableRow>
               )}

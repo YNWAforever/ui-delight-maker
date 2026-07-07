@@ -1,0 +1,130 @@
+{
+  "name": "clientops-score-renewal-risk",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clientops-score-renewal-risk",
+        "responseMode": "responseNode"
+      },
+      "id": "clientops-score-renewal-risk-webhook",
+      "name": "clientops-score-renewal-risk",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst headers = item.headers ?? {};\nconst body = item.body ?? item;\nconst receivedToken = headers['x-workflow-token'] ?? headers['X-Workflow-Token'];\nif (!receivedToken || receivedToken !== $env.N8N_WORKFLOW_TOKEN) {\n  throw new Error('Invalid x-workflow-token');\n}\nif (body.trigger !== 'engagement.score_renewal_risk_requested') {\n  throw new Error(`Unexpected trigger: ${body.trigger ?? 'missing'}`);\n}\nif (!body.engagement_id) {\n  throw new Error('Missing engagement_id');\n}\nif (!body.agent_run_id) {\n  throw new Error('Missing agent_run_id');\n}\nreturn [{ json: { trigger: body.trigger, engagement_id: body.engagement_id, agent_run_id: body.agent_run_id } }];"
+      },
+      "id": "validate-score-risk-trigger",
+      "name": "Validate Trigger",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APP_BASE_URL + '/api/workflows/context/engagement'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-workflow-token", "value": "={{$env.N8N_WORKFLOW_TOKEN}}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { engagement_id: $json.engagement_id, agent_run_id: $json.agent_run_id } }}",
+        "options": {}
+      },
+      "id": "fetch-engagement-context",
+      "name": "Fetch Engagement Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $input.first().json;\nconst triggerPayload = $('Validate Trigger').first().json;\nconst engagement = context.engagement ?? {};\nconst agentRunId = context.agent_run?.id ?? context.agent_run_id ?? triggerPayload.agent_run_id;\nconst touchpoints = Array.isArray(context.recent_touchpoints) ? context.recent_touchpoints : [];\nconst overdueTasks = context.open_overdue_task_count ?? 0;\nconst today = new Date().toISOString().slice(0, 10);\nconst lastTouch = touchpoints[0]?.occurred_at ?? engagement.last_touch_at ?? null;\nconst daysSinceTouch = lastTouch ? Math.floor((Date.parse(today) - Date.parse(lastTouch)) / 86400000) : null;\nconst negativeCount = touchpoints.filter((t) => t.sentiment === 'negative').length;\nlet score = 70;\nconst reasons = [];\nif (daysSinceTouch === null || daysSinceTouch > 30) { score -= 25; reasons.push(daysSinceTouch === null ? 'no touchpoint on record' : `${daysSinceTouch} days since last touch`); }\nif (negativeCount > 0) { score -= 20 * negativeCount; reasons.push(`${negativeCount} recent negative touchpoint(s)`); }\nif (overdueTasks > 0) { score -= 10 * Math.min(overdueTasks, 3); reasons.push(`${overdueTasks} overdue task(s)`); }\nscore = Math.max(0, Math.min(100, score));\nconst renewalRisk = score < 40 ? 'high' : score < 65 ? 'medium' : 'low';\nconst fallback = {\n  engagement_id: engagement.id ?? triggerPayload.engagement_id,\n  agent_run_id: agentRunId,\n  health_score: score,\n  renewal_risk: renewalRisk,\n  risk_reasoning: `Deterministic staging fallback: ${reasons.length > 0 ? reasons.join('; ') : 'no risk signals detected'}.`,\n  suggested_next_action: renewalRisk === 'high' ? 'Schedule an urgent check-in before renewal' : renewalRisk === 'medium' ? 'Schedule a check-in this month' : 'Maintain regular cadence',\n  output_summary: `Fallback renewal risk scored ${renewalRisk} (${score}/100).`,\n  confidence: 0.6,\n  model_used: 'deterministic-fallback'\n};\nconst model = $env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';\nconst openrouter_request = {\n  model,\n  messages: [\n    { role: 'system', content: 'Return only JSON matching the ClientOps renewal-risk writeback contract. Do not include markdown.' },\n    { role: 'user', content: JSON.stringify({ context, required_fields: ['engagement_id', 'agent_run_id', 'health_score', 'renewal_risk', 'risk_reasoning', 'suggested_next_action', 'confidence', 'output_summary'] }) }\n  ],\n  response_format: { type: 'json_object' }\n};\nreturn [{ json: { context, fallback, openrouter_request, openrouter_configured: Boolean($env.OPENROUTER_API_KEY) } }];"
+      },
+      "id": "prepare-score-risk-fallback-ai-request",
+      "name": "Prepare Fallback / AI Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.OPENROUTER_API_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.openrouter_request}}",
+        "options": {}
+      },
+      "id": "openrouter-score-risk-request",
+      "name": "OpenRouter Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $('Prepare Fallback / AI Request').first().json;\nconst fallback = prepared.fallback;\nconst response = $input.first()?.json ?? {};\n\nfunction parsePayload(value) {\n  const content = value.choices?.[0]?.message?.content;\n  if (typeof content === 'string') {\n    try { return JSON.parse(content); } catch (error) { return undefined; }\n  }\n  return isPlainObject(content) ? content : undefined;\n}\nfunction isPlainObject(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }\nfunction finiteNumber(value, fallbackValue) { const number = typeof value === 'number' ? value : Number(value); return Number.isFinite(number) ? number : fallbackValue; }\nfunction clampNumber(value, fallbackValue, min, max) { return Math.min(max, Math.max(min, finiteNumber(value, fallbackValue))); }\nfunction safeString(value, fallbackValue, maxLength = 1200) { return typeof value === 'string' && value.trim() ? value.trim().slice(0, maxLength) : fallbackValue; }\nfunction safeRisk(value, fallbackValue) { return ['low', 'medium', 'high'].includes(value) ? value : fallbackValue; }\n\nconst parsed = parsePayload(response);\n\nconst output = {\n  engagement_id: fallback.engagement_id,\n  agent_run_id: fallback.agent_run_id,\n  health_score: clampNumber(parsed?.health_score, fallback.health_score, 0, 100),\n  renewal_risk: safeRisk(parsed?.renewal_risk, fallback.renewal_risk),\n  risk_reasoning: safeString(parsed?.risk_reasoning, fallback.risk_reasoning),\n  suggested_next_action: safeString(parsed?.suggested_next_action, fallback.suggested_next_action, 200),\n  confidence: clampNumber(parsed?.confidence, fallback.confidence, 0, 1),\n  output_summary: safeString(parsed?.output_summary, fallback.output_summary),\n  model_used: safeString(parsed?.model_used, fallback.model_used, 120),\n};\nreturn [{ json: output }];"
+      },
+      "id": "resolve-score-risk-output",
+      "name": "Resolve Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APP_BASE_URL + '/api/workflows/score-renewal-risk'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-workflow-token", "value": "={{$env.N8N_WORKFLOW_TOKEN}}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "writeback-score-renewal-risk",
+      "name": "Writeback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{$json}}", "options": {} },
+      "id": "respond-score-risk-webhook",
+      "name": "Respond To Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1540, 0]
+    }
+  ],
+  "connections": {
+    "clientops-score-renewal-risk": { "main": [[{ "node": "Validate Trigger", "type": "main", "index": 0 }]] },
+    "Validate Trigger": { "main": [[{ "node": "Fetch Engagement Context", "type": "main", "index": 0 }]] },
+    "Fetch Engagement Context": { "main": [[{ "node": "Prepare Fallback / AI Request", "type": "main", "index": 0 }]] },
+    "Prepare Fallback / AI Request": { "main": [[{ "node": "OpenRouter Request", "type": "main", "index": 0 }]] },
+    "OpenRouter Request": { "main": [[{ "node": "Resolve Output", "type": "main", "index": 0 }]] },
+    "Resolve Output": { "main": [[{ "node": "Writeback", "type": "main", "index": 0 }]] },
+    "Writeback": { "main": [[{ "node": "Respond To Webhook", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

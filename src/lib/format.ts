@@ -1,15 +1,5 @@
 // SSR-safe formatters. Fixed locale + UTC so server and client render identically.
 
-const DATETIME = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-  timeZone: "UTC",
-});
-
 const DATE = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   month: "short",
@@ -24,18 +14,51 @@ const TIME = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
-export const formatDateTime = (iso: string) => DATETIME.format(new Date(iso));
-export const formatDate = (iso: string) => DATE.format(new Date(iso));
-export const formatTime = (iso: string) => TIME.format(new Date(iso));
+const COUNT = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 0,
+});
 
-export const formatHKD = (n: number) =>
-  `HKD ${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+const COMPACT_COUNT = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  compactDisplay: "short",
+  maximumFractionDigits: 1,
+});
 
-export const formatCompactHKD = (n: number) => {
-  if (n >= 1_000_000) return `HKD ${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `HKD ${(n / 1_000).toFixed(0)}K`;
-  return `HKD ${n}`;
+const parseDate = (value: string | Date | null | undefined): Date | null => {
+  if (value == null) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 };
+
+export const formatDateTime = (value: string | Date | null | undefined) => {
+  const date = parseDate(value);
+  return date ? `${DATE.format(date)}, ${TIME.format(date)}` : "—";
+};
+
+export const formatDate = (value: string | Date | null | undefined) => {
+  const date = parseDate(value);
+  return date ? DATE.format(date) : "—";
+};
+
+export const formatTime = (value: string | Date | null | undefined) => {
+  const date = parseDate(value);
+  return date ? TIME.format(date) : "—";
+};
+
+export const formatPercent = (value: number | null | undefined) =>
+  value == null ? "—" : `${Math.round(value * 100)}%`;
+
+export const formatCount = (value: number | null | undefined) => COUNT.format(value ?? 0);
+
+export const formatCurrencyAmount = (
+  value: number | null | undefined,
+  currency: string | null | undefined = "HKD",
+) => `${currency ?? "HKD"} ${COUNT.format(value ?? 0)}`;
+
+export const formatHKD = (n: number | null | undefined) => formatCurrencyAmount(n, "HKD");
+
+export const formatCompactHKD = (n: number | null | undefined) =>
+  `HKD ${COMPACT_COUNT.format(n ?? 0)}`;
 
 export const relativeTime = (iso: string) => {
   // Deterministic relative against a fixed "now" so SSR matches CSR.

@@ -102,14 +102,14 @@ export type QualificationNextAction =
   | "Disqualify";
 
 export interface QualificationData {
-  urgency_score: number;        // 0–10
-  fit_score: number;            // 0–10
-  qualification_score: number;  // 0–100
+  urgency_score: number; // 0–10
+  fit_score: number; // 0–10
+  qualification_score: number; // 0–100
   service_interest: string[];
-  budget_range: string;         // "HKD 50k–200k" or "unknown"
+  budget_range: string; // "HKD 50k–200k" or "unknown"
   next_action: QualificationNextAction;
-  reason: string;               // max 120 chars
-  confidence: number;           // 0.0–1.0
+  reason: string; // max 120 chars
+  confidence: number; // 0.0–1.0
   human_review_required: boolean;
 }
 
@@ -256,6 +256,7 @@ export interface PricingTemplate {
   unit_price: number | null;
   currency: string;
   active: boolean;
+  product_id: string | null;
 }
 
 export interface DashboardStats {
@@ -452,5 +453,98 @@ export interface SuccessTouchpoint {
   notes: string | null;
   occurred_at: string;
   created_by: string | null;
+  created_at: string;
+}
+
+export type ProductCategory = PricingCategory;
+export type ProductBillingType = "retainer" | "one_off" | "usage";
+export type EngagementBillingPeriod = "monthly" | "quarterly" | "annual" | "one_off";
+export type EngagementStatus = "active" | "paused" | "ended";
+export type TouchpointNewType =
+  | "check_in"
+  | "qbr"
+  | "meeting"
+  | "call"
+  | "whatsapp"
+  | "email"
+  | "note";
+export type TouchpointNewSentiment = "positive" | "neutral" | "negative";
+export type NotificationType =
+  | "renewal_window"
+  | "risk_change"
+  | "stale_touchpoint"
+  | "approval_pending";
+export type RenewalWindowBucket = "overdue" | "30" | "60" | "90" | "later";
+
+export interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  category: ProductCategory | null;
+  billing_type: ProductBillingType;
+  default_term_months: number | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClientContact {
+  id: string;
+  client_id: string;
+  name: string;
+  title: string | null;
+  email: string | null;
+  phone: string | null;
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Engagement {
+  id: string;
+  client_id: string;
+  product_id: string;
+  owner: string | null;
+  value: number | null;
+  billing_period: EngagementBillingPeriod;
+  start_date: string;
+  renewal_date: string | null;
+  status: EngagementStatus;
+  health_score: number;
+  renewal_risk: RenewalRisk;
+  risk_reasoning: string | null;
+  next_action: string | null;
+  last_touch_at: string | null;
+  end_reason: string | null;
+  lead_id: string | null;
+  quote_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TouchpointRecord {
+  id: string;
+  client_id: string;
+  engagement_id: string | null;
+  contact_id: string | null;
+  type: TouchpointNewType;
+  sentiment: TouchpointNewSentiment;
+  notes: string | null;
+  occurred_at: string;
+  logged_by: string | null;
+  created_by_agent: string | null;
+  created_at: string;
+}
+
+export interface NotificationRecord {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  object_type: string | null;
+  object_id: string | null;
+  dedupe_key: string | null;
+  read_at: string | null;
   created_at: string;
 }

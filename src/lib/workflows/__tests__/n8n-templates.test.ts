@@ -31,18 +31,32 @@ const cases = [
     name: "clientops-qualify-lead",
     trigger: "lead.qualify_requested",
     writebackEndpoint: "/api/workflows/qualify-lead",
+    subjectIdField: "lead_id",
+    contextEndpoint: "/api/workflows/context/lead",
   },
   {
     file: "clientops-draft-reply.json",
     name: "clientops-draft-reply",
     trigger: "lead.reply_draft_requested",
     writebackEndpoint: "/api/workflows/draft-reply",
+    subjectIdField: "lead_id",
+    contextEndpoint: "/api/workflows/context/lead",
   },
   {
     file: "clientops-draft-quote.json",
     name: "clientops-draft-quote",
     trigger: "quote.draft_requested",
     writebackEndpoint: "/api/workflows/draft-quote",
+    subjectIdField: "lead_id",
+    contextEndpoint: "/api/workflows/context/lead",
+  },
+  {
+    file: "clientops-score-renewal-risk.json",
+    name: "clientops-score-renewal-risk",
+    trigger: "engagement.score_renewal_risk_requested",
+    writebackEndpoint: "/api/workflows/score-renewal-risk",
+    subjectIdField: "engagement_id",
+    contextEndpoint: "/api/workflows/context/engagement",
   },
 ] as const;
 
@@ -94,12 +108,14 @@ describe("ClientOps n8n workflow templates", () => {
 
     const resolveOutputCode = json.nodes.find((node) => node.name === "Resolve Output")?.parameters
       ?.jsCode;
-    expect(resolveOutputCode).toContain("lead_id: fallback.lead_id");
+    expect(resolveOutputCode).toContain(
+      `${testCase.subjectIdField}: fallback.${testCase.subjectIdField}`,
+    );
     expect(resolveOutputCode).toContain("agent_run_id: fallback.agent_run_id");
     expect(resolveOutputCode).not.toContain("...fallback, ...parsed");
 
     expect(raw).toContain(testCase.trigger);
-    expect(raw).toContain("/api/workflows/context/lead");
+    expect(raw).toContain(testCase.contextEndpoint);
     expect(raw).toContain(testCase.writebackEndpoint);
     expect(raw).toContain("x-workflow-token");
     expect(raw).toContain("N8N_WORKFLOW_TOKEN");
