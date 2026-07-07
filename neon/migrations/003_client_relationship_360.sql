@@ -69,8 +69,8 @@ create table if not exists campaign_members (
   raw_contact_name text,
   raw_email text,
   raw_phone text,
-  attendance_status text not null default 'invited'
-    check (attendance_status in ('invited','registered','attended','no_show','cancelled')),
+  attendee_status text not null default 'attended'
+    check (attendee_status in ('attended','met','high_intent','unknown')),
   interests text[] not null default '{}'::text[],
   follow_up_owner text references profiles(id) on delete set null,
   follow_up_status text not null default 'not_started'
