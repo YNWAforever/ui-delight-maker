@@ -64,7 +64,7 @@ export function PipelineBoard({
 
               <div className="flex flex-1 flex-col gap-2 p-2">
                 {stageLeads.map((lead) => (
-                  <div key={lead.id} className="space-y-1">
+                  <div key={lead.id} className="relative space-y-1">
                     <LeadCard
                       lead={lead}
                       tasks={tasks}

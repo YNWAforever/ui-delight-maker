@@ -1,4 +1,7 @@
-@import "@neondatabase/auth-ui/css";
+/* auth-ui ships an unlayered Tailwind bundle whose preflight (* { padding: 0 })
+   would override the app's layered utilities; confine it below components/utilities */
+@layer theme, base, neon-auth, components, utilities;
+@import "@neondatabase/auth-ui/css" layer(neon-auth);
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
