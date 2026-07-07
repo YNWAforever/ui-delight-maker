@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const rootSource = readFileSync(new URL("../__root.tsx", import.meta.url), "utf8");
+const readRoute = (name: string) => readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
 
 describe("root shell hydration", () => {
   it("allows auth UI theme scripts to update the html element before hydration", () => {
@@ -83,5 +84,15 @@ describe("sales route source copy", () => {
     expect(approvalsSource).toMatch(
       /const pendingQuoteSends = pending\.filter\(\s*\(a\) => a\.approval_type === "quote_send",?\s*\)\.length;/s,
     );
+  });
+
+  it("keeps relationship workspace operational and non-marketing", () => {
+    const relationshipSource = readRoute("relationships.tsx");
+
+    expect(relationshipSource).toContain('title="Relationship Command Center"');
+    expect(relationshipSource).toContain("getRelationshipSignals");
+    expect(relationshipSource).toContain("RelationshipCommandCenter");
+    expect(relationshipSource).not.toContain("hero");
+    expect(relationshipSource).not.toContain("landing");
   });
 });

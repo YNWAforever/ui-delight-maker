@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as RelationshipsRouteImport } from './routes/relationships'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RenewalsRouteImport } from './routes/renewals'
 import { Route as QuotesRouteImport } from './routes/quotes'
@@ -49,6 +50,11 @@ const TasksRoute = TasksRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelationshipsRoute = RelationshipsRouteImport.update({
+  id: '/relationships',
+  path: '/relationships',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -213,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
+  '/relationships': typeof RelationshipsRoute
   '/renewals': typeof RenewalsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
@@ -246,6 +253,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
+  '/relationships': typeof RelationshipsRoute
   '/renewals': typeof RenewalsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
@@ -280,6 +288,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/quotes': typeof QuotesRouteWithChildren
+  '/relationships': typeof RelationshipsRoute
   '/renewals': typeof RenewalsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
@@ -315,6 +324,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/quotes'
+    | '/relationships'
     | '/renewals'
     | '/reports'
     | '/settings'
@@ -348,6 +358,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/quotes'
+    | '/relationships'
     | '/renewals'
     | '/reports'
     | '/settings'
@@ -381,6 +392,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/notifications'
     | '/quotes'
+    | '/relationships'
     | '/renewals'
     | '/reports'
     | '/settings'
@@ -415,6 +427,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
   QuotesRoute: typeof QuotesRouteWithChildren
+  RelationshipsRoute: typeof RelationshipsRoute
   RenewalsRoute: typeof RenewalsRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
@@ -466,6 +479,13 @@ declare module '@tanstack/react-router' {
       path: '/quotes'
       fullPath: '/quotes'
       preLoaderRoute: typeof QuotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relationships': {
+      id: '/relationships'
+      path: '/relationships'
+      fullPath: '/relationships'
+      preLoaderRoute: typeof RelationshipsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -721,6 +741,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRouteWithChildren,
   NotificationsRoute: NotificationsRoute,
   QuotesRoute: QuotesRouteWithChildren,
+  RelationshipsRoute: RelationshipsRoute,
   RenewalsRoute: RenewalsRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,

@@ -13,6 +13,7 @@ import {
   Sparkles,
   LogOut,
   RefreshCw,
+  Network,
   type LucideIcon,
 } from "lucide-react";
 
@@ -46,6 +47,7 @@ const convertItems = [
 
 const retainItems = [
   { title: "Clients", url: "/clients", icon: Building2 },
+  { title: "Relationships", url: "/relationships", icon: Network },
   { title: "Renewals", url: "/renewals", icon: RefreshCw },
   { title: "Tasks", url: "/tasks", icon: CheckSquare },
 ];
