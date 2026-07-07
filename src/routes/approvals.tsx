@@ -252,7 +252,7 @@ function ApprovalsInbox() {
           />
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <Card className="lg:col-span-2">
                 {pending.length > 0 && (
                   <div className="flex items-center gap-2 border-b border-border px-4 py-2 text-xs text-muted-foreground">
@@ -269,11 +269,19 @@ function ApprovalsInbox() {
                     return (
                       <li
                         key={a.id}
+                        role="button"
+                        tabIndex={0}
                         className={cn(
-                          "flex cursor-pointer items-start gap-2 p-4 transition-colors hover:bg-muted/40",
+                          "flex cursor-pointer items-start gap-2 p-4 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                           selected?.id === a.id && "bg-muted/50",
                         )}
                         onClick={() => setSelectedId(a.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            if (e.key === " ") e.preventDefault();
+                            setSelectedId(a.id);
+                          }
+                        }}
                       >
                         <Checkbox
                           checked={bulk.has(a.id)}

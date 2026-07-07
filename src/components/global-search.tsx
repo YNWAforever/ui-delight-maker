@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { Search } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCurrencyAmount } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -40,16 +41,20 @@ type Result = {
   href: string;
 };
 
-export function GlobalSearch() {
+export function GlobalSearch({ iconOnly = false }: { iconOnly?: boolean }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [active, setActive] = useState(0);
   const navigate = useNavigate();
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!wrapRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setPanelOpen(false);
+      }
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -59,12 +64,17 @@ export function GlobalSearch() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
+        if (iconOnly) setPanelOpen(true);
         wrapRef.current?.querySelector("input")?.focus();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [iconOnly]);
+
+  useEffect(() => {
+    if (panelOpen) wrapRef.current?.querySelector("input")?.focus();
+  }, [panelOpen]);
 
   const results = useMemo<Result[]>(() => {
     const term = q.trim().toLowerCase();
@@ -130,6 +140,7 @@ export function GlobalSearch() {
 
   const go = (r: Result) => {
     setOpen(false);
+    setPanelOpen(false);
     setQ("");
     navigate({ to: r.href as never });
   };
@@ -161,11 +172,12 @@ export function GlobalSearch() {
       go(results[active]);
     } else if (e.key === "Escape") {
       setOpen(false);
+      setPanelOpen(false);
     }
   };
 
-  return (
-    <div ref={wrapRef} className="relative w-full">
+  const field = (
+    <div className="relative w-full">
       <Search
         aria-hidden="true"
         className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -214,6 +226,32 @@ export function GlobalSearch() {
           )}
         </div>
       )}
+    </div>
+  );
+
+  if (iconOnly) {
+    return (
+      <div ref={wrapRef}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Search"
+          onClick={() => setPanelOpen((v) => !v)}
+        >
+          <Search className="h-4 w-4" />
+        </Button>
+        {panelOpen && (
+          <div className="fixed inset-x-0 top-14 z-30 border-b border-border bg-background p-3 shadow-md">
+            {field}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={wrapRef} className="w-full">
+      {field}
     </div>
   );
 }

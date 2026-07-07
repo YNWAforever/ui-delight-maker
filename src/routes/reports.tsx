@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Download } from "lucide-react";
+import { BarChart3, Download, TrendingUp, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
   Area,
@@ -17,6 +17,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,7 +87,12 @@ function ReportsPage() {
       />
 
       <div className="grid grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-2">
-        <ChartCard title="Revenue trend" description="Weekly closed-won revenue (HKD K).">
+        <ChartCard
+          title="Revenue trend"
+          description="Weekly closed-won revenue (HKD K)."
+          data={revenueTrend}
+          emptyIcon={TrendingUp}
+        >
           <AreaChart data={revenueTrend}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis
@@ -114,7 +120,11 @@ function ReportsPage() {
           </AreaChart>
         </ChartCard>
 
-        <ChartCard title="Pipeline funnel" description="Lead counts by stage.">
+        <ChartCard
+          title="Pipeline funnel"
+          description="Lead counts by stage."
+          data={pipelineFunnel}
+        >
           <BarChart data={pipelineFunnel}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis
@@ -135,7 +145,12 @@ function ReportsPage() {
           </BarChart>
         </ChartCard>
 
-        <ChartCard title="Lead → Won conversion" description="Weekly leads vs closed-won.">
+        <ChartCard
+          title="Lead → Won conversion"
+          description="Weekly leads vs closed-won."
+          data={conversionTrend}
+          emptyIcon={TrendingUp}
+        >
           <LineChart data={conversionTrend}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis
@@ -170,7 +185,11 @@ function ReportsPage() {
           </LineChart>
         </ChartCard>
 
-        <ChartCard title="Agent leaderboard" description="Runs and success rate (24h).">
+        <ChartCard
+          title="Agent leaderboard"
+          description="Runs and success rate (24h)."
+          data={agentLeaderboard}
+        >
           <BarChart data={agentLeaderboard} layout="vertical">
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
             <XAxis
@@ -194,7 +213,11 @@ function ReportsPage() {
           </BarChart>
         </ChartCard>
 
-        <ChartCard title="Task throughput" description="Created vs completed by day.">
+        <ChartCard
+          title="Task throughput"
+          description="Created vs completed by day."
+          data={taskThroughput}
+        >
           <BarChart data={taskThroughput}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis
@@ -217,7 +240,11 @@ function ReportsPage() {
           </BarChart>
         </ChartCard>
 
-        <ChartCard title="Agent success rate" description="Per-agent completion rate.">
+        <ChartCard
+          title="Agent success rate"
+          description="Per-agent completion rate."
+          data={agentLeaderboard}
+        >
           <BarChart data={agentLeaderboard}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
             <XAxis
@@ -250,10 +277,14 @@ function ReportsPage() {
 function ChartCard({
   title,
   description,
+  data,
+  emptyIcon = BarChart3,
   children,
 }: {
   title: string;
   description: string;
+  data: unknown[];
+  emptyIcon?: LucideIcon;
   children: React.ReactElement;
 }) {
   return (
@@ -263,11 +294,21 @@ function ChartCard({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            {children}
-          </ResponsiveContainer>
-        </div>
+        {data.length === 0 ? (
+          <div className="flex h-64 flex-col justify-center">
+            <EmptyState
+              icon={emptyIcon}
+              title="No data yet"
+              description="This chart will populate once activity is recorded."
+            />
+          </div>
+        ) : (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              {children}
+            </ResponsiveContainer>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -22,7 +22,7 @@ export function MetricCard({ label, value, hint, delta, icon: Icon }: MetricCard
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {label}
             </p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p>
+            <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
             {(hint || typeof delta === "number") && (
               <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                 {typeof delta === "number" && (

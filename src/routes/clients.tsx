@@ -192,7 +192,7 @@ function ClientsPage() {
           </div>
         </Card>
 
-        <Card>
+        <Card className="overflow-x-auto">
           <Table className="min-w-[1040px]">
             <TableHeader>
               <TableRow>

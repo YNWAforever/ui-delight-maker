@@ -100,7 +100,7 @@ function AgentDetail() {
                       return (
                         <li key={r.id} className="py-3">
                           <button
-                            className="flex w-full items-start gap-3 text-left"
+                            className="flex w-full items-start gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             onClick={() => setExpanded(open ? null : r.id)}
                           >
                             <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">

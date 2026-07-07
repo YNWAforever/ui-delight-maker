@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { GlobalSearch } from "@/components/global-search";
 import { NotificationBell } from "@/components/notification-bell";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -111,6 +112,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}",
+          }}
+        />
         <HeadContent />
       </head>
       <body>
@@ -161,6 +168,10 @@ function RootComponent() {
                 <GlobalSearch />
               </div>
               <div className="ml-auto flex items-center gap-2">
+                <div className="md:hidden">
+                  <GlobalSearch iconOnly />
+                </div>
+                <ThemeToggle />
                 <NotificationBell />
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-xs font-medium text-primary">
                   {profile?.name?.slice(0, 2).toUpperCase() ?? "??"}

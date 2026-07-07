@@ -282,7 +282,7 @@ function LeadsPage() {
           />
         )}
 
-        <Card>
+        <Card className="overflow-x-auto">
           <Table className="min-w-[980px]">
             <TableHeader>
               <TableRow>
@@ -307,7 +307,18 @@ function LeadsPage() {
             <TableBody>
               {filtered.map((lead) => {
                 return (
-                  <TableRow key={lead.id} className="cursor-pointer">
+                  <TableRow
+                    key={lead.id}
+                    tabIndex={0}
+                    className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                    onClick={() => router.navigate({ to: "/leads/$id", params: { id: lead.id } })}
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key !== "Enter" && e.key !== " ") return;
+                      if (e.key === " ") e.preventDefault();
+                      router.navigate({ to: "/leads/$id", params: { id: lead.id } });
+                    }}
+                  >
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         aria-label={`Select ${lead.company_name}`}
@@ -315,7 +326,7 @@ function LeadsPage() {
                         onCheckedChange={() => toggle(lead.id)}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium" onClick={(e) => e.stopPropagation()}>
                       <Link
                         to="/leads/$id"
                         params={{ id: lead.id }}

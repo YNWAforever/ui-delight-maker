@@ -141,12 +141,12 @@ function TasksBoard() {
               </SelectContent>
             </Select>
             <p className="ml-auto text-xs text-muted-foreground">
-              Tip: drag a card between columns.
+              Tip: drag a card between columns, or focus it and press ← / →.
             </p>
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {COLUMNS.map((col) => {
             const colTasks = filtered.filter((t) => t.status === col.id);
             return (
@@ -172,11 +172,21 @@ function TasksBoard() {
                     return (
                       <Card
                         key={t.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`${t.title} — ${col.label}. Press left or right arrow to move between columns.`}
                         draggable
                         onDragStart={() => setDragging(t.id)}
                         onDragEnd={() => setDragging(null)}
+                        onKeyDown={(e) => {
+                          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                          e.preventDefault();
+                          const idx = COLUMNS.findIndex((c) => c.id === col.id);
+                          const target = COLUMNS[e.key === "ArrowLeft" ? idx - 1 : idx + 1];
+                          if (target) move(t.id, target.id);
+                        }}
                         className={cn(
-                          "cursor-grab p-4 transition-shadow hover:shadow-md active:cursor-grabbing",
+                          "cursor-grab p-4 transition-shadow hover:shadow-md active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           dragging === t.id && "opacity-50",
                         )}
                       >

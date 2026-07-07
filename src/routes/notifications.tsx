@@ -31,10 +31,10 @@ const typeIcon: Record<string, React.ReactNode> = {
 };
 
 const typeColor: Record<string, string> = {
-  approval_pending: "text-amber-500 bg-amber-500/10",
-  renewal_window: "text-blue-500 bg-blue-500/10",
-  risk_change: "text-red-500 bg-red-500/10",
-  stale_touchpoint: "text-slate-500 bg-slate-500/10",
+  approval_pending: "text-warning bg-warning/10",
+  renewal_window: "text-info bg-info/10",
+  risk_change: "text-destructive bg-destructive/10",
+  stale_touchpoint: "text-muted-foreground bg-muted",
 };
 
 function notificationLink(n: NotificationRecord): string {

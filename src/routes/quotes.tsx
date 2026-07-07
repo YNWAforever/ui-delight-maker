@@ -148,93 +148,91 @@ function QuotesPage() {
           </div>
         </Card>
 
-        <Card className="min-w-0 overflow-hidden">
-          <div className="min-w-0 max-w-full overflow-hidden">
-            <Table className="min-w-[720px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Quote</TableHead>
-                  <TableHead>Lead</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Value</TableHead>
-                  <TableHead>Valid until</TableHead>
-                  <TableHead>Created by</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((q) => {
-                  const lead = leadById(q.lead_id);
-                  const creator = userById(q.created_by);
-                  return (
-                    <TableRow key={q.id}>
-                      <TableCell>
-                        <Link
-                          to="/quotes/$id"
-                          params={{ id: q.id }}
-                          className="text-sm font-medium hover:text-primary hover:underline"
-                        >
-                          {q.number}
-                        </Link>
-                        <div className="text-xs text-muted-foreground">
-                          {q.line_items.length} line items
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{lead?.company_name ?? "—"}</div>
-                        <div className="text-xs text-muted-foreground">{q.lead_id}</div>
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge value={q.status} />
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatCurrencyAmount(q.total_value, q.currency)}
-                      </TableCell>
-                      <TableCell className="text-sm">{formatDate(q.valid_until)}</TableCell>
-                      <TableCell className="text-sm">{creator?.name ?? "—"}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              aria-label={`Open actions for ${q.number}`}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => duplicate(q.id)}>
-                              <Copy className="mr-2 h-4 w-4" /> Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => archive(q.id)}>
-                              <Archive className="mr-2 h-4 w-4" /> Archive
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="p-4">
-                      <WorkSurfaceEmpty
-                        title="No quotes match this deal desk view"
-                        description="Change the status tab or create a new quote from an active lead."
-                        action={
-                          <Button size="sm" variant="outline" asChild>
-                            <Link to="/quotes/new">Create quote</Link>
+        <Card className="overflow-x-auto">
+          <Table className="min-w-[720px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Quote</TableHead>
+                <TableHead>Lead</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Value</TableHead>
+                <TableHead>Valid until</TableHead>
+                <TableHead>Created by</TableHead>
+                <TableHead className="w-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((q) => {
+                const lead = leadById(q.lead_id);
+                const creator = userById(q.created_by);
+                return (
+                  <TableRow key={q.id}>
+                    <TableCell>
+                      <Link
+                        to="/quotes/$id"
+                        params={{ id: q.id }}
+                        className="text-sm font-medium hover:text-primary hover:underline"
+                      >
+                        {q.number}
+                      </Link>
+                      <div className="text-xs text-muted-foreground">
+                        {q.line_items.length} line items
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">{lead?.company_name ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground">{q.lead_id}</div>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge value={q.status} />
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatCurrencyAmount(q.total_value, q.currency)}
+                    </TableCell>
+                    <TableCell className="text-sm">{formatDate(q.valid_until)}</TableCell>
+                    <TableCell className="text-sm">{creator?.name ?? "—"}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            aria-label={`Open actions for ${q.number}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
-                        }
-                      />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => duplicate(q.id)}>
+                            <Copy className="mr-2 h-4 w-4" /> Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => archive(q.id)}>
+                            <Archive className="mr-2 h-4 w-4" /> Archive
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                );
+              })}
+              {filtered.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="p-4">
+                    <WorkSurfaceEmpty
+                      title="No quotes match this deal desk view"
+                      description="Change the status tab or create a new quote from an active lead."
+                      action={
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to="/quotes/new">Create quote</Link>
+                        </Button>
+                      }
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </Card>
       </div>
     </>
