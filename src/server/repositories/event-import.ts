@@ -1,6 +1,6 @@
 import { normalizeAccountName } from "@/lib/relationship/matching";
 import type { EventImportValidRow } from "@/lib/relationship/event-import";
-import { transaction } from "@/server/db/neon.server";
+import { query, transaction } from "@/server/db/neon.server";
 import { createAccountContact } from "@/server/repositories/account-contacts";
 import { createAccount } from "@/server/repositories/accounts";
 import { createCampaignMember } from "@/server/repositories/campaigns";
@@ -16,6 +16,29 @@ export type EventImportCommitResult = {
   createdContacts: number;
   createdMembers: number;
 };
+
+export async function listEventImportAccountCandidates() {
+  return query<Array<{ id: string; name: string; domain: string | null }>[number]>(
+    `
+      select id, name, domain
+      from accounts
+      order by name
+    `,
+  );
+}
+
+export async function listEventImportAccountContacts() {
+  return query<
+    Array<{ id: string; account_id: string; name: string; email: string | null }>[number]
+  >(
+    `
+      select id, account_id, name, email
+      from account_contacts
+      where active = true
+      order by account_id, name
+    `,
+  );
+}
 
 export async function commitEventImport(
   input: CommitEventImportInput,
@@ -33,7 +56,7 @@ export async function commitEventImport(
       let accountId =
         row.account_match.kind === "matched"
           ? row.account_match.accountId
-          : createdAccountIdsByCompany.get(normalizedCompanyName) ?? null;
+          : (createdAccountIdsByCompany.get(normalizedCompanyName) ?? null);
 
       if (!accountId && row.company_name.trim()) {
         const account = await createAccount(
@@ -52,22 +75,21 @@ export async function commitEventImport(
         createdAccounts += 1;
       }
 
-      const contact =
-        accountId && row.contact_name.trim()
-          ? await createAccountContact(
-              {
-                account_id: accountId,
-                name: row.contact_name.trim(),
-                email: row.email || null,
-                phone: row.phone || null,
-                relationship_role: "event_attendee",
-                preferred_channel: row.email ? "email" : "unknown",
-              },
-              db,
-            )
-          : null;
+      let contactId = row.contact_match?.kind === "matched" ? row.contact_match.contactId : null;
 
-      if (contact) {
+      if (!contactId && accountId && row.contact_name.trim()) {
+        const contact = await createAccountContact(
+          {
+            account_id: accountId,
+            name: row.contact_name.trim(),
+            email: row.email || null,
+            phone: row.phone || null,
+            relationship_role: "event_attendee",
+            preferred_channel: row.email ? "email" : "unknown",
+          },
+          db,
+        );
+        contactId = contact.id;
         createdContacts += 1;
       }
 
@@ -75,7 +97,7 @@ export async function commitEventImport(
         {
           campaign_id: input.campaignId,
           account_id: accountId,
-          contact_id: contact?.id ?? null,
+          contact_id: contactId,
           raw_company_name: row.company_name,
           raw_contact_name: row.contact_name,
           raw_email: row.email,

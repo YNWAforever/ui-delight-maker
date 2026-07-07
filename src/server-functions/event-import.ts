@@ -1,27 +1,39 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
+import { validateEventImportRows, type EventImportRow } from "@/lib/relationship/event-import";
 import {
-  validateEventImportRows,
-  type EventImportRow,
-} from "@/lib/relationship/event-import";
-import { listAccounts } from "@/server/repositories/accounts";
-import { commitEventImport } from "@/server/repositories/event-import";
+  commitEventImport,
+  listEventImportAccountCandidates,
+  listEventImportAccountContacts,
+} from "@/server/repositories/event-import";
+
+async function loadEventImportValidationContext() {
+  const [accounts, accountContacts] = await Promise.all([
+    listEventImportAccountCandidates(),
+    listEventImportAccountContacts(),
+  ]);
+  return { accounts, accountContacts };
+}
 
 export const validateEventImportRowsFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { rows: EventImportRow[] })
   .handler(async ({ data }) => {
     await requireNeonAuthSession();
-    const accounts = await listAccounts({});
-    return validateEventImportRows({ rows: data.rows, accounts });
+    return validateEventImportRows({
+      rows: data.rows,
+      ...(await loadEventImportValidationContext()),
+    });
   });
 
 export const commitEventImportFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { campaignId: string; rows: EventImportRow[] })
   .handler(async ({ data }) => {
     const session = await requireNeonAuthSession();
-    const accounts = await listAccounts({});
-    const validation = validateEventImportRows({ rows: data.rows, accounts });
+    const validation = validateEventImportRows({
+      rows: data.rows,
+      ...(await loadEventImportValidationContext()),
+    });
 
     if (validation.errors.length > 0) {
       return { ok: false as const, errors: validation.errors };

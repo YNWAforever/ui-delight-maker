@@ -100,4 +100,50 @@ describe("buildAccountTimeline", () => {
       detail: "HKD 1,234,567.89",
     });
   });
+
+  it("includes lead and engagement entries", () => {
+    const entries = buildAccountTimeline({
+      touchpoints: [],
+      activityLogs: [],
+      tasks: [],
+      quotes: [],
+      approvals: [],
+      agentRuns: [],
+      campaignMembers: [],
+      leads: [
+        {
+          id: "lead1",
+          company_name: "Fimmick",
+          contact_name: "Ada Wong",
+          status: "qualified",
+          source: "event",
+          created_at: "2026-07-04T09:00:00.000Z",
+        },
+      ],
+      engagements: [
+        {
+          id: "engagement1",
+          product_id: "product-1",
+          status: "active",
+          renewal_date: "2026-09-01",
+          renewal_risk: "medium",
+          next_action: "Schedule QBR",
+          updated_at: "2026-07-05T09:00:00.000Z",
+          created_at: "2026-07-03T09:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(entries.map((entry) => entry.id)).toEqual(["engagement:engagement1", "lead:lead1"]);
+    expect(entries[0]).toMatchObject({
+      kind: "engagement",
+      title: "Engagement active",
+      status: "medium",
+    });
+    expect(entries[1]).toMatchObject({
+      kind: "lead",
+      title: "Lead qualified: Ada Wong",
+      status: "qualified",
+    });
+  });
 });

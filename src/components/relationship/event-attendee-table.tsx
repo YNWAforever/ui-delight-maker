@@ -30,15 +30,17 @@ function fallbackPhone(member: CampaignMember) {
 export function EventAttendeeTable({
   members,
   onCreateTasks,
+  isCreatingTasks = false,
 }: {
   members: CampaignMember[];
   onCreateTasks: () => void;
+  isCreatingTasks?: boolean;
 }) {
   if (members.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-        No attendees yet. Import attendees to match accounts, capture interests, and queue
-        follow-up work.
+        No attendees yet. Import attendees to match accounts, capture interests, and queue follow-up
+        work.
       </div>
     );
   }
@@ -49,8 +51,8 @@ export function EventAttendeeTable({
         <p className="text-sm text-muted-foreground">
           {members.length} attendee{members.length === 1 ? "" : "s"} in follow-up scope.
         </p>
-        <Button size="sm" onClick={onCreateTasks}>
-          Create follow-up tasks
+        <Button size="sm" onClick={onCreateTasks} disabled={isCreatingTasks}>
+          {isCreatingTasks ? "Creating tasks..." : "Create follow-up tasks"}
         </Button>
       </div>
       <div className="overflow-x-auto rounded-md border border-border">

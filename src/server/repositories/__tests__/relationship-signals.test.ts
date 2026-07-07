@@ -25,10 +25,10 @@ describe("relationship signals repository", () => {
       openOnly: true,
     });
 
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("from relationship_signals"),
-      ["account-1", "missing_champion"],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("from relationship_signals"), [
+      "account-1",
+      "missing_champion",
+    ]);
     expect(mockQuery.mock.calls[0][0]).toContain("dismissed_at is null");
   });
 
@@ -63,7 +63,9 @@ describe("relationship signals repository", () => {
 
     expect(rows).toHaveLength(2);
     expect(mockQueryOne).toHaveBeenCalledTimes(2);
-    expect(mockQueryOne.mock.calls[0][0]).toContain("on conflict (account_id, signal_type, dedupe_key)");
+    expect(mockQueryOne.mock.calls[0][0]).toContain(
+      "on conflict (account_id, signal_type, dedupe_key)",
+    );
     expect(mockQueryOne.mock.calls[0][1]).toEqual([
       "account-1",
       "missing_champion",
@@ -74,6 +76,29 @@ describe("relationship signals repository", () => {
       "deterministic",
       "missing-champion",
     ]);
+  });
+
+  it("suppresses regeneration when matching evidence was already dismissed", async () => {
+    mockQueryOne.mockResolvedValueOnce(null);
+    const { upsertRelationshipSignals } = await import("../relationship-signals");
+
+    const rows = await upsertRelationshipSignals("account-1", [
+      {
+        account_id: "account-1",
+        signal_type: "missing_champion",
+        severity: "medium",
+        title: "Champion missing",
+        reason: "No champion is mapped.",
+        suggested_action: "Assign a champion.",
+        source: "deterministic",
+        dedupe_key: "missing-champion",
+      },
+    ]);
+
+    expect(rows).toEqual([]);
+    expect(mockQueryOne).toHaveBeenCalledTimes(1);
+    expect(mockQueryOne.mock.calls[0][0]).toContain("not exists");
+    expect(mockQueryOne.mock.calls[0][0]).toContain("dismissed_at is not null");
   });
 
   it("dismisses a signal with actor and reason", async () => {

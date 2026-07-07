@@ -24,11 +24,22 @@ export type EventImportError = { index: number; reason: string };
 export type EventImportValidationInput = {
   rows: EventImportRow[];
   accounts: Array<{ id: string; name: string; domain?: string | null }>;
+  accountContacts?: Array<{
+    id: string;
+    account_id: string;
+    name: string;
+    email?: string | null;
+  }>;
 };
+
+export type ContactMatchResult =
+  | { kind: "matched"; contactId: string; matchedBy: "email" | "name" }
+  | { kind: "new" };
 
 export type EventImportValidRow = Omit<EventImportRow, "attendee_status"> & {
   attendee_status: AttendeeStatus;
-  account_match: AccountMatchResult;
+  account_match: Exclude<AccountMatchResult, { kind: "ambiguous" }>;
+  contact_match: ContactMatchResult;
 };
 
 export type EventImportValidationResult = {
@@ -69,6 +80,45 @@ function normalizeAttendeeStatus(value: string): AttendeeStatus | null {
   return VALID_ATTENDEE_STATUSES.has(normalized as AttendeeStatus)
     ? (normalized as AttendeeStatus)
     : null;
+}
+
+function normalizeContactName(name?: string | null): string | null {
+  const normalized = name?.trim().replace(/\s+/g, " ").toLowerCase() ?? "";
+  return normalized.length > 0 ? normalized : null;
+}
+
+function findContactMatch(input: {
+  accountId: string | null;
+  contactName: string;
+  email: string | null;
+  accountContacts: NonNullable<EventImportValidationInput["accountContacts"]>;
+}): ContactMatchResult {
+  if (!input.accountId) {
+    return { kind: "new" };
+  }
+
+  const candidates = input.accountContacts.filter(
+    (contact) => contact.account_id === input.accountId,
+  );
+
+  if (input.email) {
+    const emailMatch = candidates.find(
+      (contact) => normalizeContactEmail(contact.email) === input.email,
+    );
+    if (emailMatch) {
+      return { kind: "matched", contactId: emailMatch.id, matchedBy: "email" };
+    }
+  }
+
+  const name = normalizeContactName(input.contactName);
+  if (name) {
+    const nameMatch = candidates.find((contact) => normalizeContactName(contact.name) === name);
+    if (nameMatch) {
+      return { kind: "matched", contactId: nameMatch.id, matchedBy: "name" };
+    }
+  }
+
+  return { kind: "new" };
 }
 
 export function parseEventAttendeeCsv(csv: string): EventImportRow[] {
@@ -124,11 +174,23 @@ export function validateEventImportRows(
     }
     seen.add(dedupeKey);
 
+    const accountMatch = findAccountMatch({ companyName: row.company_name, accounts: input.accounts });
+    if (accountMatch.kind === "ambiguous") {
+      errors.push({ index, reason: "Ambiguous account match requires manual review." });
+      return;
+    }
+
     valid.push({
       ...row,
       email: email ?? "",
       attendee_status: attendeeStatus,
-      account_match: findAccountMatch({ companyName: row.company_name, accounts: input.accounts }),
+      account_match: accountMatch,
+      contact_match: findContactMatch({
+        accountId: accountMatch.kind === "matched" ? accountMatch.accountId : null,
+        contactName: row.contact_name,
+        email,
+        accountContacts: input.accountContacts ?? [],
+      }),
     });
   });
 

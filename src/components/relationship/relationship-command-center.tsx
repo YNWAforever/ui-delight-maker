@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { RelationshipSignalCard } from "@/components/relationship/relationship-signal-card";
 import type { Account, RelationshipSignal } from "@/lib/types";
@@ -15,10 +15,15 @@ export function RelationshipCommandCenter({
   const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
   const [pendingSignalIds, setPendingSignalIds] = useState<string[]>([]);
+  const [optimisticDismissedIds, setOptimisticDismissedIds] = useState<string[]>([]);
   const accountById = useMemo(
     () => new Map(accounts.map((account) => [account.id, account])),
     [accounts],
   );
+
+  useEffect(() => {
+    setRows(signals.filter((signal) => !optimisticDismissedIds.includes(signal.id)));
+  }, [signals, optimisticDismissedIds]);
 
   const startDismiss = (signal: RelationshipSignal) => {
     setActiveDismissId(signal.id);
@@ -55,6 +60,7 @@ export function RelationshipCommandCenter({
       await dismissRelationshipSignalFn({
         data: { id: signal.id, reason: reason.trim() },
       });
+      setOptimisticDismissedIds((prev) => [...prev, signal.id]);
       setRows((prev) => prev.filter((row) => row.id !== signal.id));
       setActiveDismissId((current) => (current === signal.id ? null : current));
       setDismissReasons((prev) => {
@@ -73,8 +79,8 @@ export function RelationshipCommandCenter({
   if (rows.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">
-        No open relationship signals. Import event attendees, add stakeholders, or run
-        relationship intelligence to generate the next set of actions.
+        No open relationship signals. Import event attendees, add stakeholders, or run relationship
+        intelligence to generate the next set of actions.
       </div>
     );
   }

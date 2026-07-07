@@ -1,5 +1,5 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
-import { query, queryOne } from "@/server/db/neon.server";
+import { query, queryOne, type Queryable } from "@/server/db/neon.server";
 import type { Task } from "@/lib/types";
 
 type TaskFilters = {
@@ -77,7 +77,7 @@ export async function listOpenTasksByDueDate() {
   );
 }
 
-export async function createTask(input: CreateTaskInput) {
+export async function createTask(input: CreateTaskInput, db?: Queryable) {
   const task = await queryOne<Task>(
     `
       insert into tasks
@@ -99,6 +99,7 @@ export async function createTask(input: CreateTaskInput) {
       input.due_date ?? null,
       input.priority ?? null,
     ],
+    db,
   );
 
   if (!task) throw new Error("Failed to create task");

@@ -126,5 +126,37 @@ export function buildAccountTimeline(input: AccountTimelineInput): AccountTimeli
     );
   }
 
+  if (includeKind("lead", input.kinds)) {
+    entries.push(
+      ...(input.leads ?? []).map((lead) => ({
+        id: `lead:${lead.id}`,
+        kind: "lead" as const,
+        occurred_at: lead.created_at,
+        title: `Lead ${lead.status}: ${lead.contact_name ?? lead.company_name}`,
+        detail: lead.source ? `Source ${lead.source}` : null,
+        object_type: "lead",
+        object_id: lead.id,
+        status: lead.status,
+      })),
+    );
+  }
+
+  if (includeKind("engagement", input.kinds)) {
+    entries.push(
+      ...(input.engagements ?? []).map((engagement) => ({
+        id: `engagement:${engagement.id}`,
+        kind: "engagement" as const,
+        occurred_at: engagement.updated_at ?? engagement.created_at,
+        title: `Engagement ${engagement.status}`,
+        detail:
+          engagement.next_action ??
+          (engagement.renewal_date ? `Renewal ${engagement.renewal_date}` : null),
+        object_type: "engagement",
+        object_id: engagement.id,
+        status: engagement.renewal_risk,
+      })),
+    );
+  }
+
   return entries.sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
 }

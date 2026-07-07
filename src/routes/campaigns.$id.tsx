@@ -7,9 +7,13 @@ import { StatusBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { parseEventAttendeeCsv, type EventImportError, type EventImportRow } from "@/lib/relationship/event-import";
+import {
+  parseEventAttendeeCsv,
+  type EventImportError,
+  type EventImportRow,
+} from "@/lib/relationship/event-import";
 import { formatDate } from "@/lib/format";
-import { getCampaign } from "@/server-functions/campaigns";
+import { createCampaignFollowUpTasksFn, getCampaign } from "@/server-functions/campaigns";
 import { commitEventImportFn, validateEventImportRowsFn } from "@/server-functions/event-import";
 
 type CommitEventImportResponse = Awaited<ReturnType<typeof commitEventImportFn>>;
@@ -37,6 +41,7 @@ function CampaignDetailRoute() {
   const [errors, setErrors] = useState<EventImportError[]>([]);
   const [isValidating, setIsValidating] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isCreatingTasks, setIsCreatingTasks] = useState(false);
   const visibleErrors = errors.slice(0, 6);
 
   const resetInput = () => {
@@ -115,6 +120,26 @@ function CampaignDetailRoute() {
     }
   };
 
+  const createFollowUpTasks = async () => {
+    if (isCreatingTasks) {
+      return;
+    }
+
+    setIsCreatingTasks(true);
+
+    try {
+      const result = await createCampaignFollowUpTasksFn({ data: { campaignId: campaign.id } });
+      await router.invalidate();
+      toast.success(
+        `Created ${result.createdTasks} follow-up task${result.createdTasks === 1 ? "" : "s"}.`,
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create follow-up tasks");
+    } finally {
+      setIsCreatingTasks(false);
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -144,7 +169,11 @@ function CampaignDetailRoute() {
           />
           <SummaryCard
             label="Follow-up state"
-            value={<span>{members.filter((member) => member.follow_up_status !== "completed").length}</span>}
+            value={
+              <span>
+                {members.filter((member) => member.follow_up_status !== "completed").length}
+              </span>
+            }
             hint="attendees still in progress"
           />
         </div>
@@ -157,9 +186,8 @@ function CampaignDetailRoute() {
             <CardContent>
               <EventAttendeeTable
                 members={members}
-                onCreateTasks={() =>
-                  toast.message("Task creation will use selected attendees in the next implementation step.")
-                }
+                onCreateTasks={() => void createFollowUpTasks()}
+                isCreatingTasks={isCreatingTasks}
               />
             </CardContent>
           </Card>
@@ -277,15 +305,7 @@ function CampaignDetailRoute() {
   );
 }
 
-function SummaryCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: ReactNode;
-  hint?: string;
-}) {
+function SummaryCard({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
     <Card>
       <CardContent className="space-y-2 p-4">

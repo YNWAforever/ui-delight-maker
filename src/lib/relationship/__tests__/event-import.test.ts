@@ -91,4 +91,62 @@ describe("event import", () => {
     expect(result.errors).toEqual([{ index: 1, reason: "Duplicate attendee in file." }]);
     expect(result.valid).toHaveLength(1);
   });
+
+  it("matches an existing account contact by email", () => {
+    const result = validateEventImportRows({
+      rows: [
+        {
+          company_name: "Fimmick",
+          contact_name: "Ada Wong",
+          email: " ADA@EXAMPLE.COM ",
+          phone: "",
+          attendee_status: "attended",
+          interests: [],
+          notes: "",
+        },
+      ],
+      accounts: [{ id: "account-1", name: "Fimmick" }],
+      accountContacts: [
+        {
+          id: "contact-1",
+          account_id: "account-1",
+          name: "Ada Wong",
+          email: "ada@example.com",
+        },
+      ],
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.valid[0].contact_match).toEqual({
+      kind: "matched",
+      contactId: "contact-1",
+      matchedBy: "email",
+    });
+  });
+
+  it("rejects ambiguous account matches for manual review", () => {
+    const result = validateEventImportRows({
+      rows: [
+        {
+          company_name: "Fimmick Limited",
+          contact_name: "Ada Wong",
+          email: "ada@example.com",
+          phone: "",
+          attendee_status: "attended",
+          interests: [],
+          notes: "",
+        },
+      ],
+      accounts: [
+        { id: "account-1", name: "Fimmick" },
+        { id: "account-2", name: "Fimmick Ltd" },
+      ],
+      accountContacts: [],
+    });
+
+    expect(result.errors).toEqual([
+      { index: 0, reason: "Ambiguous account match requires manual review." },
+    ]);
+    expect(result.valid).toEqual([]);
+  });
 });

@@ -43,8 +43,15 @@ export async function upsertRelationshipSignals(
       `
         insert into relationship_signals
           (account_id, signal_type, severity, title, reason, suggested_action, source, dedupe_key)
-        values
-          ($1, $2, $3, $4, $5, $6, $7, $8)
+        select $1, $2, $3, $4, $5, $6, $7, $8
+        where not exists (
+          select 1
+          from relationship_signals
+          where account_id = $1
+            and signal_type = $2
+            and dedupe_key = $8
+            and dismissed_at is not null
+        )
         on conflict (account_id, signal_type, dedupe_key)
           where dismissed_at is null
           do update set

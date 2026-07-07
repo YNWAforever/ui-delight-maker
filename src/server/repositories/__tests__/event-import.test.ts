@@ -1,16 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  transactionMock,
-  createAccountMock,
-  createAccountContactMock,
-  createCampaignMemberMock,
-} = vi.hoisted(() => ({
-  transactionMock: vi.fn(),
-  createAccountMock: vi.fn(),
-  createAccountContactMock: vi.fn(),
-  createCampaignMemberMock: vi.fn(),
-}));
+const { transactionMock, createAccountMock, createAccountContactMock, createCampaignMemberMock } =
+  vi.hoisted(() => ({
+    transactionMock: vi.fn(),
+    createAccountMock: vi.fn(),
+    createAccountContactMock: vi.fn(),
+    createCampaignMemberMock: vi.fn(),
+  }));
 
 vi.mock("@/server/db/neon.server", () => ({
   transaction: transactionMock,
@@ -56,6 +52,7 @@ describe("event import repository", () => {
           interests: [],
           notes: "",
           account_match: { kind: "new" },
+          contact_match: { kind: "new" },
         },
         {
           company_name: "Fimmick HK Ltd",
@@ -66,6 +63,7 @@ describe("event import repository", () => {
           interests: [],
           notes: "",
           account_match: { kind: "new" },
+          contact_match: { kind: "new" },
         },
       ],
     });
@@ -82,5 +80,38 @@ describe("event import repository", () => {
       expect.anything(),
     );
     expect(result).toEqual({ createdAccounts: 1, createdContacts: 2, createdMembers: 2 });
+  });
+
+  it("reuses a matched contact instead of creating a duplicate", async () => {
+    const { commitEventImport } = await import("../event-import");
+
+    const result = await commitEventImport({
+      campaignId: "campaign-1",
+      owner: "owner-1",
+      rows: [
+        {
+          company_name: "Fimmick",
+          contact_name: "Ada Wong",
+          email: "ada@example.com",
+          phone: "",
+          attendee_status: "attended",
+          interests: [],
+          notes: "",
+          account_match: { kind: "matched", accountId: "account-1", matchedBy: "name" },
+          contact_match: { kind: "matched", contactId: "contact-1", matchedBy: "email" },
+        },
+      ],
+    });
+
+    expect(createAccountMock).not.toHaveBeenCalled();
+    expect(createAccountContactMock).not.toHaveBeenCalled();
+    expect(createCampaignMemberMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account_id: "account-1",
+        contact_id: "contact-1",
+      }),
+      expect.anything(),
+    );
+    expect(result).toEqual({ createdAccounts: 0, createdContacts: 0, createdMembers: 1 });
   });
 });

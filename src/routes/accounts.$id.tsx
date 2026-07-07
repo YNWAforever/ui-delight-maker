@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, BriefcaseBusiness, CalendarClock, FileText, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  BrainCircuit,
+  BriefcaseBusiness,
+  CalendarClock,
+  FileText,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { AccountTimeline } from "@/components/relationship/account-timeline";
@@ -14,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
 import { userById } from "@/lib/users";
 import type { RelationshipSignal } from "@/lib/types";
-import { getAccount } from "@/server-functions/accounts";
+import { getAccount, triggerRelationshipIntelligence } from "@/server-functions/accounts";
 import { getAccountTimeline } from "@/server-functions/activity-logs";
 import { getClients } from "@/server-functions/clients";
 import { getAccountContacts } from "@/server-functions/contacts";
@@ -66,6 +73,8 @@ function AccountDetailRoute() {
   const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
   const [pendingSignalIds, setPendingSignalIds] = useState<string[]>([]);
+  const [isTriggeringRelationshipIntelligence, setIsTriggeringRelationshipIntelligence] =
+    useState(false);
   const openSignals = signals.filter((signal) => !dismissedSignalIds.includes(signal.id));
   const owner = account.account_owner ? userById(account.account_owner) : undefined;
   const csOwner = account.cs_owner ? userById(account.cs_owner) : undefined;
@@ -129,6 +138,35 @@ function AccountDetailRoute() {
     }
   };
 
+  const runRelationshipIntelligence = async () => {
+    if (isTriggeringRelationshipIntelligence) {
+      return;
+    }
+
+    setIsTriggeringRelationshipIntelligence(true);
+
+    try {
+      const result = await triggerRelationshipIntelligence({ data: { accountId: account.id } });
+
+      if (!result.triggered) {
+        if (result.reason === "already_running") {
+          toast.message("Relationship intelligence is already running for this account");
+        } else {
+          toast.error("Relationship intelligence webhook is not configured");
+        }
+        return;
+      }
+
+      toast.success("Relationship intelligence started");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to start relationship intelligence",
+      );
+    } finally {
+      setIsTriggeringRelationshipIntelligence(false);
+    }
+  };
+
   const summaryItems = [
     {
       label: "Stakeholders",
@@ -173,6 +211,15 @@ function AccountDetailRoute() {
                 </Link>
               </Button>
             ) : null}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void runRelationshipIntelligence()}
+              disabled={isTriggeringRelationshipIntelligence}
+            >
+              <BrainCircuit className="h-4 w-4" />
+              {isTriggeringRelationshipIntelligence ? "Running..." : "Run intelligence"}
+            </Button>
             <Button variant="outline" size="sm" asChild>
               <Link to="/accounts">
                 <ArrowLeft className="h-4 w-4" />

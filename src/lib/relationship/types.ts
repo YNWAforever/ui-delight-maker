@@ -3,7 +3,9 @@ import type {
   AgentRun,
   ApprovalStatus,
   AttendeeStatus,
+  Engagement,
   FollowUpStatus,
+  Lead,
   Quote,
   QuoteStatus,
   TaskPriority,
@@ -99,7 +101,9 @@ export type AccountTimelineKind =
   | "quote"
   | "approval"
   | "agent_run"
-  | "campaign";
+  | "campaign"
+  | "lead"
+  | "engagement";
 
 export type AccountTimelineEntry = {
   id: string;
@@ -109,7 +113,14 @@ export type AccountTimelineEntry = {
   detail: string | null;
   object_type: string;
   object_id: string | null;
-  status?: TaskStatus | QuoteStatus | ApprovalStatus | AttendeeStatus | FollowUpStatus | string | null;
+  status?:
+    | TaskStatus
+    | QuoteStatus
+    | ApprovalStatus
+    | AttendeeStatus
+    | FollowUpStatus
+    | string
+    | null;
 };
 
 export type AccountTimelineInput = {
@@ -145,5 +156,21 @@ export type AccountTimelineInput = {
     follow_up_status: FollowUpStatus;
     created_at: string;
   }>;
+  leads?: Array<
+    Pick<Lead, "id" | "company_name" | "contact_name" | "status" | "source" | "created_at">
+  >;
+  engagements?: Array<
+    Pick<
+      Engagement,
+      | "id"
+      | "product_id"
+      | "status"
+      | "renewal_date"
+      | "renewal_risk"
+      | "next_action"
+      | "created_at"
+      | "updated_at"
+    >
+  >;
   kinds?: AccountTimelineKind[];
 };

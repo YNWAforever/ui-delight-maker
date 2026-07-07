@@ -10,6 +10,7 @@ import {
   type CreateCampaignMemberInput,
   updateCampaign as updateCampaignInNeon,
 } from "@/server/repositories/campaigns";
+import { createCampaignFollowUpTasks } from "@/server/repositories/campaign-follow-ups";
 import type { Campaign } from "@/lib/types";
 
 export const getCampaigns = createServerFn({ method: "GET" })
@@ -45,4 +46,14 @@ export const addCampaignMember = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireNeonAuthSession();
     return createCampaignMember(data);
+  });
+
+export const createCampaignFollowUpTasksFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as { campaignId: string })
+  .handler(async ({ data }) => {
+    const session = await requireNeonAuthSession();
+    return createCampaignFollowUpTasks({
+      campaignId: data.campaignId,
+      actorId: session.user.id,
+    });
   });
