@@ -1,44 +1,42 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  ArrowLeft,
-  BriefcaseBusiness,
-  CalendarClock,
-  FileText,
-  ListTodo,
-  Users,
-} from "lucide-react";
+import { ArrowLeft, BriefcaseBusiness, CalendarClock, FileText, Users } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { AccountTimeline } from "@/components/relationship/account-timeline";
 import { StakeholderMap } from "@/components/relationship/stakeholder-map";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
 import { userById } from "@/lib/users";
+import type { RelationshipSignal } from "@/lib/types";
 import { getAccount } from "@/server-functions/accounts";
 import { getAccountTimeline } from "@/server-functions/activity-logs";
-import { getCampaigns } from "@/server-functions/campaigns";
 import { getClients } from "@/server-functions/clients";
 import { getAccountContacts } from "@/server-functions/contacts";
 import { getEngagementsByClient } from "@/server-functions/engagements";
 import { getQuotes } from "@/server-functions/quotes";
-import { getRelationshipSignals } from "@/server-functions/relationship-signals";
+import {
+  dismissRelationshipSignalFn,
+  getRelationshipSignals,
+} from "@/server-functions/relationship-signals";
 import { getTasks } from "@/server-functions/tasks";
 
 export const Route = createFileRoute("/accounts/$id")({
   loader: async ({ params }) => {
-    const [account, contacts, timeline, signals, linkedClients, tasks, quotes, campaigns] =
-      await Promise.all([
-        getAccount({ data: { id: params.id } }),
-        getAccountContacts({ data: { accountId: params.id } }),
-        getAccountTimeline({ data: { accountId: params.id } }),
-        getRelationshipSignals({ data: { account_id: params.id, openOnly: true } }),
-        getClients({ data: { account_id: params.id } }),
-        getTasks({ data: { account_id: params.id } }),
-        getQuotes({ data: { account_id: params.id } }),
-        getCampaigns({}),
-      ]);
+    const [account, contacts, timeline, signals, linkedClients, tasks, quotes] = await Promise.all([
+      getAccount({ data: { id: params.id } }),
+      getAccountContacts({ data: { accountId: params.id } }),
+      getAccountTimeline({ data: { accountId: params.id } }),
+      getRelationshipSignals({ data: { account_id: params.id, openOnly: true } }),
+      getClients({ data: { account_id: params.id } }),
+      getTasks({ data: { account_id: params.id } }),
+      getQuotes({ data: { account_id: params.id } }),
+    ]);
 
     const engagementGroups = await Promise.all(
       linkedClients.map((client) => getEngagementsByClient({ data: { clientId: client.id } })),
@@ -53,7 +51,6 @@ export const Route = createFileRoute("/accounts/$id")({
       engagements: engagementGroups.flat(),
       tasks,
       quotes,
-      campaigns,
     };
   },
   head: ({ loaderData }) => ({
@@ -63,34 +60,67 @@ export const Route = createFileRoute("/accounts/$id")({
 });
 
 function AccountDetailRoute() {
-  const {
-    account,
-    contacts,
-    timeline,
-    signals,
-    linkedClients,
-    engagements,
-    tasks,
-    quotes,
-    campaigns,
-  } = Route.useLoaderData();
+  const { account, contacts, timeline, signals, linkedClients, engagements, tasks, quotes } =
+    Route.useLoaderData();
+  const [openSignals, setOpenSignals] = useState(signals);
+  const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
+  const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
+  const [pendingSignalIds, setPendingSignalIds] = useState<string[]>([]);
   const owner = account.account_owner ? userById(account.account_owner) : undefined;
   const csOwner = account.cs_owner ? userById(account.cs_owner) : undefined;
   const openTasks = tasks.filter((task) => task.status !== "done");
   const activeEngagements = engagements.filter((engagement) => engagement.status === "active");
   const campaignTimelineEntries = timeline.filter((entry) => entry.kind === "campaign");
-  const relevantCampaigns = campaigns
-    .filter((campaign) => {
-      if (
-        campaign.owner &&
-        (campaign.owner === account.account_owner || campaign.owner === account.cs_owner)
-      ) {
-        return true;
-      }
 
-      return campaign.status === "active" || campaign.status === "planned";
-    })
-    .slice(0, 6);
+  const startDismiss = (signal: RelationshipSignal) => {
+    setActiveDismissId(signal.id);
+    setDismissReasons((prev) => ({ ...prev, [signal.id]: prev[signal.id] ?? "" }));
+  };
+
+  const changeDismissReason = (signalId: string, reason: string) => {
+    setDismissReasons((prev) => ({ ...prev, [signalId]: reason }));
+  };
+
+  const cancelDismiss = (signalId: string) => {
+    if (pendingSignalIds.includes(signalId)) {
+      return;
+    }
+
+    setActiveDismissId((current) => (current === signalId ? null : current));
+  };
+
+  const dismissSignal = async (signal: RelationshipSignal) => {
+    if (pendingSignalIds.includes(signal.id)) {
+      return;
+    }
+
+    const reason = dismissReasons[signal.id] ?? "";
+    if (!reason.trim()) {
+      toast.error("Dismissal reason is required");
+      return;
+    }
+
+    setPendingSignalIds((prev) => [...prev, signal.id]);
+
+    try {
+      await dismissRelationshipSignalFn({
+        data: { id: signal.id, reason: reason.trim() },
+      });
+      setOpenSignals((prev) => prev.filter((row) => row.id !== signal.id));
+      setActiveDismissId((current) => (current === signal.id ? null : current));
+      setDismissReasons((prev) => {
+        const next = { ...prev };
+        delete next[signal.id];
+        return next;
+      });
+      toast.success("Signal dismissed");
+    } catch {
+      toast.error("Could not dismiss signal");
+    } finally {
+      setPendingSignalIds((prev) => prev.filter((id) => id !== signal.id));
+    }
+  };
+
   const summaryItems = [
     {
       label: "Stakeholders",
@@ -100,7 +130,7 @@ function AccountDetailRoute() {
     },
     {
       label: "Open signals",
-      value: signals.length,
+      value: openSignals.length,
       hint: "needs action",
       icon: BriefcaseBusiness,
     },
@@ -213,24 +243,28 @@ function AccountDetailRoute() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-sm font-semibold">Open signals</h3>
-                    <span className="text-xs text-muted-foreground">{signals.length} active</span>
+                    <span className="text-xs text-muted-foreground">
+                      {openSignals.length} active
+                    </span>
                   </div>
-                  {signals.length === 0 ? (
+                  {openSignals.length === 0 ? (
                     <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
                       No open relationship signals for this account.
                     </div>
                   ) : (
                     <ul className="space-y-2">
-                      {signals.slice(0, 5).map((signal) => (
-                        <li key={signal.id} className="rounded-md border border-border p-3 text-sm">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="font-medium">{signal.title}</p>
-                              <p className="text-muted-foreground">{signal.reason}</p>
-                            </div>
-                            <StatusBadge value={signal.severity} />
-                          </div>
-                        </li>
+                      {openSignals.slice(0, 5).map((signal) => (
+                        <SignalListItem
+                          key={signal.id}
+                          signal={signal}
+                          dismissReason={dismissReasons[signal.id] ?? ""}
+                          isDismissOpen={activeDismissId === signal.id}
+                          isDismissing={pendingSignalIds.includes(signal.id)}
+                          onStartDismiss={startDismiss}
+                          onDismissReasonChange={changeDismissReason}
+                          onConfirmDismiss={dismissSignal}
+                          onCancelDismiss={cancelDismiss}
+                        />
                       ))}
                     </ul>
                   )}
@@ -270,7 +304,7 @@ function AccountDetailRoute() {
                           <div className="min-w-0">
                             <p className="truncate font-medium">{client.company_name}</p>
                             <p className="text-xs text-muted-foreground">
-                              Health {client.health_score} · Renewal{" "}
+                              Health {client.health_score} | Renewal{" "}
                               {formatDate(client.renewal_date)}
                             </p>
                           </div>
@@ -296,7 +330,7 @@ function AccountDetailRoute() {
             <AccountTimeline entries={timeline} />
           </TabsContent>
 
-          <TabsContent value="events" className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <TabsContent value="events">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Campaign follow-up</CardTitle>
@@ -321,41 +355,6 @@ function AccountDetailRoute() {
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground">
                           {formatDateTime(entry.occurred_at)}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Relevant campaigns</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {relevantCampaigns.length === 0 ? (
-                  <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-                    No active or planned campaigns are currently assigned to this account team.
-                  </div>
-                ) : (
-                  <ul className="space-y-2">
-                    {relevantCampaigns.map((campaign) => (
-                      <li key={campaign.id} className="rounded-md border border-border p-3 text-sm">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate font-medium">{campaign.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {campaign.type.replace(/_/g, " ")} · owner{" "}
-                              {campaign.owner
-                                ? (userById(campaign.owner)?.name ?? campaign.owner)
-                                : "Unassigned"}
-                            </p>
-                          </div>
-                          <StatusBadge value={campaign.status} />
-                        </div>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Starts {formatDate(campaign.starts_at ?? campaign.scheduled_at ?? null)}
                         </p>
                       </li>
                     ))}
@@ -397,7 +396,7 @@ function AccountDetailRoute() {
                             </div>
                           </div>
                           <p className="mt-2 text-xs text-muted-foreground">
-                            Due {formatDate(task.due_date)} · Owner{" "}
+                            Due {formatDate(task.due_date)} | Owner{" "}
                             {task.assigned_to
                               ? (userById(task.assigned_to)?.name ?? task.assigned_to)
                               : "Unassigned"}
@@ -454,5 +453,82 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
       <span className="text-muted-foreground">{label}</span>
       <span className="text-right font-medium text-foreground">{value}</span>
     </div>
+  );
+}
+
+function SignalListItem({
+  signal,
+  dismissReason,
+  isDismissOpen,
+  isDismissing,
+  onStartDismiss,
+  onDismissReasonChange,
+  onConfirmDismiss,
+  onCancelDismiss,
+}: {
+  signal: RelationshipSignal;
+  dismissReason: string;
+  isDismissOpen: boolean;
+  isDismissing: boolean;
+  onStartDismiss: (signal: RelationshipSignal) => void;
+  onDismissReasonChange: (signalId: string, reason: string) => void;
+  onConfirmDismiss: (signal: RelationshipSignal) => void;
+  onCancelDismiss: (signalId: string) => void;
+}) {
+  const inputId = `dismiss-reason-${signal.id}`;
+
+  return (
+    <li className="rounded-md border border-border p-3 text-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-medium">{signal.title}</p>
+          <p className="text-muted-foreground">{signal.reason}</p>
+          {signal.suggested_action ? (
+            <p className="mt-1 text-xs text-muted-foreground">{signal.suggested_action}</p>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <StatusBadge value={signal.severity} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onStartDismiss(signal)}
+            disabled={isDismissing}
+          >
+            {isDismissing ? "Dismissing..." : "Dismiss"}
+          </Button>
+        </div>
+      </div>
+
+      {isDismissOpen ? (
+        <div className="mt-3 rounded-md border border-border bg-muted/30 p-3">
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor={inputId}>Dismissal reason</Label>
+              <Input
+                id={inputId}
+                value={dismissReason}
+                onChange={(event) => onDismissReasonChange(signal.id, event.target.value)}
+                placeholder="Why is this signal being dismissed?"
+                disabled={isDismissing}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" onClick={() => onConfirmDismiss(signal)} disabled={isDismissing}>
+                Confirm dismiss
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onCancelDismiss(signal.id)}
+                disabled={isDismissing}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </li>
   );
 }

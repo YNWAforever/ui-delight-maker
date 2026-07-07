@@ -106,4 +106,14 @@ describe("sales route source copy", () => {
     expect(accountDetailSource).toContain("Stakeholders");
     expect(accountDetailSource).toContain("AccountTimeline");
   });
+
+  it("keeps account 360 signals actionable and events account-scoped", () => {
+    const accountDetailSource = readRoute("accounts.$id.tsx");
+
+    expect(accountDetailSource).toContain("dismissRelationshipSignalFn");
+    expect(accountDetailSource).toContain("Dismissal reason");
+    expect(accountDetailSource).not.toContain("getCampaigns({})");
+    expect(accountDetailSource).not.toContain("Relevant campaigns");
+    expect(accountDetailSource).not.toContain("繚");
+  });
 });
