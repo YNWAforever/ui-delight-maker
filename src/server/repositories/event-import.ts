@@ -1,3 +1,4 @@
+import { normalizeAccountName } from "@/lib/relationship/matching";
 import type { EventImportValidRow } from "@/lib/relationship/event-import";
 import { transaction } from "@/server/db/neon.server";
 import { createAccountContact } from "@/server/repositories/account-contacts";
@@ -23,9 +24,16 @@ export async function commitEventImport(
     let createdAccounts = 0;
     let createdContacts = 0;
     let createdMembers = 0;
+    const createdAccountIdsByCompany = new Map<string, string>();
 
     for (const row of input.rows) {
-      let accountId = row.account_match.kind === "matched" ? row.account_match.accountId : null;
+      const normalizedCompanyName = row.company_name.trim()
+        ? normalizeAccountName(row.company_name)
+        : "";
+      let accountId =
+        row.account_match.kind === "matched"
+          ? row.account_match.accountId
+          : createdAccountIdsByCompany.get(normalizedCompanyName) ?? null;
 
       if (!accountId && row.company_name.trim()) {
         const account = await createAccount(
@@ -38,6 +46,9 @@ export async function commitEventImport(
           db,
         );
         accountId = account.id;
+        if (normalizedCompanyName) {
+          createdAccountIdsByCompany.set(normalizedCompanyName, account.id);
+        }
         createdAccounts += 1;
       }
 
