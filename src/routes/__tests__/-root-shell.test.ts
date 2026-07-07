@@ -115,5 +115,9 @@ describe("sales route source copy", () => {
     expect(accountDetailSource).not.toContain("getCampaigns({})");
     expect(accountDetailSource).not.toContain("Relevant campaigns");
     expect(accountDetailSource).not.toContain("繚");
+    expect(accountDetailSource).toContain("const [dismissedSignalIds, setDismissedSignalIds]");
+    expect(accountDetailSource).toContain("useEffect(() => {");
+    expect(accountDetailSource).toContain("setDismissedSignalIds([]);");
+    expect(accountDetailSource).toContain("const openSignals = signals.filter");
   });
 });

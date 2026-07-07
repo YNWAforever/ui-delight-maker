@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, BriefcaseBusiness, CalendarClock, FileText, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -62,15 +62,23 @@ export const Route = createFileRoute("/accounts/$id")({
 function AccountDetailRoute() {
   const { account, contacts, timeline, signals, linkedClients, engagements, tasks, quotes } =
     Route.useLoaderData();
-  const [openSignals, setOpenSignals] = useState(signals);
+  const [dismissedSignalIds, setDismissedSignalIds] = useState<string[]>([]);
   const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
   const [pendingSignalIds, setPendingSignalIds] = useState<string[]>([]);
+  const openSignals = signals.filter((signal) => !dismissedSignalIds.includes(signal.id));
   const owner = account.account_owner ? userById(account.account_owner) : undefined;
   const csOwner = account.cs_owner ? userById(account.cs_owner) : undefined;
   const openTasks = tasks.filter((task) => task.status !== "done");
   const activeEngagements = engagements.filter((engagement) => engagement.status === "active");
   const campaignTimelineEntries = timeline.filter((entry) => entry.kind === "campaign");
+
+  useEffect(() => {
+    setDismissedSignalIds([]);
+    setActiveDismissId(null);
+    setDismissReasons({});
+    setPendingSignalIds([]);
+  }, [account.id, signals]);
 
   const startDismiss = (signal: RelationshipSignal) => {
     setActiveDismissId(signal.id);
@@ -106,7 +114,7 @@ function AccountDetailRoute() {
       await dismissRelationshipSignalFn({
         data: { id: signal.id, reason: reason.trim() },
       });
-      setOpenSignals((prev) => prev.filter((row) => row.id !== signal.id));
+      setDismissedSignalIds((prev) => [...prev, signal.id]);
       setActiveDismissId((current) => (current === signal.id ? null : current));
       setDismissReasons((prev) => {
         const next = { ...prev };
