@@ -29,7 +29,11 @@ export function RenewalCard({
       role="button"
       tabIndex={0}
       onClick={onSelect}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onSelect()}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        if (e.key === " ") e.preventDefault();
+        onSelect();
+      }}
       className={cn(
         "cursor-pointer p-3 transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         riskClass[engagement.renewal_risk],

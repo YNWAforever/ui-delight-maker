@@ -59,6 +59,8 @@ export function MarkRenewedEndedDialog({
             name="renewal-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            required={action === "end"}
+            aria-required={action === "end"}
           />
         </div>
         <AlertDialogFooter>

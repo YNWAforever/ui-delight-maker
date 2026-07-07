@@ -11,7 +11,7 @@ interface CommandHeaderProps {
 export function CommandHeader({ title, status, description, actions, meta }: CommandHeaderProps) {
   return (
     <header className="border-b border-border bg-background/80 px-6 py-5 backdrop-blur">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           {status && (
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

@@ -14,7 +14,7 @@ export function WorkSurfaceEmpty({
 }) {
   return (
     <div className="flex min-h-[160px] flex-col items-center justify-center rounded-md border border-dashed border-border bg-muted/20 p-8 text-center">
-      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-background text-muted-foreground">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-muted-foreground">
         <Icon className="h-5 w-5" />
       </div>
       <p className="mt-3 text-sm font-medium">{title}</p>
