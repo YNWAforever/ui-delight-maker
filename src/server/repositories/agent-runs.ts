@@ -1,9 +1,14 @@
 import { query, queryOne, type Queryable } from "@/server/db/neon.server";
 import type { AgentRun, AgentToolCall } from "@/lib/types";
 
-export type WorkflowType = "qualify_lead" | "draft_reply" | "draft_quote" | "score_renewal_risk";
+export type WorkflowType =
+  | "qualify_lead"
+  | "draft_reply"
+  | "draft_quote"
+  | "score_renewal_risk"
+  | "relationship_intelligence";
 
-export type SubjectType = "lead" | "engagement";
+export type SubjectType = "lead" | "engagement" | "account" | "campaign";
 
 export async function listAgentRuns(input: { agent?: string; status?: string } = {}) {
   const values: unknown[] = [];

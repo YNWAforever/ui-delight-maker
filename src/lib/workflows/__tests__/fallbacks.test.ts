@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildQualificationFallback,
+  buildRelationshipIntelligenceFallback,
   buildQuoteDraftFallback,
   buildReplyDraftFallback,
   type WorkflowFallbackContext,
@@ -116,5 +117,98 @@ describe("workflow fallback builders", () => {
     ]);
     expect(payload.quote.currency).toBe("HKD");
     expect(payload.quote.total_value).toBe(42000);
+  });
+
+  it("builds deterministic relationship intelligence output with explainable signals", () => {
+    const payload = buildRelationshipIntelligenceFallback({
+      account: {
+        id: "account-1",
+        name: "Acme CRM",
+        lifecycle_stage: "active_client",
+        account_owner: null,
+      },
+      contacts: [
+        {
+          id: "contact-1",
+          relationship_role: "buyer",
+          influence_level: "high",
+          sentiment: "negative",
+          last_contacted_at: "2026-04-01T00:00:00.000Z",
+        },
+      ],
+      engagements: [
+        {
+          id: "engagement-1",
+          product_id: "product-1",
+          status: "active",
+          renewal_risk: "high",
+          last_touch_at: "2026-05-01T00:00:00.000Z",
+        },
+      ],
+      quotes: [],
+      campaignMembers: [
+        {
+          id: "member-1",
+          campaign_id: "campaign-1",
+          attendee_status: "attended",
+          follow_up_status: "not_started",
+          created_at: "2026-05-19T00:00:00.000Z",
+        },
+      ],
+      products: [
+        { id: "product-1", name: "CRM Launch Sprint", active: true },
+        { id: "product-2", name: "Growth Retainer", active: true },
+      ],
+      agentRunId: "run-rel-1",
+      now: new Date("2026-05-24T12:00:00.000Z"),
+    });
+
+    expect(payload.account_id).toBe("account-1");
+    expect(payload.agent_run_id).toBe("run-rel-1");
+    expect(payload.output_summary).toBe(
+      "Fallback relationship scan found 8 signals for Acme CRM.",
+    );
+    expect(payload.next_action).toBe(
+      "Identify and add the decision maker before the next commercial step.",
+    );
+    expect(payload.confidence_score).toBe(0.62);
+    expect(payload.model_used).toBe("deterministic-fallback");
+    expect(payload.signals).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          signal_type: "missing_decision_maker",
+          severity: "high",
+          reason: "Acme CRM has no mapped decision maker.",
+        }),
+        expect.objectContaining({
+          signal_type: "missing_champion",
+          severity: "medium",
+        }),
+        expect.objectContaining({
+          signal_type: "stale_touchpoint",
+          title: "Relationship touchpoint is stale",
+        }),
+        expect.objectContaining({
+          signal_type: "post_event_follow_up_due",
+          dedupe_key: "campaign-member-member-1",
+        }),
+        expect.objectContaining({
+          signal_type: "high_risk_engagement",
+          dedupe_key: "high-risk-engagement-engagement-1",
+        }),
+        expect.objectContaining({
+          signal_type: "negative_sentiment",
+          dedupe_key: "negative-sentiment-contact-1",
+        }),
+        expect.objectContaining({
+          signal_type: "unowned_account",
+          dedupe_key: "unowned-account",
+        }),
+        expect.objectContaining({
+          signal_type: "cross_sell_opportunity",
+          dedupe_key: "cross-sell-product-2",
+        }),
+      ]),
+    );
   });
 });

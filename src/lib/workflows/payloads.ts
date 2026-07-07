@@ -1,4 +1,8 @@
-import type { EngagementWorkflowRequestPayload, WorkflowRequestPayload } from "./types";
+import type {
+  AccountWorkflowRequestPayload,
+  EngagementWorkflowRequestPayload,
+  WorkflowRequestPayload,
+} from "./types";
 
 function basePayload(input: { leadId: string; agentRunId: string }) {
   return {
@@ -44,6 +48,17 @@ export function buildScoreRenewalRiskPayload(input: {
   return {
     trigger: "engagement.score_renewal_risk_requested",
     engagement_id: input.engagementId,
+    agent_run_id: input.agentRunId,
+  };
+}
+
+export function buildRelationshipIntelligencePayload(input: {
+  accountId: string;
+  agentRunId: string;
+}): AccountWorkflowRequestPayload {
+  return {
+    trigger: "account.relationship_intelligence_requested",
+    account_id: input.accountId,
     agent_run_id: input.agentRunId,
   };
 }

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getAccountWorkflowContextErrorResponse,
+  readAccountWorkflowContextRequestPayload,
+  getEngagementWorkflowContextErrorResponse,
+  readEngagementWorkflowContextRequestPayload,
   getWorkflowContextErrorResponse,
   readWorkflowContextRequestPayload,
 } from "@/server/workflows/context-route.server";
@@ -94,5 +98,91 @@ describe("workflow context route helpers", () => {
   it("does not map unexpected errors", () => {
     expect(getWorkflowContextErrorResponse(new Error("Database unavailable"))).toBeNull();
     expect(getWorkflowContextErrorResponse("Lead not found")).toBeNull();
+  });
+
+  it("validates engagement context request payloads", async () => {
+    const badRequest = new Request("https://example.com/api/workflows/context/engagement", {
+      method: "POST",
+      body: JSON.stringify({ engagement_id: "", agent_run_id: "run-1" }),
+    });
+
+    const badResult = await readEngagementWorkflowContextRequestPayload(badRequest);
+
+    expect(badResult).toBeInstanceOf(Response);
+    expect((badResult as Response).status).toBe(400);
+    await expect((badResult as Response).text()).resolves.toBe(
+      "Missing engagement_id or agent_run_id",
+    );
+
+    const goodRequest = new Request("https://example.com/api/workflows/context/engagement", {
+      method: "POST",
+      body: JSON.stringify({ engagement_id: "engagement-1", agent_run_id: "run-1" }),
+    });
+
+    await expect(readEngagementWorkflowContextRequestPayload(goodRequest)).resolves.toEqual({
+      engagement_id: "engagement-1",
+      agent_run_id: "run-1",
+    });
+  });
+
+  it("maps engagement workflow context errors", async () => {
+    for (const message of ["Engagement not found", "Agent run not found"]) {
+      const response = getEngagementWorkflowContextErrorResponse(new Error(message));
+
+      expect(response).toBeInstanceOf(Response);
+      expect(response?.status).toBe(404);
+      await expect(response?.text()).resolves.toBe(message);
+    }
+
+    const mismatch = getEngagementWorkflowContextErrorResponse(
+      new Error("Agent run does not belong to this engagement"),
+    );
+
+    expect(mismatch).toBeInstanceOf(Response);
+    expect(mismatch?.status).toBe(400);
+    await expect(mismatch?.text()).resolves.toBe("Agent run does not belong to this engagement");
+  });
+
+  it("validates account context request payloads", async () => {
+    const badRequest = new Request("https://example.com/api/workflows/context/account", {
+      method: "POST",
+      body: JSON.stringify({ account_id: "", agent_run_id: "run-1" }),
+    });
+
+    const badResult = await readAccountWorkflowContextRequestPayload(badRequest);
+
+    expect(badResult).toBeInstanceOf(Response);
+    expect((badResult as Response).status).toBe(400);
+    await expect((badResult as Response).text()).resolves.toBe(
+      "Missing account_id or agent_run_id",
+    );
+
+    const goodRequest = new Request("https://example.com/api/workflows/context/account", {
+      method: "POST",
+      body: JSON.stringify({ account_id: "account-1", agent_run_id: "run-1" }),
+    });
+
+    await expect(readAccountWorkflowContextRequestPayload(goodRequest)).resolves.toEqual({
+      account_id: "account-1",
+      agent_run_id: "run-1",
+    });
+  });
+
+  it("maps account workflow context errors", async () => {
+    for (const message of ["Account not found", "Agent run not found"]) {
+      const response = getAccountWorkflowContextErrorResponse(new Error(message));
+
+      expect(response).toBeInstanceOf(Response);
+      expect(response?.status).toBe(404);
+      await expect(response?.text()).resolves.toBe(message);
+    }
+
+    const mismatch = getAccountWorkflowContextErrorResponse(
+      new Error("Agent run does not belong to this account"),
+    );
+
+    expect(mismatch).toBeInstanceOf(Response);
+    expect(mismatch?.status).toBe(400);
+    await expect(mismatch?.text()).resolves.toBe("Agent run does not belong to this account");
   });
 });

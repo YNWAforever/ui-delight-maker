@@ -13,6 +13,14 @@ Every workflow follows:
 
 1. Webhook receives app trigger.
 2. Validate `x-workflow-token`.
-3. Fetch app-owned lead context from `/api/workflows/context/lead`.
+3. Fetch app-owned subject context from the matching `/api/workflows/context/*` endpoint.
 4. Use OpenRouter when configured; otherwise build deterministic fallback.
 5. Write back to the matching `/api/workflows/*` endpoint with `x-workflow-token`.
+
+Workflow templates:
+
+- `clientops-qualify-lead.json`: trigger `lead.qualify_requested`, context `/api/workflows/context/lead`, writeback `/api/workflows/qualify-lead`
+- `clientops-draft-reply.json`: trigger `lead.reply_draft_requested`, context `/api/workflows/context/lead`, writeback `/api/workflows/draft-reply`
+- `clientops-draft-quote.json`: trigger `quote.draft_requested`, context `/api/workflows/context/lead`, writeback `/api/workflows/draft-quote`
+- `clientops-score-renewal-risk.json`: trigger `engagement.score_renewal_risk_requested`, context `/api/workflows/context/engagement`, writeback `/api/workflows/score-renewal-risk`
+- `clientops-relationship-intelligence.json`: trigger `account.relationship_intelligence_requested`, context `/api/workflows/context/account`, writeback `/api/workflows/relationship-intelligence`

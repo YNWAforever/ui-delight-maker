@@ -1,6 +1,15 @@
+import { buildRelationshipSignals } from "@/lib/relationship/signals";
+import type {
+  AccountLite,
+  CampaignMemberLite,
+  EngagementLite,
+  ProductLite,
+  StakeholderLite,
+} from "@/lib/relationship/types";
 import type { Lead, PricingTemplate } from "@/lib/types";
 import type {
   QualificationWritebackPayload,
+  RelationshipIntelligenceWritebackPayload,
   QuoteDraftWritebackPayload,
   ReplyDraftWritebackPayload,
 } from "@/lib/workflows/types";
@@ -168,5 +177,36 @@ export function buildQuoteDraftFallback({
     create_send_approval: true,
     context_summary: `Fallback quote drafted for ${context.lead.company_name}.`,
     confidence_score: 0.6,
+  };
+}
+
+export function buildRelationshipIntelligenceFallback(input: {
+  account: AccountLite;
+  contacts: StakeholderLite[];
+  engagements: EngagementLite[];
+  quotes: Array<{ id: string; status: string; total_value: number | null; created_at: string }>;
+  campaignMembers: CampaignMemberLite[];
+  products: ProductLite[];
+  agentRunId: string;
+  now: Date;
+}): RelationshipIntelligenceWritebackPayload {
+  const signals = buildRelationshipSignals({
+    account: input.account,
+    contacts: input.contacts,
+    engagements: input.engagements,
+    quotes: input.quotes,
+    campaignMembers: input.campaignMembers,
+    products: input.products,
+    now: input.now,
+  });
+
+  return {
+    account_id: input.account.id,
+    agent_run_id: input.agentRunId,
+    output_summary: `Fallback relationship scan found ${signals.length} signal${signals.length === 1 ? "" : "s"} for ${input.account.name}.`,
+    next_action: signals[0]?.suggested_action ?? null,
+    signals,
+    confidence_score: 0.62,
+    model_used: "deterministic-fallback",
   };
 }

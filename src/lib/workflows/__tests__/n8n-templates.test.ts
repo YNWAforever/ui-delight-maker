@@ -58,6 +58,14 @@ const cases = [
     subjectIdField: "engagement_id",
     contextEndpoint: "/api/workflows/context/engagement",
   },
+  {
+    file: "clientops-relationship-intelligence.json",
+    name: "clientops-relationship-intelligence",
+    trigger: "account.relationship_intelligence_requested",
+    writebackEndpoint: "/api/workflows/relationship-intelligence",
+    subjectIdField: "account_id",
+    contextEndpoint: "/api/workflows/context/account",
+  },
 ] as const;
 
 describe("ClientOps n8n workflow templates", () => {

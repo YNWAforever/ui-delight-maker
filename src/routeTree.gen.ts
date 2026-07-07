@@ -33,9 +33,11 @@ import { Route as AgentsNameRouteImport } from './routes/agents.$name'
 import { Route as ApiWorkflowsScoreRenewalRiskRouteImport } from './routes/api/workflows/score-renewal-risk'
 import { Route as ApiWorkflowsRetentionSweepRouteImport } from './routes/api/workflows/retention-sweep'
 import { Route as ApiWorkflowsQualifyLeadRouteImport } from './routes/api/workflows/qualify-lead'
+import { Route as ApiWorkflowsRelationshipIntelligenceRouteImport } from './routes/api/workflows/relationship-intelligence'
 import { Route as ApiWorkflowsDraftReplyRouteImport } from './routes/api/workflows/draft-reply'
 import { Route as ApiWorkflowsDraftQuoteRouteImport } from './routes/api/workflows/draft-quote'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiWorkflowsContextAccountRouteImport } from './routes/api/workflows/context/account'
 import { Route as ApiWorkflowsContextLeadRouteImport } from './routes/api/workflows/context/lead'
 import { Route as ApiWorkflowsContextEngagementRouteImport } from './routes/api/workflows/context/engagement'
 
@@ -161,6 +163,12 @@ const ApiWorkflowsQualifyLeadRoute = ApiWorkflowsQualifyLeadRouteImport.update({
   path: '/api/workflows/qualify-lead',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWorkflowsRelationshipIntelligenceRoute =
+  ApiWorkflowsRelationshipIntelligenceRouteImport.update({
+    id: '/api/workflows/relationship-intelligence',
+    path: '/api/workflows/relationship-intelligence',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiWorkflowsDraftReplyRoute = ApiWorkflowsDraftReplyRouteImport.update({
   id: '/api/workflows/draft-reply',
   path: '/api/workflows/draft-reply',
@@ -176,6 +184,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWorkflowsContextAccountRoute =
+  ApiWorkflowsContextAccountRouteImport.update({
+    id: '/api/workflows/context/account',
+    path: '/api/workflows/context/account',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiWorkflowsContextLeadRoute = ApiWorkflowsContextLeadRouteImport.update({
   id: '/api/workflows/context/lead',
   path: '/api/workflows/context/lead',
@@ -214,8 +228,10 @@ export interface FileRoutesByFullPath {
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
+  '/api/workflows/relationship-intelligence': typeof ApiWorkflowsRelationshipIntelligenceRoute
   '/api/workflows/retention-sweep': typeof ApiWorkflowsRetentionSweepRoute
   '/api/workflows/score-renewal-risk': typeof ApiWorkflowsScoreRenewalRiskRoute
+  '/api/workflows/context/account': typeof ApiWorkflowsContextAccountRoute
   '/api/workflows/context/engagement': typeof ApiWorkflowsContextEngagementRoute
   '/api/workflows/context/lead': typeof ApiWorkflowsContextLeadRoute
 }
@@ -245,8 +261,10 @@ export interface FileRoutesByTo {
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
+  '/api/workflows/relationship-intelligence': typeof ApiWorkflowsRelationshipIntelligenceRoute
   '/api/workflows/retention-sweep': typeof ApiWorkflowsRetentionSweepRoute
   '/api/workflows/score-renewal-risk': typeof ApiWorkflowsScoreRenewalRiskRoute
+  '/api/workflows/context/account': typeof ApiWorkflowsContextAccountRoute
   '/api/workflows/context/engagement': typeof ApiWorkflowsContextEngagementRoute
   '/api/workflows/context/lead': typeof ApiWorkflowsContextLeadRoute
 }
@@ -277,8 +295,10 @@ export interface FileRoutesById {
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
+  '/api/workflows/relationship-intelligence': typeof ApiWorkflowsRelationshipIntelligenceRoute
   '/api/workflows/retention-sweep': typeof ApiWorkflowsRetentionSweepRoute
   '/api/workflows/score-renewal-risk': typeof ApiWorkflowsScoreRenewalRiskRoute
+  '/api/workflows/context/account': typeof ApiWorkflowsContextAccountRoute
   '/api/workflows/context/engagement': typeof ApiWorkflowsContextEngagementRoute
   '/api/workflows/context/lead': typeof ApiWorkflowsContextLeadRoute
 }
@@ -310,8 +330,10 @@ export interface FileRouteTypes {
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
+    | '/api/workflows/relationship-intelligence'
     | '/api/workflows/retention-sweep'
     | '/api/workflows/score-renewal-risk'
+    | '/api/workflows/context/account'
     | '/api/workflows/context/engagement'
     | '/api/workflows/context/lead'
   fileRoutesByTo: FileRoutesByTo
@@ -341,8 +363,10 @@ export interface FileRouteTypes {
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
+    | '/api/workflows/relationship-intelligence'
     | '/api/workflows/retention-sweep'
     | '/api/workflows/score-renewal-risk'
+    | '/api/workflows/context/account'
     | '/api/workflows/context/engagement'
     | '/api/workflows/context/lead'
   id:
@@ -372,8 +396,10 @@ export interface FileRouteTypes {
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
+    | '/api/workflows/relationship-intelligence'
     | '/api/workflows/retention-sweep'
     | '/api/workflows/score-renewal-risk'
+    | '/api/workflows/context/account'
     | '/api/workflows/context/engagement'
     | '/api/workflows/context/lead'
   fileRoutesById: FileRoutesById
@@ -397,8 +423,10 @@ export interface RootRouteChildren {
   ApiWorkflowsDraftQuoteRoute: typeof ApiWorkflowsDraftQuoteRoute
   ApiWorkflowsDraftReplyRoute: typeof ApiWorkflowsDraftReplyRoute
   ApiWorkflowsQualifyLeadRoute: typeof ApiWorkflowsQualifyLeadRoute
+  ApiWorkflowsRelationshipIntelligenceRoute: typeof ApiWorkflowsRelationshipIntelligenceRoute
   ApiWorkflowsRetentionSweepRoute: typeof ApiWorkflowsRetentionSweepRoute
   ApiWorkflowsScoreRenewalRiskRoute: typeof ApiWorkflowsScoreRenewalRiskRoute
+  ApiWorkflowsContextAccountRoute: typeof ApiWorkflowsContextAccountRoute
   ApiWorkflowsContextEngagementRoute: typeof ApiWorkflowsContextEngagementRoute
   ApiWorkflowsContextLeadRoute: typeof ApiWorkflowsContextLeadRoute
 }
@@ -573,6 +601,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWorkflowsQualifyLeadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/workflows/relationship-intelligence': {
+      id: '/api/workflows/relationship-intelligence'
+      path: '/api/workflows/relationship-intelligence'
+      fullPath: '/api/workflows/relationship-intelligence'
+      preLoaderRoute: typeof ApiWorkflowsRelationshipIntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/workflows/draft-reply': {
       id: '/api/workflows/draft-reply'
       path: '/api/workflows/draft-reply'
@@ -592,6 +627,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workflows/context/account': {
+      id: '/api/workflows/context/account'
+      path: '/api/workflows/context/account'
+      fullPath: '/api/workflows/context/account'
+      preLoaderRoute: typeof ApiWorkflowsContextAccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/workflows/context/lead': {
@@ -687,8 +729,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWorkflowsDraftQuoteRoute: ApiWorkflowsDraftQuoteRoute,
   ApiWorkflowsDraftReplyRoute: ApiWorkflowsDraftReplyRoute,
   ApiWorkflowsQualifyLeadRoute: ApiWorkflowsQualifyLeadRoute,
+  ApiWorkflowsRelationshipIntelligenceRoute: ApiWorkflowsRelationshipIntelligenceRoute,
   ApiWorkflowsRetentionSweepRoute: ApiWorkflowsRetentionSweepRoute,
   ApiWorkflowsScoreRenewalRiskRoute: ApiWorkflowsScoreRenewalRiskRoute,
+  ApiWorkflowsContextAccountRoute: ApiWorkflowsContextAccountRoute,
   ApiWorkflowsContextEngagementRoute: ApiWorkflowsContextEngagementRoute,
   ApiWorkflowsContextLeadRoute: ApiWorkflowsContextLeadRoute,
 }
