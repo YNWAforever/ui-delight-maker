@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { RelationshipSignalCard } from "@/components/relationship/relationship-signal-card";
-import { Button } from "@/components/ui/button";
 import type { Account, RelationshipSignal } from "@/lib/types";
 import { dismissRelationshipSignalFn } from "@/server-functions/relationship-signals";
 
@@ -13,20 +12,61 @@ export function RelationshipCommandCenter({
   signals: RelationshipSignal[];
 }) {
   const [rows, setRows] = useState(signals);
+  const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
+  const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
+  const [pendingSignalIds, setPendingSignalIds] = useState<string[]>([]);
   const accountById = useMemo(
     () => new Map(accounts.map((account) => [account.id, account])),
     [accounts],
   );
 
+  const startDismiss = (signal: RelationshipSignal) => {
+    setActiveDismissId(signal.id);
+    setDismissReasons((prev) => ({ ...prev, [signal.id]: prev[signal.id] ?? "" }));
+  };
+
+  const changeDismissReason = (signalId: string, reason: string) => {
+    setDismissReasons((prev) => ({ ...prev, [signalId]: reason }));
+  };
+
+  const cancelDismiss = (signalId: string) => {
+    if (pendingSignalIds.includes(signalId)) {
+      return;
+    }
+
+    setActiveDismissId((current) => (current === signalId ? null : current));
+  };
+
   const dismiss = async (signal: RelationshipSignal) => {
+    if (pendingSignalIds.includes(signal.id)) {
+      return;
+    }
+
+    const reason = dismissReasons[signal.id] ?? "";
+
+    if (!reason.trim()) {
+      toast.error("Dismissal reason is required");
+      return;
+    }
+
+    setPendingSignalIds((prev) => [...prev, signal.id]);
+
     try {
       await dismissRelationshipSignalFn({
-        data: { id: signal.id, reason: "Dismissed from Relationship Command Center" },
+        data: { id: signal.id, reason: reason.trim() },
       });
       setRows((prev) => prev.filter((row) => row.id !== signal.id));
+      setActiveDismissId((current) => (current === signal.id ? null : current));
+      setDismissReasons((prev) => {
+        const next = { ...prev };
+        delete next[signal.id];
+        return next;
+      });
       toast.success("Signal dismissed");
     } catch {
       toast.error("Could not dismiss signal");
+    } finally {
+      setPendingSignalIds((prev) => prev.filter((id) => id !== signal.id));
     }
   };
 
@@ -46,12 +86,15 @@ export function RelationshipCommandCenter({
           key={signal.id}
           signal={signal}
           accountName={accountById.get(signal.account_id)?.name ?? "Unknown account"}
-          onDismiss={dismiss}
+          dismissReason={dismissReasons[signal.id] ?? ""}
+          isDismissOpen={activeDismissId === signal.id}
+          isDismissing={pendingSignalIds.includes(signal.id)}
+          onStartDismiss={startDismiss}
+          onDismissReasonChange={changeDismissReason}
+          onConfirmDismiss={dismiss}
+          onCancelDismiss={cancelDismiss}
         />
       ))}
-      <Button variant="outline" size="sm" disabled>
-        Bulk actions arrive after signal quality is proven
-      </Button>
     </div>
   );
 }
