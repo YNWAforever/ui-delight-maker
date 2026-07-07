@@ -2,6 +2,8 @@
 // Canonical types matching the Supabase schema.
 // mock-data.ts types are kept for backward compat during migration but will be removed.
 
+import type { RelationshipSignalDraft } from "@/lib/relationship/types";
+
 export type LeadStatus = "new" | "qualified" | "replied" | "quoted" | "approved" | "won" | "lost";
 export type LeadSource = "website" | "whatsapp" | "email" | "linkedin" | "csv" | "event" | "manual";
 export type LifecycleChannel = LeadSource;
@@ -632,4 +634,13 @@ export interface NotificationRecord {
   dedupe_key: string | null;
   read_at: string | null;
   created_at: string;
+}
+
+export interface RelationshipSignal extends RelationshipSignalDraft {
+  id: string;
+  dismissed_at: string | null;
+  dismissed_by: string | null;
+  dismissal_reason: string | null;
+  created_at: string;
+  updated_at: string;
 }
