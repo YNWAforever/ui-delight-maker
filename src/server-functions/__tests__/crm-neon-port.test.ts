@@ -15,6 +15,7 @@ const {
   mockCreateCampaign,
   mockUpdateCampaign,
   mockCreateCampaignMember,
+  mockGetAccountTimeline,
 } = vi.hoisted(() => {
   const createServerFnChain = {
     validator() {
@@ -40,6 +41,7 @@ const {
     mockCreateCampaign: vi.fn(),
     mockUpdateCampaign: vi.fn(),
     mockCreateCampaignMember: vi.fn(),
+    mockGetAccountTimeline: vi.fn(),
   };
 });
 
@@ -70,6 +72,10 @@ vi.mock("@/server/repositories/campaigns", () => ({
   createCampaign: mockCreateCampaign,
   updateCampaign: mockUpdateCampaign,
   createCampaignMember: mockCreateCampaignMember,
+}));
+
+vi.mock("@/server/repositories/account-timeline", () => ({
+  getAccountTimeline: mockGetAccountTimeline,
 }));
 
 describe("ported CRM server functions", () => {
@@ -127,5 +133,20 @@ describe("ported CRM server functions", () => {
     expect(mockRequireNeonAuthSession).toHaveBeenCalledTimes(2);
     expect(mockGetCampaignWithMembers).toHaveBeenCalledWith("campaign-1");
     expect(mockCreateCampaignMember).toHaveBeenCalledWith({ campaign_id: "campaign-1" });
+  });
+
+  it("requires auth before loading the account timeline", async () => {
+    mockGetAccountTimeline.mockResolvedValue([{ id: "entry-1" }]);
+    const { getAccountTimeline } = await import("../activity-logs");
+
+    await expect(
+      getAccountTimeline({ data: { accountId: "account-1", kinds: ["activity"] } }),
+    ).resolves.toEqual([{ id: "entry-1" }]);
+
+    expect(mockRequireNeonAuthSession).toHaveBeenCalledTimes(1);
+    expect(mockGetAccountTimeline).toHaveBeenCalledWith({
+      accountId: "account-1",
+      kinds: ["activity"],
+    });
   });
 });
