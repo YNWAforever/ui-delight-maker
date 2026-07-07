@@ -124,9 +124,20 @@ describe("sales route source copy", () => {
   it("adds campaign follow-up workspace", () => {
     const campaignsSource = readRoute("campaigns.tsx");
     const detailSource = readRoute("campaigns.$id.tsx");
+    const attendeeTableSource = readFileSync(
+      new URL("../../components/relationship/event-attendee-table.tsx", import.meta.url),
+      "utf8",
+    );
 
     expect(campaignsSource).toContain('title="Campaigns & Events"');
     expect(detailSource).toContain("EventAttendeeTable");
     expect(detailSource).toContain("validateEventImportRowsFn");
+    expect(detailSource).toContain('toast.error("No attendee rows found in the CSV.");');
+    expect(detailSource).toContain("resetInput();");
+    expect(detailSource).toContain("attendee row${result.errors.length === 1 ? \"\" : \"s\"} need review before import.");
+    expect(detailSource).toContain("attendee row${result.errors.length === 1 ? \"\" : \"s\"} failed validation on import.");
+    expect(detailSource).toContain("const visibleErrors = errors.slice(0, 6);");
+    expect(detailSource).toContain('{`+${errors.length - 6} more`}');
+    expect(attendeeTableSource).toContain("member.raw_phone?.trim() ? member.raw_phone : \"No phone\"");
   });
 });

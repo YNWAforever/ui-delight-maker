@@ -23,6 +23,10 @@ function fallbackCompany(member: CampaignMember) {
   return "Unmatched company";
 }
 
+function fallbackPhone(member: CampaignMember) {
+  return member.raw_phone?.trim() ? member.raw_phone : "No phone";
+}
+
 export function EventAttendeeTable({
   members,
   onCreateTasks,
@@ -67,7 +71,7 @@ export function EventAttendeeTable({
                 <TableCell className="min-w-40">
                   <div className="space-y-1">
                     <p className="font-medium">{fallbackName(member)}</p>
-                    <p className="text-xs text-muted-foreground">{member.raw_phone ?? "No phone"}</p>
+                    <p className="text-xs text-muted-foreground">{fallbackPhone(member)}</p>
                   </div>
                 </TableCell>
                 <TableCell className="min-w-40">

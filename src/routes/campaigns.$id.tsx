@@ -37,6 +37,7 @@ function CampaignDetailRoute() {
   const [errors, setErrors] = useState<EventImportError[]>([]);
   const [isValidating, setIsValidating] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const visibleErrors = errors.slice(0, 6);
 
   const resetInput = () => {
     if (fileInputRef.current) {
@@ -65,6 +66,7 @@ function CampaignDetailRoute() {
         toast.error(
           `${result.errors.length} attendee row${result.errors.length === 1 ? "" : "s"} need review before import.`,
         );
+        resetInput();
         return;
       }
 
@@ -94,6 +96,7 @@ function CampaignDetailRoute() {
         toast.error(
           `${result.errors.length} attendee row${result.errors.length === 1 ? "" : "s"} failed validation on import.`,
         );
+        resetInput();
         return;
       }
 
@@ -106,6 +109,7 @@ function CampaignDetailRoute() {
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to import attendees");
+      resetInput();
     } finally {
       setIsImporting(false);
     }
@@ -229,12 +233,15 @@ function CampaignDetailRoute() {
                   <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
                     <p className="text-sm font-medium text-destructive">Validation issues</p>
                     <ul className="mt-2 space-y-1 text-sm text-destructive">
-                      {errors.slice(0, 6).map((error) => (
+                      {visibleErrors.map((error) => (
                         <li key={`${error.index}-${error.reason}`}>
                           Row {error.index + 1}: {error.reason}
                         </li>
                       ))}
                     </ul>
+                    {errors.length > 6 ? (
+                      <p className="mt-2 text-xs text-destructive">{`+${errors.length - 6} more`}</p>
+                    ) : null}
                   </div>
                 ) : null}
 
