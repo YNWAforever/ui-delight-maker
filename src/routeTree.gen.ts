@@ -11,9 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as RelationshipsRouteImport } from './routes/relationships'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RenewalsRouteImport } from './routes/renewals'
+import { Route as RelationshipsRouteImport } from './routes/relationships'
 import { Route as QuotesRouteImport } from './routes/quotes'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
@@ -22,6 +22,7 @@ import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AiReviewRouteImport } from './routes/ai-review'
 import { Route as AgentsRouteImport } from './routes/agents'
+import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as QuotesNewRouteImport } from './routes/quotes.new'
@@ -31,16 +32,17 @@ import { Route as LeadsIdRouteImport } from './routes/leads.$id'
 import { Route as ClientsImportRouteImport } from './routes/clients.import'
 import { Route as ClientsIdRouteImport } from './routes/clients.$id'
 import { Route as AgentsNameRouteImport } from './routes/agents.$name'
+import { Route as AccountsIdRouteImport } from './routes/accounts.$id'
 import { Route as ApiWorkflowsScoreRenewalRiskRouteImport } from './routes/api/workflows/score-renewal-risk'
 import { Route as ApiWorkflowsRetentionSweepRouteImport } from './routes/api/workflows/retention-sweep'
-import { Route as ApiWorkflowsQualifyLeadRouteImport } from './routes/api/workflows/qualify-lead'
 import { Route as ApiWorkflowsRelationshipIntelligenceRouteImport } from './routes/api/workflows/relationship-intelligence'
+import { Route as ApiWorkflowsQualifyLeadRouteImport } from './routes/api/workflows/qualify-lead'
 import { Route as ApiWorkflowsDraftReplyRouteImport } from './routes/api/workflows/draft-reply'
 import { Route as ApiWorkflowsDraftQuoteRouteImport } from './routes/api/workflows/draft-quote'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as ApiWorkflowsContextAccountRouteImport } from './routes/api/workflows/context/account'
 import { Route as ApiWorkflowsContextLeadRouteImport } from './routes/api/workflows/context/lead'
 import { Route as ApiWorkflowsContextEngagementRouteImport } from './routes/api/workflows/context/engagement'
+import { Route as ApiWorkflowsContextAccountRouteImport } from './routes/api/workflows/context/account'
 
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
@@ -52,11 +54,6 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RelationshipsRoute = RelationshipsRouteImport.update({
-  id: '/relationships',
-  path: '/relationships',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -65,6 +62,11 @@ const ReportsRoute = ReportsRouteImport.update({
 const RenewalsRoute = RenewalsRouteImport.update({
   id: '/renewals',
   path: '/renewals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelationshipsRoute = RelationshipsRouteImport.update({
+  id: '/relationships',
+  path: '/relationships',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QuotesRoute = QuotesRouteImport.update({
@@ -105,6 +107,11 @@ const AiReviewRoute = AiReviewRouteImport.update({
 const AgentsRoute = AgentsRouteImport.update({
   id: '/agents',
   path: '/agents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountsRoute = AccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountRoute = AccountRouteImport.update({
@@ -152,6 +159,11 @@ const AgentsNameRoute = AgentsNameRouteImport.update({
   path: '/$name',
   getParentRoute: () => AgentsRoute,
 } as any)
+const AccountsIdRoute = AccountsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AccountsRoute,
+} as any)
 const ApiWorkflowsScoreRenewalRiskRoute =
   ApiWorkflowsScoreRenewalRiskRouteImport.update({
     id: '/api/workflows/score-renewal-risk',
@@ -164,17 +176,17 @@ const ApiWorkflowsRetentionSweepRoute =
     path: '/api/workflows/retention-sweep',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiWorkflowsQualifyLeadRoute = ApiWorkflowsQualifyLeadRouteImport.update({
-  id: '/api/workflows/qualify-lead',
-  path: '/api/workflows/qualify-lead',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiWorkflowsRelationshipIntelligenceRoute =
   ApiWorkflowsRelationshipIntelligenceRouteImport.update({
     id: '/api/workflows/relationship-intelligence',
     path: '/api/workflows/relationship-intelligence',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiWorkflowsQualifyLeadRoute = ApiWorkflowsQualifyLeadRouteImport.update({
+  id: '/api/workflows/qualify-lead',
+  path: '/api/workflows/qualify-lead',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWorkflowsDraftReplyRoute = ApiWorkflowsDraftReplyRouteImport.update({
   id: '/api/workflows/draft-reply',
   path: '/api/workflows/draft-reply',
@@ -190,12 +202,6 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiWorkflowsContextAccountRoute =
-  ApiWorkflowsContextAccountRouteImport.update({
-    id: '/api/workflows/context/account',
-    path: '/api/workflows/context/account',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiWorkflowsContextLeadRoute = ApiWorkflowsContextLeadRouteImport.update({
   id: '/api/workflows/context/lead',
   path: '/api/workflows/context/lead',
@@ -207,10 +213,17 @@ const ApiWorkflowsContextEngagementRoute =
     path: '/api/workflows/context/engagement',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiWorkflowsContextAccountRoute =
+  ApiWorkflowsContextAccountRouteImport.update({
+    id: '/api/workflows/context/account',
+    path: '/api/workflows/context/account',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/accounts': typeof AccountsRouteWithChildren
   '/agents': typeof AgentsRouteWithChildren
   '/ai-review': typeof AiReviewRoute
   '/approvals': typeof ApprovalsRoute
@@ -224,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/accounts/$id': typeof AccountsIdRoute
   '/agents/$name': typeof AgentsNameRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
@@ -245,6 +259,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/accounts': typeof AccountsRouteWithChildren
   '/agents': typeof AgentsRouteWithChildren
   '/ai-review': typeof AiReviewRoute
   '/approvals': typeof ApprovalsRoute
@@ -258,6 +273,7 @@ export interface FileRoutesByTo {
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/accounts/$id': typeof AccountsIdRoute
   '/agents/$name': typeof AgentsNameRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
@@ -280,6 +296,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/accounts': typeof AccountsRouteWithChildren
   '/agents': typeof AgentsRouteWithChildren
   '/ai-review': typeof AiReviewRoute
   '/approvals': typeof ApprovalsRoute
@@ -293,6 +310,7 @@ export interface FileRoutesById {
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/accounts/$id': typeof AccountsIdRoute
   '/agents/$name': typeof AgentsNameRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
@@ -316,6 +334,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/accounts'
     | '/agents'
     | '/ai-review'
     | '/approvals'
@@ -329,6 +348,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/tasks'
+    | '/accounts/$id'
     | '/agents/$name'
     | '/clients/$id'
     | '/clients/import'
@@ -350,6 +370,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
+    | '/accounts'
     | '/agents'
     | '/ai-review'
     | '/approvals'
@@ -363,6 +384,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/tasks'
+    | '/accounts/$id'
     | '/agents/$name'
     | '/clients/$id'
     | '/clients/import'
@@ -384,6 +406,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
+    | '/accounts'
     | '/agents'
     | '/ai-review'
     | '/approvals'
@@ -397,6 +420,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/tasks'
+    | '/accounts/$id'
     | '/agents/$name'
     | '/clients/$id'
     | '/clients/import'
@@ -419,6 +443,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
+  AccountsRoute: typeof AccountsRouteWithChildren
   AgentsRoute: typeof AgentsRouteWithChildren
   AiReviewRoute: typeof AiReviewRoute
   ApprovalsRoute: typeof ApprovalsRoute
@@ -474,18 +499,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RenewalsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/quotes': {
-      id: '/quotes'
-      path: '/quotes'
-      fullPath: '/quotes'
-      preLoaderRoute: typeof QuotesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/relationships': {
       id: '/relationships'
       path: '/relationships'
       fullPath: '/relationships'
       preLoaderRoute: typeof RelationshipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quotes': {
+      id: '/quotes'
+      path: '/quotes'
+      fullPath: '/quotes'
+      preLoaderRoute: typeof QuotesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -535,6 +560,13 @@ declare module '@tanstack/react-router' {
       path: '/agents'
       fullPath: '/agents'
       preLoaderRoute: typeof AgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accounts': {
+      id: '/accounts'
+      path: '/accounts'
+      fullPath: '/accounts'
+      preLoaderRoute: typeof AccountsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account': {
@@ -600,6 +632,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentsNameRouteImport
       parentRoute: typeof AgentsRoute
     }
+    '/accounts/$id': {
+      id: '/accounts/$id'
+      path: '/$id'
+      fullPath: '/accounts/$id'
+      preLoaderRoute: typeof AccountsIdRouteImport
+      parentRoute: typeof AccountsRoute
+    }
     '/api/workflows/score-renewal-risk': {
       id: '/api/workflows/score-renewal-risk'
       path: '/api/workflows/score-renewal-risk'
@@ -614,18 +653,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWorkflowsRetentionSweepRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/workflows/qualify-lead': {
-      id: '/api/workflows/qualify-lead'
-      path: '/api/workflows/qualify-lead'
-      fullPath: '/api/workflows/qualify-lead'
-      preLoaderRoute: typeof ApiWorkflowsQualifyLeadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/workflows/relationship-intelligence': {
       id: '/api/workflows/relationship-intelligence'
       path: '/api/workflows/relationship-intelligence'
       fullPath: '/api/workflows/relationship-intelligence'
       preLoaderRoute: typeof ApiWorkflowsRelationshipIntelligenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workflows/qualify-lead': {
+      id: '/api/workflows/qualify-lead'
+      path: '/api/workflows/qualify-lead'
+      fullPath: '/api/workflows/qualify-lead'
+      preLoaderRoute: typeof ApiWorkflowsQualifyLeadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/workflows/draft-reply': {
@@ -649,13 +688,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/workflows/context/account': {
-      id: '/api/workflows/context/account'
-      path: '/api/workflows/context/account'
-      fullPath: '/api/workflows/context/account'
-      preLoaderRoute: typeof ApiWorkflowsContextAccountRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/workflows/context/lead': {
       id: '/api/workflows/context/lead'
       path: '/api/workflows/context/lead'
@@ -670,8 +702,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWorkflowsContextEngagementRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/workflows/context/account': {
+      id: '/api/workflows/context/account'
+      path: '/api/workflows/context/account'
+      fullPath: '/api/workflows/context/account'
+      preLoaderRoute: typeof ApiWorkflowsContextAccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
+
+interface AccountsRouteChildren {
+  AccountsIdRoute: typeof AccountsIdRoute
+}
+
+const AccountsRouteChildren: AccountsRouteChildren = {
+  AccountsIdRoute: AccountsIdRoute,
+}
+
+const AccountsRouteWithChildren = AccountsRoute._addFileChildren(
+  AccountsRouteChildren,
+)
 
 interface AgentsRouteChildren {
   AgentsNameRoute: typeof AgentsNameRoute
@@ -733,6 +784,7 @@ const QuotesRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
+  AccountsRoute: AccountsRouteWithChildren,
   AgentsRoute: AgentsRouteWithChildren,
   AiReviewRoute: AiReviewRoute,
   ApprovalsRoute: ApprovalsRoute,
@@ -750,7 +802,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWorkflowsDraftQuoteRoute: ApiWorkflowsDraftQuoteRoute,
   ApiWorkflowsDraftReplyRoute: ApiWorkflowsDraftReplyRoute,
   ApiWorkflowsQualifyLeadRoute: ApiWorkflowsQualifyLeadRoute,
-  ApiWorkflowsRelationshipIntelligenceRoute: ApiWorkflowsRelationshipIntelligenceRoute,
+  ApiWorkflowsRelationshipIntelligenceRoute:
+    ApiWorkflowsRelationshipIntelligenceRoute,
   ApiWorkflowsRetentionSweepRoute: ApiWorkflowsRetentionSweepRoute,
   ApiWorkflowsScoreRenewalRiskRoute: ApiWorkflowsScoreRenewalRiskRoute,
   ApiWorkflowsContextAccountRoute: ApiWorkflowsContextAccountRoute,

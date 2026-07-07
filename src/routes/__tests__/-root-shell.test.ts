@@ -95,4 +95,15 @@ describe("sales route source copy", () => {
     expect(relationshipSource).not.toContain("hero");
     expect(relationshipSource).not.toContain("landing");
   });
+
+  it("adds account 360 without colliding with auth account page", () => {
+    const authAccountSource = readRoute("account.tsx");
+    const accountsSource = readRoute("accounts.tsx");
+    const accountDetailSource = readRoute("accounts.$id.tsx");
+
+    expect(authAccountSource).toContain("AccountView");
+    expect(accountsSource).toContain('title="Accounts"');
+    expect(accountDetailSource).toContain("Stakeholders");
+    expect(accountDetailSource).toContain("AccountTimeline");
+  });
 });
