@@ -1,12 +1,25 @@
 import { query, type Queryable } from "@/server/db/neon.server";
 import type { ActivityLog } from "@/lib/types";
 
+export type ActivityObjectType =
+  | "lead"
+  | "quote"
+  | "client"
+  | "task"
+  | "approval"
+  | "engagement"
+  | "account"
+  | "contact"
+  | "campaign"
+  | "campaign_member"
+  | "relationship_signal";
+
 export type CreateActivityLogInput = {
   actor_type: "agent" | "user";
   actor_id?: string | null;
   actor_name?: string | null;
   action: string;
-  object_type: "lead" | "quote" | "client" | "task" | "approval" | "engagement";
+  object_type: ActivityObjectType;
   object_id?: string | null;
   diff_data?: unknown;
 };

@@ -75,6 +75,13 @@ export type AutomationTriggerType =
   | "schedule";
 export type AutomationPlaybookStatus = "draft" | "active" | "paused" | "archived";
 export type AutomationRunStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
+export type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 export type DealStage =
   | "new"
   | "discovery"
@@ -305,9 +312,32 @@ export interface Account {
   relationship_health?: number;
   last_activity_at?: string | null;
   next_action?: string | null;
-  health_score: number;
-  renewal_date: string | null;
-  arr: number | null;
+  health_score?: number;
+  renewal_date?: string | null;
+  arr?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AccountContact {
+  id: string;
+  account_id: string;
+  name: string;
+  title: string | null;
+  department: string | null;
+  email: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  linkedin_url: string | null;
+  preferred_channel: PreferredChannel | null;
+  relationship_role: RelationshipRole;
+  influence_level: InfluenceLevel;
+  sentiment: StakeholderSentiment;
+  relationship_strength: RelationshipStrength;
+  is_primary: boolean;
+  active: boolean;
+  notes: string | null;
+  last_contacted_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -351,19 +381,19 @@ export interface ChannelIdentity {
   handle: string | null;
   is_primary: boolean;
   last_seen_at: string | null;
-  metadata: unknown;
+  metadata: JsonValue;
   created_at: string;
 }
 
 export interface Campaign {
   id: string;
   name: string;
-  type?: CampaignType;
-  channel: CampaignChannel;
+  type: CampaignType;
+  channel?: CampaignChannel | null;
   status: CampaignStatus;
   objective: string | null;
-  audience_filter: unknown;
-  scheduled_at: string | null;
+  audience_filter?: JsonValue;
+  scheduled_at?: string | null;
   owner: string | null;
   starts_at?: string | null;
   ends_at?: string | null;
@@ -393,7 +423,7 @@ export interface CampaignMember {
   status?: AttendeeStatus;
   joined_at?: string;
   last_event_at?: string | null;
-  metadata?: unknown;
+  metadata?: JsonValue;
 }
 
 export interface EngagementEvent {
@@ -412,7 +442,7 @@ export interface EngagementEvent {
   occurred_at: string;
   created_by: string | null;
   created_by_agent: string | null;
-  metadata: unknown;
+  metadata: JsonValue;
   created_at: string;
 }
 
