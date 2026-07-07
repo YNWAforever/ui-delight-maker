@@ -14,6 +14,7 @@ import {
   LogOut,
   RefreshCw,
   Network,
+  CalendarDays,
   type LucideIcon,
 } from "lucide-react";
 
@@ -43,6 +44,7 @@ const convertItems = [
   { title: "Pipeline", url: "/", icon: LayoutDashboard, activePath: null },
   { title: "Quotes", url: "/quotes", icon: FileText },
   { title: "Approvals", url: "/approvals", icon: ShieldCheck },
+  { title: "Campaigns", url: "/campaigns", icon: CalendarDays },
 ];
 
 const retainItems = [

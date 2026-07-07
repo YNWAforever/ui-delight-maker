@@ -19,6 +19,7 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as ClientsRouteImport } from './routes/clients'
+import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AiReviewRouteImport } from './routes/ai-review'
 import { Route as AgentsRouteImport } from './routes/agents'
@@ -31,6 +32,7 @@ import { Route as LoginAuthPathRouteImport } from './routes/login.$authPath'
 import { Route as LeadsIdRouteImport } from './routes/leads.$id'
 import { Route as ClientsImportRouteImport } from './routes/clients.import'
 import { Route as ClientsIdRouteImport } from './routes/clients.$id'
+import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as AgentsNameRouteImport } from './routes/agents.$name'
 import { Route as AccountsIdRouteImport } from './routes/accounts.$id'
 import { Route as ApiWorkflowsScoreRenewalRiskRouteImport } from './routes/api/workflows/score-renewal-risk'
@@ -94,6 +96,11 @@ const ClientsRoute = ClientsRouteImport.update({
   path: '/clients',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CampaignsRoute = CampaignsRouteImport.update({
+  id: '/campaigns',
+  path: '/campaigns',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApprovalsRoute = ApprovalsRouteImport.update({
   id: '/approvals',
   path: '/approvals',
@@ -153,6 +160,11 @@ const ClientsIdRoute = ClientsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => ClientsRoute,
+} as any)
+const CampaignsIdRoute = CampaignsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => CampaignsRoute,
 } as any)
 const AgentsNameRoute = AgentsNameRouteImport.update({
   id: '/$name',
@@ -227,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/agents': typeof AgentsRouteWithChildren
   '/ai-review': typeof AiReviewRoute
   '/approvals': typeof ApprovalsRoute
+  '/campaigns': typeof CampaignsRouteWithChildren
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRouteWithChildren
@@ -239,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof TasksRoute
   '/accounts/$id': typeof AccountsIdRoute
   '/agents/$name': typeof AgentsNameRoute
+  '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
   '/leads/$id': typeof LeadsIdRoute
@@ -263,6 +277,7 @@ export interface FileRoutesByTo {
   '/agents': typeof AgentsRouteWithChildren
   '/ai-review': typeof AiReviewRoute
   '/approvals': typeof ApprovalsRoute
+  '/campaigns': typeof CampaignsRouteWithChildren
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRouteWithChildren
@@ -275,6 +290,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksRoute
   '/accounts/$id': typeof AccountsIdRoute
   '/agents/$name': typeof AgentsNameRoute
+  '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
   '/leads/$id': typeof LeadsIdRoute
@@ -300,6 +316,7 @@ export interface FileRoutesById {
   '/agents': typeof AgentsRouteWithChildren
   '/ai-review': typeof AiReviewRoute
   '/approvals': typeof ApprovalsRoute
+  '/campaigns': typeof CampaignsRouteWithChildren
   '/clients': typeof ClientsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRouteWithChildren
@@ -312,6 +329,7 @@ export interface FileRoutesById {
   '/tasks': typeof TasksRoute
   '/accounts/$id': typeof AccountsIdRoute
   '/agents/$name': typeof AgentsNameRoute
+  '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
   '/leads/$id': typeof LeadsIdRoute
@@ -338,6 +356,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/ai-review'
     | '/approvals'
+    | '/campaigns'
     | '/clients'
     | '/leads'
     | '/login'
@@ -350,6 +369,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/accounts/$id'
     | '/agents/$name'
+    | '/campaigns/$id'
     | '/clients/$id'
     | '/clients/import'
     | '/leads/$id'
@@ -374,6 +394,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/ai-review'
     | '/approvals'
+    | '/campaigns'
     | '/clients'
     | '/leads'
     | '/login'
@@ -386,6 +407,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/accounts/$id'
     | '/agents/$name'
+    | '/campaigns/$id'
     | '/clients/$id'
     | '/clients/import'
     | '/leads/$id'
@@ -410,6 +432,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/ai-review'
     | '/approvals'
+    | '/campaigns'
     | '/clients'
     | '/leads'
     | '/login'
@@ -422,6 +445,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/accounts/$id'
     | '/agents/$name'
+    | '/campaigns/$id'
     | '/clients/$id'
     | '/clients/import'
     | '/leads/$id'
@@ -447,6 +471,7 @@ export interface RootRouteChildren {
   AgentsRoute: typeof AgentsRouteWithChildren
   AiReviewRoute: typeof AiReviewRoute
   ApprovalsRoute: typeof ApprovalsRoute
+  CampaignsRoute: typeof CampaignsRouteWithChildren
   ClientsRoute: typeof ClientsRouteWithChildren
   LeadsRoute: typeof LeadsRouteWithChildren
   LoginRoute: typeof LoginRouteWithChildren
@@ -541,6 +566,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/campaigns': {
+      id: '/campaigns'
+      path: '/campaigns'
+      fullPath: '/campaigns'
+      preLoaderRoute: typeof CampaignsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/approvals': {
       id: '/approvals'
       path: '/approvals'
@@ -624,6 +656,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/clients/$id'
       preLoaderRoute: typeof ClientsIdRouteImport
       parentRoute: typeof ClientsRoute
+    }
+    '/campaigns/$id': {
+      id: '/campaigns/$id'
+      path: '/$id'
+      fullPath: '/campaigns/$id'
+      preLoaderRoute: typeof CampaignsIdRouteImport
+      parentRoute: typeof CampaignsRoute
     }
     '/agents/$name': {
       id: '/agents/$name'
@@ -735,6 +774,18 @@ const AgentsRouteChildren: AgentsRouteChildren = {
 const AgentsRouteWithChildren =
   AgentsRoute._addFileChildren(AgentsRouteChildren)
 
+interface CampaignsRouteChildren {
+  CampaignsIdRoute: typeof CampaignsIdRoute
+}
+
+const CampaignsRouteChildren: CampaignsRouteChildren = {
+  CampaignsIdRoute: CampaignsIdRoute,
+}
+
+const CampaignsRouteWithChildren = CampaignsRoute._addFileChildren(
+  CampaignsRouteChildren,
+)
+
 interface ClientsRouteChildren {
   ClientsIdRoute: typeof ClientsIdRoute
   ClientsImportRoute: typeof ClientsImportRoute
@@ -788,6 +839,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgentsRoute: AgentsRouteWithChildren,
   AiReviewRoute: AiReviewRoute,
   ApprovalsRoute: ApprovalsRoute,
+  CampaignsRoute: CampaignsRouteWithChildren,
   ClientsRoute: ClientsRouteWithChildren,
   LeadsRoute: LeadsRouteWithChildren,
   LoginRoute: LoginRouteWithChildren,

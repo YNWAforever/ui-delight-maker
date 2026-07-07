@@ -120,4 +120,13 @@ describe("sales route source copy", () => {
     expect(accountDetailSource).toContain("setDismissedSignalIds([]);");
     expect(accountDetailSource).toContain("const openSignals = signals.filter");
   });
+
+  it("adds campaign follow-up workspace", () => {
+    const campaignsSource = readRoute("campaigns.tsx");
+    const detailSource = readRoute("campaigns.$id.tsx");
+
+    expect(campaignsSource).toContain('title="Campaigns & Events"');
+    expect(detailSource).toContain("EventAttendeeTable");
+    expect(detailSource).toContain("validateEventImportRowsFn");
+  });
 });
