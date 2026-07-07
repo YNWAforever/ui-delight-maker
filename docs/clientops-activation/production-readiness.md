@@ -25,11 +25,11 @@
 
 ## Client Relationship 360 Readiness
 
-- `DATABASE_URL` points to a database with `003_client_relationship_360.sql` applied.
-- Existing clients have been linked to accounts.
-- Relationship signal generation has been run at least once.
-- The n8n `clientops-relationship-intelligence` workflow is imported and has the same `x-workflow-token` as the app.
-- The Relationship Command Center shows open signals without leaking secrets or raw model prompts.
+- [ ] `DATABASE_URL` points to a database with `003_client_relationship_360.sql` applied.
+- [ ] Existing clients have been linked to accounts.
+- [ ] Relationship signal generation has been run at least once.
+- [ ] The n8n `clientops-relationship-intelligence` workflow is imported and has the same `x-workflow-token` as the app.
+- [ ] The Relationship Command Center shows open signals without leaking secrets or raw model prompts.
 
 ## Rollback
 

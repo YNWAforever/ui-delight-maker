@@ -108,9 +108,10 @@ bun scripts/clientops/smoke-check.ts
 3. Log a touchpoint and verify it appears on Account 360 timeline.
 4. Create a campaign/event and import attendee CSV.
 5. Match one attendee to an existing account/contact and create one new account/contact.
-6. Generate relationship signals and open Relationship Command Center.
-7. Dismiss one signal with a reason and verify it does not remain in the open queue.
-8. Run relationship intelligence for an account and verify agent run, activity log, and signal output.
+6. Create or surface a follow-up from one imported attendee, then verify it appears in the event follow-up workspace and on the Account 360 timeline.
+7. Generate relationship signals and open Relationship Command Center.
+8. Dismiss one signal with a reason and verify it does not remain in the open queue.
+9. Run relationship intelligence for an account and verify agent run, activity log, and signal output.
 
 ## Report
 
