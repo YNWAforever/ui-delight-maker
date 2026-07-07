@@ -77,4 +77,17 @@ describe("relationship signals server functions", () => {
       dismissal_reason: "not relevant anymore",
     });
   });
+
+  it("rejects malformed dismiss payloads before auth or repository access", async () => {
+    const { parseDismissRelationshipSignalInput } = await import("../relationship-signals");
+
+    expect(() => parseDismissRelationshipSignalInput({ id: "signal-1", reason: "   " })).toThrow(
+      "id and reason are required",
+    );
+    expect(() => parseDismissRelationshipSignalInput({ id: "   ", reason: "handled" })).toThrow(
+      "id and reason are required",
+    );
+    expect(dismissRelationshipSignalMock).not.toHaveBeenCalled();
+    expect(requireNeonAuthSessionMock).not.toHaveBeenCalled();
+  });
 });
