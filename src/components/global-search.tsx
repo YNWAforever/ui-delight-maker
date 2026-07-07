@@ -2,15 +2,35 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { Search } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 // Search data — will be replaced with a server-side full-text search in a future task.
 // Using empty arrays until the backend search endpoint is available.
-const leads: { id: string; company_name: string; contact_name: string; contact_email: string; status: string }[] = [];
-const quotes: { id: string; number: string; status: string; currency: string; total_value: number }[] = [];
+const leads: {
+  id: string;
+  company_name: string;
+  contact_name: string;
+  contact_email: string;
+  status: string;
+}[] = [];
+const quotes: {
+  id: string;
+  number: string;
+  status: string;
+  currency: string;
+  total_value: number;
+}[] = [];
 const clients: { id: string; company_name: string; industry: string; tier: string }[] = [];
-const tasks: { id: string; title: string; description: string; status: string; priority: string; due_date: string }[] = [];
+const tasks: {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  due_date: string;
+}[] = [];
 
 type Result = {
   id: string;
@@ -21,16 +41,20 @@ type Result = {
   params?: Record<string, string>;
 };
 
-export function GlobalSearch() {
+export function GlobalSearch({ iconOnly = false }: { iconOnly?: boolean }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [active, setActive] = useState(0);
   const navigate = useNavigate();
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!wrapRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setPanelOpen(false);
+      }
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -40,12 +64,17 @@ export function GlobalSearch() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
+        if (iconOnly) setPanelOpen(true);
         wrapRef.current?.querySelector("input")?.focus();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [iconOnly]);
+
+  useEffect(() => {
+    if (panelOpen) wrapRef.current?.querySelector("input")?.focus();
+  }, [panelOpen]);
 
   const results = useMemo<Result[]>(() => {
     const term = q.trim().toLowerCase();
@@ -85,10 +114,7 @@ export function GlobalSearch() {
       }
     }
     for (const c of clients) {
-      if (
-        c.company_name.toLowerCase().includes(term) ||
-        c.industry.toLowerCase().includes(term)
-      ) {
+      if (c.company_name.toLowerCase().includes(term) || c.industry.toLowerCase().includes(term)) {
         out.push({
           id: c.id,
           type: "Client",
@@ -100,10 +126,7 @@ export function GlobalSearch() {
       }
     }
     for (const t of tasks) {
-      if (
-        t.title.toLowerCase().includes(term) ||
-        t.description.toLowerCase().includes(term)
-      ) {
+      if (t.title.toLowerCase().includes(term) || t.description.toLowerCase().includes(term)) {
         out.push({
           id: t.id,
           type: "Task",
@@ -120,6 +143,7 @@ export function GlobalSearch() {
 
   const go = (r: Result) => {
     setOpen(false);
+    setPanelOpen(false);
     setQ("");
     navigate({ to: r.to, params: r.params as never });
   };
@@ -136,11 +160,12 @@ export function GlobalSearch() {
       go(results[active]);
     } else if (e.key === "Escape") {
       setOpen(false);
+      setPanelOpen(false);
     }
   };
 
-  return (
-    <div ref={wrapRef} className="relative w-full">
+  const field = (
+    <div className="relative w-full">
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         value={q}
@@ -172,9 +197,7 @@ export function GlobalSearch() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{r.title}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {r.subtitle}
-                  </div>
+                  <div className="truncate text-xs text-muted-foreground">{r.subtitle}</div>
                 </div>
                 <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   {r.type}
@@ -184,6 +207,32 @@ export function GlobalSearch() {
           )}
         </div>
       )}
+    </div>
+  );
+
+  if (iconOnly) {
+    return (
+      <div ref={wrapRef}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Search"
+          onClick={() => setPanelOpen((v) => !v)}
+        >
+          <Search className="h-4 w-4" />
+        </Button>
+        {panelOpen && (
+          <div className="fixed inset-x-0 top-14 z-30 border-b border-border bg-background p-3 shadow-md">
+            {field}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={wrapRef} className="w-full">
+      {field}
     </div>
   );
 }

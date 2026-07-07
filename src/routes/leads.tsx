@@ -37,7 +37,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import type { Lead } from "@/lib/types";
 import { getLeads, createLead, updateLead } from "@/server-functions/leads";
@@ -46,7 +53,10 @@ export const Route = createFileRoute("/leads")({
   head: () => ({
     meta: [
       { title: "Leads — Fimmick ClientOps" },
-      { name: "description", content: "All inbound leads with status, source, and qualification score." },
+      {
+        name: "description",
+        content: "All inbound leads with status, source, and qualification score.",
+      },
     ],
   }),
   loader: () => getLeads({}),
@@ -68,7 +78,13 @@ function LeadsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [newOpen, setNewOpen] = useState(false);
 
-  const handleCreateLead = async (formData: { company_name: string; enquiry_text?: string; source?: Lead["source"]; contact_name?: string; contact_email?: string }) => {
+  const handleCreateLead = async (formData: {
+    company_name: string;
+    enquiry_text?: string;
+    source?: Lead["source"];
+    contact_name?: string;
+    contact_email?: string;
+  }) => {
     await createLead({ data: formData });
     router.invalidate();
     setNewOpen(false);
@@ -97,7 +113,11 @@ function LeadsPage() {
   const toggle = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };
@@ -131,11 +151,7 @@ function LeadsPage() {
             >
               <Download className="mr-2 h-4 w-4" /> Import CSV
             </Button>
-            <NewLeadDialog
-              open={newOpen}
-              onOpenChange={setNewOpen}
-              onCreate={handleCreateLead}
-            />
+            <NewLeadDialog open={newOpen} onOpenChange={setNewOpen} onCreate={handleCreateLead} />
           </>
         }
       />
@@ -205,7 +221,10 @@ function LeadsPage() {
                   <X className="h-3 w-3" />
                 </button>
               ))}
-              <button onClick={clearFilters} className="text-xs text-muted-foreground hover:underline">
+              <button
+                onClick={clearFilters}
+                className="text-xs text-muted-foreground hover:underline"
+              >
                 Clear all
               </button>
             </div>
@@ -218,16 +237,14 @@ function LeadsPage() {
             onAssign={async (uid) => {
               await Promise.all(
                 Array.from(selected).map((id) =>
-                  updateLead({ data: { id, updates: { assigned_to: uid } } })
-                )
+                  updateLead({ data: { id, updates: { assigned_to: uid } } }),
+                ),
               );
               setSelected(new Set());
               router.invalidate();
             }}
             onMarkStatus={(s) => {
-              setRows((prev) =>
-                prev.map((l) => (selected.has(l.id) ? { ...l, status: s } : l)),
-              );
+              setRows((prev) => prev.map((l) => (selected.has(l.id) ? { ...l, status: s } : l)));
               toast.success(`Marked ${selected.size} lead${selected.size > 1 ? "s" : ""} as ${s}`);
               setSelected(new Set());
             }}
@@ -239,7 +256,7 @@ function LeadsPage() {
           />
         )}
 
-        <Card>
+        <Card className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -263,14 +280,25 @@ function LeadsPage() {
             <TableBody>
               {filtered.map((lead) => {
                 return (
-                  <TableRow key={lead.id} className="cursor-pointer">
+                  <TableRow
+                    key={lead.id}
+                    tabIndex={0}
+                    className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                    onClick={() => router.navigate({ to: "/leads/$id", params: { id: lead.id } })}
+                    onKeyDown={(e) => {
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key !== "Enter" && e.key !== " ") return;
+                      if (e.key === " ") e.preventDefault();
+                      router.navigate({ to: "/leads/$id", params: { id: lead.id } });
+                    }}
+                  >
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selected.has(lead.id)}
                         onCheckedChange={() => toggle(lead.id)}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium" onClick={(e) => e.stopPropagation()}>
                       <Link
                         to="/leads/$id"
                         params={{ id: lead.id }}
@@ -285,7 +313,9 @@ function LeadsPage() {
                       <div className="text-xs text-muted-foreground">{lead.contact_email}</div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs capitalize text-muted-foreground">{lead.source}</span>
+                      <span className="text-xs capitalize text-muted-foreground">
+                        {lead.source}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <StatusBadge value={lead.status} />
@@ -301,7 +331,9 @@ function LeadsPage() {
                           {lead.qualification_data.next_action}
                         </span>
                       ) : (
-                        <span className="text-xs text-muted-foreground">awaiting qualification</span>
+                        <span className="text-xs text-muted-foreground">
+                          awaiting qualification
+                        </span>
                       )}
                     </TableCell>
                   </TableRow>
@@ -337,7 +369,13 @@ function NewLeadDialog({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onCreate: (formData: { company_name: string; enquiry_text?: string; source?: Lead["source"]; contact_name?: string; contact_email?: string }) => Promise<void>;
+  onCreate: (formData: {
+    company_name: string;
+    enquiry_text?: string;
+    source?: Lead["source"];
+    contact_name?: string;
+    contact_email?: string;
+  }) => Promise<void>;
 }) {
   const [company, setCompany] = useState("");
   const [contact, setContact] = useState("");
@@ -503,7 +541,9 @@ function LeadsBulkBar({
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign {count} lead{count > 1 ? "s" : ""}</DialogTitle>
+            <DialogTitle>
+              Assign {count} lead{count > 1 ? "s" : ""}
+            </DialogTitle>
             <DialogDescription>Pick a new owner. Reassignment is logged.</DialogDescription>
           </DialogHeader>
           <div>

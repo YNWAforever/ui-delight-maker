@@ -11,7 +11,10 @@ import {
   BarChart3,
   Settings,
   Sparkles,
+  LogOut,
 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 import {
   Sidebar,
@@ -108,13 +111,16 @@ export function AppSidebar({ profile, onSignOut }: AppSidebarProps) {
               {profile?.role ?? "—"} · Fimmick
             </span>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onSignOut}
-            className="ml-auto text-[11px] text-muted-foreground hover:text-foreground"
+            className="ml-auto h-7 w-7 text-muted-foreground hover:text-foreground"
+            aria-label="Sign out"
             title="Sign out"
           >
-            Out
-          </button>
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
       </SidebarFooter>
     </Sidebar>

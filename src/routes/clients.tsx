@@ -25,7 +25,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatCompactHKD } from "@/lib/format";
 import { getClients, createClient } from "@/server-functions/clients";
 import { APP_USERS, userById } from "@/lib/users";
@@ -61,8 +68,7 @@ function ClientsPage() {
     const sortFn = {
       arr: (a: Client, b: Client) => (b.arr ?? 0) - (a.arr ?? 0),
       health: (a: Client, b: Client) => b.health_score - a.health_score,
-      renewal: (a: Client, b: Client) =>
-        (a.renewal_date ?? "").localeCompare(b.renewal_date ?? ""),
+      renewal: (a: Client, b: Client) => (a.renewal_date ?? "").localeCompare(b.renewal_date ?? ""),
     }[sortKey];
     return [...out].sort(sortFn);
   }, [rows, tier, sortKey]);
@@ -99,7 +105,11 @@ function ClientsPage() {
 
       <div className="space-y-4 px-6 py-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard label="Total ARR" value={formatCompactHKD(totalARR)} hint="all active accounts" />
+          <MetricCard
+            label="Total ARR"
+            value={formatCompactHKD(totalARR)}
+            hint="all active accounts"
+          />
           <MetricCard label="Avg health" value={`${avgHealth}/100`} hint="across portfolio" />
           <MetricCard
             label="Renewals next 90d"
@@ -134,7 +144,7 @@ function ClientsPage() {
           </div>
         </Card>
 
-        <Card>
+        <Card className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -195,7 +205,12 @@ function ClientsPage() {
   );
 }
 
-type CreateClientPayload = { company_name: string; industry?: string; tier?: Client["tier"]; account_owner?: string };
+type CreateClientPayload = {
+  company_name: string;
+  industry?: string;
+  tier?: Client["tier"];
+  account_owner?: string;
+};
 
 function NewClientDialog({ onCreate }: { onCreate: (c: CreateClientPayload) => Promise<void> }) {
   const [name, setName] = useState("");

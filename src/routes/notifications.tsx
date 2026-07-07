@@ -30,10 +30,10 @@ const typeIcon: Record<string, React.ReactNode> = {
 };
 
 const typeColor: Record<string, string> = {
-  approval: "text-amber-500 bg-amber-500/10",
-  task: "text-blue-500 bg-blue-500/10",
-  lead: "text-emerald-500 bg-emerald-500/10",
-  client: "text-violet-500 bg-violet-500/10",
+  approval: "text-warning bg-warning/10",
+  task: "text-info bg-info/10",
+  lead: "text-success bg-success/10",
+  client: "text-primary bg-primary/10",
 };
 
 type FilterTab = "all" | "unread" | "approval" | "task" | "lead" | "client";
@@ -44,7 +44,7 @@ function NotificationsPage() {
 
   const filtered = useMemo(() => {
     let list = [...notifications].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
     if (filter === "unread") list = list.filter((n) => !n.read);
     if (filter !== "all" && filter !== "unread") list = list.filter((n) => n.type === filter);
@@ -84,7 +84,7 @@ function NotificationsPage() {
               "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
               filter === t.key
                 ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground",
             )}
           >
             {t.label}
@@ -112,13 +112,13 @@ function NotificationsPage() {
                 key={n.id}
                 className={cn(
                   "flex items-start gap-4 rounded-lg border border-border p-4 transition-colors hover:bg-accent/30",
-                  isUnread && "bg-accent/20 border-primary/20"
+                  isUnread && "bg-accent/20 border-primary/20",
                 )}
               >
                 <div
                   className={cn(
                     "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                    typeColor[n.type]
+                    typeColor[n.type],
                   )}
                 >
                   {typeIcon[n.type]}
@@ -129,9 +129,7 @@ function NotificationsPage() {
                     <p className={cn("text-sm leading-snug", isUnread && "font-medium")}>
                       {n.message}
                     </p>
-                    {isUnread && (
-                      <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                    )}
+                    {isUnread && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {formatDateTime(n.created_at)} · {relativeTime(n.created_at)}

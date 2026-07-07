@@ -16,7 +16,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatHKD } from "@/lib/format";
 import { getQuotes } from "@/server-functions/quotes";
 import { USER_RECORD } from "@/lib/users";
@@ -68,7 +75,9 @@ function QuotesPage() {
       pipeline: rows
         .filter((q) => ["pending_approval", "sent", "viewed"].includes(q.status))
         .reduce((s, q) => s + (q.total_value ?? 0), 0),
-      won: rows.filter((q) => q.status === "accepted").reduce((s, q) => s + (q.total_value ?? 0), 0),
+      won: rows
+        .filter((q) => q.status === "accepted")
+        .reduce((s, q) => s + (q.total_value ?? 0), 0),
       draft: rows.filter((q) => q.status === "draft").reduce((s, q) => s + (q.total_value ?? 0), 0),
     }),
     [rows],
@@ -101,7 +110,11 @@ function QuotesPage() {
 
       <div className="space-y-4 px-6 py-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard label="In pipeline" value={formatHKD(totals.pipeline)} hint="pending + sent + viewed" />
+          <MetricCard
+            label="In pipeline"
+            value={formatHKD(totals.pipeline)}
+            hint="pending + sent + viewed"
+          />
           <MetricCard label="Won" value={formatHKD(totals.won)} hint="this quarter" />
           <MetricCard label="In draft" value={formatHKD(totals.draft)} hint="not yet submitted" />
         </div>
@@ -126,7 +139,7 @@ function QuotesPage() {
           </div>
         </Card>
 
-        <Card>
+        <Card className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -191,7 +204,10 @@ function QuotesPage() {
               })}
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    colSpan={7}
+                    className="py-10 text-center text-sm text-muted-foreground"
+                  >
                     No quotes match.
                   </TableCell>
                 </TableRow>

@@ -121,7 +121,7 @@ function AgentsMonitor() {
       />
 
       <div className="space-y-6 px-6 py-6">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {agents.map((a) => (
             <Card key={a.name} className="p-4">
               <div className="flex items-start justify-between">
@@ -229,8 +229,15 @@ function AgentsMonitor() {
                   return (
                     <Fragment key={run.id}>
                       <TableRow
-                        className="cursor-pointer"
+                        className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                        tabIndex={0}
                         onClick={() => setOpen(expanded ? null : run.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            if (e.key === " ") e.preventDefault();
+                            setOpen(expanded ? null : run.id);
+                          }
+                        }}
                       >
                         <TableCell>
                           {expanded ? (
