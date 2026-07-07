@@ -1,16 +1,18 @@
 import { buildRelationshipSignals } from "../../src/lib/relationship/signals";
-import type { CampaignMember, Engagement, Product, Quote } from "../../src/lib/types";
+import type { Account, CampaignMember, Engagement, Product, Quote } from "../../src/lib/types";
 import { query } from "../../src/server/db/neon.server";
 import { listAccountContacts } from "../../src/server/repositories/account-contacts";
-import { listAccounts } from "../../src/server/repositories/accounts";
 import { upsertRelationshipSignals } from "../../src/server/repositories/relationship-signals";
 
 export async function generateRelationshipSignals() {
-  const accounts = await listAccounts({});
+  const [accounts, products] = await Promise.all([
+    query<Account>("select * from accounts order by coalesce(last_activity_at, created_at) desc"),
+    query<Product>("select * from products where active = true", []),
+  ]);
   let generated = 0;
 
   for (const account of accounts) {
-    const [contacts, engagements, quotes, campaignMembers, products] = await Promise.all([
+    const [contacts, engagements, quotes, campaignMembers] = await Promise.all([
       listAccountContacts(account.id),
       query<Engagement>(
         `
@@ -23,7 +25,6 @@ export async function generateRelationshipSignals() {
       ),
       query<Quote>("select * from quotes where account_id = $1", [account.id]),
       query<CampaignMember>("select * from campaign_members where account_id = $1", [account.id]),
-      query<Product>("select * from products where active = true", []),
     ]);
 
     const drafts = buildRelationshipSignals({
