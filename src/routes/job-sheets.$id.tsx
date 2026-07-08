@@ -16,7 +16,12 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
 import { canAcceptJobSheet, type NewJobSheetPortion } from "@/lib/quote-to-cash";
-import type { JobSheetBillingType, JobSheetPortion, JobSheetPortionStatus } from "@/lib/types";
+import type {
+  JobSheetBillingType,
+  JobSheetPortion,
+  JobSheetPortionStatus,
+  JobSheetStatus,
+} from "@/lib/types";
 import {
   acceptJobSheetForAccounting,
   getJobSheet,
@@ -57,7 +62,7 @@ type XeroDraft = {
   xero_notes: string;
 };
 
-const toPortionDrafts = (portions: JobSheetPortion[]): PortionDraft[] =>
+export const toPortionDrafts = (portions: JobSheetPortion[]): PortionDraft[] =>
   portions.map((portion) => ({
     id: portion.id,
     name: portion.name,
@@ -70,7 +75,7 @@ const toPortionDrafts = (portions: JobSheetPortion[]): PortionDraft[] =>
     source_quote_line_item_ids: portion.source_quote_line_item_ids,
   }));
 
-const toXeroDrafts = (portions: JobSheetPortion[]): Record<string, XeroDraft> =>
+export const toXeroDrafts = (portions: JobSheetPortion[]): Record<string, XeroDraft> =>
   Object.fromEntries(
     portions.map((portion) => [
       portion.id,
@@ -82,6 +87,11 @@ const toXeroDrafts = (portions: JobSheetPortion[]): Record<string, XeroDraft> =>
       },
     ]),
   );
+
+export const isJobSheetCommercialLocked = (
+  status: JobSheetStatus,
+  lockedAt: string | null | undefined,
+) => status === "accepted" || Boolean(lockedAt);
 
 export const Route = createFileRoute("/job-sheets/$id")({
   loader: ({ params }) => getJobSheet({ data: { id: params.id } }),
@@ -111,7 +121,7 @@ function JobSheetDetailPage() {
     setXeroDrafts(toXeroDrafts(portions));
   }, [portions]);
 
-  const commercialLocked = jobSheet.status === "accepted" || Boolean(jobSheet.locked_at);
+  const commercialLocked = isJobSheetCommercialLocked(jobSheet.status, jobSheet.locked_at);
 
   const previewPortions = useMemo(
     () =>
