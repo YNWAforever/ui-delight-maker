@@ -14,9 +14,9 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
-import { QuotePdfPreview } from "@/components/quotes/quote-pdf-preview";
+import { QuotePdfPreview, resolveQuotePdfSource } from "@/components/quotes/quote-pdf-preview";
 import { StatusBadge } from "@/components/status-badge";
-import type { Lead } from "@/lib/types";
+import type { Client, Lead, PricingTemplate, QuoteLineItem, QuoteStatus, QuoteVersion } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,9 +27,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
 import { calculateTotal, newLineItem } from "@/lib/quote-utils";
-import type { PricingTemplate, QuoteLineItem, QuoteStatus } from "@/lib/types";
 import {
   acceptQuoteAndCreateJobSheet,
+  getQuoteVersions,
   getQuote,
   getPricingTemplates,
   issueQuoteVersion,
@@ -37,6 +37,8 @@ import {
   updateQuote,
 } from "@/server-functions/quotes";
 import { decideApproval } from "@/server-functions/approvals";
+import { getClient } from "@/server-functions/clients";
+import { getLead } from "@/server-functions/leads";
 import { USER_RECORD } from "@/lib/users";
 
 type Comment = { id: string; quote_id: string; author: string; body: string; created_at: string };
@@ -49,20 +51,9 @@ type QuoteFile = {
   uploaded_at: string;
   uploaded_by: string;
 };
-type QuoteVersion = {
-  version: number;
-  quote_id: string;
-  changed_by: string;
-  summary: string;
-  created_at: string;
-};
-
 const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
-// Lead lookups are not available client-side without a server call; return undefined gracefully
-const leadById = (_id: string) => undefined;
 const quoteComments: Comment[] = [];
 const quoteFiles: QuoteFile[] = [];
-const quoteVersions: QuoteVersion[] = [];
 
 export const Route = createFileRoute("/quotes/$id")({
   validateSearch: z.object({
@@ -70,11 +61,13 @@ export const Route = createFileRoute("/quotes/$id")({
     approvalId: z.string().optional(),
   }),
   loader: async ({ params }) => {
-    const [quote, templates] = await Promise.all([
-      getQuote({ data: { id: params.id } }),
-      getPricingTemplates(),
+    const [quote, templates] = await Promise.all([getQuote({ data: { id: params.id } }), getPricingTemplates()]);
+    const [versions, client, leadResult] = await Promise.all([
+      getQuoteVersions({ data: { quoteId: quote.id } }),
+      quote.client_id ? getClient({ data: { id: quote.client_id } }) : Promise.resolve(null),
+      quote.lead_id ? getLead({ data: { id: quote.lead_id } }) : Promise.resolve(null),
     ]);
-    return { quote, templates };
+    return { quote, templates, versions, client, lead: leadResult?.lead ?? null };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -102,16 +95,21 @@ const TIMELINE: QuoteStatus[] = [
   "accepted",
 ];
 
+const VERSION_REASON_LABELS: Record<QuoteVersion["reason"], string> = {
+  issued: "Issued snapshot",
+  revised: "Revision snapshot",
+  accepted: "Accepted snapshot",
+  change_order: "Change order snapshot",
+};
+
 function QuoteDetail() {
-  const { quote, templates } = Route.useLoaderData();
+  const { quote, templates, versions, lead, client } = Route.useLoaderData();
   const { edit, approvalId } = Route.useSearch();
   const isEditMode = edit === true || quote.status === "draft";
   const router = useRouter();
-  const lead = leadById(quote.lead_id ?? "") as Lead | undefined;
   const creator = userById(quote.created_by ?? "");
   const approver = quote.approved_by ? userById(quote.approved_by) : null;
   const initialComments = quoteComments.filter((c) => c.quote_id === quote.id);
-  const versions = quoteVersions.filter((v) => v.quote_id === quote.id);
   const initialFiles = quoteFiles.filter((f) => f.quote_id === quote.id);
 
   const navigate = useNavigate();
@@ -124,6 +122,13 @@ function QuoteDetail() {
   const [catalogueOpen, setCatalogueOpen] = useState(false);
 
   const totalValue = calculateTotal(editItems);
+  const resolvedPdfSource = resolveQuotePdfSource(quote, versions);
+  const previewSource = resolvedPdfSource.sourceVersion
+    ? resolvedPdfSource
+    : { ...resolvedPdfSource, lineItems: isEditMode ? editItems : resolvedPdfSource.lineItems };
+  const clientName =
+    client?.company_name ?? lead?.company_name ?? quote.client_id ?? quote.lead_id ?? "Client";
+  const currentPreviewVersionId = resolvedPdfSource.sourceVersion?.id ?? null;
 
   const updateItemQty = (idx: number, qty: number) => {
     setEditItems((prev) =>
@@ -279,7 +284,7 @@ function QuoteDetail() {
     <>
       <PageHeader
         title={quote.number ?? ""}
-        description={`${lead?.company_name ?? "—"} · ${formatCurrencyAmount(
+        description={`${clientName} · ${formatCurrencyAmount(
           quote.total_value,
           quote.currency,
         )}`}
@@ -554,14 +559,18 @@ function QuoteDetail() {
                 <TabsContent value="versions" className="mt-4">
                   <ol className="space-y-3">
                     {versions.map((v) => (
-                      <li key={v.version} className="flex items-start gap-3">
+                      <li key={v.id} className="flex items-start gap-3">
                         <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium">
-                          v{v.version}
+                          v{v.version_number}
                         </span>
                         <div className="text-sm">
-                          <p className="font-medium">{v.summary}</p>
+                          <p className="font-medium">
+                            {VERSION_REASON_LABELS[v.reason]}
+                            {v.id === currentPreviewVersionId ? " (current preview)" : ""}
+                          </p>
                           <p className="text-xs text-muted-foreground">
-                            {v.changed_by} · {formatDateTime(v.created_at)}
+                            {(v.created_by ? userById(v.created_by)?.name : null) ?? v.created_by ?? "System"} ·{" "}
+                            {formatDateTime(v.created_at)}
                           </p>
                         </div>
                       </li>
@@ -624,9 +633,9 @@ function QuoteDetail() {
                 <TabsContent value="preview" className="mt-4">
                   <div className="overflow-hidden rounded-md border border-border bg-muted/20 p-3">
                     <QuotePdfPreview
-                      quote={quote}
-                      lineItems={editItems}
-                      clientName={lead?.company_name ?? quote.client_id ?? "Client"}
+                      quote={previewSource.quote}
+                      lineItems={previewSource.lineItems}
+                      clientName={clientName}
                     />
                   </div>
                 </TabsContent>

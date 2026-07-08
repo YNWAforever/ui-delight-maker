@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/page-header";
 import {
   QuoteDocumentEditor,
   type QuoteDocumentDraft,
+  normalizeQuoteDocumentSections,
 } from "@/components/quotes/quote-document-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -113,6 +114,8 @@ function QuoteBuilder() {
   const activePdfTemplateName =
     pdfTemplates.find((item) => item.id === activeQuoteTemplate?.default_pdf_template_id)?.name ??
     "Standard quote PDF";
+  const documentSections = normalizeQuoteDocumentSections(documentDraft.document_sections);
+  const visibleDocumentSections = documentSections.filter((section) => section.visible);
 
   const addItem = () =>
     setItems((prev) => [
@@ -603,6 +606,36 @@ function QuoteBuilder() {
                   <ReviewBlock label="Assumptions" value={documentDraft.assumptions} />
                   <ReviewBlock label="Payment terms" value={documentDraft.payment_terms} />
                 </div>
+                <ReviewBlock
+                  label="Document sections"
+                  value={
+                    documentSections.length === 0
+                      ? "No document sections"
+                      : `${visibleDocumentSections.length} visible of ${documentSections.length}`
+                  }
+                />
+                {documentSections.length > 0 ? (
+                  <ul className="space-y-2">
+                    {documentSections.map((section, index) => (
+                      <li
+                        key={`review-section-${index}`}
+                        className="flex items-start justify-between rounded-md border border-border p-2"
+                      >
+                        <div>
+                          <p className="font-medium">
+                            {section.title || section.label || `Section ${index + 1}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {section.body || "No body copy yet."}
+                          </p>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {section.visible ? "Visible" : "Hidden"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </CardContent>
             </Card>
           )}
