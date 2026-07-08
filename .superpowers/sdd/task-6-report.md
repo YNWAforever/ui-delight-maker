@@ -250,3 +250,58 @@
 - The patch is local to the two loaders the reviewer identified.
 - Optional reference lookups now fail open to `null`, while required quote/version fetches still fail normally.
 - Existing fallback labels continue to cover missing client/lead records without any UI refactor.
+
+---
+
+## Task 6 Fix Report - Reviewer findings: standalone PDF route and strict immutable line-item validation
+
+### Timestamp
+- 2026-07-09T04:43:36.0171813+08:00
+
+### Scope
+- Make `/quotes/$id/pdf` render as a standalone file route instead of a child of `QuoteDetail`.
+- Fail closed when immutable snapshot `line_items` contain malformed objects missing required `QuoteLineItem` fields.
+
+### What changed
+- Updated `src/components/quotes/__tests__/quote-pdf-preview.test.ts`:
+  - Added a red-phase regression for immutable snapshot rows missing `qty`.
+  - Added a red-phase regression for immutable snapshot rows missing `unit_price`.
+- Updated `src/components/quotes/quote-pdf-preview.tsx`:
+  - Added strict snapshot row validation for `id`, `service`, `description`, `qty`, and `unit_price`.
+  - `readQuotePdfSnapshot` now rejects the full immutable snapshot when any line item is malformed, causing `resolveQuotePdfSource` to return `state: "invalid"`.
+- Renamed the PDF route file from `src/routes/quotes.$id.pdf.tsx` to `src/routes/quotes.$id_.pdf.tsx`.
+  - Updated the route declaration to `createFileRoute("/quotes/$id_/pdf")`.
+  - Regenerated `src/routeTree.gen.ts`.
+
+### Route validation
+- Confirmed `src/routeTree.gen.ts` now imports `./routes/quotes.$id_.pdf`.
+- Confirmed `/quotes/$id/pdf` no longer uses `parentRoute: typeof QuotesIdRoute`.
+- The regenerated route now resolves with `parentRoute: typeof QuotesRoute`, so it renders outside the `QuoteDetail` component tree while preserving the same URL.
+
+### Verification run
+- Red phase:
+  - `bun run vitest run src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - Result: failed as expected because malformed immutable line items still resolved as `state: "snapshot"`.
+- Green/focused:
+  - `bun run vitest run src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - Result: passed (`1` file, `10` tests).
+- Required verification:
+  - `bun run vitest run src/components/quotes/__tests__/quote-pdf-preview.test.ts src/server/repositories/__tests__/quotes.test.ts src/server-functions/__tests__/quotes.test.ts src/lib/__tests__/quote-to-cash.test.ts`
+  - Result: passed (`4` files, `39` tests).
+  - `bun run build`
+  - Result: succeeded.
+  - Notes:
+    - Pre-build schema step reported `{ "ok": true, "skipped": true, "reason": "DATABASE_URL is not set" }`
+    - Seed step reported `{ "ok": true, "skipped": true, "reason": "CLIENTOPS_SEED_ON_DEPLOY is not 1" }`
+    - Vite emitted the same existing chunk-size and unused-import warnings, but the build completed successfully.
+
+### Files changed
+- `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+- `src/components/quotes/quote-pdf-preview.tsx`
+- `src/routes/quotes.$id_.pdf.tsx`
+- `src/routeTree.gen.ts`
+
+### Self-review
+- The new validation is intentionally narrow and only tightens immutable snapshot parsing.
+- The route rename follows the reviewer-requested unnested TanStack Router convention without adding an `Outlet` to `QuoteDetail`.
+- The generated route tree confirms the print route now renders outside the quote detail component hierarchy.

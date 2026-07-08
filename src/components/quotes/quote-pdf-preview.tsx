@@ -56,8 +56,23 @@ function isSnapshotRecord(value: JsonValue): value is Record<string, JsonValue> 
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function readSnapshotLineItems(value: JsonValue): QuoteLineItem[] {
-  return Array.isArray(value) ? (value as QuoteLineItem[]) : [];
+function isSnapshotLineItem(value: JsonValue): value is QuoteLineItem {
+  return (
+    isSnapshotRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.service === "string" &&
+    typeof value.description === "string" &&
+    typeof value.qty === "number" &&
+    typeof value.unit_price === "number"
+  );
+}
+
+function readSnapshotLineItems(value: JsonValue): QuoteLineItem[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  return value.every(isSnapshotLineItem) ? value : null;
 }
 
 export function readQuotePdfSnapshot(snapshot: JsonValue): Omit<ResolvedQuotePdfSource, "sourceVersion"> | null {
@@ -66,6 +81,12 @@ export function readQuotePdfSnapshot(snapshot: JsonValue): Omit<ResolvedQuotePdf
   }
 
   if (typeof snapshot.total_value !== "number" || !Array.isArray(snapshot.line_items)) {
+    return null;
+  }
+
+  const lineItems = readSnapshotLineItems(snapshot.line_items);
+
+  if (!lineItems) {
     return null;
   }
 
@@ -80,7 +101,7 @@ export function readQuotePdfSnapshot(snapshot: JsonValue): Omit<ResolvedQuotePdf
       payment_terms: typeof snapshot.payment_terms === "string" ? snapshot.payment_terms : null,
       document_sections: snapshot.document_sections ?? [],
     },
-    lineItems: readSnapshotLineItems(snapshot.line_items),
+    lineItems,
   };
 }
 

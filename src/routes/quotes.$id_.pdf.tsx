@@ -10,7 +10,7 @@ import { getClient } from "@/server-functions/clients";
 import { getLead } from "@/server-functions/leads";
 import { getQuote, getQuoteVersions } from "@/server-functions/quotes";
 
-export const Route = createFileRoute("/quotes/$id/pdf")({
+export const Route = createFileRoute("/quotes/$id_/pdf")({
   loader: async ({ params }) => {
     const quote = await getQuote({ data: { id: params.id } });
     const clientPromise = quote.client_id

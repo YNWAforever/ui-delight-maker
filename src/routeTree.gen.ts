@@ -35,7 +35,7 @@ import { Route as ClientsIdRouteImport } from './routes/clients.$id'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as AgentsNameRouteImport } from './routes/agents.$name'
 import { Route as AccountsIdRouteImport } from './routes/accounts.$id'
-import { Route as QuotesIdPdfRouteImport } from './routes/quotes.$id.pdf'
+import { Route as QuotesIdPdfRouteImport } from './routes/quotes.$id_.pdf'
 import { Route as ApiWorkflowsScoreRenewalRiskRouteImport } from './routes/api/workflows/score-renewal-risk'
 import { Route as ApiWorkflowsRetentionSweepRouteImport } from './routes/api/workflows/retention-sweep'
 import { Route as ApiWorkflowsRelationshipIntelligenceRouteImport } from './routes/api/workflows/relationship-intelligence'
@@ -178,9 +178,9 @@ const AccountsIdRoute = AccountsIdRouteImport.update({
   getParentRoute: () => AccountsRoute,
 } as any)
 const QuotesIdPdfRoute = QuotesIdPdfRouteImport.update({
-  id: '/pdf',
-  path: '/pdf',
-  getParentRoute: () => QuotesIdRoute,
+  id: '/$id_/pdf',
+  path: '/$id/pdf',
+  getParentRoute: () => QuotesRoute,
 } as any)
 const ApiWorkflowsScoreRenewalRiskRoute =
   ApiWorkflowsScoreRenewalRiskRouteImport.update({
@@ -263,7 +263,7 @@ export interface FileRoutesByFullPath {
   '/clients/import': typeof ClientsImportRoute
   '/leads/$id': typeof LeadsIdRoute
   '/login/$authPath': typeof LoginAuthPathRoute
-  '/quotes/$id': typeof QuotesIdRouteWithChildren
+  '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
@@ -302,7 +302,7 @@ export interface FileRoutesByTo {
   '/clients/import': typeof ClientsImportRoute
   '/leads/$id': typeof LeadsIdRoute
   '/login/$authPath': typeof LoginAuthPathRoute
-  '/quotes/$id': typeof QuotesIdRouteWithChildren
+  '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
@@ -342,7 +342,7 @@ export interface FileRoutesById {
   '/clients/import': typeof ClientsImportRoute
   '/leads/$id': typeof LeadsIdRoute
   '/login/$authPath': typeof LoginAuthPathRoute
-  '/quotes/$id': typeof QuotesIdRouteWithChildren
+  '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
@@ -351,7 +351,7 @@ export interface FileRoutesById {
   '/api/workflows/relationship-intelligence': typeof ApiWorkflowsRelationshipIntelligenceRoute
   '/api/workflows/retention-sweep': typeof ApiWorkflowsRetentionSweepRoute
   '/api/workflows/score-renewal-risk': typeof ApiWorkflowsScoreRenewalRiskRoute
-  '/quotes/$id/pdf': typeof QuotesIdPdfRoute
+  '/quotes/$id_/pdf': typeof QuotesIdPdfRoute
   '/api/workflows/context/account': typeof ApiWorkflowsContextAccountRoute
   '/api/workflows/context/engagement': typeof ApiWorkflowsContextEngagementRoute
   '/api/workflows/context/lead': typeof ApiWorkflowsContextLeadRoute
@@ -470,7 +470,7 @@ export interface FileRouteTypes {
     | '/api/workflows/relationship-intelligence'
     | '/api/workflows/retention-sweep'
     | '/api/workflows/score-renewal-risk'
-    | '/quotes/$id/pdf'
+    | '/quotes/$id_/pdf'
     | '/api/workflows/context/account'
     | '/api/workflows/context/engagement'
     | '/api/workflows/context/lead'
@@ -690,12 +690,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountsIdRouteImport
       parentRoute: typeof AccountsRoute
     }
-    '/quotes/$id/pdf': {
-      id: '/quotes/$id/pdf'
-      path: '/pdf'
+    '/quotes/$id_/pdf': {
+      id: '/quotes/$id_/pdf'
+      path: '/$id/pdf'
       fullPath: '/quotes/$id/pdf'
       preLoaderRoute: typeof QuotesIdPdfRouteImport
-      parentRoute: typeof QuotesIdRoute
+      parentRoute: typeof QuotesRoute
     }
     '/api/workflows/score-renewal-risk': {
       id: '/api/workflows/score-renewal-risk'
@@ -838,26 +838,16 @@ const LoginRouteChildren: LoginRouteChildren = {
 
 const LoginRouteWithChildren = LoginRoute._addFileChildren(LoginRouteChildren)
 
-interface QuotesIdRouteChildren {
+interface QuotesRouteChildren {
+  QuotesIdRoute: typeof QuotesIdRoute
+  QuotesNewRoute: typeof QuotesNewRoute
   QuotesIdPdfRoute: typeof QuotesIdPdfRoute
 }
 
-const QuotesIdRouteChildren: QuotesIdRouteChildren = {
-  QuotesIdPdfRoute: QuotesIdPdfRoute,
-}
-
-const QuotesIdRouteWithChildren = QuotesIdRoute._addFileChildren(
-  QuotesIdRouteChildren,
-)
-
-interface QuotesRouteChildren {
-  QuotesIdRoute: typeof QuotesIdRouteWithChildren
-  QuotesNewRoute: typeof QuotesNewRoute
-}
-
 const QuotesRouteChildren: QuotesRouteChildren = {
-  QuotesIdRoute: QuotesIdRouteWithChildren,
+  QuotesIdRoute: QuotesIdRoute,
   QuotesNewRoute: QuotesNewRoute,
+  QuotesIdPdfRoute: QuotesIdPdfRoute,
 }
 
 const QuotesRouteWithChildren =

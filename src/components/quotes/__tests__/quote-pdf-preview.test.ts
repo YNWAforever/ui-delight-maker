@@ -216,6 +216,60 @@ describe("resolveQuotePdfSource", () => {
     expect(result.lineItems).toEqual([]);
   });
 
+  it.each([
+    {
+      label: "qty",
+      lineItem: {
+        id: "line-snapshot-1",
+        service: "Immutable row",
+        description: "Snapshot row",
+        unit_price: 400,
+      },
+    },
+    {
+      label: "unit_price",
+      lineItem: {
+        id: "line-snapshot-1",
+        service: "Immutable row",
+        description: "Snapshot row",
+        qty: 3,
+      },
+    },
+  ])("fails closed when an immutable snapshot line item is missing $label", ({ lineItem }) => {
+    const result = resolveQuotePdfSource(
+      makeQuote({
+        status: "accepted",
+        accepted_version_id: "accepted-version-1",
+      }),
+      [
+        makeVersion({
+          id: "accepted-version-1",
+          reason: "accepted",
+          snapshot: {
+            number: "Q-001",
+            currency: "HKD",
+            total_value: 1200,
+            valid_until: "2026-08-15",
+            cover_text: "Snapshot cover",
+            assumptions: "Snapshot assumptions",
+            payment_terms: "Snapshot payment terms",
+            document_sections: [],
+            line_items: [lineItem],
+          },
+        }),
+      ],
+    );
+
+    expect(result.state).toBe("invalid");
+    expect(result.error).toEqual({
+      code: "invalid_immutable_snapshot",
+      versionId: "accepted-version-1",
+      versionReason: "accepted",
+    });
+    expect(result.quote).toBeNull();
+    expect(result.lineItems).toEqual([]);
+  });
+
   it("returns live draft data when no immutable snapshot is required", () => {
     const quote = makeQuote();
     const result = resolveQuotePdfSource(quote, [makeVersion()]);
