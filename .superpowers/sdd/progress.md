@@ -16,3 +16,4 @@ Task 5: complete (commits 7ee389b..c6ba4ee, review clean; minor: pointer-present
 Task 6: complete (commits c6ba4ee..0a8654e, review clean; minor: existing Vite chunk-size/unused-import warnings)
 Task 7: complete (commits 0a8654e..08d51f0, review clean; notes: tsc still fails only on baseline quote preview/pipeline/quotes.new/automation-playbooks files; no Task 7 files in tsc output)
 Task 8: complete (commits 08d51f0..f9d3233, review clean; notes: route source test added with ignored `-` prefix to avoid TanStack route warnings)
+Task 9: complete (commits 8d4cca6..177347b, review clean; notes: targeted tests 66/66, full suite 327/327, build pass, tsc only fails on pre-existing automation-playbooks serializability errors; browser smoke reached clean login redirects but authenticated flows need Neon Auth/database session)
