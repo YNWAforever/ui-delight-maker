@@ -15,7 +15,7 @@ export type QuotePdfQuote = Pick<
 >;
 
 type QuotePdfSourceInput = QuotePdfQuote &
-  Pick<Quote, "accepted_version_id" | "issued_version_id" | "line_items">;
+  Pick<Quote, "status" | "accepted_version_id" | "issued_version_id" | "line_items">;
 
 export type QuotePdfSourceError = {
   code: "missing_immutable_snapshot" | "invalid_immutable_snapshot";
@@ -88,11 +88,12 @@ export function resolveQuotePdfSource(
   quote: QuotePdfSourceInput,
   versions: QuoteVersion[],
 ): ResolvedQuotePdfSource {
-  const immutableReference = quote.accepted_version_id
-    ? { versionId: quote.accepted_version_id, versionReason: "accepted" as const }
-    : quote.issued_version_id
-      ? { versionId: quote.issued_version_id, versionReason: "issued" as const }
-      : null;
+  const immutableReference =
+    quote.status === "accepted" && quote.accepted_version_id
+      ? { versionId: quote.accepted_version_id, versionReason: "accepted" as const }
+      : (quote.status === "sent" || quote.status === "viewed") && quote.issued_version_id
+        ? { versionId: quote.issued_version_id, versionReason: "issued" as const }
+        : null;
 
   if (!immutableReference) {
     return {

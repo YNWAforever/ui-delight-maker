@@ -228,4 +228,66 @@ describe("resolveQuotePdfSource", () => {
     });
     expect(result.lineItems).toBe(quote.line_items);
   });
+
+  it.each([
+    {
+      status: "draft" as const,
+      pointerField: "issued_version_id" as const,
+      pointerValue: "issued-version-1",
+    },
+    {
+      status: "revised" as const,
+      pointerField: "accepted_version_id" as const,
+      pointerValue: "accepted-version-1",
+    },
+  ])(
+    "returns live mutable data for $status quotes even when $pointerField still points at an older immutable snapshot",
+    ({ status, pointerField, pointerValue }) => {
+      const quote = makeQuote({
+        status,
+        [pointerField]: pointerValue,
+        cover_text: "Reopened draft cover",
+        total_value: 1000,
+      });
+      const result = resolveQuotePdfSource(quote, [
+        makeVersion({
+          id: pointerValue,
+          reason: pointerField === "accepted_version_id" ? "accepted" : "issued",
+          snapshot: {
+            number: "Q-001",
+            currency: "HKD",
+            total_value: 2400,
+            valid_until: "2026-08-15",
+            cover_text: "Old immutable cover",
+            assumptions: "Old immutable assumptions",
+            payment_terms: "Old immutable payment terms",
+            document_sections: [],
+            line_items: [
+              {
+                id: "line-old-1",
+                service: "Old immutable row",
+                description: "Old snapshot row",
+                qty: 6,
+                unit_price: 400,
+              },
+            ],
+          },
+        }),
+      ]);
+
+      expect(result.state).toBe("live");
+      expect(result.sourceVersion).toBeNull();
+      expect(result.quote).toMatchObject({
+        cover_text: "Reopened draft cover",
+        total_value: 1000,
+      });
+      expect(result.lineItems).toBe(quote.line_items);
+      expect(result.lineItems).toEqual([
+        expect.objectContaining({
+          id: "line-live-1",
+          service: "Strategy",
+        }),
+      ]);
+    },
+  );
 });

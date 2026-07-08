@@ -157,3 +157,55 @@
 ### Self-review
 - Immutable snapshot resolution now fails closed for missing required commercial fields instead of substituting fallback values.
 - The patch is narrowly scoped to snapshot validation and targeted test coverage, matching the reviewer finding.
+
+---
+
+## Task 6 Fix Report - Reviewer finding: gate immutable quote PDF snapshots by status
+
+### Timestamp
+- 2026-07-09T04:22:14.3038202+08:00
+
+### Scope
+- Fix `resolveQuotePdfSource` so stale `issued_version_id` / `accepted_version_id` pointers do not force immutable snapshot rendering for mutable quote states like `draft` or `revised`.
+- Add regression coverage proving leftover immutable pointers still resolve to live quote data outside customer-facing issued/accepted states.
+
+### What changed
+- Updated `src/components/quotes/quote-pdf-preview.tsx`:
+  - Extended `QuotePdfSourceInput` to include `status`.
+  - Gated immutable snapshot selection by lifecycle state instead of pointer presence alone.
+  - `accepted` quotes only use `accepted_version_id` when present.
+  - `sent` and `viewed` quotes only use `issued_version_id` when present.
+  - Draft-like mutable states such as `draft` and `revised` now render live quote fields and live line items even if stale immutable pointers remain on the record.
+- Preserved the existing fail-closed behavior for required immutable snapshots once a customer-facing immutable state is selected.
+
+### Tests added or updated
+- Updated `src/components/quotes/__tests__/quote-pdf-preview.test.ts`:
+  - Added a regression case for a `draft` quote with a leftover `issued_version_id`.
+  - Added a regression case for a reopened `revised` quote with a leftover `accepted_version_id`.
+  - Both assertions verify `state: "live"`, live quote fields, and live line items rather than old snapshot content.
+
+### Verification run
+- Red phase:
+  - `bun run vitest run src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - Result: failed as expected because stale immutable pointers still resolved to `state: "snapshot"`.
+- Green/focused:
+  - `bun run vitest run src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - Result: passed (`1` file, `8` tests).
+- Required verification:
+  - `bun run vitest run src/components/quotes/__tests__/quote-pdf-preview.test.ts src/server/repositories/__tests__/quotes.test.ts src/server-functions/__tests__/quotes.test.ts src/lib/__tests__/quote-to-cash.test.ts`
+  - Result: passed (`4` files, `37` tests).
+  - `bun run build`
+  - Result: succeeded.
+  - Notes:
+    - Pre-build schema step reported `{ "ok": true, "skipped": true, "reason": "DATABASE_URL is not set" }`
+    - Seed step reported `{ "ok": true, "skipped": true, "reason": "CLIENTOPS_SEED_ON_DEPLOY is not 1" }`
+    - Vite emitted existing chunk-size and unused-import warnings, but the build completed successfully.
+
+### Files changed
+- `src/components/quotes/quote-pdf-preview.tsx`
+- `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+
+### Self-review
+- Immutable snapshots are now reserved for customer-facing issued/accepted lifecycle states instead of any record that happens to retain an old pointer.
+- Mutable draft/revision preview behavior stays live, so unsaved or reopened edits no longer render stale immutable commercial data.
+- The fix is tightly scoped to the resolver and its regression coverage.
