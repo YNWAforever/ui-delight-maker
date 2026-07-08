@@ -126,6 +126,8 @@ export async function createQuote(input: CreateQuoteInput, db?: Queryable) {
 }
 
 export async function updateQuote(id: string, updates: Partial<Quote>) {
+  const hasImmutableVersionReferenceUpdate =
+    updates.accepted_version_id !== undefined || updates.issued_version_id !== undefined;
   const immutableVersionReferenceGuard = buildImmutableVersionReferenceGuard(updates);
   const normalizedUpdates = {
     ...updates,
@@ -148,7 +150,13 @@ export async function updateQuote(id: string, updates: Partial<Quote>) {
     [...immutableVersionReferenceGuard.values, ...update.values, id],
   );
 
-  if (!quote) throw new Error("Quote not found or version reference is immutable");
+  if (!quote) {
+    throw new Error(
+      hasImmutableVersionReferenceUpdate
+        ? "Quote not found or version reference is immutable"
+        : "Quote not found",
+    );
+  }
   return quote;
 }
 
