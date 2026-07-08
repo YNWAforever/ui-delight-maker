@@ -66,10 +66,16 @@ export const Route = createFileRoute("/quotes/$id")({
   }),
   loader: async ({ params }) => {
     const [quote, templates] = await Promise.all([getQuote({ data: { id: params.id } }), getPricingTemplates()]);
+    const clientPromise = quote.client_id
+      ? getClient({ data: { id: quote.client_id } }).catch(() => null)
+      : Promise.resolve(null);
+    const leadPromise = quote.lead_id
+      ? getLead({ data: { id: quote.lead_id } }).catch(() => null)
+      : Promise.resolve(null);
     const [versions, client, leadResult] = await Promise.all([
       getQuoteVersions({ data: { quoteId: quote.id } }),
-      quote.client_id ? getClient({ data: { id: quote.client_id } }) : Promise.resolve(null),
-      quote.lead_id ? getLead({ data: { id: quote.lead_id } }) : Promise.resolve(null),
+      clientPromise,
+      leadPromise,
     ]);
     return { quote, templates, versions, client, lead: leadResult?.lead ?? null };
   },

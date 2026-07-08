@@ -209,3 +209,44 @@
 - Immutable snapshots are now reserved for customer-facing issued/accepted lifecycle states instead of any record that happens to retain an old pointer.
 - Mutable draft/revision preview behavior stays live, so unsaved or reopened edits no longer render stale immutable commercial data.
 - The fix is tightly scoped to the resolver and its regression coverage.
+
+---
+
+## Task 6 Fix Report - Reviewer finding: make quote preview name lookups best effort
+
+### Timestamp
+- 2026-07-09T04:31:00+08:00
+
+### Scope
+- Fix `src/routes/quotes.$id.tsx` and `src/routes/quotes.$id.pdf.tsx` so stale or deleted client/lead references do not block the quote detail or PDF preview routes.
+
+### What changed
+- Updated the quote detail loader in `src/routes/quotes.$id.tsx`:
+  - Kept `getQuote()` and `getQuoteVersions()` as required loader work.
+  - Wrapped optional `getClient()` and `getLead()` requests in local best-effort promises that downgrade lookup failures to `null`.
+- Updated the PDF route loader in `src/routes/quotes.$id.pdf.tsx` with the same local best-effort lookup behavior.
+- Preserved the existing display-name fallbacks (`client.company_name`, `lead.company_name`, ids, then `"Client"`), so the UI continues to render useful labels even when related records no longer exist.
+
+### Tests added or updated
+- No new tests added.
+- Reason: there is no established route-loader test pattern in this worktree to extend quickly, and the reviewer asked to avoid building a new harness for this small robustness fix.
+
+### Verification run
+- Required verification:
+  - `bun run vitest run src/components/quotes/__tests__/quote-pdf-preview.test.ts src/server/repositories/__tests__/quotes.test.ts src/server-functions/__tests__/quotes.test.ts src/lib/__tests__/quote-to-cash.test.ts`
+  - Result: passed (`4` files, `37` tests).
+  - `bun run build`
+  - Result: succeeded.
+  - Notes:
+    - Pre-build schema step reported `{ "ok": true, "skipped": true, "reason": "DATABASE_URL is not set" }`
+    - Seed step reported `{ "ok": true, "skipped": true, "reason": "CLIENTOPS_SEED_ON_DEPLOY is not 1" }`
+    - Vite emitted the same existing chunk-size and unused-import warnings, but the build completed successfully.
+
+### Files changed
+- `src/routes/quotes.$id.tsx`
+- `src/routes/quotes.$id.pdf.tsx`
+
+### Self-review
+- The patch is local to the two loaders the reviewer identified.
+- Optional reference lookups now fail open to `null`, while required quote/version fetches still fail normally.
+- Existing fallback labels continue to cover missing client/lead records without any UI refactor.

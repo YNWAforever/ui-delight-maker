@@ -13,10 +13,16 @@ import { getQuote, getQuoteVersions } from "@/server-functions/quotes";
 export const Route = createFileRoute("/quotes/$id/pdf")({
   loader: async ({ params }) => {
     const quote = await getQuote({ data: { id: params.id } });
+    const clientPromise = quote.client_id
+      ? getClient({ data: { id: quote.client_id } }).catch(() => null)
+      : Promise.resolve(null);
+    const leadPromise = quote.lead_id
+      ? getLead({ data: { id: quote.lead_id } }).catch(() => null)
+      : Promise.resolve(null);
     const [versions, client, leadResult] = await Promise.all([
       getQuoteVersions({ data: { quoteId: quote.id } }),
-      quote.client_id ? getClient({ data: { id: quote.client_id } }) : Promise.resolve(null),
-      quote.lead_id ? getLead({ data: { id: quote.lead_id } }) : Promise.resolve(null),
+      clientPromise,
+      leadPromise,
     ]);
 
     return {
