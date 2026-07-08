@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { calculateTotal, newLineItem } from "../quote-utils";
 
 describe("calculateTotal", () => {
-  it("sums qty × unit_price for all items", () => {
+  it("sums qty by unit_price for all items", () => {
     const items = [
       { id: "1", service: "A", description: "", qty: 2, unit_price: 10000 },
       { id: "2", service: "B", description: "", qty: 1, unit_price: 38000 },

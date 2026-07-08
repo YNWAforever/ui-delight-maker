@@ -1,11 +1,10 @@
-// src/lib/quote-utils.ts
 import type { QuoteLineItem, PricingTemplate } from "@/lib/types";
 
 /**
- * Compute the sum of (qty × unit_price) for all line items.
+ * Compute the sum of (qty * unit_price) for all line items.
  */
 export function calculateTotal(items: QuoteLineItem[]): number {
-  return items.reduce((sum, li) => sum + li.qty * li.unit_price, 0);
+  return items.reduce((sum, li) => sum + (Number(li.qty) || 0) * (Number(li.unit_price) || 0), 0);
 }
 
 /**
