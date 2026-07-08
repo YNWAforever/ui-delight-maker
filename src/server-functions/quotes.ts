@@ -41,6 +41,11 @@ type CreateQuoteInput = Pick<Quote, "lead_id" | "currency"> &
       | "total_value"
       | "valid_until"
       | "number"
+      | "quote_template_id"
+      | "document_sections"
+      | "cover_text"
+      | "assumptions"
+      | "payment_terms"
     >
   >;
 

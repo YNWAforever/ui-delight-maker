@@ -23,6 +23,11 @@ type CreateQuoteInput = Pick<Quote, "lead_id" | "currency"> &
       | "total_value"
       | "valid_until"
       | "number"
+      | "quote_template_id"
+      | "document_sections"
+      | "cover_text"
+      | "assumptions"
+      | "payment_terms"
       | "created_by"
     >
   >;
@@ -100,9 +105,9 @@ export async function createQuote(input: CreateQuoteInput, db?: Queryable) {
   const quote = await queryOne<Quote>(
     `
       insert into quotes
-        (number, lead_id, client_id, contact_id, account_id, deal_id, status, total_value, currency, valid_until, line_items, created_by)
+        (number, lead_id, client_id, contact_id, account_id, deal_id, status, total_value, currency, valid_until, line_items, quote_template_id, document_sections, cover_text, assumptions, payment_terms, created_by)
       values
-        ($1, $2, $3, $4, $5, $6, 'draft', $7, coalesce($8, 'HKD'), $9, coalesce($10::jsonb, '[]'::jsonb), $11)
+        ($1, $2, $3, $4, $5, $6, 'draft', $7, coalesce($8, 'HKD'), $9, coalesce($10::jsonb, '[]'::jsonb), $11, coalesce($12::jsonb, '[]'::jsonb), $13, $14, $15, $16)
       returning *
     `,
     [
@@ -116,6 +121,11 @@ export async function createQuote(input: CreateQuoteInput, db?: Queryable) {
       input.currency ?? null,
       input.valid_until ?? null,
       input.line_items === undefined ? null : JSON.stringify(input.line_items),
+      input.quote_template_id ?? null,
+      input.document_sections === undefined ? null : JSON.stringify(input.document_sections),
+      input.cover_text ?? null,
+      input.assumptions ?? null,
+      input.payment_terms ?? null,
       input.created_by ?? null,
     ],
     db,

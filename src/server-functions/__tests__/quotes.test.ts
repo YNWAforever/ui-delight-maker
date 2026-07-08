@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   requireNeonAuthSessionMock,
+  createQuoteMock,
   getQuoteMock,
   updateQuoteMock,
   listQuoteTemplatesMock,
@@ -22,6 +23,7 @@ const {
 
   return {
     requireNeonAuthSessionMock: vi.fn(),
+    createQuoteMock: vi.fn(),
     getQuoteMock: vi.fn(),
     updateQuoteMock: vi.fn(),
     listQuoteTemplatesMock: vi.fn(),
@@ -59,7 +61,7 @@ vi.mock("@/server/repositories/quotes", () => ({
   getQuote: getQuoteMock,
   updateQuote: updateQuoteMock,
   listQuotes: vi.fn(),
-  createQuote: vi.fn(),
+  createQuote: createQuoteMock,
   listActivePricingTemplates: vi.fn(),
 }));
 
@@ -92,6 +94,58 @@ describe("quote server functions", () => {
     expect(listQuoteTemplatesMock).toHaveBeenCalled();
     expect(requireNeonAuthSessionMock.mock.invocationCallOrder[0]).toBeLessThan(
       listQuoteTemplatesMock.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("passes quote document fields through createQuote with the session user", async () => {
+    createQuoteMock.mockResolvedValue({ id: "quote-1" });
+    const { createQuote } = await import("../quotes");
+
+    await createQuote({
+      data: {
+        number: "Q-1001",
+        lead_id: "lead-1",
+        client_id: "client-1",
+        contact_id: "contact-1",
+        account_id: "account-1",
+        deal_id: "deal-1",
+        total_value: 120000,
+        currency: "USD",
+        valid_until: "2026-08-01",
+        line_items: [
+          { id: "line-1", service: "Strategy", description: "Planning", qty: 1, unit_price: 120000 },
+        ],
+        quote_template_id: "template-1",
+        cover_text: "Intro copy",
+        assumptions: "Assume approvals within 48 hours.",
+        payment_terms: "50% upfront.",
+        document_sections: [{ title: "Scope", body: "Planning" }],
+      },
+    });
+
+    expect(requireNeonAuthSessionMock).toHaveBeenCalled();
+    expect(createQuoteMock).toHaveBeenCalledWith({
+      number: "Q-1001",
+      lead_id: "lead-1",
+      client_id: "client-1",
+      contact_id: "contact-1",
+      account_id: "account-1",
+      deal_id: "deal-1",
+      total_value: 120000,
+      currency: "USD",
+      valid_until: "2026-08-01",
+      line_items: [
+        { id: "line-1", service: "Strategy", description: "Planning", qty: 1, unit_price: 120000 },
+      ],
+      quote_template_id: "template-1",
+      cover_text: "Intro copy",
+      assumptions: "Assume approvals within 48 hours.",
+      payment_terms: "50% upfront.",
+      document_sections: [{ title: "Scope", body: "Planning" }],
+      created_by: "user-1",
+    });
+    expect(requireNeonAuthSessionMock.mock.invocationCallOrder[0]).toBeLessThan(
+      createQuoteMock.mock.invocationCallOrder[0],
     );
   });
 

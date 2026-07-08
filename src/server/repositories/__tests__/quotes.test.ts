@@ -13,6 +13,57 @@ vi.mock("@/server/db/neon.server", () => ({
 describe("quotes repository line items", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it("persists quote document fields on create", async () => {
+    mockQueryOne.mockResolvedValue({ id: "quote-1" });
+    const { createQuote } = await import("../quotes");
+
+    await createQuote({
+      number: "Q-1001",
+      lead_id: "lead-1",
+      client_id: "client-1",
+      contact_id: "contact-1",
+      account_id: "account-1",
+      deal_id: "deal-1",
+      total_value: 120000,
+      currency: "USD",
+      valid_until: "2026-08-01",
+      line_items: [{ id: "line-1", service: "Strategy", description: "Planning", qty: 1, unit_price: 120000 }],
+      quote_template_id: "template-1",
+      cover_text: "Intro copy",
+      assumptions: "Assume approvals within 48 hours.",
+      payment_terms: "50% upfront.",
+      document_sections: [{ title: "Scope", body: "Planning" }],
+      created_by: "user-1",
+    });
+
+    expect(mockQueryOne).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "(number, lead_id, client_id, contact_id, account_id, deal_id, status, total_value, currency, valid_until, line_items, quote_template_id, document_sections, cover_text, assumptions, payment_terms, created_by)",
+      ),
+      [
+        "Q-1001",
+        "lead-1",
+        "client-1",
+        "contact-1",
+        "account-1",
+        "deal-1",
+        120000,
+        "USD",
+        "2026-08-01",
+        JSON.stringify([
+          { id: "line-1", service: "Strategy", description: "Planning", qty: 1, unit_price: 120000 },
+        ]),
+        "template-1",
+        JSON.stringify([{ title: "Scope", body: "Planning" }]),
+        "Intro copy",
+        "Assume approvals within 48 hours.",
+        "50% upfront.",
+        "user-1",
+      ],
+      undefined,
+    );
+  });
+
   it("lists quote line items ordered by sort order and creation time", async () => {
     mockQuery.mockResolvedValue([]);
     const { listQuoteLineItems } = await import("../quotes");
