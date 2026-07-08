@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
+import { JobSheetStatusBadge } from "@/components/job-sheets/job-sheet-status-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +31,7 @@ import {
 import { getTouchpointsByClient } from "@/server-functions/touchpoints";
 import { getProducts } from "@/server-functions/products";
 import { getActivityLogsForClient } from "@/server-functions/activity-logs";
+import { getJobSheets } from "@/server-functions/job-sheets";
 import { getTasks } from "@/server-functions/tasks";
 import type { SerializableActivityLog } from "@/server-functions/serializers";
 import { USER_RECORD } from "@/lib/users";
@@ -39,7 +41,7 @@ const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : 
 
 export const Route = createFileRoute("/clients/$id")({
   loader: async ({ params }) => {
-    const [client, allQuotes, engagements, contacts, touchpoints, products, tasks] =
+    const [client, allQuotes, engagements, contacts, touchpoints, products, jobSheets, tasks] =
       await Promise.all([
         getClient({ data: { id: params.id } }),
         getQuotes({}),
@@ -47,6 +49,7 @@ export const Route = createFileRoute("/clients/$id")({
         getClientContacts({ data: { clientId: params.id } }),
         getTouchpointsByClient({ data: { clientId: params.id } }),
         getProducts({ data: { activeOnly: true } }),
+        getJobSheets({ data: { client_id: params.id } }),
         getTasks({ data: { client_id: params.id } }),
       ]);
 
@@ -63,6 +66,7 @@ export const Route = createFileRoute("/clients/$id")({
       contacts,
       touchpoints,
       products,
+      jobSheets,
       tasks,
       activityLogs,
     };
@@ -92,11 +96,13 @@ function ClientDetail() {
     contacts,
     products,
     touchpoints,
+    jobSheets,
     tasks: clientTasks,
     activityLogs,
   } = Route.useLoaderData();
   const owner = userById(client.account_owner ?? "");
   const clientContacts = contacts.filter((c) => c.client_id === client.id);
+  const quoteById = new Map(clientQuotes.map((quote) => [quote.id, quote]));
 
   const productById = (id: string) => products.find((p) => p.id === id);
   const activeProductIds = new Set(
@@ -140,6 +146,7 @@ function ClientDetail() {
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="contacts">Contacts ({clientContacts.length})</TabsTrigger>
                   <TabsTrigger value="quotes">Quotes ({clientQuotes.length})</TabsTrigger>
+                  <TabsTrigger value="job-sheets">Job Sheets ({jobSheets.length})</TabsTrigger>
                   <TabsTrigger value="tasks">Tasks ({clientTasks.length})</TabsTrigger>
                   <TabsTrigger value="timeline">Timeline</TabsTrigger>
                 </TabsList>
@@ -227,6 +234,39 @@ function ClientDetail() {
                         </div>
                       </li>
                     ))}
+                  </ul>
+                )}
+              </TabsContent>
+
+              <TabsContent value="job-sheets" className="mt-4">
+                {jobSheets.length === 0 ? (
+                  <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+                    No accepted quote job sheets for this client yet.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {jobSheets.map((sheet) => {
+                      const quote = quoteById.get(sheet.quote_id);
+
+                      return (
+                        <li key={sheet.id}>
+                          <Link
+                            to="/job-sheets/$id"
+                            params={{ id: sheet.id }}
+                            className="block rounded-md border border-border p-3 hover:bg-muted/50"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="font-medium">{sheet.number}</span>
+                              <JobSheetStatusBadge status={sheet.status} />
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                              <span>Quote {quote?.number ?? sheet.quote_id}</span>
+                              <span>{formatCurrencyAmount(sheet.total_amount, sheet.currency)}</span>
+                            </div>
+                          </Link>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </TabsContent>

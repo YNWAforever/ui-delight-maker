@@ -184,19 +184,27 @@ describe("job sheets repository", () => {
     expect(mockQueryOne).toHaveBeenCalledTimes(2);
   });
 
-  it("lists job sheets by status, client, and account filters", async () => {
+  it("lists job sheets by status filter", async () => {
     mockQuery.mockResolvedValue([]);
     const { listJobSheets } = await import("../job-sheets");
 
-    await listJobSheets({
-      status: "accounting_review",
-      client_id: "client-1",
-      account_id: "account-1",
-    });
+    await listJobSheets({ status: "accounting_review" });
 
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringContaining("from job_sheets"),
-      ["accounting_review", "client-1", "account-1"],
+      ["accounting_review"],
+    );
+  });
+
+  it("lists job sheets by client and account filters", async () => {
+    mockQuery.mockResolvedValue([]);
+    const { listJobSheets } = await import("../job-sheets");
+
+    await listJobSheets({ client_id: "client-1", account_id: "account-1" });
+
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("from job_sheets"),
+      ["client-1", "account-1"],
     );
   });
 

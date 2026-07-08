@@ -9,6 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import { JobSheetStatusBadge } from "@/components/job-sheets/job-sheet-status-badge";
 import { PageHeader } from "@/components/page-header";
 import { AccountTimeline } from "@/components/relationship/account-timeline";
 import { StakeholderMap } from "@/components/relationship/stakeholder-map";
@@ -26,6 +27,7 @@ import { getAccountTimeline } from "@/server-functions/activity-logs";
 import { getClients } from "@/server-functions/clients";
 import { getAccountContacts } from "@/server-functions/contacts";
 import { getEngagementsByClient } from "@/server-functions/engagements";
+import { getJobSheets } from "@/server-functions/job-sheets";
 import { getQuotes } from "@/server-functions/quotes";
 import {
   dismissRelationshipSignalFn,
@@ -35,15 +37,17 @@ import { getTasks } from "@/server-functions/tasks";
 
 export const Route = createFileRoute("/accounts/$id")({
   loader: async ({ params }) => {
-    const [account, contacts, timeline, signals, linkedClients, tasks, quotes] = await Promise.all([
-      getAccount({ data: { id: params.id } }),
-      getAccountContacts({ data: { accountId: params.id } }),
-      getAccountTimeline({ data: { accountId: params.id } }),
-      getRelationshipSignals({ data: { account_id: params.id, openOnly: true } }),
-      getClients({ data: { account_id: params.id } }),
-      getTasks({ data: { account_id: params.id } }),
-      getQuotes({ data: { account_id: params.id } }),
-    ]);
+    const [account, contacts, timeline, signals, linkedClients, tasks, quotes, jobSheets] =
+      await Promise.all([
+        getAccount({ data: { id: params.id } }),
+        getAccountContacts({ data: { accountId: params.id } }),
+        getAccountTimeline({ data: { accountId: params.id } }),
+        getRelationshipSignals({ data: { account_id: params.id, openOnly: true } }),
+        getClients({ data: { account_id: params.id } }),
+        getTasks({ data: { account_id: params.id } }),
+        getQuotes({ data: { account_id: params.id } }),
+        getJobSheets({ data: { account_id: params.id } }),
+      ]);
 
     const engagementGroups = await Promise.all(
       linkedClients.map((client) => getEngagementsByClient({ data: { clientId: client.id } })),
@@ -58,6 +62,7 @@ export const Route = createFileRoute("/accounts/$id")({
       engagements: engagementGroups.flat(),
       tasks,
       quotes,
+      jobSheets,
     };
   },
   head: ({ loaderData }) => ({
@@ -67,7 +72,7 @@ export const Route = createFileRoute("/accounts/$id")({
 });
 
 function AccountDetailRoute() {
-  const { account, contacts, timeline, signals, linkedClients, engagements, tasks, quotes } =
+  const { account, contacts, timeline, signals, linkedClients, engagements, tasks, quotes, jobSheets } =
     Route.useLoaderData();
   const [dismissedSignalIds, setDismissedSignalIds] = useState<string[]>([]);
   const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
@@ -81,6 +86,7 @@ function AccountDetailRoute() {
   const openTasks = tasks.filter((task) => task.status !== "done");
   const activeEngagements = engagements.filter((engagement) => engagement.status === "active");
   const campaignTimelineEntries = timeline.filter((entry) => entry.kind === "campaign");
+  const quoteById = new Map(quotes.map((quote) => [quote.id, quote]));
 
   useEffect(() => {
     setDismissedSignalIds([]);
@@ -493,6 +499,44 @@ function AccountDetailRoute() {
                     ))}
                   </ul>
                 )}
+                <div className="space-y-2 border-t border-border/70 pt-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium text-foreground">Accounting handoff</p>
+                    <span className="text-xs text-muted-foreground">
+                      {jobSheets.length} job sheet{jobSheets.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  {jobSheets.length === 0 ? (
+                    <p className="text-muted-foreground">
+                      No accepted quote job sheets for this account yet.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {jobSheets.slice(0, 5).map((sheet) => {
+                        const quote = quoteById.get(sheet.quote_id);
+
+                        return (
+                          <li key={sheet.id}>
+                            <Link
+                              to="/job-sheets/$id"
+                              params={{ id: sheet.id }}
+                              className="block rounded-md border border-border p-3 hover:bg-muted/50"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="font-medium">{sheet.number}</span>
+                                <JobSheetStatusBadge status={sheet.status} />
+                              </div>
+                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                <span>Quote {quote?.number ?? sheet.quote_id}</span>
+                                <span>{formatCurrencyAmount(sheet.total_amount, sheet.currency)}</span>
+                              </div>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
