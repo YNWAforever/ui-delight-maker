@@ -1,23 +1,50 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockQuery, mockQueryOne } = vi.hoisted(() => ({
+const { mockQuery, mockQueryOne, mockTransaction } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
   mockQueryOne: vi.fn(),
+  mockTransaction: vi.fn(),
 }));
 
 vi.mock("@/server/db/neon.server", () => ({
   query: mockQuery,
   queryOne: mockQueryOne,
+  transaction: mockTransaction,
 }));
 
 describe("quotes repository line items", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    mockQuery.mockReset();
+    mockQueryOne.mockReset();
+    mockTransaction.mockReset();
+    mockTransaction.mockImplementation(async (work) => work({ query: vi.fn() }));
+  });
 
-  it("persists quote document fields on create", async () => {
-    mockQueryOne.mockResolvedValue({ id: "quote-1" });
+  it("normalizes quote line items on create and returns UUID-backed rows", async () => {
+    const normalizedLineItem = {
+      id: "11111111-1111-4111-8111-111111111111",
+      quote_id: "quote-1",
+      pricing_template_id: null,
+      product_id: null,
+      section_label: null,
+      service: "Strategy",
+      description: "Planning",
+      qty: 1,
+      unit_price: 120000,
+      total: 120000,
+      taxable: false,
+      sort_order: 0,
+      created_at: "2026-07-09T00:00:00.000Z",
+      updated_at: "2026-07-09T00:00:00.000Z",
+    };
+    mockQueryOne
+      .mockResolvedValueOnce({ id: "quote-1", line_items: [] })
+      .mockResolvedValueOnce(normalizedLineItem)
+      .mockResolvedValueOnce({ id: "quote-1", line_items: [normalizedLineItem] });
+    mockQuery.mockResolvedValueOnce([]);
     const { createQuote } = await import("../quotes");
 
-    await createQuote({
+    const result = await createQuote({
       number: "Q-1001",
       lead_id: "lead-1",
       client_id: "client-1",
@@ -36,7 +63,9 @@ describe("quotes repository line items", () => {
       created_by: "user-1",
     });
 
-    expect(mockQueryOne).toHaveBeenCalledWith(
+    expect(mockTransaction).toHaveBeenCalled();
+    expect(mockQueryOne).toHaveBeenNthCalledWith(
+      1,
       expect.stringContaining(
         "(number, lead_id, client_id, contact_id, account_id, deal_id, status, total_value, currency, valid_until, line_items, quote_template_id, document_sections, cover_text, assumptions, payment_terms, created_by)",
       ),
@@ -60,8 +89,26 @@ describe("quotes repository line items", () => {
         "50% upfront.",
         "user-1",
       ],
-      undefined,
+      expect.any(Object),
     );
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("delete from quote_line_items"),
+      ["quote-1"],
+      expect.any(Object),
+    );
+    expect(mockQueryOne).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("insert into quote_line_items"),
+      ["quote-1", null, null, null, "Strategy", "Planning", 1, 120000, false, 0],
+      expect.any(Object),
+    );
+    expect(mockQueryOne).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining("update quotes"),
+      [JSON.stringify([normalizedLineItem]), "quote-1"],
+      expect.any(Object),
+    );
+    expect(result.line_items).toEqual([normalizedLineItem]);
   });
 
   it("lists quote line items ordered by sort order and creation time", async () => {
@@ -117,7 +164,63 @@ describe("quotes repository line items", () => {
     expect(mockQueryOne).toHaveBeenCalledWith(
       expect.stringContaining("document_sections = $1"),
       [JSON.stringify([{ title: "Scope", body: "Planning" }]), "quote-1"],
+      undefined,
     );
+  });
+
+  it("syncs normalized quote line items on update when builder ids are provided", async () => {
+    const normalizedLineItem = {
+      id: "11111111-1111-4111-8111-111111111111",
+      quote_id: "quote-1",
+      pricing_template_id: null,
+      product_id: null,
+      section_label: null,
+      service: "Strategy",
+      description: "Planning",
+      qty: 1,
+      unit_price: 30000,
+      total: 30000,
+      taxable: false,
+      sort_order: 0,
+      created_at: "2026-07-09T00:00:00.000Z",
+      updated_at: "2026-07-09T00:00:00.000Z",
+    };
+    mockQueryOne
+      .mockResolvedValueOnce({ id: "quote-1", status: "draft", line_items: [] })
+      .mockResolvedValueOnce(normalizedLineItem)
+      .mockResolvedValueOnce({ id: "quote-1", status: "draft", line_items: [normalizedLineItem] });
+    mockQuery.mockResolvedValueOnce([]);
+    const { updateQuote } = await import("../quotes");
+
+    const result = await updateQuote("quote-1", {
+      line_items: [
+        {
+          id: "li-local-1",
+          service: "Strategy",
+          description: "Planning",
+          qty: 1,
+          unit_price: 30000,
+        },
+      ],
+    });
+
+    expect(mockTransaction).toHaveBeenCalled();
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("delete from quote_line_items"),
+      ["quote-1"],
+      expect.any(Object),
+    );
+    expect(mockQueryOne).toHaveBeenCalledWith(
+      expect.stringContaining("insert into quote_line_items"),
+      ["quote-1", null, null, null, "Strategy", "Planning", 1, 30000, false, 0],
+      expect.any(Object),
+    );
+    expect(mockQueryOne).toHaveBeenCalledWith(
+      expect.stringContaining("update quotes"),
+      [JSON.stringify([normalizedLineItem]), "quote-1"],
+      expect.any(Object),
+    );
+    expect(result.line_items).toEqual([normalizedLineItem]);
   });
 
   it("throws Quote not found for ordinary updates without immutable version references", async () => {
@@ -133,6 +236,7 @@ describe("quotes repository line items", () => {
     expect(mockQueryOne).toHaveBeenCalledWith(
       expect.stringContaining("set status = $1"),
       ["sent", "quote-1"],
+      undefined,
     );
   });
 
@@ -154,6 +258,7 @@ describe("quotes repository line items", () => {
         "issued-version-1",
         "quote-1",
       ],
+      undefined,
     );
     expect(mockQueryOne).toHaveBeenCalledWith(
       expect.stringContaining("issued_version_id is null or issued_version_id is not distinct from $2"),
@@ -164,6 +269,7 @@ describe("quotes repository line items", () => {
         "issued-version-1",
         "quote-1",
       ],
+      undefined,
     );
     expect(mockQueryOne).toHaveBeenCalledWith(
       expect.stringContaining("set accepted_version_id = $3, issued_version_id = $4"),
@@ -174,6 +280,7 @@ describe("quotes repository line items", () => {
         "issued-version-1",
         "quote-1",
       ],
+      undefined,
     );
   });
 
@@ -190,12 +297,13 @@ describe("quotes repository line items", () => {
     expect(mockQueryOne).toHaveBeenCalledWith(
       expect.stringContaining("accepted_version_id is null or accepted_version_id is not distinct from $1"),
       ["accepted-version-1", "accepted-version-1", "quote-1"],
+      undefined,
     );
     expect(mockQueryOne).toHaveBeenCalledWith(expect.stringContaining("set accepted_version_id = $2"), [
       "accepted-version-1",
       "accepted-version-1",
       "quote-1",
-    ]);
+    ], undefined);
   });
 
   it("guards issued_version_id updates when accepted_version_id is absent", async () => {
@@ -211,12 +319,13 @@ describe("quotes repository line items", () => {
     expect(mockQueryOne).toHaveBeenCalledWith(
       expect.stringContaining("issued_version_id is null or issued_version_id is not distinct from $1"),
       ["issued-version-1", "issued-version-1", "quote-1"],
+      undefined,
     );
     expect(mockQueryOne).toHaveBeenCalledWith(expect.stringContaining("set issued_version_id = $2"), [
       "issued-version-1",
       "issued-version-1",
       "quote-1",
-    ]);
+    ], undefined);
   });
 
   it("rejects updates that would repoint immutable quote version references", async () => {

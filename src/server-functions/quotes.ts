@@ -14,6 +14,7 @@ import {
   createQuote as createQuoteInNeon,
   getQuote as getQuoteFromNeon,
   listActivePricingTemplates,
+  listQuoteLineItems,
   listQuotes,
   updateQuote as updateQuoteInNeon,
 } from "@/server/repositories/quotes";
@@ -181,18 +182,44 @@ async function findExistingQuoteVersionByReason(
   return versions.find((candidate) => candidate.reason === reason) ?? null;
 }
 
+async function buildNormalizedQuoteSnapshot(quote: Quote): Promise<JsonValue> {
+  const normalizedLineItems = await listQuoteLineItems(quote.id);
+  return {
+    ...quote,
+    line_items: normalizedLineItems,
+  } as unknown as JsonValue;
+}
+
+function assertQuoteCanBeIssued(quote: Quote) {
+  if (quote.status === "approved" || quote.status === "sent") {
+    return;
+  }
+
+  throw new Error("Only approved quotes can be issued");
+}
+
+function assertQuoteCanBeAccepted(quote: Quote) {
+  if (quote.status === "sent" || quote.status === "viewed" || quote.status === "accepted") {
+    return;
+  }
+
+  throw new Error("Only sent or viewed quotes can be accepted");
+}
+
 export const issueQuoteVersion = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; pdfTemplateId?: string | null })
   .handler(async ({ data }) => {
     const session = await requireNeonAuthSession();
     const quote = await getQuoteFromNeon(data.id);
+    assertQuoteCanBeIssued(quote);
+    const snapshot = await buildNormalizedQuoteSnapshot(quote);
     const version = quote.issued_version_id
       ? await getExistingQuoteVersionOrThrow(quote.id, quote.issued_version_id)
       : ((await findExistingQuoteVersionByReason(quote.id, "issued")) ??
         (await createQuoteVersion({
           quote_id: quote.id,
           reason: "issued",
-          snapshot: quote as unknown as JsonValue,
+          snapshot,
           pdf_template_id: data.pdfTemplateId ?? null,
           pdf_url: `/quotes/${quote.id}/pdf`,
           created_by: session.user.id,
@@ -215,13 +242,15 @@ export const acceptQuoteAndCreateJobSheet = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const session = await requireNeonAuthSession();
     const quote = await getQuoteFromNeon(data.id);
+    assertQuoteCanBeAccepted(quote);
+    const snapshot = await buildNormalizedQuoteSnapshot(quote);
     const version = quote.accepted_version_id
       ? await getExistingQuoteVersionOrThrow(quote.id, quote.accepted_version_id)
       : ((await findExistingQuoteVersionByReason(quote.id, "accepted")) ??
         (await createQuoteVersion({
           quote_id: quote.id,
           reason: "accepted",
-          snapshot: quote as unknown as JsonValue,
+          snapshot,
           pdf_template_id: null,
           pdf_url: quote.pdf_url,
           created_by: session.user.id,

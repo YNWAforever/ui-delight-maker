@@ -422,9 +422,36 @@ describe("job sheets repository", () => {
       xero_notes: "Manually entered in Xero",
     });
 
-    expect(mockQueryOne).toHaveBeenCalledWith(
-      expect.stringContaining("status = 'entered_in_xero'"),
-      ["INV-001", "XERO-REF-001", "2026-07-09", "Manually entered in Xero", "portion-1"],
-    );
+    const [sql, values] = mockQueryOne.mock.calls[0];
+
+    expect(sql).toContain("then 'entered_in_xero'");
+    expect(values).toEqual([
+      "INV-001",
+      "XERO-REF-001",
+      "2026-07-09",
+      "Manually entered in Xero",
+      "portion-1",
+    ]);
+  });
+
+  it("keeps a portion planned when the Xero save is blank after trimming", async () => {
+    mockQueryOne.mockResolvedValue({ id: "portion-1", status: "planned" });
+    const { updateJobSheetXeroReference } = await import("../job-sheets");
+
+    await updateJobSheetXeroReference({
+      portion_id: "portion-1",
+      xero_invoice_number: "   ",
+      xero_invoice_reference: "",
+      xero_invoice_date: null,
+      xero_notes: "  ",
+    });
+
+    expect(mockQueryOne).toHaveBeenCalledTimes(1);
+    const [sql, values] = mockQueryOne.mock.calls[0];
+
+    expect(sql).toContain("update job_sheet_portions");
+    expect(sql).toContain("status =");
+    expect(sql).not.toContain("status = 'entered_in_xero'");
+    expect(values).toEqual([null, null, null, null, "portion-1"]);
   });
 });

@@ -1,6 +1,6 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
 import type { PricingTemplate, Quote, QuoteLineItem, QuoteLineItemRecord } from "@/lib/types";
-import { query, queryOne, type Queryable } from "@/server/db/neon.server";
+import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
 
 type QuoteFilters = {
   status?: string;
@@ -101,7 +101,65 @@ export async function getQuote(id: string) {
   return quote;
 }
 
+async function syncQuoteLineItemsColumn(
+  quoteId: string,
+  lineItems: QuoteLineItemRecord[],
+  db?: Queryable,
+): Promise<Quote> {
+  const quote = await queryOne<Quote>(
+    `
+      update quotes
+      set line_items = $1::jsonb
+      where id = $2
+      returning *
+    `,
+    [JSON.stringify(lineItems), quoteId],
+    db,
+  );
+
+  if (!quote) throw new Error("Quote not found");
+  return quote;
+}
+
+async function updateQuoteRow(id: string, updates: Partial<Quote>, db?: Queryable) {
+  const hasImmutableVersionReferenceUpdate =
+    updates.accepted_version_id !== undefined || updates.issued_version_id !== undefined;
+  const immutableVersionReferenceGuard = buildImmutableVersionReferenceGuard(updates);
+  const normalizedUpdates = {
+    ...updates,
+    line_items: updates.line_items === undefined ? undefined : JSON.stringify(updates.line_items),
+    document_sections:
+      updates.document_sections === undefined ? undefined : JSON.stringify(updates.document_sections),
+  };
+  const update = buildUpdate(normalizedUpdates, quoteUpdateColumns, immutableVersionReferenceGuard.nextIndex);
+  const quote = await queryOne<Quote>(
+    `
+      update quotes
+      set ${update.sql}
+      where id = $${update.nextIndex}${
+        immutableVersionReferenceGuard.clauses.length > 0
+          ? ` and ${immutableVersionReferenceGuard.clauses.join(" and ")}`
+          : ""
+      }
+      returning *
+    `,
+    [...immutableVersionReferenceGuard.values, ...update.values, id],
+    db,
+  );
+
+  if (!quote) {
+    throw new Error(
+      hasImmutableVersionReferenceUpdate
+        ? "Quote not found or version reference is immutable"
+        : "Quote not found",
+    );
+  }
+
+  return quote;
+}
+
 export async function createQuote(input: CreateQuoteInput, db?: Queryable) {
+  const work = async (client?: Queryable) => {
   const quote = await queryOne<Quote>(
     `
       insert into quotes
@@ -128,46 +186,58 @@ export async function createQuote(input: CreateQuoteInput, db?: Queryable) {
       input.payment_terms ?? null,
       input.created_by ?? null,
     ],
-    db,
+    client,
   );
 
   if (!quote) throw new Error("Failed to create quote");
-  return quote;
+    if (input.line_items === undefined) {
+      return quote;
+    }
+
+    const normalizedLineItems = await replaceQuoteLineItems(quote.id, input.line_items, client);
+    return syncQuoteLineItemsColumn(quote.id, normalizedLineItems, client);
+  };
+
+  if (db || input.line_items === undefined) {
+    return work(db);
+  }
+
+  return transaction((client) => work(client));
 }
 
-export async function updateQuote(id: string, updates: Partial<Quote>) {
-  const hasImmutableVersionReferenceUpdate =
-    updates.accepted_version_id !== undefined || updates.issued_version_id !== undefined;
-  const immutableVersionReferenceGuard = buildImmutableVersionReferenceGuard(updates);
-  const normalizedUpdates = {
-    ...updates,
-    line_items: updates.line_items === undefined ? undefined : JSON.stringify(updates.line_items),
-    document_sections:
-      updates.document_sections === undefined ? undefined : JSON.stringify(updates.document_sections),
-  };
-  const update = buildUpdate(normalizedUpdates, quoteUpdateColumns, immutableVersionReferenceGuard.nextIndex);
-  const quote = await queryOne<Quote>(
-    `
-      update quotes
-      set ${update.sql}
-      where id = $${update.nextIndex}${
-        immutableVersionReferenceGuard.clauses.length > 0
-          ? ` and ${immutableVersionReferenceGuard.clauses.join(" and ")}`
-          : ""
-      }
-      returning *
-    `,
-    [...immutableVersionReferenceGuard.values, ...update.values, id],
-  );
-
-  if (!quote) {
-    throw new Error(
-      hasImmutableVersionReferenceUpdate
-        ? "Quote not found or version reference is immutable"
-        : "Quote not found",
+export async function updateQuote(id: string, updates: Partial<Quote>, db?: Queryable) {
+  const work = async (client?: Queryable) => {
+    const hasLineItemUpdate = updates.line_items !== undefined;
+    const updatesWithoutLineItems = {
+      ...updates,
+      line_items: undefined,
+    };
+    const hasNonLineItemUpdate = quoteUpdateColumns.some(
+      (column) => column !== "line_items" && updatesWithoutLineItems[column] !== undefined,
     );
+
+    if (!hasLineItemUpdate) {
+      return updateQuoteRow(id, updates, client);
+    }
+
+    if (!hasNonLineItemUpdate) {
+      const existingQuote = await queryOne<Quote>("select * from quotes where id = $1", [id], client);
+      if (!existingQuote) {
+        throw new Error("Quote not found");
+      }
+    } else {
+      await updateQuoteRow(id, updatesWithoutLineItems, client);
+    }
+
+    const normalizedLineItems = await replaceQuoteLineItems(id, updates.line_items ?? [], client);
+    return syncQuoteLineItemsColumn(id, normalizedLineItems, client);
+  };
+
+  if (db || updates.line_items === undefined) {
+    return work(db);
   }
-  return quote;
+
+  return transaction((client) => work(client));
 }
 
 export async function listQuoteLineItems(quoteId: string): Promise<QuoteLineItemRecord[]> {

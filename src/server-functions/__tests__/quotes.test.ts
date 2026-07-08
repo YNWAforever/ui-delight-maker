@@ -5,6 +5,7 @@ const {
   createQuoteMock,
   getQuoteMock,
   updateQuoteMock,
+  listQuoteLineItemsMock,
   listQuoteTemplatesMock,
   listPdfTemplatesMock,
   listQuoteVersionsMock,
@@ -26,6 +27,7 @@ const {
     createQuoteMock: vi.fn(),
     getQuoteMock: vi.fn(),
     updateQuoteMock: vi.fn(),
+    listQuoteLineItemsMock: vi.fn(),
     listQuoteTemplatesMock: vi.fn(),
     listPdfTemplatesMock: vi.fn(),
     listQuoteVersionsMock: vi.fn(),
@@ -63,16 +65,58 @@ vi.mock("@/server/repositories/quotes", () => ({
   listQuotes: vi.fn(),
   createQuote: createQuoteMock,
   listActivePricingTemplates: vi.fn(),
+  listQuoteLineItems: listQuoteLineItemsMock,
 }));
 
 describe("quote server functions", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    requireNeonAuthSessionMock.mockReset();
+    createQuoteMock.mockReset();
+    getQuoteMock.mockReset();
+    updateQuoteMock.mockReset();
+    listQuoteLineItemsMock.mockReset();
+    listQuoteTemplatesMock.mockReset();
+    listPdfTemplatesMock.mockReset();
+    listQuoteVersionsMock.mockReset();
+    createQuoteVersionMock.mockReset();
+    createJobSheetFromAcceptedQuoteMock.mockReset();
     requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    listQuoteLineItemsMock.mockResolvedValue([
+      {
+        id: "11111111-1111-4111-8111-111111111111",
+        quote_id: "quote-1",
+        pricing_template_id: null,
+        product_id: null,
+        section_label: null,
+        service: "Strategy",
+        description: "Planning",
+        qty: 1,
+        unit_price: 120000,
+        total: 120000,
+        taxable: false,
+        sort_order: 0,
+        created_at: "2026-07-09T00:00:00.000Z",
+        updated_at: "2026-07-09T00:00:00.000Z",
+      },
+    ]);
+    listQuoteVersionsMock.mockResolvedValue([]);
+    createQuoteVersionMock.mockResolvedValue({
+      id: "version-1",
+      quote_id: "quote-1",
+      reason: "issued",
+      pdf_url: "/quotes/quote-1/pdf",
+    });
+    updateQuoteMock.mockResolvedValue({
+      id: "quote-1",
+      status: "sent",
+      issued_version_id: "version-1",
+      pdf_url: "/quotes/quote-1/pdf",
+    });
+    createJobSheetFromAcceptedQuoteMock.mockResolvedValue({ id: "job-1" });
     getQuoteMock.mockResolvedValue({
       id: "quote-1",
       number: "Q-1",
-      status: "draft",
+      status: "approved",
       account_id: "account-1",
       client_id: "client-1",
       contact_id: null,
@@ -80,7 +124,15 @@ describe("quote server functions", () => {
       total_value: 120000,
       currency: "HKD",
       pdf_url: "/quotes/quote-1/pdf-existing",
-      line_items: [],
+      line_items: [
+        {
+          id: "li-local-1",
+          service: "Strategy",
+          description: "Planning",
+          qty: 1,
+          unit_price: 120000,
+        },
+      ],
     });
   });
 
@@ -201,12 +253,21 @@ describe("quote server functions", () => {
       expect.objectContaining({
         quote_id: "quote-1",
         reason: "issued",
-        snapshot: expect.objectContaining({ id: "quote-1", number: "Q-1" }),
+        snapshot: expect.objectContaining({
+          id: "quote-1",
+          number: "Q-1",
+          line_items: [
+            expect.objectContaining({
+              id: "11111111-1111-4111-8111-111111111111",
+            }),
+          ],
+        }),
         pdf_template_id: "pdf-template-1",
         pdf_url: "/quotes/quote-1/pdf",
         created_by: "user-1",
       }),
     );
+    expect(listQuoteLineItemsMock).toHaveBeenCalledWith("quote-1");
     expect(updateQuoteMock).toHaveBeenCalledWith(
       "quote-1",
       expect.objectContaining({
@@ -247,7 +308,15 @@ describe("quote server functions", () => {
       total_value: 120000,
       currency: "HKD",
       pdf_url: "/quotes/quote-1/pdf",
-      line_items: [],
+      line_items: [
+        {
+          id: "li-local-1",
+          service: "Strategy",
+          description: "Planning",
+          qty: 1,
+          unit_price: 120000,
+        },
+      ],
     });
     listQuoteVersionsMock.mockResolvedValue([existingVersion]);
     updateQuoteMock.mockResolvedValue({
@@ -286,6 +355,27 @@ describe("quote server functions", () => {
   });
 
   it("accepts a quote by creating an accepted version and draft job sheet", async () => {
+    getQuoteMock.mockResolvedValueOnce({
+      id: "quote-1",
+      number: "Q-1",
+      status: "sent",
+      account_id: "account-1",
+      client_id: "client-1",
+      contact_id: null,
+      created_by: "sales-1",
+      total_value: 120000,
+      currency: "HKD",
+      pdf_url: "/quotes/quote-1/pdf-existing",
+      line_items: [
+        {
+          id: "li-local-1",
+          service: "Strategy",
+          description: "Planning",
+          qty: 1,
+          unit_price: 120000,
+        },
+      ],
+    });
     createQuoteVersionMock.mockResolvedValue({ id: "version-1" });
     updateQuoteMock.mockResolvedValue({
       id: "quote-1",
@@ -308,10 +398,16 @@ describe("quote server functions", () => {
           id: "quote-1",
           number: "Q-1",
           pdf_url: "/quotes/quote-1/pdf-existing",
+          line_items: [
+            expect.objectContaining({
+              id: "11111111-1111-4111-8111-111111111111",
+            }),
+          ],
         }),
         created_by: "user-1",
       }),
     );
+    expect(listQuoteLineItemsMock).toHaveBeenCalledWith("quote-1");
     expect(updateQuoteMock).toHaveBeenCalledWith(
       "quote-1",
       expect.objectContaining({
@@ -359,7 +455,15 @@ describe("quote server functions", () => {
       total_value: 120000,
       currency: "HKD",
       pdf_url: "/quotes/quote-1/pdf-existing",
-      line_items: [],
+      line_items: [
+        {
+          id: "li-local-1",
+          service: "Strategy",
+          description: "Planning",
+          qty: 1,
+          unit_price: 120000,
+        },
+      ],
     });
     listQuoteVersionsMock.mockResolvedValue([existingAcceptedVersion]);
     updateQuoteMock.mockResolvedValue({
@@ -403,4 +507,52 @@ describe("quote server functions", () => {
       jobSheet: { id: "job-1" },
     });
   });
+
+  it("rejects issuing a draft quote", async () => {
+    getQuoteMock.mockResolvedValueOnce({
+      id: "quote-1",
+      number: "Q-1",
+      status: "draft",
+      account_id: "account-1",
+      client_id: "client-1",
+      contact_id: null,
+      created_by: "sales-1",
+      total_value: 120000,
+      currency: "HKD",
+      pdf_url: "/quotes/quote-1/pdf-existing",
+      line_items: [],
+    });
+    const { issueQuoteVersion } = await import("../quotes");
+
+    await expect(issueQuoteVersion({ data: { id: "quote-1" } })).rejects.toThrow("approved");
+    expect(createQuoteVersionMock).not.toHaveBeenCalled();
+    expect(updateQuoteMock).not.toHaveBeenCalled();
+  });
+
+  it.each(["draft", "pending_approval"])(
+    "rejects accepting a %s quote before it has been issued",
+    async (status) => {
+      getQuoteMock.mockResolvedValueOnce({
+        id: "quote-1",
+        number: "Q-1",
+        status,
+        account_id: "account-1",
+        client_id: "client-1",
+        contact_id: null,
+        created_by: "sales-1",
+        total_value: 120000,
+        currency: "HKD",
+        pdf_url: "/quotes/quote-1/pdf-existing",
+        line_items: [],
+      });
+      const { acceptQuoteAndCreateJobSheet } = await import("../quotes");
+
+      await expect(acceptQuoteAndCreateJobSheet({ data: { id: "quote-1" } })).rejects.toThrow(
+        "sent or viewed",
+      );
+      expect(createQuoteVersionMock).not.toHaveBeenCalled();
+      expect(updateQuoteMock).not.toHaveBeenCalled();
+      expect(createJobSheetFromAcceptedQuoteMock).not.toHaveBeenCalled();
+    },
+  );
 });
