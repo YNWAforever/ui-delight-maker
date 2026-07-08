@@ -2,6 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import { getN8nDispatchConfig, triggerN8n } from "@/lib/n8n";
 import { buildQuoteDraftPayload } from "@/lib/workflows/payloads";
+import { createJobSheetFromAcceptedQuote } from "@/server/repositories/job-sheets";
+import { listPdfTemplates, listQuoteTemplates } from "@/server/repositories/quote-templates";
+import { createQuoteVersion, listQuoteVersions } from "@/server/repositories/quote-versions";
 import {
   createAgentRun,
   findActiveRun,
@@ -15,7 +18,7 @@ import {
   updateQuote as updateQuoteInNeon,
 } from "@/server/repositories/quotes";
 import { serializeAgentRun } from "@/server-functions/serializers";
-import type { PricingTemplate, Quote } from "@/lib/types";
+import type { JsonValue, PricingTemplate, Quote } from "@/lib/types";
 
 type GetQuotesInput = {
   status?: string;
@@ -136,3 +139,76 @@ export const getPricingTemplates = createServerFn({ method: "GET" }).handler(asy
   await requireNeonAuthSession();
   return listActivePricingTemplates() as Promise<PricingTemplate[]>;
 });
+
+export const getQuoteTemplates = createServerFn({ method: "GET" }).handler(async () => {
+  await requireNeonAuthSession();
+  return listQuoteTemplates();
+});
+
+export const getQuotePdfTemplates = createServerFn({ method: "GET" }).handler(async () => {
+  await requireNeonAuthSession();
+  return listPdfTemplates("quote");
+});
+
+export const getQuoteVersions = createServerFn({ method: "GET" })
+  .validator((data: unknown) => data as { quoteId: string })
+  .handler(async ({ data }) => {
+    await requireNeonAuthSession();
+    return listQuoteVersions(data.quoteId);
+  });
+
+export const issueQuoteVersion = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as { id: string; pdfTemplateId?: string | null })
+  .handler(async ({ data }) => {
+    const session = await requireNeonAuthSession();
+    const quote = await getQuoteFromNeon(data.id);
+    const version = await createQuoteVersion({
+      quote_id: quote.id,
+      reason: "issued",
+      snapshot: quote as unknown as JsonValue,
+      pdf_template_id: data.pdfTemplateId ?? null,
+      pdf_url: `/quotes/${quote.id}/pdf`,
+      created_by: session.user.id,
+    });
+    const updated = await updateQuoteInNeon(quote.id, {
+      status: "sent",
+      issued_version_id: version.id,
+      pdf_url: version.pdf_url,
+    });
+
+    return { quote: updated, version };
+  });
+
+export const acceptQuoteAndCreateJobSheet = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as { id: string })
+  .handler(async ({ data }) => {
+    const session = await requireNeonAuthSession();
+    const quote = await getQuoteFromNeon(data.id);
+    const version = await createQuoteVersion({
+      quote_id: quote.id,
+      reason: "accepted",
+      snapshot: quote as unknown as JsonValue,
+      pdf_template_id: null,
+      pdf_url: quote.pdf_url,
+      created_by: session.user.id,
+    });
+    const updated = await updateQuoteInNeon(quote.id, {
+      status: "accepted",
+      accepted_version_id: version.id,
+      accepted_at: new Date().toISOString(),
+      accepted_by: session.user.id,
+    });
+    const jobSheet = await createJobSheetFromAcceptedQuote({
+      quote_id: quote.id,
+      accepted_quote_version_id: version.id,
+      account_id: quote.account_id,
+      client_id: quote.client_id,
+      contact_id: quote.contact_id,
+      sales_owner: quote.created_by,
+      total_amount: quote.total_value ?? 0,
+      currency: quote.currency,
+      created_by: session.user.id,
+    });
+
+    return { quote: updated, jobSheet };
+  });
