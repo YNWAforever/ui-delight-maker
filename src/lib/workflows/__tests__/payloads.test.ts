@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildQualificationPayload,
+  buildRelationshipIntelligencePayload,
   buildQuoteDraftPayload,
   buildReplyDraftPayload,
 } from "../payloads";
@@ -27,6 +28,16 @@ describe("workflow payload builders", () => {
       trigger: "quote.draft_requested",
       lead_id: "lead-3",
       agent_run_id: "run-3",
+    });
+  });
+
+  it("builds a relationship intelligence payload", () => {
+    expect(
+      buildRelationshipIntelligencePayload({ accountId: "account-1", agentRunId: "run-1" }),
+    ).toEqual({
+      trigger: "account.relationship_intelligence_requested",
+      account_id: "account-1",
+      agent_run_id: "run-1",
     });
   });
 });

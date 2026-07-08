@@ -1,0 +1,130 @@
+{
+  "name": "clientops-relationship-intelligence",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clientops-relationship-intelligence",
+        "responseMode": "responseNode"
+      },
+      "id": "clientops-relationship-intelligence-webhook",
+      "name": "clientops-relationship-intelligence",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst headers = item.headers ?? {};\nconst body = item.body ?? item;\nconst receivedToken = headers['x-workflow-token'] ?? headers['X-Workflow-Token'];\nif (!receivedToken || receivedToken !== $env.N8N_WORKFLOW_TOKEN) {\n  throw new Error('Invalid x-workflow-token');\n}\nif (body.trigger !== 'account.relationship_intelligence_requested') {\n  throw new Error(`Unexpected trigger: ${body.trigger ?? 'missing'}`);\n}\nif (!body.account_id) {\n  throw new Error('Missing account_id');\n}\nif (!body.agent_run_id) {\n  throw new Error('Missing agent_run_id');\n}\nreturn [{ json: { trigger: body.trigger, account_id: body.account_id, agent_run_id: body.agent_run_id } }];"
+      },
+      "id": "validate-relationship-intelligence-trigger",
+      "name": "Validate Trigger",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APP_BASE_URL + '/api/workflows/context/account'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-workflow-token", "value": "={{$env.N8N_WORKFLOW_TOKEN}}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { account_id: $json.account_id, agent_run_id: $json.agent_run_id } }}",
+        "options": {}
+      },
+      "id": "fetch-account-context",
+      "name": "Fetch Account Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $input.first().json;\nconst triggerPayload = $('Validate Trigger').first().json;\nconst account = context.account ?? {};\nconst contacts = Array.isArray(context.contacts) ? context.contacts : [];\nconst timeline = Array.isArray(context.timeline) ? context.timeline : [];\nconst openSignals = Array.isArray(context.open_signals) ? context.open_signals : [];\nconst agentRunId = context.agent_run?.id ?? context.agent_run_id ?? triggerPayload.agent_run_id;\nconst latestTimelineAt = timeline[0]?.occurred_at ?? account.last_activity_at ?? null;\nconst daysSinceActivity = latestTimelineAt ? Math.floor((Date.now() - Date.parse(latestTimelineAt)) / 86400000) : null;\nconst hasDecisionMaker = contacts.some((contact) => contact.relationship_role === 'decision_maker');\nconst hasChampion = contacts.some((contact) => contact.relationship_role === 'champion');\nconst nextActionFromOpenSignal = openSignals.find((signal) => typeof signal?.suggested_action === 'string' && signal.suggested_action.trim())?.suggested_action ?? null;\nconst signals = [];\nif (!hasDecisionMaker) {\n  signals.push({\n    signal_type: 'missing_decision_maker',\n    severity: 'high',\n    title: 'Decision maker missing',\n    reason: `${account.name ?? 'This account'} has no mapped decision maker.`,\n    suggested_action: 'Identify and add the decision maker before the next commercial step.',\n    dedupe_key: 'missing-decision-maker'\n  });\n}\nif (!hasChampion) {\n  signals.push({\n    signal_type: 'missing_champion',\n    severity: 'medium',\n    title: 'Champion missing',\n    reason: `${account.name ?? 'This account'} has no mapped champion.`,\n    suggested_action: 'Find a day-to-day champion who can support the relationship.',\n    dedupe_key: 'missing-champion'\n  });\n}\nif (daysSinceActivity === null || daysSinceActivity >= 21) {\n  signals.push({\n    signal_type: 'stale_touchpoint',\n    severity: account.lifecycle_stage === 'active_client' ? 'high' : 'medium',\n    title: 'Relationship touchpoint is stale',\n    reason: daysSinceActivity === null ? 'No recent account activity is available in workflow context.' : `No recent account activity in ${daysSinceActivity} days.`,\n    suggested_action: 'Log a check-in or create a follow-up task.',\n    dedupe_key: `stale-touchpoint-${account.lifecycle_stage === 'active_client' ? '21' : '21'}`\n  });\n}\nconst fallbackSignals = signals.slice(0, 5);\nconst fallback = {\n  account_id: account.id ?? triggerPayload.account_id,\n  agent_run_id: agentRunId,\n  output_summary: `Fallback relationship scan found ${fallbackSignals.length} signal${fallbackSignals.length === 1 ? '' : 's'} for ${account.name ?? 'this account'}.`,\n  next_action: fallbackSignals[0]?.suggested_action ?? nextActionFromOpenSignal,\n  signals: fallbackSignals,\n  confidence_score: 0.62,\n  model_used: 'deterministic-fallback'\n};\nconst model = $env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';\nconst openrouter_request = {\n  model,\n  messages: [\n    { role: 'system', content: 'Return only JSON matching the ClientOps relationship-intelligence writeback contract. Signals must explain why they exist, include a dedupe_key, and stay focused on CRM follow-up.' },\n    { role: 'user', content: JSON.stringify({ context, required_fields: ['account_id', 'agent_run_id', 'output_summary', 'next_action', 'signals', 'confidence_score'], signal_schema: { signal_type: 'RelationshipSignalType', severity: 'low|medium|high', title: 'string', reason: 'string', suggested_action: 'string|null', dedupe_key: 'string' } }) }\n  ],\n  response_format: { type: 'json_object' }\n};\nreturn [{ json: { context, fallback, openrouter_request, openrouter_configured: Boolean($env.OPENROUTER_API_KEY) } }];"
+      },
+      "id": "prepare-relationship-intelligence-fallback-ai-request",
+      "name": "Relationship Intelligence",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{'Bearer ' + $env.OPENROUTER_API_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.openrouter_request}}",
+        "options": {}
+      },
+      "id": "openrouter-relationship-intelligence-request",
+      "name": "OpenRouter Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const prepared = $('Relationship Intelligence').first().json;\nconst fallback = prepared.fallback;\nconst response = $input.first()?.json ?? {};\n\nfunction parsePayload(value) {\n  const content = value.choices?.[0]?.message?.content;\n  if (typeof content === 'string') {\n    try { return JSON.parse(content); } catch (error) { return undefined; }\n  }\n  return isPlainObject(content) ? content : undefined;\n}\nfunction isPlainObject(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }\nfunction finiteNumber(value, fallbackValue) { const number = typeof value === 'number' ? value : Number(value); return Number.isFinite(number) ? number : fallbackValue; }\nfunction clampNumber(value, fallbackValue, min, max) { return Math.min(max, Math.max(min, finiteNumber(value, fallbackValue))); }\nfunction safeString(value, fallbackValue, maxLength = 1200) { return typeof value === 'string' && value.trim() ? value.trim().slice(0, maxLength) : fallbackValue; }\nfunction safeNullableString(value, fallbackValue, maxLength = 240) {\n  if (value === null) return null;\n  return safeString(value, fallbackValue, maxLength);\n}\nfunction safeChoice(value, allowed, fallbackValue) { return allowed.includes(value) ? value : fallbackValue; }\nfunction safeSignals(value, fallbackValue) {\n  if (!Array.isArray(value)) return fallbackValue;\n  const signals = [];\n  for (const entry of value.slice(0, 10)) {\n    if (!isPlainObject(entry)) continue;\n    const signalType = safeChoice(entry.signal_type, ['missing_decision_maker', 'missing_champion', 'stale_touchpoint', 'post_event_follow_up_due', 'stale_quote', 'coverage_gap', 'high_risk_engagement', 'negative_sentiment', 'unowned_account', 'cross_sell_opportunity'], null);\n    const severity = safeChoice(entry.severity, ['low', 'medium', 'high'], null);\n    const title = safeString(entry.title, '', 140);\n    const reason = safeString(entry.reason, '', 600);\n    const suggestedAction = safeNullableString(entry.suggested_action, null, 240);\n    const dedupeKey = safeString(entry.dedupe_key, '', 120);\n    if (!signalType || !severity || !title || !reason || !dedupeKey) continue;\n    signals.push({ signal_type: signalType, severity, title, reason, suggested_action: suggestedAction, dedupe_key: dedupeKey });\n  }\n  return signals.length > 0 ? signals : fallbackValue;\n}\n\nconst parsed = parsePayload(response);\nconst output = {\n  account_id: fallback.account_id,\n  agent_run_id: fallback.agent_run_id,\n  output_summary: safeString(parsed?.output_summary, fallback.output_summary),\n  next_action: safeNullableString(parsed?.next_action, fallback.next_action, 240),\n  signals: safeSignals(parsed?.signals, fallback.signals),\n  confidence_score: clampNumber(parsed?.confidence_score, fallback.confidence_score, 0, 1),\n  model_used: safeString(parsed?.model_used, fallback.model_used, 120),\n};\nreturn [{ json: output }];"
+      },
+      "id": "resolve-relationship-intelligence-output",
+      "name": "Resolve Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APP_BASE_URL + '/api/workflows/relationship-intelligence'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-workflow-token", "value": "={{$env.N8N_WORKFLOW_TOKEN}}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "writeback-relationship-intelligence",
+      "name": "Write Back",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{$json}}", "options": {} },
+      "id": "respond-relationship-intelligence-webhook",
+      "name": "Respond To Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1540, 0]
+    }
+  ],
+  "connections": {
+    "clientops-relationship-intelligence": { "main": [[{ "node": "Validate Trigger", "type": "main", "index": 0 }]] },
+    "Validate Trigger": { "main": [[{ "node": "Fetch Account Context", "type": "main", "index": 0 }]] },
+    "Fetch Account Context": { "main": [[{ "node": "Relationship Intelligence", "type": "main", "index": 0 }]] },
+    "Relationship Intelligence": { "main": [[{ "node": "OpenRouter Request", "type": "main", "index": 0 }]] },
+    "OpenRouter Request": { "main": [[{ "node": "Resolve Output", "type": "main", "index": 0 }]] },
+    "Resolve Output": { "main": [[{ "node": "Write Back", "type": "main", "index": 0 }]] },
+    "Write Back": { "main": [[{ "node": "Respond To Webhook", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

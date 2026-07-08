@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const rootSource = readFileSync(new URL("../__root.tsx", import.meta.url), "utf8");
+const readRoute = (name: string) => readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
 
 describe("root shell hydration", () => {
   it("allows auth UI theme scripts to update the html element before hydration", () => {
@@ -83,5 +84,60 @@ describe("sales route source copy", () => {
     expect(approvalsSource).toMatch(
       /const pendingQuoteSends = pending\.filter\(\s*\(a\) => a\.approval_type === "quote_send",?\s*\)\.length;/s,
     );
+  });
+
+  it("keeps relationship workspace operational and non-marketing", () => {
+    const relationshipSource = readRoute("relationships.tsx");
+
+    expect(relationshipSource).toContain('title="Relationship Command Center"');
+    expect(relationshipSource).toContain("getRelationshipSignals");
+    expect(relationshipSource).toContain("RelationshipCommandCenter");
+    expect(relationshipSource).not.toContain("hero");
+    expect(relationshipSource).not.toContain("landing");
+  });
+
+  it("adds account 360 without colliding with auth account page", () => {
+    const authAccountSource = readRoute("account.tsx");
+    const accountsSource = readRoute("accounts.tsx");
+    const accountDetailSource = readRoute("accounts.$id.tsx");
+
+    expect(authAccountSource).toContain("AccountView");
+    expect(accountsSource).toContain('title="Accounts"');
+    expect(accountDetailSource).toContain("Stakeholders");
+    expect(accountDetailSource).toContain("AccountTimeline");
+  });
+
+  it("keeps account 360 signals actionable and events account-scoped", () => {
+    const accountDetailSource = readRoute("accounts.$id.tsx");
+
+    expect(accountDetailSource).toContain("dismissRelationshipSignalFn");
+    expect(accountDetailSource).toContain("Dismissal reason");
+    expect(accountDetailSource).not.toContain("getCampaigns({})");
+    expect(accountDetailSource).not.toContain("Relevant campaigns");
+    expect(accountDetailSource).not.toContain("繚");
+    expect(accountDetailSource).toContain("const [dismissedSignalIds, setDismissedSignalIds]");
+    expect(accountDetailSource).toContain("useEffect(() => {");
+    expect(accountDetailSource).toContain("setDismissedSignalIds([]);");
+    expect(accountDetailSource).toContain("const openSignals = signals.filter");
+  });
+
+  it("adds campaign follow-up workspace", () => {
+    const campaignsSource = readRoute("campaigns.tsx");
+    const detailSource = readRoute("campaigns.$id.tsx");
+    const attendeeTableSource = readFileSync(
+      new URL("../../components/relationship/event-attendee-table.tsx", import.meta.url),
+      "utf8",
+    );
+
+    expect(campaignsSource).toContain('title="Campaigns & Events"');
+    expect(detailSource).toContain("EventAttendeeTable");
+    expect(detailSource).toContain("validateEventImportRowsFn");
+    expect(detailSource).toContain('toast.error("No attendee rows found in the CSV.");');
+    expect(detailSource).toContain("resetInput();");
+    expect(detailSource).toContain("attendee row${result.errors.length === 1 ? \"\" : \"s\"} need review before import.");
+    expect(detailSource).toContain("attendee row${result.errors.length === 1 ? \"\" : \"s\"} failed validation on import.");
+    expect(detailSource).toContain("const visibleErrors = errors.slice(0, 6);");
+    expect(detailSource).toContain('{`+${errors.length - 6} more`}');
+    expect(attendeeTableSource).toContain("member.raw_phone?.trim() ? member.raw_phone : \"No phone\"");
   });
 });

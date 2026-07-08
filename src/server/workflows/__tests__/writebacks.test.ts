@@ -10,11 +10,15 @@ const mocks = vi.hoisted(() => {
     transactionMock: vi.fn(async (work: (db: typeof fakeDb) => Promise<unknown>) => work(fakeDb)),
     assertLeadExistsMock: vi.fn(),
     getAgentRunForUpdateMock: vi.fn(),
+    getEngagementMock: vi.fn(),
     updateLeadMock: vi.fn(),
+    updateAccountMock: vi.fn(),
     updateAgentRunResultMock: vi.fn(),
     createActivityLogMock: vi.fn(),
     createApprovalMock: vi.fn(),
     createQuoteMock: vi.fn(),
+    applyEngagementScoreMock: vi.fn(),
+    upsertRelationshipSignalsMock: vi.fn(),
   };
 });
 
@@ -44,10 +48,25 @@ vi.mock("@/server/repositories/quotes", () => ({
   createQuote: mocks.createQuoteMock,
 }));
 
+vi.mock("@/server/repositories/engagements", () => ({
+  applyEngagementScore: mocks.applyEngagementScoreMock,
+  getEngagement: mocks.getEngagementMock,
+}));
+
+vi.mock("@/server/repositories/accounts", () => ({
+  updateAccount: mocks.updateAccountMock,
+}));
+
+vi.mock("@/server/repositories/relationship-signals", () => ({
+  upsertRelationshipSignals: mocks.upsertRelationshipSignalsMock,
+}));
+
 import {
   writeQualificationResult,
+  writeRelationshipIntelligenceResult,
   writeQuoteDraftResult,
   writeReplyDraftResult,
+  writeScoreRenewalRiskResult,
 } from "@/server/workflows/writebacks";
 
 describe("workflow writebacks", () => {
@@ -58,7 +77,14 @@ describe("workflow writebacks", () => {
       id: "run-default",
       status: "running",
       output_data: null,
+      subject_type: "account",
+      subject_id: "account-9",
     });
+    mocks.getEngagementMock.mockResolvedValue({
+      id: "engagement-default",
+      renewal_risk: "medium",
+    });
+    mocks.upsertRelationshipSignalsMock.mockResolvedValue([]);
   });
 
   it("wraps qualification writebacks in one transaction client", async () => {
@@ -244,6 +270,152 @@ describe("workflow writebacks", () => {
 
     expect(mocks.createQuoteMock).not.toHaveBeenCalled();
     expect(mocks.createApprovalMock).not.toHaveBeenCalled();
+    expect(mocks.updateAgentRunResultMock).not.toHaveBeenCalled();
+    expect(mocks.createActivityLogMock).not.toHaveBeenCalled();
+  });
+
+  it("writes relationship intelligence results atomically and records signal output", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-9",
+      status: "running",
+      output_data: null,
+      subject_type: "account",
+      subject_id: "account-9",
+    });
+    mocks.upsertRelationshipSignalsMock.mockResolvedValue([
+      {
+        id: "signal-1",
+        account_id: "account-9",
+        signal_type: "missing_decision_maker",
+        severity: "high",
+        title: "Decision maker missing",
+        reason: "No decision maker is mapped.",
+        suggested_action: "Identify one.",
+        source: "ai",
+        dedupe_key: "missing-decision-maker",
+      },
+    ]);
+
+    await expect(
+      writeRelationshipIntelligenceResult({
+        account_id: "account-9",
+        agent_run_id: "run-9",
+        output_summary: "Analyzed relationship health.",
+        next_action: "Book an executive alignment call.",
+        signals: [
+          {
+            signal_type: "missing_decision_maker",
+            severity: "high",
+            title: "Decision maker missing",
+            reason: "No decision maker is mapped.",
+            suggested_action: "Identify one.",
+            dedupe_key: "missing-decision-maker",
+          },
+        ],
+        confidence_score: 0.81,
+        model_used: "model-y",
+      }),
+    ).resolves.toEqual({
+      applied: true,
+      signalCount: 1,
+    });
+
+    expect(mocks.transactionMock).toHaveBeenCalledTimes(1);
+    expect(mocks.updateAccountMock).toHaveBeenCalledWith(
+      "account-9",
+      expect.objectContaining({
+        next_action: "Book an executive alignment call.",
+        last_activity_at: expect.any(String),
+      }),
+      mocks.fakeDb,
+    );
+    expect(mocks.upsertRelationshipSignalsMock).toHaveBeenCalledWith(
+      "account-9",
+      [
+        expect.objectContaining({
+          account_id: "account-9",
+          source: "ai",
+          signal_type: "missing_decision_maker",
+        }),
+      ],
+      mocks.fakeDb,
+    );
+    expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+      "run-9",
+      expect.objectContaining({
+        status: "completed",
+        output_summary: "Analyzed relationship health.",
+        confidence_score: 0.81,
+        human_review_required: false,
+        model_used: "model-y",
+        output_data: {
+          next_action: "Book an executive alignment call.",
+          signals: expect.any(Array),
+        },
+      }),
+      mocks.fakeDb,
+    );
+    expect(mocks.createActivityLogMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor_name: "Relationship Intelligence Agent",
+        object_type: "account",
+        object_id: "account-9",
+        action: "analyzed account relationship",
+      }),
+      mocks.fakeDb,
+    );
+  });
+
+  it("treats completed relationship intelligence writebacks as idempotent", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-9",
+      status: "completed",
+      output_data: { signals: [] },
+      subject_type: "account",
+      subject_id: "account-9",
+    });
+
+    await expect(
+      writeRelationshipIntelligenceResult({
+        account_id: "account-9",
+        agent_run_id: "run-9",
+        output_summary: "Analyzed relationship health.",
+        next_action: null,
+        signals: [],
+        confidence_score: 0.81,
+      }),
+    ).resolves.toEqual({
+      applied: true,
+    });
+
+    expect(mocks.updateAccountMock).not.toHaveBeenCalled();
+    expect(mocks.upsertRelationshipSignalsMock).not.toHaveBeenCalled();
+    expect(mocks.updateAgentRunResultMock).not.toHaveBeenCalled();
+    expect(mocks.createActivityLogMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects relationship intelligence writebacks for a mismatched account run before writes", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-9",
+      status: "running",
+      output_data: null,
+      subject_type: "account",
+      subject_id: "account-22",
+    });
+
+    await expect(
+      writeRelationshipIntelligenceResult({
+        account_id: "account-9",
+        agent_run_id: "run-9",
+        output_summary: "Analyzed relationship health.",
+        next_action: "Book an executive alignment call.",
+        signals: [],
+        confidence_score: 0.81,
+      }),
+    ).rejects.toThrow("Agent run does not belong to this account");
+
+    expect(mocks.updateAccountMock).not.toHaveBeenCalled();
+    expect(mocks.upsertRelationshipSignalsMock).not.toHaveBeenCalled();
     expect(mocks.updateAgentRunResultMock).not.toHaveBeenCalled();
     expect(mocks.createActivityLogMock).not.toHaveBeenCalled();
   });

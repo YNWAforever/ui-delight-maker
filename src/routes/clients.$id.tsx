@@ -114,11 +114,20 @@ function ClientDetail() {
         title={client.company_name}
         description={`${client.tier} · ${client.industry}`}
         actions={
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/clients">
-              <ArrowLeft className="mr-2 h-4 w-4" /> All clients
-            </Link>
-          </Button>
+          <>
+            {client.account_id && (
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/accounts/$id" params={{ id: client.account_id }}>
+                  Account 360
+                </Link>
+              </Button>
+            )}
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/clients">
+                <ArrowLeft className="mr-2 h-4 w-4" /> All clients
+              </Link>
+            </Button>
+          </>
         }
       />
 

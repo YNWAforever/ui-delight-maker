@@ -1,17 +1,22 @@
 import type {
   ActivityLog,
+  Account,
+  AccountContact,
   AgentRun,
   Engagement,
   Lead,
   PricingTemplate,
   TouchpointRecord,
 } from "@/lib/types";
+import type { AccountTimelineEntry, RelationshipSignalSeverity, RelationshipSignalType } from "@/lib/relationship/types";
+import type { RelationshipSignal } from "@/lib/types";
 
 export type WorkflowTrigger =
   | "lead.qualify_requested"
   | "lead.reply_draft_requested"
   | "quote.draft_requested"
-  | "engagement.score_renewal_risk_requested";
+  | "engagement.score_renewal_risk_requested"
+  | "account.relationship_intelligence_requested";
 
 export type WorkflowContextRequestPayload = {
   lead_id: string;
@@ -162,5 +167,41 @@ export type ScoreRenewalRiskWritebackPayload = {
   suggested_next_action: string;
   confidence: number;
   output_summary: string;
+  model_used?: string;
+};
+
+export type AccountWorkflowContextRequestPayload = {
+  account_id: string;
+  agent_run_id: string;
+};
+
+export type AccountWorkflowContextResponse = {
+  account: Account;
+  contacts: AccountContact[];
+  timeline: AccountTimelineEntry[];
+  open_signals: RelationshipSignal[];
+  agent_run: AgentRun;
+};
+
+export type AccountWorkflowRequestPayload = {
+  trigger: "account.relationship_intelligence_requested";
+  account_id: string;
+  agent_run_id: string;
+};
+
+export type RelationshipIntelligenceWritebackPayload = {
+  account_id: string;
+  agent_run_id: string;
+  output_summary: string;
+  next_action: string | null;
+  signals: Array<{
+    signal_type: RelationshipSignalType;
+    severity: RelationshipSignalSeverity;
+    title: string;
+    reason: string;
+    suggested_action: string | null;
+    dedupe_key: string;
+  }>;
+  confidence_score: number;
   model_used?: string;
 };

@@ -1,136 +1,102 @@
-// src/server-functions/accounts.ts
 import { createServerFn } from "@tanstack/react-start";
-import { createSupabaseServerClient } from "@/legacy-supabase/server";
-import type {
-  Account,
-  Contact,
-  CustomerSuccessProfile,
-  Deal,
-  EngagementEvent,
-  Project,
-} from "@/lib/types";
-
-type GetAccountsInput = {
-  owner?: string;
-  lifecycle_stage?: string;
-  health_min?: number;
-  renewal_before?: string;
-};
-
-type CreateAccountInput = Pick<Account, "name"> &
-  Partial<
-    Pick<
-      Account,
-      | "domain"
-      | "industry"
-      | "tier"
-      | "account_owner"
-      | "lifecycle_stage"
-      | "health_score"
-      | "renewal_date"
-      | "arr"
-    >
-  >;
+import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
+import { getN8nDispatchConfig, triggerN8n } from "@/lib/n8n";
+import { buildRelationshipIntelligencePayload } from "@/lib/workflows/payloads";
+import {
+  createAccount as createAccountInNeon,
+  getAccount as getAccountInNeon,
+  listAccounts,
+  type AccountFilters,
+  type CreateAccountInput,
+  updateAccount as updateAccountInNeon,
+} from "@/server/repositories/accounts";
+import {
+  createAgentRun,
+  findActiveRun,
+  updateAgentRunResult,
+} from "@/server/repositories/agent-runs";
+import { serializeAgentRun } from "@/server-functions/serializers";
+import type { Account } from "@/lib/types";
 
 export const getAccounts = createServerFn({ method: "GET" })
-  .validator((data: unknown) => (data ?? {}) as GetAccountsInput)
+  .validator((data: unknown) => (data ?? {}) as AccountFilters)
   .handler(async ({ data }) => {
-    const supabase = createSupabaseServerClient();
-    let query = supabase.from("accounts").select("*").order("name");
-
-    if (data.owner) query = query.eq("account_owner", data.owner);
-    if (data.lifecycle_stage) query = query.eq("lifecycle_stage", data.lifecycle_stage);
-    if (data.health_min !== undefined) query = query.gte("health_score", data.health_min);
-    if (data.renewal_before) query = query.lte("renewal_date", data.renewal_before);
-
-    const { data: accounts, error } = await query;
-    if (error) throw new Error(error.message);
-    return accounts as Account[];
+    await requireNeonAuthSession();
+    return listAccounts(data);
   });
 
 export const getAccount = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
-    const supabase = createSupabaseServerClient();
-    const [accountResult, contactsResult, timelineResult, dealsResult, projectsResult, csResult] =
-      await Promise.all([
-        supabase.from("accounts").select("*").eq("id", data.id).single(),
-        supabase.from("contacts").select("*").eq("account_id", data.id).order("full_name"),
-        supabase
-          .from("engagement_events")
-          .select("*")
-          .eq("account_id", data.id)
-          .order("occurred_at", { ascending: false })
-          .limit(50),
-        supabase
-          .from("deals")
-          .select("*")
-          .eq("account_id", data.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("projects")
-          .select("*")
-          .eq("account_id", data.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("customer_success_profiles")
-          .select("*")
-          .eq("account_id", data.id)
-          .maybeSingle(),
-      ]);
-
-    if (accountResult.error) throw new Error(accountResult.error.message);
-    if (contactsResult.error) throw new Error(contactsResult.error.message);
-    if (timelineResult.error) throw new Error(timelineResult.error.message);
-    if (dealsResult.error) throw new Error(dealsResult.error.message);
-    if (projectsResult.error) throw new Error(projectsResult.error.message);
-    if (csResult.error) throw new Error(csResult.error.message);
-
-    return {
-      account: accountResult.data as Account,
-      contacts: (contactsResult.data ?? []) as Contact[],
-      engagementEvents: (timelineResult.data ?? []) as EngagementEvent[],
-      deals: (dealsResult.data ?? []) as Deal[],
-      projects: (projectsResult.data ?? []) as Project[],
-      customerSuccessProfile: csResult.data as CustomerSuccessProfile | null,
-    };
+    await requireNeonAuthSession();
+    return getAccountInNeon(data.id);
   });
 
 export const createAccount = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateAccountInput)
   .handler(async ({ data }) => {
-    const supabase = createSupabaseServerClient();
-    const { data: account, error } = await supabase.from("accounts").insert(data).select().single();
-    if (error) throw new Error(error.message);
-    return account as Account;
+    await requireNeonAuthSession();
+    return createAccountInNeon(data);
   });
 
 export const updateAccount = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: Partial<Account> })
   .handler(async ({ data }) => {
-    const supabase = createSupabaseServerClient();
-    const { data: account, error } = await supabase
-      .from("accounts")
-      .update({
-        ...(data.updates.name !== undefined && { name: data.updates.name }),
-        ...(data.updates.domain !== undefined && { domain: data.updates.domain }),
-        ...(data.updates.industry !== undefined && { industry: data.updates.industry }),
-        ...(data.updates.tier !== undefined && { tier: data.updates.tier }),
-        ...(data.updates.account_owner !== undefined && {
-          account_owner: data.updates.account_owner,
+    await requireNeonAuthSession();
+    return updateAccountInNeon(data.id, data.updates);
+  });
+
+export const triggerRelationshipIntelligence = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as { accountId: string })
+  .handler(async ({ data }) => {
+    const session = await requireNeonAuthSession();
+    const existingRun = await findActiveRun(data.accountId, "relationship_intelligence", "account");
+    if (existingRun) {
+      return {
+        triggered: false,
+        run: serializeAgentRun(existingRun),
+        reason: "already_running" as const,
+      };
+    }
+
+    const dispatchConfig = getN8nDispatchConfig(
+      process.env.N8N_RELATIONSHIP_INTELLIGENCE_WEBHOOK_URL,
+    );
+    if (!dispatchConfig) {
+      return { triggered: false, reason: "missing_webhook" as const };
+    }
+
+    const { run, created } = await createAgentRun({
+      agent_name: "Relationship Intelligence Agent",
+      workflow_type: "relationship_intelligence",
+      subject_type: "account",
+      subject_id: data.accountId,
+      input_data: { account_id: data.accountId },
+      created_by: session.user.id,
+    });
+
+    if (!created) {
+      return { triggered: false, run: serializeAgentRun(run), reason: "already_running" as const };
+    }
+
+    try {
+      await triggerN8n(
+        dispatchConfig,
+        buildRelationshipIntelligencePayload({
+          accountId: data.accountId,
+          agentRunId: run.id,
         }),
-        ...(data.updates.lifecycle_stage !== undefined && {
-          lifecycle_stage: data.updates.lifecycle_stage,
-        }),
-        ...(data.updates.health_score !== undefined && { health_score: data.updates.health_score }),
-        ...(data.updates.renewal_date !== undefined && {
-          renewal_date: data.updates.renewal_date,
-        }),
-        ...(data.updates.arr !== undefined && { arr: data.updates.arr }),
-      })
-      .eq("id", data.id)
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    return account as Account;
+      );
+    } catch (error) {
+      await updateAgentRunResult(run.id, {
+        status: "failed",
+        output_data: {
+          dispatch_error: error instanceof Error ? error.message : "Unknown n8n dispatch error",
+        },
+        output_summary: "Failed to dispatch relationship intelligence workflow.",
+      });
+      throw error;
+    }
+
+    return { triggered: true, run: serializeAgentRun(run) };
   });

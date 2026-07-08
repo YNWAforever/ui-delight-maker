@@ -1,0 +1,117 @@
+import { normalizeAccountName } from "@/lib/relationship/matching";
+import type { EventImportValidRow } from "@/lib/relationship/event-import";
+import { query, transaction } from "@/server/db/neon.server";
+import { createAccountContact } from "@/server/repositories/account-contacts";
+import { createAccount } from "@/server/repositories/accounts";
+import { createCampaignMember } from "@/server/repositories/campaigns";
+
+export type CommitEventImportInput = {
+  campaignId: string;
+  rows: EventImportValidRow[];
+  owner: string | null;
+};
+
+export type EventImportCommitResult = {
+  createdAccounts: number;
+  createdContacts: number;
+  createdMembers: number;
+};
+
+export async function listEventImportAccountCandidates() {
+  return query<Array<{ id: string; name: string; domain: string | null }>[number]>(
+    `
+      select id, name, domain
+      from accounts
+      order by name
+    `,
+  );
+}
+
+export async function listEventImportAccountContacts() {
+  return query<
+    Array<{ id: string; account_id: string; name: string; email: string | null }>[number]
+  >(
+    `
+      select id, account_id, name, email
+      from account_contacts
+      where active = true
+      order by account_id, name
+    `,
+  );
+}
+
+export async function commitEventImport(
+  input: CommitEventImportInput,
+): Promise<EventImportCommitResult> {
+  return transaction(async (db) => {
+    let createdAccounts = 0;
+    let createdContacts = 0;
+    let createdMembers = 0;
+    const createdAccountIdsByCompany = new Map<string, string>();
+
+    for (const row of input.rows) {
+      const normalizedCompanyName = row.company_name.trim()
+        ? normalizeAccountName(row.company_name)
+        : "";
+      let accountId =
+        row.account_match.kind === "matched"
+          ? row.account_match.accountId
+          : (createdAccountIdsByCompany.get(normalizedCompanyName) ?? null);
+
+      if (!accountId && row.company_name.trim()) {
+        const account = await createAccount(
+          {
+            name: row.company_name.trim(),
+            lifecycle_stage: "prospect",
+            account_owner: input.owner,
+            source: "event",
+          },
+          db,
+        );
+        accountId = account.id;
+        if (normalizedCompanyName) {
+          createdAccountIdsByCompany.set(normalizedCompanyName, account.id);
+        }
+        createdAccounts += 1;
+      }
+
+      let contactId = row.contact_match?.kind === "matched" ? row.contact_match.contactId : null;
+
+      if (!contactId && accountId && row.contact_name.trim()) {
+        const contact = await createAccountContact(
+          {
+            account_id: accountId,
+            name: row.contact_name.trim(),
+            email: row.email || null,
+            phone: row.phone || null,
+            relationship_role: "event_attendee",
+            preferred_channel: row.email ? "email" : "unknown",
+          },
+          db,
+        );
+        contactId = contact.id;
+        createdContacts += 1;
+      }
+
+      await createCampaignMember(
+        {
+          campaign_id: input.campaignId,
+          account_id: accountId,
+          contact_id: contactId,
+          raw_company_name: row.company_name,
+          raw_contact_name: row.contact_name,
+          raw_email: row.email,
+          raw_phone: row.phone,
+          attendee_status: row.attendee_status,
+          interests: row.interests,
+          follow_up_owner: input.owner,
+          notes: row.notes,
+        },
+        db,
+      );
+      createdMembers += 1;
+    }
+
+    return { createdAccounts, createdContacts, createdMembers };
+  });
+}

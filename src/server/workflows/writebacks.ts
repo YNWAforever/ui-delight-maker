@@ -1,6 +1,7 @@
 import type { QualificationData } from "@/lib/types";
 import type {
   QualificationWritebackPayload,
+  RelationshipIntelligenceWritebackPayload,
   QuoteDraftWritebackPayload,
   ReplyDraftWritebackPayload,
   ScoreRenewalRiskWritebackPayload,
@@ -9,9 +10,11 @@ import { transaction } from "@/server/db/neon.server";
 import { createActivityLog } from "@/server/repositories/activity-logs";
 import { getAgentRunForUpdate, updateAgentRunResult } from "@/server/repositories/agent-runs";
 import { createApproval } from "@/server/repositories/approvals";
+import { updateAccount } from "@/server/repositories/accounts";
 import { applyEngagementScore, getEngagement } from "@/server/repositories/engagements";
 import { assertLeadExists, updateLead } from "@/server/repositories/leads";
 import { createQuote } from "@/server/repositories/quotes";
+import { upsertRelationshipSignals } from "@/server/repositories/relationship-signals";
 
 function getHumanReviewRequired(qualificationData: unknown, confidenceScore: number) {
   if (
@@ -345,5 +348,75 @@ export async function writeQuoteDraftResult(payload: QuoteDraftWritebackPayload)
       quoteId: quote.id,
       approvalId: approval?.id ?? null,
     };
+  });
+}
+
+export async function writeRelationshipIntelligenceResult(
+  payload: RelationshipIntelligenceWritebackPayload,
+) {
+  return transaction(async (db) => {
+    const agentRun = (await getAgentRunForUpdate(payload.agent_run_id, db)) as
+      | ({ subject_type?: unknown; subject_id?: unknown; status: string; output_data: unknown } & {
+          id: string;
+        })
+      | null;
+    if (!agentRun) {
+      throw new Error("Agent run not found");
+    }
+
+    if (agentRun.subject_type !== "account" || agentRun.subject_id !== payload.account_id) {
+      throw new Error("Agent run does not belong to this account");
+    }
+
+    if (agentRun.status === "completed") {
+      return { applied: true as const };
+    }
+
+    await updateAccount(
+      payload.account_id,
+      {
+        next_action: payload.next_action,
+        last_activity_at: new Date().toISOString(),
+      },
+      db,
+    );
+
+    const signals = await upsertRelationshipSignals(
+      payload.account_id,
+      payload.signals.map((signal) => ({
+        account_id: payload.account_id,
+        source: "ai",
+        ...signal,
+      })),
+      db,
+    );
+
+    await updateAgentRunResult(
+      payload.agent_run_id,
+      {
+        status: "completed",
+        output_data: { next_action: payload.next_action, signals },
+        output_summary: payload.output_summary,
+        confidence_score: payload.confidence_score,
+        human_review_required: false,
+        model_used: payload.model_used ?? null,
+      },
+      db,
+    );
+
+    await createActivityLog(
+      {
+        actor_type: "agent",
+        actor_id: payload.agent_run_id,
+        actor_name: "Relationship Intelligence Agent",
+        action: "analyzed account relationship",
+        object_type: "account",
+        object_id: payload.account_id,
+        diff_data: { signal_count: signals.length, next_action: payload.next_action },
+      },
+      db,
+    );
+
+    return { applied: true as const, signalCount: signals.length };
   });
 }

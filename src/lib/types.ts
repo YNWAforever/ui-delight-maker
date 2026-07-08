@@ -2,6 +2,8 @@
 // Canonical types matching the Supabase schema.
 // mock-data.ts types are kept for backward compat during migration but will be removed.
 
+import type { RelationshipSignalDraft } from "@/lib/relationship/types";
+
 export type LeadStatus = "new" | "qualified" | "replied" | "quoted" | "approved" | "won" | "lost";
 export type LeadSource = "website" | "whatsapp" | "email" | "linkedin" | "csv" | "event" | "manual";
 export type LifecycleChannel = LeadSource;
@@ -29,7 +31,13 @@ export type AgentRunStatus = "running" | "completed" | "failed" | "waiting_appro
 export type UserRole = "admin" | "manager" | "sales" | "cs";
 
 export type PricingCategory = "AI transformation" | "CRM" | "KOC" | "campaign" | "data" | "custom";
-export type AccountLifecycleStage = "prospect" | "active_client" | "at_risk" | "churned";
+export type AccountLifecycleStage =
+  | "prospect"
+  | "active_client"
+  | "at_risk"
+  | "churned"
+  | "partner"
+  | "vendor";
 export type ContactLifecycleStage =
   | "subscriber"
   | "lead"
@@ -38,18 +46,28 @@ export type ContactLifecycleStage =
   | "customer"
   | "evangelist"
   | "unsubscribed";
+export type PreferredChannel = "email" | "phone" | "whatsapp" | "linkedin" | "event" | "unknown";
+export type RelationshipRole =
+  | "decision_maker"
+  | "buyer"
+  | "champion"
+  | "daily_user"
+  | "influencer"
+  | "finance_procurement"
+  | "blocker"
+  | "agency_partner"
+  | "event_attendee"
+  | "other";
+export type InfluenceLevel = "low" | "medium" | "high";
+export type StakeholderSentiment = "positive" | "neutral" | "negative" | "unknown";
+export type RelationshipStrength = "weak" | "developing" | "strong";
 export type ConsentStatus = "unknown" | "opted_in" | "opted_out";
 export type EngagementDirection = "inbound" | "outbound" | "internal";
-export type CampaignStatus = "draft" | "scheduled" | "active" | "paused" | "completed";
-export type CampaignMemberStatus =
-  | "queued"
-  | "sent"
-  | "opened"
-  | "clicked"
-  | "replied"
-  | "converted"
-  | "unsubscribed"
-  | "failed";
+export type CampaignType = "campaign" | "webinar" | "workshop" | "activation" | "outbound" | "client_event";
+export type CampaignStatus = "draft" | "planned" | "active" | "completed" | "archived";
+export type AttendeeStatus = "attended" | "met" | "high_intent" | "unknown";
+export type FollowUpStatus = "not_started" | "task_created" | "in_progress" | "completed" | "dismissed";
+export type ConversionOutcome = "none" | "lead" | "quote" | "engagement" | "client_activity";
 export type AutomationTriggerType =
   | "manual"
   | "engagement_event"
@@ -59,6 +77,13 @@ export type AutomationTriggerType =
   | "schedule";
 export type AutomationPlaybookStatus = "draft" | "active" | "paused" | "archived";
 export type AutomationRunStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
+export type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 export type DealStage =
   | "new"
   | "discovery"
@@ -275,14 +300,46 @@ export interface DashboardStats {
 export interface Account {
   id: string;
   name: string;
+  website?: string | null;
   domain: string | null;
   industry: string | null;
+  region?: string | null;
   tier: "SME" | "mid-market" | "enterprise" | null;
   account_owner: string | null;
   lifecycle_stage: AccountLifecycleStage;
-  health_score: number;
-  renewal_date: string | null;
-  arr: number | null;
+  cs_owner?: string | null;
+  source?: string | null;
+  tags?: string[];
+  notes?: string | null;
+  relationship_health?: number;
+  last_activity_at?: string | null;
+  next_action?: string | null;
+  health_score?: number;
+  renewal_date?: string | null;
+  arr?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AccountContact {
+  id: string;
+  account_id: string;
+  name: string;
+  title: string | null;
+  department: string | null;
+  email: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  linkedin_url: string | null;
+  preferred_channel: PreferredChannel | null;
+  relationship_role: RelationshipRole;
+  influence_level: InfluenceLevel;
+  sentiment: StakeholderSentiment;
+  relationship_strength: RelationshipStrength;
+  is_primary: boolean;
+  active: boolean;
+  notes: string | null;
+  last_contacted_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -290,16 +347,29 @@ export interface Account {
 export interface Contact {
   id: string;
   account_id: string | null;
+  name?: string | null;
   first_name: string | null;
   last_name: string | null;
   full_name: string | null;
   email: string | null;
   phone: string | null;
+  department?: string | null;
+  whatsapp?: string | null;
+  linkedin_url?: string | null;
   title: string | null;
   owner: string | null;
   lifecycle_stage: ContactLifecycleStage;
   source: LifecycleChannel | null;
   consent_status: ConsentStatus;
+  preferred_channel?: PreferredChannel | null;
+  relationship_role?: RelationshipRole;
+  influence_level?: InfluenceLevel;
+  sentiment?: StakeholderSentiment;
+  relationship_strength?: RelationshipStrength;
+  is_primary?: boolean;
+  active?: boolean;
+  notes?: string | null;
+  last_contacted_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -313,19 +383,23 @@ export interface ChannelIdentity {
   handle: string | null;
   is_primary: boolean;
   last_seen_at: string | null;
-  metadata: unknown;
+  metadata: JsonValue;
   created_at: string;
 }
 
 export interface Campaign {
   id: string;
   name: string;
-  channel: CampaignChannel;
+  type: CampaignType;
+  channel?: CampaignChannel | null;
   status: CampaignStatus;
   objective: string | null;
-  audience_filter: unknown;
-  scheduled_at: string | null;
+  audience_filter?: JsonValue;
+  scheduled_at?: string | null;
   owner: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  notes?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -335,10 +409,23 @@ export interface CampaignMember {
   campaign_id: string;
   contact_id: string | null;
   account_id: string | null;
-  status: CampaignMemberStatus;
-  joined_at: string;
-  last_event_at: string | null;
-  metadata: unknown;
+  raw_company_name?: string | null;
+  raw_contact_name?: string | null;
+  raw_email?: string | null;
+  raw_phone?: string | null;
+  attendee_status: AttendeeStatus;
+  interests?: string[];
+  follow_up_owner?: string | null;
+  follow_up_status: FollowUpStatus;
+  conversion_outcome?: ConversionOutcome;
+  notes?: string | null;
+  created_at: string;
+  updated_at?: string;
+  // Legacy compatibility fields retained until data-access layers move to the new schema.
+  status?: AttendeeStatus;
+  joined_at?: string;
+  last_event_at?: string | null;
+  metadata?: JsonValue;
 }
 
 export interface EngagementEvent {
@@ -357,7 +444,7 @@ export interface EngagementEvent {
   occurred_at: string;
   created_by: string | null;
   created_by_agent: string | null;
-  metadata: unknown;
+  metadata: JsonValue;
   created_at: string;
 }
 
@@ -547,4 +634,13 @@ export interface NotificationRecord {
   dedupe_key: string | null;
   read_at: string | null;
   created_at: string;
+}
+
+export interface RelationshipSignal extends RelationshipSignalDraft {
+  id: string;
+  dismissed_at: string | null;
+  dismissed_by: string | null;
+  dismissal_reason: string | null;
+  created_at: string;
+  updated_at: string;
 }
