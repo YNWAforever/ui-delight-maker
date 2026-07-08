@@ -50,6 +50,25 @@ const quoteUpdateColumns: Array<keyof Partial<Quote> & string> = [
   "deal_id",
 ];
 
+const immutableVersionReferenceColumns = ["accepted_version_id", "issued_version_id"] as const;
+
+function buildImmutableVersionReferenceGuard(updates: Partial<Quote>) {
+  const clauses: string[] = [];
+  const values: Array<string | null> = [];
+  let nextIndex = 1;
+
+  for (const column of immutableVersionReferenceColumns) {
+    const value = updates[column];
+    if (value === undefined) continue;
+
+    clauses.push(`(${column} is null or ${column} is not distinct from $${nextIndex})`);
+    values.push(value ?? null);
+    nextIndex += 1;
+  }
+
+  return { clauses, values, nextIndex };
+}
+
 export async function listQuotes(filters: QuoteFilters = {}) {
   const where = buildFilters([
     ["status", filters.status],
@@ -107,24 +126,29 @@ export async function createQuote(input: CreateQuoteInput, db?: Queryable) {
 }
 
 export async function updateQuote(id: string, updates: Partial<Quote>) {
+  const immutableVersionReferenceGuard = buildImmutableVersionReferenceGuard(updates);
   const normalizedUpdates = {
     ...updates,
     line_items: updates.line_items === undefined ? undefined : JSON.stringify(updates.line_items),
     document_sections:
       updates.document_sections === undefined ? undefined : JSON.stringify(updates.document_sections),
   };
-  const update = buildUpdate(normalizedUpdates, quoteUpdateColumns, 1);
+  const update = buildUpdate(normalizedUpdates, quoteUpdateColumns, immutableVersionReferenceGuard.nextIndex);
   const quote = await queryOne<Quote>(
     `
       update quotes
       set ${update.sql}
-      where id = $${update.nextIndex}
+      where id = $${update.nextIndex}${
+        immutableVersionReferenceGuard.clauses.length > 0
+          ? ` and ${immutableVersionReferenceGuard.clauses.join(" and ")}`
+          : ""
+      }
       returning *
     `,
-    [...update.values, id],
+    [...immutableVersionReferenceGuard.values, ...update.values, id],
   );
 
-  if (!quote) throw new Error("Quote not found");
+  if (!quote) throw new Error("Quote not found or version reference is immutable");
   return quote;
 }
 

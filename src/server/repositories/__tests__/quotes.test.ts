@@ -13,6 +13,22 @@ vi.mock("@/server/db/neon.server", () => ({
 describe("quotes repository line items", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it("lists quote line items ordered by sort order and creation time", async () => {
+    mockQuery.mockResolvedValue([]);
+    const { listQuoteLineItems } = await import("../quotes");
+
+    await listQuoteLineItems("quote-1");
+
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("from quote_line_items"),
+      ["quote-1"],
+    );
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("order by sort_order, created_at"),
+      ["quote-1"],
+    );
+  });
+
   it("replaces normalized quote line items in a transaction-compatible way", async () => {
     const db = { query: vi.fn() };
     mockQuery.mockResolvedValue([]);
@@ -51,5 +67,57 @@ describe("quotes repository line items", () => {
       expect.stringContaining("document_sections = $1"),
       [JSON.stringify([{ title: "Scope", body: "Planning" }]), "quote-1"],
     );
+  });
+
+  it("guards immutable quote version references during update", async () => {
+    mockQueryOne.mockResolvedValue({ id: "quote-1" });
+    const { updateQuote } = await import("../quotes");
+
+    await updateQuote("quote-1", {
+      accepted_version_id: "accepted-version-1",
+      issued_version_id: "issued-version-1",
+    });
+
+    expect(mockQueryOne).toHaveBeenCalledWith(
+      expect.stringContaining("accepted_version_id is null or accepted_version_id is not distinct from $1"),
+      [
+        "accepted-version-1",
+        "issued-version-1",
+        "accepted-version-1",
+        "issued-version-1",
+        "quote-1",
+      ],
+    );
+    expect(mockQueryOne).toHaveBeenCalledWith(
+      expect.stringContaining("issued_version_id is null or issued_version_id is not distinct from $2"),
+      [
+        "accepted-version-1",
+        "issued-version-1",
+        "accepted-version-1",
+        "issued-version-1",
+        "quote-1",
+      ],
+    );
+    expect(mockQueryOne).toHaveBeenCalledWith(
+      expect.stringContaining("set accepted_version_id = $3, issued_version_id = $4"),
+      [
+        "accepted-version-1",
+        "issued-version-1",
+        "accepted-version-1",
+        "issued-version-1",
+        "quote-1",
+      ],
+    );
+  });
+
+  it("rejects updates that would repoint immutable quote version references", async () => {
+    mockQueryOne.mockResolvedValue(null);
+    const { updateQuote } = await import("../quotes");
+
+    await expect(
+      updateQuote("quote-1", {
+        accepted_version_id: "accepted-version-1",
+      }),
+    ).rejects.toThrow("Quote not found or version reference is immutable");
   });
 });
