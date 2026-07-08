@@ -14,7 +14,11 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
-import { QuotePdfPreview, resolveQuotePdfSource } from "@/components/quotes/quote-pdf-preview";
+import {
+  QuotePdfPreview,
+  QuotePdfPreviewUnavailable,
+  resolveQuotePdfSource,
+} from "@/components/quotes/quote-pdf-preview";
 import { StatusBadge } from "@/components/status-badge";
 import type { Client, Lead, PricingTemplate, QuoteLineItem, QuoteStatus, QuoteVersion } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -123,9 +127,13 @@ function QuoteDetail() {
 
   const totalValue = calculateTotal(editItems);
   const resolvedPdfSource = resolveQuotePdfSource(quote, versions);
-  const previewSource = resolvedPdfSource.sourceVersion
+  const previewSource = resolvedPdfSource.state !== "live"
     ? resolvedPdfSource
-    : { ...resolvedPdfSource, lineItems: isEditMode ? editItems : resolvedPdfSource.lineItems };
+    : {
+        ...resolvedPdfSource,
+        quote: isEditMode ? { ...resolvedPdfSource.quote, total_value: totalValue } : resolvedPdfSource.quote,
+        lineItems: isEditMode ? editItems : resolvedPdfSource.lineItems,
+      };
   const clientName =
     client?.company_name ?? lead?.company_name ?? quote.client_id ?? quote.lead_id ?? "Client";
   const currentPreviewVersionId = resolvedPdfSource.sourceVersion?.id ?? null;
@@ -632,11 +640,15 @@ function QuoteDetail() {
 
                 <TabsContent value="preview" className="mt-4">
                   <div className="overflow-hidden rounded-md border border-border bg-muted/20 p-3">
-                    <QuotePdfPreview
-                      quote={previewSource.quote}
-                      lineItems={previewSource.lineItems}
-                      clientName={clientName}
-                    />
+                    {previewSource.state === "invalid" ? (
+                      <QuotePdfPreviewUnavailable error={previewSource.error} />
+                    ) : (
+                      <QuotePdfPreview
+                        quote={previewSource.quote}
+                        lineItems={previewSource.lineItems}
+                        clientName={clientName}
+                      />
+                    )}
                   </div>
                 </TabsContent>
               </Tabs>

@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { QuotePdfPreview, resolveQuotePdfSource } from "@/components/quotes/quote-pdf-preview";
+import {
+  QuotePdfPreview,
+  QuotePdfPreviewUnavailable,
+  resolveQuotePdfSource,
+} from "@/components/quotes/quote-pdf-preview";
 import { Button } from "@/components/ui/button";
 import { getClient } from "@/server-functions/clients";
 import { getLead } from "@/server-functions/leads";
@@ -41,7 +45,13 @@ function QuotePdfRoute() {
           Print or save PDF
         </Button>
       </div>
-      <QuotePdfPreview quote={previewSource.quote} lineItems={previewSource.lineItems} clientName={clientName} />
+      {previewSource.state === "invalid" ? (
+        <div className="mx-auto max-w-3xl px-4 pb-8">
+          <QuotePdfPreviewUnavailable error={previewSource.error} />
+        </div>
+      ) : (
+        <QuotePdfPreview quote={previewSource.quote} lineItems={previewSource.lineItems} clientName={clientName} />
+      )}
     </main>
   );
 }

@@ -52,3 +52,63 @@
 - `document_sections` now uses the same JSON serialization strategy on create that the repository already used on update.
 - Tests assert real forwarded arguments and actual query parameters instead of only checking generic happy-path behavior.
 - No unrelated files were edited or reverted.
+
+---
+
+## Task 6 Fix Report - Reviewer findings: immutable PDF snapshots and draft preview totals
+
+### Timestamp
+- 2026-07-09T04:03:13+08:00
+
+### Scope
+- Fix the quote PDF preview resolver so accepted/issued snapshot pointers fail closed when the immutable snapshot is missing or malformed.
+- Fix draft detail preview totals so edited line items and footer totals stay in sync.
+- Add direct regression coverage for quote preview snapshot resolution.
+
+### What changed
+- Updated `src/components/quotes/quote-pdf-preview.tsx`:
+  - `resolveQuotePdfSource` now returns an explicit state: `live`, `snapshot`, or `invalid`.
+  - Accepted/issued quotes now require the exact referenced version id instead of falling back to mutable live quote data or other versions.
+  - Missing immutable snapshots now return an `invalid` state with `missing_immutable_snapshot`.
+  - Malformed immutable snapshots now return an `invalid` state with `invalid_immutable_snapshot`.
+  - Added `QuotePdfPreviewUnavailable` so UI surfaces show a clear non-PDF fallback instead of rendering live mutable data.
+- Updated `src/routes/quotes.$id.tsx`:
+  - Draft preview now overrides both `lineItems` and `quote.total_value` when previewing unsaved edits.
+  - The preview tab now renders the unavailable-state fallback when immutable snapshot resolution fails.
+- Updated `src/routes/quotes.$id.pdf.tsx`:
+  - The PDF route now renders the same unavailable-state fallback when the immutable snapshot is missing or malformed.
+
+### Tests added or updated
+- Added `src/components/quotes/__tests__/quote-pdf-preview.test.ts` covering:
+  - referenced accepted snapshot resolves to immutable snapshot data
+  - missing accepted snapshot pointer fails closed
+  - malformed issued snapshot fails closed
+  - no immutable pointer falls back to live draft data
+
+### Verification run
+- Red phase:
+  - `bun run vitest run src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - Result: failed as expected because `resolveQuotePdfSource` did not yet expose immutable/live/invalid state.
+- Green/focused:
+  - `bun run vitest run src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - Result: passed (`1` file, `4` tests).
+- Required verification:
+  - `bun run vitest run src/components/quotes/__tests__/quote-pdf-preview.test.ts src/server/repositories/__tests__/quotes.test.ts src/server-functions/__tests__/quotes.test.ts src/lib/__tests__/quote-to-cash.test.ts`
+  - Result: passed (`4` files, `33` tests).
+  - `bun run build`
+  - Result: succeeded.
+  - Notes:
+    - Pre-build schema step reported `{ "ok": true, "skipped": true, "reason": "DATABASE_URL is not set" }`
+    - Seed step reported `{ "ok": true, "skipped": true, "reason": "CLIENTOPS_SEED_ON_DEPLOY is not 1" }`
+    - Vite emitted existing chunk-size and unused-import warnings, but the build completed successfully.
+
+### Files changed
+- `src/components/quotes/quote-pdf-preview.tsx`
+- `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+- `src/routes/quotes.$id.tsx`
+- `src/routes/quotes.$id.pdf.tsx`
+
+### Self-review
+- Immutable snapshot references now either resolve to the exact stored snapshot or stop with an explicit invalid state; they no longer silently downgrade to live mutable quote content.
+- Draft preview totals now stay aligned with edited rows by overriding `quote.total_value` alongside `lineItems`.
+- The patch is limited to the resolver, the two preview surfaces, and a focused regression test file.

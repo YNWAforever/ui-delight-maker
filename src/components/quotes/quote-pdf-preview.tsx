@@ -17,11 +17,34 @@ export type QuotePdfQuote = Pick<
 type QuotePdfSourceInput = QuotePdfQuote &
   Pick<Quote, "accepted_version_id" | "issued_version_id" | "line_items">;
 
-type ResolvedQuotePdfSource = {
-  quote: QuotePdfQuote;
-  lineItems: QuoteLineItem[];
-  sourceVersion: QuoteVersion | null;
+export type QuotePdfSourceError = {
+  code: "missing_immutable_snapshot" | "invalid_immutable_snapshot";
+  versionId: string;
+  versionReason: "accepted" | "issued";
 };
+
+export type ResolvedQuotePdfSource =
+  | {
+      state: "live";
+      quote: QuotePdfQuote;
+      lineItems: QuoteLineItem[];
+      sourceVersion: null;
+      error: null;
+    }
+  | {
+      state: "snapshot";
+      quote: QuotePdfQuote;
+      lineItems: QuoteLineItem[];
+      sourceVersion: QuoteVersion;
+      error: null;
+    }
+  | {
+      state: "invalid";
+      quote: null;
+      lineItems: QuoteLineItem[];
+      sourceVersion: QuoteVersion | null;
+      error: QuotePdfSourceError;
+    };
 
 type QuotePdfPreviewProps = {
   quote: QuotePdfQuote;
@@ -35,21 +58,6 @@ function isSnapshotRecord(value: JsonValue): value is Record<string, JsonValue> 
 
 function readSnapshotLineItems(value: JsonValue): QuoteLineItem[] {
   return Array.isArray(value) ? (value as QuoteLineItem[]) : [];
-}
-
-function getVersionByReasonOrId(
-  versions: QuoteVersion[],
-  id: string | null,
-  reason: QuoteVersion["reason"],
-): QuoteVersion | null {
-  if (id) {
-    const matchingById = versions.find((version) => version.id === id);
-    if (matchingById) {
-      return matchingById;
-    }
-  }
-
-  return versions.find((version) => version.reason === reason) ?? null;
 }
 
 export function readQuotePdfSnapshot(snapshot: JsonValue): Omit<ResolvedQuotePdfSource, "sourceVersion"> | null {
@@ -76,15 +84,35 @@ export function resolveQuotePdfSource(
   quote: QuotePdfSourceInput,
   versions: QuoteVersion[],
 ): ResolvedQuotePdfSource {
-  const sourceVersion =
-    getVersionByReasonOrId(versions, quote.accepted_version_id, "accepted") ??
-    getVersionByReasonOrId(versions, quote.issued_version_id, "issued");
+  const immutableReference = quote.accepted_version_id
+    ? { versionId: quote.accepted_version_id, versionReason: "accepted" as const }
+    : quote.issued_version_id
+      ? { versionId: quote.issued_version_id, versionReason: "issued" as const }
+      : null;
 
-  if (!sourceVersion) {
+  if (!immutableReference) {
     return {
+      state: "live",
       quote,
       lineItems: quote.line_items,
       sourceVersion: null,
+      error: null,
+    };
+  }
+
+  const sourceVersion = versions.find((version) => version.id === immutableReference.versionId) ?? null;
+
+  if (!sourceVersion) {
+    return {
+      state: "invalid",
+      quote: null,
+      lineItems: [],
+      sourceVersion: null,
+      error: {
+        code: "missing_immutable_snapshot",
+        versionId: immutableReference.versionId,
+        versionReason: immutableReference.versionReason,
+      },
     };
   }
 
@@ -92,16 +120,47 @@ export function resolveQuotePdfSource(
 
   if (!snapshot) {
     return {
-      quote,
-      lineItems: quote.line_items,
-      sourceVersion: null,
+      state: "invalid",
+      quote: null,
+      lineItems: [],
+      sourceVersion,
+      error: {
+        code: "invalid_immutable_snapshot",
+        versionId: sourceVersion.id,
+        versionReason: immutableReference.versionReason,
+      },
     };
   }
 
   return {
+    state: "snapshot",
     ...snapshot,
     sourceVersion,
+    error: null,
   };
+}
+
+type QuotePdfPreviewUnavailableProps = {
+  error: QuotePdfSourceError;
+};
+
+export function QuotePdfPreviewUnavailable({ error }: QuotePdfPreviewUnavailableProps) {
+  const versionLabel = error.versionReason === "accepted" ? "accepted" : "issued";
+  const detail =
+    error.code === "missing_immutable_snapshot"
+      ? "The referenced snapshot could not be found."
+      : "The referenced snapshot is malformed.";
+
+  return (
+    <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+      <p className="font-medium">PDF preview unavailable</p>
+      <p className="mt-1">
+        This quote points to an immutable {versionLabel} snapshot, but {detail} Repair the snapshot reference before
+        rendering a PDF preview.
+      </p>
+      <p className="mt-2 text-xs text-amber-800">Snapshot id: {error.versionId}</p>
+    </div>
+  );
 }
 
 export function QuotePdfPreview({ quote, lineItems, clientName }: QuotePdfPreviewProps) {
