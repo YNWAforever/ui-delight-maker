@@ -222,7 +222,7 @@ describe("job sheets repository", () => {
     });
   });
 
-  it("replaces job sheet portions inside a transaction-compatible call", async () => {
+  it("locks the parent job sheet before replacing portions in a transaction-compatible call", async () => {
     const db = { query: vi.fn() };
     mockQueryOne.mockResolvedValue({
       id: "job-1",
@@ -258,7 +258,7 @@ describe("job sheets repository", () => {
 
     expect(mockQueryOne).toHaveBeenNthCalledWith(
       1,
-      expect.stringContaining("from job_sheets where id = $1"),
+      expect.stringContaining("from job_sheets where id = $1 for update"),
       ["job-1"],
       db,
     );
@@ -286,20 +286,29 @@ describe("job sheets repository", () => {
     );
   });
 
-  it("rejects replacing portions after a job sheet is accepted", async () => {
+  it.each([
+    ["accepted", { status: "accepted", locked_at: null }],
+    ["locked", { status: "accounting_review", locked_at: "2026-07-09T12:00:00.000Z" }],
+  ])("rejects replacing portions when the locked row is %s", async (_, jobSheet) => {
     mockQueryOne.mockResolvedValue({
       id: "job-1",
-      status: "accepted",
       total_amount: 120000,
       currency: "HKD",
       po_number: null,
       client_order_number: null,
+      ...jobSheet,
     });
     const { replaceJobSheetPortions } = await import("../job-sheets");
 
     await expect(replaceJobSheetPortions("job-1", [])).rejects.toThrow(
       "Accepted job sheet commercial fields are immutable",
     );
+    expect(mockQueryOne).toHaveBeenCalledWith(
+      expect.stringContaining("from job_sheets where id = $1 for update"),
+      ["job-1"],
+      expect.any(Object),
+    );
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   it("accepts only when portions reconcile and then locks the job sheet", async () => {

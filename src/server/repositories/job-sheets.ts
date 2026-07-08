@@ -225,7 +225,8 @@ export async function replaceJobSheetPortions(
   db?: Queryable,
 ): Promise<JobSheetPortion[]> {
   const work = async (client: Queryable) => {
-    const jobSheet = await getJobSheetById(jobSheetId, client);
+    // Keep the parent row lock, immutability check, delete, and reinsert in one transaction.
+    const jobSheet = await getJobSheetByIdWithOptions(jobSheetId, client, { forUpdate: true });
 
     if (jobSheet.status === "accepted" || jobSheet.locked_at) {
       throw new Error("Accepted job sheet commercial fields are immutable");
