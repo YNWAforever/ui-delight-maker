@@ -63,6 +63,13 @@ type XeroDraft = {
   xero_notes: string;
 };
 
+type NormalizedXeroSavePayload = {
+  xero_invoice_number: string | null;
+  xero_invoice_reference: string | null;
+  xero_invoice_date: string | null;
+  xero_notes: string | null;
+};
+
 export const toPortionDrafts = (portions: JobSheetPortion[]): PortionDraft[] =>
   portions.map((portion) => ({
     id: portion.id,
@@ -170,11 +177,51 @@ export function hasUnsavedBillingDraftChanges(
   return JSON.stringify(savedPayload) !== JSON.stringify(currentPayload);
 }
 
+const buildXeroSavePayload = (draft: XeroDraft): NormalizedXeroSavePayload => ({
+  xero_invoice_number: draft.xero_invoice_number.trim() || null,
+  xero_invoice_reference: draft.xero_invoice_reference.trim() || null,
+  xero_invoice_date: draft.xero_invoice_date.trim() || null,
+  xero_notes: draft.xero_notes.trim() || null,
+});
+
+const getPersistedXeroPayload = (portion: JobSheetPortion): NormalizedXeroSavePayload => ({
+  xero_invoice_number: portion.xero_invoice_number ?? null,
+  xero_invoice_reference: portion.xero_invoice_reference ?? null,
+  xero_invoice_date: portion.xero_invoice_date ?? null,
+  xero_notes: portion.xero_notes ?? null,
+});
+
+export function hasUnsavedXeroDraftChanges(
+  drafts: Record<string, XeroDraft>,
+  originals: JobSheetPortion[],
+): boolean {
+  return originals.some((portion) => {
+    const draft = drafts[portion.id];
+    if (!draft) return false;
+
+    return JSON.stringify(buildXeroSavePayload(draft)) !== JSON.stringify(getPersistedXeroPayload(portion));
+  });
+}
+
 export function canShowAcceptAndLockAction(
   status: JobSheetStatus,
   lockedAt: string | null | undefined,
 ): boolean {
   return !isJobSheetCommercialLocked(status, lockedAt) && status !== "accepted";
+}
+
+export function isAcceptAndLockDisabled(input: {
+  accepting: boolean;
+  savingPortions: boolean;
+  hasUnsavedBillingChanges: boolean;
+  acceptanceOk: boolean;
+}): boolean {
+  return (
+    input.accepting ||
+    input.savingPortions ||
+    input.hasUnsavedBillingChanges ||
+    !input.acceptanceOk
+  );
 }
 
 export const Route = createFileRoute("/job-sheets/$id")({
@@ -210,6 +257,10 @@ function JobSheetDetailPage() {
     () => hasUnsavedBillingDraftChanges(portionDrafts, portions),
     [portionDrafts, portions],
   );
+  const hasUnsavedXeroChanges = useMemo(
+    () => hasUnsavedXeroDraftChanges(xeroDrafts, portions),
+    [portions, xeroDrafts],
+  );
 
   const previewPortions = useMemo(
     () =>
@@ -244,6 +295,11 @@ function JobSheetDetailPage() {
   const savePortions = async () => {
     if (commercialLocked) {
       toast.error("Accepted job sheet commercial fields are immutable");
+      return;
+    }
+
+    if (hasUnsavedXeroChanges) {
+      toast.error("Save Xero references before saving the billing plan.");
       return;
     }
 
@@ -299,16 +355,15 @@ function JobSheetDetailPage() {
     const draft = xeroDrafts[portionId];
     if (!draft) return;
 
+    if (hasUnsavedBillingChanges) {
+      toast.error("Save the billing plan before saving Xero references.");
+      return;
+    }
+
     setSavingXeroFor(portionId);
     try {
       await updatePortionXeroReference({
-        data: {
-          portion_id: portionId,
-          xero_invoice_number: draft.xero_invoice_number.trim() || null,
-          xero_invoice_reference: draft.xero_invoice_reference.trim() || null,
-          xero_invoice_date: draft.xero_invoice_date.trim() || null,
-          xero_notes: draft.xero_notes.trim() || null,
-        },
+        data: { portion_id: portionId, ...buildXeroSavePayload(draft) },
       });
       toast.success("Manual Xero reference saved");
       await router.invalidate();
@@ -341,7 +396,14 @@ function JobSheetDetailPage() {
               <Button
                 size="sm"
                 onClick={accept}
-                disabled={accepting || savingPortions || hasUnsavedBillingChanges}
+                disabled={
+                  isAcceptAndLockDisabled({
+                    accepting,
+                    savingPortions,
+                    hasUnsavedBillingChanges,
+                    acceptanceOk: acceptance.ok,
+                  })
+                }
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" /> Accept & lock
               </Button>
@@ -371,6 +433,8 @@ function JobSheetDetailPage() {
                 <AlertDescription>
                   {commercialLocked
                     ? "Accepted job sheet commercial fields are immutable."
+                    : hasUnsavedXeroChanges
+                      ? "Save Xero references before saving the billing plan."
                     : hasUnsavedBillingChanges
                       ? "Save the billing plan before accepting."
                     : acceptance.ok
@@ -492,6 +556,11 @@ function JobSheetDetailPage() {
               <p className="text-sm text-muted-foreground">
                 ClientOps stores manual reference metadata only. Xero remains the official invoicing and accounting system.
               </p>
+              {hasUnsavedBillingChanges && (
+                <p className="text-sm text-destructive">
+                  Save the billing plan before saving Xero references.
+                </p>
+              )}
               {previewPortions.map((portion) => {
                 const draft = xeroDrafts[portion.id] ?? {
                   xero_invoice_number: "",

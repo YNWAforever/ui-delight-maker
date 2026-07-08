@@ -380,4 +380,75 @@ Result:
 
 ### Commit
 
-- pending
+- `cfb5fd3` - `fix: require saved billing plan before acceptance`
+
+---
+
+## Task 7 review-fix follow-up 5
+
+### Review findings addressed
+
+- Added a pure `hasUnsavedXeroDraftChanges(...)` helper so the route can detect when manual Xero draft values differ from the currently persisted portion references.
+- Guarded the cross-panel save paths to prevent loader refreshes from silently wiping the other panel's unsaved work:
+  - billing-plan save now refuses with `Save Xero references before saving the billing plan.` when manual Xero edits are dirty
+  - Xero-reference save now refuses with `Save the billing plan before saving Xero references.` when billing-plan edits are dirty
+- Kept the existing save-before-accept guard and added a pure `isAcceptAndLockDisabled(...)` helper so `Accept & lock` stays disabled when reconciliation already fails, in addition to the existing busy/unsaved-billing cases.
+- Surfaced the cross-panel conflict inline in the UI so accounting can see why a save would be blocked before clicking.
+
+### Files changed for this follow-up
+
+- `.superpowers/sdd/task-7-report.md`
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+
+### Verification evidence
+
+#### Required focused tests
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts src/server/repositories/__tests__/job-sheets.test.ts src/server-functions/__tests__/job-sheets.test.ts
+```
+
+Result:
+
+- PASS
+- 3 test files passed
+- 28 tests passed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 job-sheet files appeared in the compiler output
+- Reported baseline files/errors remained in:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply step skipped because `DATABASE_URL` is not set
+- seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds both completed successfully
+- existing chunk-size and framework unused-import warnings remained in build output

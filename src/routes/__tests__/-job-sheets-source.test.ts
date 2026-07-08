@@ -11,6 +11,8 @@ import {
   buildPreviewPortions,
   canShowAcceptAndLockAction,
   hasUnsavedBillingDraftChanges,
+  hasUnsavedXeroDraftChanges,
+  isAcceptAndLockDisabled,
   isJobSheetCommercialLocked,
   toPortionDrafts,
   toXeroDrafts,
@@ -291,10 +293,63 @@ describe("job sheet accounting workspace behavior", () => {
     expect(hasUnsavedBillingDraftChanges(editedDrafts, portions)).toBe(true);
   });
 
+  it("detects unsaved xero draft changes from normalized saved values", () => {
+    const portions = [
+      makePortion({
+        id: "portion-1",
+        xero_invoice_number: "INV-001",
+        xero_invoice_reference: null,
+        xero_invoice_date: "2026-07-10",
+        xero_notes: null,
+      }),
+    ];
+
+    expect(hasUnsavedXeroDraftChanges(toXeroDrafts(portions), portions)).toBe(false);
+
+    expect(
+      hasUnsavedXeroDraftChanges(
+        {
+          "portion-1": {
+            ...toXeroDrafts(portions)["portion-1"],
+            xero_invoice_reference: "XERO-REF-9",
+          },
+        },
+        portions,
+      ),
+    ).toBe(true);
+  });
+
   it("shows the accept action only when the job sheet is not already commercially locked", () => {
     expect(canShowAcceptAndLockAction("accounting_review", null)).toBe(true);
     expect(canShowAcceptAndLockAction("accepted", null)).toBe(false);
     expect(canShowAcceptAndLockAction("draft", "2026-07-08T09:30:00.000Z")).toBe(false);
+  });
+
+  it("disables accept and lock when reconciliation fails or save state is busy", () => {
+    expect(
+      isAcceptAndLockDisabled({
+        accepting: false,
+        savingPortions: false,
+        hasUnsavedBillingChanges: false,
+        acceptanceOk: false,
+      }),
+    ).toBe(true);
+    expect(
+      isAcceptAndLockDisabled({
+        accepting: false,
+        savingPortions: true,
+        hasUnsavedBillingChanges: false,
+        acceptanceOk: true,
+      }),
+    ).toBe(true);
+    expect(
+      isAcceptAndLockDisabled({
+        accepting: false,
+        savingPortions: false,
+        hasUnsavedBillingChanges: false,
+        acceptanceOk: true,
+      }),
+    ).toBe(false);
   });
 
   it("summarizes accepted queue value per currency instead of cross-currency summing", () => {
