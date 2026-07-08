@@ -103,6 +103,9 @@ describe("quote server functions", () => {
 
     expect(requireNeonAuthSessionMock).toHaveBeenCalled();
     expect(listPdfTemplatesMock).toHaveBeenCalledWith("quote");
+    expect(requireNeonAuthSessionMock.mock.invocationCallOrder[0]).toBeLessThan(
+      listPdfTemplatesMock.mock.invocationCallOrder[0],
+    );
   });
 
   it("lists quote versions behind Neon auth", async () => {
@@ -113,6 +116,9 @@ describe("quote server functions", () => {
 
     expect(requireNeonAuthSessionMock).toHaveBeenCalled();
     expect(listQuoteVersionsMock).toHaveBeenCalledWith("quote-1");
+    expect(requireNeonAuthSessionMock.mock.invocationCallOrder[0]).toBeLessThan(
+      listQuoteVersionsMock.mock.invocationCallOrder[0],
+    );
   });
 
   it("issues a quote by creating an issued version snapshot and updating the quote", async () => {
@@ -169,7 +175,7 @@ describe("quote server functions", () => {
     });
   });
 
-  it("reuses the existing issued version on retry instead of creating a duplicate", async () => {
+  it("reuses an orphaned issued version on retry instead of creating a duplicate", async () => {
     const existingVersion = {
       id: "version-issued-1",
       quote_id: "quote-1",
@@ -180,7 +186,6 @@ describe("quote server functions", () => {
       id: "quote-1",
       number: "Q-1",
       status: "sent",
-      issued_version_id: "version-issued-1",
       account_id: "account-1",
       client_id: "client-1",
       contact_id: null,
@@ -191,6 +196,12 @@ describe("quote server functions", () => {
       line_items: [],
     });
     listQuoteVersionsMock.mockResolvedValue([existingVersion]);
+    updateQuoteMock.mockResolvedValue({
+      id: "quote-1",
+      status: "sent",
+      issued_version_id: "version-issued-1",
+      pdf_url: "/quotes/quote-1/pdf",
+    });
     const { issueQuoteVersion } = await import("../quotes");
 
     const result = await issueQuoteVersion({
@@ -202,7 +213,14 @@ describe("quote server functions", () => {
     );
     expect(listQuoteVersionsMock).toHaveBeenCalledWith("quote-1");
     expect(createQuoteVersionMock).not.toHaveBeenCalled();
-    expect(updateQuoteMock).not.toHaveBeenCalled();
+    expect(updateQuoteMock).toHaveBeenCalledWith(
+      "quote-1",
+      expect.objectContaining({
+        status: "sent",
+        issued_version_id: "version-issued-1",
+        pdf_url: "/quotes/quote-1/pdf",
+      }),
+    );
     expect(result).toEqual({
       quote: expect.objectContaining({
         id: "quote-1",
@@ -267,7 +285,7 @@ describe("quote server functions", () => {
     });
   });
 
-  it("reuses the existing accepted version on retry and keeps job-sheet creation idempotent", async () => {
+  it("reuses an orphaned accepted version on retry and keeps job-sheet creation idempotent", async () => {
     const existingAcceptedVersion = {
       id: "version-accepted-1",
       quote_id: "quote-1",
@@ -278,7 +296,6 @@ describe("quote server functions", () => {
       id: "quote-1",
       number: "Q-1",
       status: "accepted",
-      accepted_version_id: "version-accepted-1",
       accepted_at: "2026-07-09T08:30:00.000Z",
       accepted_by: "user-1",
       account_id: "account-1",
@@ -291,6 +308,12 @@ describe("quote server functions", () => {
       line_items: [],
     });
     listQuoteVersionsMock.mockResolvedValue([existingAcceptedVersion]);
+    updateQuoteMock.mockResolvedValue({
+      id: "quote-1",
+      status: "accepted",
+      accepted_version_id: "version-accepted-1",
+      accepted_at: "2026-07-09T08:30:00.000Z",
+    });
     createJobSheetFromAcceptedQuoteMock.mockResolvedValue({ id: "job-1" });
     const { acceptQuoteAndCreateJobSheet } = await import("../quotes");
 
@@ -301,7 +324,15 @@ describe("quote server functions", () => {
     );
     expect(listQuoteVersionsMock).toHaveBeenCalledWith("quote-1");
     expect(createQuoteVersionMock).not.toHaveBeenCalled();
-    expect(updateQuoteMock).not.toHaveBeenCalled();
+    expect(updateQuoteMock).toHaveBeenCalledWith(
+      "quote-1",
+      expect.objectContaining({
+        status: "accepted",
+        accepted_version_id: "version-accepted-1",
+        accepted_at: "2026-07-09T08:30:00.000Z",
+        accepted_by: "user-1",
+      }),
+    );
     expect(createJobSheetFromAcceptedQuoteMock).toHaveBeenCalledWith(
       expect.objectContaining({
         quote_id: "quote-1",

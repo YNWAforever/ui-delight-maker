@@ -143,7 +143,22 @@ $output = bunx tsc --noEmit 2>&1; $matches = $output | Select-String -Pattern 's
 
 Results:
 
-- Focused Vitest run passed: 1 file, 7 tests, 0 failures.
+- RED re-review coverage run failed exactly as expected before the fix: 1 file, 7 tests, 2 failures (`reuses an orphaned issued version on retry instead of creating a duplicate` and `reuses an orphaned accepted version on retry and keeps job-sheet creation idempotent`).
+- Latest focused Vitest run passed: 1 file, 7 tests, 0 failures.
 - Focused touched-file typecheck filter returned no diagnostics for:
+  - `src/server-functions/quotes.ts`
+  - `src/server-functions/__tests__/quotes.test.ts`
+
+## Task 5 Re-Review Fix Round 2
+
+- Fixed the remaining retry-safety gap in `issueQuoteVersion`: when `issued_version_id` is still null after a partial failure, the action now checks `listQuoteVersions(quote.id)` for an existing `reason: "issued"` snapshot and reuses that stable version before considering `createQuoteVersion(...)`.
+- Fixed the same gap in `acceptQuoteAndCreateJobSheet`: when `accepted_version_id` is absent, the action now checks `listQuoteVersions(quote.id)` for an existing `reason: "accepted"` snapshot, reuses it, then updates quote acceptance metadata and calls `createJobSheetFromAcceptedQuote(...)` with that stable accepted version id.
+- Tightened the mutable quote update step so reused versions still backfill `issued_version_id` / `accepted_version_id` plus status metadata without creating a second immutable snapshot.
+- Strengthened auth-order tests for both `getQuotePdfTemplates` and `getQuoteVersions` by asserting `requireNeonAuthSession()` is invoked before the repository calls, not just that the happy-path calls occur.
+
+### Latest Verification Snapshot
+
+- `bun run vitest run src/server-functions/__tests__/quotes.test.ts` -> PASS (`1` file, `7` tests, `7` passed, `0` failed)
+- touched-file filter for `bunx tsc --noEmit` -> no diagnostics for:
   - `src/server-functions/quotes.ts`
   - `src/server-functions/__tests__/quotes.test.ts`

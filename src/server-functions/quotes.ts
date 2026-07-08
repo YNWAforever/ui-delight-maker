@@ -168,6 +168,14 @@ async function getExistingQuoteVersionOrThrow(quoteId: string, versionId: string
   return version;
 }
 
+async function findExistingQuoteVersionByReason(
+  quoteId: string,
+  reason: QuoteVersion["reason"],
+): Promise<QuoteVersion | null> {
+  const versions = await listQuoteVersions(quoteId);
+  return versions.find((candidate) => candidate.reason === reason) ?? null;
+}
+
 export const issueQuoteVersion = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; pdfTemplateId?: string | null })
   .handler(async ({ data }) => {
@@ -175,20 +183,21 @@ export const issueQuoteVersion = createServerFn({ method: "POST" })
     const quote = await getQuoteFromNeon(data.id);
     const version = quote.issued_version_id
       ? await getExistingQuoteVersionOrThrow(quote.id, quote.issued_version_id)
-      : await createQuoteVersion({
+      : ((await findExistingQuoteVersionByReason(quote.id, "issued")) ??
+        (await createQuoteVersion({
           quote_id: quote.id,
           reason: "issued",
           snapshot: quote as unknown as JsonValue,
           pdf_template_id: data.pdfTemplateId ?? null,
           pdf_url: `/quotes/${quote.id}/pdf`,
           created_by: session.user.id,
-        });
+        })));
     const needsIssueUpdate = quote.status !== "sent" || quote.pdf_url !== version.pdf_url;
     const updated =
       !quote.issued_version_id || needsIssueUpdate
         ? await updateQuoteInNeon(quote.id, {
             status: "sent",
-            issued_version_id: quote.issued_version_id ? undefined : version.id,
+            issued_version_id: quote.issued_version_id === version.id ? undefined : version.id,
             pdf_url: version.pdf_url,
           })
         : quote;
@@ -203,14 +212,15 @@ export const acceptQuoteAndCreateJobSheet = createServerFn({ method: "POST" })
     const quote = await getQuoteFromNeon(data.id);
     const version = quote.accepted_version_id
       ? await getExistingQuoteVersionOrThrow(quote.id, quote.accepted_version_id)
-      : await createQuoteVersion({
+      : ((await findExistingQuoteVersionByReason(quote.id, "accepted")) ??
+        (await createQuoteVersion({
           quote_id: quote.id,
           reason: "accepted",
           snapshot: quote as unknown as JsonValue,
           pdf_template_id: null,
           pdf_url: quote.pdf_url,
           created_by: session.user.id,
-        });
+        })));
     const acceptedAt = quote.accepted_at ?? new Date().toISOString();
     const acceptedBy = quote.accepted_by ?? session.user.id;
     const needsAcceptanceUpdate =
@@ -221,7 +231,7 @@ export const acceptQuoteAndCreateJobSheet = createServerFn({ method: "POST" })
       !quote.accepted_version_id || needsAcceptanceUpdate
         ? await updateQuoteInNeon(quote.id, {
             status: "accepted",
-            accepted_version_id: quote.accepted_version_id ? undefined : version.id,
+            accepted_version_id: quote.accepted_version_id === version.id ? undefined : version.id,
             accepted_at: acceptedAt,
             accepted_by: acceptedBy,
           })
