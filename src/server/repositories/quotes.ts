@@ -1,6 +1,6 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
+import type { PricingTemplate, Quote, QuoteLineItem, QuoteLineItemRecord } from "@/lib/types";
 import { query, queryOne, type Queryable } from "@/server/db/neon.server";
-import type { PricingTemplate, Quote } from "@/lib/types";
 
 type QuoteFilters = {
   status?: string;
@@ -29,6 +29,17 @@ type CreateQuoteInput = Pick<Quote, "lead_id" | "currency"> &
 
 const quoteUpdateColumns: Array<keyof Partial<Quote> & string> = [
   "status",
+  "quote_template_id",
+  "accepted_version_id",
+  "issued_version_id",
+  "document_sections",
+  "cover_text",
+  "assumptions",
+  "payment_terms",
+  "accepted_at",
+  "accepted_by",
+  "parent_quote_id",
+  "change_order_reason",
   "total_value",
   "valid_until",
   "line_items",
@@ -113,6 +124,58 @@ export async function updateQuote(id: string, updates: Partial<Quote>) {
 
   if (!quote) throw new Error("Quote not found");
   return quote;
+}
+
+export async function listQuoteLineItems(quoteId: string): Promise<QuoteLineItemRecord[]> {
+  return query<QuoteLineItemRecord>(
+    `
+      select *
+      from quote_line_items
+      where quote_id = $1
+      order by sort_order, created_at
+    `,
+    [quoteId],
+  );
+}
+
+export async function replaceQuoteLineItems(
+  quoteId: string,
+  items: QuoteLineItem[],
+  db?: Queryable,
+): Promise<QuoteLineItemRecord[]> {
+  await query("delete from quote_line_items where quote_id = $1", [quoteId], db);
+
+  const inserted: QuoteLineItemRecord[] = [];
+
+  for (const [index, item] of items.entries()) {
+    const row = await queryOne<QuoteLineItemRecord>(
+      `
+        insert into quote_line_items
+          (quote_id, pricing_template_id, product_id, section_label, service, description, qty, unit_price, taxable, sort_order)
+        values
+          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        returning *
+      `,
+      [
+        quoteId,
+        null,
+        null,
+        null,
+        item.service,
+        item.description,
+        item.qty,
+        item.unit_price,
+        false,
+        index,
+      ],
+      db,
+    );
+
+    if (!row) throw new Error("Failed to insert quote line item");
+    inserted.push(row);
+  }
+
+  return inserted;
 }
 
 export async function listActivePricingTemplates() {
