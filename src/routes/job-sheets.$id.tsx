@@ -70,7 +70,7 @@ export const toPortionDrafts = (portions: JobSheetPortion[]): PortionDraft[] =>
     amount: String(portion.amount ?? 0),
     currency: portion.currency,
     billing_type: portion.billing_type,
-    status: portion.status === "entered_in_xero" ? "planned" : portion.status,
+    status: portion.status,
     sort_order: portion.sort_order,
     source_quote_line_item_ids: portion.source_quote_line_item_ids,
   }));
@@ -351,24 +351,30 @@ function JobSheetDetailPage() {
                       </div>
                       <div className="space-y-1.5">
                         <Label>Status</Label>
-                        <Select
-                          value={portion.status}
-                          onValueChange={(value) =>
-                            updateDraft(portion.id, "status", value as JobSheetPortionStatus)
-                          }
-                          disabled={commercialLocked}
-                        >
-                          <SelectTrigger aria-label={`Status for ${portion.name}`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PORTION_STATUS_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {portion.status === "entered_in_xero" ? (
+                          <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+                            Entered in Xero
+                          </div>
+                        ) : (
+                          <Select
+                            value={portion.status}
+                            onValueChange={(value) =>
+                              updateDraft(portion.id, "status", value as JobSheetPortionStatus)
+                            }
+                            disabled={commercialLocked}
+                          >
+                            <SelectTrigger aria-label={`Status for ${portion.name}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PORTION_STATUS_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </div>
                       <div className="space-y-1.5 md:col-span-2 xl:col-span-4">
                         <Label htmlFor={`portion-description-${portion.id}`}>Billing note</Label>

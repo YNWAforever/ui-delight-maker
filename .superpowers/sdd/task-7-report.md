@@ -152,3 +152,76 @@ Concrete warning evidence still present in build output:
 ### Commit
 
 - `test: cover job sheet workspace behavior`
+
+---
+
+## Task 7 review-fix follow-up 2
+
+### Review findings addressed
+
+- Preserved `entered_in_xero` when hydrating billing-portion edit drafts so an accounting save no longer downgrades manually entered Xero-tracked rows back to `planned`.
+- Kept the edit UI safe for entered rows by showing a non-editable entered-in-Xero status display instead of offering the planned/cancelled select.
+- Replaced the `/job-sheets` accepted-value rollup with a per-currency summary string so mixed-currency accepted totals are no longer summed and labeled as HKD.
+- Updated the focused route test to assert the preserved `entered_in_xero` behavior and the mixed-currency accepted-value summary.
+
+### Files changed for this follow-up
+
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/job-sheets.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+
+### Verification evidence
+
+#### Focused test
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts
+```
+
+Result:
+
+- PASS
+- 1 test file passed
+- 5 tests passed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 files appeared in the compiler output
+- Reported baseline files/errors included:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply script skipped because `DATABASE_URL` is not set
+- seed-on-deploy script skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds completed successfully
+- existing chunk-size and framework unused-import warnings remained in build output
+
+### Commit
+
+- `fix: preserve job sheet accounting state`

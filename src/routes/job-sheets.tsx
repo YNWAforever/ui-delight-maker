@@ -13,7 +13,29 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrencyAmount, formatDate } from "@/lib/format";
+import type { JobSheet } from "@/lib/types";
 import { getJobSheets } from "@/server-functions/job-sheets";
+
+type AcceptedValueSummaryRow = Pick<JobSheet, "status" | "currency" | "total_amount">;
+
+export function formatAcceptedValueSummary(rows: AcceptedValueSummaryRow[]): string {
+  const totals = new Map<string, number>();
+
+  for (const row of rows) {
+    if (row.status !== "accepted") continue;
+    const currency = row.currency || "HKD";
+    totals.set(currency, (totals.get(currency) ?? 0) + row.total_amount);
+  }
+
+  if (totals.size === 0) {
+    return "None";
+  }
+
+  return [...totals.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([currency, amount]) => formatCurrencyAmount(amount, currency))
+    .join(" / ");
+}
 
 export const Route = createFileRoute("/job-sheets")({
   loader: () => getJobSheets({}),
@@ -32,9 +54,7 @@ export const Route = createFileRoute("/job-sheets")({
 function JobSheetsPage() {
   const rows = Route.useLoaderData();
   const awaitingReview = rows.filter((row) => row.status !== "accepted").length;
-  const acceptedValue = rows
-    .filter((row) => row.status === "accepted")
-    .reduce((sum, row) => sum + row.total_amount, 0);
+  const acceptedValue = formatAcceptedValueSummary(rows);
 
   return (
     <>
@@ -48,7 +68,7 @@ function JobSheetsPage() {
         <MetricStrip
           metrics={[
             { label: "Needs review", value: String(awaitingReview), hint: "not accepted" },
-            { label: "Accepted value", value: formatCurrencyAmount(acceptedValue, "HKD"), hint: "locked handoffs" },
+            { label: "Accepted value", value: acceptedValue, hint: "locked handoffs by currency" },
             { label: "Total sheets", value: String(rows.length), hint: "all statuses" },
           ]}
           columns={3}
