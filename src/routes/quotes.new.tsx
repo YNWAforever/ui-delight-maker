@@ -29,6 +29,7 @@ import {
   getPricingTemplates,
   getQuotePdfTemplates,
   getQuoteTemplates,
+  type CreateQuoteInput,
 } from "@/server-functions/quotes";
 import { getLeads } from "@/server-functions/leads";
 import { getClients } from "@/server-functions/clients";
@@ -199,8 +200,7 @@ function QuoteBuilder() {
       toast.error("Select a client.");
       return;
     }
-    await createQuote({
-      data: {
+    const payload = {
         lead_id: mode === "lead" ? leadId || null : null,
         client_id: mode === "client" ? clientId || null : null,
         currency: "HKD",
@@ -215,8 +215,9 @@ function QuoteBuilder() {
           ...rest,
         })),
         total_value: total,
-      } as Parameters<typeof createQuote>[0]["data"],
-    });
+    } satisfies CreateQuoteInput;
+
+    await createQuote({ data: payload });
     router.invalidate();
     toast.success("Quote submitted for approval.");
     if (mode === "client") {

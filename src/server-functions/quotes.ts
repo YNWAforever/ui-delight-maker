@@ -29,7 +29,7 @@ type GetQuotesInput = {
   deal_id?: string;
 };
 
-type CreateQuoteInput = Pick<Quote, "lead_id" | "currency"> &
+export type CreateQuoteInput = Pick<Quote, "lead_id" | "currency"> &
   Partial<
     Pick<
       Quote,

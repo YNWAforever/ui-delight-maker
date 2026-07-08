@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { resolveQuotePdfSource } from "@/components/quotes/quote-pdf-preview";
-import type { Quote, QuoteVersion } from "@/lib/types";
+import type { JsonValue, Quote, QuoteVersion } from "@/lib/types";
 
 const liveLineItems = [
   {
@@ -216,7 +216,7 @@ describe("resolveQuotePdfSource", () => {
     expect(result.lineItems).toEqual([]);
   });
 
-  it.each([
+  it.each<{ label: string; lineItem: Record<string, JsonValue> }>([
     {
       label: "qty",
       lineItem: {
@@ -224,7 +224,7 @@ describe("resolveQuotePdfSource", () => {
         service: "Immutable row",
         description: "Snapshot row",
         unit_price: 400,
-      },
+      } satisfies Record<string, JsonValue>,
     },
     {
       label: "unit_price",
@@ -233,7 +233,7 @@ describe("resolveQuotePdfSource", () => {
         service: "Immutable row",
         description: "Snapshot row",
         qty: 3,
-      },
+      } satisfies Record<string, JsonValue>,
     },
   ])("fails closed when an immutable snapshot line item is missing $label", ({ lineItem }) => {
     const result = resolveQuotePdfSource(

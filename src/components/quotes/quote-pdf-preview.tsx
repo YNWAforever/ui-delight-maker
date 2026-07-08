@@ -46,6 +46,11 @@ export type ResolvedQuotePdfSource =
       error: QuotePdfSourceError;
     };
 
+type QuotePdfSnapshotData = {
+  quote: QuotePdfQuote;
+  lineItems: QuoteLineItem[];
+};
+
 type QuotePdfPreviewProps = {
   quote: QuotePdfQuote;
   lineItems: QuoteLineItem[];
@@ -56,15 +61,25 @@ function isSnapshotRecord(value: JsonValue): value is Record<string, JsonValue> 
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isSnapshotLineItem(value: JsonValue): value is QuoteLineItem {
-  return (
-    isSnapshotRecord(value) &&
-    typeof value.id === "string" &&
-    typeof value.service === "string" &&
-    typeof value.description === "string" &&
-    typeof value.qty === "number" &&
-    typeof value.unit_price === "number"
-  );
+function readSnapshotLineItem(value: JsonValue): QuoteLineItem | null {
+  if (
+    !isSnapshotRecord(value) ||
+    typeof value.id !== "string" ||
+    typeof value.service !== "string" ||
+    typeof value.description !== "string" ||
+    typeof value.qty !== "number" ||
+    typeof value.unit_price !== "number"
+  ) {
+    return null;
+  }
+
+  return {
+    id: value.id,
+    service: value.service,
+    description: value.description,
+    qty: value.qty,
+    unit_price: value.unit_price,
+  };
 }
 
 function readSnapshotLineItems(value: JsonValue): QuoteLineItem[] | null {
@@ -72,10 +87,11 @@ function readSnapshotLineItems(value: JsonValue): QuoteLineItem[] | null {
     return null;
   }
 
-  return value.every(isSnapshotLineItem) ? value : null;
+  const lineItems = value.map(readSnapshotLineItem);
+  return lineItems.every((lineItem): lineItem is QuoteLineItem => lineItem !== null) ? lineItems : null;
 }
 
-export function readQuotePdfSnapshot(snapshot: JsonValue): Omit<ResolvedQuotePdfSource, "sourceVersion"> | null {
+export function readQuotePdfSnapshot(snapshot: JsonValue): QuotePdfSnapshotData | null {
   if (!isSnapshotRecord(snapshot)) {
     return null;
   }
@@ -160,7 +176,8 @@ export function resolveQuotePdfSource(
 
   return {
     state: "snapshot",
-    ...snapshot,
+    quote: snapshot.quote,
+    lineItems: snapshot.lineItems,
     sourceVersion,
     error: null,
   };
