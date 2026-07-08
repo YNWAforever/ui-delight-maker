@@ -16,6 +16,8 @@ import {
   hasUnsavedXeroDraftChanges,
   isAcceptAndLockDisabled,
   isJobSheetCommercialLocked,
+  resetBillingDrafts,
+  resetXeroDrafts,
   toPortionDrafts,
   toXeroDrafts,
 } from "../job-sheets.$id";
@@ -321,6 +323,43 @@ describe("job sheet accounting workspace behavior", () => {
     ).toBe(true);
   });
 
+  it("resets billing and xero drafts back to persisted portions so dual-dirty conflicts are escapable", () => {
+    const portions = [
+      makePortion({
+        id: "portion-1",
+        amount: 400,
+        xero_invoice_number: "INV-001",
+        xero_invoice_reference: "XERO-REF-1",
+        xero_invoice_date: "2026-07-10",
+        xero_notes: "First sync",
+      }),
+    ];
+    const editedBillingDrafts = [
+      {
+        ...toPortionDrafts(portions)[0],
+        amount: "450",
+        description: "Changed locally",
+      },
+    ];
+    const editedXeroDrafts = {
+      "portion-1": {
+        ...toXeroDrafts(portions)["portion-1"],
+        xero_notes: "Changed locally",
+      },
+    };
+
+    expect(hasUnsavedBillingDraftChanges(editedBillingDrafts, portions)).toBe(true);
+    expect(hasUnsavedXeroDraftChanges(editedXeroDrafts, portions)).toBe(true);
+
+    const resetBilling = resetBillingDrafts(portions);
+    const resetXero = resetXeroDrafts(portions);
+
+    expect(resetBilling).toEqual(toPortionDrafts(portions));
+    expect(resetXero).toEqual(toXeroDrafts(portions));
+    expect(hasUnsavedBillingDraftChanges(resetBilling, portions)).toBe(false);
+    expect(hasUnsavedXeroDraftChanges(resetXero, portions)).toBe(false);
+  });
+
   it("shows the accept action only when the job sheet is not already commercially locked", () => {
     expect(canShowAcceptAndLockAction("accounting_review", null)).toBe(true);
     expect(canShowAcceptAndLockAction("accepted", null)).toBe(false);
@@ -445,5 +484,12 @@ describe("job sheet accounting workspace behavior", () => {
     const detailSource = readRoute("job-sheets.$id.tsx");
 
     expect(detailSource).toContain('createFileRoute("/job-sheets/$id")');
+  });
+
+  it("renders discard actions for dirty billing and xero drafts", () => {
+    const detailSource = readRoute("job-sheets.$id.tsx");
+
+    expect(detailSource).toContain("Discard billing changes");
+    expect(detailSource).toContain("Discard Xero changes");
   });
 });

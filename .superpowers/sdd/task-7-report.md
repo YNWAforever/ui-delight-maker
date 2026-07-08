@@ -527,3 +527,82 @@ Result:
 - seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
 - client and SSR builds both completed successfully
 - existing chunk-size and framework unused-import warnings remained in build output
+
+---
+
+## Task 7 review-fix follow-up 7
+
+### Review findings addressed
+
+- Added exported reset helpers so the dual-dirty conflict has a real escape path without inventing new persistence behavior:
+  - `resetBillingDrafts(...)`
+  - `resetXeroDrafts(...)`
+- Added a compact `Discard billing changes` action in the billing panel header that restores billing drafts from the persisted `portions` snapshot.
+- Added a compact `Discard Xero changes` action in the manual Xero panel header that restores Xero drafts from the persisted `portions` snapshot.
+- Kept the existing cross-panel save guards intact, so saving billing while Xero drafts are dirty and saving Xero while billing drafts are dirty both remain blocked.
+- Kept `Accept & lock` blocked through the existing guard path for unsaved billing drafts, unsaved Xero drafts, and unreconciled billing plans.
+
+### Files changed for this follow-up
+
+- `.superpowers/sdd/task-7-report.md`
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+
+### Verification evidence
+
+#### Required focused tests
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts src/server/repositories/__tests__/job-sheets.test.ts src/server-functions/__tests__/job-sheets.test.ts
+```
+
+Result:
+
+- PASS
+- 3 test files passed
+- 32 tests passed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 files appeared in the compiler output
+- Reported baseline files/errors remained in:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply step skipped because `DATABASE_URL` is not set
+- seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds both completed successfully
+- existing chunk-size warnings remained for:
+  - `dist/client/assets/index-Dv_SX3YB.js` at `620.37 kB`
+  - `dist/client/assets/neon-auth-provider-DGmufeMe.js` at `729.69 kB`
+- existing framework unused-import warnings remained in the build output
+
+### Commit
+
+- `fix: add job sheet draft discard actions`

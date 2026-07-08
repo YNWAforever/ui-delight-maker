@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { AlertCircle, ArrowLeft, CheckCircle2, Lock, Save } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, Lock, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 
 import { BillingPortionsTable } from "@/components/job-sheets/billing-portions-table";
@@ -96,6 +96,10 @@ export const toXeroDrafts = (portions: JobSheetPortion[]): Record<string, XeroDr
       },
     ]),
   );
+
+export const resetBillingDrafts = (portions: JobSheetPortion[]): PortionDraft[] => toPortionDrafts(portions);
+
+export const resetXeroDrafts = (portions: JobSheetPortion[]): Record<string, XeroDraft> => toXeroDrafts(portions);
 
 export const isJobSheetCommercialLocked = (
   status: JobSheetStatus,
@@ -332,8 +336,8 @@ function JobSheetDetailPage() {
   const [savingXeroFor, setSavingXeroFor] = useState<string | null>(null);
 
   useEffect(() => {
-    setPortionDrafts(toPortionDrafts(portions));
-    setXeroDrafts(toXeroDrafts(portions));
+    setPortionDrafts(resetBillingDrafts(portions));
+    setXeroDrafts(resetXeroDrafts(portions));
   }, [portions]);
 
   const commercialLocked = isJobSheetCommercialLocked(jobSheet.status, jobSheet.locked_at);
@@ -508,8 +512,18 @@ function JobSheetDetailPage() {
       <div className="grid grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
               <CardTitle className="text-base">Billing portions</CardTitle>
+              {hasUnsavedBillingChanges && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPortionDrafts(resetBillingDrafts(portions))}
+                  disabled={commercialLocked || savingPortions}
+                >
+                  <RotateCcw className="h-4 w-4" /> Discard billing changes
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <BillingPortionsTable
@@ -630,8 +644,18 @@ function JobSheetDetailPage() {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
               <CardTitle className="text-base">Manual Xero references</CardTitle>
+              {hasUnsavedXeroChanges && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setXeroDrafts(resetXeroDrafts(portions))}
+                  disabled={savingXeroFor !== null}
+                >
+                  <RotateCcw className="h-4 w-4" /> Discard Xero changes
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
