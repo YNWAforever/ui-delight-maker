@@ -606,3 +606,78 @@ Result:
 ### Commit
 
 - `fix: add job sheet draft discard actions`
+
+---
+
+## Task 7 review-fix follow-up 8
+
+### Review findings addressed
+
+- Added a shared `isJobSheetEditorBusy(...)` helper so the route treats any active billing save, Xero save, or accept flow as one editor-busy state.
+- Updated `isAcceptAndLockDisabled(...)` to consume that shared busy state, which now covers the previously-missed Xero-save-in-flight path.
+- Froze both edit surfaces for the full mutation-plus-invalidate window by routing the shared busy flag into:
+  - billing inputs, textarea, selects, discard action, and save action
+  - manual Xero inputs, textarea, discard action, and per-row save action
+  - `Accept & lock`
+- Kept the existing commercial lock and cross-panel dirty-guard behavior intact; this change only closes the rehydrate-after-save data-loss window.
+
+### Files changed for this follow-up
+
+- `.superpowers/sdd/task-7-report.md`
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+
+### Verification evidence
+
+#### Required focused tests
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts src/server/repositories/__tests__/job-sheets.test.ts src/server-functions/__tests__/job-sheets.test.ts
+```
+
+Result:
+
+- PASS
+- 3 test files passed
+- 34 tests passed
+- The new busy-state regression coverage failed first, then passed after the shared freeze wiring landed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 files appeared in the compiler output
+- Reported baseline files/errors remained in:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply step skipped because `DATABASE_URL` is not set
+- seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds both completed successfully
+- existing warnings remained in the build output:
+  - chunk-size warnings for `dist/client/assets/index-DoI_8Xio.js` at `620.37 kB` and `dist/client/assets/neon-auth-provider-DCyryFB3.js` at `729.69 kB`
+  - existing framework unused-import noise from TanStack Start internals

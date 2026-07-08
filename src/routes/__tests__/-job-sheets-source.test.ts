@@ -15,6 +15,7 @@ import {
   hasUnsavedBillingDraftChanges,
   hasUnsavedXeroDraftChanges,
   isAcceptAndLockDisabled,
+  isJobSheetEditorBusy,
   isJobSheetCommercialLocked,
   resetBillingDrafts,
   resetXeroDrafts,
@@ -369,8 +370,7 @@ describe("job sheet accounting workspace behavior", () => {
   it("disables accept and lock when billing or xero drafts are unsaved", () => {
     expect(
       isAcceptAndLockDisabled({
-        accepting: false,
-        savingPortions: false,
+        editorBusy: false,
         hasUnsavedBillingChanges: false,
         hasUnsavedXeroChanges: true,
         acceptanceOk: false,
@@ -378,8 +378,7 @@ describe("job sheet accounting workspace behavior", () => {
     ).toBe(true);
     expect(
       isAcceptAndLockDisabled({
-        accepting: false,
-        savingPortions: true,
+        editorBusy: true,
         hasUnsavedBillingChanges: false,
         hasUnsavedXeroChanges: false,
         acceptanceOk: true,
@@ -387,8 +386,7 @@ describe("job sheet accounting workspace behavior", () => {
     ).toBe(true);
     expect(
       isAcceptAndLockDisabled({
-        accepting: false,
-        savingPortions: false,
+        editorBusy: false,
         hasUnsavedBillingChanges: true,
         hasUnsavedXeroChanges: false,
         acceptanceOk: true,
@@ -396,31 +394,63 @@ describe("job sheet accounting workspace behavior", () => {
     ).toBe(true);
     expect(
       isAcceptAndLockDisabled({
-        accepting: false,
-        savingPortions: false,
+        editorBusy: isJobSheetEditorBusy({
+          accepting: false,
+          savingPortions: false,
+          savingXeroFor: "portion-1",
+        }),
         hasUnsavedBillingChanges: false,
-        hasUnsavedXeroChanges: true,
+        hasUnsavedXeroChanges: false,
         acceptanceOk: true,
       }),
     ).toBe(true);
     expect(
       isAcceptAndLockDisabled({
-        accepting: false,
-        savingPortions: false,
+        editorBusy: false,
         hasUnsavedBillingChanges: false,
-        hasUnsavedXeroChanges: false,
+        hasUnsavedXeroChanges: true,
         acceptanceOk: false,
       }),
     ).toBe(true);
     expect(
       isAcceptAndLockDisabled({
-        accepting: false,
-        savingPortions: false,
+        editorBusy: false,
         hasUnsavedBillingChanges: false,
         hasUnsavedXeroChanges: false,
         acceptanceOk: true,
       }),
     ).toBe(false);
+  });
+
+  it("treats any save or accept mutation as a shared editor busy state", () => {
+    expect(
+      isJobSheetEditorBusy({
+        accepting: false,
+        savingPortions: false,
+        savingXeroFor: null,
+      }),
+    ).toBe(false);
+    expect(
+      isJobSheetEditorBusy({
+        accepting: true,
+        savingPortions: false,
+        savingXeroFor: null,
+      }),
+    ).toBe(true);
+    expect(
+      isJobSheetEditorBusy({
+        accepting: false,
+        savingPortions: true,
+        savingXeroFor: null,
+      }),
+    ).toBe(true);
+    expect(
+      isJobSheetEditorBusy({
+        accepting: false,
+        savingPortions: false,
+        savingXeroFor: "portion-1",
+      }),
+    ).toBe(true);
   });
 
   it("returns a clear accept block reason for unsaved xero drafts", () => {
@@ -491,5 +521,13 @@ describe("job sheet accounting workspace behavior", () => {
 
     expect(detailSource).toContain("Discard billing changes");
     expect(detailSource).toContain("Discard Xero changes");
+  });
+
+  it("derives both billing and xero editor disabled states from the shared busy flag", () => {
+    const detailSource = readRoute("job-sheets.$id.tsx");
+
+    expect(detailSource).toContain("const editorBusy = isJobSheetEditorBusy({");
+    expect(detailSource).toContain("disabled={commercialLocked || editorBusy}");
+    expect(detailSource).toContain("disabled={editorBusy}");
   });
 });

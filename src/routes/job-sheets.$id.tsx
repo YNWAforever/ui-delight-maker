@@ -214,16 +214,22 @@ export function canShowAcceptAndLockAction(
   return !isJobSheetCommercialLocked(status, lockedAt) && status !== "accepted";
 }
 
-export function isAcceptAndLockDisabled(input: {
+export function isJobSheetEditorBusy(input: {
   accepting: boolean;
   savingPortions: boolean;
+  savingXeroFor: string | null;
+}): boolean {
+  return input.accepting || input.savingPortions || input.savingXeroFor !== null;
+}
+
+export function isAcceptAndLockDisabled(input: {
+  editorBusy: boolean;
   hasUnsavedBillingChanges: boolean;
   hasUnsavedXeroChanges: boolean;
   acceptanceOk: boolean;
 }): boolean {
   return (
-    input.accepting ||
-    input.savingPortions ||
+    input.editorBusy ||
     input.hasUnsavedBillingChanges ||
     input.hasUnsavedXeroChanges ||
     !input.acceptanceOk
@@ -349,6 +355,7 @@ function JobSheetDetailPage() {
     () => hasUnsavedXeroDraftChanges(xeroDrafts, portions),
     [portions, xeroDrafts],
   );
+  const editorBusy = isJobSheetEditorBusy({ accepting, savingPortions, savingXeroFor });
 
   const previewPortions = useMemo(
     () =>
@@ -484,7 +491,7 @@ function JobSheetDetailPage() {
               </Link>
             </Button>
             {!commercialLocked && (
-              <Button variant="outline" size="sm" onClick={savePortions} disabled={savingPortions}>
+              <Button variant="outline" size="sm" onClick={savePortions} disabled={editorBusy}>
                 <Save className="mr-2 h-4 w-4" /> Save billing plan
               </Button>
             )}
@@ -494,8 +501,7 @@ function JobSheetDetailPage() {
                 onClick={accept}
                 disabled={
                   isAcceptAndLockDisabled({
-                    accepting,
-                    savingPortions,
+                    editorBusy,
                     hasUnsavedBillingChanges,
                     hasUnsavedXeroChanges,
                     acceptanceOk: acceptance.ok,
@@ -519,7 +525,7 @@ function JobSheetDetailPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setPortionDrafts(resetBillingDrafts(portions))}
-                  disabled={commercialLocked || savingPortions}
+                  disabled={commercialLocked || editorBusy}
                 >
                   <RotateCcw className="h-4 w-4" /> Discard billing changes
                 </Button>
@@ -548,7 +554,7 @@ function JobSheetDetailPage() {
                           id={`portion-name-${portion.id}`}
                           value={portion.name}
                           onChange={(event) => updateDraft(portion.id, "name", event.target.value)}
-                          disabled={commercialLocked}
+                          disabled={commercialLocked || editorBusy}
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -561,7 +567,7 @@ function JobSheetDetailPage() {
                           step="0.01"
                           value={portion.amount}
                           onChange={(event) => updateDraft(portion.id, "amount", event.target.value)}
-                          disabled={commercialLocked}
+                          disabled={commercialLocked || editorBusy}
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -571,7 +577,7 @@ function JobSheetDetailPage() {
                           onValueChange={(value) =>
                             updateDraft(portion.id, "billing_type", value as JobSheetBillingType)
                           }
-                          disabled={commercialLocked}
+                          disabled={commercialLocked || editorBusy}
                         >
                           <SelectTrigger aria-label={`Billing type for ${portion.name}`}>
                             <SelectValue />
@@ -597,7 +603,7 @@ function JobSheetDetailPage() {
                             onValueChange={(value) =>
                               updateDraft(portion.id, "status", value as JobSheetPortionStatus)
                             }
-                            disabled={commercialLocked}
+                            disabled={commercialLocked || editorBusy}
                           >
                             <SelectTrigger aria-label={`Status for ${portion.name}`}>
                               <SelectValue />
@@ -621,7 +627,7 @@ function JobSheetDetailPage() {
                           onChange={(event) =>
                             updateDraft(portion.id, "target_invoice_date", event.target.value)
                           }
-                          disabled={commercialLocked}
+                          disabled={commercialLocked || editorBusy}
                         />
                       </div>
                       <div className="space-y-1.5 md:col-span-2 xl:col-span-4">
@@ -632,7 +638,7 @@ function JobSheetDetailPage() {
                           onChange={(event) =>
                             updateDraft(portion.id, "description", event.target.value)
                           }
-                          disabled={commercialLocked}
+                          disabled={commercialLocked || editorBusy}
                           className="min-h-[88px]"
                         />
                       </div>
@@ -651,7 +657,7 @@ function JobSheetDetailPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setXeroDrafts(resetXeroDrafts(portions))}
-                  disabled={savingXeroFor !== null}
+                  disabled={editorBusy}
                 >
                   <RotateCcw className="h-4 w-4" /> Discard Xero changes
                 </Button>
@@ -687,7 +693,7 @@ function JobSheetDetailPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => saveXeroReference(portion.id)}
-                        disabled={savingXeroFor === portion.id}
+                        disabled={editorBusy}
                       >
                         <Save className="mr-2 h-4 w-4" /> Save Xero reference
                       </Button>
@@ -704,6 +710,7 @@ function JobSheetDetailPage() {
                               [portion.id]: { ...draft, xero_invoice_number: event.target.value },
                             }))
                           }
+                          disabled={editorBusy}
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -717,6 +724,7 @@ function JobSheetDetailPage() {
                               [portion.id]: { ...draft, xero_invoice_reference: event.target.value },
                             }))
                           }
+                          disabled={editorBusy}
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -731,6 +739,7 @@ function JobSheetDetailPage() {
                               [portion.id]: { ...draft, xero_invoice_date: event.target.value },
                             }))
                           }
+                          disabled={editorBusy}
                         />
                       </div>
                       <div className="space-y-1.5 md:col-span-2">
@@ -744,6 +753,7 @@ function JobSheetDetailPage() {
                               [portion.id]: { ...draft, xero_notes: event.target.value },
                             }))
                           }
+                          disabled={editorBusy}
                           className="min-h-[80px]"
                         />
                       </div>
