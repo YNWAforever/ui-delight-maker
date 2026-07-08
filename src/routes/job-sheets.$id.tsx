@@ -214,14 +214,98 @@ export function isAcceptAndLockDisabled(input: {
   accepting: boolean;
   savingPortions: boolean;
   hasUnsavedBillingChanges: boolean;
+  hasUnsavedXeroChanges: boolean;
   acceptanceOk: boolean;
 }): boolean {
   return (
     input.accepting ||
     input.savingPortions ||
     input.hasUnsavedBillingChanges ||
+    input.hasUnsavedXeroChanges ||
     !input.acceptanceOk
   );
+}
+
+export function getAcceptBlockedReason(input: {
+  commercialLocked: boolean;
+  hasUnsavedBillingChanges: boolean;
+  hasUnsavedXeroChanges: boolean;
+}): string | null {
+  if (input.commercialLocked) {
+    return "Commercial fields are locked for this job sheet.";
+  }
+
+  if (input.hasUnsavedBillingChanges && input.hasUnsavedXeroChanges) {
+    return "Save or discard one set of edits before continuing.";
+  }
+
+  if (input.hasUnsavedBillingChanges) {
+    return "Save the billing plan before accepting.";
+  }
+
+  if (input.hasUnsavedXeroChanges) {
+    return "Save Xero references before accepting.";
+  }
+
+  return null;
+}
+
+export function getAcceptanceGateAlertConfig(input: {
+  commercialLocked: boolean;
+  hasUnsavedBillingChanges: boolean;
+  hasUnsavedXeroChanges: boolean;
+  acceptanceOk: boolean;
+  acceptanceReasons: string[];
+}): {
+  variant: "default" | "destructive";
+  title: string;
+  description: string;
+} {
+  if (input.commercialLocked) {
+    return {
+      variant: "default",
+      title: "Commercial fields locked",
+      description: "Accepted job sheet commercial fields are immutable.",
+    };
+  }
+
+  if (input.hasUnsavedBillingChanges && input.hasUnsavedXeroChanges) {
+    return {
+      variant: "default",
+      title: "Acceptance gate",
+      description: "Save or discard one set of edits before continuing.",
+    };
+  }
+
+  if (input.hasUnsavedXeroChanges) {
+    return {
+      variant: "destructive",
+      title: "Acceptance gate",
+      description: "Save Xero references before accepting.",
+    };
+  }
+
+  if (input.hasUnsavedBillingChanges) {
+    return {
+      variant: "destructive",
+      title: "Acceptance gate",
+      description: "Save the billing plan before accepting.",
+    };
+  }
+
+  if (input.acceptanceOk) {
+    return {
+      variant: "default",
+      title: "Acceptance gate",
+      description: "Billing plan reconciles and can be accepted by accounting.",
+    };
+  }
+
+  return {
+    variant: "destructive",
+    title: "Acceptance gate",
+    description: input.acceptanceReasons.join(" "),
+  };
 }
 
 export const Route = createFileRoute("/job-sheets/$id")({
@@ -324,13 +408,13 @@ function JobSheetDetailPage() {
   };
 
   const accept = async () => {
-    if (commercialLocked) {
-      toast.error("Commercial fields are locked for this job sheet.");
-      return;
-    }
-
-    if (hasUnsavedBillingChanges) {
-      toast.error("Save the billing plan before accepting.");
+    const acceptBlockedReason = getAcceptBlockedReason({
+      commercialLocked,
+      hasUnsavedBillingChanges,
+      hasUnsavedXeroChanges,
+    });
+    if (acceptBlockedReason) {
+      toast.error(acceptBlockedReason);
       return;
     }
 
@@ -374,6 +458,14 @@ function JobSheetDetailPage() {
     }
   };
 
+  const acceptanceGateAlert = getAcceptanceGateAlertConfig({
+    commercialLocked,
+    hasUnsavedBillingChanges,
+    hasUnsavedXeroChanges,
+    acceptanceOk: acceptance.ok,
+    acceptanceReasons: acceptance.reasons,
+  });
+
   return (
     <>
       <CommandHeader
@@ -401,6 +493,7 @@ function JobSheetDetailPage() {
                     accepting,
                     savingPortions,
                     hasUnsavedBillingChanges,
+                    hasUnsavedXeroChanges,
                     acceptanceOk: acceptance.ok,
                   })
                 }
@@ -425,22 +518,10 @@ function JobSheetDetailPage() {
                 portions={previewPortions}
               />
 
-              <Alert variant={commercialLocked ? "default" : "destructive"}>
+              <Alert variant={acceptanceGateAlert.variant}>
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>
-                  {commercialLocked ? "Commercial fields locked" : "Acceptance gate"}
-                </AlertTitle>
-                <AlertDescription>
-                  {commercialLocked
-                    ? "Accepted job sheet commercial fields are immutable."
-                    : hasUnsavedXeroChanges
-                      ? "Save Xero references before saving the billing plan."
-                    : hasUnsavedBillingChanges
-                      ? "Save the billing plan before accepting."
-                    : acceptance.ok
-                      ? "Billing plan reconciles and can be accepted by accounting."
-                      : acceptance.reasons.join(" ")}
-                </AlertDescription>
+                <AlertTitle>{acceptanceGateAlert.title}</AlertTitle>
+                <AlertDescription>{acceptanceGateAlert.description}</AlertDescription>
               </Alert>
 
               <div className="space-y-3">

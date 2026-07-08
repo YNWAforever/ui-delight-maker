@@ -384,6 +384,81 @@ Result:
 
 ---
 
+## Task 7 review-fix follow-up 6
+
+### Review findings addressed
+
+- Extended `isAcceptAndLockDisabled(...)` so `Accept & lock` now disables for unsaved Xero drafts as well as unsaved billing drafts, active saves, and reconciliation failures.
+- Added a focused `getAcceptBlockedReason(...)` guard so `accept()` refuses with the clear toast `Save Xero references before accepting.` and avoids the Xero-draft data-loss path.
+- Added `getAcceptanceGateAlertConfig(...)` so the acceptance-gate alert copy is actionable when both billing and Xero drafts are dirty:
+  - both dirty: `Save or discard one set of edits before continuing.`
+  - ready/commercially locked: non-destructive `default` alert styling
+  - destructive styling remains limited to actual conflicts and reconciliation errors
+- Added helper-level test coverage first for:
+  - unsaved billing drafts disabling accept
+  - unsaved Xero drafts disabling accept
+  - unsaved Xero accept-block messaging
+  - non-destructive ready-state and dual-dirty acceptance-gate copy
+
+### Files changed for this follow-up
+
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+
+### Verification evidence
+
+#### Required focused tests
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts src/server/repositories/__tests__/job-sheets.test.ts src/server-functions/__tests__/job-sheets.test.ts
+```
+
+Result:
+
+- PASS
+- 3 test files passed
+- 30 tests passed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 files appeared in the compiler output
+- Reported baseline files/errors remained in:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply step skipped because `DATABASE_URL` is not set
+- seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds completed successfully
+- existing chunk-size and framework unused-import warnings remained in build output
+
+---
+
 ## Task 7 review-fix follow-up 5
 
 ### Review findings addressed

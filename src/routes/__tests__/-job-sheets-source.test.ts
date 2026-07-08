@@ -10,6 +10,8 @@ import {
   buildPortionSavePayload,
   buildPreviewPortions,
   canShowAcceptAndLockAction,
+  getAcceptBlockedReason,
+  getAcceptanceGateAlertConfig,
   hasUnsavedBillingDraftChanges,
   hasUnsavedXeroDraftChanges,
   isAcceptAndLockDisabled,
@@ -325,12 +327,13 @@ describe("job sheet accounting workspace behavior", () => {
     expect(canShowAcceptAndLockAction("draft", "2026-07-08T09:30:00.000Z")).toBe(false);
   });
 
-  it("disables accept and lock when reconciliation fails or save state is busy", () => {
+  it("disables accept and lock when billing or xero drafts are unsaved", () => {
     expect(
       isAcceptAndLockDisabled({
         accepting: false,
         savingPortions: false,
         hasUnsavedBillingChanges: false,
+        hasUnsavedXeroChanges: true,
         acceptanceOk: false,
       }),
     ).toBe(true);
@@ -339,6 +342,16 @@ describe("job sheet accounting workspace behavior", () => {
         accepting: false,
         savingPortions: true,
         hasUnsavedBillingChanges: false,
+        hasUnsavedXeroChanges: false,
+        acceptanceOk: true,
+      }),
+    ).toBe(true);
+    expect(
+      isAcceptAndLockDisabled({
+        accepting: false,
+        savingPortions: false,
+        hasUnsavedBillingChanges: true,
+        hasUnsavedXeroChanges: false,
         acceptanceOk: true,
       }),
     ).toBe(true);
@@ -347,9 +360,68 @@ describe("job sheet accounting workspace behavior", () => {
         accepting: false,
         savingPortions: false,
         hasUnsavedBillingChanges: false,
+        hasUnsavedXeroChanges: true,
+        acceptanceOk: true,
+      }),
+    ).toBe(true);
+    expect(
+      isAcceptAndLockDisabled({
+        accepting: false,
+        savingPortions: false,
+        hasUnsavedBillingChanges: false,
+        hasUnsavedXeroChanges: false,
+        acceptanceOk: false,
+      }),
+    ).toBe(true);
+    expect(
+      isAcceptAndLockDisabled({
+        accepting: false,
+        savingPortions: false,
+        hasUnsavedBillingChanges: false,
+        hasUnsavedXeroChanges: false,
         acceptanceOk: true,
       }),
     ).toBe(false);
+  });
+
+  it("returns a clear accept block reason for unsaved xero drafts", () => {
+    expect(
+      getAcceptBlockedReason({
+        commercialLocked: false,
+        hasUnsavedBillingChanges: false,
+        hasUnsavedXeroChanges: true,
+      }),
+    ).toBe("Save Xero references before accepting.");
+  });
+
+  it("uses actionable acceptance-gate copy and non-destructive ready states", () => {
+    expect(
+      getAcceptanceGateAlertConfig({
+        commercialLocked: false,
+        hasUnsavedBillingChanges: true,
+        hasUnsavedXeroChanges: true,
+        acceptanceOk: true,
+        acceptanceReasons: [],
+      }),
+    ).toEqual({
+      variant: "default",
+      title: "Acceptance gate",
+      description: "Save or discard one set of edits before continuing.",
+    });
+
+    expect(
+      getAcceptanceGateAlertConfig({
+        commercialLocked: false,
+        hasUnsavedBillingChanges: false,
+        hasUnsavedXeroChanges: false,
+        acceptanceOk: true,
+        acceptanceReasons: [],
+      }),
+    ).toEqual({
+      variant: "default",
+      title: "Acceptance gate",
+      description: "Billing plan reconciles and can be accepted by accounting.",
+    });
   });
 
   it("summarizes accepted queue value per currency instead of cross-currency summing", () => {
