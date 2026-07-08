@@ -161,6 +161,22 @@ export function buildPortionSavePayload(
   }));
 }
 
+export function hasUnsavedBillingDraftChanges(
+  drafts: PortionDraft[],
+  originals: JobSheetPortion[],
+): boolean {
+  const savedPayload = buildPortionSavePayload(drafts, originals);
+  const currentPayload = buildPortionSavePayload(toPortionDrafts(originals), originals);
+  return JSON.stringify(savedPayload) !== JSON.stringify(currentPayload);
+}
+
+export function canShowAcceptAndLockAction(
+  status: JobSheetStatus,
+  lockedAt: string | null | undefined,
+): boolean {
+  return !isJobSheetCommercialLocked(status, lockedAt) && status !== "accepted";
+}
+
 export const Route = createFileRoute("/job-sheets/$id")({
   loader: ({ params }) => getJobSheet({ data: { id: params.id } }),
   head: ({ loaderData }) => ({
@@ -190,6 +206,10 @@ function JobSheetDetailPage() {
   }, [portions]);
 
   const commercialLocked = isJobSheetCommercialLocked(jobSheet.status, jobSheet.locked_at);
+  const hasUnsavedBillingChanges = useMemo(
+    () => hasUnsavedBillingDraftChanges(portionDrafts, portions),
+    [portionDrafts, portions],
+  );
 
   const previewPortions = useMemo(
     () =>
@@ -248,6 +268,16 @@ function JobSheetDetailPage() {
   };
 
   const accept = async () => {
+    if (commercialLocked) {
+      toast.error("Commercial fields are locked for this job sheet.");
+      return;
+    }
+
+    if (hasUnsavedBillingChanges) {
+      toast.error("Save the billing plan before accepting.");
+      return;
+    }
+
     if (!acceptance.ok) {
       toast.error(acceptance.reasons.join(" "));
       return;
@@ -307,8 +337,12 @@ function JobSheetDetailPage() {
                 <Save className="mr-2 h-4 w-4" /> Save billing plan
               </Button>
             )}
-            {jobSheet.status !== "accepted" && (
-              <Button size="sm" onClick={accept} disabled={accepting || savingPortions}>
+            {canShowAcceptAndLockAction(jobSheet.status, jobSheet.locked_at) && (
+              <Button
+                size="sm"
+                onClick={accept}
+                disabled={accepting || savingPortions || hasUnsavedBillingChanges}
+              >
                 <CheckCircle2 className="mr-2 h-4 w-4" /> Accept & lock
               </Button>
             )}
@@ -337,6 +371,8 @@ function JobSheetDetailPage() {
                 <AlertDescription>
                   {commercialLocked
                     ? "Accepted job sheet commercial fields are immutable."
+                    : hasUnsavedBillingChanges
+                      ? "Save the billing plan before accepting."
                     : acceptance.ok
                       ? "Billing plan reconciles and can be accepted by accounting."
                       : acceptance.reasons.join(" ")}

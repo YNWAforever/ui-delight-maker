@@ -306,3 +306,78 @@ Result:
 - seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
 - client and SSR builds both completed successfully
 - existing chunk-size and framework unused-import warnings remained in build output
+
+---
+
+## Task 7 review-fix follow-up 4
+
+### Review findings addressed
+
+- Added a pure `hasUnsavedBillingDraftChanges(...)` helper so the acceptance gate can detect when the billing-plan drafts differ from the currently persisted save payload.
+- Added a pure `canShowAcceptAndLockAction(...)` helper so the action bar hides `Accept & lock` when the job sheet is already commercially locked, including the `locked_at`-but-not-accepted case.
+- Guarded the accept action itself so it now refuses with a toast when:
+  - commercial fields are already locked
+  - unsaved billing-plan changes exist, using the explicit message `Save the billing plan before accepting.`
+- Updated the acceptance-gate alert copy and the action button disabled state so the UI makes the save-before-accept requirement visible before the user clicks.
+- Added focused helper tests first, then implemented the minimal route changes to satisfy them.
+
+### Files changed for this follow-up
+
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+
+### Verification evidence
+
+#### Required focused tests
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts src/server/repositories/__tests__/job-sheets.test.ts src/server-functions/__tests__/job-sheets.test.ts
+```
+
+Result:
+
+- PASS
+- 3 test files passed
+- 26 tests passed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 job-sheet files appeared in the compiler output
+- Reported baseline files/errors remained in:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply step skipped because `DATABASE_URL` is not set
+- seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds both completed successfully
+- existing chunk-size and framework unused-import warnings remained in build output
+
+### Commit
+
+- pending

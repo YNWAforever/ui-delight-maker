@@ -9,6 +9,8 @@ import type { JobSheet, JobSheetPortion } from "@/lib/types";
 import {
   buildPortionSavePayload,
   buildPreviewPortions,
+  canShowAcceptAndLockAction,
+  hasUnsavedBillingDraftChanges,
   isJobSheetCommercialLocked,
   toPortionDrafts,
   toXeroDrafts,
@@ -263,6 +265,36 @@ describe("job sheet accounting workspace behavior", () => {
         target_invoice_date: null,
       }),
     ]);
+  });
+
+  it("detects unsaved billing draft changes from the persisted save payload shape", () => {
+    const portions = [
+      makePortion({
+        id: "portion-planned",
+        name: "Deposit",
+        description: "Initial billing slice",
+        amount: 400,
+        status: "planned",
+        target_invoice_date: "2026-07-10",
+      }),
+    ];
+
+    expect(hasUnsavedBillingDraftChanges(toPortionDrafts(portions), portions)).toBe(false);
+
+    const editedDrafts = [
+      {
+        ...toPortionDrafts(portions)[0],
+        amount: "450",
+      },
+    ];
+
+    expect(hasUnsavedBillingDraftChanges(editedDrafts, portions)).toBe(true);
+  });
+
+  it("shows the accept action only when the job sheet is not already commercially locked", () => {
+    expect(canShowAcceptAndLockAction("accounting_review", null)).toBe(true);
+    expect(canShowAcceptAndLockAction("accepted", null)).toBe(false);
+    expect(canShowAcceptAndLockAction("draft", "2026-07-08T09:30:00.000Z")).toBe(false);
   });
 
   it("summarizes accepted queue value per currency instead of cross-currency summing", () => {
