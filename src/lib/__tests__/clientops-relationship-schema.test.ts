@@ -14,6 +14,17 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/002_retention_client_360.sql",
       "neon/migrations/003_client_relationship_360.sql",
       "neon/migrations/004_clientops_schema_hardening.sql",
+      "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
+    ]);
+  });
+
+  it("runs the quote-to-cash migration after relationship schema hardening", () => {
+    expect(CLIENTOPS_MIGRATION_PATHS).toEqual([
+      "neon/migrations/001_clientops_runtime.sql",
+      "neon/migrations/002_retention_client_360.sql",
+      "neon/migrations/003_client_relationship_360.sql",
+      "neon/migrations/004_clientops_schema_hardening.sql",
+      "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
     ]);
   });
 
@@ -36,6 +47,32 @@ describe("getClientOpsSchemaMigrationDecision", () => {
         "engagements.lead_id",
         "engagements.quote_id",
         "touchpoints.contact_id",
+      ]),
+    );
+  });
+
+  it("verifies quote-to-cash handoff tables and columns", () => {
+    expect(CLIENTOPS_REQUIRED_TABLES).toEqual(
+      expect.arrayContaining([
+        "quote_templates",
+        "pdf_templates",
+        "quote_line_items",
+        "quote_versions",
+        "job_sheets",
+        "job_sheet_portions",
+        "job_sheet_activity",
+      ]),
+    );
+
+    expect(CLIENTOPS_REQUIRED_COLUMNS).toEqual(
+      expect.arrayContaining([
+        "quotes.accepted_version_id",
+        "quote_line_items.quote_id",
+        "quote_versions.quote_id",
+        "job_sheets.quote_id",
+        "job_sheets.accepted_quote_version_id",
+        "job_sheet_portions.job_sheet_id",
+        "job_sheet_activity.job_sheet_id",
       ]),
     );
   });
