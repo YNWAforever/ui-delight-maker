@@ -1,67 +1,149 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  applyRelationshipSchemaMigration,
-  getRelationshipSchemaMigrationDecision,
+  CLIENTOPS_MIGRATION_PATHS,
+  CLIENTOPS_REQUIRED_COLUMNS,
+  CLIENTOPS_REQUIRED_TABLES,
+  applyClientOpsSchemaMigrations,
+  getClientOpsSchemaMigrationDecision,
 } from "../clientops-relationship-schema";
 
-describe("getRelationshipSchemaMigrationDecision", () => {
+describe("getClientOpsSchemaMigrationDecision", () => {
+  it("runs the full ordered ClientOps migration set", () => {
+    expect(CLIENTOPS_MIGRATION_PATHS).toEqual([
+      "neon/migrations/001_clientops_runtime.sql",
+      "neon/migrations/002_retention_client_360.sql",
+      "neon/migrations/003_client_relationship_360.sql",
+      "neon/migrations/004_clientops_schema_hardening.sql",
+    ]);
+  });
+
+  it("verifies CRM link columns that older existing tables may miss", () => {
+    expect(CLIENTOPS_REQUIRED_COLUMNS).toEqual(
+      expect.arrayContaining([
+        "leads.contact_id",
+        "leads.account_id",
+        "leads.source_campaign_id",
+        "leads.campaign_member_id",
+        "clients.account_id",
+        "clients.primary_contact_id",
+        "quotes.contact_id",
+        "quotes.account_id",
+        "quotes.deal_id",
+        "tasks.contact_id",
+        "tasks.account_id",
+        "tasks.deal_id",
+        "tasks.project_id",
+        "engagements.lead_id",
+        "engagements.quote_id",
+        "touchpoints.contact_id",
+      ]),
+    );
+  });
+
   it("skips deploy-time schema migration when DATABASE_URL is absent", () => {
-    expect(getRelationshipSchemaMigrationDecision({})).toEqual({
+    expect(getClientOpsSchemaMigrationDecision({})).toEqual({
       shouldApply: false,
       reason: "DATABASE_URL is not set",
     });
   });
 
-  it("uses the relationship migration when DATABASE_URL is present", () => {
+  it("uses every Neon migration when DATABASE_URL is present", () => {
     expect(
-      getRelationshipSchemaMigrationDecision({
+      getClientOpsSchemaMigrationDecision({
         DATABASE_URL: "postgres://user@example/neondb",
       }),
     ).toEqual({
       shouldApply: true,
       databaseUrl: "postgres://user@example/neondb",
-      migrationPath: "neon/migrations/003_client_relationship_360.sql",
+      migrationPaths: CLIENTOPS_MIGRATION_PATHS,
     });
   });
 });
 
-describe("applyRelationshipSchemaMigration", () => {
-  it("applies the relationship migration SQL and verifies the accounts table exists", async () => {
+describe("applyClientOpsSchemaMigrations", () => {
+  it("applies all migration SQL in order and verifies required tables and columns", async () => {
     const db = {
       query: vi
         .fn()
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [{ accounts_table: "accounts" }] }),
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: CLIENTOPS_REQUIRED_TABLES.map((table_name) => ({ table_name })),
+        })
+        .mockResolvedValueOnce({
+          rows: CLIENTOPS_REQUIRED_COLUMNS.map((column) => {
+            const [table_name, column_name] = column.split(".");
+            return { table_name, column_name };
+          }),
+        }),
     };
 
-    await applyRelationshipSchemaMigration({
+    await applyClientOpsSchemaMigrations({
       db,
-      migrationSql: "create table if not exists accounts (id uuid primary key);",
+      migrationSqls: ["-- 001", "-- 002", "-- 003", "-- 004"],
     });
 
+    expect(db.query).toHaveBeenNthCalledWith(1, "-- 001");
+    expect(db.query).toHaveBeenNthCalledWith(2, "-- 002");
+    expect(db.query).toHaveBeenNthCalledWith(3, "-- 003");
+    expect(db.query).toHaveBeenNthCalledWith(4, "-- 004");
     expect(db.query).toHaveBeenNthCalledWith(
-      1,
-      "create table if not exists accounts (id uuid primary key);",
+      5,
+      expect.stringContaining("information_schema.tables"),
+      [CLIENTOPS_REQUIRED_TABLES],
     );
     expect(db.query).toHaveBeenNthCalledWith(
-      2,
-      "select to_regclass('public.accounts')::text as accounts_table",
+      6,
+      expect.stringContaining("information_schema.columns"),
+      [CLIENTOPS_REQUIRED_COLUMNS],
     );
   });
 
-  it("fails loudly when the migration does not create accounts", async () => {
+  it("fails loudly when any required table is missing", async () => {
     const db = {
       query: vi
         .fn()
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [{ accounts_table: null }] }),
+        .mockResolvedValueOnce({
+          rows: CLIENTOPS_REQUIRED_TABLES.filter((table) => table !== "campaigns").map(
+            (table_name) => ({ table_name }),
+          ),
+        }),
     };
 
     await expect(
-      applyRelationshipSchemaMigration({
+      applyClientOpsSchemaMigrations({
         db,
-        migrationSql: "select 1;",
+        migrationSqls: ["select 1;"],
       }),
-    ).rejects.toThrow("Relationship schema migration did not create public.accounts");
+    ).rejects.toThrow("ClientOps schema migration missing required tables: campaigns");
+  });
+
+  it("fails loudly when any required column is missing", async () => {
+    const db = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: CLIENTOPS_REQUIRED_TABLES.map((table_name) => ({ table_name })),
+        })
+        .mockResolvedValueOnce({
+          rows: CLIENTOPS_REQUIRED_COLUMNS.filter((column) => column !== "tasks.account_id").map(
+            (column) => {
+              const [table_name, column_name] = column.split(".");
+              return { table_name, column_name };
+            },
+          ),
+        }),
+    };
+
+    await expect(
+      applyClientOpsSchemaMigrations({
+        db,
+        migrationSqls: ["select 1;"],
+      }),
+    ).rejects.toThrow("ClientOps schema migration missing required columns: tasks.account_id");
   });
 });
