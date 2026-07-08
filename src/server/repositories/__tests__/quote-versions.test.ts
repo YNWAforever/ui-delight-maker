@@ -33,6 +33,18 @@ describe("quote version repository", () => {
     );
   });
 
+  it("gets a quote version by id", async () => {
+    mockQueryOne.mockResolvedValue({ id: "version-1" });
+    const { getQuoteVersion } = await import("../quote-versions");
+
+    await getQuoteVersion("version-1");
+
+    expect(mockQueryOne).toHaveBeenCalledWith(
+      expect.stringContaining("from quote_versions where id = $1"),
+      ["version-1"],
+    );
+  });
+
   it("lists versions newest first", async () => {
     mockQuery.mockResolvedValue([]);
     const { listQuoteVersions } = await import("../quote-versions");

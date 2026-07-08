@@ -110,6 +110,8 @@ export async function updateQuote(id: string, updates: Partial<Quote>) {
   const normalizedUpdates = {
     ...updates,
     line_items: updates.line_items === undefined ? undefined : JSON.stringify(updates.line_items),
+    document_sections:
+      updates.document_sections === undefined ? undefined : JSON.stringify(updates.document_sections),
   };
   const update = buildUpdate(normalizedUpdates, quoteUpdateColumns, 1);
   const quote = await queryOne<Quote>(
