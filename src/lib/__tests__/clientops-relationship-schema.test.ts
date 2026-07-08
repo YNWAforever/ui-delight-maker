@@ -66,7 +66,17 @@ describe("getClientOpsSchemaMigrationDecision", () => {
 
     expect(CLIENTOPS_REQUIRED_COLUMNS).toEqual(
       expect.arrayContaining([
+        "quotes.quote_template_id",
         "quotes.accepted_version_id",
+        "quotes.issued_version_id",
+        "quotes.document_sections",
+        "quotes.cover_text",
+        "quotes.assumptions",
+        "quotes.payment_terms",
+        "quotes.accepted_at",
+        "quotes.accepted_by",
+        "quotes.parent_quote_id",
+        "quotes.change_order_reason",
         "quote_line_items.quote_id",
         "quote_versions.quote_id",
         "job_sheets.quote_id",
