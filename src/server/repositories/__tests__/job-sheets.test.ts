@@ -202,10 +202,14 @@ describe("job sheets repository", () => {
 
     await listJobSheets({ client_id: "client-1", account_id: "account-1" });
 
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("from job_sheets"),
-      ["client-1", "account-1"],
-    );
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql, values] = mockQuery.mock.calls[0];
+
+    expect(sql).toContain("from job_sheets");
+    expect(sql).toContain("client_id = $1");
+    expect(sql).toContain("account_id = $2");
+    expect(sql).toContain("order by created_at desc");
+    expect(values).toEqual(["client-1", "account-1"]);
   });
 
   it("gets a job sheet with ordered portions", async () => {
