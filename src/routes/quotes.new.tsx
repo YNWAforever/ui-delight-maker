@@ -5,6 +5,10 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { PageHeader } from "@/components/page-header";
+import {
+  QuoteDocumentEditor,
+  type QuoteDocumentDraft,
+} from "@/components/quotes/quote-document-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,7 +23,12 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { formatHKD } from "@/lib/format";
-import { createQuote, getPricingTemplates } from "@/server-functions/quotes";
+import {
+  createQuote,
+  getPricingTemplates,
+  getQuotePdfTemplates,
+  getQuoteTemplates,
+} from "@/server-functions/quotes";
 import { getLeads } from "@/server-functions/leads";
 import { getClients } from "@/server-functions/clients";
 import { getProducts } from "@/server-functions/products";
@@ -34,13 +43,15 @@ const searchSchema = z.object({
 export const Route = createFileRoute("/quotes/new")({
   validateSearch: searchSchema,
   loader: async () => {
-    const [templates, leads, clients, products] = await Promise.all([
+    const [templates, leads, clients, products, quoteTemplates, pdfTemplates] = await Promise.all([
       getPricingTemplates(),
       getLeads({}),
       getClients({}),
       getProducts({}),
+      getQuoteTemplates(),
+      getQuotePdfTemplates(),
     ]);
-    return { templates, leads, clients, products };
+    return { templates, leads, clients, products, quoteTemplates, pdfTemplates };
   },
   head: () => ({
     meta: [
@@ -61,9 +72,11 @@ type LineItem = {
 
 const STEPS = [
   { id: 1, label: "Client" },
-  { id: 2, label: "Services" },
-  { id: 3, label: "Review" },
-];
+  { id: 2, label: "Items" },
+  { id: 3, label: "Terms" },
+  { id: 4, label: "PDF" },
+  { id: 5, label: "Review" },
+] as const;
 
 function QuoteBuilder() {
   const {
@@ -71,9 +84,10 @@ function QuoteBuilder() {
     clientId: initialClientId,
     productId: initialProductId,
   } = Route.useSearch();
-  const { templates, leads, clients, products } = Route.useLoaderData();
+  const { templates, leads, clients, products, quoteTemplates, pdfTemplates } = Route.useLoaderData();
   const navigate = useNavigate();
   const router = useRouter();
+  const initialQuoteTemplate = quoteTemplates[0];
 
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<"lead" | "client">(initialClientId ? "client" : "lead");
@@ -83,11 +97,22 @@ function QuoteBuilder() {
   const [validUntil, setValidUntil] = useState("2026-06-30");
   const [discount, setDiscount] = useState(0);
   const [items, setItems] = useState<LineItem[]>([]);
+  const [quoteTemplateId, setQuoteTemplateId] = useState(initialQuoteTemplate?.id ?? "");
+  const [documentDraft, setDocumentDraft] = useState<QuoteDocumentDraft>({
+    cover_text: initialQuoteTemplate?.default_cover_text ?? "",
+    assumptions: initialQuoteTemplate?.default_assumptions ?? "",
+    payment_terms: initialQuoteTemplate?.default_payment_terms ?? "",
+    document_sections: initialQuoteTemplate?.default_scope_sections ?? [],
+  });
 
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unit_price, 0), [items]);
   const total = Math.round(subtotal * (1 - discount / 100));
   const lead = leads.find((l) => l.id === leadId);
   const client = clients.find((c) => c.id === clientId);
+  const activeQuoteTemplate = quoteTemplates.find((item) => item.id === quoteTemplateId) ?? null;
+  const activePdfTemplateName =
+    pdfTemplates.find((item) => item.id === activeQuoteTemplate?.default_pdf_template_id)?.name ??
+    "Standard quote PDF";
 
   const addItem = () =>
     setItems((prev) => [
@@ -119,6 +144,18 @@ function QuoteBuilder() {
       },
     ]);
     toast.success(`Added template: ${tpl.service}`);
+  };
+
+  const applyQuoteTemplate = (templateId: string) => {
+    const template = quoteTemplates.find((item) => item.id === templateId);
+    setQuoteTemplateId(templateId);
+    if (!template) return;
+    setDocumentDraft({
+      cover_text: template.default_cover_text ?? "",
+      assumptions: template.default_assumptions ?? "",
+      payment_terms: template.default_payment_terms ?? "",
+      document_sections: template.default_scope_sections,
+    });
   };
 
   // Auto-apply the pricing template matching the pre-selected product (from the
@@ -165,12 +202,17 @@ function QuoteBuilder() {
         client_id: mode === "client" ? clientId || null : null,
         currency: "HKD",
         valid_until: validUntil,
+        quote_template_id: quoteTemplateId || null,
+        cover_text: documentDraft.cover_text,
+        assumptions: documentDraft.assumptions,
+        payment_terms: documentDraft.payment_terms,
+        document_sections: documentDraft.document_sections,
         line_items: items.map(({ id: _id, ...rest }) => ({
           id: _id,
           ...rest,
         })),
         total_value: total,
-      },
+      } as Parameters<typeof createQuote>[0]["data"],
     });
     router.invalidate();
     toast.success("Quote submitted for approval.");
@@ -244,7 +286,7 @@ function QuoteBuilder() {
           {step === 1 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Client & terms</CardTitle>
+                <CardTitle className="text-base">Client</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2 flex items-center gap-2">
@@ -303,36 +345,6 @@ function QuoteBuilder() {
                     </Select>
                   </div>
                 )}
-                <div>
-                  <Label htmlFor="quote-valid-until" className="text-xs">
-                    Valid until
-                  </Label>
-                  <Input
-                    id="quote-valid-until"
-                    name="valid-until"
-                    type="date"
-                    className="mt-1.5"
-                    value={validUntil}
-                    onChange={(e) => setValidUntil(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="quote-approver" className="text-xs">
-                    Approver
-                  </Label>
-                  <Select value={approver} onValueChange={setApprover}>
-                    <SelectTrigger id="quote-approver" className="mt-1.5">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {APP_USERS.filter((u) => ["manager", "admin"].includes(u.role)).map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.name} · {u.role}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </CardContent>
             </Card>
           )}
@@ -470,6 +482,77 @@ function QuoteBuilder() {
           {step === 3 && (
             <Card>
               <CardHeader>
+                <CardTitle className="text-base">Commercial terms</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="quote-valid-until" className="text-xs">
+                    Valid until
+                  </Label>
+                  <Input
+                    id="quote-valid-until"
+                    name="valid-until"
+                    type="date"
+                    className="mt-1.5"
+                    value={validUntil}
+                    onChange={(e) => setValidUntil(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="quote-approver" className="text-xs">
+                    Approver
+                  </Label>
+                  <Select value={approver} onValueChange={setApprover}>
+                    <SelectTrigger id="quote-approver" className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {APP_USERS.filter((u) => ["manager", "admin"].includes(u.role)).map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name} · {u.role}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="sm:col-span-2">
+                  <Label htmlFor="quote-template" className="text-xs">
+                    Quote template
+                  </Label>
+                  <Select value={quoteTemplateId} onValueChange={applyQuoteTemplate}>
+                    <SelectTrigger id="quote-template" className="mt-1.5">
+                      <SelectValue placeholder="Select quote template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {quoteTemplates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    PDF template: {activePdfTemplateName}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {step === 4 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">PDF sections</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <QuoteDocumentEditor value={documentDraft} onChange={setDocumentDraft} />
+              </CardContent>
+            </Card>
+          )}
+
+          {step === 5 && (
+            <Card>
+              <CardHeader>
                 <CardTitle className="text-base">Review</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-sm">
@@ -492,6 +575,8 @@ function QuoteBuilder() {
                     label="Approver"
                     value={APP_USERS.find((u) => u.id === approver)?.name ?? "—"}
                   />
+                  <KV label="Quote template" value={activeQuoteTemplate?.name ?? "—"} />
+                  <KV label="PDF template" value={activePdfTemplateName} />
                   <KV label="Items" value={String(items.length)} />
                   <KV label="Discount" value={`${discount}%`} />
                 </div>
@@ -512,6 +597,12 @@ function QuoteBuilder() {
                     </li>
                   ))}
                 </ul>
+                <Separator />
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <ReviewBlock label="Cover text" value={documentDraft.cover_text} />
+                  <ReviewBlock label="Assumptions" value={documentDraft.assumptions} />
+                  <ReviewBlock label="Payment terms" value={documentDraft.payment_terms} />
+                </div>
               </CardContent>
             </Card>
           )}
@@ -525,7 +616,7 @@ function QuoteBuilder() {
             >
               <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" /> Back
             </Button>
-            {step < 3 ? (
+            {step < STEPS.length ? (
               <Button size="sm" onClick={() => setStep((s) => s + 1)}>
                 Continue <ArrowRight aria-hidden="true" className="ml-2 h-4 w-4" />
               </Button>
@@ -596,6 +687,15 @@ function KV({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-0.5">{value}</p>
+    </div>
+  );
+}
+
+function ReviewBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border p-3">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 whitespace-pre-wrap text-sm">{value || "—"}</p>
     </div>
   );
 }

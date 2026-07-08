@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 import {
   ArrowLeft,
@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Download,
   File as FileIcon,
-  FileText,
   Send,
   Upload,
   XCircle,
@@ -15,6 +14,7 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
+import { QuotePdfPreview } from "@/components/quotes/quote-pdf-preview";
 import { StatusBadge } from "@/components/status-badge";
 import type { Lead } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -29,8 +29,10 @@ import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
 import { calculateTotal, newLineItem } from "@/lib/quote-utils";
 import type { PricingTemplate, QuoteLineItem, QuoteStatus } from "@/lib/types";
 import {
+  acceptQuoteAndCreateJobSheet,
   getQuote,
   getPricingTemplates,
+  issueQuoteVersion,
   requestQuoteApproval,
   updateQuote,
 } from "@/server-functions/quotes";
@@ -209,6 +211,34 @@ function QuoteDetail() {
     toast.success("Submitted for approval");
   };
 
+  const handleIssueQuote = async () => {
+    try {
+      setSaving(true);
+      const result = await issueQuoteVersion({ data: { id: quote.id } });
+      setStatus(result.quote.status);
+      router.invalidate();
+      toast.success("Quote issued and PDF version created");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Issue failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAcceptQuote = async () => {
+    try {
+      setSaving(true);
+      const result = await acceptQuoteAndCreateJobSheet({ data: { id: quote.id } });
+      setStatus(result.quote.status);
+      router.invalidate();
+      toast.success(`Quote accepted. Job sheet ${result.jobSheet.number} is ready for accounting.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Acceptance failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const addComment = () => {
     if (!composer.trim()) return;
     setComments((prev) => [
@@ -260,12 +290,10 @@ function QuoteDetail() {
                 <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" /> All
               </Link>
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => toast.message("PDF download mocked")}
-            >
-              <Download aria-hidden="true" className="mr-2 h-4 w-4" /> PDF
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/quotes/$id/pdf" params={{ id: quote.id }}>
+                <Download aria-hidden="true" className="mr-2 h-4 w-4" /> PDF
+              </Link>
             </Button>
             {status === "draft" && (
               <Button size="sm" onClick={handleRequestApproval}>
@@ -287,8 +315,13 @@ function QuoteDetail() {
               </>
             )}
             {status === "approved" && (
-              <Button size="sm" onClick={() => advance("sent", "Sent to client")}>
-                <Send aria-hidden="true" className="mr-2 h-4 w-4" /> Send to client
+              <Button size="sm" onClick={handleIssueQuote} disabled={saving}>
+                <Send aria-hidden="true" className="mr-2 h-4 w-4" /> Issue quote
+              </Button>
+            )}
+            {["sent", "viewed"].includes(status) && (
+              <Button size="sm" onClick={handleAcceptQuote} disabled={saving}>
+                <CheckCircle2 aria-hidden="true" className="mr-2 h-4 w-4" /> Mark accepted
               </Button>
             )}
           </>
@@ -589,14 +622,12 @@ function QuoteDetail() {
                 </TabsContent>
 
                 <TabsContent value="preview" className="mt-4">
-                  <div className="flex aspect-[1/1.2] items-center justify-center rounded-md border-2 border-dashed border-border bg-muted/30">
-                    <div className="text-center">
-                      <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
-                      <p className="mt-3 text-sm font-medium">{quote.number}.pdf</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Generated when the quote is approved.
-                      </p>
-                    </div>
+                  <div className="overflow-hidden rounded-md border border-border bg-muted/20 p-3">
+                    <QuotePdfPreview
+                      quote={quote}
+                      lineItems={editItems}
+                      clientName={lead?.company_name ?? quote.client_id ?? "Client"}
+                    />
                   </div>
                 </TabsContent>
               </Tabs>
