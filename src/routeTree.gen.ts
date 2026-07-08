@@ -18,6 +18,7 @@ import { Route as QuotesRouteImport } from './routes/quotes'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeadsRouteImport } from './routes/leads'
+import { Route as JobSheetsRouteImport } from './routes/job-sheets'
 import { Route as ClientsRouteImport } from './routes/clients'
 import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
@@ -30,6 +31,7 @@ import { Route as QuotesNewRouteImport } from './routes/quotes.new'
 import { Route as QuotesIdRouteImport } from './routes/quotes.$id'
 import { Route as LoginAuthPathRouteImport } from './routes/login.$authPath'
 import { Route as LeadsIdRouteImport } from './routes/leads.$id'
+import { Route as JobSheetsIdRouteImport } from './routes/job-sheets.$id'
 import { Route as ClientsImportRouteImport } from './routes/clients.import'
 import { Route as ClientsIdRouteImport } from './routes/clients.$id'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
@@ -92,6 +94,11 @@ const LeadsRoute = LeadsRouteImport.update({
   path: '/leads',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JobSheetsRoute = JobSheetsRouteImport.update({
+  id: '/job-sheets',
+  path: '/job-sheets',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientsRoute = ClientsRouteImport.update({
   id: '/clients',
   path: '/clients',
@@ -151,6 +158,11 @@ const LeadsIdRoute = LeadsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => LeadsRoute,
+} as any)
+const JobSheetsIdRoute = JobSheetsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => JobSheetsRoute,
 } as any)
 const ClientsImportRoute = ClientsImportRouteImport.update({
   id: '/import',
@@ -247,6 +259,7 @@ export interface FileRoutesByFullPath {
   '/approvals': typeof ApprovalsRoute
   '/campaigns': typeof CampaignsRouteWithChildren
   '/clients': typeof ClientsRouteWithChildren
+  '/job-sheets': typeof JobSheetsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRouteWithChildren
   '/notifications': typeof NotificationsRoute
@@ -261,6 +274,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
+  '/job-sheets/$id': typeof JobSheetsIdRoute
   '/leads/$id': typeof LeadsIdRoute
   '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
@@ -286,6 +300,7 @@ export interface FileRoutesByTo {
   '/approvals': typeof ApprovalsRoute
   '/campaigns': typeof CampaignsRouteWithChildren
   '/clients': typeof ClientsRouteWithChildren
+  '/job-sheets': typeof JobSheetsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRouteWithChildren
   '/notifications': typeof NotificationsRoute
@@ -300,6 +315,7 @@ export interface FileRoutesByTo {
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
+  '/job-sheets/$id': typeof JobSheetsIdRoute
   '/leads/$id': typeof LeadsIdRoute
   '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
@@ -326,6 +342,7 @@ export interface FileRoutesById {
   '/approvals': typeof ApprovalsRoute
   '/campaigns': typeof CampaignsRouteWithChildren
   '/clients': typeof ClientsRouteWithChildren
+  '/job-sheets': typeof JobSheetsRouteWithChildren
   '/leads': typeof LeadsRouteWithChildren
   '/login': typeof LoginRouteWithChildren
   '/notifications': typeof NotificationsRoute
@@ -340,6 +357,7 @@ export interface FileRoutesById {
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
+  '/job-sheets/$id': typeof JobSheetsIdRoute
   '/leads/$id': typeof LeadsIdRoute
   '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
@@ -367,6 +385,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/campaigns'
     | '/clients'
+    | '/job-sheets'
     | '/leads'
     | '/login'
     | '/notifications'
@@ -381,6 +400,7 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/clients/$id'
     | '/clients/import'
+    | '/job-sheets/$id'
     | '/leads/$id'
     | '/login/$authPath'
     | '/quotes/$id'
@@ -406,6 +426,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/campaigns'
     | '/clients'
+    | '/job-sheets'
     | '/leads'
     | '/login'
     | '/notifications'
@@ -420,6 +441,7 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/clients/$id'
     | '/clients/import'
+    | '/job-sheets/$id'
     | '/leads/$id'
     | '/login/$authPath'
     | '/quotes/$id'
@@ -445,6 +467,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/campaigns'
     | '/clients'
+    | '/job-sheets'
     | '/leads'
     | '/login'
     | '/notifications'
@@ -459,6 +482,7 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/clients/$id'
     | '/clients/import'
+    | '/job-sheets/$id'
     | '/leads/$id'
     | '/login/$authPath'
     | '/quotes/$id'
@@ -485,6 +509,7 @@ export interface RootRouteChildren {
   ApprovalsRoute: typeof ApprovalsRoute
   CampaignsRoute: typeof CampaignsRouteWithChildren
   ClientsRoute: typeof ClientsRouteWithChildren
+  JobSheetsRoute: typeof JobSheetsRouteWithChildren
   LeadsRoute: typeof LeadsRouteWithChildren
   LoginRoute: typeof LoginRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
@@ -571,6 +596,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/job-sheets': {
+      id: '/job-sheets'
+      path: '/job-sheets'
+      fullPath: '/job-sheets'
+      preLoaderRoute: typeof JobSheetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clients': {
       id: '/clients'
       path: '/clients'
@@ -654,6 +686,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/leads/$id'
       preLoaderRoute: typeof LeadsIdRouteImport
       parentRoute: typeof LeadsRoute
+    }
+    '/job-sheets/$id': {
+      id: '/job-sheets/$id'
+      path: '/$id'
+      fullPath: '/job-sheets/$id'
+      preLoaderRoute: typeof JobSheetsIdRouteImport
+      parentRoute: typeof JobSheetsRoute
     }
     '/clients/import': {
       id: '/clients/import'
@@ -818,6 +857,18 @@ const ClientsRouteChildren: ClientsRouteChildren = {
 const ClientsRouteWithChildren =
   ClientsRoute._addFileChildren(ClientsRouteChildren)
 
+interface JobSheetsRouteChildren {
+  JobSheetsIdRoute: typeof JobSheetsIdRoute
+}
+
+const JobSheetsRouteChildren: JobSheetsRouteChildren = {
+  JobSheetsIdRoute: JobSheetsIdRoute,
+}
+
+const JobSheetsRouteWithChildren = JobSheetsRoute._addFileChildren(
+  JobSheetsRouteChildren,
+)
+
 interface LeadsRouteChildren {
   LeadsIdRoute: typeof LeadsIdRoute
 }
@@ -862,6 +913,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApprovalsRoute: ApprovalsRoute,
   CampaignsRoute: CampaignsRouteWithChildren,
   ClientsRoute: ClientsRouteWithChildren,
+  JobSheetsRoute: JobSheetsRouteWithChildren,
   LeadsRoute: LeadsRouteWithChildren,
   LoginRoute: LoginRouteWithChildren,
   NotificationsRoute: NotificationsRoute,

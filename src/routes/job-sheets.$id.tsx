@@ -1,0 +1,532 @@
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { AlertCircle, ArrowLeft, CheckCircle2, Lock, Save } from "lucide-react";
+import { toast } from "sonner";
+
+import { BillingPortionsTable } from "@/components/job-sheets/billing-portions-table";
+import { JobSheetStatusBadge } from "@/components/job-sheets/job-sheet-status-badge";
+import { CommandHeader } from "@/components/sales";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
+import { canAcceptJobSheet, type NewJobSheetPortion } from "@/lib/quote-to-cash";
+import type { JobSheetBillingType, JobSheetPortion, JobSheetPortionStatus } from "@/lib/types";
+import {
+  acceptJobSheetForAccounting,
+  getJobSheet,
+  updateJobSheetPortions,
+  updatePortionXeroReference,
+} from "@/server-functions/job-sheets";
+
+const BILLING_TYPE_OPTIONS: Array<{ value: JobSheetBillingType; label: string }> = [
+  { value: "deposit", label: "Deposit" },
+  { value: "progress", label: "Progress" },
+  { value: "milestone", label: "Milestone" },
+  { value: "monthly", label: "Monthly" },
+  { value: "final", label: "Final" },
+  { value: "other", label: "Other" },
+];
+
+const PORTION_STATUS_OPTIONS: Array<{ value: JobSheetPortionStatus; label: string }> = [
+  { value: "planned", label: "Planned" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
+type PortionDraft = {
+  id: string;
+  name: string;
+  description: string;
+  amount: string;
+  currency: string;
+  billing_type: JobSheetBillingType;
+  status: JobSheetPortionStatus;
+  sort_order: number;
+  source_quote_line_item_ids: string[];
+};
+
+type XeroDraft = {
+  xero_invoice_number: string;
+  xero_invoice_reference: string;
+  xero_invoice_date: string;
+  xero_notes: string;
+};
+
+const toPortionDrafts = (portions: JobSheetPortion[]): PortionDraft[] =>
+  portions.map((portion) => ({
+    id: portion.id,
+    name: portion.name,
+    description: portion.description ?? "",
+    amount: String(portion.amount ?? 0),
+    currency: portion.currency,
+    billing_type: portion.billing_type,
+    status: portion.status === "entered_in_xero" ? "planned" : portion.status,
+    sort_order: portion.sort_order,
+    source_quote_line_item_ids: portion.source_quote_line_item_ids,
+  }));
+
+const toXeroDrafts = (portions: JobSheetPortion[]): Record<string, XeroDraft> =>
+  Object.fromEntries(
+    portions.map((portion) => [
+      portion.id,
+      {
+        xero_invoice_number: portion.xero_invoice_number ?? "",
+        xero_invoice_reference: portion.xero_invoice_reference ?? "",
+        xero_invoice_date: portion.xero_invoice_date ?? "",
+        xero_notes: portion.xero_notes ?? "",
+      },
+    ]),
+  );
+
+export const Route = createFileRoute("/job-sheets/$id")({
+  loader: ({ params }) => getJobSheet({ data: { id: params.id } }),
+  head: ({ loaderData }) => ({
+    meta: [
+      { title: `${loaderData?.jobSheet.number ?? "Job Sheet"} - Fimmick ClientOps` },
+      {
+        name: "description",
+        content: "Accounting handoff detail with billing reconciliation and manual Xero references.",
+      },
+    ],
+  }),
+  component: JobSheetDetailPage,
+});
+
+function JobSheetDetailPage() {
+  const router = useRouter();
+  const { jobSheet, portions } = Route.useLoaderData();
+  const [portionDrafts, setPortionDrafts] = useState(() => toPortionDrafts(portions));
+  const [xeroDrafts, setXeroDrafts] = useState(() => toXeroDrafts(portions));
+  const [savingPortions, setSavingPortions] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [savingXeroFor, setSavingXeroFor] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPortionDrafts(toPortionDrafts(portions));
+    setXeroDrafts(toXeroDrafts(portions));
+  }, [portions]);
+
+  const commercialLocked = jobSheet.status === "accepted" || Boolean(jobSheet.locked_at);
+
+  const previewPortions = useMemo(
+    () =>
+      portionDrafts.map((portion) => {
+        const original = portions.find((row) => row.id === portion.id);
+        return {
+          ...(original ?? {
+            id: portion.id,
+            job_sheet_id: jobSheet.id,
+            target_invoice_date: null,
+            xero_invoice_number: null,
+            xero_invoice_reference: null,
+            xero_invoice_date: null,
+            xero_notes: null,
+            internal_note: null,
+            created_at: jobSheet.created_at,
+            updated_at: jobSheet.updated_at,
+          }),
+          name: portion.name,
+          description: portion.description,
+          amount: Number(portion.amount) || 0,
+          currency: portion.currency,
+          billing_type: portion.billing_type,
+          status: original?.status ?? portion.status,
+          sort_order: portion.sort_order,
+          source_quote_line_item_ids: portion.source_quote_line_item_ids,
+        };
+      }),
+    [jobSheet.created_at, jobSheet.id, jobSheet.updated_at, portionDrafts, portions],
+  );
+
+  const acceptance = useMemo(
+    () =>
+      canAcceptJobSheet({
+        totalAmount: jobSheet.total_amount,
+        portions: previewPortions,
+        requirePoNumber: false,
+        poNumber: jobSheet.po_number,
+        clientOrderNumber: jobSheet.client_order_number,
+      }),
+    [jobSheet.client_order_number, jobSheet.po_number, jobSheet.total_amount, previewPortions],
+  );
+
+  const updateDraft = <K extends keyof PortionDraft>(id: string, key: K, value: PortionDraft[K]) => {
+    setPortionDrafts((current) =>
+      current.map((portion) => (portion.id === id ? { ...portion, [key]: value } : portion)),
+    );
+  };
+
+  const savePortions = async () => {
+    if (commercialLocked) {
+      toast.error("Accepted job sheet commercial fields are immutable");
+      return;
+    }
+
+    const hasMissingName = portionDrafts.some((portion) => !portion.name.trim());
+    if (hasMissingName) {
+      toast.error("Each billing portion needs a name.");
+      return;
+    }
+
+    const payload: NewJobSheetPortion[] = portionDrafts.map((portion, index) => ({
+      name: portion.name.trim(),
+      source_quote_line_item_ids: portion.source_quote_line_item_ids,
+      description: portion.description.trim(),
+      amount: Number(portion.amount) || 0,
+      currency: portion.currency,
+      billing_type: portion.billing_type,
+      status: portion.status,
+      sort_order: index,
+    }));
+
+    setSavingPortions(true);
+    try {
+      await updateJobSheetPortions({ data: { id: jobSheet.id, portions: payload } });
+      toast.success("Billing plan saved");
+      await router.invalidate();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save billing plan");
+    } finally {
+      setSavingPortions(false);
+    }
+  };
+
+  const accept = async () => {
+    if (!acceptance.ok) {
+      toast.error(acceptance.reasons.join(" "));
+      return;
+    }
+
+    setAccepting(true);
+    try {
+      await acceptJobSheetForAccounting({ data: { id: jobSheet.id } });
+      toast.success("Job sheet accepted and locked");
+      await router.invalidate();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to accept job sheet");
+    } finally {
+      setAccepting(false);
+    }
+  };
+
+  const saveXeroReference = async (portionId: string) => {
+    const draft = xeroDrafts[portionId];
+    if (!draft) return;
+
+    setSavingXeroFor(portionId);
+    try {
+      await updatePortionXeroReference({
+        data: {
+          portion_id: portionId,
+          xero_invoice_number: draft.xero_invoice_number.trim() || null,
+          xero_invoice_reference: draft.xero_invoice_reference.trim() || null,
+          xero_invoice_date: draft.xero_invoice_date.trim() || null,
+          xero_notes: draft.xero_notes.trim() || null,
+        },
+      });
+      toast.success("Manual Xero reference saved");
+      await router.invalidate();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save Xero reference");
+    } finally {
+      setSavingXeroFor(null);
+    }
+  };
+
+  return (
+    <>
+      <CommandHeader
+        title={jobSheet.number}
+        status="Accounting handoff"
+        description={`Accepted quote total ${formatCurrencyAmount(jobSheet.total_amount, jobSheet.currency)}.`}
+        actions={
+          <>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/job-sheets">
+                <ArrowLeft className="mr-2 h-4 w-4" /> All job sheets
+              </Link>
+            </Button>
+            {!commercialLocked && (
+              <Button variant="outline" size="sm" onClick={savePortions} disabled={savingPortions}>
+                <Save className="mr-2 h-4 w-4" /> Save billing plan
+              </Button>
+            )}
+            {jobSheet.status !== "accepted" && (
+              <Button size="sm" onClick={accept} disabled={accepting || savingPortions}>
+                <CheckCircle2 className="mr-2 h-4 w-4" /> Accept & lock
+              </Button>
+            )}
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Billing portions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <BillingPortionsTable
+                totalAmount={jobSheet.total_amount}
+                currency={jobSheet.currency}
+                portions={previewPortions}
+              />
+
+              <Alert variant={commercialLocked ? "default" : "destructive"}>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>
+                  {commercialLocked ? "Commercial fields locked" : "Acceptance gate"}
+                </AlertTitle>
+                <AlertDescription>
+                  {commercialLocked
+                    ? "Accepted job sheet commercial fields are immutable."
+                    : acceptance.ok
+                      ? "Billing plan reconciles and can be accepted by accounting."
+                      : acceptance.reasons.join(" ")}
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-3">
+                {portionDrafts.map((portion, index) => (
+                  <div key={portion.id} className="rounded-md border border-border p-4">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      <div className="space-y-1.5 xl:col-span-2">
+                        <Label htmlFor={`portion-name-${portion.id}`}>Portion {index + 1}</Label>
+                        <Input
+                          id={`portion-name-${portion.id}`}
+                          value={portion.name}
+                          onChange={(event) => updateDraft(portion.id, "name", event.target.value)}
+                          disabled={commercialLocked}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`portion-amount-${portion.id}`}>Amount</Label>
+                        <Input
+                          id={`portion-amount-${portion.id}`}
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          step="0.01"
+                          value={portion.amount}
+                          onChange={(event) => updateDraft(portion.id, "amount", event.target.value)}
+                          disabled={commercialLocked}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Billing type</Label>
+                        <Select
+                          value={portion.billing_type}
+                          onValueChange={(value) =>
+                            updateDraft(portion.id, "billing_type", value as JobSheetBillingType)
+                          }
+                          disabled={commercialLocked}
+                        >
+                          <SelectTrigger aria-label={`Billing type for ${portion.name}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {BILLING_TYPE_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Status</Label>
+                        <Select
+                          value={portion.status}
+                          onValueChange={(value) =>
+                            updateDraft(portion.id, "status", value as JobSheetPortionStatus)
+                          }
+                          disabled={commercialLocked}
+                        >
+                          <SelectTrigger aria-label={`Status for ${portion.name}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PORTION_STATUS_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2 xl:col-span-4">
+                        <Label htmlFor={`portion-description-${portion.id}`}>Billing note</Label>
+                        <Textarea
+                          id={`portion-description-${portion.id}`}
+                          value={portion.description}
+                          onChange={(event) =>
+                            updateDraft(portion.id, "description", event.target.value)
+                          }
+                          disabled={commercialLocked}
+                          className="min-h-[88px]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Manual Xero references</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                ClientOps stores manual reference metadata only. Xero remains the official invoicing and accounting system.
+              </p>
+              {previewPortions.map((portion) => {
+                const draft = xeroDrafts[portion.id] ?? {
+                  xero_invoice_number: "",
+                  xero_invoice_reference: "",
+                  xero_invoice_date: "",
+                  xero_notes: "",
+                };
+
+                return (
+                  <div key={portion.id} className="rounded-md border border-border p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="font-medium">{portion.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatCurrencyAmount(portion.amount, portion.currency)}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => saveXeroReference(portion.id)}
+                        disabled={savingXeroFor === portion.id}
+                      >
+                        <Save className="mr-2 h-4 w-4" /> Save Xero reference
+                      </Button>
+                    </div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`xero-number-${portion.id}`}>Invoice number</Label>
+                        <Input
+                          id={`xero-number-${portion.id}`}
+                          value={draft.xero_invoice_number}
+                          onChange={(event) =>
+                            setXeroDrafts((current) => ({
+                              ...current,
+                              [portion.id]: { ...draft, xero_invoice_number: event.target.value },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`xero-reference-${portion.id}`}>Reference</Label>
+                        <Input
+                          id={`xero-reference-${portion.id}`}
+                          value={draft.xero_invoice_reference}
+                          onChange={(event) =>
+                            setXeroDrafts((current) => ({
+                              ...current,
+                              [portion.id]: { ...draft, xero_invoice_reference: event.target.value },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`xero-date-${portion.id}`}>Invoice date</Label>
+                        <Input
+                          id={`xero-date-${portion.id}`}
+                          type="date"
+                          value={draft.xero_invoice_date}
+                          onChange={(event) =>
+                            setXeroDrafts((current) => ({
+                              ...current,
+                              [portion.id]: { ...draft, xero_invoice_date: event.target.value },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <Label htmlFor={`xero-notes-${portion.id}`}>Accounting notes</Label>
+                        <Textarea
+                          id={`xero-notes-${portion.id}`}
+                          value={draft.xero_notes}
+                          onChange={(event) =>
+                            setXeroDrafts((current) => ({
+                              ...current,
+                              [portion.id]: { ...draft, xero_notes: event.target.value },
+                            }))
+                          }
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Handoff details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <DetailRow label="Status">
+                <JobSheetStatusBadge status={jobSheet.status} />
+              </DetailRow>
+              <DetailRow label="Quote">{jobSheet.quote_id}</DetailRow>
+              <DetailRow label="PO number">{jobSheet.po_number ?? "Missing"}</DetailRow>
+              <DetailRow label="Client order">{jobSheet.client_order_number ?? "Missing"}</DetailRow>
+              <DetailRow label="Xero customer">{jobSheet.xero_customer_reference ?? "Not set"}</DetailRow>
+              <DetailRow label="Accounting owner">{jobSheet.accounting_owner ?? "Unassigned"}</DetailRow>
+              <Separator />
+              <DetailRow label="Created">{formatDateTime(jobSheet.created_at)}</DetailRow>
+              <DetailRow label="Accepted">{formatDateTime(jobSheet.accepted_at)}</DetailRow>
+              <DetailRow label="Locked">{formatDateTime(jobSheet.locked_at)}</DetailRow>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Accounting controls</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex items-start gap-2">
+                <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>Accepted job sheet commercial fields are immutable.</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>Job sheet totals must reconcile before accounting acceptance.</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>No invoice creation, payment sync, or ledger balance logic is handled here.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right">{children}</span>
+    </div>
+  );
+}
