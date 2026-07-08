@@ -31,6 +31,18 @@ describe("job sheets repository", () => {
         currency: "HKD",
       })
       .mockResolvedValueOnce({
+        id: "job-1",
+        number: "JS-2026-0001",
+        status: "accounting_review",
+        quote_id: "quote-1",
+        accepted_quote_version_id: "version-1",
+        total_amount: 120000,
+        currency: "HKD",
+        po_number: null,
+        client_order_number: null,
+        locked_at: null,
+      })
+      .mockResolvedValueOnce({
         id: "version-1",
         snapshot: {
           line_items: [
@@ -91,6 +103,12 @@ describe("job sheets repository", () => {
     );
     expect(mockQueryOne).toHaveBeenNthCalledWith(
       2,
+      expect.stringContaining("from job_sheets where id = $1 for update"),
+      ["job-1"],
+      expect.any(Object),
+    );
+    expect(mockQueryOne).toHaveBeenNthCalledWith(
+      3,
       expect.stringContaining("from quote_versions where id = $1"),
       ["version-1"],
       expect.any(Object),
@@ -101,7 +119,7 @@ describe("job sheets repository", () => {
       expect.any(Object),
     );
     expect(mockQueryOne).toHaveBeenNthCalledWith(
-      4,
+      5,
       expect.stringContaining("insert into job_sheet_portions"),
       [
         "job-1",
@@ -130,8 +148,16 @@ describe("job sheets repository", () => {
         currency: "HKD",
       })
       .mockResolvedValueOnce({
-        id: "existing-portion",
-        job_sheet_id: "job-1",
+        id: "job-1",
+        number: "JS-2026-0001",
+        status: "accounting_review",
+        quote_id: "quote-1",
+        accepted_quote_version_id: "version-1",
+        total_amount: 120000,
+        currency: "HKD",
+        po_number: null,
+        client_order_number: null,
+        locked_at: null,
       });
     mockQuery.mockResolvedValueOnce([{ id: "existing-portion" }]);
 
@@ -154,7 +180,7 @@ describe("job sheets repository", () => {
       ["job-1"],
       expect.any(Object),
     );
-    expect(mockQueryOne).toHaveBeenCalledTimes(1);
+    expect(mockQueryOne).toHaveBeenCalledTimes(2);
   });
 
   it("lists job sheets by status, client, and account filters", async () => {
@@ -305,10 +331,42 @@ describe("job sheets repository", () => {
     );
     expect(mockQueryOne).toHaveBeenNthCalledWith(
       2,
+      expect.stringContaining("status = 'accounting_review'"),
+      ["acct-1", "job-1"],
+      expect.any(Object),
+    );
+    expect(mockQueryOne).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("locked_at is null"),
+      ["acct-1", "job-1"],
+      expect.any(Object),
+    );
+    expect(mockQueryOne).toHaveBeenNthCalledWith(
+      2,
       expect.stringContaining("locked_at = now()"),
       ["acct-1", "job-1"],
       expect.any(Object),
     );
+  });
+
+  it("rejects re-accepting a locked or already accepted job sheet", async () => {
+    mockQueryOne.mockResolvedValueOnce({
+      id: "job-1",
+      status: "accepted",
+      total_amount: 120000,
+      currency: "HKD",
+      po_number: null,
+      client_order_number: null,
+      locked_at: "2026-07-09T12:00:00.000Z",
+    });
+
+    const { acceptJobSheet } = await import("../job-sheets");
+
+    await expect(acceptJobSheet("job-1", { accepted_by: "acct-1" })).rejects.toThrow(
+      "Job sheet is already accepted or locked",
+    );
+    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockQueryOne).toHaveBeenCalledTimes(1);
   });
 
   it("blocks acceptance when job sheet totals do not reconcile", async () => {

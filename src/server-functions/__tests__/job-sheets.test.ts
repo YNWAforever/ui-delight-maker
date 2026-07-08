@@ -65,6 +65,16 @@ describe("job sheet server functions", () => {
     expect(listJobSheetsMock).toHaveBeenCalledWith({ status: "accounting_review" });
   });
 
+  it("stops before repository access when Neon auth fails", async () => {
+    requireNeonAuthSessionMock.mockRejectedValueOnce(new Error("Unauthorized"));
+    const { getJobSheets } = await import("../job-sheets");
+
+    await expect(getJobSheets({ data: { status: "accounting_review" } })).rejects.toThrow(
+      "Unauthorized",
+    );
+    expect(listJobSheetsMock).not.toHaveBeenCalled();
+  });
+
   it("requires Neon auth before getting a job sheet", async () => {
     const { getJobSheet } = await import("../job-sheets");
 

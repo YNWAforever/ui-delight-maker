@@ -73,8 +73,20 @@ async function listJobSheetPortions(
 }
 
 async function getJobSheetById(id: string, db?: Queryable): Promise<JobSheet> {
+  return getJobSheetByIdWithOptions(id, db);
+}
+
+async function getJobSheetByIdWithOptions(
+  id: string,
+  db?: Queryable,
+  options: { forUpdate?: boolean } = {},
+): Promise<JobSheet> {
   return getJobSheetOrThrow(
-    await queryOne<JobSheet>("select * from job_sheets where id = $1", [id], db),
+    await queryOne<JobSheet>(
+      `select * from job_sheets where id = $1${options.forUpdate ? " for update" : ""}`,
+      [id],
+      db,
+    ),
   );
 }
 
@@ -187,12 +199,17 @@ export async function createJobSheetFromAcceptedQuote(
       throw new Error("Failed to create job sheet");
     }
 
-    const existingPortions = await listJobSheetPortions(jobSheet.id, client);
+    const lockedJobSheet = await getJobSheetByIdWithOptions(jobSheet.id, client, { forUpdate: true });
+    const existingPortions = await listJobSheetPortions(lockedJobSheet.id, client);
     if (existingPortions.length === 0) {
-      await createDefaultPortionsFromAcceptedVersion(jobSheet, input.accepted_quote_version_id, client);
+      await createDefaultPortionsFromAcceptedVersion(
+        lockedJobSheet,
+        input.accepted_quote_version_id,
+        client,
+      );
     }
 
-    return jobSheet;
+    return lockedJobSheet;
   };
 
   if (db) {
@@ -269,7 +286,12 @@ export async function replaceJobSheetPortions(
 
 export async function acceptJobSheet(id: string, input: AcceptJobSheetInput): Promise<JobSheet> {
   return transaction(async (client) => {
-    const jobSheet = await getJobSheetById(id, client);
+    const jobSheet = await getJobSheetByIdWithOptions(id, client, { forUpdate: true });
+
+    if (jobSheet.status !== "accounting_review" || jobSheet.locked_at) {
+      throw new Error("Job sheet is already accepted or locked");
+    }
+
     const portions = await listJobSheetPortions(id, client);
     const acceptance = canAcceptJobSheet({
       totalAmount: jobSheet.total_amount,
@@ -291,13 +313,19 @@ export async function acceptJobSheet(id: string, input: AcceptJobSheetInput): Pr
             accepted_at = now(),
             locked_at = now()
         where id = $2
+          and status = 'accounting_review'
+          and locked_at is null
         returning *
       `,
       [input.accepted_by, id],
       client,
     );
 
-    return getJobSheetOrThrow(acceptedJobSheet);
+    if (!acceptedJobSheet) {
+      throw new Error("Job sheet not found or already accepted");
+    }
+
+    return acceptedJobSheet;
   });
 }
 
