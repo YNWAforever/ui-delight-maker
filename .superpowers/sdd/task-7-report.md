@@ -225,3 +225,84 @@ Result:
 ### Commit
 
 - `fix: preserve job sheet accounting state`
+
+---
+
+## Task 7 review-fix follow-up 3
+
+### Review findings addressed
+
+- Exported focused route helpers so the draft-to-preview and draft-to-save mapping is covered by behavior tests instead of source inspection alone:
+  - `buildPreviewPortions(...)`
+  - `buildPortionSavePayload(...)`
+- Fixed preview mapping so edited draft values now drive billing preview rows and the accounting acceptance gate:
+  - draft `status` is respected for editable rows
+  - `entered_in_xero` rows still preserve their original entered status
+  - edited `amount` and `target_invoice_date` values flow into the preview rows
+- Preserved `target_invoice_date` through the billing-plan save path by threading it through:
+  - `PortionDraft`
+  - `toPortionDrafts(...)`
+  - `NewJobSheetPortion`
+  - repository insert payloads in `replaceJobSheetPortions(...)`
+- Added a billing-plan date input so accounting can edit the target invoice date that is now being saved.
+
+### Files changed for this follow-up
+
+- `src/lib/quote-to-cash.ts`
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+- `src/server/repositories/job-sheets.ts`
+- `src/server/repositories/__tests__/job-sheets.test.ts`
+- `src/server-functions/__tests__/job-sheets.test.ts`
+
+### Verification evidence
+
+#### Required focused tests
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts src/server/repositories/__tests__/job-sheets.test.ts src/server-functions/__tests__/job-sheets.test.ts
+```
+
+Result:
+
+- PASS
+- 3 test files passed
+- 24 tests passed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 files appeared in the compiler output
+- Reported baseline files/errors remained in:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply step skipped because `DATABASE_URL` is not set
+- seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds both completed successfully
+- existing chunk-size and framework unused-import warnings remained in build output

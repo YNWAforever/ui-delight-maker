@@ -246,12 +246,13 @@ export async function replaceJobSheetPortions(
               description,
               amount,
               currency,
+              target_invoice_date,
               billing_type,
               status,
               sort_order
             )
           values
-            ($1, $2, $3::uuid[], $4, $5, $6, $7, $8, $9)
+            ($1, $2, $3::uuid[], $4, $5, $6, $7, $8, $9, $10)
           returning *
         `,
         [
@@ -261,6 +262,7 @@ export async function replaceJobSheetPortions(
           portion.description,
           portion.amount,
           portion.currency,
+          portion.target_invoice_date ?? null,
           portion.billing_type,
           portion.status,
           portion.sort_order,

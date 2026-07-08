@@ -7,6 +7,8 @@ import { BillingPortionsTable } from "@/components/job-sheets/billing-portions-t
 import { canAcceptJobSheet } from "@/lib/quote-to-cash";
 import type { JobSheet, JobSheetPortion } from "@/lib/types";
 import {
+  buildPortionSavePayload,
+  buildPreviewPortions,
   isJobSheetCommercialLocked,
   toPortionDrafts,
   toXeroDrafts,
@@ -138,6 +140,7 @@ describe("job sheet accounting workspace behavior", () => {
         amount: "250",
         description: "",
         status: "entered_in_xero",
+        target_invoice_date: "2026-07-10",
       }),
     ]);
     expect(toXeroDrafts(portions)).toEqual({
@@ -151,6 +154,115 @@ describe("job sheet accounting workspace behavior", () => {
     expect(isJobSheetCommercialLocked("accepted", null)).toBe(true);
     expect(isJobSheetCommercialLocked("draft", "2026-07-08T09:30:00.000Z")).toBe(true);
     expect(isJobSheetCommercialLocked("draft", null)).toBe(false);
+  });
+
+  it("builds preview portions from edited drafts while preserving entered-in-xero rows", () => {
+    const portions = [
+      makePortion({
+        id: "portion-planned",
+        amount: 400,
+        status: "planned",
+        target_invoice_date: "2026-07-10",
+      }),
+      makePortion({
+        id: "portion-entered",
+        amount: 600,
+        status: "entered_in_xero",
+        target_invoice_date: "2026-07-12",
+      }),
+    ];
+    const drafts = [
+      {
+        ...toPortionDrafts([portions[0]])[0],
+        amount: "450",
+        status: "cancelled" as const,
+        target_invoice_date: "2026-08-01",
+      },
+      {
+        ...toPortionDrafts([portions[1]])[0],
+        amount: "550",
+        status: "cancelled" as const,
+        target_invoice_date: "2026-08-03",
+      },
+    ];
+
+    const preview = buildPreviewPortions({
+      jobSheetId: "job-sheet-1",
+      createdAt: "2026-07-01T00:00:00.000Z",
+      updatedAt: "2026-07-02T00:00:00.000Z",
+      originals: portions,
+      drafts,
+    });
+
+    expect(preview).toEqual([
+      expect.objectContaining({
+        id: "portion-planned",
+        amount: 450,
+        status: "cancelled",
+        target_invoice_date: "2026-08-01",
+      }),
+      expect.objectContaining({
+        id: "portion-entered",
+        amount: 550,
+        status: "entered_in_xero",
+        target_invoice_date: "2026-08-03",
+      }),
+    ]);
+
+    const acceptance = canAcceptJobSheet({
+      totalAmount: 1100,
+      portions: preview,
+      requirePoNumber: false,
+      poNumber: null,
+      clientOrderNumber: null,
+    });
+
+    expect(acceptance.ok).toBe(false);
+    expect(acceptance.reasons).toContain("Billing portions are short by HKD 100.");
+  });
+
+  it("builds the save payload with target invoice dates and without downgrading entered rows", () => {
+    const portions = [
+      makePortion({
+        id: "portion-planned",
+        status: "planned",
+        target_invoice_date: "2026-07-10",
+      }),
+      makePortion({
+        id: "portion-entered",
+        status: "entered_in_xero",
+        target_invoice_date: "2026-07-12",
+      }),
+    ];
+    const drafts = [
+      {
+        ...toPortionDrafts([portions[0]])[0],
+        name: "Deposit updated",
+        amount: "450",
+        status: "cancelled" as const,
+        target_invoice_date: "2026-08-01",
+      },
+      {
+        ...toPortionDrafts([portions[1]])[0],
+        amount: "550",
+        status: "cancelled" as const,
+        target_invoice_date: "",
+      },
+    ];
+
+    expect(buildPortionSavePayload(drafts, portions)).toEqual([
+      expect.objectContaining({
+        name: "Deposit updated",
+        amount: 450,
+        status: "cancelled",
+        target_invoice_date: "2026-08-01",
+      }),
+      expect.objectContaining({
+        amount: 550,
+        status: "entered_in_xero",
+        target_invoice_date: null,
+      }),
+    ]);
   });
 
   it("summarizes accepted queue value per currency instead of cross-currency summing", () => {

@@ -12,6 +12,7 @@ export type NewJobSheetPortion = {
   description: string;
   amount: number;
   currency: string;
+  target_invoice_date?: string | null;
   billing_type: JobSheetBillingType;
   status: JobSheetPortionStatus;
   sort_order: number;

@@ -49,6 +49,7 @@ type PortionDraft = {
   description: string;
   amount: string;
   currency: string;
+  target_invoice_date: string;
   billing_type: JobSheetBillingType;
   status: JobSheetPortionStatus;
   sort_order: number;
@@ -69,6 +70,7 @@ export const toPortionDrafts = (portions: JobSheetPortion[]): PortionDraft[] =>
     description: portion.description ?? "",
     amount: String(portion.amount ?? 0),
     currency: portion.currency,
+    target_invoice_date: portion.target_invoice_date ?? "",
     billing_type: portion.billing_type,
     status: portion.status,
     sort_order: portion.sort_order,
@@ -92,6 +94,72 @@ export const isJobSheetCommercialLocked = (
   status: JobSheetStatus,
   lockedAt: string | null | undefined,
 ) => status === "accepted" || Boolean(lockedAt);
+
+const toNullableDateString = (value: string) => {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+};
+
+const resolvePortionStatus = (
+  draft: Pick<PortionDraft, "status">,
+  original?: Pick<JobSheetPortion, "status">,
+): JobSheetPortionStatus => (original?.status === "entered_in_xero" ? original.status : draft.status);
+
+export function buildPreviewPortions(input: {
+  jobSheetId: string;
+  createdAt: string;
+  updatedAt: string;
+  originals: JobSheetPortion[];
+  drafts: PortionDraft[];
+}): JobSheetPortion[] {
+  const originalsById = new Map(input.originals.map((portion) => [portion.id, portion]));
+
+  return input.drafts.map((draft) => {
+    const original = originalsById.get(draft.id);
+    return {
+      ...(original ?? {
+        id: draft.id,
+        job_sheet_id: input.jobSheetId,
+        target_invoice_date: null,
+        xero_invoice_number: null,
+        xero_invoice_reference: null,
+        xero_invoice_date: null,
+        xero_notes: null,
+        internal_note: null,
+        created_at: input.createdAt,
+        updated_at: input.updatedAt,
+      }),
+      name: draft.name,
+      description: draft.description,
+      amount: Number(draft.amount) || 0,
+      currency: draft.currency,
+      target_invoice_date: toNullableDateString(draft.target_invoice_date),
+      billing_type: draft.billing_type,
+      status: resolvePortionStatus(draft, original),
+      sort_order: draft.sort_order,
+      source_quote_line_item_ids: draft.source_quote_line_item_ids,
+    };
+  });
+}
+
+export function buildPortionSavePayload(
+  drafts: PortionDraft[],
+  originals: JobSheetPortion[],
+): NewJobSheetPortion[] {
+  const originalsById = new Map(originals.map((portion) => [portion.id, portion]));
+
+  return drafts.map((draft, index) => ({
+    name: draft.name.trim(),
+    source_quote_line_item_ids: draft.source_quote_line_item_ids,
+    description: draft.description.trim(),
+    amount: Number(draft.amount) || 0,
+    currency: draft.currency,
+    target_invoice_date: toNullableDateString(draft.target_invoice_date),
+    billing_type: draft.billing_type,
+    status: resolvePortionStatus(draft, originalsById.get(draft.id)),
+    sort_order: index,
+  }));
+}
 
 export const Route = createFileRoute("/job-sheets/$id")({
   loader: ({ params }) => getJobSheet({ data: { id: params.id } }),
@@ -125,30 +193,12 @@ function JobSheetDetailPage() {
 
   const previewPortions = useMemo(
     () =>
-      portionDrafts.map((portion) => {
-        const original = portions.find((row) => row.id === portion.id);
-        return {
-          ...(original ?? {
-            id: portion.id,
-            job_sheet_id: jobSheet.id,
-            target_invoice_date: null,
-            xero_invoice_number: null,
-            xero_invoice_reference: null,
-            xero_invoice_date: null,
-            xero_notes: null,
-            internal_note: null,
-            created_at: jobSheet.created_at,
-            updated_at: jobSheet.updated_at,
-          }),
-          name: portion.name,
-          description: portion.description,
-          amount: Number(portion.amount) || 0,
-          currency: portion.currency,
-          billing_type: portion.billing_type,
-          status: original?.status ?? portion.status,
-          sort_order: portion.sort_order,
-          source_quote_line_item_ids: portion.source_quote_line_item_ids,
-        };
+      buildPreviewPortions({
+        jobSheetId: jobSheet.id,
+        createdAt: jobSheet.created_at,
+        updatedAt: jobSheet.updated_at,
+        originals: portions,
+        drafts: portionDrafts,
       }),
     [jobSheet.created_at, jobSheet.id, jobSheet.updated_at, portionDrafts, portions],
   );
@@ -183,16 +233,7 @@ function JobSheetDetailPage() {
       return;
     }
 
-    const payload: NewJobSheetPortion[] = portionDrafts.map((portion, index) => ({
-      name: portion.name.trim(),
-      source_quote_line_item_ids: portion.source_quote_line_item_ids,
-      description: portion.description.trim(),
-      amount: Number(portion.amount) || 0,
-      currency: portion.currency,
-      billing_type: portion.billing_type,
-      status: portion.status,
-      sort_order: index,
-    }));
+    const payload = buildPortionSavePayload(portionDrafts, portions);
 
     setSavingPortions(true);
     try {
@@ -375,6 +416,18 @@ function JobSheetDetailPage() {
                             </SelectContent>
                           </Select>
                         )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`portion-target-date-${portion.id}`}>Target invoice date</Label>
+                        <Input
+                          id={`portion-target-date-${portion.id}`}
+                          type="date"
+                          value={portion.target_invoice_date}
+                          onChange={(event) =>
+                            updateDraft(portion.id, "target_invoice_date", event.target.value)
+                          }
+                          disabled={commercialLocked}
+                        />
                       </div>
                       <div className="space-y-1.5 md:col-span-2 xl:col-span-4">
                         <Label htmlFor={`portion-description-${portion.id}`}>Billing note</Label>
