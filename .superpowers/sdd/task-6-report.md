@@ -112,3 +112,48 @@
 - Immutable snapshot references now either resolve to the exact stored snapshot or stop with an explicit invalid state; they no longer silently downgrade to live mutable quote content.
 - Draft preview totals now stay aligned with edited rows by overriding `quote.total_value` alongside `lineItems`.
 - The patch is limited to the resolver, the two preview surfaces, and a focused regression test file.
+
+---
+
+## Task 6 Fix Report - Reviewer finding: validate immutable snapshot commercial fields
+
+### Timestamp
+- 2026-07-09T04:14:26.1369948+08:00
+
+### Scope
+- Fix the immutable quote PDF snapshot reader so object-shaped snapshots still fail closed when required commercial fields are missing.
+- Add regression coverage for malformed immutable snapshot objects missing `total_value` or `line_items`.
+
+### What changed
+- Updated `src/components/quotes/quote-pdf-preview.tsx`:
+  - `readQuotePdfSnapshot` now rejects snapshot objects unless `total_value` is a number and `line_items` is an array.
+  - Removed the silent `0` fallback for missing `total_value` on immutable snapshots.
+  - Preserved existing live-draft behavior when no immutable snapshot pointer exists, because only immutable snapshot validation changed.
+- Updated `src/components/quotes/__tests__/quote-pdf-preview.test.ts`:
+  - Added a regression case for an accepted immutable snapshot object missing `total_value`.
+  - Added a regression case for an issued immutable snapshot object missing `line_items`.
+
+### Verification run
+- Red phase:
+  - `bun run vitest run src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - Result: failed as expected because malformed object snapshots still resolved as `state: "snapshot"`.
+- Green/focused:
+  - `bun run vitest run src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - Result: passed (`1` file, `6` tests).
+- Required verification:
+  - `bun run vitest run src/components/quotes/__tests__/quote-pdf-preview.test.ts src/server/repositories/__tests__/quotes.test.ts src/server-functions/__tests__/quotes.test.ts src/lib/__tests__/quote-to-cash.test.ts`
+  - Result: passed (`4` files, `35` tests).
+  - `bun run build`
+  - Result: succeeded.
+  - Notes:
+    - Pre-build schema step reported `{ "ok": true, "skipped": true, "reason": "DATABASE_URL is not set" }`
+    - Seed step reported `{ "ok": true, "skipped": true, "reason": "CLIENTOPS_SEED_ON_DEPLOY is not 1" }`
+    - Vite emitted existing chunk-size and unused-import warnings, but the build completed successfully.
+
+### Files changed
+- `src/components/quotes/quote-pdf-preview.tsx`
+- `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+
+### Self-review
+- Immutable snapshot resolution now fails closed for missing required commercial fields instead of substituting fallback values.
+- The patch is narrowly scoped to snapshot validation and targeted test coverage, matching the reviewer finding.

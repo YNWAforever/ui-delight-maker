@@ -65,11 +65,15 @@ export function readQuotePdfSnapshot(snapshot: JsonValue): Omit<ResolvedQuotePdf
     return null;
   }
 
+  if (typeof snapshot.total_value !== "number" || !Array.isArray(snapshot.line_items)) {
+    return null;
+  }
+
   return {
     quote: {
       number: typeof snapshot.number === "string" ? snapshot.number : null,
       currency: typeof snapshot.currency === "string" ? snapshot.currency : "HKD",
-      total_value: typeof snapshot.total_value === "number" ? snapshot.total_value : 0,
+      total_value: snapshot.total_value,
       valid_until: typeof snapshot.valid_until === "string" ? snapshot.valid_until : null,
       cover_text: typeof snapshot.cover_text === "string" ? snapshot.cover_text : null,
       assumptions: typeof snapshot.assumptions === "string" ? snapshot.assumptions : null,
