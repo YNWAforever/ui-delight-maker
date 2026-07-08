@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDefaultPortionsFromLineItems,
+  calculateQuoteLineTotal,
   calculateQuoteTotal,
   canAcceptJobSheet,
   getPortionReconciliation,
@@ -49,6 +50,16 @@ describe("calculateQuoteTotal", () => {
   });
 });
 
+describe("calculateQuoteLineTotal", () => {
+  it("preserves cents for decimal-priced lines", () => {
+    expect(calculateQuoteLineTotal({ qty: 1, unit_price: 99.99 })).toBe(99.99);
+    expect(calculateQuoteLineTotal({ qty: 1, unit_price: 10.49 })).toBe(10.49);
+    expect(calculateQuoteTotal([{ qty: 1, unit_price: 99.99 }, { qty: 1, unit_price: 10.49 }])).toBe(
+      110.48,
+    );
+  });
+});
+
 describe("buildDefaultPortionsFromLineItems", () => {
   it("creates one planned billing portion per quote line", () => {
     expect(buildDefaultPortionsFromLineItems(items, "HKD")).toEqual([
@@ -94,6 +105,15 @@ describe("getPortionReconciliation", () => {
       reconciled: false,
     });
   });
+
+  it("treats floating point residue as reconciled after rounding", () => {
+    expect(getPortionReconciliation(0.3, [{ amount: 0.1 }, { amount: 0.2 }])).toEqual({
+      totalAmount: 0.3,
+      portionTotal: 0.3,
+      delta: 0,
+      reconciled: true,
+    });
+  });
 });
 
 describe("canAcceptJobSheet", () => {
@@ -108,6 +128,17 @@ describe("canAcceptJobSheet", () => {
     ).toEqual({ ok: true, reasons: [] });
   });
 
+  it("allows acceptance when client order number satisfies the PO/order requirement", () => {
+    expect(
+      canAcceptJobSheet({
+        totalAmount: 120000,
+        portions: [{ amount: 120000 }],
+        requirePoNumber: true,
+        clientOrderNumber: "CO-123",
+      }),
+    ).toEqual({ ok: true, reasons: [] });
+  });
+
   it("blocks acceptance when totals do not reconcile", () => {
     expect(
       canAcceptJobSheet({
@@ -116,6 +147,16 @@ describe("canAcceptJobSheet", () => {
         requirePoNumber: false,
       }),
     ).toEqual({ ok: false, reasons: ["Billing portions are short by HKD 20,000."] });
+  });
+
+  it("reports over-by deltas when portions exceed the total", () => {
+    expect(
+      canAcceptJobSheet({
+        totalAmount: 100000,
+        portions: [{ amount: 120000 }],
+        requirePoNumber: false,
+      }),
+    ).toEqual({ ok: false, reasons: ["Billing portions are over by HKD 20,000."] });
   });
 
   it("blocks acceptance when PO/order info is required but missing", () => {
@@ -133,9 +174,21 @@ describe("canAcceptJobSheet", () => {
 });
 
 describe("isLockedJobSheetCommercialField", () => {
-  it("locks commercial fields after accounting acceptance", () => {
-    expect(isLockedJobSheetCommercialField("total_amount")).toBe(true);
+  it("locks the intended commercial fields and leaves non-commercial fields editable", () => {
+    [
+      "accepted_scope_summary",
+      "po_number",
+      "client_order_number",
+      "total_amount",
+      "currency",
+      "target_invoice_date",
+      "amount",
+      "billing_type",
+      "source_quote_line_item_ids",
+    ].forEach((field) => {
+      expect(isLockedJobSheetCommercialField(field)).toBe(true);
+    });
+
     expect(isLockedJobSheetCommercialField("accounting_notes")).toBe(false);
-    expect(isLockedJobSheetCommercialField("xero_invoice_reference")).toBe(false);
   });
 });

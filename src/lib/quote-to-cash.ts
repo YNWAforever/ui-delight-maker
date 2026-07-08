@@ -41,12 +41,16 @@ const LOCKED_COMMERCIAL_FIELDS = new Set([
   "source_quote_line_item_ids",
 ]);
 
+function roundToMoney(value: number): number {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
 export function calculateQuoteLineTotal(item: Pick<QuoteLineItem, "qty" | "unit_price">): number {
-  return Math.round((Number(item.qty) || 0) * (Number(item.unit_price) || 0));
+  return roundToMoney((Number(item.qty) || 0) * (Number(item.unit_price) || 0));
 }
 
 export function calculateQuoteTotal(items: Array<Pick<QuoteLineItem, "qty" | "unit_price">>): number {
-  return items.reduce((sum, item) => sum + calculateQuoteLineTotal(item), 0);
+  return roundToMoney(items.reduce((sum, item) => sum + calculateQuoteLineTotal(item), 0));
 }
 
 export function buildDefaultPortionsFromLineItems(
@@ -69,10 +73,11 @@ export function getPortionReconciliation(
   totalAmount: number,
   portions: Array<{ amount: number }>,
 ): PortionReconciliation {
-  const portionTotal = portions.reduce((sum, portion) => sum + (Number(portion.amount) || 0), 0);
-  const delta = totalAmount - portionTotal;
+  const portionTotal = roundToMoney(portions.reduce((sum, portion) => sum + (Number(portion.amount) || 0), 0));
+  const roundedTotalAmount = roundToMoney(Number(totalAmount) || 0);
+  const delta = roundToMoney(roundedTotalAmount - portionTotal);
   return {
-    totalAmount,
+    totalAmount: roundedTotalAmount,
     portionTotal,
     delta,
     reconciled: delta === 0,
