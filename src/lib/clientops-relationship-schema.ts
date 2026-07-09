@@ -108,6 +108,12 @@ export async function applyClientOpsSchemaMigrations(input: {
   db: Queryable;
   migrationSqls: string[];
 }) {
+  if (input.migrationSqls.length !== CLIENTOPS_MIGRATION_PATHS.length) {
+    throw new Error(
+      `ClientOps schema migration expected ${CLIENTOPS_MIGRATION_PATHS.length} SQL files, received ${input.migrationSqls.length}`,
+    );
+  }
+
   for (const migrationSql of input.migrationSqls) {
     if (migrationSql.trim()) {
       await input.db.query(migrationSql);

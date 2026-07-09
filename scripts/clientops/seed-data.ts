@@ -27,6 +27,7 @@ export type DemoPricing = {
 
 export type DemoLead = {
   key: string;
+  accountKey?: string;
   company_name: string;
   contact_name: string;
   contact_email: string;
@@ -41,6 +42,7 @@ export type DemoLead = {
 
 export type DemoClient = {
   key: string;
+  accountKey?: string;
   company_name: string;
   industry: string;
   tier: "SME" | "mid-market" | "enterprise";
@@ -55,6 +57,82 @@ export type DemoClientContact = {
   email: string;
   phone: string;
   is_primary: boolean;
+};
+
+export type DemoAccount = {
+  key: string;
+  name: string;
+  website: string | null;
+  domain: string | null;
+  industry: string;
+  region: string;
+  tier: "SME" | "mid-market" | "enterprise";
+  lifecycle_stage: "prospect" | "active_client" | "at_risk" | "churned" | "partner" | "vendor";
+  ownerKey: DemoProfile["key"];
+  csOwnerKey: DemoProfile["key"] | null;
+  source: string;
+  tags: string[];
+  notes: string;
+  relationship_health: number;
+  lastActivityKey: "recentTouch" | "staleTouch" | null;
+  next_action: string;
+};
+
+export type DemoAccountContact = {
+  key: string;
+  accountKey: string;
+  name: string;
+  title: string;
+  department: string;
+  email: string;
+  phone: string;
+  preferred_channel: "email" | "phone" | "whatsapp" | "linkedin" | "event" | "unknown";
+  relationship_role:
+    | "decision_maker"
+    | "buyer"
+    | "champion"
+    | "daily_user"
+    | "influencer"
+    | "finance_procurement"
+    | "blocker"
+    | "agency_partner"
+    | "event_attendee"
+    | "other";
+  influence_level: "low" | "medium" | "high";
+  sentiment: "positive" | "neutral" | "negative" | "unknown";
+  relationship_strength: "weak" | "developing" | "strong";
+  is_primary: boolean;
+  notes: string;
+  lastContactedKey: "recentTouch" | "staleTouch" | null;
+};
+
+export type DemoCampaign = {
+  key: string;
+  name: string;
+  type: "campaign" | "webinar" | "workshop" | "activation" | "outbound" | "client_event";
+  status: "draft" | "planned" | "active" | "completed" | "archived";
+  objective: string;
+  ownerKey: DemoProfile["key"];
+  startsAtOffsetDays: number;
+  endsAtOffsetDays: number;
+  notes: string;
+};
+
+export type DemoCampaignMember = {
+  key: string;
+  campaignKey: string;
+  accountKey: string | null;
+  accountContactKey: string | null;
+  raw_company_name: string;
+  raw_contact_name: string;
+  raw_email: string;
+  raw_phone: string;
+  attendee_status: "attended" | "met" | "high_intent" | "unknown";
+  interests: string[];
+  followUpOwnerKey: DemoProfile["key"] | null;
+  follow_up_status: "not_started" | "task_created" | "in_progress" | "completed" | "dismissed";
+  conversion_outcome: "none" | "lead" | "quote" | "engagement" | "client_activity";
+  notes: string;
 };
 
 export type DemoEngagement = {
@@ -78,8 +156,10 @@ export type DemoEngagement = {
 export type DemoQuote = {
   key: string;
   number: string;
+  accountKey?: string;
   leadKey?: string;
   clientKey?: string;
+  accountContactKey?: string;
   status: "draft" | "pending_approval" | "approved" | "sent" | "viewed" | "accepted" | "rejected";
   total_value: number;
   validUntilOffsetDays: number;
@@ -90,6 +170,34 @@ export type DemoQuote = {
     description: string;
     qty: number;
     unit_price: number;
+  }>;
+};
+
+export type DemoJobSheet = {
+  key: string;
+  number: string;
+  quoteKey: string;
+  accountKey: string;
+  clientKey: string;
+  accountContactKey: string;
+  salesOwnerKey: DemoProfile["key"];
+  accountingOwnerKey: DemoProfile["key"];
+  status: "draft" | "accounting_review" | "accepted" | "change_required" | "cancelled";
+  accepted_scope_summary: string;
+  po_number: string;
+  client_order_number: string;
+  xero_customer_reference: string;
+  accounting_notes: string;
+  special_billing_instructions: string;
+  total_amount: number;
+  portions: Array<{
+    name: string;
+    description: string;
+    amount: number;
+    targetInvoiceOffsetDays: number;
+    billing_type: "deposit" | "progress" | "milestone" | "monthly" | "final" | "other";
+    status: "planned" | "entered_in_xero" | "cancelled";
+    sort_order: number;
   }>;
 };
 
@@ -286,6 +394,7 @@ export const DEMO_PRICING: DemoPricing[] = [
 export const DEMO_LEADS: DemoLead[] = [
   {
     key: "lead-retail",
+    accountKey: "account-smoke-retail",
     company_name: "Smoke Test Retail Group",
     contact_name: "Maya Chan",
     contact_email: "smoke.lead@fimmick-clientops.example",
@@ -300,6 +409,7 @@ export const DEMO_LEADS: DemoLead[] = [
   },
   {
     key: "lead-beauty",
+    accountKey: "account-harbour",
     company_name: "Harbour Beauty Lab",
     contact_name: "Elaine Yu",
     contact_email: "elaine.yu@harbour-beauty.example",
@@ -323,6 +433,7 @@ export const DEMO_LEADS: DemoLead[] = [
   },
   {
     key: "lead-logistics",
+    accountKey: "account-pearl",
     company_name: "Pearl Logistics HK",
     contact_name: "Ronald Lee",
     contact_email: "ronald.lee@pearl-logistics.example",
@@ -346,6 +457,7 @@ export const DEMO_LEADS: DemoLead[] = [
   },
   {
     key: "lead-fitness",
+    accountKey: "account-fitness",
     company_name: "North Point Fitness",
     contact_name: "Jason Ng",
     contact_email: "jason.ng@np-fitness.example",
@@ -369,6 +481,7 @@ export const DEMO_LEADS: DemoLead[] = [
   },
   {
     key: "lead-education",
+    accountKey: "account-brightpath",
     company_name: "BrightPath Education",
     contact_name: "Carmen Ho",
     contact_email: "carmen.ho@brightpath.example",
@@ -392,6 +505,7 @@ export const DEMO_LEADS: DemoLead[] = [
   },
   {
     key: "lead-cafe",
+    accountKey: "account-cafe",
     company_name: "Mong Kok Cafe Collective",
     contact_name: "Iris Tam",
     contact_email: "iris.tam@mk-cafe.example",
@@ -415,6 +529,7 @@ export const DEMO_LEADS: DemoLead[] = [
   },
   {
     key: "lead-finance",
+    accountKey: "account-finance",
     company_name: "Central Wealth Advisory",
     contact_name: "Marcus Poon",
     contact_email: "marcus.poon@central-wealth.example",
@@ -438,6 +553,7 @@ export const DEMO_LEADS: DemoLead[] = [
   },
   {
     key: "lead-hotel",
+    accountKey: "account-hotel",
     company_name: "Island Hotel Group",
     contact_name: "Sophie Lau",
     contact_email: "sophie.lau@island-hotel.example",
@@ -454,6 +570,7 @@ export const DEMO_LEADS: DemoLead[] = [
 export const DEMO_CLIENTS: DemoClient[] = [
   {
     key: "client-apex",
+    accountKey: "account-apex",
     company_name: "Apex Retail Group",
     industry: "Retail",
     tier: "enterprise",
@@ -461,6 +578,7 @@ export const DEMO_CLIENTS: DemoClient[] = [
   },
   {
     key: "client-harbour",
+    accountKey: "account-harbour",
     company_name: "Harbour Beauty Lab",
     industry: "Beauty",
     tier: "mid-market",
@@ -468,6 +586,7 @@ export const DEMO_CLIENTS: DemoClient[] = [
   },
   {
     key: "client-pearl",
+    accountKey: "account-pearl",
     company_name: "Pearl Logistics HK",
     industry: "Logistics",
     tier: "mid-market",
@@ -475,6 +594,7 @@ export const DEMO_CLIENTS: DemoClient[] = [
   },
   {
     key: "client-cafe",
+    accountKey: "account-cafe",
     company_name: "Mong Kok Cafe Collective",
     industry: "F&B",
     tier: "SME",
@@ -482,6 +602,7 @@ export const DEMO_CLIENTS: DemoClient[] = [
   },
   {
     key: "client-brightpath",
+    accountKey: "account-brightpath",
     company_name: "BrightPath Education",
     industry: "Education",
     tier: "mid-market",
@@ -543,6 +664,291 @@ export const DEMO_CONTACTS: DemoClientContact[] = [
     email: "carmen.ho@brightpath.example",
     phone: "+852 5555 0206",
     is_primary: true,
+  },
+];
+
+export const DEMO_ACCOUNTS: DemoAccount[] = [
+  {
+    key: "account-apex",
+    name: "Apex Retail Group",
+    website: "https://apex-retail.example",
+    domain: "apex-retail.example",
+    industry: "Retail",
+    region: "Hong Kong",
+    tier: "enterprise",
+    lifecycle_stage: "at_risk",
+    ownerKey: "cs",
+    csOwnerKey: "cs",
+    source: "client",
+    tags: ["retail", "renewal-risk", "crm"],
+    notes: "Enterprise client with overdue renewal and multiple stakeholder paths.",
+    relationship_health: 38,
+    lastActivityKey: "staleTouch",
+    next_action: "Schedule senior renewal save call",
+  },
+  {
+    key: "account-harbour",
+    name: "Harbour Beauty Lab",
+    website: "https://harbour-beauty.example",
+    domain: "harbour-beauty.example",
+    industry: "Beauty",
+    region: "Hong Kong",
+    tier: "mid-market",
+    lifecycle_stage: "active_client",
+    ownerKey: "cs",
+    csOwnerKey: "cs",
+    source: "website",
+    tags: ["beauty", "koc", "dashboard"],
+    notes: "Healthy campaign client with Q4 expansion potential.",
+    relationship_health: 78,
+    lastActivityKey: "recentTouch",
+    next_action: "Send KOC Q4 expansion options",
+  },
+  {
+    key: "account-pearl",
+    name: "Pearl Logistics HK",
+    website: "https://pearl-logistics.example",
+    domain: "pearl-logistics.example",
+    industry: "Logistics",
+    region: "Hong Kong",
+    tier: "mid-market",
+    lifecycle_stage: "active_client",
+    ownerKey: "sales",
+    csOwnerKey: "cs",
+    source: "linkedin",
+    tags: ["logistics", "crm-handoff"],
+    notes: "CRM handoff client with stale owner mapping tasks.",
+    relationship_health: 62,
+    lastActivityKey: "staleTouch",
+    next_action: "Close overdue CRM owner mapping items",
+  },
+  {
+    key: "account-cafe",
+    name: "Mong Kok Cafe Collective",
+    website: "https://mk-cafe.example",
+    domain: "mk-cafe.example",
+    industry: "F&B",
+    region: "Hong Kong",
+    tier: "SME",
+    lifecycle_stage: "active_client",
+    ownerKey: "sales",
+    csOwnerKey: "sales",
+    source: "event",
+    tags: ["whatsapp", "pilot", "job-sheet"],
+    notes: "Accepted quote ready for accounting handoff and Xero tracking.",
+    relationship_health: 88,
+    lastActivityKey: "recentTouch",
+    next_action: "Confirm pilot success metrics and billing cycle",
+  },
+  {
+    key: "account-brightpath",
+    name: "BrightPath Education",
+    website: "https://brightpath.example",
+    domain: "brightpath.example",
+    industry: "Education",
+    region: "Hong Kong",
+    tier: "mid-market",
+    lifecycle_stage: "active_client",
+    ownerKey: "cs",
+    csOwnerKey: "cs",
+    source: "email",
+    tags: ["education", "ai-sales"],
+    notes: "Admissions team adopted AI reply drafts quickly.",
+    relationship_health: 91,
+    lastActivityKey: "recentTouch",
+    next_action: "Prepare admissions dashboard upsell",
+  },
+  {
+    key: "account-smoke-retail",
+    name: "Smoke Test Retail Group",
+    website: null,
+    domain: "smoke-retail.example",
+    industry: "Retail",
+    region: "Hong Kong",
+    tier: "mid-market",
+    lifecycle_stage: "prospect",
+    ownerKey: "sales",
+    csOwnerKey: null,
+    source: "manual",
+    tags: ["smoke-test", "prospect"],
+    notes: "Seeded prospect for quote creation debugging.",
+    relationship_health: 55,
+    lastActivityKey: null,
+    next_action: "Confirm Q3 campaign deadline",
+  },
+  {
+    key: "account-fitness",
+    name: "North Point Fitness",
+    website: "https://np-fitness.example",
+    domain: "np-fitness.example",
+    industry: "Fitness",
+    region: "Hong Kong",
+    tier: "SME",
+    lifecycle_stage: "prospect",
+    ownerKey: "sales",
+    csOwnerKey: null,
+    source: "whatsapp",
+    tags: ["quote", "dashboard", "whatsapp"],
+    notes: "Pending approval quote tests quote detail and PDF routes.",
+    relationship_health: 68,
+    lastActivityKey: "recentTouch",
+    next_action: "Review dashboard plus WhatsApp quote",
+  },
+  {
+    key: "account-finance",
+    name: "Central Wealth Advisory",
+    website: "https://central-wealth.example",
+    domain: "central-wealth.example",
+    industry: "Financial Services",
+    region: "Hong Kong",
+    tier: "mid-market",
+    lifecycle_stage: "prospect",
+    ownerKey: "manager",
+    csOwnerKey: null,
+    source: "csv",
+    tags: ["compliance", "lost"],
+    notes: "Paused budget after compliance review.",
+    relationship_health: 32,
+    lastActivityKey: "staleTouch",
+    next_action: "Nurture only after compliance unlock",
+  },
+  {
+    key: "account-hotel",
+    name: "Island Hotel Group",
+    website: "https://island-hotel.example",
+    domain: "island-hotel.example",
+    industry: "Hospitality",
+    region: "Hong Kong",
+    tier: "enterprise",
+    lifecycle_stage: "prospect",
+    ownerKey: "sales",
+    csOwnerKey: null,
+    source: "website",
+    tags: ["venues", "lead-routing"],
+    notes: "Venue enquiry routing prospect.",
+    relationship_health: 50,
+    lastActivityKey: null,
+    next_action: "Qualify venue lead routing urgency",
+  },
+];
+
+export const DEMO_ACCOUNT_CONTACTS: DemoAccountContact[] = [
+  {
+    key: "account-contact-apex-jane",
+    accountKey: "account-apex",
+    name: "Jane Wong",
+    title: "Marketing Director",
+    department: "Marketing",
+    email: "jane.wong@apex-retail.example",
+    phone: "+852 5555 0201",
+    preferred_channel: "email",
+    relationship_role: "decision_maker",
+    influence_level: "high",
+    sentiment: "negative",
+    relationship_strength: "developing",
+    is_primary: true,
+    notes: "Needs senior renewal reassurance.",
+    lastContactedKey: "staleTouch",
+  },
+  {
+    key: "account-contact-apex-oscar",
+    accountKey: "account-apex",
+    name: "Oscar Ma",
+    title: "CRM Lead",
+    department: "CRM",
+    email: "oscar.ma@apex-retail.example",
+    phone: "+852 5555 0202",
+    preferred_channel: "whatsapp",
+    relationship_role: "champion",
+    influence_level: "medium",
+    sentiment: "neutral",
+    relationship_strength: "strong",
+    is_primary: false,
+    notes: "Confirms dashboard usage and renewal pricing questions.",
+    lastContactedKey: "recentTouch",
+  },
+  {
+    key: "account-contact-cafe-iris",
+    accountKey: "account-cafe",
+    name: "Iris Tam",
+    title: "Founder",
+    department: "Management",
+    email: "iris.tam@mk-cafe.example",
+    phone: "+852 5555 0205",
+    preferred_channel: "whatsapp",
+    relationship_role: "decision_maker",
+    influence_level: "high",
+    sentiment: "positive",
+    relationship_strength: "strong",
+    is_primary: true,
+    notes: "Approved pilot quote and billing handoff.",
+    lastContactedKey: "recentTouch",
+  },
+  {
+    key: "account-contact-fitness-jason",
+    accountKey: "account-fitness",
+    name: "Jason Ng",
+    title: "Operations Director",
+    department: "Operations",
+    email: "jason.ng@np-fitness.example",
+    phone: "+852 5555 0104",
+    preferred_channel: "whatsapp",
+    relationship_role: "buyer",
+    influence_level: "high",
+    sentiment: "neutral",
+    relationship_strength: "developing",
+    is_primary: true,
+    notes: "Waiting for quote approval before expansion decision.",
+    lastContactedKey: "recentTouch",
+  },
+];
+
+export const DEMO_CAMPAIGNS: DemoCampaign[] = [
+  {
+    key: "campaign-ai-breakfast",
+    name: "AI ClientOps Breakfast Briefing",
+    type: "client_event",
+    status: "active",
+    objective: "Convert high-intent event attendees into quote and account follow-up.",
+    ownerKey: "manager",
+    startsAtOffsetDays: -3,
+    endsAtOffsetDays: -3,
+    notes: "Seeded event for attendee import, follow-up, and campaign detail debugging.",
+  },
+];
+
+export const DEMO_CAMPAIGN_MEMBERS: DemoCampaignMember[] = [
+  {
+    key: "campaign-member-cafe-iris",
+    campaignKey: "campaign-ai-breakfast",
+    accountKey: "account-cafe",
+    accountContactKey: "account-contact-cafe-iris",
+    raw_company_name: "Mong Kok Cafe Collective",
+    raw_contact_name: "Iris Tam",
+    raw_email: "iris.tam@mk-cafe.example",
+    raw_phone: "+852 5555 0205",
+    attendee_status: "high_intent",
+    interests: ["WhatsApp Automation", "CRM reporting"],
+    followUpOwnerKey: "sales",
+    follow_up_status: "in_progress",
+    conversion_outcome: "quote",
+    notes: "Asked for billing portions and accounting handoff after accepting pilot quote.",
+  },
+  {
+    key: "campaign-member-fitness-jason",
+    campaignKey: "campaign-ai-breakfast",
+    accountKey: "account-fitness",
+    accountContactKey: "account-contact-fitness-jason",
+    raw_company_name: "North Point Fitness",
+    raw_contact_name: "Jason Ng",
+    raw_email: "jason.ng@np-fitness.example",
+    raw_phone: "+852 5555 0104",
+    attendee_status: "met",
+    interests: ["Performance Dashboard", "WhatsApp automation"],
+    followUpOwnerKey: "sales",
+    follow_up_status: "task_created",
+    conversion_outcome: "quote",
+    notes: "Pending approval quote should remain easy to find from the campaign workspace.",
   },
 ];
 
@@ -683,7 +1089,9 @@ export const DEMO_QUOTES: DemoQuote[] = [
   {
     key: "quote-fitness",
     number: "QT-DEMO-001",
+    accountKey: "account-fitness",
     leadKey: "lead-fitness",
+    accountContactKey: "account-contact-fitness-jason",
     status: "pending_approval",
     total_value: 97000,
     validUntilOffsetDays: 14,
@@ -708,6 +1116,7 @@ export const DEMO_QUOTES: DemoQuote[] = [
   {
     key: "quote-education",
     number: "QT-DEMO-002",
+    accountKey: "account-brightpath",
     leadKey: "lead-education",
     clientKey: "client-brightpath",
     status: "approved",
@@ -734,8 +1143,10 @@ export const DEMO_QUOTES: DemoQuote[] = [
   {
     key: "quote-cafe",
     number: "QT-DEMO-003",
+    accountKey: "account-cafe",
     leadKey: "lead-cafe",
     clientKey: "client-cafe",
+    accountContactKey: "account-contact-cafe-iris",
     status: "accepted",
     total_value: 73000,
     validUntilOffsetDays: 30,
@@ -760,6 +1171,7 @@ export const DEMO_QUOTES: DemoQuote[] = [
   {
     key: "quote-finance",
     number: "QT-DEMO-004",
+    accountKey: "account-finance",
     leadKey: "lead-finance",
     status: "rejected",
     total_value: 120000,
@@ -778,7 +1190,9 @@ export const DEMO_QUOTES: DemoQuote[] = [
   {
     key: "quote-apex-renewal",
     number: "QT-DEMO-005",
+    accountKey: "account-apex",
     clientKey: "client-apex",
+    accountContactKey: "account-contact-apex-jane",
     status: "draft",
     total_value: 216000,
     validUntilOffsetDays: 10,
@@ -790,6 +1204,49 @@ export const DEMO_QUOTES: DemoQuote[] = [
         description: "Six-month CRM renewal",
         qty: 6,
         unit_price: 36000,
+      },
+    ],
+  },
+];
+
+export const DEMO_JOB_SHEETS: DemoJobSheet[] = [
+  {
+    key: "job-cafe-accepted",
+    number: "JS-DEMO-001",
+    quoteKey: "quote-cafe",
+    accountKey: "account-cafe",
+    clientKey: "client-cafe",
+    accountContactKey: "account-contact-cafe-iris",
+    salesOwnerKey: "sales",
+    accountingOwnerKey: "manager",
+    status: "accounting_review",
+    accepted_scope_summary:
+      "Accepted WhatsApp automation sprint plus first-month CRM support for cafe pilot.",
+    po_number: "PO-CAFE-2026-001",
+    client_order_number: "MKC-PILOT-001",
+    xero_customer_reference: "Mong Kok Cafe Collective",
+    accounting_notes: "Issue invoice from Xero after accounting accepts the staged portions.",
+    special_billing_instructions:
+      "Split setup deposit and first-month support into separate billing portions.",
+    total_amount: 73000,
+    portions: [
+      {
+        name: "Setup deposit",
+        description: "WhatsApp automation sprint setup deposit.",
+        amount: 45000,
+        targetInvoiceOffsetDays: 7,
+        billing_type: "deposit",
+        status: "planned",
+        sort_order: 0,
+      },
+      {
+        name: "First-month CRM support",
+        description: "ClientOps CRM support after pilot kickoff.",
+        amount: 28000,
+        targetInvoiceOffsetDays: 30,
+        billing_type: "monthly",
+        status: "planned",
+        sort_order: 1,
       },
     ],
   },

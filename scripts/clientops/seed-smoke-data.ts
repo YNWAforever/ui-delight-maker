@@ -8,11 +8,16 @@ import {
   type ClientOpsSeedMode,
 } from "../../src/lib/clientops-seed";
 import {
+  DEMO_ACCOUNT_CONTACTS,
+  DEMO_ACCOUNTS,
   DEMO_AGENT_RUNS,
   DEMO_APPROVALS,
+  DEMO_CAMPAIGN_MEMBERS,
+  DEMO_CAMPAIGNS,
   DEMO_CLIENTS,
   DEMO_CONTACTS,
   DEMO_ENGAGEMENTS,
+  DEMO_JOB_SHEETS,
   DEMO_LEADS,
   DEMO_NOTIFICATIONS,
   DEMO_PRICING,
@@ -35,6 +40,10 @@ type SeedContext = {
   mode: ClientOpsSeedMode;
   dates: ReturnType<typeof buildSeedDates>;
   profileIds: Map<string, string>;
+  accountIds: Map<string, string>;
+  accountContactIds: Map<string, string>;
+  campaignIds: Map<string, string>;
+  campaignMemberIds: Map<string, string>;
   productIds: Map<string, string>;
   pricingIds: Map<string, string>;
   leadIds: Map<string, string>;
@@ -42,6 +51,7 @@ type SeedContext = {
   contactIds: Map<string, string>;
   engagementIds: Map<string, string>;
   quoteIds: Map<string, string>;
+  jobSheetIds: Map<string, string>;
   agentRunIds: Map<string, string>;
   approvalIds: Map<string, string>;
 };
@@ -74,6 +84,10 @@ function makeSeedContext(mode: ClientOpsSeedMode): SeedContext {
     mode,
     dates: buildSeedDates(process.env.CLIENTOPS_SEED_TODAY),
     profileIds: new Map(),
+    accountIds: new Map(),
+    accountContactIds: new Map(),
+    campaignIds: new Map(),
+    campaignMemberIds: new Map(),
     productIds: new Map(),
     pricingIds: new Map(),
     leadIds: new Map(),
@@ -81,6 +95,7 @@ function makeSeedContext(mode: ClientOpsSeedMode): SeedContext {
     contactIds: new Map(),
     engagementIds: new Map(),
     quoteIds: new Map(),
+    jobSheetIds: new Map(),
     agentRunIds: new Map(),
     approvalIds: new Map(),
   };
@@ -155,8 +170,17 @@ function assertLocalDemoRetentionSurface(capabilities: RetentionCapabilities) {
 
 async function resetLocalDemoData(db: Queryable) {
   const tables = [
+    "job_sheet_activity",
+    "job_sheet_portions",
+    "job_sheets",
+    "quote_versions",
+    "quote_line_items",
     "notifications",
     "touchpoints",
+    "relationship_signals",
+    "campaign_members",
+    "campaigns",
+    "account_contacts",
     "human_approvals",
     "agent_tool_calls",
     "agent_runs",
@@ -167,6 +191,7 @@ async function resetLocalDemoData(db: Queryable) {
     "client_contacts",
     "leads",
     "clients",
+    "accounts",
     "pricing_templates",
     "products",
     "profiles",
@@ -222,6 +247,347 @@ async function seedProfiles(db: Queryable, ctx: SeedContext) {
       [profile.id, profile.email, profile.name, profile.role, label],
     );
     ctx.profileIds.set(profile.key, result.rows[0].id);
+  }
+}
+
+async function seedAccounts(db: Queryable, ctx: SeedContext) {
+  if (!isFullDemoSeedMode(ctx.mode)) return;
+
+  for (const account of DEMO_ACCOUNTS) {
+    const existing = await db.query<{ id: string }>(
+      "select id from accounts where lower(name) = lower($1) limit 1",
+      [account.name],
+    );
+    let id = existing.rows[0]?.id;
+    const ownerId = ctx.profileIds.get(account.ownerKey) ?? null;
+    const csOwnerId = account.csOwnerKey ? (ctx.profileIds.get(account.csOwnerKey) ?? null) : null;
+    const lastActivityAt = account.lastActivityKey ? ctx.dates[account.lastActivityKey] : null;
+
+    if (!id) {
+      const inserted = await db.query<{ id: string }>(
+        `
+          insert into accounts
+            (name, website, domain, industry, region, tier, lifecycle_stage, account_owner,
+             cs_owner, source, tags, notes, relationship_health, last_activity_at, next_action)
+          values
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::text[], $12, $13, $14, $15)
+          returning id
+        `,
+        [
+          account.name,
+          account.website,
+          account.domain,
+          account.industry,
+          account.region,
+          account.tier,
+          account.lifecycle_stage,
+          ownerId,
+          csOwnerId,
+          account.source,
+          account.tags,
+          account.notes,
+          account.relationship_health,
+          lastActivityAt,
+          account.next_action,
+        ],
+      );
+      id = inserted.rows[0].id;
+    }
+
+    await db.query(
+      `
+        update accounts
+        set name = $2,
+            website = $3,
+            domain = $4,
+            industry = $5,
+            region = $6,
+            tier = $7,
+            lifecycle_stage = $8,
+            account_owner = $9,
+            cs_owner = $10,
+            source = $11,
+            tags = $12::text[],
+            notes = $13,
+            relationship_health = $14,
+            last_activity_at = $15,
+            next_action = $16
+        where id = $1
+      `,
+      [
+        id,
+        account.name,
+        account.website,
+        account.domain,
+        account.industry,
+        account.region,
+        account.tier,
+        account.lifecycle_stage,
+        ownerId,
+        csOwnerId,
+        account.source,
+        account.tags,
+        account.notes,
+        account.relationship_health,
+        lastActivityAt,
+        account.next_action,
+      ],
+    );
+
+    ctx.accountIds.set(account.key, id);
+  }
+}
+
+async function seedAccountContacts(db: Queryable, ctx: SeedContext) {
+  if (!isFullDemoSeedMode(ctx.mode)) return;
+
+  for (const contact of DEMO_ACCOUNT_CONTACTS) {
+    const accountId = ctx.accountIds.get(contact.accountKey);
+    if (!accountId) continue;
+
+    const existing = await db.query<{ id: string }>(
+      `
+        select id
+        from account_contacts
+        where account_id = $1
+          and lower(coalesce(email, '')) = lower($2)
+        limit 1
+      `,
+      [accountId, contact.email],
+    );
+    let id = existing.rows[0]?.id;
+    const lastContactedAt = contact.lastContactedKey ? ctx.dates[contact.lastContactedKey] : null;
+
+    if (!id) {
+      const inserted = await db.query<{ id: string }>(
+        `
+          insert into account_contacts
+            (account_id, name, title, department, email, phone, preferred_channel,
+             relationship_role, influence_level, sentiment, relationship_strength,
+             is_primary, notes, last_contacted_at)
+          values
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          returning id
+        `,
+        [
+          accountId,
+          contact.name,
+          contact.title,
+          contact.department,
+          contact.email,
+          contact.phone,
+          contact.preferred_channel,
+          contact.relationship_role,
+          contact.influence_level,
+          contact.sentiment,
+          contact.relationship_strength,
+          contact.is_primary,
+          contact.notes,
+          lastContactedAt,
+        ],
+      );
+      id = inserted.rows[0].id;
+    }
+
+    await db.query(
+      `
+        update account_contacts
+        set account_id = $2,
+            name = $3,
+            title = $4,
+            department = $5,
+            email = $6,
+            phone = $7,
+            preferred_channel = $8,
+            relationship_role = $9,
+            influence_level = $10,
+            sentiment = $11,
+            relationship_strength = $12,
+            is_primary = $13,
+            notes = $14,
+            last_contacted_at = $15,
+            active = true
+        where id = $1
+      `,
+      [
+        id,
+        accountId,
+        contact.name,
+        contact.title,
+        contact.department,
+        contact.email,
+        contact.phone,
+        contact.preferred_channel,
+        contact.relationship_role,
+        contact.influence_level,
+        contact.sentiment,
+        contact.relationship_strength,
+        contact.is_primary,
+        contact.notes,
+        lastContactedAt,
+      ],
+    );
+
+    ctx.accountContactIds.set(contact.key, id);
+  }
+}
+
+async function seedCampaigns(db: Queryable, ctx: SeedContext) {
+  if (!isFullDemoSeedMode(ctx.mode)) return;
+
+  for (const campaign of DEMO_CAMPAIGNS) {
+    const existing = await db.query<{ id: string }>(
+      "select id from campaigns where name = $1 limit 1",
+      [campaign.name],
+    );
+    let id = existing.rows[0]?.id;
+    const startsAt = `${addDaysToDateString(ctx.dates.today, campaign.startsAtOffsetDays)}T09:00:00.000Z`;
+    const endsAt = `${addDaysToDateString(ctx.dates.today, campaign.endsAtOffsetDays)}T11:00:00.000Z`;
+    const ownerId = ctx.profileIds.get(campaign.ownerKey) ?? null;
+
+    if (!id) {
+      const inserted = await db.query<{ id: string }>(
+        `
+          insert into campaigns (name, type, status, objective, owner, starts_at, ends_at, notes)
+          values ($1, $2, $3, $4, $5, $6, $7, $8)
+          returning id
+        `,
+        [
+          campaign.name,
+          campaign.type,
+          campaign.status,
+          campaign.objective,
+          ownerId,
+          startsAt,
+          endsAt,
+          campaign.notes,
+        ],
+      );
+      id = inserted.rows[0].id;
+    }
+
+    await db.query(
+      `
+        update campaigns
+        set name = $2,
+            type = $3,
+            status = $4,
+            objective = $5,
+            owner = $6,
+            starts_at = $7,
+            ends_at = $8,
+            notes = $9
+        where id = $1
+      `,
+      [
+        id,
+        campaign.name,
+        campaign.type,
+        campaign.status,
+        campaign.objective,
+        ownerId,
+        startsAt,
+        endsAt,
+        campaign.notes,
+      ],
+    );
+
+    ctx.campaignIds.set(campaign.key, id);
+  }
+}
+
+async function seedCampaignMembers(db: Queryable, ctx: SeedContext) {
+  if (!isFullDemoSeedMode(ctx.mode)) return;
+
+  for (const member of DEMO_CAMPAIGN_MEMBERS) {
+    const campaignId = ctx.campaignIds.get(member.campaignKey);
+    if (!campaignId) continue;
+    const accountId = member.accountKey ? (ctx.accountIds.get(member.accountKey) ?? null) : null;
+    const contactId = member.accountContactKey
+      ? (ctx.accountContactIds.get(member.accountContactKey) ?? null)
+      : null;
+    const followUpOwner = member.followUpOwnerKey
+      ? (ctx.profileIds.get(member.followUpOwnerKey) ?? null)
+      : null;
+    const existing = await db.query<{ id: string }>(
+      `
+        select id
+        from campaign_members
+        where campaign_id = $1
+          and lower(coalesce(raw_email, '')) = lower($2)
+        limit 1
+      `,
+      [campaignId, member.raw_email],
+    );
+    let id = existing.rows[0]?.id;
+
+    if (!id) {
+      const inserted = await db.query<{ id: string }>(
+        `
+          insert into campaign_members
+            (campaign_id, account_id, contact_id, raw_company_name, raw_contact_name,
+             raw_email, raw_phone, attendee_status, interests, follow_up_owner,
+             follow_up_status, conversion_outcome, notes)
+          values
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9::text[], $10, $11, $12, $13)
+          returning id
+        `,
+        [
+          campaignId,
+          accountId,
+          contactId,
+          member.raw_company_name,
+          member.raw_contact_name,
+          member.raw_email,
+          member.raw_phone,
+          member.attendee_status,
+          member.interests,
+          followUpOwner,
+          member.follow_up_status,
+          member.conversion_outcome,
+          member.notes,
+        ],
+      );
+      id = inserted.rows[0].id;
+    }
+
+    await db.query(
+      `
+        update campaign_members
+        set campaign_id = $2,
+            account_id = $3,
+            contact_id = $4,
+            raw_company_name = $5,
+            raw_contact_name = $6,
+            raw_email = $7,
+            raw_phone = $8,
+            attendee_status = $9,
+            interests = $10::text[],
+            follow_up_owner = $11,
+            follow_up_status = $12,
+            conversion_outcome = $13,
+            notes = $14
+        where id = $1
+      `,
+      [
+        id,
+        campaignId,
+        accountId,
+        contactId,
+        member.raw_company_name,
+        member.raw_contact_name,
+        member.raw_email,
+        member.raw_phone,
+        member.attendee_status,
+        member.interests,
+        followUpOwner,
+        member.follow_up_status,
+        member.conversion_outcome,
+        member.notes,
+      ],
+    );
+
+    ctx.campaignMemberIds.set(member.key, id);
   }
 }
 
@@ -356,6 +722,7 @@ async function seedLeads(db: Queryable, ctx: SeedContext) {
   const leadRows = ctx.mode === "staging-smoke" ? DEMO_LEADS.slice(0, 1) : DEMO_LEADS;
 
   for (const lead of leadRows) {
+    const accountId = lead.accountKey ? (ctx.accountIds.get(lead.accountKey) ?? null) : null;
     const existing = await db.query<{ id: string }>(
       "select id from leads where contact_email = $1 and source = $2 limit 1",
       [lead.contact_email, lead.source],
@@ -367,9 +734,9 @@ async function seedLeads(db: Queryable, ctx: SeedContext) {
         `
           insert into leads
             (company_name, contact_name, contact_email, contact_phone, source, status,
-             assigned_to, lead_score, qualification_data, enquiry_text)
+             assigned_to, lead_score, qualification_data, enquiry_text, account_id)
           values
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11)
           returning id
         `,
         [
@@ -383,6 +750,7 @@ async function seedLeads(db: Queryable, ctx: SeedContext) {
           lead.lead_score,
           jsonb(lead.qualification_data),
           lead.enquiry_text,
+          accountId,
         ],
       );
       id = inserted.rows[0].id;
@@ -400,7 +768,8 @@ async function seedLeads(db: Queryable, ctx: SeedContext) {
             assigned_to = $8,
             lead_score = $9,
             qualification_data = $10::jsonb,
-            enquiry_text = $11
+            enquiry_text = $11,
+            account_id = $12
         where id = $1
       `,
       [
@@ -415,6 +784,7 @@ async function seedLeads(db: Queryable, ctx: SeedContext) {
         lead.lead_score,
         jsonb(lead.qualification_data),
         lead.enquiry_text,
+        accountId,
       ],
     );
 
@@ -427,6 +797,7 @@ async function seedClients(db: Queryable, ctx: SeedContext) {
 
   for (const client of DEMO_CLIENTS) {
     const ownerId = ctx.profileIds.get(client.ownerKey) ?? null;
+    const accountId = client.accountKey ? (ctx.accountIds.get(client.accountKey) ?? null) : null;
     const existing = await db.query<{ id: string }>(
       "select id from clients where lower(company_name) = lower($1) limit 1",
       [client.company_name],
@@ -437,12 +808,12 @@ async function seedClients(db: Queryable, ctx: SeedContext) {
       const inserted = await db.query<{ id: string }>(
         `
           insert into clients
-            (company_name, industry, tier, account_owner, health_score, onboarding_status)
+            (company_name, industry, tier, account_owner, health_score, onboarding_status, account_id)
           values
-            ($1, $2, $3, $4, 50, 'live')
+            ($1, $2, $3, $4, 50, 'live', $5)
           returning id
         `,
-        [client.company_name, client.industry, client.tier, ownerId],
+        [client.company_name, client.industry, client.tier, ownerId, accountId],
       );
       id = inserted.rows[0].id;
     }
@@ -455,10 +826,11 @@ async function seedClients(db: Queryable, ctx: SeedContext) {
             tier = $4,
             account_owner = $5,
             health_score = 50,
-            onboarding_status = 'live'
+            onboarding_status = 'live',
+            account_id = $6
         where id = $1
       `,
-      [id, client.company_name, client.industry, client.tier, ownerId],
+      [id, client.company_name, client.industry, client.tier, ownerId, accountId],
     );
 
     ctx.clientIds.set(client.key, id);
@@ -611,8 +983,12 @@ async function seedQuotes(db: Queryable, ctx: SeedContext) {
   if (!isFullDemoSeedMode(ctx.mode)) return;
 
   for (const quote of DEMO_QUOTES) {
+    const accountId = quote.accountKey ? (ctx.accountIds.get(quote.accountKey) ?? null) : null;
     const leadId = quote.leadKey ? (ctx.leadIds.get(quote.leadKey) ?? null) : null;
     const clientId = quote.clientKey ? (ctx.clientIds.get(quote.clientKey) ?? null) : null;
+    const contactId = quote.accountContactKey
+      ? (ctx.accountContactIds.get(quote.accountContactKey) ?? null)
+      : null;
     const validUntil = addDaysToDateString(ctx.dates.today, quote.validUntilOffsetDays);
     const createdBy = ctx.profileIds.get(quote.createdByKey) ?? null;
     const lineItems = jsonb(quote.line_items);
@@ -626,15 +1002,18 @@ async function seedQuotes(db: Queryable, ctx: SeedContext) {
       const inserted = await db.query<{ id: string }>(
         `
           insert into quotes
-            (number, lead_id, client_id, status, total_value, currency, valid_until, line_items, created_by)
+            (number, lead_id, client_id, contact_id, account_id, status, total_value, currency,
+             valid_until, line_items, created_by)
           values
-            ($1, $2, $3, $4, $5, 'HKD', $6, $7::jsonb, $8)
+            ($1, $2, $3, $4, $5, $6, $7, 'HKD', $8, $9::jsonb, $10)
           returning id
         `,
         [
           quote.number,
           leadId,
           clientId,
+          contactId,
+          accountId,
           quote.status,
           quote.total_value,
           validUntil,
@@ -651,12 +1030,14 @@ async function seedQuotes(db: Queryable, ctx: SeedContext) {
         set number = $2,
             lead_id = $3,
             client_id = $4,
-            status = $5,
-            total_value = $6,
+            contact_id = $5,
+            account_id = $6,
+            status = $7,
+            total_value = $8,
             currency = 'HKD',
-            valid_until = $7,
-            line_items = $8::jsonb,
-            created_by = $9
+            valid_until = $9,
+            line_items = $10::jsonb,
+            created_by = $11
         where id = $1
       `,
       [
@@ -664,6 +1045,8 @@ async function seedQuotes(db: Queryable, ctx: SeedContext) {
         quote.number,
         leadId,
         clientId,
+        contactId,
+        accountId,
         quote.status,
         quote.total_value,
         validUntil,
@@ -673,6 +1056,261 @@ async function seedQuotes(db: Queryable, ctx: SeedContext) {
     );
 
     ctx.quoteIds.set(quote.key, id);
+  }
+}
+
+async function seedJobSheets(db: Queryable, ctx: SeedContext) {
+  if (!isFullDemoSeedMode(ctx.mode)) return;
+
+  for (const jobSheet of DEMO_JOB_SHEETS) {
+    const quoteId = ctx.quoteIds.get(jobSheet.quoteKey);
+    const accountId = ctx.accountIds.get(jobSheet.accountKey);
+    const clientId = ctx.clientIds.get(jobSheet.clientKey);
+    const contactId = ctx.accountContactIds.get(jobSheet.accountContactKey);
+    if (!quoteId || !accountId || !clientId || !contactId) continue;
+
+    const quote = DEMO_QUOTES.find((candidate) => candidate.key === jobSheet.quoteKey);
+    if (!quote) continue;
+    const versionSnapshot = jsonb({
+      demo: true,
+      quote_key: quote.key,
+      id: quoteId,
+      number: quote.number,
+      status: "accepted",
+      total_value: quote.total_value,
+      currency: "HKD",
+      line_items: quote.line_items,
+    });
+    const existingVersion = await db.query<{ id: string }>(
+      `
+        select id
+        from quote_versions
+        where quote_id = $1
+          and reason = 'accepted'
+        order by version_number desc
+        limit 1
+      `,
+      [quoteId],
+    );
+    let acceptedVersionId = existingVersion.rows[0]?.id;
+
+    if (!acceptedVersionId) {
+      const insertedVersion = await db.query<{ id: string }>(
+        `
+          insert into quote_versions
+            (quote_id, version_number, reason, snapshot, pdf_url, created_by)
+          values
+            (
+              $1,
+              coalesce((select max(version_number) + 1 from quote_versions where quote_id = $1), 1),
+              'accepted',
+              $2::jsonb,
+              $3,
+              $4
+            )
+          returning id
+        `,
+        [
+          quoteId,
+          versionSnapshot,
+          `/quotes/${quoteId}/pdf`,
+          ctx.profileIds.get(jobSheet.salesOwnerKey) ?? null,
+        ],
+      );
+      acceptedVersionId = insertedVersion.rows[0].id;
+    } else {
+      await db.query(
+        `
+          update quote_versions
+          set snapshot = $2::jsonb,
+              pdf_url = $3,
+              created_by = $4
+          where id = $1
+        `,
+        [
+          acceptedVersionId,
+          versionSnapshot,
+          `/quotes/${quoteId}/pdf`,
+          ctx.profileIds.get(jobSheet.salesOwnerKey) ?? null,
+        ],
+      );
+    }
+
+    await db.query(
+      `
+        update quotes
+        set status = 'accepted',
+            accepted_version_id = $2,
+            accepted_at = coalesce(accepted_at, now()),
+            accepted_by = $3,
+            account_id = $4,
+            client_id = $5,
+            contact_id = $6
+        where id = $1
+      `,
+      [
+        quoteId,
+        acceptedVersionId,
+        ctx.profileIds.get(jobSheet.salesOwnerKey) ?? null,
+        accountId,
+        clientId,
+        contactId,
+      ],
+    );
+
+    const existingJobSheet = await db.query<{ id: string }>(
+      "select id from job_sheets where number = $1 limit 1",
+      [jobSheet.number],
+    );
+    let jobSheetId = existingJobSheet.rows[0]?.id;
+
+    if (!jobSheetId) {
+      const insertedJobSheet = await db.query<{ id: string }>(
+        `
+          insert into job_sheets
+            (number, quote_id, accepted_quote_version_id, account_id, client_id, contact_id,
+             sales_owner, accounting_owner, status, accepted_scope_summary, po_number,
+             client_order_number, xero_customer_reference, accounting_notes,
+             special_billing_instructions, total_amount, currency, created_by)
+          values
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'HKD', $17)
+          returning id
+        `,
+        [
+          jobSheet.number,
+          quoteId,
+          acceptedVersionId,
+          accountId,
+          clientId,
+          contactId,
+          ctx.profileIds.get(jobSheet.salesOwnerKey) ?? null,
+          ctx.profileIds.get(jobSheet.accountingOwnerKey) ?? null,
+          jobSheet.status,
+          jobSheet.accepted_scope_summary,
+          jobSheet.po_number,
+          jobSheet.client_order_number,
+          jobSheet.xero_customer_reference,
+          jobSheet.accounting_notes,
+          jobSheet.special_billing_instructions,
+          jobSheet.total_amount,
+          ctx.profileIds.get(jobSheet.salesOwnerKey) ?? null,
+        ],
+      );
+      jobSheetId = insertedJobSheet.rows[0].id;
+    }
+
+    await db.query(
+      `
+        update job_sheets
+        set quote_id = $2,
+            accepted_quote_version_id = $3,
+            account_id = $4,
+            client_id = $5,
+            contact_id = $6,
+            sales_owner = $7,
+            accounting_owner = $8,
+            status = $9,
+            accepted_scope_summary = $10,
+            po_number = $11,
+            client_order_number = $12,
+            xero_customer_reference = $13,
+            accounting_notes = $14,
+            special_billing_instructions = $15,
+            total_amount = $16,
+            currency = 'HKD',
+            created_by = $17
+        where id = $1
+      `,
+      [
+        jobSheetId,
+        quoteId,
+        acceptedVersionId,
+        accountId,
+        clientId,
+        contactId,
+        ctx.profileIds.get(jobSheet.salesOwnerKey) ?? null,
+        ctx.profileIds.get(jobSheet.accountingOwnerKey) ?? null,
+        jobSheet.status,
+        jobSheet.accepted_scope_summary,
+        jobSheet.po_number,
+        jobSheet.client_order_number,
+        jobSheet.xero_customer_reference,
+        jobSheet.accounting_notes,
+        jobSheet.special_billing_instructions,
+        jobSheet.total_amount,
+        ctx.profileIds.get(jobSheet.salesOwnerKey) ?? null,
+      ],
+    );
+
+    for (const portion of jobSheet.portions) {
+      const existingPortion = await db.query<{ id: string }>(
+        `
+          select id
+          from job_sheet_portions
+          where job_sheet_id = $1
+            and name = $2
+          limit 1
+        `,
+        [jobSheetId, portion.name],
+      );
+      let portionId = existingPortion.rows[0]?.id;
+      const targetInvoiceDate = addDaysToDateString(
+        ctx.dates.today,
+        portion.targetInvoiceOffsetDays,
+      );
+
+      if (!portionId) {
+        const insertedPortion = await db.query<{ id: string }>(
+          `
+            insert into job_sheet_portions
+              (job_sheet_id, name, source_quote_line_item_ids, description, amount,
+               currency, target_invoice_date, billing_type, status, sort_order)
+            values
+              ($1, $2, '{}'::uuid[], $3, $4, 'HKD', $5, $6, $7, $8)
+            returning id
+          `,
+          [
+            jobSheetId,
+            portion.name,
+            portion.description,
+            portion.amount,
+            targetInvoiceDate,
+            portion.billing_type,
+            portion.status,
+            portion.sort_order,
+          ],
+        );
+        portionId = insertedPortion.rows[0].id;
+      }
+
+      await db.query(
+        `
+          update job_sheet_portions
+          set name = $2,
+              source_quote_line_item_ids = '{}'::uuid[],
+              description = $3,
+              amount = $4,
+              currency = 'HKD',
+              target_invoice_date = $5,
+              billing_type = $6,
+              status = $7,
+              sort_order = $8
+          where id = $1
+        `,
+        [
+          portionId,
+          portion.name,
+          portion.description,
+          portion.amount,
+          targetInvoiceDate,
+          portion.billing_type,
+          portion.status,
+          portion.sort_order,
+        ],
+      );
+    }
+
+    ctx.jobSheetIds.set(jobSheet.key, jobSheetId);
   }
 }
 
@@ -1157,6 +1795,8 @@ async function seedAll(db: Queryable, ctx: SeedContext) {
   }
 
   await seedProfiles(db, ctx);
+  await seedAccounts(db, ctx);
+  await seedAccountContacts(db, ctx);
   await seedProducts(db, ctx, capabilities.hasProducts);
   await seedPricing(db, ctx, capabilities.pricingHasProductId);
   await seedLeads(db, ctx);
@@ -1164,6 +1804,9 @@ async function seedAll(db: Queryable, ctx: SeedContext) {
   await seedClientContacts(db, ctx, capabilities.hasClientContacts);
   await seedEngagements(db, ctx, capabilities.hasEngagements);
   await seedQuotes(db, ctx);
+  await seedCampaigns(db, ctx);
+  await seedCampaignMembers(db, ctx);
+  await seedJobSheets(db, ctx);
   await seedAgentRuns(db, ctx);
   await seedApprovals(db, ctx);
   await seedTasks(db, ctx);
@@ -1176,6 +1819,10 @@ async function seedAll(db: Queryable, ctx: SeedContext) {
     dates: ctx.dates,
     capabilities,
     profile_ids: Object.fromEntries(ctx.profileIds),
+    account_ids: Object.fromEntries(ctx.accountIds),
+    account_contact_ids: Object.fromEntries(ctx.accountContactIds),
+    campaign_ids: Object.fromEntries(ctx.campaignIds),
+    campaign_member_ids: Object.fromEntries(ctx.campaignMemberIds),
     product_ids: Object.fromEntries(ctx.productIds),
     pricing_template_ids: Object.fromEntries(ctx.pricingIds),
     lead_ids: Object.fromEntries(ctx.leadIds),
@@ -1183,6 +1830,7 @@ async function seedAll(db: Queryable, ctx: SeedContext) {
     contact_ids: Object.fromEntries(ctx.contactIds),
     engagement_ids: Object.fromEntries(ctx.engagementIds),
     quote_ids: Object.fromEntries(ctx.quoteIds),
+    job_sheet_ids: Object.fromEntries(ctx.jobSheetIds),
     agent_run_ids: Object.fromEntries(ctx.agentRunIds),
     approval_ids: Object.fromEntries(ctx.approvalIds),
   };

@@ -2,6 +2,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import type { AutomationPlaybook, AutomationRun } from "@/lib/types";
+import {
+  serializeAutomationPlaybook,
+  serializeAutomationRun,
+} from "@/server-functions/serializers";
 
 type GetAutomationPlaybooksInput = {
   status?: string;
@@ -40,7 +44,7 @@ export const getAutomationPlaybooks = createServerFn({ method: "GET" })
 
     const { data: playbooks, error } = await query;
     if (error) throw new Error(error.message);
-    return playbooks as AutomationPlaybook[];
+    return ((playbooks ?? []) as AutomationPlaybook[]).map(serializeAutomationPlaybook);
   });
 
 export const getAutomationPlaybook = createServerFn({ method: "GET" })
@@ -61,8 +65,8 @@ export const getAutomationPlaybook = createServerFn({ method: "GET" })
     if (runsResult.error) throw new Error(runsResult.error.message);
 
     return {
-      playbook: playbookResult.data as AutomationPlaybook,
-      runs: (runsResult.data ?? []) as AutomationRun[],
+      playbook: serializeAutomationPlaybook(playbookResult.data as AutomationPlaybook),
+      runs: ((runsResult.data ?? []) as AutomationRun[]).map(serializeAutomationRun),
     };
   });
 
@@ -76,7 +80,7 @@ export const createAutomationPlaybook = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw new Error(error.message);
-    return playbook as AutomationPlaybook;
+    return serializeAutomationPlaybook(playbook as AutomationPlaybook);
   });
 
 export const updateAutomationPlaybook = createServerFn({ method: "POST" })
@@ -96,7 +100,7 @@ export const updateAutomationPlaybook = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw new Error(error.message);
-    return playbook as AutomationPlaybook;
+    return serializeAutomationPlaybook(playbook as AutomationPlaybook);
   });
 
 export const createAutomationRun = createServerFn({ method: "POST" })
@@ -109,7 +113,7 @@ export const createAutomationRun = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw new Error(error.message);
-    return run as AutomationRun;
+    return serializeAutomationRun(run as AutomationRun);
   });
 
 export const updateAutomationRun = createServerFn({ method: "POST" })
@@ -131,5 +135,5 @@ export const updateAutomationRun = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw new Error(error.message);
-    return run as AutomationRun;
+    return serializeAutomationRun(run as AutomationRun);
   });
