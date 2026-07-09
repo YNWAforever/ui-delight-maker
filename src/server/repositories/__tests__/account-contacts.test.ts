@@ -21,10 +21,9 @@ describe("account contacts repository", () => {
 
     await listAccountContacts("account-1");
 
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("from account_contacts"),
-      ["account-1"],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("from account_contacts"), [
+      "account-1",
+    ]);
   });
 
   it("creates contacts with relationship defaults", async () => {

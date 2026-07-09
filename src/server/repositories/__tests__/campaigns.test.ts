@@ -21,10 +21,11 @@ describe("campaigns repository", () => {
 
     await listCampaigns({ status: "active", type: "webinar", owner: "owner-1" });
 
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("select * from campaigns"),
-      ["active", "webinar", "owner-1"],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("select * from campaigns"), [
+      "active",
+      "webinar",
+      "owner-1",
+    ]);
   });
 
   it("loads a campaign and its members together", async () => {
@@ -46,21 +47,7 @@ describe("campaigns repository", () => {
 
     expect(mockQueryOne).toHaveBeenCalledWith(
       expect.stringContaining("insert into campaign_members"),
-      [
-        "campaign-1",
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-      ],
+      ["campaign-1", null, null, null, null, null, null, null, null, null, null, null, null],
       undefined,
     );
   });

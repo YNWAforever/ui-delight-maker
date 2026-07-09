@@ -26,6 +26,8 @@ describe("quote template repository", () => {
 
     await listPdfTemplates("quote");
 
-    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("from pdf_templates"), ["quote"]);
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("from pdf_templates"), [
+      "quote",
+    ]);
   });
 });

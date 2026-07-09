@@ -44,7 +44,9 @@ describe("workflow account context", () => {
         occurred_at: `2026-07-${String((index % 28) + 1).padStart(2, "0")}T00:00:00.000Z`,
       })),
     );
-    mocks.listRelationshipSignalsMock.mockResolvedValue([{ id: "signal-1", account_id: "account-1" }]);
+    mocks.listRelationshipSignalsMock.mockResolvedValue([
+      { id: "signal-1", account_id: "account-1" },
+    ]);
     mocks.getAgentRunWithCallsMock.mockResolvedValue({
       run: {
         id: "run-1",

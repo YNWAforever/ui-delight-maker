@@ -127,7 +127,9 @@ export function parseEventAttendeeCsv(csv: string): EventImportRow[] {
 
   return lines.filter(Boolean).map((line) => {
     const values = parseCsvLine(line);
-    const record = Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
+    const record = Object.fromEntries(
+      headers.map((header, index) => [header, values[index] ?? ""]),
+    );
 
     return {
       company_name: record.company_name ?? "",
@@ -174,7 +176,10 @@ export function validateEventImportRows(
     }
     seen.add(dedupeKey);
 
-    const accountMatch = findAccountMatch({ companyName: row.company_name, accounts: input.accounts });
+    const accountMatch = findAccountMatch({
+      companyName: row.company_name,
+      accounts: input.accounts,
+    });
     if (accountMatch.kind === "ambiguous") {
       errors.push({ index, reason: "Ambiguous account match requires manual review." });
       return;

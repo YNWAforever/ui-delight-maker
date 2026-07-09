@@ -261,7 +261,9 @@ function ClientDetail() {
                             </div>
                             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                               <span>Quote {quote?.number ?? sheet.quote_id}</span>
-                              <span>{formatCurrencyAmount(sheet.total_amount, sheet.currency)}</span>
+                              <span>
+                                {formatCurrencyAmount(sheet.total_amount, sheet.currency)}
+                              </span>
                             </div>
                           </Link>
                         </li>

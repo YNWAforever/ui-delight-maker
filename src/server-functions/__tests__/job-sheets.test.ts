@@ -53,7 +53,10 @@ describe("job sheet server functions", () => {
     listJobSheetsMock.mockResolvedValue([]);
     replaceJobSheetPortionsMock.mockResolvedValue([]);
     acceptJobSheetMock.mockResolvedValue({ id: "job-1", status: "accepted" });
-    updateJobSheetXeroReferenceMock.mockResolvedValue({ id: "portion-1", status: "entered_in_xero" });
+    updateJobSheetXeroReferenceMock.mockResolvedValue({
+      id: "portion-1",
+      status: "entered_in_xero",
+    });
   });
 
   it("requires Neon auth before listing job sheets", async () => {

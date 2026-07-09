@@ -165,9 +165,7 @@ describe("workflow fallback builders", () => {
 
     expect(payload.account_id).toBe("account-1");
     expect(payload.agent_run_id).toBe("run-rel-1");
-    expect(payload.output_summary).toBe(
-      "Fallback relationship scan found 8 signals for Acme CRM.",
-    );
+    expect(payload.output_summary).toBe("Fallback relationship scan found 8 signals for Acme CRM.");
     expect(payload.next_action).toBe(
       "Identify and add the decision maker before the next commercial step.",
     );

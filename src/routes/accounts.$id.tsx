@@ -72,8 +72,17 @@ export const Route = createFileRoute("/accounts/$id")({
 });
 
 function AccountDetailRoute() {
-  const { account, contacts, timeline, signals, linkedClients, engagements, tasks, quotes, jobSheets } =
-    Route.useLoaderData();
+  const {
+    account,
+    contacts,
+    timeline,
+    signals,
+    linkedClients,
+    engagements,
+    tasks,
+    quotes,
+    jobSheets,
+  } = Route.useLoaderData();
   const [dismissedSignalIds, setDismissedSignalIds] = useState<string[]>([]);
   const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
@@ -528,7 +537,9 @@ function AccountDetailRoute() {
                               </div>
                               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                                 <span>Quote {quote?.number ?? sheet.quote_id}</span>
-                                <span>{formatCurrencyAmount(sheet.total_amount, sheet.currency)}</span>
+                                <span>
+                                  {formatCurrencyAmount(sheet.total_amount, sheet.currency)}
+                                </span>
                               </div>
                             </Link>
                           </li>

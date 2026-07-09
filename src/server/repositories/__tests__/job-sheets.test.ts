@@ -190,10 +190,9 @@ describe("job sheets repository", () => {
 
     await listJobSheets({ status: "accounting_review" });
 
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("from job_sheets"),
-      ["accounting_review"],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("from job_sheets"), [
+      "accounting_review",
+    ]);
   });
 
   it("lists job sheets by client and account filters", async () => {

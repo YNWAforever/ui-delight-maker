@@ -54,7 +54,9 @@ describe("quotes repository line items", () => {
       total_value: 120000,
       currency: "USD",
       valid_until: "2026-08-01",
-      line_items: [{ id: "line-1", service: "Strategy", description: "Planning", qty: 1, unit_price: 120000 }],
+      line_items: [
+        { id: "line-1", service: "Strategy", description: "Planning", qty: 1, unit_price: 120000 },
+      ],
       quote_template_id: "template-1",
       cover_text: "Intro copy",
       assumptions: "Assume approvals within 48 hours.",
@@ -80,7 +82,13 @@ describe("quotes repository line items", () => {
         "USD",
         "2026-08-01",
         JSON.stringify([
-          { id: "line-1", service: "Strategy", description: "Planning", qty: 1, unit_price: 120000 },
+          {
+            id: "line-1",
+            service: "Strategy",
+            description: "Planning",
+            qty: 1,
+            unit_price: 120000,
+          },
         ]),
         "template-1",
         JSON.stringify([{ title: "Scope", body: "Planning" }]),
@@ -117,10 +125,9 @@ describe("quotes repository line items", () => {
 
     await listQuoteLineItems("quote-1");
 
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("from quote_line_items"),
-      ["quote-1"],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("from quote_line_items"), [
+      "quote-1",
+    ]);
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringContaining("order by sort_order, created_at"),
       ["quote-1"],
@@ -253,7 +260,9 @@ describe("quotes repository line items", () => {
     });
 
     expect(mockQueryOne).toHaveBeenCalledWith(
-      expect.stringContaining("accepted_version_id is null or accepted_version_id is not distinct from $1"),
+      expect.stringContaining(
+        "accepted_version_id is null or accepted_version_id is not distinct from $1",
+      ),
       [
         "accepted-version-1",
         "issued-version-1",
@@ -264,7 +273,9 @@ describe("quotes repository line items", () => {
       undefined,
     );
     expect(mockQueryOne).toHaveBeenCalledWith(
-      expect.stringContaining("issued_version_id is null or issued_version_id is not distinct from $2"),
+      expect.stringContaining(
+        "issued_version_id is null or issued_version_id is not distinct from $2",
+      ),
       [
         "accepted-version-1",
         "issued-version-1",
@@ -298,15 +309,17 @@ describe("quotes repository line items", () => {
     ).rejects.toThrow("Quote not found or version reference is immutable");
 
     expect(mockQueryOne).toHaveBeenCalledWith(
-      expect.stringContaining("accepted_version_id is null or accepted_version_id is not distinct from $1"),
+      expect.stringContaining(
+        "accepted_version_id is null or accepted_version_id is not distinct from $1",
+      ),
       ["accepted-version-1", "accepted-version-1", "quote-1"],
       undefined,
     );
-    expect(mockQueryOne).toHaveBeenCalledWith(expect.stringContaining("set accepted_version_id = $2"), [
-      "accepted-version-1",
-      "accepted-version-1",
-      "quote-1",
-    ], undefined);
+    expect(mockQueryOne).toHaveBeenCalledWith(
+      expect.stringContaining("set accepted_version_id = $2"),
+      ["accepted-version-1", "accepted-version-1", "quote-1"],
+      undefined,
+    );
   });
 
   it("guards issued_version_id lifecycle updates when accepted_version_id is absent", async () => {
@@ -320,15 +333,17 @@ describe("quotes repository line items", () => {
     ).rejects.toThrow("Quote not found or version reference is immutable");
 
     expect(mockQueryOne).toHaveBeenCalledWith(
-      expect.stringContaining("issued_version_id is null or issued_version_id is not distinct from $1"),
+      expect.stringContaining(
+        "issued_version_id is null or issued_version_id is not distinct from $1",
+      ),
       ["issued-version-1", "issued-version-1", "quote-1"],
       undefined,
     );
-    expect(mockQueryOne).toHaveBeenCalledWith(expect.stringContaining("set issued_version_id = $2"), [
-      "issued-version-1",
-      "issued-version-1",
-      "quote-1",
-    ], undefined);
+    expect(mockQueryOne).toHaveBeenCalledWith(
+      expect.stringContaining("set issued_version_id = $2"),
+      ["issued-version-1", "issued-version-1", "quote-1"],
+      undefined,
+    );
   });
 
   it("rejects lifecycle updates that would repoint immutable quote version references", async () => {

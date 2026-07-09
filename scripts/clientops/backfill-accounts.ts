@@ -4,7 +4,9 @@ import type { Client } from "../../src/lib/types";
 type AccountRow = { id: string; name: string };
 
 export async function backfillAccounts() {
-  const clients = await query<Client>("select * from clients where account_id is null order by company_name");
+  const clients = await query<Client>(
+    "select * from clients where account_id is null order by company_name",
+  );
   let linked = 0;
 
   await transaction(async (db) => {

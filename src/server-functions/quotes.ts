@@ -189,7 +189,10 @@ export const getQuoteVersions = createServerFn({ method: "GET" })
     return listQuoteVersions(data.quoteId);
   });
 
-async function getExistingQuoteVersionOrThrow(quoteId: string, versionId: string): Promise<QuoteVersion> {
+async function getExistingQuoteVersionOrThrow(
+  quoteId: string,
+  versionId: string,
+): Promise<QuoteVersion> {
   const versions = await listQuoteVersions(quoteId);
   const version = versions.find((candidate) => candidate.id === versionId);
 
@@ -233,7 +236,11 @@ function assertQuoteCanBeAccepted(quote: Quote) {
 }
 
 function assertQuoteCanBeApproved(quote: Quote) {
-  if (quote.status === "pending_approval" || quote.status === "approved" || quote.status === "sent") {
+  if (
+    quote.status === "pending_approval" ||
+    quote.status === "approved" ||
+    quote.status === "sent"
+  ) {
     return;
   }
 
@@ -370,7 +377,11 @@ export const approveAndIssueQuote = createServerFn({ method: "POST" })
     assertQuoteSendApprovalMatchesQuote(approval, data.id);
     assertPendingQuoteSendApproval(approval);
     const approvedQuote = await approveQuoteForSession(data.id, session.user.id);
-    const issued = await issueQuoteVersionForSession(approvedQuote, session.user.id, data.pdfTemplateId);
+    const issued = await issueQuoteVersionForSession(
+      approvedQuote,
+      session.user.id,
+      data.pdfTemplateId,
+    );
     await decideApprovalInNeon({
       id: data.approvalId,
       decision: "approved",

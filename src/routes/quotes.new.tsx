@@ -86,7 +86,8 @@ function QuoteBuilder() {
     clientId: initialClientId,
     productId: initialProductId,
   } = Route.useSearch();
-  const { templates, leads, clients, products, quoteTemplates, pdfTemplates } = Route.useLoaderData();
+  const { templates, leads, clients, products, quoteTemplates, pdfTemplates } =
+    Route.useLoaderData();
   const navigate = useNavigate();
   const router = useRouter();
   const initialQuoteTemplate = quoteTemplates[0];
@@ -201,20 +202,20 @@ function QuoteBuilder() {
       return;
     }
     const payload = {
-        lead_id: mode === "lead" ? leadId || null : null,
-        client_id: mode === "client" ? clientId || null : null,
-        currency: "HKD",
-        valid_until: validUntil,
-        quote_template_id: quoteTemplateId || null,
-        cover_text: documentDraft.cover_text,
-        assumptions: documentDraft.assumptions,
-        payment_terms: documentDraft.payment_terms,
-        document_sections: documentDraft.document_sections,
-        line_items: items.map(({ id: _id, ...rest }) => ({
-          id: _id,
-          ...rest,
-        })),
-        total_value: total,
+      lead_id: mode === "lead" ? leadId || null : null,
+      client_id: mode === "client" ? clientId || null : null,
+      currency: "HKD",
+      valid_until: validUntil,
+      quote_template_id: quoteTemplateId || null,
+      cover_text: documentDraft.cover_text,
+      assumptions: documentDraft.assumptions,
+      payment_terms: documentDraft.payment_terms,
+      document_sections: documentDraft.document_sections,
+      line_items: items.map(({ id: _id, ...rest }) => ({
+        id: _id,
+        ...rest,
+      })),
+      total_value: total,
     } satisfies CreateQuoteInput;
 
     const quote = await createQuote({ data: payload });

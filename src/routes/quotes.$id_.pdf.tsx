@@ -56,7 +56,11 @@ function QuotePdfRoute() {
           <QuotePdfPreviewUnavailable error={previewSource.error} />
         </div>
       ) : (
-        <QuotePdfPreview quote={previewSource.quote} lineItems={previewSource.lineItems} clientName={clientName} />
+        <QuotePdfPreview
+          quote={previewSource.quote}
+          lineItems={previewSource.lineItems}
+          clientName={clientName}
+        />
       )}
     </main>
   );

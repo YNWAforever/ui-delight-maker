@@ -8,11 +8,8 @@ import type {
 } from "./types";
 
 const BUSINESS_DAY_MS = 86_400_000;
-const FOLLOW_UP_ELIGIBLE_ATTENDEE_STATUSES: ReadonlySet<CampaignMemberLite["attendee_status"]> = new Set([
-  "attended",
-  "met",
-  "high_intent",
-]);
+const FOLLOW_UP_ELIGIBLE_ATTENDEE_STATUSES: ReadonlySet<CampaignMemberLite["attendee_status"]> =
+  new Set(["attended", "met", "high_intent"]);
 
 export type RelationshipSignalInput = {
   account: AccountLite;
@@ -55,7 +52,10 @@ function countBusinessDaysBetween(from: string, to: Date): number {
 }
 
 function isEligibleForPostEventFollowUp(member: CampaignMemberLite): boolean {
-  return member.attendee_status !== "unknown" && FOLLOW_UP_ELIGIBLE_ATTENDEE_STATUSES.has(member.attendee_status);
+  return (
+    member.attendee_status !== "unknown" &&
+    FOLLOW_UP_ELIGIBLE_ATTENDEE_STATUSES.has(member.attendee_status)
+  );
 }
 
 function addSignal(
@@ -66,10 +66,14 @@ function addSignal(
   list.push({ account_id: accountId, source: "deterministic", ...signal });
 }
 
-export function buildRelationshipSignals(input: RelationshipSignalInput): RelationshipSignalDraft[] {
+export function buildRelationshipSignals(
+  input: RelationshipSignalInput,
+): RelationshipSignalDraft[] {
   const signals: RelationshipSignalDraft[] = [];
   const accountId = input.account.id;
-  const hasDecisionMaker = input.contacts.some((contact) => contact.relationship_role === "decision_maker");
+  const hasDecisionMaker = input.contacts.some(
+    (contact) => contact.relationship_role === "decision_maker",
+  );
   const hasChampion = input.contacts.some((contact) => contact.relationship_role === "champion");
 
   if (!hasDecisionMaker) {
@@ -170,10 +174,18 @@ export function buildRelationshipSignals(input: RelationshipSignalInput): Relati
   }
 
   const usedProductIds = new Set(
-    input.engagements.filter((engagement) => engagement.status === "active").map((engagement) => engagement.product_id),
+    input.engagements
+      .filter((engagement) => engagement.status === "active")
+      .map((engagement) => engagement.product_id),
   );
-  const unusedProduct = input.products.find((product) => product.active && !usedProductIds.has(product.id));
-  if (input.account.lifecycle_stage === "active_client" && usedProductIds.size > 0 && unusedProduct) {
+  const unusedProduct = input.products.find(
+    (product) => product.active && !usedProductIds.has(product.id),
+  );
+  if (
+    input.account.lifecycle_stage === "active_client" &&
+    usedProductIds.size > 0 &&
+    unusedProduct
+  ) {
     addSignal(signals, accountId, {
       signal_type: "cross_sell_opportunity",
       severity: "low",

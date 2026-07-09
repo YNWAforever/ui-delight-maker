@@ -196,7 +196,13 @@ describe("quote server functions", () => {
         currency: "USD",
         valid_until: "2026-08-01",
         line_items: [
-          { id: "line-1", service: "Strategy", description: "Planning", qty: 1, unit_price: 120000 },
+          {
+            id: "line-1",
+            service: "Strategy",
+            description: "Planning",
+            qty: 1,
+            unit_price: 120000,
+          },
         ],
         quote_template_id: "template-1",
         cover_text: "Intro copy",
@@ -240,21 +246,24 @@ describe("quote server functions", () => {
     ["accepted_by", "user-1"],
     ["pdf_url", "/quotes/quote-1/pdf"],
     ["approved_by", "user-1"],
-  ])("rejects generic quote updates to lifecycle field %s before repository dispatch", async (field, value) => {
-    const { updateQuote } = await import("../quotes");
+  ])(
+    "rejects generic quote updates to lifecycle field %s before repository dispatch",
+    async (field, value) => {
+      const { updateQuote } = await import("../quotes");
 
-    await expect(
-      updateQuote({
-        data: {
-          id: "quote-1",
-          updates: { [field]: value },
-        },
-      }),
-    ).rejects.toThrow("Quote lifecycle fields must be changed through workflow actions");
+      await expect(
+        updateQuote({
+          data: {
+            id: "quote-1",
+            updates: { [field]: value },
+          },
+        }),
+      ).rejects.toThrow("Quote lifecycle fields must be changed through workflow actions");
 
-    expect(updateQuoteMock).not.toHaveBeenCalled();
-    expect(updateQuoteLifecycleMock).not.toHaveBeenCalled();
-  });
+      expect(updateQuoteMock).not.toHaveBeenCalled();
+      expect(updateQuoteLifecycleMock).not.toHaveBeenCalled();
+    },
+  );
 
   it("approves a pending quote through the lifecycle helper", async () => {
     getQuoteMock.mockResolvedValueOnce({
@@ -453,11 +462,10 @@ describe("quote server functions", () => {
       actorId: "user-1",
     });
     expect(getApprovalMock).toHaveBeenCalledWith("approval-1");
-    expect(updateQuoteLifecycleMock).toHaveBeenNthCalledWith(
-      1,
-      "quote-1",
-      { status: "approved", approved_by: "user-1" },
-    );
+    expect(updateQuoteLifecycleMock).toHaveBeenNthCalledWith(1, "quote-1", {
+      status: "approved",
+      approved_by: "user-1",
+    });
     expect(createQuoteVersionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         quote_id: "quote-1",

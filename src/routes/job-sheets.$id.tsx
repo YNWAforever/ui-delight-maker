@@ -11,7 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
@@ -97,9 +103,11 @@ export const toXeroDrafts = (portions: JobSheetPortion[]): Record<string, XeroDr
     ]),
   );
 
-export const resetBillingDrafts = (portions: JobSheetPortion[]): PortionDraft[] => toPortionDrafts(portions);
+export const resetBillingDrafts = (portions: JobSheetPortion[]): PortionDraft[] =>
+  toPortionDrafts(portions);
 
-export const resetXeroDrafts = (portions: JobSheetPortion[]): Record<string, XeroDraft> => toXeroDrafts(portions);
+export const resetXeroDrafts = (portions: JobSheetPortion[]): Record<string, XeroDraft> =>
+  toXeroDrafts(portions);
 
 export const isJobSheetCommercialLocked = (
   status: JobSheetStatus,
@@ -114,7 +122,8 @@ const toNullableDateString = (value: string) => {
 const resolvePortionStatus = (
   draft: Pick<PortionDraft, "status">,
   original?: Pick<JobSheetPortion, "status">,
-): JobSheetPortionStatus => (original?.status === "entered_in_xero" ? original.status : draft.status);
+): JobSheetPortionStatus =>
+  original?.status === "entered_in_xero" ? original.status : draft.status;
 
 export function buildPreviewPortions(input: {
   jobSheetId: string;
@@ -203,7 +212,10 @@ export function hasUnsavedXeroDraftChanges(
     const draft = drafts[portion.id];
     if (!draft) return false;
 
-    return JSON.stringify(buildXeroSavePayload(draft)) !== JSON.stringify(getPersistedXeroPayload(portion));
+    return (
+      JSON.stringify(buildXeroSavePayload(draft)) !==
+      JSON.stringify(getPersistedXeroPayload(portion))
+    );
   });
 }
 
@@ -325,7 +337,8 @@ export const Route = createFileRoute("/job-sheets/$id")({
       { title: `${loaderData?.jobSheet.number ?? "Job Sheet"} - Fimmick ClientOps` },
       {
         name: "description",
-        content: "Accounting handoff detail with billing reconciliation and manual Xero references.",
+        content:
+          "Accounting handoff detail with billing reconciliation and manual Xero references.",
       },
     ],
   }),
@@ -381,7 +394,11 @@ function JobSheetDetailPage() {
     [jobSheet.client_order_number, jobSheet.po_number, jobSheet.total_amount, previewPortions],
   );
 
-  const updateDraft = <K extends keyof PortionDraft>(id: string, key: K, value: PortionDraft[K]) => {
+  const updateDraft = <K extends keyof PortionDraft>(
+    id: string,
+    key: K,
+    value: PortionDraft[K],
+  ) => {
     setPortionDrafts((current) =>
       current.map((portion) => (portion.id === id ? { ...portion, [key]: value } : portion)),
     );
@@ -499,14 +516,12 @@ function JobSheetDetailPage() {
               <Button
                 size="sm"
                 onClick={accept}
-                disabled={
-                  isAcceptAndLockDisabled({
-                    editorBusy,
-                    hasUnsavedBillingChanges,
-                    hasUnsavedXeroChanges,
-                    acceptanceOk: acceptance.ok,
-                  })
-                }
+                disabled={isAcceptAndLockDisabled({
+                  editorBusy,
+                  hasUnsavedBillingChanges,
+                  hasUnsavedXeroChanges,
+                  acceptanceOk: acceptance.ok,
+                })}
               >
                 <CheckCircle2 className="mr-2 h-4 w-4" /> Accept & lock
               </Button>
@@ -566,7 +581,9 @@ function JobSheetDetailPage() {
                           min={0}
                           step="0.01"
                           value={portion.amount}
-                          onChange={(event) => updateDraft(portion.id, "amount", event.target.value)}
+                          onChange={(event) =>
+                            updateDraft(portion.id, "amount", event.target.value)
+                          }
                           disabled={commercialLocked || editorBusy}
                         />
                       </div>
@@ -619,7 +636,9 @@ function JobSheetDetailPage() {
                         )}
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor={`portion-target-date-${portion.id}`}>Target invoice date</Label>
+                        <Label htmlFor={`portion-target-date-${portion.id}`}>
+                          Target invoice date
+                        </Label>
                         <Input
                           id={`portion-target-date-${portion.id}`}
                           type="date"
@@ -665,7 +684,8 @@ function JobSheetDetailPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                ClientOps stores manual reference metadata only. Xero remains the official invoicing and accounting system.
+                ClientOps stores manual reference metadata only. Xero remains the official invoicing
+                and accounting system.
               </p>
               {hasUnsavedBillingChanges && (
                 <p className="text-sm text-destructive">
@@ -721,7 +741,10 @@ function JobSheetDetailPage() {
                           onChange={(event) =>
                             setXeroDrafts((current) => ({
                               ...current,
-                              [portion.id]: { ...draft, xero_invoice_reference: event.target.value },
+                              [portion.id]: {
+                                ...draft,
+                                xero_invoice_reference: event.target.value,
+                              },
                             }))
                           }
                           disabled={editorBusy}
@@ -776,9 +799,15 @@ function JobSheetDetailPage() {
               </DetailRow>
               <DetailRow label="Quote">{jobSheet.quote_id}</DetailRow>
               <DetailRow label="PO number">{jobSheet.po_number ?? "Missing"}</DetailRow>
-              <DetailRow label="Client order">{jobSheet.client_order_number ?? "Missing"}</DetailRow>
-              <DetailRow label="Xero customer">{jobSheet.xero_customer_reference ?? "Not set"}</DetailRow>
-              <DetailRow label="Accounting owner">{jobSheet.accounting_owner ?? "Unassigned"}</DetailRow>
+              <DetailRow label="Client order">
+                {jobSheet.client_order_number ?? "Missing"}
+              </DetailRow>
+              <DetailRow label="Xero customer">
+                {jobSheet.xero_customer_reference ?? "Not set"}
+              </DetailRow>
+              <DetailRow label="Accounting owner">
+                {jobSheet.accounting_owner ?? "Unassigned"}
+              </DetailRow>
               <Separator />
               <DetailRow label="Created">{formatDateTime(jobSheet.created_at)}</DetailRow>
               <DetailRow label="Accepted">{formatDateTime(jobSheet.accepted_at)}</DetailRow>
