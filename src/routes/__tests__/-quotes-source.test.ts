@@ -30,3 +30,12 @@ describe("quote detail lifecycle source", () => {
     expect(source).toContain("Approve & Issue");
   });
 });
+
+describe("quote creation source", () => {
+  it("opens the created quote detail after submit", () => {
+    const source = readRoute("quotes.new.tsx");
+
+    expect(source).toContain("const quote = await createQuote({ data: payload });");
+    expect(source).toContain('navigate({ to: "/quotes/$id", params: { id: quote.id } });');
+  });
+});

@@ -217,14 +217,10 @@ function QuoteBuilder() {
         total_value: total,
     } satisfies CreateQuoteInput;
 
-    await createQuote({ data: payload });
+    const quote = await createQuote({ data: payload });
     router.invalidate();
     toast.success("Quote submitted for approval.");
-    if (mode === "client") {
-      navigate({ to: "/clients/$id", params: { id: clientId } });
-    } else {
-      navigate({ to: "/quotes" });
-    }
+    navigate({ to: "/quotes/$id", params: { id: quote.id } });
   };
 
   return (

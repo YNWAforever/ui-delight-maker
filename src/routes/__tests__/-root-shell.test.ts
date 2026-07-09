@@ -130,6 +130,9 @@ describe("sales route source copy", () => {
     );
 
     expect(campaignsSource).toContain('title="Campaigns & Events"');
+    expect(campaignsSource).toContain("createCampaign");
+    expect(campaignsSource).toContain("setNewCampaignOpen(true)");
+    expect(campaignsSource).toContain('navigate({ to: "/campaigns/$id", params: { id: campaign.id } });');
     expect(detailSource).toContain("EventAttendeeTable");
     expect(detailSource).toContain("validateEventImportRowsFn");
     expect(detailSource).toContain('toast.error("No attendee rows found in the CSV.");');
