@@ -461,6 +461,20 @@ export function LeaderboardWidget() {
         <div>
           <CardTitle className="flex items-center gap-2 text-base">
             <Trophy className="h-4 w-4 text-primary" /> Agent leaderboard
+            {storedVersion !== null && (
+              <Badge
+                variant={wasMigrated ? "default" : "secondary"}
+                className="text-[10px] font-normal"
+                title={
+                  wasMigrated
+                    ? `Migrated from v${storedVersion} to v${LS_VERSION}`
+                    : `Saved schema v${storedVersion}`
+                }
+              >
+                v{storedVersion}
+                {wasMigrated ? ` → v${LS_VERSION}` : ""}
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>
             Ranked by {SORT_LABELS[sortKey].toLowerCase()}. Highlights respect your threshold rules.
