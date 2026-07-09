@@ -281,7 +281,8 @@ function syncQuery(state: PersistedState) {
 }
 
 export function LeaderboardWidget() {
-  const persisted = loadPersisted();
+  const loaded = loadPersisted();
+  const persisted = loaded.state;
   const query = loadFromQuery();
   const initial = { ...(persisted ?? {}), ...(query ?? {}) } as Partial<PersistedState>;
 
@@ -295,6 +296,8 @@ export function LeaderboardWidget() {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [showRestored, setShowRestored] = useState(persisted !== null || query !== null);
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [storedVersion] = useState<number | null>(loaded.version);
+  const [wasMigrated] = useState<boolean>(loaded.migrated);
 
   useEffect(() => {
     if (!showRestored) return;
