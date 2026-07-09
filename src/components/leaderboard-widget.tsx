@@ -191,22 +191,29 @@ function migrate(version: number, state: unknown): PersistedState | null {
   return coerceState(state);
 }
 
-function loadPersisted(): PersistedState | null {
+type LoadResult = {
+  state: PersistedState | null;
+  version: number | null;
+  migrated: boolean;
+};
+
+function loadPersisted(): LoadResult {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return null;
+    if (!raw) return { state: null, version: null, migrated: false };
     const parsed = JSON.parse(raw) as unknown;
 
     // v2+ envelope: { version, state }
     if (parsed && typeof parsed === "object" && "version" in parsed && "state" in parsed) {
       const env = parsed as PersistedEnvelope;
-      return migrate(typeof env.version === "number" ? env.version : 1, env.state);
+      const version = typeof env.version === "number" ? env.version : 1;
+      return { state: migrate(version, env.state), version, migrated: version !== LS_VERSION };
     }
 
     // Legacy v1: bare state object. Migrate forward.
-    return migrate(1, parsed);
+    return { state: migrate(1, parsed), version: 1, migrated: true };
   } catch {
-    return null;
+    return { state: null, version: null, migrated: false };
   }
 }
 
