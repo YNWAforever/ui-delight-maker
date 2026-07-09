@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { Archive, Copy, MoreHorizontal, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrencyAmount, formatDate, formatHKD } from "@/lib/format";
+import { useIsExactPath } from "@/lib/routing-utils";
 import { getQuotes } from "@/server-functions/quotes";
 import { USER_RECORD } from "@/lib/users";
 import type { Quote } from "@/lib/types";
@@ -56,6 +57,14 @@ const TABS: { value: string; label: string }[] = [
 ];
 
 function QuotesPage() {
+  const isIndexRoute = useIsExactPath("/quotes");
+
+  if (!isIndexRoute) return <Outlet />;
+
+  return <QuotesIndex />;
+}
+
+function QuotesIndex() {
   const loaderQuotes = Route.useLoaderData();
   const [rows, setRows] = useState<Quote[]>(loaderQuotes);
   const [tab, setTab] = useState("all");

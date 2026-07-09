@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { CalendarDays, Plus, Users } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { APP_USERS } from "@/lib/users";
 import type { CampaignStatus, CampaignType } from "@/lib/types";
 import { createCampaign, getCampaigns } from "@/server-functions/campaigns";
+import { useIsExactPath } from "@/lib/routing-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/campaigns")({
@@ -37,6 +38,14 @@ export const Route = createFileRoute("/campaigns")({
 });
 
 function CampaignsRoute() {
+  const isIndexRoute = useIsExactPath("/campaigns");
+
+  if (!isIndexRoute) return <Outlet />;
+
+  return <CampaignsIndex />;
+}
+
+function CampaignsIndex() {
   const { campaigns } = Route.useLoaderData();
   const navigate = useNavigate();
   const [newCampaignOpen, setNewCampaignOpen] = useState(false);
@@ -153,7 +162,11 @@ type CreateCampaignPayload = {
   notes?: string;
 };
 
-function NewCampaignDialog({ onCreate }: { onCreate: (campaign: CreateCampaignPayload) => Promise<void> }) {
+function NewCampaignDialog({
+  onCreate,
+}: {
+  onCreate: (campaign: CreateCampaignPayload) => Promise<void>;
+}) {
   const [name, setName] = useState("");
   const [type, setType] = useState<CampaignType>("client_event");
   const [status, setStatus] = useState<CampaignStatus>("planned");

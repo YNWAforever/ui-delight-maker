@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 
 import { JobSheetStatusBadge } from "@/components/job-sheets/job-sheet-status-badge";
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrencyAmount, formatDate } from "@/lib/format";
+import { useIsExactPath } from "@/lib/routing-utils";
 import type { JobSheet } from "@/lib/types";
 import { getJobSheets } from "@/server-functions/job-sheets";
 
@@ -52,6 +53,14 @@ export const Route = createFileRoute("/job-sheets")({
 });
 
 function JobSheetsPage() {
+  const isIndexRoute = useIsExactPath("/job-sheets");
+
+  if (!isIndexRoute) return <Outlet />;
+
+  return <JobSheetsIndex />;
+}
+
+function JobSheetsIndex() {
   const rows = Route.useLoaderData();
   const awaitingReview = rows.filter((row) => row.status !== "accepted").length;
   const acceptedValue = formatAcceptedValueSummary(rows);

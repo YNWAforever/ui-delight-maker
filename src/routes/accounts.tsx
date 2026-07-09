@@ -1,9 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
 import { AccountSummaryCard } from "@/components/relationship/account-summary-card";
 import { getClients } from "@/server-functions/clients";
 import { getAccounts } from "@/server-functions/accounts";
 import { getRelationshipSignals } from "@/server-functions/relationship-signals";
+import { useIsExactPath } from "@/lib/routing-utils";
 
 export const Route = createFileRoute("/accounts")({
   loader: async () => {
@@ -22,6 +23,14 @@ export const Route = createFileRoute("/accounts")({
 });
 
 function AccountsRoute() {
+  const isIndexRoute = useIsExactPath("/accounts");
+
+  if (!isIndexRoute) return <Outlet />;
+
+  return <AccountsIndex />;
+}
+
+function AccountsIndex() {
   const { accounts, clients, signals } = Route.useLoaderData();
   const signalCountByAccount = new Map<string, number>();
   const clientCountByAccount = new Map<string, number>();

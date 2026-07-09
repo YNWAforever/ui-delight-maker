@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouter } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,6 +37,7 @@ import { getRenewalWindow } from "@/lib/engagement-utils";
 import { getClientPortfolioMetrics } from "@/lib/sales-workspace";
 import { getClients, createClient } from "@/server-functions/clients";
 import { APP_USERS, userById } from "@/lib/users";
+import { useIsExactPath } from "@/lib/routing-utils";
 import type { Client, RenewalRisk } from "@/lib/types";
 
 type ClientRow = Client & { renewal_risk: RenewalRisk };
@@ -59,6 +60,14 @@ function healthClass(score: number) {
 }
 
 function ClientsPage() {
+  const isIndexRoute = useIsExactPath("/clients");
+
+  if (!isIndexRoute) return <Outlet />;
+
+  return <ClientsIndex />;
+}
+
+function ClientsIndex() {
   const loaderClients = Route.useLoaderData();
   const router = useRouter();
   const [rows, setRows] = useState<ClientRow[]>(loaderClients);
