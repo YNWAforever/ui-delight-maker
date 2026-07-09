@@ -33,9 +33,7 @@ const NEON_AUTH_COOKIE_PREFIX = "__Secure-neon-auth";
 
 export function getNeonAuthUrl() {
   const url = process.env.NEON_AUTH_URL ?? process.env.VITE_NEON_AUTH_URL;
-  if (!url) {
-    throw new Error("Missing required env var: NEON_AUTH_URL or VITE_NEON_AUTH_URL");
-  }
+  if (!url) return null;
   return url.replace(/\/$/, "");
 }
 
