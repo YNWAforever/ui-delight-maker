@@ -15,7 +15,14 @@ export type QuoteStatus =
   | "sent"
   | "viewed"
   | "accepted"
-  | "rejected";
+  | "rejected"
+  | "expired"
+  | "revised";
+export type QuoteVersionReason = "issued" | "revised" | "accepted" | "change_order";
+export type PdfDocumentType = "quote" | "job_sheet";
+export type JobSheetStatus = "draft" | "accounting_review" | "accepted" | "change_required" | "cancelled";
+export type JobSheetBillingType = "deposit" | "progress" | "milestone" | "monthly" | "final" | "other";
+export type JobSheetPortionStatus = "planned" | "entered_in_xero" | "cancelled";
 export type TaskStatus = "open" | "in_progress" | "done";
 export type TaskPriority = "low" | "medium" | "high";
 export type ApprovalStatus = "pending" | "approved" | "rejected" | "escalated";
@@ -175,6 +182,17 @@ export interface Quote {
   account_id: string | null;
   deal_id: string | null;
   status: QuoteStatus;
+  quote_template_id: string | null;
+  accepted_version_id: string | null;
+  issued_version_id: string | null;
+  document_sections: JsonValue;
+  cover_text: string | null;
+  assumptions: string | null;
+  payment_terms: string | null;
+  accepted_at: string | null;
+  accepted_by: string | null;
+  parent_quote_id: string | null;
+  change_order_reason: string | null;
   total_value: number | null;
   currency: string;
   valid_until: string | null;
@@ -184,6 +202,117 @@ export interface Quote {
   approved_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface QuoteTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  active: boolean;
+  default_cover_text: string | null;
+  default_scope_sections: JsonValue;
+  default_assumptions: string | null;
+  default_payment_terms: string | null;
+  default_validity_days: number;
+  starter_line_items: JsonValue;
+  default_pdf_template_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PdfTemplate {
+  id: string;
+  name: string;
+  document_type: PdfDocumentType;
+  active: boolean;
+  brand_settings: JsonValue;
+  sections: JsonValue;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuoteLineItemRecord extends QuoteLineItem {
+  quote_id: string;
+  pricing_template_id: string | null;
+  product_id: string | null;
+  section_label: string | null;
+  total: number;
+  taxable: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuoteVersion {
+  id: string;
+  quote_id: string;
+  version_number: number;
+  reason: QuoteVersionReason;
+  snapshot: JsonValue;
+  pdf_template_id: string | null;
+  pdf_url: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface JobSheet {
+  id: string;
+  number: string;
+  quote_id: string;
+  accepted_quote_version_id: string;
+  account_id: string | null;
+  client_id: string | null;
+  contact_id: string | null;
+  sales_owner: string | null;
+  accounting_owner: string | null;
+  status: JobSheetStatus;
+  accepted_scope_summary: string | null;
+  po_number: string | null;
+  client_order_number: string | null;
+  xero_customer_reference: string | null;
+  accounting_notes: string | null;
+  special_billing_instructions: string | null;
+  total_amount: number;
+  currency: string;
+  accepted_at: string | null;
+  accepted_by: string | null;
+  locked_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JobSheetPortion {
+  id: string;
+  job_sheet_id: string;
+  name: string;
+  source_quote_line_item_ids: string[];
+  description: string | null;
+  amount: number;
+  currency: string;
+  target_invoice_date: string | null;
+  billing_type: JobSheetBillingType;
+  status: JobSheetPortionStatus;
+  xero_invoice_number: string | null;
+  xero_invoice_reference: string | null;
+  xero_invoice_date: string | null;
+  xero_notes: string | null;
+  internal_note: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JobSheetActivity {
+  id: string;
+  job_sheet_id: string;
+  actor_id: string | null;
+  action: string;
+  note: string | null;
+  diff_data: unknown;
+  created_at: string;
 }
 
 export interface Client {

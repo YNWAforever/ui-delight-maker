@@ -1,0 +1,683 @@
+## Task 7 Report: Accounting Job Sheet Queue And Detail UI
+
+### What changed
+
+- Added `src/routes/job-sheets.tsx` for the accounting job sheet queue with operational metrics, status badges, and empty-state handling.
+- Added `src/routes/job-sheets.$id.tsx` for the accounting handoff detail workspace using the real server functions:
+  - `getJobSheet`
+  - `updateJobSheetPortions`
+  - `acceptJobSheetForAccounting`
+  - `updatePortionXeroReference`
+- Added `src/components/job-sheets/job-sheet-status-badge.tsx` for accounting-facing job sheet status display.
+- Added `src/components/job-sheets/billing-portions-table.tsx` to show billing reconciliation, planned billing rows, and Xero reference state.
+- Added the Job Sheets entry to `src/components/app-sidebar.tsx`.
+- Captured the new routes in `src/routeTree.gen.ts`.
+- Added focused source coverage in `src/routes/__tests__/-job-sheets-source.test.ts`.
+
+### Files changed
+
+- `src/components/app-sidebar.tsx`
+- `src/components/job-sheets/job-sheet-status-badge.tsx`
+- `src/components/job-sheets/billing-portions-table.tsx`
+- `src/routes/job-sheets.tsx`
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+- `src/routeTree.gen.ts`
+
+### Verification
+
+#### Focused test
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts
+```
+
+Result:
+
+- PASS
+- 1 test file passed
+- 3 tests passed
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply script skipped because `DATABASE_URL` is not set
+- seed-on-deploy script skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- Vite client and SSR builds completed successfully
+- existing bundle-size warnings remained during build output
+
+### Self-review
+
+- Confirmed the detail route uses the committed `getJobSheet` export rather than inventing `getJobSheetDetail`.
+- Kept accounting scope constrained to manual reference tracking and acceptance workflow; no invoice creation, payment sync, ledger logic, or direct Xero integration was added.
+- Enforced the accepted/locked immutability rule in the UI by preventing billing-plan edits once the job sheet is locked.
+- Used `canAcceptJobSheet` for the accounting acceptance gate and surfaced reconciliation state in the workspace.
+
+---
+
+## Task 7 review-fix addendum
+
+### Review findings addressed
+
+- Replaced the string-only `src/routes/__tests__/-job-sheets-source.test.ts` assertions with behavior-level coverage:
+  - `BillingPortionsTable` now gets exercised through `renderToStaticMarkup(...)` with real props.
+  - The test asserts accepted total, planned billing total, reconciled copy, unreconciled delta copy, formatted dates, and Xero/description fallback text.
+  - The test also verifies acceptance-gate behavior through the real `canAcceptJobSheet(...)` helper.
+  - Exported the already-existing pure route helpers `toPortionDrafts` and `toXeroDrafts`, plus a narrow `isJobSheetCommercialLocked(...)` helper, so the accepted/locked rule is covered without adding browser-test infrastructure.
+
+### Additional files changed for the fix
+
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+
+### Verification evidence
+
+#### Focused behavior test
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts
+```
+
+Result:
+
+- PASS
+- 1 test file passed
+- 4 tests passed
+- Coverage focus moved from source-string inspection to rendered billing behavior and pure job-sheet workspace logic
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript debt outside Task 7 scope
+- No Task 7 job-sheet files appeared in the compiler output
+- Reported baseline files/errors included:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+Interpretation:
+
+- The explicit no-new-type-errors constraint remains satisfied for this fix set because the compiler output does not mention:
+  - `src/routes/job-sheets.$id.tsx`
+  - `src/routes/__tests__/-job-sheets-source.test.ts`
+  - any other Task 7 accounting job-sheet file
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply script skipped because `DATABASE_URL` is not set
+- seed-on-deploy script skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds both completed successfully
+
+Concrete warning evidence still present in build output:
+
+- chunk-size warnings for:
+  - `dist/client/assets/index-iqR1sbUI.js` at `620.32 kB`
+  - `dist/client/assets/neon-auth-provider-CqGMRBXE.js` at `729.69 kB`
+- existing external-import noise from framework internals:
+  - unused `createRequestHandler`, `defineHandlerCallback`, `transformPipeableStreamWithRouter`, `transformReadableStreamWithRouter`
+  - unused `RawStream`
+  - unused `hydrate` and `json`
+
+### Commit
+
+- `test: cover job sheet workspace behavior`
+
+---
+
+## Task 7 review-fix follow-up 2
+
+### Review findings addressed
+
+- Preserved `entered_in_xero` when hydrating billing-portion edit drafts so an accounting save no longer downgrades manually entered Xero-tracked rows back to `planned`.
+- Kept the edit UI safe for entered rows by showing a non-editable entered-in-Xero status display instead of offering the planned/cancelled select.
+- Replaced the `/job-sheets` accepted-value rollup with a per-currency summary string so mixed-currency accepted totals are no longer summed and labeled as HKD.
+- Updated the focused route test to assert the preserved `entered_in_xero` behavior and the mixed-currency accepted-value summary.
+
+### Files changed for this follow-up
+
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/job-sheets.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+
+### Verification evidence
+
+#### Focused test
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts
+```
+
+Result:
+
+- PASS
+- 1 test file passed
+- 5 tests passed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 files appeared in the compiler output
+- Reported baseline files/errors included:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply script skipped because `DATABASE_URL` is not set
+- seed-on-deploy script skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds completed successfully
+- existing chunk-size and framework unused-import warnings remained in build output
+
+### Commit
+
+- `fix: preserve job sheet accounting state`
+
+---
+
+## Task 7 review-fix follow-up 3
+
+### Review findings addressed
+
+- Exported focused route helpers so the draft-to-preview and draft-to-save mapping is covered by behavior tests instead of source inspection alone:
+  - `buildPreviewPortions(...)`
+  - `buildPortionSavePayload(...)`
+- Fixed preview mapping so edited draft values now drive billing preview rows and the accounting acceptance gate:
+  - draft `status` is respected for editable rows
+  - `entered_in_xero` rows still preserve their original entered status
+  - edited `amount` and `target_invoice_date` values flow into the preview rows
+- Preserved `target_invoice_date` through the billing-plan save path by threading it through:
+  - `PortionDraft`
+  - `toPortionDrafts(...)`
+  - `NewJobSheetPortion`
+  - repository insert payloads in `replaceJobSheetPortions(...)`
+- Added a billing-plan date input so accounting can edit the target invoice date that is now being saved.
+
+### Files changed for this follow-up
+
+- `src/lib/quote-to-cash.ts`
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+- `src/server/repositories/job-sheets.ts`
+- `src/server/repositories/__tests__/job-sheets.test.ts`
+- `src/server-functions/__tests__/job-sheets.test.ts`
+
+### Verification evidence
+
+#### Required focused tests
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts src/server/repositories/__tests__/job-sheets.test.ts src/server-functions/__tests__/job-sheets.test.ts
+```
+
+Result:
+
+- PASS
+- 3 test files passed
+- 24 tests passed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 files appeared in the compiler output
+- Reported baseline files/errors remained in:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply step skipped because `DATABASE_URL` is not set
+- seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds both completed successfully
+- existing chunk-size and framework unused-import warnings remained in build output
+
+---
+
+## Task 7 review-fix follow-up 4
+
+### Review findings addressed
+
+- Added a pure `hasUnsavedBillingDraftChanges(...)` helper so the acceptance gate can detect when the billing-plan drafts differ from the currently persisted save payload.
+- Added a pure `canShowAcceptAndLockAction(...)` helper so the action bar hides `Accept & lock` when the job sheet is already commercially locked, including the `locked_at`-but-not-accepted case.
+- Guarded the accept action itself so it now refuses with a toast when:
+  - commercial fields are already locked
+  - unsaved billing-plan changes exist, using the explicit message `Save the billing plan before accepting.`
+- Updated the acceptance-gate alert copy and the action button disabled state so the UI makes the save-before-accept requirement visible before the user clicks.
+- Added focused helper tests first, then implemented the minimal route changes to satisfy them.
+
+### Files changed for this follow-up
+
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+
+### Verification evidence
+
+#### Required focused tests
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts src/server/repositories/__tests__/job-sheets.test.ts src/server-functions/__tests__/job-sheets.test.ts
+```
+
+Result:
+
+- PASS
+- 3 test files passed
+- 26 tests passed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 job-sheet files appeared in the compiler output
+- Reported baseline files/errors remained in:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply step skipped because `DATABASE_URL` is not set
+- seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds both completed successfully
+- existing chunk-size and framework unused-import warnings remained in build output
+
+### Commit
+
+- `cfb5fd3` - `fix: require saved billing plan before acceptance`
+
+---
+
+## Task 7 review-fix follow-up 6
+
+### Review findings addressed
+
+- Extended `isAcceptAndLockDisabled(...)` so `Accept & lock` now disables for unsaved Xero drafts as well as unsaved billing drafts, active saves, and reconciliation failures.
+- Added a focused `getAcceptBlockedReason(...)` guard so `accept()` refuses with the clear toast `Save Xero references before accepting.` and avoids the Xero-draft data-loss path.
+- Added `getAcceptanceGateAlertConfig(...)` so the acceptance-gate alert copy is actionable when both billing and Xero drafts are dirty:
+  - both dirty: `Save or discard one set of edits before continuing.`
+  - ready/commercially locked: non-destructive `default` alert styling
+  - destructive styling remains limited to actual conflicts and reconciliation errors
+- Added helper-level test coverage first for:
+  - unsaved billing drafts disabling accept
+  - unsaved Xero drafts disabling accept
+  - unsaved Xero accept-block messaging
+  - non-destructive ready-state and dual-dirty acceptance-gate copy
+
+### Files changed for this follow-up
+
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+
+### Verification evidence
+
+#### Required focused tests
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts src/server/repositories/__tests__/job-sheets.test.ts src/server-functions/__tests__/job-sheets.test.ts
+```
+
+Result:
+
+- PASS
+- 3 test files passed
+- 30 tests passed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 files appeared in the compiler output
+- Reported baseline files/errors remained in:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply step skipped because `DATABASE_URL` is not set
+- seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds completed successfully
+- existing chunk-size and framework unused-import warnings remained in build output
+
+---
+
+## Task 7 review-fix follow-up 5
+
+### Review findings addressed
+
+- Added a pure `hasUnsavedXeroDraftChanges(...)` helper so the route can detect when manual Xero draft values differ from the currently persisted portion references.
+- Guarded the cross-panel save paths to prevent loader refreshes from silently wiping the other panel's unsaved work:
+  - billing-plan save now refuses with `Save Xero references before saving the billing plan.` when manual Xero edits are dirty
+  - Xero-reference save now refuses with `Save the billing plan before saving Xero references.` when billing-plan edits are dirty
+- Kept the existing save-before-accept guard and added a pure `isAcceptAndLockDisabled(...)` helper so `Accept & lock` stays disabled when reconciliation already fails, in addition to the existing busy/unsaved-billing cases.
+- Surfaced the cross-panel conflict inline in the UI so accounting can see why a save would be blocked before clicking.
+
+### Files changed for this follow-up
+
+- `.superpowers/sdd/task-7-report.md`
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+
+### Verification evidence
+
+#### Required focused tests
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts src/server/repositories/__tests__/job-sheets.test.ts src/server-functions/__tests__/job-sheets.test.ts
+```
+
+Result:
+
+- PASS
+- 3 test files passed
+- 28 tests passed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 job-sheet files appeared in the compiler output
+- Reported baseline files/errors remained in:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply step skipped because `DATABASE_URL` is not set
+- seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds both completed successfully
+- existing chunk-size and framework unused-import warnings remained in build output
+
+---
+
+## Task 7 review-fix follow-up 7
+
+### Review findings addressed
+
+- Added exported reset helpers so the dual-dirty conflict has a real escape path without inventing new persistence behavior:
+  - `resetBillingDrafts(...)`
+  - `resetXeroDrafts(...)`
+- Added a compact `Discard billing changes` action in the billing panel header that restores billing drafts from the persisted `portions` snapshot.
+- Added a compact `Discard Xero changes` action in the manual Xero panel header that restores Xero drafts from the persisted `portions` snapshot.
+- Kept the existing cross-panel save guards intact, so saving billing while Xero drafts are dirty and saving Xero while billing drafts are dirty both remain blocked.
+- Kept `Accept & lock` blocked through the existing guard path for unsaved billing drafts, unsaved Xero drafts, and unreconciled billing plans.
+
+### Files changed for this follow-up
+
+- `.superpowers/sdd/task-7-report.md`
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+
+### Verification evidence
+
+#### Required focused tests
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts src/server/repositories/__tests__/job-sheets.test.ts src/server-functions/__tests__/job-sheets.test.ts
+```
+
+Result:
+
+- PASS
+- 3 test files passed
+- 32 tests passed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 files appeared in the compiler output
+- Reported baseline files/errors remained in:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply step skipped because `DATABASE_URL` is not set
+- seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds both completed successfully
+- existing chunk-size warnings remained for:
+  - `dist/client/assets/index-Dv_SX3YB.js` at `620.37 kB`
+  - `dist/client/assets/neon-auth-provider-DGmufeMe.js` at `729.69 kB`
+- existing framework unused-import warnings remained in the build output
+
+### Commit
+
+- `fix: add job sheet draft discard actions`
+
+---
+
+## Task 7 review-fix follow-up 8
+
+### Review findings addressed
+
+- Added a shared `isJobSheetEditorBusy(...)` helper so the route treats any active billing save, Xero save, or accept flow as one editor-busy state.
+- Updated `isAcceptAndLockDisabled(...)` to consume that shared busy state, which now covers the previously-missed Xero-save-in-flight path.
+- Froze both edit surfaces for the full mutation-plus-invalidate window by routing the shared busy flag into:
+  - billing inputs, textarea, selects, discard action, and save action
+  - manual Xero inputs, textarea, discard action, and per-row save action
+  - `Accept & lock`
+- Kept the existing commercial lock and cross-panel dirty-guard behavior intact; this change only closes the rehydrate-after-save data-loss window.
+
+### Files changed for this follow-up
+
+- `.superpowers/sdd/task-7-report.md`
+- `src/routes/job-sheets.$id.tsx`
+- `src/routes/__tests__/-job-sheets-source.test.ts`
+
+### Verification evidence
+
+#### Required focused tests
+
+Command:
+
+```bash
+bun run vitest run src/routes/__tests__/-job-sheets-source.test.ts src/server/repositories/__tests__/job-sheets.test.ts src/server-functions/__tests__/job-sheets.test.ts
+```
+
+Result:
+
+- PASS
+- 3 test files passed
+- 34 tests passed
+- The new busy-state regression coverage failed first, then passed after the shared freeze wiring landed
+
+#### TypeScript
+
+Command:
+
+```bash
+bunx tsc --noEmit
+```
+
+Result:
+
+- FAIL due to pre-existing baseline TypeScript issues outside Task 7 scope
+- No Task 7 files appeared in the compiler output
+- Reported baseline files/errors remained in:
+  - `src/components/quotes/__tests__/quote-pdf-preview.test.ts`
+  - `src/components/quotes/quote-pdf-preview.tsx`
+  - `src/lib/__tests__/pipeline.test.ts`
+  - `src/lib/__tests__/sales-workspace.test.ts`
+  - `src/routes/quotes.new.tsx`
+  - `src/server-functions/automation-playbooks.ts`
+
+#### Build
+
+Command:
+
+```bash
+bun run build
+```
+
+Result:
+
+- PASS
+- schema apply step skipped because `DATABASE_URL` is not set
+- seed-on-deploy step skipped because `CLIENTOPS_SEED_ON_DEPLOY` is not `1`
+- client and SSR builds both completed successfully
+- existing warnings remained in the build output:
+  - chunk-size warnings for `dist/client/assets/index-DoI_8Xio.js` at `620.37 kB` and `dist/client/assets/neon-auth-provider-DCyryFB3.js` at `729.69 kB`
+  - existing framework unused-import noise from TanStack Start internals

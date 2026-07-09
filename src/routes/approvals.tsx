@@ -47,6 +47,7 @@ import { cn } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
 import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
 import { getApprovals, decideApproval } from "@/server-functions/approvals";
+import { approveAndIssueQuote, rejectQuote } from "@/server-functions/quotes";
 import type { HumanApproval } from "@/lib/types";
 import { APP_USERS, userById } from "@/lib/users";
 
@@ -118,6 +119,56 @@ function ApprovalsInbox() {
     return data?.quote_id ?? null;
   };
 
+  const approveApproval = async (approval: HumanApproval, notes?: string) => {
+    if (approval.approval_type === "quote_send") {
+      const quoteId = getQuoteId(approval);
+      if (!quoteId) throw new Error("Quote approval is missing quote context");
+
+      await approveAndIssueQuote({
+        data: {
+          id: quoteId,
+          approvalId: approval.id,
+          ...(notes ? { notes } : {}),
+        },
+      });
+      return;
+    }
+
+    await decideApproval({ data: { id: approval.id, decision: "approved", notes } });
+  };
+
+  const approveQuoteSendAsIs = async (approval: HumanApproval) => {
+    await approveApproval(approval, reason || undefined);
+    toast.success("Quote approved and issued");
+    setReason("");
+    router.invalidate();
+  };
+
+  const rejectApproval = async (approval: HumanApproval, notes?: string) => {
+    if (approval.approval_type === "quote_send") {
+      const quoteId = getQuoteId(approval);
+      if (!quoteId) throw new Error("Quote approval is missing quote context");
+
+      await rejectQuote({
+        data: {
+          id: quoteId,
+          approvalId: approval.id,
+          ...(notes ? { notes } : {}),
+        },
+      });
+      return;
+    }
+
+    await decideApproval({ data: { id: approval.id, decision: "rejected", notes } });
+  };
+
+  const rejectSelectedApproval = async (approval: HumanApproval) => {
+    await rejectApproval(approval, reason || undefined);
+    toast.success("Approval rejected");
+    setReason("");
+    router.invalidate();
+  };
+
   const [confirm, setConfirm] = useState<null | {
     title: string;
     description: string;
@@ -132,9 +183,8 @@ function ApprovalsInbox() {
 
   const bulkApprove = async () => {
     const n = bulk.size;
-    await Promise.all(
-      Array.from(bulk).map((id) => decideApproval({ data: { id, decision: "approved" } })),
-    );
+    const selectedApprovals = allApprovals.filter((approval) => bulk.has(approval.id));
+    await Promise.all(selectedApprovals.map((approval) => approveApproval(approval)));
     toast.success(`Approved ${n} request${n > 1 ? "s" : ""}`);
     setBulk(new Set());
     router.invalidate();
@@ -142,10 +192,9 @@ function ApprovalsInbox() {
 
   const bulkReject = async () => {
     const n = bulk.size;
+    const selectedApprovals = allApprovals.filter((approval) => bulk.has(approval.id));
     await Promise.all(
-      Array.from(bulk).map((id) =>
-        decideApproval({ data: { id, decision: "rejected", notes: rejectReason || undefined } }),
-      ),
+      selectedApprovals.map((approval) => rejectApproval(approval, rejectReason || undefined)),
     );
     toast.success(
       `Rejected ${n} request${n > 1 ? "s" : ""}${rejectReason ? ` — "${rejectReason}"` : ""}`,
@@ -408,21 +457,13 @@ function ApprovalsInbox() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() =>
-                                    decide(selected.id, "rejected", "Approval rejected")
-                                  }
+                                  onClick={() => rejectSelectedApproval(selected)}
                                 >
                                   <XCircle className="mr-2 h-4 w-4" /> Reject
                                 </Button>
                                 <Button
                                   size="sm"
-                                  onClick={() =>
-                                    decide(
-                                      selected.id,
-                                      "approved",
-                                      "Approved as-is — quote advanced",
-                                    )
-                                  }
+                                  onClick={() => approveQuoteSendAsIs(selected)}
                                 >
                                   <CheckCircle2 className="mr-2 h-4 w-4" /> Approve as-is
                                 </Button>

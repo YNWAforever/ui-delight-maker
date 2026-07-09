@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Network,
   CalendarDays,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -43,6 +44,7 @@ const acquireItems = [
 const convertItems = [
   { title: "Pipeline", url: "/", icon: LayoutDashboard, activePath: null },
   { title: "Quotes", url: "/quotes", icon: FileText },
+  { title: "Job Sheets", url: "/job-sheets", icon: ClipboardList },
   { title: "Approvals", url: "/approvals", icon: ShieldCheck },
   { title: "Campaigns", url: "/campaigns", icon: CalendarDays },
 ];

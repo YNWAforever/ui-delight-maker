@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 import {
   ArrowLeft,
@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   Download,
   File as FileIcon,
-  FileText,
   Send,
   Upload,
   XCircle,
@@ -15,8 +14,13 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
+import {
+  QuotePdfPreview,
+  QuotePdfPreviewUnavailable,
+  resolveQuotePdfSource,
+} from "@/components/quotes/quote-pdf-preview";
 import { StatusBadge } from "@/components/status-badge";
-import type { Lead } from "@/lib/types";
+import type { Client, Lead, PricingTemplate, QuoteLineItem, QuoteStatus, QuoteVersion } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,14 +31,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
 import { calculateTotal, newLineItem } from "@/lib/quote-utils";
-import type { PricingTemplate, QuoteLineItem, QuoteStatus } from "@/lib/types";
 import {
+  acceptQuoteAndCreateJobSheet,
+  approveAndIssueQuote,
+  approveQuote,
+  getQuoteVersions,
   getQuote,
   getPricingTemplates,
+  issueQuoteVersion,
+  rejectQuote,
   requestQuoteApproval,
   updateQuote,
 } from "@/server-functions/quotes";
-import { decideApproval } from "@/server-functions/approvals";
+import { getClient } from "@/server-functions/clients";
+import { getLead } from "@/server-functions/leads";
 import { USER_RECORD } from "@/lib/users";
 
 type Comment = { id: string; quote_id: string; author: string; body: string; created_at: string };
@@ -47,20 +57,9 @@ type QuoteFile = {
   uploaded_at: string;
   uploaded_by: string;
 };
-type QuoteVersion = {
-  version: number;
-  quote_id: string;
-  changed_by: string;
-  summary: string;
-  created_at: string;
-};
-
 const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
-// Lead lookups are not available client-side without a server call; return undefined gracefully
-const leadById = (_id: string) => undefined;
 const quoteComments: Comment[] = [];
 const quoteFiles: QuoteFile[] = [];
-const quoteVersions: QuoteVersion[] = [];
 
 export const Route = createFileRoute("/quotes/$id")({
   validateSearch: z.object({
@@ -68,11 +67,19 @@ export const Route = createFileRoute("/quotes/$id")({
     approvalId: z.string().optional(),
   }),
   loader: async ({ params }) => {
-    const [quote, templates] = await Promise.all([
-      getQuote({ data: { id: params.id } }),
-      getPricingTemplates(),
+    const [quote, templates] = await Promise.all([getQuote({ data: { id: params.id } }), getPricingTemplates()]);
+    const clientPromise = quote.client_id
+      ? getClient({ data: { id: quote.client_id } }).catch(() => null)
+      : Promise.resolve(null);
+    const leadPromise = quote.lead_id
+      ? getLead({ data: { id: quote.lead_id } }).catch(() => null)
+      : Promise.resolve(null);
+    const [versions, client, leadResult] = await Promise.all([
+      getQuoteVersions({ data: { quoteId: quote.id } }),
+      clientPromise,
+      leadPromise,
     ]);
-    return { quote, templates };
+    return { quote, templates, versions, client, lead: leadResult?.lead ?? null };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -100,16 +107,21 @@ const TIMELINE: QuoteStatus[] = [
   "accepted",
 ];
 
+const VERSION_REASON_LABELS: Record<QuoteVersion["reason"], string> = {
+  issued: "Issued snapshot",
+  revised: "Revision snapshot",
+  accepted: "Accepted snapshot",
+  change_order: "Change order snapshot",
+};
+
 function QuoteDetail() {
-  const { quote, templates } = Route.useLoaderData();
+  const { quote, templates, versions, lead, client } = Route.useLoaderData();
   const { edit, approvalId } = Route.useSearch();
   const isEditMode = edit === true || quote.status === "draft";
   const router = useRouter();
-  const lead = leadById(quote.lead_id ?? "") as Lead | undefined;
   const creator = userById(quote.created_by ?? "");
   const approver = quote.approved_by ? userById(quote.approved_by) : null;
   const initialComments = quoteComments.filter((c) => c.quote_id === quote.id);
-  const versions = quoteVersions.filter((v) => v.quote_id === quote.id);
   const initialFiles = quoteFiles.filter((f) => f.quote_id === quote.id);
 
   const navigate = useNavigate();
@@ -122,6 +134,17 @@ function QuoteDetail() {
   const [catalogueOpen, setCatalogueOpen] = useState(false);
 
   const totalValue = calculateTotal(editItems);
+  const resolvedPdfSource = resolveQuotePdfSource(quote, versions);
+  const previewSource = resolvedPdfSource.state !== "live"
+    ? resolvedPdfSource
+    : {
+        ...resolvedPdfSource,
+        quote: isEditMode ? { ...resolvedPdfSource.quote, total_value: totalValue } : resolvedPdfSource.quote,
+        lineItems: isEditMode ? editItems : resolvedPdfSource.lineItems,
+      };
+  const clientName =
+    client?.company_name ?? lead?.company_name ?? quote.client_id ?? quote.lead_id ?? "Client";
+  const currentPreviewVersionId = resolvedPdfSource.sourceVersion?.id ?? null;
 
   const updateItemQty = (idx: number, qty: number) => {
     setEditItems((prev) =>
@@ -144,12 +167,28 @@ function QuoteDetail() {
     setCatalogueOpen(false);
   };
 
+  const saveEditableQuoteFields = async () => {
+    await updateQuote({
+      data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } },
+    });
+  };
+
+  const approveAndIssueReviewedQuote = async () => {
+    if (!approvalId) {
+      throw new Error("Approval context missing");
+    }
+
+    await saveEditableQuoteFields();
+    const result = await approveAndIssueQuote({ data: { id: quote.id, approvalId } });
+    setStatus(result.quote.status);
+    toast.success("Quote approved and issued");
+    navigate({ to: "/approvals" });
+  };
+
   const handleSaveDraft = async () => {
     setSaving(true);
     try {
-      await updateQuote({
-        data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } },
-      });
+      await saveEditableQuoteFields();
       toast.success("Draft saved");
       router.invalidate();
     } catch (err) {
@@ -164,23 +203,10 @@ function QuoteDetail() {
     try {
       if (approvalId) {
         // Coming from Approvals "Review & Edit" flow:
-        // 1. Save edits + advance quote to "sent"
-        await updateQuote({
-          data: {
-            id: quote.id,
-            updates: { line_items: editItems, total_value: totalValue, status: "sent" },
-          },
-        });
-        // 2. Mark the human_approval record as approved
-        await decideApproval({ data: { id: approvalId, decision: "approved" } });
-        setStatus("sent");
-        toast.success("Quote approved and marked as sent");
-        navigate({ to: "/approvals" });
+        await approveAndIssueReviewedQuote();
       } else {
         // Plain draft edit: save + request approval (moves to pending_approval + triggers n8n)
-        await updateQuote({
-          data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } },
-        });
+        await saveEditableQuoteFields();
         await requestQuoteApproval({ data: { id: quote.id } });
         setStatus("pending_approval");
         toast.success("Quote submitted for approval");
@@ -195,18 +221,76 @@ function QuoteDetail() {
 
   const reachedIdx = TIMELINE.indexOf(status);
 
-  const advance = async (next: QuoteStatus, msg: string) => {
-    await updateQuote({ data: { id: quote.id, updates: { status: next } } });
-    setStatus(next);
-    router.invalidate();
-    toast.success(msg);
-  };
-
   const handleRequestApproval = async () => {
     await requestQuoteApproval({ data: { id: quote.id } });
     setStatus("pending_approval");
     router.invalidate();
     toast.success("Submitted for approval");
+  };
+
+  const handleRejectQuote = async () => {
+    try {
+      setSaving(true);
+      const result = await rejectQuote({ data: { id: quote.id, approvalId } });
+      setStatus(result.status);
+      toast.success("Quote rejected");
+      if (approvalId) {
+        navigate({ to: "/approvals" });
+      } else {
+        router.invalidate();
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Reject failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleApproveQuote = async () => {
+    try {
+      setSaving(true);
+      if (approvalId) {
+        await approveAndIssueReviewedQuote();
+        return;
+      }
+
+      const result = await approveQuote({ data: { id: quote.id } });
+      setStatus(result.status);
+      router.invalidate();
+      toast.success("Quote approved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Approval failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleIssueQuote = async () => {
+    try {
+      setSaving(true);
+      const result = await issueQuoteVersion({ data: { id: quote.id } });
+      setStatus(result.quote.status);
+      router.invalidate();
+      toast.success("Quote issued and PDF version created");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Issue failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAcceptQuote = async () => {
+    try {
+      setSaving(true);
+      const result = await acceptQuoteAndCreateJobSheet({ data: { id: quote.id } });
+      setStatus(result.quote.status);
+      router.invalidate();
+      toast.success(`Quote accepted. Job sheet ${result.jobSheet.number} is ready for accounting.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Acceptance failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addComment = () => {
@@ -249,7 +333,7 @@ function QuoteDetail() {
     <>
       <PageHeader
         title={quote.number ?? ""}
-        description={`${lead?.company_name ?? "—"} · ${formatCurrencyAmount(
+        description={`${clientName} · ${formatCurrencyAmount(
           quote.total_value,
           quote.currency,
         )}`}
@@ -260,12 +344,10 @@ function QuoteDetail() {
                 <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" /> All
               </Link>
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => toast.message("PDF download mocked")}
-            >
-              <Download aria-hidden="true" className="mr-2 h-4 w-4" /> PDF
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/quotes/$id/pdf" params={{ id: quote.id }}>
+                <Download aria-hidden="true" className="mr-2 h-4 w-4" /> PDF
+              </Link>
             </Button>
             {status === "draft" && (
               <Button size="sm" onClick={handleRequestApproval}>
@@ -277,18 +359,24 @@ function QuoteDetail() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => advance("rejected", "Quote rejected")}
+                  onClick={handleRejectQuote}
+                  disabled={saving}
                 >
                   <XCircle aria-hidden="true" className="mr-2 h-4 w-4" /> Reject
                 </Button>
-                <Button size="sm" onClick={() => advance("approved", "Quote approved")}>
+                <Button size="sm" onClick={handleApproveQuote} disabled={saving}>
                   <CheckCircle2 aria-hidden="true" className="mr-2 h-4 w-4" /> Approve
                 </Button>
               </>
             )}
             {status === "approved" && (
-              <Button size="sm" onClick={() => advance("sent", "Sent to client")}>
-                <Send aria-hidden="true" className="mr-2 h-4 w-4" /> Send to client
+              <Button size="sm" onClick={handleIssueQuote} disabled={saving}>
+                <Send aria-hidden="true" className="mr-2 h-4 w-4" /> Issue quote
+              </Button>
+            )}
+            {["sent", "viewed"].includes(status) && (
+              <Button size="sm" onClick={handleAcceptQuote} disabled={saving}>
+                <CheckCircle2 aria-hidden="true" className="mr-2 h-4 w-4" /> Mark accepted
               </Button>
             )}
           </>
@@ -431,7 +519,7 @@ function QuoteDetail() {
                           disabled={saving || editItems.length === 0}
                         >
                           <CheckCircle2 aria-hidden="true" className="mr-2 h-4 w-4" />
-                          {approvalId ? "Submit for Approval" : "Save & Request Approval"}
+                          {approvalId ? "Approve & Issue" : "Save & Request Approval"}
                         </Button>
                         <Button variant="outline" onClick={handleSaveDraft} disabled={saving}>
                           Save draft
@@ -521,14 +609,18 @@ function QuoteDetail() {
                 <TabsContent value="versions" className="mt-4">
                   <ol className="space-y-3">
                     {versions.map((v) => (
-                      <li key={v.version} className="flex items-start gap-3">
+                      <li key={v.id} className="flex items-start gap-3">
                         <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium">
-                          v{v.version}
+                          v{v.version_number}
                         </span>
                         <div className="text-sm">
-                          <p className="font-medium">{v.summary}</p>
+                          <p className="font-medium">
+                            {VERSION_REASON_LABELS[v.reason]}
+                            {v.id === currentPreviewVersionId ? " (current preview)" : ""}
+                          </p>
                           <p className="text-xs text-muted-foreground">
-                            {v.changed_by} · {formatDateTime(v.created_at)}
+                            {(v.created_by ? userById(v.created_by)?.name : null) ?? v.created_by ?? "System"} ·{" "}
+                            {formatDateTime(v.created_at)}
                           </p>
                         </div>
                       </li>
@@ -589,14 +681,16 @@ function QuoteDetail() {
                 </TabsContent>
 
                 <TabsContent value="preview" className="mt-4">
-                  <div className="flex aspect-[1/1.2] items-center justify-center rounded-md border-2 border-dashed border-border bg-muted/30">
-                    <div className="text-center">
-                      <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
-                      <p className="mt-3 text-sm font-medium">{quote.number}.pdf</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Generated when the quote is approved.
-                      </p>
-                    </div>
+                  <div className="overflow-hidden rounded-md border border-border bg-muted/20 p-3">
+                    {previewSource.state === "invalid" ? (
+                      <QuotePdfPreviewUnavailable error={previewSource.error} />
+                    ) : (
+                      <QuotePdfPreview
+                        quote={previewSource.quote}
+                        lineItems={previewSource.lineItems}
+                        clientName={clientName}
+                      />
+                    )}
                   </div>
                 </TabsContent>
               </Tabs>
