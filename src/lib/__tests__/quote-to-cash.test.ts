@@ -54,9 +54,12 @@ describe("calculateQuoteLineTotal", () => {
   it("preserves cents for decimal-priced lines", () => {
     expect(calculateQuoteLineTotal({ qty: 1, unit_price: 99.99 })).toBe(99.99);
     expect(calculateQuoteLineTotal({ qty: 1, unit_price: 10.49 })).toBe(10.49);
-    expect(calculateQuoteTotal([{ qty: 1, unit_price: 99.99 }, { qty: 1, unit_price: 10.49 }])).toBe(
-      110.48,
-    );
+    expect(
+      calculateQuoteTotal([
+        { qty: 1, unit_price: 99.99 },
+        { qty: 1, unit_price: 10.49 },
+      ]),
+    ).toBe(110.48);
   });
 });
 

@@ -26,10 +26,12 @@ describe("accounts repository", () => {
       query: "Acme",
     });
 
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("from accounts"),
-      ["owner-1", "cs-1", "prospect", "%Acme%"],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("from accounts"), [
+      "owner-1",
+      "cs-1",
+      "prospect",
+      "%Acme%",
+    ]);
   });
 
   it("creates accounts with prospect and empty tag defaults", async () => {

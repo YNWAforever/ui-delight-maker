@@ -11,11 +11,7 @@ const LABELS: Record<JobSheetStatus, string> = {
 
 export function JobSheetStatusBadge({ status }: { status: JobSheetStatus }) {
   const variant =
-    status === "accepted"
-      ? "default"
-      : status === "change_required"
-        ? "destructive"
-        : "secondary";
+    status === "accepted" ? "default" : status === "change_required" ? "destructive" : "secondary";
 
   return <Badge variant={variant}>{LABELS[status]}</Badge>;
 }

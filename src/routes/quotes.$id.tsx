@@ -20,7 +20,14 @@ import {
   resolveQuotePdfSource,
 } from "@/components/quotes/quote-pdf-preview";
 import { StatusBadge } from "@/components/status-badge";
-import type { Client, Lead, PricingTemplate, QuoteLineItem, QuoteStatus, QuoteVersion } from "@/lib/types";
+import type {
+  Client,
+  Lead,
+  PricingTemplate,
+  QuoteLineItem,
+  QuoteStatus,
+  QuoteVersion,
+} from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -67,7 +74,10 @@ export const Route = createFileRoute("/quotes/$id")({
     approvalId: z.string().optional(),
   }),
   loader: async ({ params }) => {
-    const [quote, templates] = await Promise.all([getQuote({ data: { id: params.id } }), getPricingTemplates()]);
+    const [quote, templates] = await Promise.all([
+      getQuote({ data: { id: params.id } }),
+      getPricingTemplates(),
+    ]);
     const clientPromise = quote.client_id
       ? getClient({ data: { id: quote.client_id } }).catch(() => null)
       : Promise.resolve(null);
@@ -135,13 +145,16 @@ function QuoteDetail() {
 
   const totalValue = calculateTotal(editItems);
   const resolvedPdfSource = resolveQuotePdfSource(quote, versions);
-  const previewSource = resolvedPdfSource.state !== "live"
-    ? resolvedPdfSource
-    : {
-        ...resolvedPdfSource,
-        quote: isEditMode ? { ...resolvedPdfSource.quote, total_value: totalValue } : resolvedPdfSource.quote,
-        lineItems: isEditMode ? editItems : resolvedPdfSource.lineItems,
-      };
+  const previewSource =
+    resolvedPdfSource.state !== "live"
+      ? resolvedPdfSource
+      : {
+          ...resolvedPdfSource,
+          quote: isEditMode
+            ? { ...resolvedPdfSource.quote, total_value: totalValue }
+            : resolvedPdfSource.quote,
+          lineItems: isEditMode ? editItems : resolvedPdfSource.lineItems,
+        };
   const clientName =
     client?.company_name ?? lead?.company_name ?? quote.client_id ?? quote.lead_id ?? "Client";
   const currentPreviewVersionId = resolvedPdfSource.sourceVersion?.id ?? null;
@@ -333,10 +346,7 @@ function QuoteDetail() {
     <>
       <PageHeader
         title={quote.number ?? ""}
-        description={`${clientName} · ${formatCurrencyAmount(
-          quote.total_value,
-          quote.currency,
-        )}`}
+        description={`${clientName} · ${formatCurrencyAmount(quote.total_value, quote.currency)}`}
         actions={
           <>
             <Button variant="outline" size="sm" asChild>
@@ -356,12 +366,7 @@ function QuoteDetail() {
             )}
             {status === "pending_approval" && (
               <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRejectQuote}
-                  disabled={saving}
-                >
+                <Button variant="outline" size="sm" onClick={handleRejectQuote} disabled={saving}>
                   <XCircle aria-hidden="true" className="mr-2 h-4 w-4" /> Reject
                 </Button>
                 <Button size="sm" onClick={handleApproveQuote} disabled={saving}>
@@ -619,8 +624,10 @@ function QuoteDetail() {
                             {v.id === currentPreviewVersionId ? " (current preview)" : ""}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {(v.created_by ? userById(v.created_by)?.name : null) ?? v.created_by ?? "System"} ·{" "}
-                            {formatDateTime(v.created_at)}
+                            {(v.created_by ? userById(v.created_by)?.name : null) ??
+                              v.created_by ??
+                              "System"}{" "}
+                            · {formatDateTime(v.created_at)}
                           </p>
                         </div>
                       </li>

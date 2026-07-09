@@ -8,7 +8,11 @@ import type {
   PricingTemplate,
   TouchpointRecord,
 } from "@/lib/types";
-import type { AccountTimelineEntry, RelationshipSignalSeverity, RelationshipSignalType } from "@/lib/relationship/types";
+import type {
+  AccountTimelineEntry,
+  RelationshipSignalSeverity,
+  RelationshipSignalType,
+} from "@/lib/relationship/types";
 import type { RelationshipSignal } from "@/lib/types";
 
 export type WorkflowTrigger =

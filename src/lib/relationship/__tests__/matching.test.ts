@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  findAccountMatch,
-  normalizeAccountName,
-  normalizeContactEmail,
-} from "../matching";
+import { findAccountMatch, normalizeAccountName, normalizeContactEmail } from "../matching";
 
 describe("relationship matching", () => {
   it("normalizes company names conservatively", () => {

@@ -51,7 +51,12 @@ describe("quote version repository", () => {
 
     await listQuoteVersions("quote-1");
 
-    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("from quote_versions"), ["quote-1"]);
-    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("order by version_number desc"), ["quote-1"]);
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("from quote_versions"), [
+      "quote-1",
+    ]);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("order by version_number desc"),
+      ["quote-1"],
+    );
   });
 });

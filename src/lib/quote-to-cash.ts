@@ -50,7 +50,9 @@ export function calculateQuoteLineTotal(item: Pick<QuoteLineItem, "qty" | "unit_
   return roundToMoney((Number(item.qty) || 0) * (Number(item.unit_price) || 0));
 }
 
-export function calculateQuoteTotal(items: Array<Pick<QuoteLineItem, "qty" | "unit_price">>): number {
+export function calculateQuoteTotal(
+  items: Array<Pick<QuoteLineItem, "qty" | "unit_price">>,
+): number {
   return roundToMoney(items.reduce((sum, item) => sum + calculateQuoteLineTotal(item), 0));
 }
 
@@ -74,7 +76,9 @@ export function getPortionReconciliation(
   totalAmount: number,
   portions: Array<{ amount: number }>,
 ): PortionReconciliation {
-  const portionTotal = roundToMoney(portions.reduce((sum, portion) => sum + (Number(portion.amount) || 0), 0));
+  const portionTotal = roundToMoney(
+    portions.reduce((sum, portion) => sum + (Number(portion.amount) || 0), 0),
+  );
   const roundedTotalAmount = roundToMoney(Number(totalAmount) || 0);
   const delta = roundToMoney(roundedTotalAmount - portionTotal);
   return {

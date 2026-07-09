@@ -77,7 +77,11 @@ export function QuoteDocumentEditor({ value, onChange }: QuoteDocumentEditorProp
     onChange({ ...value, document_sections: nextSections });
 
   const updateSection = (index: number, patch: Partial<QuoteDocumentSection>) =>
-    updateSections(sections.map((section, sectionIndex) => (sectionIndex === index ? { ...section, ...patch } : section)));
+    updateSections(
+      sections.map((section, sectionIndex) =>
+        sectionIndex === index ? { ...section, ...patch } : section,
+      ),
+    );
 
   const moveSection = (index: number, direction: -1 | 1) => {
     const nextIndex = index + direction;
@@ -93,7 +97,8 @@ export function QuoteDocumentEditor({ value, onChange }: QuoteDocumentEditorProp
 
   const addSection = () => updateSections([...sections, { ...EMPTY_SECTION }]);
 
-  const removeSection = (index: number) => updateSections(sections.filter((_, sectionIndex) => sectionIndex !== index));
+  const removeSection = (index: number) =>
+    updateSections(sections.filter((_, sectionIndex) => sectionIndex !== index));
 
   return (
     <div className="space-y-6">
@@ -146,7 +151,10 @@ export function QuoteDocumentEditor({ value, onChange }: QuoteDocumentEditorProp
         ) : (
           <div className="space-y-3">
             {sections.map((section, index) => (
-              <div key={`quote-section-${index}`} className="space-y-3 rounded-md border border-border p-4">
+              <div
+                key={`quote-section-${index}`}
+                className="space-y-3 rounded-md border border-border p-4"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">Section {index + 1}</span>

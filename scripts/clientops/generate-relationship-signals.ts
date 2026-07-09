@@ -40,7 +40,9 @@ export async function generateRelationshipSignals() {
     generated += rows.length;
   }
 
-  console.log(`Generated or updated ${generated} relationship signal${generated === 1 ? "" : "s"}.`);
+  console.log(
+    `Generated or updated ${generated} relationship signal${generated === 1 ? "" : "s"}.`,
+  );
 }
 
 async function main() {

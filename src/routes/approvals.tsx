@@ -461,10 +461,7 @@ function ApprovalsInbox() {
                                 >
                                   <XCircle className="mr-2 h-4 w-4" /> Reject
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => approveQuoteSendAsIs(selected)}
-                                >
+                                <Button size="sm" onClick={() => approveQuoteSendAsIs(selected)}>
                                   <CheckCircle2 className="mr-2 h-4 w-4" /> Approve as-is
                                 </Button>
                               </>

@@ -20,8 +20,19 @@ export type QuoteStatus =
   | "revised";
 export type QuoteVersionReason = "issued" | "revised" | "accepted" | "change_order";
 export type PdfDocumentType = "quote" | "job_sheet";
-export type JobSheetStatus = "draft" | "accounting_review" | "accepted" | "change_required" | "cancelled";
-export type JobSheetBillingType = "deposit" | "progress" | "milestone" | "monthly" | "final" | "other";
+export type JobSheetStatus =
+  | "draft"
+  | "accounting_review"
+  | "accepted"
+  | "change_required"
+  | "cancelled";
+export type JobSheetBillingType =
+  | "deposit"
+  | "progress"
+  | "milestone"
+  | "monthly"
+  | "final"
+  | "other";
 export type JobSheetPortionStatus = "planned" | "entered_in_xero" | "cancelled";
 export type TaskStatus = "open" | "in_progress" | "done";
 export type TaskPriority = "low" | "medium" | "high";
@@ -70,10 +81,21 @@ export type StakeholderSentiment = "positive" | "neutral" | "negative" | "unknow
 export type RelationshipStrength = "weak" | "developing" | "strong";
 export type ConsentStatus = "unknown" | "opted_in" | "opted_out";
 export type EngagementDirection = "inbound" | "outbound" | "internal";
-export type CampaignType = "campaign" | "webinar" | "workshop" | "activation" | "outbound" | "client_event";
+export type CampaignType =
+  | "campaign"
+  | "webinar"
+  | "workshop"
+  | "activation"
+  | "outbound"
+  | "client_event";
 export type CampaignStatus = "draft" | "planned" | "active" | "completed" | "archived";
 export type AttendeeStatus = "attended" | "met" | "high_intent" | "unknown";
-export type FollowUpStatus = "not_started" | "task_created" | "in_progress" | "completed" | "dismissed";
+export type FollowUpStatus =
+  | "not_started"
+  | "task_created"
+  | "in_progress"
+  | "completed"
+  | "dismissed";
 export type ConversionOutcome = "none" | "lead" | "quote" | "engagement" | "client_activity";
 export type AutomationTriggerType =
   | "manual"

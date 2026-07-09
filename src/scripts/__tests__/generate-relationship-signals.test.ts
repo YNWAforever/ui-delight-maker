@@ -69,9 +69,8 @@ describe("generate-relationship-signals script", () => {
       .mockResolvedValueOnce([{ id: "signal-1" }, { id: "signal-2" }])
       .mockResolvedValueOnce([{ id: "signal-3" }]);
 
-    const { generateRelationshipSignals } = await import(
-      "../../../scripts/clientops/generate-relationship-signals"
-    );
+    const { generateRelationshipSignals } =
+      await import("../../../scripts/clientops/generate-relationship-signals");
 
     await generateRelationshipSignals();
 
@@ -88,11 +87,9 @@ describe("generate-relationship-signals script", () => {
       expect.stringContaining("join clients c on c.id = e.client_id"),
       ["account-1"],
     );
-    expect(mockQuery).toHaveBeenNthCalledWith(
-      4,
-      "select * from quotes where account_id = $1",
-      ["account-1"],
-    );
+    expect(mockQuery).toHaveBeenNthCalledWith(4, "select * from quotes where account_id = $1", [
+      "account-1",
+    ]);
     expect(mockQuery).toHaveBeenNthCalledWith(
       5,
       "select * from campaign_members where account_id = $1",

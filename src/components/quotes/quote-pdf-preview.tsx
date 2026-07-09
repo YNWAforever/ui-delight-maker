@@ -88,7 +88,9 @@ function readSnapshotLineItems(value: JsonValue): QuoteLineItem[] | null {
   }
 
   const lineItems = value.map(readSnapshotLineItem);
-  return lineItems.every((lineItem): lineItem is QuoteLineItem => lineItem !== null) ? lineItems : null;
+  return lineItems.every((lineItem): lineItem is QuoteLineItem => lineItem !== null)
+    ? lineItems
+    : null;
 }
 
 export function readQuotePdfSnapshot(snapshot: JsonValue): QuotePdfSnapshotData | null {
@@ -142,7 +144,8 @@ export function resolveQuotePdfSource(
     };
   }
 
-  const sourceVersion = versions.find((version) => version.id === immutableReference.versionId) ?? null;
+  const sourceVersion =
+    versions.find((version) => version.id === immutableReference.versionId) ?? null;
 
   if (!sourceVersion) {
     return {
@@ -198,8 +201,8 @@ export function QuotePdfPreviewUnavailable({ error }: QuotePdfPreviewUnavailable
     <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
       <p className="font-medium">PDF preview unavailable</p>
       <p className="mt-1">
-        This quote points to an immutable {versionLabel} snapshot, but {detail} Repair the snapshot reference before
-        rendering a PDF preview.
+        This quote points to an immutable {versionLabel} snapshot, but {detail} Repair the snapshot
+        reference before rendering a PDF preview.
       </p>
       <p className="mt-2 text-xs text-amber-800">Snapshot id: {error.versionId}</p>
     </div>
@@ -208,7 +211,9 @@ export function QuotePdfPreviewUnavailable({ error }: QuotePdfPreviewUnavailable
 
 export function QuotePdfPreview({ quote, lineItems, clientName }: QuotePdfPreviewProps) {
   const sections = normalizeQuoteDocumentSections(quote.document_sections).filter(
-    (section) => section.visible && [section.title, section.label, section.body].some((value) => value.trim().length > 0),
+    (section) =>
+      section.visible &&
+      [section.title, section.label, section.body].some((value) => value.trim().length > 0),
   );
 
   return (
@@ -220,7 +225,9 @@ export function QuotePdfPreview({ quote, lineItems, clientName }: QuotePdfPrevie
         <p className="mt-1 text-sm text-slate-600">Valid until {formatDate(quote.valid_until)}</p>
       </header>
 
-      {quote.cover_text && <section className="mt-6 whitespace-pre-wrap text-sm">{quote.cover_text}</section>}
+      {quote.cover_text && (
+        <section className="mt-6 whitespace-pre-wrap text-sm">{quote.cover_text}</section>
+      )}
 
       {sections.map((section, index) => (
         <section key={`${section.title}-${index}`} className="mt-6">
@@ -235,7 +242,9 @@ export function QuotePdfPreview({ quote, lineItems, clientName }: QuotePdfPrevie
       ))}
 
       <section className="mt-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Commercials</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Commercials
+        </h2>
         <table className="mt-3 w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-left">
@@ -253,7 +262,9 @@ export function QuotePdfPreview({ quote, lineItems, clientName }: QuotePdfPrevie
                   <div className="text-xs text-slate-500">{item.description}</div>
                 </td>
                 <td className="py-2 text-right">{item.qty}</td>
-                <td className="py-2 text-right">{formatCurrencyAmount(item.unit_price, quote.currency)}</td>
+                <td className="py-2 text-right">
+                  {formatCurrencyAmount(item.unit_price, quote.currency)}
+                </td>
                 <td className="py-2 text-right">
                   {formatCurrencyAmount(item.qty * item.unit_price, quote.currency)}
                 </td>
@@ -268,14 +279,18 @@ export function QuotePdfPreview({ quote, lineItems, clientName }: QuotePdfPrevie
 
       {quote.assumptions && (
         <section className="mt-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Assumptions</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Assumptions
+          </h2>
           <p className="mt-2 whitespace-pre-wrap text-sm">{quote.assumptions}</p>
         </section>
       )}
 
       {quote.payment_terms && (
         <section className="mt-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Payment Terms</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Payment Terms
+          </h2>
           <p className="mt-2 whitespace-pre-wrap text-sm">{quote.payment_terms}</p>
         </section>
       )}

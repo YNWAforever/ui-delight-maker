@@ -208,7 +208,9 @@ export async function createJobSheetFromAcceptedQuote(
       throw new Error("Failed to create job sheet");
     }
 
-    const lockedJobSheet = await getJobSheetByIdWithOptions(jobSheet.id, client, { forUpdate: true });
+    const lockedJobSheet = await getJobSheetByIdWithOptions(jobSheet.id, client, {
+      forUpdate: true,
+    });
     const existingPortions = await listJobSheetPortions(lockedJobSheet.id, client);
     if (existingPortions.length === 0) {
       await createDefaultPortionsFromAcceptedVersion(
@@ -365,13 +367,7 @@ export async function updateJobSheetXeroReference(
       where id = $5
       returning *
     `,
-    [
-      xeroInvoiceNumber,
-      xeroInvoiceReference,
-      xeroInvoiceDate,
-      xeroNotes,
-      input.portion_id,
-    ],
+    [xeroInvoiceNumber, xeroInvoiceReference, xeroInvoiceDate, xeroNotes, input.portion_id],
   );
 
   if (!portion) {

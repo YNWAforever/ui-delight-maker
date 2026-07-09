@@ -63,7 +63,8 @@ const immutableVersionReferenceColumns = ["accepted_version_id", "issued_version
 
 function assertNoLifecycleUpdates(updates: Partial<Quote>) {
   const lifecycleFields = Object.keys(updates).filter(
-    (field) => updates[field as keyof Quote] !== undefined && lifecycleQuoteUpdateColumnSet.has(field),
+    (field) =>
+      updates[field as keyof Quote] !== undefined && lifecycleQuoteUpdateColumnSet.has(field),
   );
 
   if (lifecycleFields.length > 0) {
@@ -148,9 +149,15 @@ async function updateQuoteRow(
     ...updates,
     line_items: updates.line_items === undefined ? undefined : JSON.stringify(updates.line_items),
     document_sections:
-      updates.document_sections === undefined ? undefined : JSON.stringify(updates.document_sections),
+      updates.document_sections === undefined
+        ? undefined
+        : JSON.stringify(updates.document_sections),
   };
-  const update = buildUpdate(normalizedUpdates, allowedColumns, immutableVersionReferenceGuard.nextIndex);
+  const update = buildUpdate(
+    normalizedUpdates,
+    allowedColumns,
+    immutableVersionReferenceGuard.nextIndex,
+  );
   const quote = await queryOne<Quote>(
     `
       update quotes
@@ -179,36 +186,36 @@ async function updateQuoteRow(
 
 export async function createQuote(input: CreateQuoteInput, db?: Queryable) {
   const work = async (client?: Queryable) => {
-  const quote = await queryOne<Quote>(
-    `
+    const quote = await queryOne<Quote>(
+      `
       insert into quotes
         (number, lead_id, client_id, contact_id, account_id, deal_id, status, total_value, currency, valid_until, line_items, quote_template_id, document_sections, cover_text, assumptions, payment_terms, created_by)
       values
         ($1, $2, $3, $4, $5, $6, 'draft', $7, coalesce($8, 'HKD'), $9, coalesce($10::jsonb, '[]'::jsonb), $11, coalesce($12::jsonb, '[]'::jsonb), $13, $14, $15, $16)
       returning *
     `,
-    [
-      input.number ?? null,
-      input.lead_id ?? null,
-      input.client_id ?? null,
-      input.contact_id ?? null,
-      input.account_id ?? null,
-      input.deal_id ?? null,
-      input.total_value ?? null,
-      input.currency ?? null,
-      input.valid_until ?? null,
-      input.line_items === undefined ? null : JSON.stringify(input.line_items),
-      input.quote_template_id ?? null,
-      input.document_sections === undefined ? null : JSON.stringify(input.document_sections),
-      input.cover_text ?? null,
-      input.assumptions ?? null,
-      input.payment_terms ?? null,
-      input.created_by ?? null,
-    ],
-    client,
-  );
+      [
+        input.number ?? null,
+        input.lead_id ?? null,
+        input.client_id ?? null,
+        input.contact_id ?? null,
+        input.account_id ?? null,
+        input.deal_id ?? null,
+        input.total_value ?? null,
+        input.currency ?? null,
+        input.valid_until ?? null,
+        input.line_items === undefined ? null : JSON.stringify(input.line_items),
+        input.quote_template_id ?? null,
+        input.document_sections === undefined ? null : JSON.stringify(input.document_sections),
+        input.cover_text ?? null,
+        input.assumptions ?? null,
+        input.payment_terms ?? null,
+        input.created_by ?? null,
+      ],
+      client,
+    );
 
-  if (!quote) throw new Error("Failed to create quote");
+    if (!quote) throw new Error("Failed to create quote");
     if (input.line_items === undefined) {
       return quote;
     }
@@ -242,7 +249,11 @@ export async function updateQuote(id: string, updates: Partial<Quote>, db?: Quer
     }
 
     if (!hasNonLineItemUpdate) {
-      const existingQuote = await queryOne<Quote>("select * from quotes where id = $1", [id], client);
+      const existingQuote = await queryOne<Quote>(
+        "select * from quotes where id = $1",
+        [id],
+        client,
+      );
       if (!existingQuote) {
         throw new Error("Quote not found");
       }

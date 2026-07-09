@@ -5,7 +5,9 @@ import type { Campaign, CampaignMember } from "@/lib/types";
 export type CampaignFilters = { status?: string; type?: string; owner?: string };
 
 export type CreateCampaignInput = Pick<Campaign, "name"> &
-  Partial<Pick<Campaign, "type" | "status" | "objective" | "owner" | "starts_at" | "ends_at" | "notes">>;
+  Partial<
+    Pick<Campaign, "type" | "status" | "objective" | "owner" | "starts_at" | "ends_at" | "notes">
+  >;
 
 export type CreateCampaignMemberInput = Pick<CampaignMember, "campaign_id"> &
   Partial<
@@ -43,7 +45,10 @@ export async function listCampaigns(filters: CampaignFilters = {}) {
     ["type", filters.type],
     ["owner", filters.owner],
   ]);
-  return query<Campaign>(`select * from campaigns ${where.sql} order by created_at desc`, where.values);
+  return query<Campaign>(
+    `select * from campaigns ${where.sql} order by created_at desc`,
+    where.values,
+  );
 }
 
 export async function getCampaignWithMembers(id: string) {

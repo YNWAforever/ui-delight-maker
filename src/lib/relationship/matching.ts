@@ -15,7 +15,8 @@ export type AccountMatchResult =
   | { kind: "ambiguous"; accountIds: string[] }
   | { kind: "new" };
 
-const COMPANY_SUFFIX_PATTERN = /\b(limited|ltd|ltd\.|inc|inc\.|company|co|co\.|corp|corporation)\b/gi;
+const COMPANY_SUFFIX_PATTERN =
+  /\b(limited|ltd|ltd\.|inc|inc\.|company|co|co\.|corp|corporation)\b/gi;
 
 export function normalizeAccountName(name: string): string {
   return name
@@ -34,13 +35,19 @@ export function normalizeContactEmail(email?: string | null): string | null {
 }
 
 function normalizeDomain(domain?: string | null): string | null {
-  const normalized = domain?.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "");
+  const normalized = domain
+    ?.trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "");
   return normalized && normalized.length > 0 ? normalized.split("/")[0] : null;
 }
 
 export function findAccountMatch(input: AccountMatchInput): AccountMatchResult {
   const targetName = normalizeAccountName(input.companyName);
-  const nameMatches = input.accounts.filter((account) => normalizeAccountName(account.name) === targetName);
+  const nameMatches = input.accounts.filter(
+    (account) => normalizeAccountName(account.name) === targetName,
+  );
 
   if (nameMatches.length === 1) {
     return { kind: "matched", accountId: nameMatches[0].id, matchedBy: "name" };

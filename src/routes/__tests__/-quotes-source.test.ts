@@ -9,7 +9,9 @@ describe("quote detail lifecycle source", () => {
 
     expect(source).toContain("approveAndIssueQuote");
     expect(source).toContain("await approveAndIssueQuote({");
-    expect(source).not.toContain('updates: { line_items: editItems, total_value: totalValue, status: "sent" }');
+    expect(source).not.toContain(
+      'updates: { line_items: editItems, total_value: totalValue, status: "sent" }',
+    );
   });
 
   it("does not expose a generic status advance helper backed by updateQuote", () => {
