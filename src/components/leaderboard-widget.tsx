@@ -191,22 +191,29 @@ function migrate(version: number, state: unknown): PersistedState | null {
   return coerceState(state);
 }
 
-function loadPersisted(): PersistedState | null {
+type LoadResult = {
+  state: PersistedState | null;
+  version: number | null;
+  migrated: boolean;
+};
+
+function loadPersisted(): LoadResult {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return null;
+    if (!raw) return { state: null, version: null, migrated: false };
     const parsed = JSON.parse(raw) as unknown;
 
     // v2+ envelope: { version, state }
     if (parsed && typeof parsed === "object" && "version" in parsed && "state" in parsed) {
       const env = parsed as PersistedEnvelope;
-      return migrate(typeof env.version === "number" ? env.version : 1, env.state);
+      const version = typeof env.version === "number" ? env.version : 1;
+      return { state: migrate(version, env.state), version, migrated: version !== LS_VERSION };
     }
 
     // Legacy v1: bare state object. Migrate forward.
-    return migrate(1, parsed);
+    return { state: migrate(1, parsed), version: 1, migrated: true };
   } catch {
-    return null;
+    return { state: null, version: null, migrated: false };
   }
 }
 
@@ -274,7 +281,8 @@ function syncQuery(state: PersistedState) {
 }
 
 export function LeaderboardWidget() {
-  const persisted = loadPersisted();
+  const loaded = loadPersisted();
+  const persisted = loaded.state;
   const query = loadFromQuery();
   const initial = { ...(persisted ?? {}), ...(query ?? {}) } as Partial<PersistedState>;
 
@@ -288,6 +296,8 @@ export function LeaderboardWidget() {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [showRestored, setShowRestored] = useState(persisted !== null || query !== null);
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [storedVersion] = useState<number | null>(loaded.version);
+  const [wasMigrated] = useState<boolean>(loaded.migrated);
 
   useEffect(() => {
     if (!showRestored) return;
@@ -451,6 +461,20 @@ export function LeaderboardWidget() {
         <div>
           <CardTitle className="flex items-center gap-2 text-base">
             <Trophy className="h-4 w-4 text-primary" /> Agent leaderboard
+            {storedVersion !== null && (
+              <Badge
+                variant={wasMigrated ? "default" : "secondary"}
+                className="text-[10px] font-normal"
+                title={
+                  wasMigrated
+                    ? `Migrated from v${storedVersion} to v${LS_VERSION}`
+                    : `Saved schema v${storedVersion}`
+                }
+              >
+                v{storedVersion}
+                {wasMigrated ? ` → v${LS_VERSION}` : ""}
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>
             Ranked by {SORT_LABELS[sortKey].toLowerCase()}. Highlights respect your threshold rules.
