@@ -30,8 +30,8 @@ export const getCampaign = createServerFn({ method: "GET" })
 export const createCampaign = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateCampaignInput)
   .handler(async ({ data }) => {
-    await requireNeonAuthSession();
-    return createCampaignInNeon(data);
+    const session = await requireNeonAuthSession();
+    return createCampaignInNeon({ ...data, owner: session.user.id });
   });
 
 export const updateCampaign = createServerFn({ method: "POST" })

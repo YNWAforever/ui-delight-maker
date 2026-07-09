@@ -88,7 +88,9 @@ describe("ported CRM server functions", () => {
     mockListAccounts.mockResolvedValue([{ id: "account-1" }]);
     const { getAccounts } = await import("../accounts");
 
-    await expect(getAccounts({ data: { owner: "owner-1" } })).resolves.toEqual([{ id: "account-1" }]);
+    await expect(getAccounts({ data: { owner: "owner-1" } })).resolves.toEqual([
+      { id: "account-1" },
+    ]);
     expect(mockRequireNeonAuthSession).toHaveBeenCalledTimes(1);
     expect(mockListAccounts).toHaveBeenCalledWith({ owner: "owner-1" });
   });
@@ -97,9 +99,8 @@ describe("ported CRM server functions", () => {
     mockListAccountContacts.mockResolvedValue([{ id: "contact-1" }]);
     mockCreateAccountContact.mockResolvedValue({ id: "contact-1" });
     mockUpdateAccountContact.mockResolvedValue({ id: "contact-1", active: false });
-    const { getAccountContacts, createAccountContact, updateAccountContact } = await import(
-      "../contacts"
-    );
+    const { getAccountContacts, createAccountContact, updateAccountContact } =
+      await import("../contacts");
 
     await expect(getAccountContacts({ data: { accountId: "account-1" } })).resolves.toEqual([
       { id: "contact-1" },
@@ -133,6 +134,26 @@ describe("ported CRM server functions", () => {
     expect(mockRequireNeonAuthSession).toHaveBeenCalledTimes(2);
     expect(mockGetCampaignWithMembers).toHaveBeenCalledWith("campaign-1");
     expect(mockCreateCampaignMember).toHaveBeenCalledWith({ campaign_id: "campaign-1" });
+  });
+
+  it("uses the authenticated profile as owner when creating campaigns", async () => {
+    mockRequireNeonAuthSession.mockResolvedValueOnce({ user: { id: "signed-in-user" } });
+    mockCreateCampaign.mockResolvedValue({ id: "campaign-1", owner: "signed-in-user" });
+    const { createCampaign } = await import("../campaigns");
+
+    await expect(
+      createCampaign({
+        data: {
+          name: "Codex smoke campaign",
+          owner: "00000000-0000-0000-0000-000000000001",
+        },
+      }),
+    ).resolves.toEqual({ id: "campaign-1", owner: "signed-in-user" });
+
+    expect(mockCreateCampaign).toHaveBeenCalledWith({
+      name: "Codex smoke campaign",
+      owner: "signed-in-user",
+    });
   });
 
   it("requires auth before loading the account timeline", async () => {
