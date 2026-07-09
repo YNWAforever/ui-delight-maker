@@ -6,6 +6,10 @@ import { createJobSheetFromAcceptedQuote } from "@/server/repositories/job-sheet
 import { listPdfTemplates, listQuoteTemplates } from "@/server/repositories/quote-templates";
 import { createQuoteVersion, listQuoteVersions } from "@/server/repositories/quote-versions";
 import {
+  decideApproval as decideApprovalInNeon,
+  getApproval as getApprovalFromNeon,
+} from "@/server/repositories/approvals";
+import {
   createAgentRun,
   findActiveRun,
   updateAgentRunResult,
@@ -16,10 +20,11 @@ import {
   listActivePricingTemplates,
   listQuoteLineItems,
   listQuotes,
+  updateQuoteLifecycle as updateQuoteLifecycleInNeon,
   updateQuote as updateQuoteInNeon,
 } from "@/server/repositories/quotes";
 import { serializeAgentRun } from "@/server-functions/serializers";
-import type { JsonValue, PricingTemplate, Quote, QuoteVersion } from "@/lib/types";
+import type { HumanApproval, JsonValue, PricingTemplate, Quote, QuoteVersion } from "@/lib/types";
 
 type GetQuotesInput = {
   status?: string;
@@ -50,6 +55,26 @@ export type CreateQuoteInput = Pick<Quote, "lead_id" | "currency"> &
     >
   >;
 
+const lifecycleQuoteUpdateFields = new Set([
+  "status",
+  "accepted_version_id",
+  "issued_version_id",
+  "accepted_at",
+  "accepted_by",
+  "pdf_url",
+  "approved_by",
+]);
+
+function assertNoLifecycleQuoteUpdates(updates: Partial<Quote>) {
+  const lifecycleFields = Object.keys(updates).filter(
+    (field) => updates[field as keyof Quote] !== undefined && lifecycleQuoteUpdateFields.has(field),
+  );
+
+  if (lifecycleFields.length > 0) {
+    throw new Error("Quote lifecycle fields must be changed through workflow actions");
+  }
+}
+
 export const getQuotes = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as GetQuotesInput)
   .handler(async ({ data }) => {
@@ -75,6 +100,7 @@ export const updateQuote = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: Partial<Quote> })
   .handler(async ({ data }) => {
     await requireNeonAuthSession();
+    assertNoLifecycleQuoteUpdates(data.updates);
     return updateQuoteInNeon(data.id, data.updates);
   });
 
@@ -82,7 +108,7 @@ export const requestQuoteApproval = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
     await requireNeonAuthSession();
-    return updateQuoteInNeon(data.id, { status: "pending_approval" });
+    return updateQuoteLifecycleInNeon(data.id, { status: "pending_approval" });
   });
 
 export const triggerQuoteAgent = createServerFn({ method: "POST" })
@@ -206,35 +232,152 @@ function assertQuoteCanBeAccepted(quote: Quote) {
   throw new Error("Only sent or viewed quotes can be accepted");
 }
 
+function assertQuoteCanBeApproved(quote: Quote) {
+  if (quote.status === "pending_approval" || quote.status === "approved" || quote.status === "sent") {
+    return;
+  }
+
+  throw new Error("Only pending quotes can be approved");
+}
+
+function assertQuoteCanBeRejected(quote: Quote) {
+  if (quote.status === "pending_approval" || quote.status === "rejected") {
+    return;
+  }
+
+  throw new Error("Only pending quotes can be rejected");
+}
+
+function assertQuoteSendApprovalMatchesQuote(approval: HumanApproval, quoteId: string) {
+  if (approval.approval_type !== "quote_send") {
+    throw new Error("Only quote-send approvals can issue quotes");
+  }
+
+  const context = approval.context_data as { quote_id?: unknown } | null;
+  const approvalQuoteId = typeof context?.quote_id === "string" ? context.quote_id : null;
+  if (!approvalQuoteId) {
+    throw new Error("Approval does not reference quote");
+  }
+  if (approvalQuoteId !== quoteId) {
+    throw new Error("Approval does not match quote");
+  }
+}
+
+function assertPendingQuoteSendApproval(approval: HumanApproval) {
+  if (approval.status !== "pending") {
+    throw new Error("Only pending quote-send approvals can change quote lifecycle");
+  }
+}
+
+async function approveQuoteForSession(quoteId: string, userId: string) {
+  const quote = await getQuoteFromNeon(quoteId);
+  assertQuoteCanBeApproved(quote);
+
+  if (quote.status === "approved" || quote.status === "sent") {
+    return quote;
+  }
+
+  return updateQuoteLifecycleInNeon(quote.id, {
+    status: "approved",
+    approved_by: userId,
+  });
+}
+
+async function issueQuoteVersionForSession(
+  quote: Quote,
+  userId: string,
+  pdfTemplateId?: string | null,
+) {
+  assertQuoteCanBeIssued(quote);
+  const snapshot = await buildNormalizedQuoteSnapshot(quote);
+  const version = quote.issued_version_id
+    ? await getExistingQuoteVersionOrThrow(quote.id, quote.issued_version_id)
+    : ((await findExistingQuoteVersionByReason(quote.id, "issued")) ??
+      (await createQuoteVersion({
+        quote_id: quote.id,
+        reason: "issued",
+        snapshot,
+        pdf_template_id: pdfTemplateId ?? null,
+        pdf_url: `/quotes/${quote.id}/pdf`,
+        created_by: userId,
+      })));
+  const needsIssueUpdate = quote.status !== "sent" || quote.pdf_url !== version.pdf_url;
+  const updated =
+    !quote.issued_version_id || needsIssueUpdate
+      ? await updateQuoteLifecycleInNeon(quote.id, {
+          status: "sent",
+          issued_version_id: quote.issued_version_id === version.id ? undefined : version.id,
+          pdf_url: version.pdf_url,
+        })
+      : quote;
+
+  return { quote: updated, version };
+}
+
+export const approveQuote = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as { id: string })
+  .handler(async ({ data }) => {
+    const session = await requireNeonAuthSession();
+    return approveQuoteForSession(data.id, session.user.id);
+  });
+
+export const rejectQuote = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data as { id: string; approvalId?: string; notes?: string })
+  .handler(async ({ data }) => {
+    const session = await requireNeonAuthSession();
+    if (data.approvalId) {
+      const approval = await getApprovalFromNeon(data.approvalId);
+      assertQuoteSendApprovalMatchesQuote(approval, data.id);
+      assertPendingQuoteSendApproval(approval);
+    }
+
+    const quote = await getQuoteFromNeon(data.id);
+    assertQuoteCanBeRejected(quote);
+
+    const updated =
+      quote.status === "rejected"
+        ? quote
+        : await updateQuoteLifecycleInNeon(quote.id, { status: "rejected" });
+
+    if (data.approvalId) {
+      await decideApprovalInNeon({
+        id: data.approvalId,
+        decision: "rejected",
+        notes: data.notes,
+        actorId: session.user.id,
+      });
+    }
+
+    return updated;
+  });
+
 export const issueQuoteVersion = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; pdfTemplateId?: string | null })
   .handler(async ({ data }) => {
     const session = await requireNeonAuthSession();
     const quote = await getQuoteFromNeon(data.id);
-    assertQuoteCanBeIssued(quote);
-    const snapshot = await buildNormalizedQuoteSnapshot(quote);
-    const version = quote.issued_version_id
-      ? await getExistingQuoteVersionOrThrow(quote.id, quote.issued_version_id)
-      : ((await findExistingQuoteVersionByReason(quote.id, "issued")) ??
-        (await createQuoteVersion({
-          quote_id: quote.id,
-          reason: "issued",
-          snapshot,
-          pdf_template_id: data.pdfTemplateId ?? null,
-          pdf_url: `/quotes/${quote.id}/pdf`,
-          created_by: session.user.id,
-        })));
-    const needsIssueUpdate = quote.status !== "sent" || quote.pdf_url !== version.pdf_url;
-    const updated =
-      !quote.issued_version_id || needsIssueUpdate
-        ? await updateQuoteInNeon(quote.id, {
-            status: "sent",
-            issued_version_id: quote.issued_version_id === version.id ? undefined : version.id,
-            pdf_url: version.pdf_url,
-          })
-        : quote;
+    return issueQuoteVersionForSession(quote, session.user.id, data.pdfTemplateId);
+  });
 
-    return { quote: updated, version };
+export const approveAndIssueQuote = createServerFn({ method: "POST" })
+  .validator(
+    (data: unknown) =>
+      data as { id: string; approvalId: string; pdfTemplateId?: string | null; notes?: string },
+  )
+  .handler(async ({ data }) => {
+    const session = await requireNeonAuthSession();
+    const approval = await getApprovalFromNeon(data.approvalId);
+    assertQuoteSendApprovalMatchesQuote(approval, data.id);
+    assertPendingQuoteSendApproval(approval);
+    const approvedQuote = await approveQuoteForSession(data.id, session.user.id);
+    const issued = await issueQuoteVersionForSession(approvedQuote, session.user.id, data.pdfTemplateId);
+    await decideApprovalInNeon({
+      id: data.approvalId,
+      decision: "approved",
+      actorId: session.user.id,
+      ...(data.notes ? { notes: data.notes } : {}),
+    });
+    return issued;
   });
 
 export const acceptQuoteAndCreateJobSheet = createServerFn({ method: "POST" })
@@ -263,7 +406,7 @@ export const acceptQuoteAndCreateJobSheet = createServerFn({ method: "POST" })
       quote.accepted_by !== acceptedBy;
     const updated =
       !quote.accepted_version_id || needsAcceptanceUpdate
-        ? await updateQuoteInNeon(quote.id, {
+        ? await updateQuoteLifecycleInNeon(quote.id, {
             status: "accepted",
             accepted_version_id: quote.accepted_version_id === version.id ? undefined : version.id,
             accepted_at: acceptedAt,

@@ -27,6 +27,16 @@ export async function listActiveApprovals() {
   );
 }
 
+export async function getApproval(id: string, db?: Queryable) {
+  const approval = await queryOne<HumanApproval>(
+    "select * from human_approvals where id = $1",
+    [id],
+    db,
+  );
+  if (!approval) throw new Error("Approval not found");
+  return approval;
+}
+
 export async function createApproval(
   input: {
     agent_run_id?: string | null;

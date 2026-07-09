@@ -32,30 +32,44 @@ type CreateQuoteInput = Pick<Quote, "lead_id" | "currency"> &
     >
   >;
 
-const quoteUpdateColumns: Array<keyof Partial<Quote> & string> = [
-  "status",
+const editableQuoteUpdateColumns: Array<keyof Partial<Quote> & string> = [
   "quote_template_id",
-  "accepted_version_id",
-  "issued_version_id",
   "document_sections",
   "cover_text",
   "assumptions",
   "payment_terms",
-  "accepted_at",
-  "accepted_by",
   "parent_quote_id",
   "change_order_reason",
   "total_value",
   "valid_until",
   "line_items",
-  "pdf_url",
-  "approved_by",
   "contact_id",
   "account_id",
   "deal_id",
 ];
 
+const lifecycleQuoteUpdateColumns: Array<keyof Partial<Quote> & string> = [
+  "status",
+  "accepted_version_id",
+  "issued_version_id",
+  "accepted_at",
+  "accepted_by",
+  "pdf_url",
+  "approved_by",
+] as const;
+
+const lifecycleQuoteUpdateColumnSet = new Set<string>(lifecycleQuoteUpdateColumns);
 const immutableVersionReferenceColumns = ["accepted_version_id", "issued_version_id"] as const;
+
+function assertNoLifecycleUpdates(updates: Partial<Quote>) {
+  const lifecycleFields = Object.keys(updates).filter(
+    (field) => updates[field as keyof Quote] !== undefined && lifecycleQuoteUpdateColumnSet.has(field),
+  );
+
+  if (lifecycleFields.length > 0) {
+    throw new Error("Quote lifecycle fields must be changed through workflow actions");
+  }
+}
 
 function buildImmutableVersionReferenceGuard(updates: Partial<Quote>) {
   const clauses: string[] = [];
@@ -121,7 +135,12 @@ async function syncQuoteLineItemsColumn(
   return quote;
 }
 
-async function updateQuoteRow(id: string, updates: Partial<Quote>, db?: Queryable) {
+async function updateQuoteRow(
+  id: string,
+  updates: Partial<Quote>,
+  allowedColumns: Array<keyof Partial<Quote> & string>,
+  db?: Queryable,
+) {
   const hasImmutableVersionReferenceUpdate =
     updates.accepted_version_id !== undefined || updates.issued_version_id !== undefined;
   const immutableVersionReferenceGuard = buildImmutableVersionReferenceGuard(updates);
@@ -131,7 +150,7 @@ async function updateQuoteRow(id: string, updates: Partial<Quote>, db?: Queryabl
     document_sections:
       updates.document_sections === undefined ? undefined : JSON.stringify(updates.document_sections),
   };
-  const update = buildUpdate(normalizedUpdates, quoteUpdateColumns, immutableVersionReferenceGuard.nextIndex);
+  const update = buildUpdate(normalizedUpdates, allowedColumns, immutableVersionReferenceGuard.nextIndex);
   const quote = await queryOne<Quote>(
     `
       update quotes
@@ -206,18 +225,20 @@ export async function createQuote(input: CreateQuoteInput, db?: Queryable) {
 }
 
 export async function updateQuote(id: string, updates: Partial<Quote>, db?: Queryable) {
+  assertNoLifecycleUpdates(updates);
+
   const work = async (client?: Queryable) => {
     const hasLineItemUpdate = updates.line_items !== undefined;
     const updatesWithoutLineItems = {
       ...updates,
       line_items: undefined,
     };
-    const hasNonLineItemUpdate = quoteUpdateColumns.some(
+    const hasNonLineItemUpdate = editableQuoteUpdateColumns.some(
       (column) => column !== "line_items" && updatesWithoutLineItems[column] !== undefined,
     );
 
     if (!hasLineItemUpdate) {
-      return updateQuoteRow(id, updates, client);
+      return updateQuoteRow(id, updates, editableQuoteUpdateColumns, client);
     }
 
     if (!hasNonLineItemUpdate) {
@@ -226,7 +247,7 @@ export async function updateQuote(id: string, updates: Partial<Quote>, db?: Quer
         throw new Error("Quote not found");
       }
     } else {
-      await updateQuoteRow(id, updatesWithoutLineItems, client);
+      await updateQuoteRow(id, updatesWithoutLineItems, editableQuoteUpdateColumns, client);
     }
 
     const normalizedLineItems = await replaceQuoteLineItems(id, updates.line_items ?? [], client);
@@ -238,6 +259,10 @@ export async function updateQuote(id: string, updates: Partial<Quote>, db?: Quer
   }
 
   return transaction((client) => work(client));
+}
+
+export async function updateQuoteLifecycle(id: string, updates: Partial<Quote>, db?: Queryable) {
+  return updateQuoteRow(id, updates, lifecycleQuoteUpdateColumns, db);
 }
 
 export async function listQuoteLineItems(quoteId: string): Promise<QuoteLineItemRecord[]> {

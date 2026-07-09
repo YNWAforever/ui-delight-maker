@@ -223,28 +223,31 @@ describe("quotes repository line items", () => {
     expect(result.line_items).toEqual([normalizedLineItem]);
   });
 
-  it("throws Quote not found for ordinary updates without immutable version references", async () => {
-    mockQueryOne.mockResolvedValue(null);
+  it.each([
+    ["status", "sent"],
+    ["issued_version_id", "issued-version-1"],
+    ["accepted_version_id", "accepted-version-1"],
+    ["accepted_at", "2026-07-09T10:00:00.000Z"],
+    ["accepted_by", "user-1"],
+    ["pdf_url", "/quotes/quote-1/pdf"],
+    ["approved_by", "user-1"],
+  ])("rejects generic updates to lifecycle-controlled quote field %s", async (field, value) => {
     const { updateQuote } = await import("../quotes");
 
     await expect(
       updateQuote("quote-1", {
-        status: "sent",
+        [field]: value,
       }),
-    ).rejects.toThrow("Quote not found");
+    ).rejects.toThrow("Quote lifecycle fields must be changed through workflow actions");
 
-    expect(mockQueryOne).toHaveBeenCalledWith(
-      expect.stringContaining("set status = $1"),
-      ["sent", "quote-1"],
-      undefined,
-    );
+    expect(mockQueryOne).not.toHaveBeenCalled();
   });
 
-  it("guards immutable quote version references during update", async () => {
+  it("guards immutable quote version references during lifecycle update", async () => {
     mockQueryOne.mockResolvedValue({ id: "quote-1" });
-    const { updateQuote } = await import("../quotes");
+    const { updateQuoteLifecycle } = await import("../quotes");
 
-    await updateQuote("quote-1", {
+    await updateQuoteLifecycle("quote-1", {
       accepted_version_id: "accepted-version-1",
       issued_version_id: "issued-version-1",
     });
@@ -284,12 +287,12 @@ describe("quotes repository line items", () => {
     );
   });
 
-  it("guards accepted_version_id updates when issued_version_id is absent", async () => {
+  it("guards accepted_version_id lifecycle updates when issued_version_id is absent", async () => {
     mockQueryOne.mockResolvedValue(null);
-    const { updateQuote } = await import("../quotes");
+    const { updateQuoteLifecycle } = await import("../quotes");
 
     await expect(
-      updateQuote("quote-1", {
+      updateQuoteLifecycle("quote-1", {
         accepted_version_id: "accepted-version-1",
       }),
     ).rejects.toThrow("Quote not found or version reference is immutable");
@@ -306,12 +309,12 @@ describe("quotes repository line items", () => {
     ], undefined);
   });
 
-  it("guards issued_version_id updates when accepted_version_id is absent", async () => {
+  it("guards issued_version_id lifecycle updates when accepted_version_id is absent", async () => {
     mockQueryOne.mockResolvedValue(null);
-    const { updateQuote } = await import("../quotes");
+    const { updateQuoteLifecycle } = await import("../quotes");
 
     await expect(
-      updateQuote("quote-1", {
+      updateQuoteLifecycle("quote-1", {
         issued_version_id: "issued-version-1",
       }),
     ).rejects.toThrow("Quote not found or version reference is immutable");
@@ -328,12 +331,12 @@ describe("quotes repository line items", () => {
     ], undefined);
   });
 
-  it("rejects updates that would repoint immutable quote version references", async () => {
+  it("rejects lifecycle updates that would repoint immutable quote version references", async () => {
     mockQueryOne.mockResolvedValue(null);
-    const { updateQuote } = await import("../quotes");
+    const { updateQuoteLifecycle } = await import("../quotes");
 
     await expect(
-      updateQuote("quote-1", {
+      updateQuoteLifecycle("quote-1", {
         accepted_version_id: "accepted-version-1",
       }),
     ).rejects.toThrow("Quote not found or version reference is immutable");

@@ -33,14 +33,16 @@ import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
 import { calculateTotal, newLineItem } from "@/lib/quote-utils";
 import {
   acceptQuoteAndCreateJobSheet,
+  approveAndIssueQuote,
+  approveQuote,
   getQuoteVersions,
   getQuote,
   getPricingTemplates,
   issueQuoteVersion,
+  rejectQuote,
   requestQuoteApproval,
   updateQuote,
 } from "@/server-functions/quotes";
-import { decideApproval } from "@/server-functions/approvals";
 import { getClient } from "@/server-functions/clients";
 import { getLead } from "@/server-functions/leads";
 import { USER_RECORD } from "@/lib/users";
@@ -165,12 +167,28 @@ function QuoteDetail() {
     setCatalogueOpen(false);
   };
 
+  const saveEditableQuoteFields = async () => {
+    await updateQuote({
+      data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } },
+    });
+  };
+
+  const approveAndIssueReviewedQuote = async () => {
+    if (!approvalId) {
+      throw new Error("Approval context missing");
+    }
+
+    await saveEditableQuoteFields();
+    const result = await approveAndIssueQuote({ data: { id: quote.id, approvalId } });
+    setStatus(result.quote.status);
+    toast.success("Quote approved and issued");
+    navigate({ to: "/approvals" });
+  };
+
   const handleSaveDraft = async () => {
     setSaving(true);
     try {
-      await updateQuote({
-        data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } },
-      });
+      await saveEditableQuoteFields();
       toast.success("Draft saved");
       router.invalidate();
     } catch (err) {
@@ -185,23 +203,10 @@ function QuoteDetail() {
     try {
       if (approvalId) {
         // Coming from Approvals "Review & Edit" flow:
-        // 1. Save edits + advance quote to "sent"
-        await updateQuote({
-          data: {
-            id: quote.id,
-            updates: { line_items: editItems, total_value: totalValue, status: "sent" },
-          },
-        });
-        // 2. Mark the human_approval record as approved
-        await decideApproval({ data: { id: approvalId, decision: "approved" } });
-        setStatus("sent");
-        toast.success("Quote approved and marked as sent");
-        navigate({ to: "/approvals" });
+        await approveAndIssueReviewedQuote();
       } else {
         // Plain draft edit: save + request approval (moves to pending_approval + triggers n8n)
-        await updateQuote({
-          data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } },
-        });
+        await saveEditableQuoteFields();
         await requestQuoteApproval({ data: { id: quote.id } });
         setStatus("pending_approval");
         toast.success("Quote submitted for approval");
@@ -216,18 +221,48 @@ function QuoteDetail() {
 
   const reachedIdx = TIMELINE.indexOf(status);
 
-  const advance = async (next: QuoteStatus, msg: string) => {
-    await updateQuote({ data: { id: quote.id, updates: { status: next } } });
-    setStatus(next);
-    router.invalidate();
-    toast.success(msg);
-  };
-
   const handleRequestApproval = async () => {
     await requestQuoteApproval({ data: { id: quote.id } });
     setStatus("pending_approval");
     router.invalidate();
     toast.success("Submitted for approval");
+  };
+
+  const handleRejectQuote = async () => {
+    try {
+      setSaving(true);
+      const result = await rejectQuote({ data: { id: quote.id, approvalId } });
+      setStatus(result.status);
+      toast.success("Quote rejected");
+      if (approvalId) {
+        navigate({ to: "/approvals" });
+      } else {
+        router.invalidate();
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Reject failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleApproveQuote = async () => {
+    try {
+      setSaving(true);
+      if (approvalId) {
+        await approveAndIssueReviewedQuote();
+        return;
+      }
+
+      const result = await approveQuote({ data: { id: quote.id } });
+      setStatus(result.status);
+      router.invalidate();
+      toast.success("Quote approved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Approval failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleIssueQuote = async () => {
@@ -324,11 +359,12 @@ function QuoteDetail() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => advance("rejected", "Quote rejected")}
+                  onClick={handleRejectQuote}
+                  disabled={saving}
                 >
                   <XCircle aria-hidden="true" className="mr-2 h-4 w-4" /> Reject
                 </Button>
-                <Button size="sm" onClick={() => advance("approved", "Quote approved")}>
+                <Button size="sm" onClick={handleApproveQuote} disabled={saving}>
                   <CheckCircle2 aria-hidden="true" className="mr-2 h-4 w-4" /> Approve
                 </Button>
               </>
@@ -483,7 +519,7 @@ function QuoteDetail() {
                           disabled={saving || editItems.length === 0}
                         >
                           <CheckCircle2 aria-hidden="true" className="mr-2 h-4 w-4" />
-                          {approvalId ? "Submit for Approval" : "Save & Request Approval"}
+                          {approvalId ? "Approve & Issue" : "Save & Request Approval"}
                         </Button>
                         <Button variant="outline" onClick={handleSaveDraft} disabled={saving}>
                           Save draft
