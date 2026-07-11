@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouter } from "@tanstack/react-router";
 import { Download, Plus, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -45,6 +45,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { useIsExactPath } from "@/lib/routing-utils";
 import type { Lead } from "@/lib/types";
 import { getLeads, createLead, updateLead } from "@/server-functions/leads";
 
@@ -59,11 +60,19 @@ export const Route = createFileRoute("/leads")({
     ],
   }),
   loader: () => getLeads({}),
-  component: LeadsPage,
+  component: LeadsRoute,
 });
 
 const STATUSES = ["new", "qualified", "replied", "quoted", "approved", "won", "lost"];
 const SOURCES = ["website", "whatsapp", "email", "linkedin", "csv", "event"];
+
+function LeadsRoute() {
+  const isIndexRoute = useIsExactPath("/leads");
+
+  if (!isIndexRoute) return <Outlet />;
+
+  return <LeadsPage />;
+}
 
 function LeadsPage() {
   const loaderLeads = Route.useLoaderData();

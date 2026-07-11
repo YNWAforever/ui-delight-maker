@@ -39,7 +39,7 @@ export async function getAccountTimelineData(accountId: string): Promise<Account
       `
           select *
           from activity_logs
-          where object_id = $1 or (diff_data->>'account_id') = $1
+          where object_id = $1 or (diff_data->>'account_id') = $1::text
           order by created_at desc
           limit 100
         `,

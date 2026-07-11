@@ -48,6 +48,7 @@ describe("account timeline repository", () => {
     expect(mockQuery).toHaveBeenNthCalledWith(1, expect.stringContaining("from touchpoints t"), [
       "account-1",
     ]);
+    expect(mockQuery.mock.calls[1][0]).toContain("(diff_data->>'account_id') = $1::text");
     expect(mockQuery).toHaveBeenNthCalledWith(7, expect.stringContaining("from campaign_members"), [
       "account-1",
     ]);
