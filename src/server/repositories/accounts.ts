@@ -1,6 +1,13 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
 import { query, queryOne, type Queryable } from "@/server/db/neon.server";
 import type { Account } from "@/lib/types";
+import { toCompanyWorkspaceSummary } from "@/lib/relationship/company-workspace";
+import { listAccountContacts } from "@/server/repositories/account-contacts";
+import { getAccountTimeline } from "@/server/repositories/account-timeline";
+import { listClients } from "@/server/repositories/clients";
+import { listLeads } from "@/server/repositories/leads";
+import { listQuotes } from "@/server/repositories/quotes";
+import { listTasks } from "@/server/repositories/tasks";
 
 export type AccountFilters = {
   owner?: string;
@@ -75,6 +82,21 @@ export async function getAccount(id: string, db?: Queryable) {
   const account = await queryOne<Account>("select * from accounts where id = $1", [id], db);
   if (!account) throw new Error("Account not found");
   return account;
+}
+
+export async function getAccountWorkspaceData(id: string) {
+  const account = await getAccount(id);
+  const [contacts, clients, leads, quotes, tasks, timeline] = await Promise.all([
+    listAccountContacts(id),
+    listClients({ account_id: id }),
+    listLeads({ account_id: id }),
+    listQuotes({ account_id: id }),
+    listTasks({ account_id: id }),
+    getAccountTimeline({ accountId: id }),
+  ]);
+  const summary = toCompanyWorkspaceSummary({ account, contacts, clients, leads, quotes, tasks });
+
+  return { account, summary, contacts, clients, leads, quotes, tasks, timeline };
 }
 
 export async function createAccount(input: CreateAccountInput, db?: Queryable) {

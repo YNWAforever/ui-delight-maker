@@ -1,14 +1,42 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockQuery, mockQueryOne } = vi.hoisted(() => ({
+const {
+  mockQuery,
+  mockQueryOne,
+  mockListAccountContacts,
+  mockListClients,
+  mockListLeads,
+  mockListQuotes,
+  mockListTasks,
+  mockGetAccountTimeline,
+} = vi.hoisted(() => ({
   mockQuery: vi.fn(),
   mockQueryOne: vi.fn(),
+  mockListAccountContacts: vi.fn(),
+  mockListClients: vi.fn(),
+  mockListLeads: vi.fn(),
+  mockListQuotes: vi.fn(),
+  mockListTasks: vi.fn(),
+  mockGetAccountTimeline: vi.fn(),
 }));
 
 vi.mock("@/server/db/neon.server", () => ({
   query: mockQuery,
   queryOne: mockQueryOne,
 }));
+
+vi.mock("@/server/repositories/account-contacts", () => ({
+  listAccountContacts: mockListAccountContacts,
+}));
+
+vi.mock("@/server/repositories/account-timeline", () => ({
+  getAccountTimeline: mockGetAccountTimeline,
+}));
+
+vi.mock("@/server/repositories/clients", () => ({ listClients: mockListClients }));
+vi.mock("@/server/repositories/leads", () => ({ listLeads: mockListLeads }));
+vi.mock("@/server/repositories/quotes", () => ({ listQuotes: mockListQuotes }));
+vi.mock("@/server/repositories/tasks", () => ({ listTasks: mockListTasks }));
 
 describe("accounts repository", () => {
   beforeEach(() => {
@@ -58,5 +86,26 @@ describe("accounts repository", () => {
       ["Renamed", "hello", "account-1"],
       undefined,
     );
+  });
+
+  it("composes the full Account workspace from linked records", async () => {
+    mockQueryOne.mockResolvedValue({ id: "account-1", name: "Acme", lifecycle_stage: "active_client" });
+    mockListAccountContacts.mockResolvedValue([{ id: "contact-1", is_primary: true }]);
+    mockListClients.mockResolvedValue([{ id: "client-1" }]);
+    mockListLeads.mockResolvedValue([{ id: "lead-1" }]);
+    mockListQuotes.mockResolvedValue([{ id: "quote-1", status: "sent" }]);
+    mockListTasks.mockResolvedValue([{ id: "task-1", status: "open" }]);
+    mockGetAccountTimeline.mockResolvedValue([{ id: "timeline-1" }]);
+    const { getAccountWorkspaceData } = await import("../accounts");
+
+    const workspace = await getAccountWorkspaceData("account-1");
+
+    expect(mockListAccountContacts).toHaveBeenCalledWith("account-1");
+    expect(mockListClients).toHaveBeenCalledWith({ account_id: "account-1" });
+    expect(mockListLeads).toHaveBeenCalledWith({ account_id: "account-1" });
+    expect(mockListQuotes).toHaveBeenCalledWith({ account_id: "account-1" });
+    expect(mockListTasks).toHaveBeenCalledWith({ account_id: "account-1" });
+    expect(workspace.summary).toMatchObject({ id: "account-1", primaryContactId: "contact-1" });
+    expect(workspace.timeline).toEqual([{ id: "timeline-1" }]);
   });
 });
