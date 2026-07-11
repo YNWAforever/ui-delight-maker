@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouter } from "@tanstack/react-router";
 import { Bot, ChevronDown, ChevronRight, Play, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCount, formatDateTime } from "@/lib/format";
+import { useIsExactPath } from "@/lib/routing-utils";
 import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
 import { getAgentRuns } from "@/server-functions/agent-runs";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
@@ -67,8 +68,16 @@ export const Route = createFileRoute("/agents")({
       { name: "description", content: "Agent runs, tool calls, and confidence scores." },
     ],
   }),
-  component: AgentsMonitor,
+  component: AgentsRoute,
 });
+
+function AgentsRoute() {
+  const isIndexRoute = useIsExactPath("/agents");
+
+  if (!isIndexRoute) return <Outlet />;
+
+  return <AgentsMonitor />;
+}
 
 function AgentsMonitor() {
   const agentRuns = Route.useLoaderData() as AgentRun[];

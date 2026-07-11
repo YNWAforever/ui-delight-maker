@@ -155,9 +155,11 @@ describe("sales route source copy", () => {
   it("lets nested workspace child routes render their own pages", () => {
     for (const routeName of [
       "accounts.tsx",
+      "agents.tsx",
       "campaigns.tsx",
       "clients.tsx",
       "job-sheets.tsx",
+      "leads.tsx",
       "quotes.tsx",
     ]) {
       const source = readRoute(routeName);
