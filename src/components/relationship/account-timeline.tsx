@@ -13,7 +13,7 @@ export function AccountTimeline({ entries }: { entries: AccountTimelineEntry[] }
   }
 
   return (
-    <ul className="space-y-3">
+    <ul className="space-y-3" aria-label="Company activity timeline">
       {entries.map((entry) => (
         <li key={entry.id} className="rounded-md border border-border p-3 text-sm">
           <div className="flex items-start justify-between gap-3">
