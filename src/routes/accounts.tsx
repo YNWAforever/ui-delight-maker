@@ -1,20 +1,36 @@
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, Outlet, useRouter } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
 import { AccountSummaryCard } from "@/components/relationship/account-summary-card";
+import { AccountPreviewPanel } from "@/components/relationship/account-preview-panel";
+import { WorkspaceViewSwitcher } from "@/components/relationship/workspace-view-switcher";
 import { getClients } from "@/server-functions/clients";
-import { getAccounts } from "@/server-functions/accounts";
+import { getAccounts, getAccountWorkspace } from "@/server-functions/accounts";
+import {
+  getWorkspacePreferences,
+  togglePersonalWorkspaceFavorite,
+} from "@/server-functions/workspace-preferences";
 import { getRelationshipSignals } from "@/server-functions/relationship-signals";
+import { toCompanyWorkspaceSummary } from "@/lib/relationship/company-workspace";
 import { useIsExactPath } from "@/lib/routing-utils";
+import type { AccountLifecycleStage, WorkspaceViewConfig } from "@/lib/types";
+
+const DEFAULT_ACCOUNT_VIEW_CONFIG: WorkspaceViewConfig = {
+  filters: {},
+  columns: ["name", "lifecycle_stage", "relationship_health", "last_activity_at", "next_action"],
+  sort: { field: "last_activity_at", direction: "desc" },
+};
 
 export const Route = createFileRoute("/accounts")({
   loader: async () => {
-    const [accounts, clients, signals] = await Promise.all([
+    const [accounts, clients, signals, preferences] = await Promise.all([
       getAccounts({}),
       getClients({}),
       getRelationshipSignals({ data: { openOnly: true } }),
+      getWorkspacePreferences({ data: { objectType: "account" } }),
     ]);
 
-    return { accounts, clients, signals };
+    return { accounts, clients, signals, preferences };
   },
   head: () => ({
     meta: [{ title: "Accounts - Fimmick ClientOps" }],
@@ -31,7 +47,16 @@ function AccountsRoute() {
 }
 
 function AccountsIndex() {
-  const { accounts, clients, signals } = Route.useLoaderData();
+  const { accounts, clients, signals, preferences } = Route.useLoaderData();
+  const router = useRouter();
+  const [activeConfig, setActiveConfig] = useState(DEFAULT_ACCOUNT_VIEW_CONFIG);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [selectedSummary, setSelectedSummary] = useState<ReturnType<
+    typeof toCompanyWorkspaceSummary
+  > | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
   const signalCountByAccount = new Map<string, number>();
   const clientCountByAccount = new Map<string, number>();
 
@@ -50,36 +75,192 @@ function AccountsIndex() {
     );
   }
 
+  const rows = useMemo(() => {
+    const filtered = accounts.filter((account) => {
+      const filters = activeConfig.filters;
+      if (filters.lifecycle_stage && account.lifecycle_stage !== filters.lifecycle_stage)
+        return false;
+      if (filters.account_owner && account.account_owner !== filters.account_owner) return false;
+      if (filters.cs_owner && account.cs_owner !== filters.cs_owner) return false;
+      return true;
+    });
+    const direction = activeConfig.sort.direction === "asc" ? 1 : -1;
+
+    return [...filtered].sort((left, right) => {
+      const field = activeConfig.sort.field;
+      if (field === "relationship_health") {
+        return ((left.relationship_health ?? 0) - (right.relationship_health ?? 0)) * direction;
+      }
+      const leftValue = field === "name" ? left.name : (left.last_activity_at ?? "");
+      const rightValue = field === "name" ? right.name : (right.last_activity_at ?? "");
+      return leftValue.localeCompare(rightValue) * direction;
+    });
+  }, [accounts, activeConfig]);
+
+  useEffect(() => {
+    if (!selectedAccountId) {
+      setSelectedSummary(null);
+      return;
+    }
+
+    const account = accounts.find((candidate) => candidate.id === selectedAccountId);
+    if (!account) return;
+    let cancelled = false;
+    setSelectedSummary(
+      toCompanyWorkspaceSummary({
+        account,
+        contacts: [],
+        clients: clients.filter((client) => client.account_id === account.id),
+        leads: [],
+        quotes: [],
+        tasks: [],
+      }),
+    );
+    setPreviewLoading(true);
+    setPreviewError(null);
+
+    void getAccountWorkspace({ data: { id: selectedAccountId } })
+      .then((workspace) => {
+        if (!cancelled) setSelectedSummary(workspace.summary);
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewError("Company details could not be refreshed.");
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accounts, clients, retryKey, selectedAccountId]);
+
+  const selectedFavorite = selectedSummary
+    ? preferences.favorites.some((favorite) => favorite.href === `/accounts/${selectedSummary.id}`)
+    : false;
+
   return (
     <>
       <PageHeader
-        title="Accounts"
+        title="Companies"
         description="Company records across prospects, clients, partners, vendors, and event participants."
       />
-      <main className="px-6 py-6">
+      <main className="space-y-4 px-4 py-5 sm:px-6 sm:py-6">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b pb-4">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="space-y-1.5">
+              <label htmlFor="account-lifecycle" className="text-sm font-medium">
+                Lifecycle
+              </label>
+              <select
+                id="account-lifecycle"
+                value={activeConfig.filters.lifecycle_stage ?? "all"}
+                className="block h-11 min-w-40 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onChange={(event) => {
+                  const lifecycle =
+                    event.target.value === "all"
+                      ? undefined
+                      : (event.target.value as AccountLifecycleStage);
+                  setActiveConfig((current) => ({
+                    ...current,
+                    filters: { ...current.filters, lifecycle_stage: lifecycle },
+                  }));
+                }}
+              >
+                <option value="all">All companies</option>
+                <option value="prospect">Leads</option>
+                <option value="active_client">Clients</option>
+                <option value="at_risk">At risk</option>
+                <option value="churned">Former clients</option>
+                <option value="partner">Partners</option>
+                <option value="vendor">Vendors</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="account-sort" className="text-sm font-medium">
+                Sort
+              </label>
+              <select
+                id="account-sort"
+                value={`${activeConfig.sort.field}:${activeConfig.sort.direction}`}
+                className="block h-11 min-w-44 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onChange={(event) => {
+                  const [field, direction] = event.target.value.split(":") as [
+                    WorkspaceViewConfig["sort"]["field"],
+                    WorkspaceViewConfig["sort"]["direction"],
+                  ];
+                  setActiveConfig((current) => ({ ...current, sort: { field, direction } }));
+                }}
+              >
+                <option value="last_activity_at:desc">Recent activity</option>
+                <option value="name:asc">Name A-Z</option>
+                <option value="relationship_health:asc">Lowest health</option>
+                <option value="relationship_health:desc">Highest health</option>
+              </select>
+            </div>
+          </div>
+          <WorkspaceViewSwitcher
+            objectType="account"
+            activeConfig={activeConfig}
+            views={preferences.views}
+            onSelect={(config) => setActiveConfig(config)}
+          />
+        </div>
+
         {accounts.length === 0 ? (
           <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">
             No accounts yet. Create or import a company record to start relationship tracking.
           </div>
+        ) : rows.length === 0 ? (
+          <div className="rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">
+            No companies match this view.
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
-            {accounts.map((account) => (
-              <Link
+            {rows.map((account) => (
+              <button
                 key={account.id}
-                to="/accounts/$id"
-                params={{ id: account.id }}
-                className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                type="button"
+                aria-label={`Preview ${account.name}`}
+                onClick={() => setSelectedAccountId(account.id)}
+                className="block cursor-pointer rounded-lg text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <AccountSummaryCard
                   account={account}
                   openSignalCount={signalCountByAccount.get(account.id) ?? 0}
                   linkedClientCount={clientCountByAccount.get(account.id) ?? 0}
                 />
-              </Link>
+              </button>
             ))}
           </div>
         )}
       </main>
+      <AccountPreviewPanel
+        account={selectedSummary}
+        open={selectedAccountId !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedAccountId(null);
+        }}
+        loading={previewLoading}
+        error={previewError}
+        onRetry={() => setRetryKey((value) => value + 1)}
+        isFavorite={selectedFavorite}
+        onToggleFavorite={
+          selectedSummary
+            ? async () => {
+                await togglePersonalWorkspaceFavorite({
+                  data: {
+                    kind: "account",
+                    label: selectedSummary.displayName,
+                    href: `/accounts/${selectedSummary.id}`,
+                    accountId: selectedSummary.id,
+                  },
+                });
+                await router.invalidate();
+              }
+            : undefined
+        }
+      />
     </>
   );
 }
