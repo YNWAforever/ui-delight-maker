@@ -26,7 +26,10 @@ export type CompanyWorkspaceSummaryInput = {
   tasks: Array<Pick<Task, "id" | "status">>;
 };
 
-const lifecycleLabels: Record<Account["lifecycle_stage"], CompanyWorkspaceSummary["lifecycleLabel"]> = {
+const lifecycleLabels: Record<
+  Account["lifecycle_stage"],
+  CompanyWorkspaceSummary["lifecycleLabel"]
+> = {
   prospect: "Lead",
   active_client: "Client",
   at_risk: "At risk",

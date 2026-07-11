@@ -83,9 +83,9 @@ describe("workspace preferences repository", () => {
         accountId: "a1",
       }),
     ).resolves.toBeNull();
-    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("delete from workspace_favorites"), [
-      "favorite-1",
-      "profile-1",
-    ]);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("delete from workspace_favorites"),
+      ["favorite-1", "profile-1"],
+    );
   });
 });

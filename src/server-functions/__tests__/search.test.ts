@@ -5,7 +5,7 @@ const { requireNeonAuthSessionMock, searchWorkspaceMock, createServerFnChain } =
     validator() {
       return createServerFnChain;
     },
-    handler<T extends (...args: any[]) => unknown>(handler: T) {
+    handler<T extends (...args: unknown[]) => unknown>(handler: T) {
       return handler;
     },
   };

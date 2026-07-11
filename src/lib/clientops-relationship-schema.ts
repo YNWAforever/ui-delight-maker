@@ -10,6 +10,7 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/003_client_relationship_360.sql",
   "neon/migrations/004_clientops_schema_hardening.sql",
   "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
+  "neon/migrations/006_unified_crm_workspace_foundation.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
@@ -40,6 +41,8 @@ export const CLIENTOPS_REQUIRED_TABLES = [
   "campaigns",
   "campaign_members",
   "relationship_signals",
+  "workspace_views",
+  "workspace_favorites",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_COLUMNS = [

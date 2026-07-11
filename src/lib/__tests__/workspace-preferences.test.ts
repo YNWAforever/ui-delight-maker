@@ -20,7 +20,13 @@ describe("normalizeWorkspaceViewConfig", () => {
   it("falls back to safe defaults for malformed configuration", () => {
     expect(normalizeWorkspaceViewConfig(null)).toEqual({
       filters: {},
-      columns: ["name", "lifecycle_stage", "relationship_health", "last_activity_at", "next_action"],
+      columns: [
+        "name",
+        "lifecycle_stage",
+        "relationship_health",
+        "last_activity_at",
+        "next_action",
+      ],
       sort: { field: "last_activity_at", direction: "desc" },
     });
   });

@@ -475,15 +475,9 @@ export interface Account {
 export type WorkspaceObject = "account" | "relationship";
 
 export type WorkspaceViewConfig = {
-  filters: Partial<
-    Pick<Account, "lifecycle_stage" | "account_owner" | "cs_owner">
-  >;
+  filters: Partial<Pick<Account, "lifecycle_stage" | "account_owner" | "cs_owner">>;
   columns: Array<
-    | "name"
-    | "lifecycle_stage"
-    | "relationship_health"
-    | "last_activity_at"
-    | "next_action"
+    "name" | "lifecycle_stage" | "relationship_health" | "last_activity_at" | "next_action"
   >;
   sort: {
     field: "last_activity_at" | "name" | "relationship_health";

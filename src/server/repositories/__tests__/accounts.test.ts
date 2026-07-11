@@ -89,7 +89,11 @@ describe("accounts repository", () => {
   });
 
   it("composes the full Account workspace from linked records", async () => {
-    mockQueryOne.mockResolvedValue({ id: "account-1", name: "Acme", lifecycle_stage: "active_client" });
+    mockQueryOne.mockResolvedValue({
+      id: "account-1",
+      name: "Acme",
+      lifecycle_stage: "active_client",
+    });
     mockListAccountContacts.mockResolvedValue([{ id: "contact-1", is_primary: true }]);
     mockListClients.mockResolvedValue([{ id: "client-1" }]);
     mockListLeads.mockResolvedValue([{ id: "lead-1" }]);

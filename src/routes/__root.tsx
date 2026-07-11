@@ -20,6 +20,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 
 import { getSession, signOut } from "@/server-functions/auth";
+import { getWorkspacePreferences } from "@/server-functions/workspace-preferences";
 import { isPublicAuthPath } from "@/lib/auth/auth-routes";
 import type { Profile } from "@/lib/types";
 import type { RouterContext } from "@/router";
@@ -83,7 +84,13 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     if (isPublicAuthPath(location.pathname)) return {};
     const session = await getSession();
     if (!session) throw redirect({ to: "/login" });
-    return { user: session.user, profile: session.profile as Profile | null };
+    try {
+      const { favorites } = await getWorkspacePreferences({ data: { objectType: "account" } });
+      return { user: session.user, profile: session.profile as Profile | null, favorites };
+    } catch (error) {
+      console.error("Workspace preferences unavailable", error);
+      return { user: session.user, profile: session.profile as Profile | null, favorites: [] };
+    }
   },
   head: () => ({
     meta: [
@@ -135,7 +142,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  const { queryClient, profile } = Route.useRouteContext();
+  const { queryClient, profile, favorites } = Route.useRouteContext();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -151,6 +158,7 @@ function RootComponent() {
         <div className="flex min-h-screen w-full bg-background">
           <AppSidebar
             profile={profile ?? null}
+            favorites={favorites ?? []}
             onSignOut={async () => {
               try {
                 await signOut();
