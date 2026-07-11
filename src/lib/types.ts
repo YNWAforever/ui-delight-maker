@@ -472,6 +472,41 @@ export interface Account {
   updated_at: string;
 }
 
+export type WorkspaceObject = "account" | "relationship";
+
+export type WorkspaceViewConfig = {
+  filters: Partial<Pick<Account, "lifecycle_stage" | "account_owner" | "cs_owner">>;
+  columns: Array<
+    "name" | "lifecycle_stage" | "relationship_health" | "last_activity_at" | "next_action"
+  >;
+  sort: {
+    field: "last_activity_at" | "name" | "relationship_health";
+    direction: "asc" | "desc";
+  };
+};
+
+export type WorkspaceView = {
+  id: string;
+  profile_id: string;
+  object_type: WorkspaceObject;
+  name: string;
+  config: WorkspaceViewConfig;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WorkspaceFavorite = {
+  id: string;
+  profile_id: string;
+  kind: "view" | "account" | "search";
+  label: string;
+  href: string;
+  view_id: string | null;
+  account_id: string | null;
+  created_at: string;
+};
+
 export interface AccountContact {
   id: string;
   account_id: string;

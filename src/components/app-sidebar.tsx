@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import type { Profile } from "@/lib/types";
+import type { Profile, WorkspaceFavorite } from "@/lib/types";
 import {
   LayoutDashboard,
   Inbox,
@@ -16,6 +16,7 @@ import {
   Network,
   CalendarDays,
   ClipboardList,
+  Star,
   type LucideIcon,
 } from "lucide-react";
 
@@ -50,6 +51,7 @@ const convertItems = [
 ];
 
 const retainItems = [
+  { title: "Companies", url: "/accounts", icon: Building2 },
   { title: "Clients", url: "/clients", icon: Building2 },
   { title: "Relationships", url: "/relationships", icon: Network },
   { title: "Renewals", url: "/renewals", icon: RefreshCw },
@@ -72,9 +74,10 @@ type SidebarItem = {
 interface AppSidebarProps {
   profile: Profile | null;
   onSignOut: () => void;
+  favorites: Array<Pick<WorkspaceFavorite, "id" | "label" | "href">>;
 }
 
-export function AppSidebar({ profile, onSignOut }: AppSidebarProps) {
+export function AppSidebar({ profile, onSignOut, favorites }: AppSidebarProps) {
   const currentPath = useRouterState({
     select: (s) => s.location.pathname,
   });
@@ -82,7 +85,7 @@ export function AppSidebar({ profile, onSignOut }: AppSidebarProps) {
   const isActive = (item: SidebarItem) => {
     if (item.activePath === null) return false;
 
-    const path = item.activePath ?? item.url;
+    const path = (item.activePath ?? item.url).split("?")[0];
 
     if (path === "/") return currentPath === "/";
     return currentPath === path || currentPath.startsWith(path + "/");
@@ -126,6 +129,16 @@ export function AppSidebar({ profile, onSignOut }: AppSidebarProps) {
         {renderGroup("Today", todayItems)}
         {renderGroup("Acquire", acquireItems)}
         {renderGroup("Convert", convertItems)}
+        {favorites.length > 0
+          ? renderGroup(
+              "Favorites",
+              favorites.map((favorite) => ({
+                title: favorite.label,
+                url: favorite.href,
+                icon: Star,
+              })),
+            )
+          : null}
         {renderGroup("Retain", retainItems)}
         {renderGroup("Operate", operateItems)}
       </SidebarContent>

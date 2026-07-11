@@ -24,7 +24,7 @@ export function AccountSummaryCard({
           <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Building2 className="h-4 w-4" />
-              <span className="text-xs uppercase tracking-wide">Account</span>
+              <span className="text-xs uppercase tracking-wide">Company</span>
             </div>
             <p className="truncate text-sm font-semibold text-foreground">{account.name}</p>
             <p className="truncate text-xs text-muted-foreground">

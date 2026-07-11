@@ -22,46 +22,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
 import { userById } from "@/lib/users";
 import type { RelationshipSignal } from "@/lib/types";
-import { getAccount, triggerRelationshipIntelligence } from "@/server-functions/accounts";
-import { getAccountTimeline } from "@/server-functions/activity-logs";
-import { getClients } from "@/server-functions/clients";
-import { getAccountContacts } from "@/server-functions/contacts";
+import { getAccountWorkspace, triggerRelationshipIntelligence } from "@/server-functions/accounts";
 import { getEngagementsByClient } from "@/server-functions/engagements";
 import { getJobSheets } from "@/server-functions/job-sheets";
-import { getQuotes } from "@/server-functions/quotes";
 import {
   dismissRelationshipSignalFn,
   getRelationshipSignals,
 } from "@/server-functions/relationship-signals";
-import { getTasks } from "@/server-functions/tasks";
 
 export const Route = createFileRoute("/accounts/$id")({
   loader: async ({ params }) => {
-    const [account, contacts, timeline, signals, linkedClients, tasks, quotes, jobSheets] =
-      await Promise.all([
-        getAccount({ data: { id: params.id } }),
-        getAccountContacts({ data: { accountId: params.id } }),
-        getAccountTimeline({ data: { accountId: params.id } }),
-        getRelationshipSignals({ data: { account_id: params.id, openOnly: true } }),
-        getClients({ data: { account_id: params.id } }),
-        getTasks({ data: { account_id: params.id } }),
-        getQuotes({ data: { account_id: params.id } }),
-        getJobSheets({ data: { account_id: params.id } }),
-      ]);
+    const [workspace, signals, jobSheets] = await Promise.all([
+      getAccountWorkspace({ data: { id: params.id } }),
+      getRelationshipSignals({ data: { account_id: params.id, openOnly: true } }),
+      getJobSheets({ data: { account_id: params.id } }),
+    ]);
 
     const engagementGroups = await Promise.all(
-      linkedClients.map((client) => getEngagementsByClient({ data: { clientId: client.id } })),
+      workspace.clients.map((client) => getEngagementsByClient({ data: { clientId: client.id } })),
     );
 
     return {
-      account,
-      contacts,
-      timeline,
+      ...workspace,
       signals,
-      linkedClients,
+      linkedClients: workspace.clients,
       engagements: engagementGroups.flat(),
-      tasks,
-      quotes,
       jobSheets,
     };
   },
@@ -79,6 +64,7 @@ function AccountDetailRoute() {
     signals,
     linkedClients,
     engagements,
+    leads,
     tasks,
     quotes,
     jobSheets,
@@ -94,7 +80,9 @@ function AccountDetailRoute() {
   const csOwner = account.cs_owner ? userById(account.cs_owner) : undefined;
   const openTasks = tasks.filter((task) => task.status !== "done");
   const activeEngagements = engagements.filter((engagement) => engagement.status === "active");
-  const campaignTimelineEntries = timeline.filter((entry) => entry.kind === "campaign");
+  const commercialTimelineEntries = timeline.filter(
+    (entry) => entry.kind === "approval" || entry.kind === "campaign",
+  );
   const quoteById = new Map(quotes.map((quote) => [quote.id, quote]));
 
   useEffect(() => {
@@ -268,10 +256,10 @@ function AccountDetailRoute() {
           <div className="max-w-full overflow-x-auto pb-1">
             <TabsList className="w-max">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="stakeholders">Stakeholders</TabsTrigger>
-              <TabsTrigger value="timeline">Timeline</TabsTrigger>
-              <TabsTrigger value="events">Events & Campaigns</TabsTrigger>
-              <TabsTrigger value="tasks">Tasks</TabsTrigger>
+              <TabsTrigger value="stakeholders">People</TabsTrigger>
+              <TabsTrigger value="timeline">Activity</TabsTrigger>
+              <TabsTrigger value="events">Commercial</TabsTrigger>
+              <TabsTrigger value="tasks">Delivery & Finance</TabsTrigger>
             </TabsList>
           </div>
 
@@ -403,32 +391,60 @@ function AccountDetailRoute() {
           <TabsContent value="events">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Campaign follow-up</CardTitle>
+                <CardTitle className="text-base">Leads, quotes & approvals</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {campaignTimelineEntries.length === 0 ? (
+                {leads.length === 0 &&
+                quotes.length === 0 &&
+                commercialTimelineEntries.length === 0 ? (
                   <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-                    No attendee imports or campaign follow-up entries for this account yet.
+                    No commercial activity is linked to this company yet.
                   </div>
                 ) : (
-                  <ul className="space-y-2">
-                    {campaignTimelineEntries.slice(0, 6).map((entry) => (
-                      <li key={entry.id} className="rounded-md border border-border p-3 text-sm">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-medium">{entry.title}</p>
-                            {entry.detail ? (
-                              <p className="text-muted-foreground">{entry.detail}</p>
-                            ) : null}
-                          </div>
-                          {entry.status ? <StatusBadge value={String(entry.status)} /> : null}
-                        </div>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          {formatDateTime(entry.occurred_at)}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <CommercialList
+                      title="Leads"
+                      empty="No leads linked to this company."
+                      items={leads.map((lead) => ({
+                        id: lead.id,
+                        title: lead.contact_name ?? lead.company_name,
+                        detail: lead.source ?? "Source not set",
+                        status: lead.status,
+                        href: `/leads/${lead.id}`,
+                      }))}
+                    />
+                    <CommercialList
+                      title="Quotes"
+                      empty="No quotes linked to this company."
+                      items={quotes.map((quote) => ({
+                        id: quote.id,
+                        title: quote.number ?? "Draft quote",
+                        detail: formatCurrencyAmount(quote.total_value, quote.currency),
+                        status: quote.status,
+                        href: `/quotes/${quote.id}`,
+                      }))}
+                    />
+                    <CommercialList
+                      title="Approvals & campaigns"
+                      empty="No approval or campaign activity yet."
+                      items={commercialTimelineEntries.map((entry) => ({
+                        id: entry.id,
+                        title: entry.title,
+                        detail: entry.detail ?? formatDateTime(entry.occurred_at),
+                        status: entry.status ? String(entry.status) : undefined,
+                      }))}
+                    />
+                    <CommercialList
+                      title="Open tasks"
+                      empty="No open commercial tasks."
+                      items={openTasks.map((task) => ({
+                        id: task.id,
+                        title: task.title,
+                        detail: `Due ${formatDate(task.due_date)}`,
+                        status: task.status,
+                      }))}
+                    />
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -440,7 +456,7 @@ function AccountDetailRoute() {
           >
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Open tasks</CardTitle>
+                <CardTitle className="text-base">Delivery tasks</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {openTasks.length === 0 ? (
@@ -480,29 +496,31 @@ function AccountDetailRoute() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Quotes & revenue</CardTitle>
+                <CardTitle className="text-base">Job sheets & Xero handoff</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <SummaryRow label="Total quotes" value={String(quotes.length)} />
+                <SummaryRow label="Linked clients" value={String(linkedClients.length)} />
                 <SummaryRow label="Active engagements" value={String(activeEngagements.length)} />
                 <SummaryRow
                   label="Account ARR"
                   value={formatCurrencyAmount(account.arr ?? null, quotes[0]?.currency ?? "HKD")}
                 />
-                {quotes.length === 0 ? (
-                  <p className="text-muted-foreground">No quotes linked to this account yet.</p>
+                {activeEngagements.length === 0 ? (
+                  <p className="text-muted-foreground">
+                    No active delivery engagements for this company.
+                  </p>
                 ) : (
                   <ul className="space-y-2">
-                    {quotes.slice(0, 5).map((quote) => (
-                      <li key={quote.id} className="rounded-md border border-border p-3">
+                    {activeEngagements.slice(0, 5).map((engagement) => (
+                      <li key={engagement.id} className="rounded-md border border-border p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="font-medium">{quote.number ?? "Draft quote"}</p>
+                            <p className="font-medium">Engagement {engagement.id.slice(0, 8)}</p>
                             <p className="text-xs text-muted-foreground">
-                              {formatCurrencyAmount(quote.total_value, quote.currency)}
+                              Renewal {formatDate(engagement.renewal_date)}
                             </p>
                           </div>
-                          <StatusBadge value={quote.status} />
+                          <StatusBadge value={engagement.status} />
                         </div>
                       </li>
                     ))}
@@ -540,6 +558,11 @@ function AccountDetailRoute() {
                                 <span>
                                   {formatCurrencyAmount(sheet.total_amount, sheet.currency)}
                                 </span>
+                                <span>
+                                  {sheet.xero_customer_reference
+                                    ? "Xero customer linked"
+                                    : "Xero customer not linked"}
+                                </span>
                               </div>
                             </Link>
                           </li>
@@ -563,6 +586,51 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
       <span className="text-muted-foreground">{label}</span>
       <span className="text-right font-medium text-foreground">{value}</span>
     </div>
+  );
+}
+
+function CommercialList({
+  title,
+  empty,
+  items,
+}: {
+  title: string;
+  empty: string;
+  items: Array<{
+    id: string;
+    title: string;
+    detail: string;
+    status?: string;
+    href?: string;
+  }>;
+}) {
+  return (
+    <section className="space-y-2 border-b border-border/70 pb-4">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{empty}</p>
+      ) : (
+        <ul className="space-y-2">
+          {items.slice(0, 6).map((item) => (
+            <li key={item.id} className="rounded-md border border-border p-3 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  {item.href ? (
+                    <a className="font-medium hover:underline" href={item.href}>
+                      {item.title}
+                    </a>
+                  ) : (
+                    <p className="font-medium">{item.title}</p>
+                  )}
+                  <p className="text-muted-foreground">{item.detail}</p>
+                </div>
+                {item.status ? <StatusBadge value={item.status} /> : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

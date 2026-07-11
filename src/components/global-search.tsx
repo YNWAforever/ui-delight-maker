@@ -1,51 +1,22 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Search } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatCurrencyAmount } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-// Search data — will be replaced with a server-side full-text search in a future task.
-// Using empty arrays until the backend search endpoint is available.
-const leads: {
-  id: string;
-  company_name: string;
-  contact_name: string;
-  contact_email: string;
-  status: string;
-}[] = [];
-const quotes: {
-  id: string;
-  number: string;
-  status: string;
-  currency: string;
-  total_value: number;
-}[] = [];
-const clients: { id: string; company_name: string; industry: string; tier: string }[] = [];
-const tasks: {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  priority: string;
-  due_date: string;
-}[] = [];
-
-type Result = {
-  id: string;
-  type: "Lead" | "Quote" | "Client" | "Task";
-  title: string;
-  subtitle: string;
-  href: string;
-};
+import type { WorkspaceSearchResult } from "@/server/repositories/workspace-search";
+import { searchWorkspace } from "@/server-functions/search";
 
 export function GlobalSearch({ iconOnly = false }: { iconOnly?: boolean }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const [results, setResults] = useState<WorkspaceSearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
   const navigate = useNavigate();
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -76,76 +47,47 @@ export function GlobalSearch({ iconOnly = false }: { iconOnly?: boolean }) {
     if (panelOpen) wrapRef.current?.querySelector("input")?.focus();
   }, [panelOpen]);
 
-  const results = useMemo<Result[]>(() => {
-    const term = q.trim().toLowerCase();
-    if (!term) return [];
-    const out: Result[] = [];
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 3) {
+      setResults([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
 
-    for (const l of leads) {
-      if (
-        l.company_name.toLowerCase().includes(term) ||
-        l.contact_name.toLowerCase().includes(term) ||
-        l.contact_email.toLowerCase().includes(term)
-      ) {
-        out.push({
-          id: l.id,
-          type: "Lead",
-          title: l.company_name,
-          subtitle: `${l.contact_name} · ${l.status}`,
-          href: `/leads/${l.id}`,
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    const timeout = window.setTimeout(() => {
+      void searchWorkspace({ data: { query: term, limit: 20 } })
+        .then((nextResults) => {
+          if (!cancelled) setResults(nextResults);
+        })
+        .catch(() => {
+          if (!cancelled) setError("Search failed. Check your connection and try again.");
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
         });
-      }
-    }
-    for (const qt of quotes) {
-      if (
-        qt.number.toLowerCase().includes(term) ||
-        qt.id.toLowerCase().includes(term) ||
-        qt.status.toLowerCase().includes(term)
-      ) {
-        out.push({
-          id: qt.id,
-          type: "Quote",
-          title: qt.number,
-          subtitle: `${qt.status} · ${formatCurrencyAmount(qt.total_value, qt.currency)}`,
-          href: `/quotes/${qt.id}`,
-        });
-      }
-    }
-    for (const c of clients) {
-      if (c.company_name.toLowerCase().includes(term) || c.industry.toLowerCase().includes(term)) {
-        out.push({
-          id: c.id,
-          type: "Client",
-          title: c.company_name,
-          subtitle: `${c.industry} · ${c.tier}`,
-          href: `/clients/${c.id}`,
-        });
-      }
-    }
-    for (const t of tasks) {
-      if (t.title.toLowerCase().includes(term) || t.description.toLowerCase().includes(term)) {
-        out.push({
-          id: t.id,
-          type: "Task",
-          title: t.title,
-          subtitle: `${t.status} · ${t.priority} · due ${t.due_date}`,
-          href: "/tasks",
-        });
-      }
-    }
-    return out.slice(0, 20);
-  }, [q]);
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [q, retryKey]);
 
   useEffect(() => setActive(0), [q]);
 
-  const go = (r: Result) => {
+  const go = (r: WorkspaceSearchResult) => {
     setOpen(false);
     setPanelOpen(false);
     setQ("");
     navigate({ to: r.href as never });
   };
 
-  const onResultClick = (event: React.MouseEvent<HTMLAnchorElement>, r: Result) => {
+  const onResultClick = (event: React.MouseEvent<HTMLAnchorElement>, r: WorkspaceSearchResult) => {
     if (
       event.defaultPrevented ||
       event.button !== 0 ||
@@ -191,16 +133,27 @@ export function GlobalSearch({ iconOnly = false }: { iconOnly?: boolean }) {
           setQ(e.target.value);
           setOpen(true);
         }}
-        onFocus={() => q && setOpen(true)}
+        onFocus={() => q.trim().length >= 3 && setOpen(true)}
         onKeyDown={onKeyDown}
-        placeholder="Search leads, quotes, clients, tasks…  (⌘K)"
+        placeholder="Search companies, people, leads, quotes, clients, tasks..."
         className="h-9 pl-9"
       />
-      {open && q && (
+      {open && q.trim().length >= 3 && (
         <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-96 overflow-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md">
-          {results.length === 0 ? (
+          {loading ? (
+            <div role="status" className="px-3 py-6 text-center text-sm text-muted-foreground">
+              Searching...
+            </div>
+          ) : error ? (
+            <div role="alert" className="space-y-3 px-3 py-5 text-center text-sm">
+              <p className="text-destructive">{error}</p>
+              <Button variant="outline" size="sm" onClick={() => setRetryKey((value) => value + 1)}>
+                Retry search
+              </Button>
+            </div>
+          ) : results.length === 0 ? (
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-              No results for “{q}”
+              No results for "{q.trim()}"
             </div>
           ) : (
             results.map((r, i) => (

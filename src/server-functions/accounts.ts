@@ -5,6 +5,7 @@ import { buildRelationshipIntelligencePayload } from "@/lib/workflows/payloads";
 import {
   createAccount as createAccountInNeon,
   getAccount as getAccountInNeon,
+  getAccountWorkspaceData,
   listAccounts,
   type AccountFilters,
   type CreateAccountInput,
@@ -30,6 +31,13 @@ export const getAccount = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await requireNeonAuthSession();
     return getAccountInNeon(data.id);
+  });
+
+export const getAccountWorkspace = createServerFn({ method: "GET" })
+  .validator((data: unknown) => data as { id: string })
+  .handler(async ({ data }) => {
+    await requireNeonAuthSession();
+    return getAccountWorkspaceData(data.id);
   });
 
 export const createAccount = createServerFn({ method: "POST" })
