@@ -167,6 +167,39 @@ describe("runClientOpsMigrations", () => {
     ])).rejects.toThrow("Migration paths must be unique and sorted");
     expect(db.query).not.toHaveBeenCalled();
   });
+
+  it("runs a pending migration and ledger insert on one transaction client", async () => {
+    const calls: string[] = [];
+    const client = {
+      query: vi.fn(async (text: string) => {
+        calls.push(text);
+        if (text.includes("select path from clientops_schema_migrations")) {
+          return { rows: [] };
+        }
+        return { rows: [] };
+      }),
+      release: vi.fn(),
+    };
+    const db = {
+      query: vi.fn(),
+      connect: vi.fn().mockResolvedValue(client),
+    };
+
+    await runClientOpsMigrations(db, [
+      { path: "001.sql", sql: "select 1" },
+    ]);
+
+    expect(client.query).toHaveBeenCalledWith("select pg_advisory_lock($1)", [246813579]);
+    expect(client.query).toHaveBeenCalledWith("begin");
+    expect(client.query).toHaveBeenCalledWith("select 1");
+    expect(client.query).toHaveBeenCalledWith(
+      "insert into clientops_schema_migrations(path) values ($1)",
+      ["001.sql"],
+    );
+    expect(client.query).toHaveBeenCalledWith("commit");
+    expect(client.release).toHaveBeenCalled();
+    expect(db.query).not.toHaveBeenCalled();
+  });
 });
 
 describe("applyClientOpsSchemaMigrations", () => {

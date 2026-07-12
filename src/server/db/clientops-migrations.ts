@@ -12,6 +12,11 @@ export type MigrationRunResult = {
   skipped: string[];
 };
 
+type MigrationClient = Queryable & { release(): void };
+type MigrationDatabase = Queryable & {
+  connect?: () => Promise<MigrationClient>;
+};
+
 function assertOrderedUniquePaths(migrations: ClientOpsMigration[]) {
   const paths = migrations.map((migration) => migration.path);
   const sorted = [...paths].sort();
@@ -21,17 +26,19 @@ function assertOrderedUniquePaths(migrations: ClientOpsMigration[]) {
 }
 
 export async function runClientOpsMigrations(
-  db: Queryable,
+  db: MigrationDatabase,
   migrations: ClientOpsMigration[],
 ): Promise<MigrationRunResult> {
   assertOrderedUniquePaths(migrations);
-  await db.query("select pg_advisory_lock($1)", [CLIENTOPS_MIGRATION_LOCK]);
+  const client = db.connect ? await db.connect() : null;
+  const connection = client ?? db;
+  await connection.query("select pg_advisory_lock($1)", [CLIENTOPS_MIGRATION_LOCK]);
 
   try {
-    await db.query(
+    await connection.query(
       "create table if not exists clientops_schema_migrations (path text primary key, applied_at timestamptz not null default now())",
     );
-    const appliedRows = await db.query<{ path: string }>(
+    const appliedRows = await connection.query<{ path: string }>(
       "select path from clientops_schema_migrations order by path",
     );
     const applied = new Set(appliedRows.rows.map((row) => row.path));
@@ -43,23 +50,24 @@ export async function runClientOpsMigrations(
         continue;
       }
 
-      await db.query("begin");
+      await connection.query("begin");
       try {
-        await db.query(migration.sql);
-        await db.query(
+        await connection.query(migration.sql);
+        await connection.query(
           "insert into clientops_schema_migrations(path) values ($1)",
           [migration.path],
         );
-        await db.query("commit");
+        await connection.query("commit");
         result.applied.push(migration.path);
       } catch (error) {
-        await db.query("rollback");
+        await connection.query("rollback");
         throw error;
       }
     }
 
     return result;
   } finally {
-    await db.query("select pg_advisory_unlock($1)", [CLIENTOPS_MIGRATION_LOCK]);
+    await connection.query("select pg_advisory_unlock($1)", [CLIENTOPS_MIGRATION_LOCK]);
+    client?.release();
   }
 }
