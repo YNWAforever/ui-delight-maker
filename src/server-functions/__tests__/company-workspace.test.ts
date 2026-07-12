@@ -15,8 +15,8 @@ const {
         return this;
       },
       handler<T extends (...args: never[]) => unknown>(handler: T) {
-        return async (args: { data: unknown }) =>
-          handler({ ...args, data: validatorFn(args.data) });
+        const invoke = handler as unknown as (args: { data: unknown }) => unknown;
+        return async (args: { data: unknown }) => invoke({ ...args, data: validatorFn(args.data) });
       },
     };
   };
@@ -79,6 +79,29 @@ describe("Company Workspace server functions", () => {
 
     expect(requireNeonAuthSessionMock).toHaveBeenCalled();
     expect(loadCompanyWorkspaceSectionMock).toHaveBeenCalledWith("account-1", "activity");
+  });
+
+  it.each([
+    [
+      "core",
+      () =>
+        import("../company-workspace").then(({ getCompanyWorkspaceCore }) =>
+          getCompanyWorkspaceCore({ data: {} }),
+        ),
+    ],
+    [
+      "aggregate",
+      () =>
+        import("../company-workspace").then(({ getCompanyWorkspace }) =>
+          getCompanyWorkspace({ data: {} }),
+        ),
+    ],
+  ])("rejects a missing account ID for the %s read before querying", async (_name, invoke) => {
+    await expect(invoke()).rejects.toThrow("Company Workspace account ID is required");
+
+    expect(requireNeonAuthSessionMock).not.toHaveBeenCalled();
+    expect(loadCompanyWorkspaceCoreMock).not.toHaveBeenCalled();
+    expect(loadCompanyWorkspaceMock).not.toHaveBeenCalled();
   });
 
   it("rejects an unknown Company Workspace section before querying", async () => {
