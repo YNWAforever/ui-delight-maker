@@ -1,13 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  CLIENTOPS_SCHEMA_CONTRACT,
   CLIENTOPS_MIGRATION_PATHS,
   CLIENTOPS_REQUIRED_COLUMNS,
   CLIENTOPS_REQUIRED_TABLES,
   applyClientOpsSchemaMigrations,
   getClientOpsSchemaMigrationDecision,
+  verifyClientOpsDatabase,
 } from "../clientops-relationship-schema";
 
 describe("getClientOpsSchemaMigrationDecision", () => {
+  it("re-exports the database readiness contract", async () => {
+    expect(CLIENTOPS_SCHEMA_CONTRACT.relations).toContain("accounts");
+
+    await expect(
+      verifyClientOpsDatabase({ query: vi.fn().mockResolvedValue({ rows: [] }) }),
+    ).resolves.toMatchObject({
+      ready: false,
+      mismatches: expect.arrayContaining([
+        { category: "missing_relation", object: "public.accounts" },
+      ]),
+    });
+  });
+
   it("runs the full ordered ClientOps migration set", () => {
     expect(CLIENTOPS_MIGRATION_PATHS).toEqual([
       "neon/migrations/001_clientops_runtime.sql",
