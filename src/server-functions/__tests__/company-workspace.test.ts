@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   requireNeonAuthSessionMock,
   loadCompanyWorkspaceCoreMock,
+  loadCompanyWorkspaceMock,
   loadCompanyWorkspaceSectionMock,
   createServerFnChain,
 } = vi.hoisted(() => {
@@ -23,6 +24,7 @@ const {
   return {
     requireNeonAuthSessionMock: vi.fn(),
     loadCompanyWorkspaceCoreMock: vi.fn(),
+    loadCompanyWorkspaceMock: vi.fn(),
     loadCompanyWorkspaceSectionMock: vi.fn(),
     createServerFnChain,
   };
@@ -34,6 +36,7 @@ vi.mock("@/lib/auth/neon-auth.server", () => ({
 }));
 vi.mock("@/server/company-workspace/loaders", () => ({
   loadCompanyWorkspaceCore: loadCompanyWorkspaceCoreMock,
+  loadCompanyWorkspace: loadCompanyWorkspaceMock,
   loadCompanyWorkspaceSection: loadCompanyWorkspaceSectionMock,
 }));
 
@@ -56,9 +59,14 @@ describe("Company Workspace server functions", () => {
     expect(loadCompanyWorkspaceCoreMock).toHaveBeenCalledWith("account-1");
   });
 
-  it("does not expose an aggregate workspace server function", async () => {
-    const module = await import("../company-workspace");
-    expect("getCompanyWorkspace" in module).toBe(false);
+  it("loads every optional section through the resilient aggregate during route migration", async () => {
+    loadCompanyWorkspaceMock.mockResolvedValue({ sections: { activity: { status: "empty" } } });
+    const { getCompanyWorkspace } = await import("../company-workspace");
+
+    await getCompanyWorkspace({ data: { accountId: "account-1" } });
+
+    expect(requireNeonAuthSessionMock).toHaveBeenCalled();
+    expect(loadCompanyWorkspaceMock).toHaveBeenCalledWith("account-1");
   });
 
   it("loads one optional section for independent retries", async () => {
