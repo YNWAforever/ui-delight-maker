@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
 import {
   CLIENTOPS_SCHEMA_CONTRACT,
   CLIENTOPS_MIGRATION_PATHS,
@@ -127,6 +128,44 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       databaseUrl: "postgres://user@example/neondb",
       migrationPaths: CLIENTOPS_MIGRATION_PATHS,
     });
+  });
+});
+
+describe("runClientOpsMigrations", () => {
+  it("locks, applies only pending migrations, records them, and unlocks", async () => {
+    const calls: string[] = [];
+    const db = {
+      query: vi.fn(async (text: string) => {
+        calls.push(text);
+        if (text.includes("select path from clientops_schema_migrations")) {
+          return { rows: [{ path: "001_clientops_runtime.sql" }] };
+        }
+        return { rows: [] };
+      }),
+    };
+
+    await expect(runClientOpsMigrations(db, [
+      { path: "001_clientops_runtime.sql", sql: "select 1" },
+      { path: "002_retention_client_360.sql", sql: "select 2" },
+    ])).resolves.toEqual({
+      applied: ["002_retention_client_360.sql"],
+      skipped: ["001_clientops_runtime.sql"],
+    });
+    expect(calls).toEqual(expect.arrayContaining([
+      expect.stringContaining("pg_advisory_lock"),
+      "select 2",
+      expect.stringContaining("insert into clientops_schema_migrations"),
+      expect.stringContaining("pg_advisory_unlock"),
+    ]));
+  });
+
+  it("rejects unsorted migration paths before touching the database", async () => {
+    const db = { query: vi.fn() };
+    await expect(runClientOpsMigrations(db, [
+      { path: "002.sql", sql: "select 2" },
+      { path: "001.sql", sql: "select 1" },
+    ])).rejects.toThrow("Migration paths must be unique and sorted");
+    expect(db.query).not.toHaveBeenCalled();
   });
 });
 
