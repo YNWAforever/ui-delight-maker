@@ -3,35 +3,37 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   requireNeonAuthSessionMock,
   loadCompanyWorkspaceCoreMock,
-  loadCompanyWorkspaceMock,
   loadCompanyWorkspaceSectionMock,
   createServerFnChain,
 } = vi.hoisted(() => {
-  const createServerFnChain = {
-    validator() {
-      return createServerFnChain;
-    },
-    handler<T extends (...args: never[]) => unknown>(handler: T) {
-      return handler;
-    },
+  const createServerFnChain = () => {
+    let validatorFn: (data: unknown) => unknown = (data) => data;
+    return {
+      validator(validator: (data: unknown) => unknown) {
+        validatorFn = validator;
+        return this;
+      },
+      handler<T extends (...args: never[]) => unknown>(handler: T) {
+        return async (args: { data: unknown }) =>
+          handler({ ...args, data: validatorFn(args.data) });
+      },
+    };
   };
 
   return {
     requireNeonAuthSessionMock: vi.fn(),
     loadCompanyWorkspaceCoreMock: vi.fn(),
-    loadCompanyWorkspaceMock: vi.fn(),
     loadCompanyWorkspaceSectionMock: vi.fn(),
     createServerFnChain,
   };
 });
 
-vi.mock("@tanstack/react-start", () => ({ createServerFn: () => createServerFnChain }));
+vi.mock("@tanstack/react-start", () => ({ createServerFn: () => createServerFnChain() }));
 vi.mock("@/lib/auth/neon-auth.server", () => ({
   requireNeonAuthSession: requireNeonAuthSessionMock,
 }));
 vi.mock("@/server/company-workspace/loaders", () => ({
   loadCompanyWorkspaceCore: loadCompanyWorkspaceCoreMock,
-  loadCompanyWorkspace: loadCompanyWorkspaceMock,
   loadCompanyWorkspaceSection: loadCompanyWorkspaceSectionMock,
 }));
 
@@ -54,14 +56,9 @@ describe("Company Workspace server functions", () => {
     expect(loadCompanyWorkspaceCoreMock).toHaveBeenCalledWith("account-1");
   });
 
-  it("loads every optional section through the resilient aggregate", async () => {
-    loadCompanyWorkspaceMock.mockResolvedValue({ sections: { activity: { status: "empty" } } });
-    const { getCompanyWorkspace } = await import("../company-workspace");
-
-    await getCompanyWorkspace({ data: { accountId: "account-1" } });
-
-    expect(requireNeonAuthSessionMock).toHaveBeenCalled();
-    expect(loadCompanyWorkspaceMock).toHaveBeenCalledWith("account-1");
+  it("does not expose an aggregate workspace server function", async () => {
+    const module = await import("../company-workspace");
+    expect("getCompanyWorkspace" in module).toBe(false);
   });
 
   it("loads one optional section for independent retries", async () => {
@@ -74,5 +71,17 @@ describe("Company Workspace server functions", () => {
 
     expect(requireNeonAuthSessionMock).toHaveBeenCalled();
     expect(loadCompanyWorkspaceSectionMock).toHaveBeenCalledWith("account-1", "activity");
+  });
+
+  it("rejects an unknown Company Workspace section before querying", async () => {
+    const { getCompanyWorkspaceSection } = await import("../company-workspace");
+
+    await expect(
+      getCompanyWorkspaceSection({
+        data: { accountId: "account-1", section: "unknown" },
+      }),
+    ).rejects.toThrow("Invalid Company Workspace section");
+
+    expect(loadCompanyWorkspaceSectionMock).not.toHaveBeenCalled();
   });
 });
