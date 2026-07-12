@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "bun scripts/clientops/apply-client-relationship-schema.ts && vite build && bun scripts/clientops/seed-on-deploy.ts",
+    "build": "bun run clientops:migrate-schema && bun run clientops:verify-schema && vite build && bun scripts/clientops/seed-on-deploy.ts",
     "build:dev": "vite build --mode development",
     "clientops:backfill-accounts": "bun scripts/clientops/backfill-accounts.ts",
     "clientops:migrate-schema": "bun scripts/clientops/apply-client-relationship-schema.ts",
     "clientops:migrate-relationship-schema": "bun scripts/clientops/apply-client-relationship-schema.ts",
+    "clientops:verify-schema": "bun scripts/clientops/verify-clientops-schema.ts",
     "clientops:relationship-signals": "bun scripts/clientops/generate-relationship-signals.ts",
     "preview": "vite preview",
     "lint": "eslint .",

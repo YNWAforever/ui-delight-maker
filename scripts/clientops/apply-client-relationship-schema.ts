@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
-  applyClientOpsSchemaMigrations,
   getClientOpsSchemaMigrationDecision,
 } from "../../src/lib/clientops-relationship-schema";
+import { runClientOpsMigrations } from "../../src/server/db/clientops-migrations";
 
 const decision = getClientOpsSchemaMigrationDecision(process.env);
 
@@ -21,20 +21,23 @@ if (decision.shouldApply === false) {
   );
 } else {
   const { Pool } = await import("@neondatabase/serverless");
-  const migrationSqls = await Promise.all(
+  const migrations = await Promise.all(
     decision.migrationPaths.map((migrationPath) =>
-      readFile(resolve(process.cwd(), migrationPath), "utf8"),
+      readFile(resolve(process.cwd(), migrationPath), "utf8").then((sql) => ({
+        path: migrationPath,
+        sql,
+      })),
     ),
   );
   const pool = new Pool({ connectionString: decision.databaseUrl });
 
   try {
-    await applyClientOpsSchemaMigrations({ db: pool, migrationSqls });
+    const result = await runClientOpsMigrations(pool, migrations);
     console.log(
       JSON.stringify(
         {
           ok: true,
-          applied: decision.migrationPaths,
+          ...result,
         },
         null,
         2,
