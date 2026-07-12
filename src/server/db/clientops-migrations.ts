@@ -53,10 +53,9 @@ export async function runClientOpsMigrations(
       await connection.query("begin");
       try {
         await connection.query(migration.sql);
-        await connection.query(
-          "insert into clientops_schema_migrations(path) values ($1)",
-          [migration.path],
-        );
+        await connection.query("insert into clientops_schema_migrations(path) values ($1)", [
+          migration.path,
+        ]);
         await connection.query("commit");
         result.applied.push(migration.path);
       } catch (error) {

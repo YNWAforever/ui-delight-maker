@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  CLIENTOPS_SCHEMA_CONTRACT,
-  verifyClientOpsDatabase,
-} from "../clientops-schema-contract";
+import { CLIENTOPS_SCHEMA_CONTRACT, verifyClientOpsDatabase } from "../clientops-schema-contract";
 
 function contractQueryStub(columnTypes: Record<string, string> = {}) {
   return {
@@ -15,17 +12,15 @@ function contractQueryStub(columnTypes: Record<string, string> = {}) {
 
       if (text.includes("information_schema.columns")) {
         return {
-          rows: Object.entries(CLIENTOPS_SCHEMA_CONTRACT.columns).map(
-            ([object, contract]) => {
-              const [table_name, column_name] = object.split(".");
-              return {
-                table_name,
-                column_name,
-                data_type: columnTypes[`public.${object}`] ?? contract.type,
-                is_nullable: contract.nullable ? "YES" : "NO",
-              };
-            },
-          ),
+          rows: Object.entries(CLIENTOPS_SCHEMA_CONTRACT.columns).map(([object, contract]) => {
+            const [table_name, column_name] = object.split(".");
+            return {
+              table_name,
+              column_name,
+              data_type: columnTypes[`public.${object}`] ?? contract.type,
+              is_nullable: contract.nullable ? "YES" : "NO",
+            };
+          }),
         };
       }
 
@@ -45,12 +40,14 @@ function contractQueryStub(columnTypes: Record<string, string> = {}) {
 
       throw new Error(`Unexpected contract query: ${text}`);
     }),
-  };
+  } as unknown as Parameters<typeof verifyClientOpsDatabase>[0];
 }
 
 describe("verifyClientOpsDatabase", () => {
   it("reports missing relations without throwing raw database output", async () => {
-    const db = { query: vi.fn().mockResolvedValue({ rows: [] }) };
+    const db = {
+      query: vi.fn().mockResolvedValue({ rows: [] }),
+    } as unknown as Parameters<typeof verifyClientOpsDatabase>[0];
 
     const result = await verifyClientOpsDatabase(db);
 

@@ -1,8 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import {
-  getClientOpsSchemaMigrationDecision,
-} from "../../src/lib/clientops-relationship-schema";
+import { getClientOpsSchemaMigrationDecision } from "../../src/lib/clientops-relationship-schema";
 import { runClientOpsMigrations } from "../../src/server/db/clientops-migrations";
 
 const decision = getClientOpsSchemaMigrationDecision(process.env);

@@ -142,29 +142,35 @@ describe("runClientOpsMigrations", () => {
         }
         return { rows: [] };
       }),
-    };
+    } as unknown as Parameters<typeof runClientOpsMigrations>[0];
 
-    await expect(runClientOpsMigrations(db, [
-      { path: "001_clientops_runtime.sql", sql: "select 1" },
-      { path: "002_retention_client_360.sql", sql: "select 2" },
-    ])).resolves.toEqual({
+    await expect(
+      runClientOpsMigrations(db, [
+        { path: "001_clientops_runtime.sql", sql: "select 1" },
+        { path: "002_retention_client_360.sql", sql: "select 2" },
+      ]),
+    ).resolves.toEqual({
       applied: ["002_retention_client_360.sql"],
       skipped: ["001_clientops_runtime.sql"],
     });
-    expect(calls).toEqual(expect.arrayContaining([
-      expect.stringContaining("pg_advisory_lock"),
-      "select 2",
-      expect.stringContaining("insert into clientops_schema_migrations"),
-      expect.stringContaining("pg_advisory_unlock"),
-    ]));
+    expect(calls).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("pg_advisory_lock"),
+        "select 2",
+        expect.stringContaining("insert into clientops_schema_migrations"),
+        expect.stringContaining("pg_advisory_unlock"),
+      ]),
+    );
   });
 
   it("rejects unsorted migration paths before touching the database", async () => {
-    const db = { query: vi.fn() };
-    await expect(runClientOpsMigrations(db, [
-      { path: "002.sql", sql: "select 2" },
-      { path: "001.sql", sql: "select 1" },
-    ])).rejects.toThrow("Migration paths must be unique and sorted");
+    const db = { query: vi.fn() } as unknown as Parameters<typeof runClientOpsMigrations>[0];
+    await expect(
+      runClientOpsMigrations(db, [
+        { path: "002.sql", sql: "select 2" },
+        { path: "001.sql", sql: "select 1" },
+      ]),
+    ).rejects.toThrow("Migration paths must be unique and sorted");
     expect(db.query).not.toHaveBeenCalled();
   });
 
@@ -183,11 +189,9 @@ describe("runClientOpsMigrations", () => {
     const db = {
       query: vi.fn(),
       connect: vi.fn().mockResolvedValue(client),
-    };
+    } as unknown as Parameters<typeof runClientOpsMigrations>[0];
 
-    await runClientOpsMigrations(db, [
-      { path: "001.sql", sql: "select 1" },
-    ]);
+    await runClientOpsMigrations(db, [{ path: "001.sql", sql: "select 1" }]);
 
     expect(client.query).toHaveBeenCalledWith("select pg_advisory_lock($1)", [246813579]);
     expect(client.query).toHaveBeenCalledWith("begin");
