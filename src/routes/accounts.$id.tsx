@@ -22,32 +22,45 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
 import { userById } from "@/lib/users";
 import type { RelationshipSignal } from "@/lib/types";
-import { getAccountWorkspace, triggerRelationshipIntelligence } from "@/server-functions/accounts";
-import { getEngagementsByClient } from "@/server-functions/engagements";
-import { getJobSheets } from "@/server-functions/job-sheets";
-import {
-  dismissRelationshipSignalFn,
-  getRelationshipSignals,
-} from "@/server-functions/relationship-signals";
+import { triggerRelationshipIntelligence } from "@/server-functions/accounts";
+import { getCompanyWorkspace } from "@/server-functions/company-workspace";
+import { dismissRelationshipSignalFn } from "@/server-functions/relationship-signals";
 
 export const Route = createFileRoute("/accounts/$id")({
   loader: async ({ params }) => {
-    const [workspace, signals, jobSheets] = await Promise.all([
-      getAccountWorkspace({ data: { id: params.id } }),
-      getRelationshipSignals({ data: { account_id: params.id, openOnly: true } }),
-      getJobSheets({ data: { account_id: params.id } }),
-    ]);
-
-    const engagementGroups = await Promise.all(
-      workspace.clients.map((client) => getEngagementsByClient({ data: { clientId: client.id } })),
-    );
+    const workspace = await getCompanyWorkspace({ data: { accountId: params.id } });
+    const commercial =
+      workspace.sections.commercial.status === "error"
+        ? { clients: [], engagements: [], leads: [], quotes: [] }
+        : workspace.sections.commercial.data;
+    const deliveryFinance =
+      workspace.sections.delivery_finance.status === "error"
+        ? { tasks: [], jobSheets: [] }
+        : workspace.sections.delivery_finance.data;
+    const activity =
+      workspace.sections.activity.status === "error"
+        ? { timeline: [] }
+        : workspace.sections.activity.data;
+    const intelligence =
+      workspace.sections.intelligence.status === "error"
+        ? { signals: [] }
+        : workspace.sections.intelligence.data;
+    const sectionErrors = Object.values(workspace.sections)
+      .filter((section) => section.status === "error")
+      .map((section) => section.error);
 
     return {
-      ...workspace,
-      signals,
-      linkedClients: workspace.clients,
-      engagements: engagementGroups.flat(),
-      jobSheets,
+      account: workspace.core.company,
+      contacts: workspace.core.contacts,
+      timeline: activity.timeline,
+      signals: intelligence.signals,
+      linkedClients: commercial.clients,
+      engagements: commercial.engagements,
+      leads: commercial.leads,
+      quotes: commercial.quotes,
+      tasks: deliveryFinance.tasks,
+      jobSheets: deliveryFinance.jobSheets,
+      sectionErrors,
     };
   },
   head: ({ loaderData }) => ({
@@ -68,6 +81,7 @@ function AccountDetailRoute() {
     tasks,
     quotes,
     jobSheets,
+    sectionErrors,
   } = Route.useLoaderData();
   const [dismissedSignalIds, setDismissedSignalIds] = useState<string[]>([]);
   const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
@@ -234,6 +248,18 @@ function AccountDetailRoute() {
       />
 
       <main className="space-y-4 px-6 py-6">
+        {sectionErrors.length > 0 ? (
+          <div
+            role="alert"
+            className="rounded-md border border-destructive/40 bg-destructive/5 p-4"
+          >
+            <p className="text-sm font-medium">Some company sections could not be loaded</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              The available company details are shown below. Reference {sectionErrors[0].requestId}
+              if the problem continues.
+            </p>
+          </div>
+        ) : null}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {summaryItems.map((item) => {
             const Icon = item.icon;

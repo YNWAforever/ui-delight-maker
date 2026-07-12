@@ -5,7 +5,8 @@ import { AccountSummaryCard } from "@/components/relationship/account-summary-ca
 import { AccountPreviewPanel } from "@/components/relationship/account-preview-panel";
 import { WorkspaceViewSwitcher } from "@/components/relationship/workspace-view-switcher";
 import { getClients } from "@/server-functions/clients";
-import { getAccounts, getAccountWorkspace } from "@/server-functions/accounts";
+import { getAccounts } from "@/server-functions/accounts";
+import { getCompanyWorkspaceCore } from "@/server-functions/company-workspace";
 import {
   getWorkspacePreferences,
   togglePersonalWorkspaceFavorite,
@@ -119,9 +120,20 @@ function AccountsIndex() {
     setPreviewLoading(true);
     setPreviewError(null);
 
-    void getAccountWorkspace({ data: { id: selectedAccountId } })
-      .then((workspace) => {
-        if (!cancelled) setSelectedSummary(workspace.summary);
+    void getCompanyWorkspaceCore({ data: { accountId: selectedAccountId } })
+      .then((core) => {
+        if (!cancelled) {
+          setSelectedSummary(
+            toCompanyWorkspaceSummary({
+              account: core.company,
+              contacts: core.contacts,
+              clients: clients.filter((client) => client.account_id === core.company.id),
+              leads: [],
+              quotes: [],
+              tasks: [],
+            }),
+          );
+        }
       })
       .catch(() => {
         if (!cancelled) setPreviewError("Company details could not be refreshed.");
