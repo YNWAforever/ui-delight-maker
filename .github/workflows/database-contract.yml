@@ -1,0 +1,29 @@
+name: Database contract
+
+on:
+  pull_request:
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: clientops
+          POSTGRES_PASSWORD: clientops
+          POSTGRES_DB: clientops_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U clientops"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_TEST_URL: postgres://clientops:clientops@localhost:5432/clientops_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx vitest run src/server/db/__tests__/clientops-schema.integration.test.ts

@@ -12,6 +12,7 @@
     "clientops:migrate-relationship-schema": "bun scripts/clientops/apply-client-relationship-schema.ts",
     "clientops:verify-schema": "bun scripts/clientops/verify-clientops-schema.ts",
     "clientops:relationship-signals": "bun scripts/clientops/generate-relationship-signals.ts",
+    "test:database-contract": "bunx vitest run src/server/db/__tests__/clientops-schema.integration.test.ts",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",
