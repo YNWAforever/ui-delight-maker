@@ -118,7 +118,7 @@ describe("sales route source copy", () => {
     expect(accountDetailSource).toContain("const [dismissedSignalIds, setDismissedSignalIds]");
     expect(accountDetailSource).toContain("useEffect(() => {");
     expect(accountDetailSource).toContain("setDismissedSignalIds([]);");
-    expect(accountDetailSource).toContain("const openSignals = signals.filter");
+    expect(accountDetailSource).toContain("const openSignals = data.signals.filter");
   });
 
   it("adds campaign follow-up workspace", () => {
