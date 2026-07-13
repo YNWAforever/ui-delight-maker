@@ -135,6 +135,7 @@ describe("admin search contracts", () => {
     ];
 
     for (const item of sortCases) {
+      expect(companiesSearchSchema.parse({ sort: item.key }).sort).toBe(item.key);
       expect(companySortFromKey(item.key)).toEqual(item.sort);
       expect(companySortToKey(item.sort)).toBe(item.serialized);
     }
