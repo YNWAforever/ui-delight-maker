@@ -18,7 +18,8 @@ describe("ClientOps PostgreSQL contract", () => {
           })),
         );
         await runClientOpsMigrations(pool, migrations);
-        await expect(verifyClientOpsDatabase(pool)).resolves.toMatchObject({ ready: true });
+        const readiness = await verifyClientOpsDatabase(pool);
+        expect(readiness.ready, JSON.stringify(readiness, null, 2)).toBe(true);
       } finally {
         await pool.end();
       }

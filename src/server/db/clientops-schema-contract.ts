@@ -50,7 +50,7 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "leads.account_id": { type: "uuid", nullable: true },
     "quotes.account_id": { type: "uuid", nullable: true },
     "tasks.account_id": { type: "uuid", nullable: true },
-    "activity_logs.object_id": { type: "uuid", nullable: false },
+    "activity_logs.object_id": { type: "uuid", nullable: true },
     "activity_logs.diff_data": { type: "jsonb", nullable: true },
     "human_approvals.context_data": { type: "jsonb", nullable: true },
     "job_sheets.account_id": { type: "uuid", nullable: true },
