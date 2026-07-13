@@ -14,7 +14,11 @@ import { formatCompactHKD } from "@/lib/format";
 import { getBusinessDateKey } from "@/lib/business-date";
 import { filterPipelineLeads, getPipelineSummary } from "@/lib/pipeline";
 import { buildRevenueActions } from "@/lib/sales-workspace";
-import type { PipelineFilters } from "@/lib/pipeline";
+import {
+  pipelineFiltersFromSearch,
+  pipelineSearchFromFilters,
+  revenueDeskSearchSchema,
+} from "@/lib/admin-ux-search";
 import type { ActivityLog, Lead, LeadStatus } from "@/lib/types";
 import { APP_USERS } from "@/lib/users";
 import { getActivityLogs } from "@/server-functions/agent-runs";
@@ -25,6 +29,7 @@ import { triggerQuoteAgent } from "@/server-functions/quotes";
 import { createTask } from "@/server-functions/tasks";
 
 export const Route = createFileRoute("/")({
+  validateSearch: revenueDeskSearchSchema,
   loader: async () => {
     const [pipeline, activityLogs, products] = await Promise.all([
       getPipelineData(),
@@ -50,16 +55,10 @@ function PipelineCommandCenter() {
   const { leads, quotes, tasks, approvals, agentRuns, activityLogs, products } =
     Route.useLoaderData();
   const router = useRouter();
-  const navigate = useNavigate();
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const today = getBusinessDateKey();
-  const [filters, setFilters] = useState<PipelineFilters>({
-    search: "",
-    source: "all",
-    owner: "all",
-    urgency: "all",
-    aiState: "all",
-  });
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(leads[0]?.id ?? null);
+  const filters = useMemo(() => pipelineFiltersFromSearch(search), [search]);
   const [moveDialog, setMoveDialog] = useState<{ lead: Lead; status: LeadStatus } | null>(null);
   const [moveReason, setMoveReason] = useState("");
   const [wonLead, setWonLead] = useState<Lead | null>(null);
@@ -78,7 +77,7 @@ function PipelineCommandCenter() {
   );
 
   const selectedLead =
-    filteredLeads.find((lead) => lead.id === selectedLeadId) ?? filteredLeads[0] ?? null;
+    filteredLeads.find((lead) => lead.id === search.lead) ?? filteredLeads[0] ?? null;
   const summary = getPipelineSummary({ leads: filteredLeads, tasks, approvals, today });
   const revenueActions = buildRevenueActions({
     leads,
@@ -112,7 +111,7 @@ function PipelineCommandCenter() {
       setWonLead(moveDialog.lead);
     }
 
-    setSelectedLeadId(moveDialog.lead.id);
+    navigate({ search: (current) => ({ ...current, lead: moveDialog.lead.id }) });
     setMoveDialog(null);
     setMoveReason("");
     router.invalidate();
@@ -126,7 +125,7 @@ function PipelineCommandCenter() {
 
     await moveLeadStage({ data: { id: lead.id, status } });
     toast.success(`${lead.company_name} moved to ${status.replace(/_/g, " ")}`);
-    setSelectedLeadId(lead.id);
+    navigate({ search: (current) => ({ ...current, lead: lead.id }) });
     router.invalidate();
   };
 
@@ -307,7 +306,20 @@ function PipelineCommandCenter() {
             <PipelineToolbar
               filters={filters}
               owners={APP_USERS.map((user) => ({ id: user.id, name: user.name }))}
-              onFiltersChange={setFilters}
+              onFiltersChange={(nextFilters) =>
+                navigate({
+                  search: (current) => {
+                    const nextSearch = { ...current };
+                    delete nextSearch.q;
+                    delete nextSearch.source;
+                    delete nextSearch.owner;
+                    delete nextSearch.urgency;
+                    delete nextSearch.ai;
+                    return { ...nextSearch, ...pipelineSearchFromFilters(nextFilters) };
+                  },
+                  replace: true,
+                })
+              }
             />
           </section>
         </div>
@@ -321,7 +333,9 @@ function PipelineCommandCenter() {
               approvals={approvals}
               agentRuns={agentRuns}
               selectedLeadId={selectedLead?.id ?? null}
-              onSelectLead={(lead) => setSelectedLeadId(lead.id)}
+              onSelectLead={(lead) =>
+                navigate({ search: (current) => ({ ...current, lead: lead.id }) })
+              }
               onMoveLead={moveLead}
             />
           </div>
