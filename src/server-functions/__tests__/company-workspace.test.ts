@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   requireNeonAuthSessionMock,
   loadCompanyWorkspaceCoreMock,
-  loadCompanyWorkspaceMock,
   loadCompanyWorkspaceSectionMock,
   createServerFnChain,
 } = vi.hoisted(() => {
@@ -24,7 +23,6 @@ const {
   return {
     requireNeonAuthSessionMock: vi.fn(),
     loadCompanyWorkspaceCoreMock: vi.fn(),
-    loadCompanyWorkspaceMock: vi.fn(),
     loadCompanyWorkspaceSectionMock: vi.fn(),
     createServerFnChain,
   };
@@ -36,7 +34,6 @@ vi.mock("@/lib/auth/neon-auth.server", () => ({
 }));
 vi.mock("@/server/company-workspace/loaders", () => ({
   loadCompanyWorkspaceCore: loadCompanyWorkspaceCoreMock,
-  loadCompanyWorkspace: loadCompanyWorkspaceMock,
   loadCompanyWorkspaceSection: loadCompanyWorkspaceSectionMock,
 }));
 
@@ -59,16 +56,6 @@ describe("Company Workspace server functions", () => {
     expect(loadCompanyWorkspaceCoreMock).toHaveBeenCalledWith("account-1");
   });
 
-  it("loads every optional section through the resilient aggregate during route migration", async () => {
-    loadCompanyWorkspaceMock.mockResolvedValue({ sections: { activity: { status: "empty" } } });
-    const { getCompanyWorkspace } = await import("../company-workspace");
-
-    await getCompanyWorkspace({ data: { accountId: "account-1" } });
-
-    expect(requireNeonAuthSessionMock).toHaveBeenCalled();
-    expect(loadCompanyWorkspaceMock).toHaveBeenCalledWith("account-1");
-  });
-
   it("loads one optional section for independent retries", async () => {
     loadCompanyWorkspaceSectionMock.mockResolvedValue({ status: "empty", data: { timeline: [] } });
     const { getCompanyWorkspaceSection } = await import("../company-workspace");
@@ -81,27 +68,14 @@ describe("Company Workspace server functions", () => {
     expect(loadCompanyWorkspaceSectionMock).toHaveBeenCalledWith("account-1", "activity");
   });
 
-  it.each([
-    [
-      "core",
-      () =>
-        import("../company-workspace").then(({ getCompanyWorkspaceCore }) =>
-          getCompanyWorkspaceCore({ data: {} }),
-        ),
-    ],
-    [
-      "aggregate",
-      () =>
-        import("../company-workspace").then(({ getCompanyWorkspace }) =>
-          getCompanyWorkspace({ data: {} }),
-        ),
-    ],
-  ])("rejects a missing account ID for the %s read before querying", async (_name, invoke) => {
+  it("rejects a missing account ID for the core read before querying", async () => {
+    const { getCompanyWorkspaceCore } = await import("../company-workspace");
+    const invoke = () => getCompanyWorkspaceCore({ data: {} });
+
     await expect(invoke()).rejects.toThrow("Company Workspace account ID is required");
 
     expect(requireNeonAuthSessionMock).not.toHaveBeenCalled();
     expect(loadCompanyWorkspaceCoreMock).not.toHaveBeenCalled();
-    expect(loadCompanyWorkspaceMock).not.toHaveBeenCalled();
   });
 
   it("rejects an unknown Company Workspace section before querying", async () => {

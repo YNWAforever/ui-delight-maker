@@ -2,14 +2,19 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("Account company workspace route", () => {
-  it("uses the resilient Company Workspace API and renders all workspace sections", () => {
+  it("loads core data and queries each optional section independently", () => {
     const source = readFileSync(new URL("../accounts.$id.tsx", import.meta.url), "utf8");
 
-    expect(source).toContain("getCompanyWorkspace");
+    expect(source).toContain("getCompanyWorkspaceCore");
+    expect(source).not.toContain("getCompanyWorkspace({");
     expect(source).not.toContain("getEngagementsByClient");
     expect(source).not.toContain("getRelationshipSignals");
     expect(source).not.toContain("getJobSheets");
-    expect(source).toContain("Some company sections could not be loaded");
+    expect(source).not.toContain("sectionErrors");
+    for (const section of ["commercial", "delivery_finance", "activity", "intelligence"]) {
+      expect(source).toContain(`useCompanyWorkspaceSection(account.id, "${section}")`);
+    }
+    expect(source).toContain("CompanyWorkspaceSectionState");
     for (const label of ["Overview", "People", "Activity", "Commercial", "Delivery & Finance"]) {
       expect(source).toContain(label);
     }

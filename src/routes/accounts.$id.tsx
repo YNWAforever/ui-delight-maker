@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { JobSheetStatusBadge } from "@/components/job-sheets/job-sheet-status-badge";
 import { PageHeader } from "@/components/page-header";
 import { AccountTimeline } from "@/components/relationship/account-timeline";
+import { CompanyWorkspaceSectionState } from "@/components/relationship/company-workspace-section-state";
 import { StakeholderMap } from "@/components/relationship/stakeholder-map";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -20,69 +21,51 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
+import { useCompanyWorkspaceSection } from "@/hooks/use-company-workspace-section";
 import { userById } from "@/lib/users";
 import type { RelationshipSignal } from "@/lib/types";
 import { triggerRelationshipIntelligence } from "@/server-functions/accounts";
-import { getCompanyWorkspace } from "@/server-functions/company-workspace";
+import { getCompanyWorkspaceCore } from "@/server-functions/company-workspace";
 import { dismissRelationshipSignalFn } from "@/server-functions/relationship-signals";
 
 export const Route = createFileRoute("/accounts/$id")({
-  loader: async ({ params }) => {
-    const workspace = await getCompanyWorkspace({ data: { accountId: params.id } });
-    const commercial =
-      workspace.sections.commercial.status === "error"
-        ? { clients: [], engagements: [], leads: [], quotes: [] }
-        : workspace.sections.commercial.data;
-    const deliveryFinance =
-      workspace.sections.delivery_finance.status === "error"
-        ? { tasks: [], jobSheets: [] }
-        : workspace.sections.delivery_finance.data;
-    const activity =
-      workspace.sections.activity.status === "error"
-        ? { timeline: [] }
-        : workspace.sections.activity.data;
-    const intelligence =
-      workspace.sections.intelligence.status === "error"
-        ? { signals: [] }
-        : workspace.sections.intelligence.data;
-    const sectionErrors = Object.values(workspace.sections)
-      .filter((section) => section.status === "error")
-      .map((section) => section.error);
-
-    return {
-      account: workspace.core.company,
-      contacts: workspace.core.contacts,
-      timeline: activity.timeline,
-      signals: intelligence.signals,
-      linkedClients: commercial.clients,
-      engagements: commercial.engagements,
-      leads: commercial.leads,
-      quotes: commercial.quotes,
-      tasks: deliveryFinance.tasks,
-      jobSheets: deliveryFinance.jobSheets,
-      sectionErrors,
-    };
-  },
+  loader: ({ params }) => getCompanyWorkspaceCore({ data: { accountId: params.id } }),
   head: ({ loaderData }) => ({
-    meta: [{ title: `${loaderData?.account.name ?? "Account"} - Fimmick ClientOps` }],
+    meta: [{ title: `${loaderData?.company.name ?? "Account"} - Fimmick ClientOps` }],
   }),
   component: AccountDetailRoute,
 });
 
 function AccountDetailRoute() {
-  const {
-    account,
-    contacts,
-    timeline,
-    signals,
-    linkedClients,
-    engagements,
-    leads,
-    tasks,
-    quotes,
-    jobSheets,
-    sectionErrors,
-  } = Route.useLoaderData();
+  const { company: account, contacts } = Route.useLoaderData();
+  const commercialQuery = useCompanyWorkspaceSection(account.id, "commercial");
+  const deliveryFinanceQuery = useCompanyWorkspaceSection(account.id, "delivery_finance");
+  const activityQuery = useCompanyWorkspaceSection(account.id, "activity");
+  const intelligenceQuery = useCompanyWorkspaceSection(account.id, "intelligence");
+  const commercial =
+    commercialQuery.data?.status === "ready" || commercialQuery.data?.status === "empty"
+      ? commercialQuery.data.data
+      : undefined;
+  const deliveryFinance =
+    deliveryFinanceQuery.data?.status === "ready" || deliveryFinanceQuery.data?.status === "empty"
+      ? deliveryFinanceQuery.data.data
+      : undefined;
+  const activity =
+    activityQuery.data?.status === "ready" || activityQuery.data?.status === "empty"
+      ? activityQuery.data.data
+      : undefined;
+  const intelligence =
+    intelligenceQuery.data?.status === "ready" || intelligenceQuery.data?.status === "empty"
+      ? intelligenceQuery.data.data
+      : undefined;
+  const linkedClients = commercial?.clients ?? [];
+  const engagements = commercial?.engagements ?? [];
+  const leads = commercial?.leads ?? [];
+  const quotes = commercial?.quotes ?? [];
+  const tasks = deliveryFinance?.tasks ?? [];
+  const jobSheets = deliveryFinance?.jobSheets ?? [];
+  const timeline = activity?.timeline ?? [];
+  const signals = intelligence?.signals ?? [];
   const [dismissedSignalIds, setDismissedSignalIds] = useState<string[]>([]);
   const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
@@ -104,7 +87,7 @@ function AccountDetailRoute() {
     setActiveDismissId(null);
     setDismissReasons({});
     setPendingSignalIds([]);
-  }, [account.id, signals]);
+  }, [account.id]);
 
   const startDismiss = (signal: RelationshipSignal) => {
     setActiveDismissId(signal.id);
@@ -193,23 +176,25 @@ function AccountDetailRoute() {
     },
     {
       label: "Open signals",
-      value: openSignals.length,
+      value: intelligence ? openSignals.length : "—",
       hint: "needs action",
       icon: BriefcaseBusiness,
     },
     {
       label: "Linked clients",
-      value: linkedClients.length,
-      hint: `${activeEngagements.length} active engagements`,
+      value: commercial ? linkedClients.length : "—",
+      hint: commercial ? `${activeEngagements.length} active engagements` : "loading",
       icon: CalendarClock,
     },
     {
       label: "Quotes",
-      value: quotes.length,
-      hint: formatCurrencyAmount(
-        quotes.reduce((sum, quote) => sum + (quote.total_value ?? 0), 0),
-        quotes[0]?.currency ?? "HKD",
-      ),
+      value: commercial ? quotes.length : "—",
+      hint: commercial
+        ? formatCurrencyAmount(
+            quotes.reduce((sum, quote) => sum + (quote.total_value ?? 0), 0),
+            quotes[0]?.currency ?? "HKD",
+          )
+        : "loading",
       icon: FileText,
     },
   ];
@@ -248,18 +233,6 @@ function AccountDetailRoute() {
       />
 
       <main className="space-y-4 px-6 py-6">
-        {sectionErrors.length > 0 ? (
-          <div
-            role="alert"
-            className="rounded-md border border-destructive/40 bg-destructive/5 p-4"
-          >
-            <p className="text-sm font-medium">Some company sections could not be loaded</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              The available company details are shown below. Reference {sectionErrors[0].requestId}
-              if the problem continues.
-            </p>
-          </div>
-        ) : null}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {summaryItems.map((item) => {
             const Icon = item.icon;
@@ -324,35 +297,38 @@ function AccountDetailRoute() {
                   </p>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold">Open signals</h3>
-                    <span className="text-xs text-muted-foreground">
-                      {openSignals.length} active
-                    </span>
-                  </div>
-                  {openSignals.length === 0 ? (
-                    <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-                      No open relationship signals for this account.
+                <CompanyWorkspaceSectionState
+                  state={intelligenceQuery.data}
+                  isLoading={intelligenceQuery.isLoading}
+                  emptyMessage="No open relationship signals for this account."
+                  onRetry={() => void intelligenceQuery.refetch()}
+                >
+                  {() => (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold">Open signals</h3>
+                        <span className="text-xs text-muted-foreground">
+                          {openSignals.length} active
+                        </span>
+                      </div>
+                      <ul className="space-y-2">
+                        {openSignals.slice(0, 5).map((signal) => (
+                          <SignalListItem
+                            key={signal.id}
+                            signal={signal}
+                            dismissReason={dismissReasons[signal.id] ?? ""}
+                            isDismissOpen={activeDismissId === signal.id}
+                            isDismissing={pendingSignalIds.includes(signal.id)}
+                            onStartDismiss={startDismiss}
+                            onDismissReasonChange={changeDismissReason}
+                            onConfirmDismiss={dismissSignal}
+                            onCancelDismiss={cancelDismiss}
+                          />
+                        ))}
+                      </ul>
                     </div>
-                  ) : (
-                    <ul className="space-y-2">
-                      {openSignals.slice(0, 5).map((signal) => (
-                        <SignalListItem
-                          key={signal.id}
-                          signal={signal}
-                          dismissReason={dismissReasons[signal.id] ?? ""}
-                          isDismissOpen={activeDismissId === signal.id}
-                          isDismissing={pendingSignalIds.includes(signal.id)}
-                          onStartDismiss={startDismiss}
-                          onDismissReasonChange={changeDismissReason}
-                          onConfirmDismiss={dismissSignal}
-                          onCancelDismiss={cancelDismiss}
-                        />
-                      ))}
-                    </ul>
                   )}
-                </div>
+                </CompanyWorkspaceSectionState>
               </CardContent>
             </Card>
 
@@ -374,33 +350,36 @@ function AccountDetailRoute() {
                   <CardTitle className="text-base">Linked clients</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {linkedClients.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No client profile is linked to this account yet.
-                    </p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {linkedClients.map((client) => (
-                        <li
-                          key={client.id}
-                          className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm"
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate font-medium">{client.company_name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              Health {client.health_score} | Renewal{" "}
-                              {formatDate(client.renewal_date)}
-                            </p>
-                          </div>
-                          <Button variant="outline" size="sm" asChild>
-                            <Link to="/clients/$id" params={{ id: client.id }}>
-                              Open
-                            </Link>
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <CompanyWorkspaceSectionState
+                    state={commercialQuery.data}
+                    isLoading={commercialQuery.isLoading}
+                    emptyMessage="No client profile is linked to this account yet."
+                    onRetry={() => void commercialQuery.refetch()}
+                  >
+                    {() => (
+                      <ul className="space-y-2">
+                        {linkedClients.map((client) => (
+                          <li
+                            key={client.id}
+                            className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate font-medium">{client.company_name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Health {client.health_score} | Renewal{" "}
+                                {formatDate(client.renewal_date)}
+                              </p>
+                            </div>
+                            <Button variant="outline" size="sm" asChild>
+                              <Link to="/clients/$id" params={{ id: client.id }}>
+                                Open
+                              </Link>
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </CompanyWorkspaceSectionState>
                 </CardContent>
               </Card>
             </div>
@@ -411,194 +390,231 @@ function AccountDetailRoute() {
           </TabsContent>
 
           <TabsContent value="timeline">
-            <AccountTimeline entries={timeline} />
+            <CompanyWorkspaceSectionState
+              state={activityQuery.data}
+              isLoading={activityQuery.isLoading}
+              emptyMessage="No timeline activity yet."
+              onRetry={() => void activityQuery.refetch()}
+            >
+              {(data) => <AccountTimeline entries={data.timeline} />}
+            </CompanyWorkspaceSectionState>
           </TabsContent>
 
           <TabsContent value="events">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Leads, quotes & approvals</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {leads.length === 0 &&
-                quotes.length === 0 &&
-                commercialTimelineEntries.length === 0 ? (
-                  <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-                    No commercial activity is linked to this company yet.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                    <CommercialList
-                      title="Leads"
-                      empty="No leads linked to this company."
-                      items={leads.map((lead) => ({
-                        id: lead.id,
-                        title: lead.contact_name ?? lead.company_name,
-                        detail: lead.source ?? "Source not set",
-                        status: lead.status,
-                        href: `/leads/${lead.id}`,
-                      }))}
-                    />
-                    <CommercialList
-                      title="Quotes"
-                      empty="No quotes linked to this company."
-                      items={quotes.map((quote) => ({
-                        id: quote.id,
-                        title: quote.number ?? "Draft quote",
-                        detail: formatCurrencyAmount(quote.total_value, quote.currency),
-                        status: quote.status,
-                        href: `/quotes/${quote.id}`,
-                      }))}
-                    />
-                    <CommercialList
-                      title="Approvals & campaigns"
-                      empty="No approval or campaign activity yet."
-                      items={commercialTimelineEntries.map((entry) => ({
-                        id: entry.id,
-                        title: entry.title,
-                        detail: entry.detail ?? formatDateTime(entry.occurred_at),
-                        status: entry.status ? String(entry.status) : undefined,
-                      }))}
-                    />
-                    <CommercialList
-                      title="Open tasks"
-                      empty="No open commercial tasks."
-                      items={openTasks.map((task) => ({
-                        id: task.id,
-                        title: task.title,
-                        detail: `Due ${formatDate(task.due_date)}`,
-                        status: task.status,
-                      }))}
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <CompanyWorkspaceSectionState
+              state={commercialQuery.data}
+              isLoading={commercialQuery.isLoading}
+              emptyMessage="No commercial activity is linked to this company yet."
+              onRetry={() => void commercialQuery.refetch()}
+            >
+              {() => (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Leads, quotes & approvals</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {leads.length === 0 &&
+                    quotes.length === 0 &&
+                    commercialTimelineEntries.length === 0 ? (
+                      <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+                        No commercial activity is linked to this company yet.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                        <CommercialList
+                          title="Leads"
+                          empty="No leads linked to this company."
+                          items={leads.map((lead) => ({
+                            id: lead.id,
+                            title: lead.contact_name ?? lead.company_name,
+                            detail: lead.source ?? "Source not set",
+                            status: lead.status,
+                            href: `/leads/${lead.id}`,
+                          }))}
+                        />
+                        <CommercialList
+                          title="Quotes"
+                          empty="No quotes linked to this company."
+                          items={quotes.map((quote) => ({
+                            id: quote.id,
+                            title: quote.number ?? "Draft quote",
+                            detail: formatCurrencyAmount(quote.total_value, quote.currency),
+                            status: quote.status,
+                            href: `/quotes/${quote.id}`,
+                          }))}
+                        />
+                        <CommercialList
+                          title="Approvals & campaigns"
+                          empty="No approval or campaign activity yet."
+                          items={commercialTimelineEntries.map((entry) => ({
+                            id: entry.id,
+                            title: entry.title,
+                            detail: entry.detail ?? formatDateTime(entry.occurred_at),
+                            status: entry.status ? String(entry.status) : undefined,
+                          }))}
+                        />
+                        <CommercialList
+                          title="Open tasks"
+                          empty="No open commercial tasks."
+                          items={openTasks.map((task) => ({
+                            id: task.id,
+                            title: task.title,
+                            detail: `Due ${formatDate(task.due_date)}`,
+                            status: task.status,
+                          }))}
+                        />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </CompanyWorkspaceSectionState>
           </TabsContent>
 
-          <TabsContent
-            value="tasks"
-            className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]"
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Delivery tasks</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {openTasks.length === 0 ? (
-                  <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-                    No open account tasks right now.
-                  </div>
-                ) : (
-                  <ul className="space-y-2">
-                    {openTasks
-                      .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"))
-                      .map((task) => (
-                        <li key={task.id} className="rounded-md border border-border p-3 text-sm">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="font-medium">{task.title}</p>
-                              {task.description ? (
-                                <p className="text-muted-foreground">{task.description}</p>
-                              ) : null}
-                            </div>
-                            <div className="flex shrink-0 items-center gap-2">
-                              <StatusBadge value={task.priority} />
-                              <StatusBadge value={task.status} />
-                            </div>
-                          </div>
-                          <p className="mt-2 text-xs text-muted-foreground">
-                            Due {formatDate(task.due_date)} | Owner{" "}
-                            {task.assigned_to
-                              ? (userById(task.assigned_to)?.name ?? task.assigned_to)
-                              : "Unassigned"}
-                          </p>
-                        </li>
-                      ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Job sheets & Xero handoff</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <SummaryRow label="Linked clients" value={String(linkedClients.length)} />
-                <SummaryRow label="Active engagements" value={String(activeEngagements.length)} />
-                <SummaryRow
-                  label="Account ARR"
-                  value={formatCurrencyAmount(account.arr ?? null, quotes[0]?.currency ?? "HKD")}
-                />
-                {activeEngagements.length === 0 ? (
-                  <p className="text-muted-foreground">
-                    No active delivery engagements for this company.
-                  </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {activeEngagements.slice(0, 5).map((engagement) => (
-                      <li key={engagement.id} className="rounded-md border border-border p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-medium">Engagement {engagement.id.slice(0, 8)}</p>
-                            <p className="text-xs text-muted-foreground">
-                              Renewal {formatDate(engagement.renewal_date)}
-                            </p>
-                          </div>
-                          <StatusBadge value={engagement.status} />
+          <TabsContent value="tasks">
+            <CompanyWorkspaceSectionState
+              state={deliveryFinanceQuery.data}
+              isLoading={deliveryFinanceQuery.isLoading}
+              emptyMessage="No open account tasks right now."
+              onRetry={() => void deliveryFinanceQuery.refetch()}
+            >
+              {() => (
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Delivery tasks</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {openTasks.length === 0 ? (
+                        <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+                          No open account tasks right now.
                         </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <div className="space-y-2 border-t border-border/70 pt-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium text-foreground">Accounting handoff</p>
-                    <span className="text-xs text-muted-foreground">
-                      {jobSheets.length} job sheet{jobSheets.length === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                  {jobSheets.length === 0 ? (
-                    <p className="text-muted-foreground">
-                      No accepted quote job sheets for this account yet.
-                    </p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {jobSheets.slice(0, 5).map((sheet) => {
-                        const quote = quoteById.get(sheet.quote_id);
+                      ) : (
+                        <ul className="space-y-2">
+                          {openTasks
+                            .sort((a, b) =>
+                              (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"),
+                            )
+                            .map((task) => (
+                              <li
+                                key={task.id}
+                                className="rounded-md border border-border p-3 text-sm"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="font-medium">{task.title}</p>
+                                    {task.description ? (
+                                      <p className="text-muted-foreground">{task.description}</p>
+                                    ) : null}
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-2">
+                                    <StatusBadge value={task.priority} />
+                                    <StatusBadge value={task.status} />
+                                  </div>
+                                </div>
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  Due {formatDate(task.due_date)} | Owner{" "}
+                                  {task.assigned_to
+                                    ? (userById(task.assigned_to)?.name ?? task.assigned_to)
+                                    : "Unassigned"}
+                                </p>
+                              </li>
+                            ))}
+                        </ul>
+                      )}
+                    </CardContent>
+                  </Card>
 
-                        return (
-                          <li key={sheet.id}>
-                            <Link
-                              to="/job-sheets/$id"
-                              params={{ id: sheet.id }}
-                              className="block rounded-md border border-border p-3 hover:bg-muted/50"
-                            >
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="font-medium">{sheet.number}</span>
-                                <JobSheetStatusBadge status={sheet.status} />
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Job sheets & Xero handoff</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      <SummaryRow label="Linked clients" value={String(linkedClients.length)} />
+                      <SummaryRow
+                        label="Active engagements"
+                        value={String(activeEngagements.length)}
+                      />
+                      <SummaryRow
+                        label="Account ARR"
+                        value={formatCurrencyAmount(
+                          account.arr ?? null,
+                          quotes[0]?.currency ?? "HKD",
+                        )}
+                      />
+                      {activeEngagements.length === 0 ? (
+                        <p className="text-muted-foreground">
+                          No active delivery engagements for this company.
+                        </p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {activeEngagements.slice(0, 5).map((engagement) => (
+                            <li key={engagement.id} className="rounded-md border border-border p-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="font-medium">
+                                    Engagement {engagement.id.slice(0, 8)}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Renewal {formatDate(engagement.renewal_date)}
+                                  </p>
+                                </div>
+                                <StatusBadge value={engagement.status} />
                               </div>
-                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                <span>Quote {quote?.number ?? sheet.quote_id}</span>
-                                <span>
-                                  {formatCurrencyAmount(sheet.total_amount, sheet.currency)}
-                                </span>
-                                <span>
-                                  {sheet.xero_customer_reference
-                                    ? "Xero customer linked"
-                                    : "Xero customer not linked"}
-                                </span>
-                              </div>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div className="space-y-2 border-t border-border/70 pt-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-medium text-foreground">Accounting handoff</p>
+                          <span className="text-xs text-muted-foreground">
+                            {jobSheets.length} job sheet{jobSheets.length === 1 ? "" : "s"}
+                          </span>
+                        </div>
+                        {jobSheets.length === 0 ? (
+                          <p className="text-muted-foreground">
+                            No accepted quote job sheets for this account yet.
+                          </p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {jobSheets.slice(0, 5).map((sheet) => {
+                              const quote = quoteById.get(sheet.quote_id);
+
+                              return (
+                                <li key={sheet.id}>
+                                  <Link
+                                    to="/job-sheets/$id"
+                                    params={{ id: sheet.id }}
+                                    className="block rounded-md border border-border p-3 hover:bg-muted/50"
+                                  >
+                                    <div className="flex items-center justify-between gap-3">
+                                      <span className="font-medium">{sheet.number}</span>
+                                      <JobSheetStatusBadge status={sheet.status} />
+                                    </div>
+                                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                      <span>Quote {quote?.number ?? sheet.quote_id}</span>
+                                      <span>
+                                        {formatCurrencyAmount(sheet.total_amount, sheet.currency)}
+                                      </span>
+                                      <span>
+                                        {sheet.xero_customer_reference
+                                          ? "Xero customer linked"
+                                          : "Xero customer not linked"}
+                                      </span>
+                                    </div>
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </CompanyWorkspaceSectionState>
           </TabsContent>
         </Tabs>
       </main>

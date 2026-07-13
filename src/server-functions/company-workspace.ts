@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
-  loadCompanyWorkspace,
   loadCompanyWorkspaceCore,
   loadCompanyWorkspaceSection,
 } from "@/server/company-workspace/loaders";
@@ -44,13 +43,6 @@ export const getCompanyWorkspaceCore = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await requireNeonAuthSession();
     return loadCompanyWorkspaceCore(data.accountId);
-  });
-
-export const getCompanyWorkspace = createServerFn({ method: "GET" })
-  .validator(validateCompanyWorkspaceInput)
-  .handler(async ({ data }) => {
-    await requireNeonAuthSession();
-    return loadCompanyWorkspace(data.accountId);
   });
 
 export const getCompanyWorkspaceSection = createServerFn({ method: "GET" })
