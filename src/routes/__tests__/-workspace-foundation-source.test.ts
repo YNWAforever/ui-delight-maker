@@ -16,7 +16,7 @@ describe("unified CRM workspace source wiring", () => {
       "AccountPreviewPanel",
     );
     expect(readFileSync(new URL("../accounts.$id.tsx", import.meta.url), "utf8")).toContain(
-      "getAccountWorkspace",
+      "getCompanyWorkspaceCore",
     );
     expect(readFileSync(new URL("../__root.tsx", import.meta.url), "utf8")).toContain(
       "getWorkspacePreferences",

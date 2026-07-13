@@ -17,7 +17,7 @@ describe("client and account job sheet integration source", () => {
   it("loads and renders account job sheets", () => {
     const accountSource = readRoute("accounts.$id.tsx");
 
-    expect(accountSource).toContain("getJobSheets({ data: { account_id: params.id } })");
+    expect(accountSource).toContain('useCompanyWorkspaceSection(account.id, "delivery_finance")');
     expect(accountSource).toContain("Accounting handoff");
     expect(accountSource).toContain('to="/job-sheets/$id"');
   });

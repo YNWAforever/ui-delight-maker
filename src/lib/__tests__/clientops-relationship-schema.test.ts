@@ -1,13 +1,29 @@
 import { describe, expect, it, vi } from "vitest";
+import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
 import {
+  CLIENTOPS_SCHEMA_CONTRACT,
   CLIENTOPS_MIGRATION_PATHS,
   CLIENTOPS_REQUIRED_COLUMNS,
   CLIENTOPS_REQUIRED_TABLES,
   applyClientOpsSchemaMigrations,
   getClientOpsSchemaMigrationDecision,
+  verifyClientOpsDatabase,
 } from "../clientops-relationship-schema";
 
 describe("getClientOpsSchemaMigrationDecision", () => {
+  it("re-exports the database readiness contract", async () => {
+    expect(CLIENTOPS_SCHEMA_CONTRACT.relations).toContain("accounts");
+
+    await expect(
+      verifyClientOpsDatabase({ query: vi.fn().mockResolvedValue({ rows: [] }) }),
+    ).resolves.toMatchObject({
+      ready: false,
+      mismatches: expect.arrayContaining([
+        { category: "missing_relation", object: "public.accounts" },
+      ]),
+    });
+  });
+
   it("runs the full ordered ClientOps migration set", () => {
     expect(CLIENTOPS_MIGRATION_PATHS).toEqual([
       "neon/migrations/001_clientops_runtime.sql",
@@ -112,6 +128,81 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       databaseUrl: "postgres://user@example/neondb",
       migrationPaths: CLIENTOPS_MIGRATION_PATHS,
     });
+  });
+});
+
+describe("runClientOpsMigrations", () => {
+  it("locks, applies only pending migrations, records them, and unlocks", async () => {
+    const calls: string[] = [];
+    const db = {
+      query: vi.fn(async (text: string) => {
+        calls.push(text);
+        if (text.includes("select path from clientops_schema_migrations")) {
+          return { rows: [{ path: "001_clientops_runtime.sql" }] };
+        }
+        return { rows: [] };
+      }),
+    } as unknown as Parameters<typeof runClientOpsMigrations>[0];
+
+    await expect(
+      runClientOpsMigrations(db, [
+        { path: "001_clientops_runtime.sql", sql: "select 1" },
+        { path: "002_retention_client_360.sql", sql: "select 2" },
+      ]),
+    ).resolves.toEqual({
+      applied: ["002_retention_client_360.sql"],
+      skipped: ["001_clientops_runtime.sql"],
+    });
+    expect(calls).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("pg_advisory_lock"),
+        "select 2",
+        expect.stringContaining("insert into clientops_schema_migrations"),
+        expect.stringContaining("pg_advisory_unlock"),
+      ]),
+    );
+  });
+
+  it("rejects unsorted migration paths before touching the database", async () => {
+    const db = { query: vi.fn() } as unknown as Parameters<typeof runClientOpsMigrations>[0];
+    await expect(
+      runClientOpsMigrations(db, [
+        { path: "002.sql", sql: "select 2" },
+        { path: "001.sql", sql: "select 1" },
+      ]),
+    ).rejects.toThrow("Migration paths must be unique and sorted");
+    expect(db.query).not.toHaveBeenCalled();
+  });
+
+  it("runs a pending migration and ledger insert on one transaction client", async () => {
+    const calls: string[] = [];
+    const client = {
+      query: vi.fn(async (text: string) => {
+        calls.push(text);
+        if (text.includes("select path from clientops_schema_migrations")) {
+          return { rows: [] };
+        }
+        return { rows: [] };
+      }),
+      release: vi.fn(),
+    };
+    const db = {
+      query: vi.fn(),
+      connect: vi.fn().mockResolvedValue(client),
+    } as unknown as Parameters<typeof runClientOpsMigrations>[0];
+
+    await runClientOpsMigrations(db, [{ path: "001.sql", sql: "select 1" }]);
+
+    expect(client.query).toHaveBeenCalledWith("select pg_advisory_lock($1)", [246813579]);
+    expect(client.query).toHaveBeenCalledWith("begin");
+    expect(client.query).toHaveBeenCalledWith("select 1");
+    expect(client.query).toHaveBeenCalledWith(
+      "insert into clientops_schema_migrations(path) values ($1)",
+      ["001.sql"],
+    );
+    expect(client.query).toHaveBeenCalledWith("commit");
+    expect(client.release).toHaveBeenCalled();
+    expect(db.query).not.toHaveBeenCalled();
   });
 });
 

@@ -166,3 +166,10 @@ export async function applyClientOpsSchemaMigrations(input: {
 
 export const getRelationshipSchemaMigrationDecision = getClientOpsSchemaMigrationDecision;
 export const applyRelationshipSchemaMigration = applyClientOpsSchemaMigrations;
+
+export {
+  CLIENTOPS_SCHEMA_CONTRACT,
+  verifyClientOpsDatabase,
+  type DatabaseContractMismatch,
+  type DatabaseReadinessResult,
+} from "@/server/db/clientops-schema-contract";
