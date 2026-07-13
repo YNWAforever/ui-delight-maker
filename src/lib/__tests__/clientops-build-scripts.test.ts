@@ -18,4 +18,13 @@ describe("ClientOps database build commands", () => {
     const source = await readFile("scripts/clientops/apply-client-relationship-schema.ts", "utf8");
     expect(source).toContain("runClientOpsMigrations");
   });
+
+  it("uses the standard PostgreSQL driver for the local contract database", async () => {
+    const source = await readFile(
+      "src/server/db/__tests__/clientops-schema.integration.test.ts",
+      "utf8",
+    );
+    expect(source).toContain('from "pg"');
+    expect(source).not.toContain('from "@neondatabase/serverless"');
+  });
 });

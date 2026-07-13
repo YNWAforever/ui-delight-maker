@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { Pool } from "@neondatabase/serverless";
+import { Pool } from "pg";
 import { describe, expect, it } from "vitest";
 import { CLIENTOPS_MIGRATION_PATHS } from "@/lib/clientops-relationship-schema";
 import { runClientOpsMigrations } from "../clientops-migrations";
