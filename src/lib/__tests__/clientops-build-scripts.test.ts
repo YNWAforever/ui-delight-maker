@@ -27,4 +27,9 @@ describe("ClientOps database build commands", () => {
     expect(source).toContain('from "pg"');
     expect(source).not.toContain('from "@neondatabase/serverless"');
   });
+
+  it("runs the contract database with the required pgvector extension", async () => {
+    const workflow = await readFile(".github/workflows/database-contract.yml", "utf8");
+    expect(workflow).toContain("image: pgvector/pgvector:pg17");
+  });
 });
