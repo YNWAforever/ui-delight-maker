@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/format";
+import { getBusinessDateKey } from "@/lib/business-date";
 import { getTaskBoardMetrics } from "@/lib/sales-workspace";
 import { cn } from "@/lib/utils";
 import { getTasks, createTask, updateTask } from "@/server-functions/tasks";
@@ -52,18 +53,17 @@ const COLUMNS: { id: TaskStatus; label: string }[] = [
   { id: "done", label: "Done" },
 ];
 
-const TODAY = "2026-05-20";
-
-const isTaskOverdue = (task: Task) => {
+const isTaskOverdue = (task: Task, today: string) => {
   if (!task.due_date || task.status === "done") return false;
   const dueTime = Date.parse(task.due_date);
-  const todayTime = Date.parse(TODAY);
+  const todayTime = Date.parse(today);
   return !Number.isNaN(dueTime) && !Number.isNaN(todayTime) && dueTime < todayTime;
 };
 
 function TasksBoard() {
   const loaderTasks = Route.useLoaderData();
   const router = useRouter();
+  const today = getBusinessDateKey();
   const [rows, setRows] = useState<Task[]>(loaderTasks);
   const [priority, setPriority] = useState("all");
   const [assignee, setAssignee] = useState("all");
@@ -78,7 +78,7 @@ function TasksBoard() {
       }),
     [rows, priority, assignee],
   );
-  const metrics = getTaskBoardMetrics(rows, TODAY);
+  const metrics = getTaskBoardMetrics(rows, today);
 
   const move = async (id: string, status: TaskStatus) => {
     setRows((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
@@ -168,7 +168,7 @@ function TasksBoard() {
                 <div className="flex min-h-[120px] flex-col gap-3 rounded-md bg-muted/20 p-2">
                   {colTasks.map((t) => {
                     const owner = t.assigned_to ? userById(t.assigned_to) : undefined;
-                    const overdue = isTaskOverdue(t);
+                    const overdue = isTaskOverdue(t, today);
                     return (
                       <Card
                         key={t.id}
@@ -245,7 +245,9 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
   const [desc, setDesc] = useState("");
   const [pri, setPri] = useState<Task["priority"]>("medium");
   const [assignee, setAssignee] = useState(APP_USERS[0]?.id ?? "");
-  const [due, setDue] = useState("2026-05-25");
+  const [due, setDue] = useState(() =>
+    getBusinessDateKey(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)),
+  );
 
   const submit = async () => {
     if (!title) {

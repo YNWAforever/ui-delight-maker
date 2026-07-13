@@ -11,6 +11,7 @@ import { WonConversionDialog } from "@/components/pipeline/won-conversion-dialog
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
 import { Button } from "@/components/ui/button";
 import { formatCompactHKD } from "@/lib/format";
+import { getBusinessDateKey } from "@/lib/business-date";
 import { filterPipelineLeads, getPipelineSummary } from "@/lib/pipeline";
 import { buildRevenueActions } from "@/lib/sales-workspace";
 import type { PipelineFilters } from "@/lib/pipeline";
@@ -45,13 +46,12 @@ export const Route = createFileRoute("/")({
   component: PipelineCommandCenter,
 });
 
-const TODAY = "2026-06-28";
-
 function PipelineCommandCenter() {
   const { leads, quotes, tasks, approvals, agentRuns, activityLogs, products } =
     Route.useLoaderData();
   const router = useRouter();
   const navigate = useNavigate();
+  const today = getBusinessDateKey();
   const [filters, setFilters] = useState<PipelineFilters>({
     search: "",
     source: "all",
@@ -72,21 +72,21 @@ function PipelineCommandCenter() {
         approvals,
         agentRuns,
         filters,
-        today: TODAY,
+        today,
       }),
-    [agentRuns, approvals, filters, leads, tasks],
+    [agentRuns, approvals, filters, leads, tasks, today],
   );
 
   const selectedLead =
     filteredLeads.find((lead) => lead.id === selectedLeadId) ?? filteredLeads[0] ?? null;
-  const summary = getPipelineSummary({ leads: filteredLeads, tasks, approvals, today: TODAY });
+  const summary = getPipelineSummary({ leads: filteredLeads, tasks, approvals, today });
   const revenueActions = buildRevenueActions({
     leads,
     tasks,
     quotes,
     approvals,
     agentRuns,
-    today: TODAY,
+    today,
   });
 
   const quoteValue = quotes
@@ -194,7 +194,7 @@ function PipelineCommandCenter() {
         lead_id: lead.id,
         title: `Follow up with ${lead.company_name}`,
         priority: "medium",
-        due_date: TODAY,
+        due_date: today,
       },
     });
     toast.success("Follow-up task created");
