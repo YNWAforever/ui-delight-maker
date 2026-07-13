@@ -21,3 +21,13 @@ it("declares typed Revenue Desk URL state instead of local filter and selection 
   expect(revenue).not.toContain("useState<PipelineFilters>");
   expect(revenue).not.toContain("useState<string | null>");
 });
+
+it("declares typed Companies URL state and keeps only saved-view extras local", () => {
+  const companies = readFileSync(new URL("../accounts.tsx", import.meta.url), "utf8");
+
+  expect(companies).toContain("validateSearch: companiesSearchSchema");
+  expect(companies).toContain("Route.useSearch()");
+  expect(companies).toContain("useNavigate({ from: Route.fullPath })");
+  expect(companies).toContain("savedViewConfig");
+  expect(companies).not.toContain("setSelectedAccountId");
+});
