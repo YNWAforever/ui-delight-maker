@@ -198,6 +198,15 @@ const accounts = [
     account_owner: "owner-1",
     cs_owner: "cs-1",
   },
+  {
+    id: "account-3",
+    name: "Beta Works",
+    lifecycle_stage: "active_client",
+    relationship_health: 55,
+    last_activity_at: "2026-07-11",
+    account_owner: "owner-2",
+    cs_owner: "cs-2",
+  },
 ];
 
 describe("Companies URL state", () => {
@@ -226,7 +235,7 @@ describe("Companies URL state", () => {
 
     expect((screen.getByLabelText("Lifecycle") as HTMLSelectElement).value).toBe("active_client");
     expect((screen.getByLabelText("Sort") as HTMLSelectElement).value).toBe("name:asc");
-    expect(new Set(captures.accountRows)).toEqual(new Set(["account-2"]));
+    expect(captures.accountRows.slice(0, 2)).toEqual(["account-3", "account-2"]);
     await waitFor(() =>
       expect(getCompanyWorkspaceCore).toHaveBeenCalledWith({ data: { accountId: "account-2" } }),
     );
@@ -290,6 +299,7 @@ describe("Companies URL state", () => {
       "name",
       "next_action",
     ]);
+    expect(new Set(captures.accountRows.slice(-1))).toEqual(new Set(["account-2"]));
     const savedNavigation = navigateMock.mock.calls.at(-1)?.[0];
     expect(savedNavigation.replace).toBe(true);
     expect(savedNavigation.search(AccountsRoute.useSearch())).toEqual({
@@ -298,5 +308,24 @@ describe("Companies URL state", () => {
       account: "account-2",
       unrelated: "keep",
     });
+  });
+
+  it("clears and closes the preview when a selected account becomes stale or absent", async () => {
+    const Component = AccountsRoute.options.component as ComponentType;
+    const view = render(<Component />);
+
+    await waitFor(() =>
+      expect((captures.preview?.account as { id: string } | null)?.id).toBe("account-2"),
+    );
+
+    vi.mocked(AccountsRoute.useSearch).mockReturnValue({ account: "missing-account" } as never);
+    view.rerender(<Component />);
+    await waitFor(() => expect(captures.preview?.account).toBeNull());
+    expect(captures.preview?.open).toBe(false);
+
+    vi.mocked(AccountsRoute.useSearch).mockReturnValue({} as never);
+    view.rerender(<Component />);
+    await waitFor(() => expect(captures.preview?.account).toBeNull());
+    expect(captures.preview?.open).toBe(false);
   });
 });

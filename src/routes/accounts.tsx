@@ -67,6 +67,8 @@ function AccountsIndex() {
     [savedViewConfig, search.lifecycle, search.sort],
   );
   const selectedAccountId = search.account ?? null;
+  const hasSelectedAccount =
+    selectedAccountId !== null && accounts.some((account) => account.id === selectedAccountId);
   const [selectedSummary, setSelectedSummary] = useState<ReturnType<
     typeof toCompanyWorkspaceSummary
   > | null>(null);
@@ -302,7 +304,7 @@ function AccountsIndex() {
       </main>
       <AccountPreviewPanel
         account={selectedSummary}
-        open={selectedAccountId !== null}
+        open={hasSelectedAccount}
         onOpenChange={(open) => {
           if (!open) {
             navigate({
