@@ -24,6 +24,7 @@ vi.mock("@tanstack/react-router", () => ({
     useSearch: vi.fn(),
   }),
   Link: ({ children }: { children?: ReactNode }) => <a href="#">{children}</a>,
+  notFound: vi.fn(),
   useNavigate: vi.fn(() => navigateMock),
   useRouter: vi.fn(() => ({ invalidate: invalidateMock })),
 }));
@@ -75,9 +76,15 @@ vi.mock("@/components/quotes/quote-pdf-preview", () => ({
     sourceVersion: null,
   }),
 }));
+vi.mock("@/hooks/use-company-workspace-section", () => ({
+  useCompanyWorkspaceSection: () => ({ data: undefined, isLoading: false, refetch: vi.fn() }),
+}));
+vi.mock("@/hooks/use-route-polling-refresh", () => ({ useRoutePollingRefresh: vi.fn() }));
 vi.mock("@/lib/business-date", () => ({ getBusinessDateKey: () => "2026-07-14" }));
 vi.mock("@/lib/format", () => ({
   formatCompactHKD: (value: number) => String(value),
+  formatCount: (value: number) => String(value),
+  formatDate: (value: string) => value,
   formatCurrencyAmount: (value: number) => String(value),
   formatDateTime: (value: string) => value,
 }));
@@ -86,16 +93,26 @@ vi.mock("@/lib/pipeline", () => ({
   getPipelineSummary: () => ({ overdue: 0, dueToday: 0, highScore: 0 }),
 }));
 vi.mock("@/lib/sales-workspace", () => ({ buildRevenueActions: () => [] }));
-vi.mock("@/server-functions/agent-runs", () => ({ getActivityLogs: vi.fn() }));
+vi.mock("@/server-functions/agent-runs", () => ({
+  getActivityLogs: vi.fn(),
+  getAgentRuns: vi.fn(),
+}));
 vi.mock("@/server-functions/leads", () => ({
   moveLeadStage: vi.fn(),
   triggerLeadAgent: vi.fn(),
   triggerLeadReplyDraft: vi.fn(),
 }));
 vi.mock("@/server-functions/pipeline", () => ({ getPipelineData: vi.fn() }));
-vi.mock("@/server-functions/products", () => ({ getProducts: vi.fn() }));
-vi.mock("@/server-functions/quotes", () => ({ triggerQuoteAgent: vi.fn() }));
-vi.mock("@/server-functions/tasks", () => ({ createTask: vi.fn() }));
+vi.mock("@/server-functions/products", () => ({
+  createProduct: vi.fn(),
+  getProducts: vi.fn(),
+  updateProduct: vi.fn(),
+}));
+vi.mock("@/server-functions/quotes", () => ({
+  getQuotes: vi.fn(),
+  triggerQuoteAgent: vi.fn(),
+}));
+vi.mock("@/server-functions/tasks", () => ({ createTask: vi.fn(), getTasks: vi.fn() }));
 vi.mock("@/components/page-header", () => ({ PageHeader: () => null }));
 vi.mock("@/components/relationship/account-summary-card", () => ({
   AccountSummaryCard: ({ account }: { account: { id: string; name: string } }) => {
@@ -116,8 +133,11 @@ vi.mock("@/components/relationship/workspace-view-switcher", () => ({
   },
 }));
 vi.mock("@/lib/routing-utils", () => ({ useIsExactPath: () => true }));
-vi.mock("@/server-functions/accounts", () => ({ getAccounts: vi.fn() }));
-vi.mock("@/server-functions/clients", () => ({ getClients: vi.fn() }));
+vi.mock("@/server-functions/accounts", () => ({
+  getAccounts: vi.fn(),
+  triggerRelationshipIntelligence: vi.fn(),
+}));
+vi.mock("@/server-functions/clients", () => ({ getClient: vi.fn(), getClients: vi.fn() }));
 vi.mock("@/server-functions/relationship-signals", () => ({ getRelationshipSignals: vi.fn() }));
 vi.mock("@/server-functions/workspace-preferences", () => ({
   getWorkspacePreferences: vi.fn(),
@@ -129,6 +149,11 @@ vi.mock("@/server-functions/company-workspace", () => ({
 import { Route } from "../index";
 import { Route as AccountsRoute } from "../accounts";
 import { Route as QuoteRoute } from "../quotes.$id";
+import { Route as AccountDetailRoute } from "../accounts.$id";
+import { Route as LeadDetailRoute } from "../leads.$id";
+import { Route as ClientDetailRoute } from "../clients.$id";
+import { Route as AgentDetailRoute } from "../agents.$name";
+import { Route as SettingsRoute } from "../settings";
 import { getCompanyWorkspaceCore } from "@/server-functions/company-workspace";
 
 const leads = [
@@ -396,4 +421,125 @@ describe("Quote detail tab URL state", () => {
       tab: "preview",
     });
   });
+});
+
+describe("Admin detail tab runtime navigation", () => {
+  const cases = [
+    {
+      name: "account",
+      route: AccountDetailRoute,
+      loader: {
+        company: {
+          id: "account-1",
+          name: "Northstar",
+          lifecycle_stage: "active_client",
+          account_owner: null,
+          cs_owner: null,
+          arr: 0,
+          created_at: "2026-07-01",
+          updated_at: "2026-07-14",
+        },
+        contacts: [],
+      },
+      currentTab: "timeline",
+      defaultTab: "overview",
+    },
+    {
+      name: "lead",
+      route: LeadDetailRoute,
+      loader: {
+        lead: {
+          id: "lead-1",
+          company_name: "Northstar",
+          status: "new",
+          created_at: "2026-07-01",
+          enquiry_text: "Campaign enquiry",
+          qualification_data: null,
+          lead_score: 50,
+          source: "event",
+          contact_name: "Ada",
+          contact_email: "ada@example.com",
+          contact_phone: "1234",
+          assigned_to: null,
+        },
+        activityLogs: [],
+        quotes: [],
+      },
+      currentTab: "activity",
+      defaultTab: "overview",
+    },
+    {
+      name: "client",
+      route: ClientDetailRoute,
+      loader: {
+        client: {
+          id: "client-1",
+          company_name: "Northstar",
+          tier: "A",
+          industry: "Technology",
+          account_owner: null,
+          account_id: null,
+          health_score: 80,
+          arr: 0,
+          renewal_date: null,
+          onboarding_status: "active",
+          created_at: "2026-07-01",
+        },
+        quotes: [],
+        engagements: [],
+        contacts: [],
+        products: [],
+        touchpoints: [],
+        jobSheets: [],
+        tasks: [],
+        activityLogs: [],
+      },
+      currentTab: "contacts",
+      defaultTab: "overview",
+    },
+    {
+      name: "agent",
+      route: AgentDetailRoute,
+      loader: {
+        agent: {
+          display_name: "Lead Agent",
+          description: "Qualifies leads",
+          status: "active",
+          human_approval: false,
+          model: "test-model",
+        },
+        runs: [],
+      },
+      currentTab: "memory",
+      defaultTab: "runs",
+    },
+    {
+      name: "settings",
+      route: SettingsRoute,
+      loader: [],
+      currentTab: "team",
+      defaultTab: "profile",
+    },
+  ] as const;
+
+  for (const testCase of cases) {
+    it(`restores and clears the ${testCase.name} tab while preserving unrelated search`, () => {
+      vi.mocked(testCase.route.useLoaderData).mockReturnValue(testCase.loader as never);
+      const currentSearch = { tab: testCase.currentTab, unrelated: "keep" };
+      vi.mocked(testCase.route.useSearch).mockReturnValue(currentSearch as never);
+
+      const Component = testCase.route.options.component as ComponentType;
+      render(<Component />);
+
+      expect(captures.tabs?.value).toBe(testCase.currentTab);
+      act(() => {
+        (captures.tabs?.onValueChange as (tab: string) => void)(testCase.defaultTab);
+      });
+      const navigation = navigateMock.mock.calls.at(-1)?.[0];
+      expect(navigation.replace).toBe(true);
+      expect(navigation.search(currentSearch)).toEqual({ unrelated: "keep" });
+      cleanup();
+      navigateMock.mockClear();
+    });
+  }
 });

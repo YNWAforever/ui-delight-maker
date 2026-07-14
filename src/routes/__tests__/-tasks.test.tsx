@@ -141,4 +141,22 @@ describe("Task board move reliability", () => {
     expect(toastErrorMock).toHaveBeenCalledWith("Task move failed. Try again.");
     expect(invalidateMock).not.toHaveBeenCalled();
   });
+  it("keeps the successful move and reports when refresh fails", async () => {
+    updateTaskMock.mockResolvedValue(undefined);
+    invalidateMock.mockRejectedValue(new Error("refresh failed"));
+    const Component = Route.options.component as ComponentType;
+    render(<Component />);
+
+    fireEvent.keyDown(screen.getByRole("button", { name: /Call Northstar — Open/ }), {
+      key: "ArrowRight",
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Call Northstar — In progress/ })).toBeTruthy(),
+    );
+    await waitFor(() =>
+      expect(toastErrorMock).toHaveBeenCalledWith("Task saved, but the board could not refresh."),
+    );
+    expect(screen.queryByRole("button", { name: /Call Northstar — Open/ })).toBeNull();
+  });
 });
