@@ -141,9 +141,7 @@ export function companySortFromKey(key?: CompanySortKey): WorkspaceViewConfig["s
   }
 }
 
-export function companySortToKey(
-  sort: WorkspaceViewConfig["sort"],
-): CompanySortKey | undefined {
+export function companySortToKey(sort: WorkspaceViewConfig["sort"]): CompanySortKey | undefined {
   if (sort.field === "last_activity_at" && sort.direction === "desc") return undefined;
   if (sort.field === "name" && sort.direction === "asc") return "name:asc";
   if (sort.field === "relationship_health" && sort.direction === "asc") {

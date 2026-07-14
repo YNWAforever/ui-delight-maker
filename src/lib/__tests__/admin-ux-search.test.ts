@@ -97,12 +97,23 @@ describe("admin search contracts", () => {
   });
 
   it("falls back safely for invalid Revenue and Companies values", () => {
-    expect(revenueDeskSearchSchema.parse({ source: "obsolete", urgency: "later", ai: "old" })).toEqual({});
-    expect(companiesSearchSchema.parse({ lifecycle: "obsolete", sort: "old", account: "" })).toEqual({});
+    expect(
+      revenueDeskSearchSchema.parse({ source: "obsolete", urgency: "later", ai: "old" }),
+    ).toEqual({});
+    expect(
+      companiesSearchSchema.parse({ lifecycle: "obsolete", sort: "old", account: "" }),
+    ).toEqual({});
   });
 
   it("accepts every current company lifecycle, sort, and account selection value", () => {
-    for (const lifecycle of ["prospect", "active_client", "at_risk", "churned", "partner", "vendor"]) {
+    for (const lifecycle of [
+      "prospect",
+      "active_client",
+      "at_risk",
+      "churned",
+      "partner",
+      "vendor",
+    ]) {
       expect(companiesSearchSchema.parse({ lifecycle }).lifecycle).toBe(lifecycle);
     }
     for (const account of ["account-1", "account-2"]) {
@@ -143,9 +154,15 @@ describe("admin search contracts", () => {
   });
 
   it("preserves unrelated search keys through relevant schemas", () => {
-    expect(revenueDeskSearchSchema.parse({ q: "northstar", unrelated: "keep" }).unrelated).toBe("keep");
-    expect(companiesSearchSchema.parse({ account: "account-1", unrelated: "keep" }).unrelated).toBe("keep");
-    expect(quoteDetailSearchSchema.parse({ tab: "preview", unrelated: "keep" }).unrelated).toBe("keep");
+    expect(revenueDeskSearchSchema.parse({ q: "northstar", unrelated: "keep" }).unrelated).toBe(
+      "keep",
+    );
+    expect(companiesSearchSchema.parse({ account: "account-1", unrelated: "keep" }).unrelated).toBe(
+      "keep",
+    );
+    expect(quoteDetailSearchSchema.parse({ tab: "preview", unrelated: "keep" }).unrelated).toBe(
+      "keep",
+    );
   });
 
   it("accepts every current detail tab and safely rejects obsolete tabs", () => {
