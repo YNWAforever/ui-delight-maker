@@ -2,7 +2,6 @@
 
 import type { ComponentType, ReactNode } from "react";
 import { cleanup, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { CompanyWorkspaceCore } from "@/server/company-workspace/types";
@@ -14,13 +13,14 @@ vi.mock("@/hooks/use-company-workspace-section", () => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute:
-    () =>
-    (options: unknown): { options: unknown; useLoaderData: ReturnType<typeof vi.fn> } => ({
-      options,
-      useLoaderData: vi.fn(),
-    }),
+  createFileRoute: () => (options: unknown) => ({
+    options,
+    fullPath: "/accounts/$id",
+    useLoaderData: vi.fn(),
+    useSearch: vi.fn(() => ({})),
+  }),
   Link: ({ children }: { children?: ReactNode }) => <a href="#">{children}</a>,
+  useNavigate: () => vi.fn(),
 }));
 
 import { Route } from "../accounts.$id";
@@ -155,27 +155,31 @@ describe("Company Workspace resilience", () => {
     vi.spyOn(Route, "useLoaderData").mockReturnValue(core);
 
     const AccountDetailRoute = Route.options.component as ComponentType;
-    render(<AccountDetailRoute />);
+    const view = render(<AccountDetailRoute />);
 
     expect(screen.getByText("Northstar Media")).toBeTruthy();
     expect(screen.getByText("Account owner")).toBeTruthy();
     expect(screen.getAllByText("Unassigned").length).toBeGreaterThan(0);
     expect(screen.getByText("Northstar Retainer")).toBeTruthy();
 
-    await userEvent.click(screen.getByRole("tab", { name: "People" }));
+    vi.mocked(Route.useSearch).mockReturnValue({ tab: "stakeholders" });
+    view.rerender(<AccountDetailRoute />);
     expect(screen.getByText("Jordan Lee")).toBeTruthy();
 
-    await userEvent.click(screen.getByRole("tab", { name: "Commercial" }));
+    vi.mocked(Route.useSearch).mockReturnValue({ tab: "events" });
+    view.rerender(<AccountDetailRoute />);
     expect(screen.getByText("Qualified opportunity")).toBeTruthy();
     expect(screen.getByText(/Reference request-activity/)).toBeTruthy();
     expect(screen.queryByText("No approval or campaign activity yet.")).not.toBeTruthy();
     expect(screen.queryByRole("button", { name: "Retry section" })).not.toBeTruthy();
 
-    await userEvent.click(screen.getByRole("tab", { name: "Activity" }));
+    vi.mocked(Route.useSearch).mockReturnValue({ tab: "timeline" });
+    view.rerender(<AccountDetailRoute />);
     expect(screen.getByText(/Reference request-activity/)).toBeTruthy();
     expect(screen.getByText("Northstar Media")).toBeTruthy();
 
-    await userEvent.click(screen.getByRole("tab", { name: "Delivery & Finance" }));
+    vi.mocked(Route.useSearch).mockReturnValue({ tab: "tasks" });
+    view.rerender(<AccountDetailRoute />);
     expect(screen.getByText("Quote Q-100")).toBeTruthy();
   });
   it("keeps healthy Activity and Delivery content visible when Commercial fails", async () => {
@@ -241,9 +245,9 @@ describe("Company Workspace resilience", () => {
     );
     vi.spyOn(Route, "useLoaderData").mockReturnValue(core);
 
+    vi.mocked(Route.useSearch).mockReturnValue({ tab: "events" });
     const AccountDetailRoute = Route.options.component as ComponentType;
     render(<AccountDetailRoute />);
-    await userEvent.click(screen.getByRole("tab", { name: "Commercial" }));
 
     expect(screen.getByText(/Reference request-commercial/)).toBeTruthy();
     expect(screen.getByText("Healthy campaign activity")).toBeTruthy();
@@ -308,9 +312,9 @@ describe("Company Workspace resilience", () => {
     );
     vi.spyOn(Route, "useLoaderData").mockReturnValue(core);
 
+    vi.mocked(Route.useSearch).mockReturnValue({ tab: "tasks" });
     const AccountDetailRoute = Route.options.component as ComponentType;
     render(<AccountDetailRoute />);
-    await userEvent.click(screen.getByRole("tab", { name: "Delivery & Finance" }));
 
     expect(screen.getAllByText("Linked clients").length).toBeGreaterThan(0);
     expect(screen.getByText("Active engagements")).toBeTruthy();

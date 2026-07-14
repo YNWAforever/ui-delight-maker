@@ -13,6 +13,7 @@ const captures = vi.hoisted(() => ({
   viewSwitcher: null as Record<string, unknown> | null,
   preview: null as Record<string, unknown> | null,
   accountRows: [] as string[],
+  tabs: null as Record<string, unknown> | null,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -55,8 +56,31 @@ vi.mock("@/components/sales", () => ({
 vi.mock("@/components/ui/button", () => ({
   Button: ({ children }: { children?: ReactNode }) => <button>{children}</button>,
 }));
+vi.mock("@/components/ui/tabs", () => ({
+  Tabs: (props: Record<string, unknown>) => {
+    captures.tabs = props;
+    return null;
+  },
+  TabsContent: () => null,
+  TabsList: () => null,
+  TabsTrigger: () => null,
+}));
+vi.mock("@/components/quotes/quote-pdf-preview", () => ({
+  QuotePdfPreview: () => null,
+  QuotePdfPreviewUnavailable: () => null,
+  resolveQuotePdfSource: (quote: unknown) => ({
+    state: "live",
+    quote,
+    lineItems: [],
+    sourceVersion: null,
+  }),
+}));
 vi.mock("@/lib/business-date", () => ({ getBusinessDateKey: () => "2026-07-14" }));
-vi.mock("@/lib/format", () => ({ formatCompactHKD: (value: number) => String(value) }));
+vi.mock("@/lib/format", () => ({
+  formatCompactHKD: (value: number) => String(value),
+  formatCurrencyAmount: (value: number) => String(value),
+  formatDateTime: (value: string) => value,
+}));
 vi.mock("@/lib/pipeline", () => ({
   filterPipelineLeads: ({ leads }: { leads: unknown[] }) => leads,
   getPipelineSummary: () => ({ overdue: 0, dueToday: 0, highScore: 0 }),
@@ -104,6 +128,7 @@ vi.mock("@/server-functions/company-workspace", () => ({
 }));
 import { Route } from "../index";
 import { Route as AccountsRoute } from "../accounts";
+import { Route as QuoteRoute } from "../quotes.$id";
 import { getCompanyWorkspaceCore } from "@/server-functions/company-workspace";
 
 const leads = [
@@ -129,6 +154,7 @@ beforeEach(() => {
   captures.viewSwitcher = null;
   captures.preview = null;
   captures.accountRows = [];
+  captures.tabs = null;
   vi.mocked(Route.useLoaderData).mockReturnValue({
     leads,
     quotes: [],
@@ -327,5 +353,47 @@ describe("Companies URL state", () => {
     view.rerender(<Component />);
     await waitFor(() => expect(captures.preview?.account).toBeNull());
     expect(captures.preview?.open).toBe(false);
+  });
+});
+
+describe("Quote detail tab URL state", () => {
+  it("restores the selected tab and preserves quote edit and approval search on change", () => {
+    vi.mocked(QuoteRoute.useLoaderData).mockReturnValue({
+      quote: {
+        id: "quote-1",
+        number: "Q-001",
+        status: "sent",
+        line_items: [],
+        total_value: 0,
+        currency: "HKD",
+        created_by: null,
+        approved_by: null,
+        client_id: null,
+        lead_id: null,
+        valid_until: "2026-08-01",
+        created_at: "2026-07-14T00:00:00.000Z",
+      },
+      templates: [],
+      versions: [],
+      lead: null,
+      client: null,
+    } as never);
+    const quoteSearch = { edit: true, approvalId: "approval-1", tab: "versions" };
+    vi.mocked(QuoteRoute.useSearch).mockReturnValue(quoteSearch as never);
+
+    const Component = QuoteRoute.options.component as ComponentType;
+    render(<Component />);
+
+    expect(captures.tabs?.value).toBe("versions");
+    act(() => {
+      (captures.tabs?.onValueChange as (tab: string) => void)("preview");
+    });
+    const navigation = navigateMock.mock.calls.at(-1)?.[0];
+    expect(navigation.replace).toBe(true);
+    expect(navigation.search(quoteSearch)).toEqual({
+      edit: true,
+      approvalId: "approval-1",
+      tab: "preview",
+    });
   });
 });

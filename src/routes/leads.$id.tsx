@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Bot,
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { leadDetailSearchSchema } from "@/lib/admin-ux-search";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
 import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
@@ -56,6 +57,7 @@ type LeadFile = {
 };
 
 export const Route = createFileRoute("/leads/$id")({
+  validateSearch: leadDetailSearchSchema,
   loader: async ({ params }) => {
     const [leadData, quotes] = await Promise.all([
       getLead({ data: { id: params.id } }),
@@ -91,6 +93,8 @@ const STATUSES: LeadStatus[] = ["new", "qualified", "replied", "quoted", "approv
 function LeadDetail() {
   const { lead, activityLogs, quotes: relatedQuotes } = Route.useLoaderData();
   const router = useRouter();
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   useRoutePollingRefresh();
 
   const [status, setStatus] = useState<LeadStatus>(lead.status);
@@ -205,7 +209,18 @@ function LeadDetail() {
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardContent className="p-5">
-              <Tabs defaultValue="overview">
+              <Tabs
+                value={search.tab ?? "overview"}
+                onValueChange={(tab) =>
+                  navigate({
+                    search: (current) => ({
+                      ...current,
+                      tab: tab === "overview" ? undefined : (tab as NonNullable<typeof search.tab>),
+                    }),
+                    replace: true,
+                  })
+                }
+              >
                 <div className="max-w-full overflow-x-auto pb-1">
                   <TabsList className="w-max">
                     <TabsTrigger value="overview">Overview</TabsTrigger>

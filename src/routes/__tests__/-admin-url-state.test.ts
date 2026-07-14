@@ -31,3 +31,31 @@ it("declares typed Companies URL state and keeps only saved-view extras local", 
   expect(companies).toContain("savedViewConfig");
   expect(companies).not.toContain("setSelectedAccountId");
 });
+
+it("controls every existing admin detail tab from validated URL search", () => {
+  const routes = [
+    ["../accounts.$id.tsx", "accountDetailSearchSchema", "overview"],
+    ["../leads.$id.tsx", "leadDetailSearchSchema", "overview"],
+    ["../clients.$id.tsx", "clientDetailSearchSchema", "overview"],
+    ["../quotes.$id.tsx", "quoteDetailSearchSchema", "items"],
+    ["../agents.$name.tsx", "agentDetailSearchSchema", "runs"],
+    ["../settings.tsx", "settingsSearchSchema", "profile"],
+  ] as const;
+
+  for (const [file, schema, defaultTab] of routes) {
+    const source = readFileSync(new URL(file, import.meta.url), "utf8");
+    expect(source).toContain(`validateSearch: ${schema}`);
+    expect(source).toContain("Route.useSearch()");
+    expect(source).toContain(`value={search.tab ?? "${defaultTab}"}`);
+    expect(source).toContain("replace: true");
+    expect(source).not.toContain("<Tabs defaultValue=");
+  }
+});
+
+it("preserves quote edit and approval search through tab changes", () => {
+  const quote = readFileSync(new URL("../quotes.$id.tsx", import.meta.url), "utf8");
+
+  expect(quote).toContain("...current");
+  expect(quote).toContain('tab === "items" ? undefined');
+  expect(quote).toContain("useNavigate({ from: Route.fullPath })");
+});
