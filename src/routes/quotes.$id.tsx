@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
-import { z } from "zod";
 import {
   ArrowLeft,
   Check,
@@ -35,6 +34,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { quoteDetailSearchSchema } from "@/lib/admin-ux-search";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
 import { calculateTotal, newLineItem } from "@/lib/quote-utils";
@@ -69,10 +69,7 @@ const quoteComments: Comment[] = [];
 const quoteFiles: QuoteFile[] = [];
 
 export const Route = createFileRoute("/quotes/$id")({
-  validateSearch: z.object({
-    edit: z.boolean().optional(),
-    approvalId: z.string().optional(),
-  }),
+  validateSearch: quoteDetailSearchSchema,
   loader: async ({ params }) => {
     const [quote, templates] = await Promise.all([
       getQuote({ data: { id: params.id } }),
@@ -126,7 +123,8 @@ const VERSION_REASON_LABELS: Record<QuoteVersion["reason"], string> = {
 
 function QuoteDetail() {
   const { quote, templates, versions, lead, client } = Route.useLoaderData();
-  const { edit, approvalId } = Route.useSearch();
+  const search = Route.useSearch();
+  const { edit, approvalId } = search;
   const isEditMode = edit === true || quote.status === "draft";
   const router = useRouter();
   const creator = userById(quote.created_by ?? "");
@@ -134,7 +132,7 @@ function QuoteDetail() {
   const initialComments = quoteComments.filter((c) => c.quote_id === quote.id);
   const initialFiles = quoteFiles.filter((f) => f.quote_id === quote.id);
 
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: Route.fullPath });
   const [status, setStatus] = useState<QuoteStatus>(quote.status as QuoteStatus);
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [composer, setComposer] = useState("");
@@ -392,7 +390,18 @@ function QuoteDetail() {
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardContent className="p-5">
-              <Tabs defaultValue="items">
+              <Tabs
+                value={search.tab ?? "items"}
+                onValueChange={(tab) =>
+                  navigate({
+                    search: (current) => ({
+                      ...current,
+                      tab: tab === "items" ? undefined : (tab as NonNullable<typeof search.tab>),
+                    }),
+                    replace: true,
+                  })
+                }
+              >
                 <div className="max-w-full overflow-x-auto pb-1">
                   <TabsList className="w-max">
                     <TabsTrigger value="items">Line items</TabsTrigger>

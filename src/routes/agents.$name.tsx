@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Bot, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -11,11 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { agentDetailSearchSchema } from "@/lib/admin-ux-search";
 import { formatCount, formatDateTime } from "@/lib/format";
 import { getAgentRuns } from "@/server-functions/agent-runs";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
 
 export const Route = createFileRoute("/agents/$name")({
+  validateSearch: agentDetailSearchSchema,
   loader: async ({ params }) => {
     const agent = AGENT_DEFINITIONS.find((a) => a.name === params.name);
     if (!agent) throw notFound();
@@ -48,6 +50,8 @@ function AgentDetail() {
     runs: import("@/lib/types").AgentRun[];
   };
   const { agent, runs } = loaderData;
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [temp, setTemp] = useState([0.4]);
   const [confThreshold, setConfThreshold] = useState([0.75]);
@@ -81,7 +85,18 @@ function AgentDetail() {
       <div className="grid grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardContent className="p-5">
-            <Tabs defaultValue="runs">
+            <Tabs
+              value={search.tab ?? "runs"}
+              onValueChange={(tab) =>
+                navigate({
+                  search: (current) => ({
+                    ...current,
+                    tab: tab === "runs" ? undefined : (tab as NonNullable<typeof search.tab>),
+                  }),
+                  replace: true,
+                })
+              }
+            >
               <div className="max-w-full overflow-x-auto pb-1">
                 <TabsList className="w-max">
                   <TabsTrigger value="runs">Runs</TabsTrigger>

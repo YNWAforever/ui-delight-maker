@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Outlet, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
 import { AccountSummaryCard } from "@/components/relationship/account-summary-card";
 import { AccountPreviewPanel } from "@/components/relationship/account-preview-panel";
@@ -14,6 +14,7 @@ import {
 import { getRelationshipSignals } from "@/server-functions/relationship-signals";
 import { toCompanyWorkspaceSummary } from "@/lib/relationship/company-workspace";
 import { useIsExactPath } from "@/lib/routing-utils";
+import { companiesSearchSchema, companySortFromKey, companySortToKey } from "@/lib/admin-ux-search";
 import type { AccountLifecycleStage, WorkspaceViewConfig } from "@/lib/types";
 
 const DEFAULT_ACCOUNT_VIEW_CONFIG: WorkspaceViewConfig = {
@@ -23,6 +24,7 @@ const DEFAULT_ACCOUNT_VIEW_CONFIG: WorkspaceViewConfig = {
 };
 
 export const Route = createFileRoute("/accounts")({
+  validateSearch: companiesSearchSchema,
   loader: async () => {
     const [accounts, clients, signals, preferences] = await Promise.all([
       getAccounts({}),
@@ -50,8 +52,23 @@ function AccountsRoute() {
 function AccountsIndex() {
   const { accounts, clients, signals, preferences } = Route.useLoaderData();
   const router = useRouter();
-  const [activeConfig, setActiveConfig] = useState(DEFAULT_ACCOUNT_VIEW_CONFIG);
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const [savedViewConfig, setSavedViewConfig] = useState(DEFAULT_ACCOUNT_VIEW_CONFIG);
+  const activeConfig = useMemo<WorkspaceViewConfig>(
+    () => ({
+      ...savedViewConfig,
+      filters: {
+        ...savedViewConfig.filters,
+        lifecycle_stage: search.lifecycle,
+      },
+      sort: companySortFromKey(search.sort),
+    }),
+    [savedViewConfig, search.lifecycle, search.sort],
+  );
+  const selectedAccountId = search.account ?? null;
+  const hasSelectedAccount =
+    selectedAccountId !== null && accounts.some((account) => account.id === selectedAccountId);
   const [selectedSummary, setSelectedSummary] = useState<ReturnType<
     typeof toCompanyWorkspaceSummary
   > | null>(null);
@@ -101,11 +118,18 @@ function AccountsIndex() {
   useEffect(() => {
     if (!selectedAccountId) {
       setSelectedSummary(null);
+      setPreviewLoading(false);
+      setPreviewError(null);
       return;
     }
 
     const account = accounts.find((candidate) => candidate.id === selectedAccountId);
-    if (!account) return;
+    if (!account) {
+      setSelectedSummary(null);
+      setPreviewLoading(false);
+      setPreviewError(null);
+      return;
+    }
     let cancelled = false;
     setSelectedSummary(
       toCompanyWorkspaceSummary({
@@ -173,10 +197,15 @@ function AccountsIndex() {
                     event.target.value === "all"
                       ? undefined
                       : (event.target.value as AccountLifecycleStage);
-                  setActiveConfig((current) => ({
-                    ...current,
-                    filters: { ...current.filters, lifecycle_stage: lifecycle },
-                  }));
+                  navigate({
+                    search: (current) => {
+                      const nextSearch = { ...current };
+                      delete nextSearch.lifecycle;
+                      if (lifecycle) nextSearch.lifecycle = lifecycle;
+                      return nextSearch;
+                    },
+                    replace: true,
+                  });
                 }}
               >
                 <option value="all">All companies</option>
@@ -197,11 +226,19 @@ function AccountsIndex() {
                 value={`${activeConfig.sort.field}:${activeConfig.sort.direction}`}
                 className="block h-11 min-w-44 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onChange={(event) => {
-                  const [field, direction] = event.target.value.split(":") as [
-                    WorkspaceViewConfig["sort"]["field"],
-                    WorkspaceViewConfig["sort"]["direction"],
-                  ];
-                  setActiveConfig((current) => ({ ...current, sort: { field, direction } }));
+                  const sort =
+                    event.target.value === "last_activity_at:desc"
+                      ? undefined
+                      : (event.target.value as NonNullable<typeof search.sort>);
+                  navigate({
+                    search: (current) => {
+                      const nextSearch = { ...current };
+                      delete nextSearch.sort;
+                      if (sort) nextSearch.sort = sort;
+                      return nextSearch;
+                    },
+                    replace: true,
+                  });
                 }}
               >
                 <option value="last_activity_at:desc">Recent activity</option>
@@ -215,7 +252,23 @@ function AccountsIndex() {
             objectType="account"
             activeConfig={activeConfig}
             views={preferences.views}
-            onSelect={(config) => setActiveConfig(config)}
+            onSelect={(config) => {
+              setSavedViewConfig(config);
+              navigate({
+                search: (current) => {
+                  const nextSearch = { ...current };
+                  delete nextSearch.lifecycle;
+                  delete nextSearch.sort;
+                  if (config.filters.lifecycle_stage) {
+                    nextSearch.lifecycle = config.filters.lifecycle_stage;
+                  }
+                  const sort = companySortToKey(config.sort);
+                  if (sort) nextSearch.sort = sort;
+                  return nextSearch;
+                },
+                replace: true,
+              });
+            }}
           />
         </div>
 
@@ -234,7 +287,9 @@ function AccountsIndex() {
                 key={account.id}
                 type="button"
                 aria-label={`Preview ${account.name}`}
-                onClick={() => setSelectedAccountId(account.id)}
+                onClick={() =>
+                  navigate({ search: (current) => ({ ...current, account: account.id }) })
+                }
                 className="block cursor-pointer rounded-lg text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <AccountSummaryCard
@@ -249,9 +304,17 @@ function AccountsIndex() {
       </main>
       <AccountPreviewPanel
         account={selectedSummary}
-        open={selectedAccountId !== null}
+        open={hasSelectedAccount}
         onOpenChange={(open) => {
-          if (!open) setSelectedAccountId(null);
+          if (!open) {
+            navigate({
+              search: (current) => {
+                const nextSearch = { ...current };
+                delete nextSearch.account;
+                return nextSearch;
+              },
+            });
+          }
         }}
         loading={previewLoading}
         error={previewError}

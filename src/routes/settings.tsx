@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { Copy, Eye, EyeOff, KeyRound, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { settingsSearchSchema } from "@/lib/admin-ux-search";
 import {
   Table,
   TableBody,
@@ -87,6 +88,7 @@ const pricingRules: PricingRule[] = [
 ];
 
 export const Route = createFileRoute("/settings")({
+  validateSearch: settingsSearchSchema,
   loader: () => getProducts({}),
   head: () => ({
     meta: [
@@ -101,6 +103,9 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+
   return (
     <>
       <PageHeader
@@ -109,7 +114,18 @@ function SettingsPage() {
       />
 
       <div className="px-6 py-6">
-        <Tabs defaultValue="profile">
+        <Tabs
+          value={search.tab ?? "profile"}
+          onValueChange={(tab) =>
+            navigate({
+              search: (current) => ({
+                ...current,
+                tab: tab === "profile" ? undefined : (tab as NonNullable<typeof search.tab>),
+              }),
+              replace: true,
+            })
+          }
+        >
           <div className="max-w-full overflow-x-auto pb-1">
             <TabsList className="w-max">
               <TabsTrigger value="profile">Profile</TabsTrigger>
