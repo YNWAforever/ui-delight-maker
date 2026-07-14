@@ -72,4 +72,35 @@ describe("Neon auth proxy", () => {
     const headers = init?.headers as Headers;
     expect(headers.get("Origin")).toBe("https://auth.example.com");
   });
+  it("normalizes relative password-reset redirects to the app origin", async () => {
+    const upstreamResponse = new Response(null, { status: 200 });
+    const fetchMock = vi.fn().mockResolvedValue(upstreamResponse);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new Request("https://clientops.example.com/api/auth/request-password-reset", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        email: "ada@fimmick.com",
+        redirectTo: "/login/reset-password",
+      }),
+    });
+
+    await proxyNeonAuthRequest({
+      request,
+      params: { _splat: "request-password-reset" },
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    const forwardedBody = JSON.parse(
+      new TextDecoder().decode(await new Response(init?.body).arrayBuffer()),
+    );
+    const headers = init?.headers as Headers;
+
+    expect(forwardedBody).toEqual({
+      email: "ada@fimmick.com",
+      redirectTo: "https://clientops.example.com/login/reset-password",
+    });
+    expect(headers.get("Origin")).toBe("https://auth.example.com");
+  });
 });

@@ -4,6 +4,7 @@ import { getNeonAuthCookieHeader, getNeonAuthUrl } from "@/lib/auth/neon-auth.se
 const BODYLESS_METHODS = new Set(["GET", "HEAD"]);
 const REQUEST_HEADERS = ["accept", "authorization", "content-type", "referer", "user-agent"];
 const SIGN_UP_EMAIL_PATH = "sign-up/email";
+const PASSWORD_RESET_PATH = "request-password-reset";
 const SIGN_UP_DOMAIN = "fimmick.com";
 const SIGN_UP_DOMAIN_ERROR = "Sign up is only available for @fimmick.com email addresses.";
 
@@ -76,6 +77,29 @@ async function validateSignUpRequest(request: Request, path: string) {
   );
 }
 
+async function getProxyRequestBody(request: Request, path: string) {
+  const body = await request.arrayBuffer();
+  if (request.method !== "POST" || path !== PASSWORD_RESET_PATH) return body;
+
+  try {
+    const payload = JSON.parse(new TextDecoder().decode(body)) as Record<string, unknown>;
+    if (typeof payload.redirectTo !== "string") return body;
+
+    try {
+      new URL(payload.redirectTo);
+      return body;
+    } catch {
+      const appOrigin = new URL(request.url).origin;
+      const resolved = new URL(payload.redirectTo, `${appOrigin}/`);
+      if (resolved.origin !== appOrigin) return body;
+
+      return JSON.stringify({ ...payload, redirectTo: resolved.toString() });
+    }
+  } catch {
+    return body;
+  }
+}
+
 export async function proxyNeonAuthRequest({ request, params }: AuthProxyArgs) {
   const path = params._splat ?? "";
   const signUpRejection = await validateSignUpRequest(request, path);
@@ -87,7 +111,9 @@ export async function proxyNeonAuthRequest({ request, params }: AuthProxyArgs) {
   const upstreamResponse = await fetch(upstreamUrl, {
     method: request.method,
     headers: getProxyRequestHeaders(request),
-    body: BODYLESS_METHODS.has(request.method) ? undefined : await request.arrayBuffer(),
+    body: BODYLESS_METHODS.has(request.method)
+      ? undefined
+      : await getProxyRequestBody(request, path),
     redirect: "manual",
   });
 
