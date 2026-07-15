@@ -32,12 +32,14 @@ import { Route as QuotesIdRouteImport } from './routes/quotes.$id'
 import { Route as LoginAuthPathRouteImport } from './routes/login.$authPath'
 import { Route as LeadsIdRouteImport } from './routes/leads.$id'
 import { Route as JobSheetsIdRouteImport } from './routes/job-sheets.$id'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ClientsImportRouteImport } from './routes/clients.import'
 import { Route as ClientsIdRouteImport } from './routes/clients.$id'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as AgentsNameRouteImport } from './routes/agents.$name'
 import { Route as AccountsIdRouteImport } from './routes/accounts.$id'
 import { Route as QuotesIdPdfRouteImport } from './routes/quotes.$id_.pdf'
+import { Route as InviteTokenCompleteRouteImport } from './routes/invite.$token.complete'
 import { Route as ApiWorkflowsScoreRenewalRiskRouteImport } from './routes/api/workflows/score-renewal-risk'
 import { Route as ApiWorkflowsRetentionSweepRouteImport } from './routes/api/workflows/retention-sweep'
 import { Route as ApiWorkflowsRelationshipIntelligenceRouteImport } from './routes/api/workflows/relationship-intelligence'
@@ -164,6 +166,11 @@ const JobSheetsIdRoute = JobSheetsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => JobSheetsRoute,
 } as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientsImportRoute = ClientsImportRouteImport.update({
   id: '/import',
   path: '/import',
@@ -193,6 +200,11 @@ const QuotesIdPdfRoute = QuotesIdPdfRouteImport.update({
   id: '/$id_/pdf',
   path: '/$id/pdf',
   getParentRoute: () => QuotesRoute,
+} as any)
+const InviteTokenCompleteRoute = InviteTokenCompleteRouteImport.update({
+  id: '/complete',
+  path: '/complete',
+  getParentRoute: () => InviteTokenRoute,
 } as any)
 const ApiWorkflowsScoreRenewalRiskRoute =
   ApiWorkflowsScoreRenewalRiskRouteImport.update({
@@ -274,6 +286,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
+  '/invite/$token': typeof InviteTokenRouteWithChildren
   '/job-sheets/$id': typeof JobSheetsIdRoute
   '/leads/$id': typeof LeadsIdRoute
   '/login/$authPath': typeof LoginAuthPathRoute
@@ -286,6 +299,7 @@ export interface FileRoutesByFullPath {
   '/api/workflows/relationship-intelligence': typeof ApiWorkflowsRelationshipIntelligenceRoute
   '/api/workflows/retention-sweep': typeof ApiWorkflowsRetentionSweepRoute
   '/api/workflows/score-renewal-risk': typeof ApiWorkflowsScoreRenewalRiskRoute
+  '/invite/$token/complete': typeof InviteTokenCompleteRoute
   '/quotes/$id/pdf': typeof QuotesIdPdfRoute
   '/api/workflows/context/account': typeof ApiWorkflowsContextAccountRoute
   '/api/workflows/context/engagement': typeof ApiWorkflowsContextEngagementRoute
@@ -315,6 +329,7 @@ export interface FileRoutesByTo {
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
+  '/invite/$token': typeof InviteTokenRouteWithChildren
   '/job-sheets/$id': typeof JobSheetsIdRoute
   '/leads/$id': typeof LeadsIdRoute
   '/login/$authPath': typeof LoginAuthPathRoute
@@ -327,6 +342,7 @@ export interface FileRoutesByTo {
   '/api/workflows/relationship-intelligence': typeof ApiWorkflowsRelationshipIntelligenceRoute
   '/api/workflows/retention-sweep': typeof ApiWorkflowsRetentionSweepRoute
   '/api/workflows/score-renewal-risk': typeof ApiWorkflowsScoreRenewalRiskRoute
+  '/invite/$token/complete': typeof InviteTokenCompleteRoute
   '/quotes/$id/pdf': typeof QuotesIdPdfRoute
   '/api/workflows/context/account': typeof ApiWorkflowsContextAccountRoute
   '/api/workflows/context/engagement': typeof ApiWorkflowsContextEngagementRoute
@@ -357,6 +373,7 @@ export interface FileRoutesById {
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
+  '/invite/$token': typeof InviteTokenRouteWithChildren
   '/job-sheets/$id': typeof JobSheetsIdRoute
   '/leads/$id': typeof LeadsIdRoute
   '/login/$authPath': typeof LoginAuthPathRoute
@@ -369,6 +386,7 @@ export interface FileRoutesById {
   '/api/workflows/relationship-intelligence': typeof ApiWorkflowsRelationshipIntelligenceRoute
   '/api/workflows/retention-sweep': typeof ApiWorkflowsRetentionSweepRoute
   '/api/workflows/score-renewal-risk': typeof ApiWorkflowsScoreRenewalRiskRoute
+  '/invite/$token/complete': typeof InviteTokenCompleteRoute
   '/quotes/$id_/pdf': typeof QuotesIdPdfRoute
   '/api/workflows/context/account': typeof ApiWorkflowsContextAccountRoute
   '/api/workflows/context/engagement': typeof ApiWorkflowsContextEngagementRoute
@@ -400,6 +418,7 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/clients/$id'
     | '/clients/import'
+    | '/invite/$token'
     | '/job-sheets/$id'
     | '/leads/$id'
     | '/login/$authPath'
@@ -412,6 +431,7 @@ export interface FileRouteTypes {
     | '/api/workflows/relationship-intelligence'
     | '/api/workflows/retention-sweep'
     | '/api/workflows/score-renewal-risk'
+    | '/invite/$token/complete'
     | '/quotes/$id/pdf'
     | '/api/workflows/context/account'
     | '/api/workflows/context/engagement'
@@ -441,6 +461,7 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/clients/$id'
     | '/clients/import'
+    | '/invite/$token'
     | '/job-sheets/$id'
     | '/leads/$id'
     | '/login/$authPath'
@@ -453,6 +474,7 @@ export interface FileRouteTypes {
     | '/api/workflows/relationship-intelligence'
     | '/api/workflows/retention-sweep'
     | '/api/workflows/score-renewal-risk'
+    | '/invite/$token/complete'
     | '/quotes/$id/pdf'
     | '/api/workflows/context/account'
     | '/api/workflows/context/engagement'
@@ -482,6 +504,7 @@ export interface FileRouteTypes {
     | '/campaigns/$id'
     | '/clients/$id'
     | '/clients/import'
+    | '/invite/$token'
     | '/job-sheets/$id'
     | '/leads/$id'
     | '/login/$authPath'
@@ -494,6 +517,7 @@ export interface FileRouteTypes {
     | '/api/workflows/relationship-intelligence'
     | '/api/workflows/retention-sweep'
     | '/api/workflows/score-renewal-risk'
+    | '/invite/$token/complete'
     | '/quotes/$id_/pdf'
     | '/api/workflows/context/account'
     | '/api/workflows/context/engagement'
@@ -519,6 +543,7 @@ export interface RootRouteChildren {
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
   TasksRoute: typeof TasksRoute
+  InviteTokenRoute: typeof InviteTokenRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiWorkflowsDraftQuoteRoute: typeof ApiWorkflowsDraftQuoteRoute
   ApiWorkflowsDraftReplyRoute: typeof ApiWorkflowsDraftReplyRoute
@@ -694,6 +719,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JobSheetsIdRouteImport
       parentRoute: typeof JobSheetsRoute
     }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clients/import': {
       id: '/clients/import'
       path: '/import'
@@ -735,6 +767,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/quotes/$id/pdf'
       preLoaderRoute: typeof QuotesIdPdfRouteImport
       parentRoute: typeof QuotesRoute
+    }
+    '/invite/$token/complete': {
+      id: '/invite/$token/complete'
+      path: '/complete'
+      fullPath: '/invite/$token/complete'
+      preLoaderRoute: typeof InviteTokenCompleteRouteImport
+      parentRoute: typeof InviteTokenRoute
     }
     '/api/workflows/score-renewal-risk': {
       id: '/api/workflows/score-renewal-risk'
@@ -904,6 +943,18 @@ const QuotesRouteChildren: QuotesRouteChildren = {
 const QuotesRouteWithChildren =
   QuotesRoute._addFileChildren(QuotesRouteChildren)
 
+interface InviteTokenRouteChildren {
+  InviteTokenCompleteRoute: typeof InviteTokenCompleteRoute
+}
+
+const InviteTokenRouteChildren: InviteTokenRouteChildren = {
+  InviteTokenCompleteRoute: InviteTokenCompleteRoute,
+}
+
+const InviteTokenRouteWithChildren = InviteTokenRoute._addFileChildren(
+  InviteTokenRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
@@ -923,6 +974,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
   TasksRoute: TasksRoute,
+  InviteTokenRoute: InviteTokenRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiWorkflowsDraftQuoteRoute: ApiWorkflowsDraftQuoteRoute,
   ApiWorkflowsDraftReplyRoute: ApiWorkflowsDraftReplyRoute,

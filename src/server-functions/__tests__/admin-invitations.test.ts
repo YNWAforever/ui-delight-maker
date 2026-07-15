@@ -240,7 +240,7 @@ describe("admin invitation server functions", () => {
     expect(requireCapabilityMock).toHaveBeenCalledWith("users.invite");
     expect(requireCapabilityMock).toHaveBeenCalledWith("users.invite", {
       role: "sales",
-      departmentId: null,
+      departmentId: undefined,
       teamId: undefined,
       ownerProfileId: "admin-1",
     });

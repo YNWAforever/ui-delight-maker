@@ -6,6 +6,8 @@ describe("auth route visibility", () => {
     expect(isPublicAuthPath("/login")).toBe(true);
     expect(isPublicAuthPath("/login/sign-up")).toBe(true);
     expect(isPublicAuthPath("/login/sign-in")).toBe(true);
+    expect(isPublicAuthPath("/invite/raw-token")).toBe(true);
+    expect(isPublicAuthPath("/invite/raw-token/complete")).toBe(true);
   });
 
   it("does not treat login-looking app paths as public auth routes", () => {

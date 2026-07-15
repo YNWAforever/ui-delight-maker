@@ -61,7 +61,7 @@ function authorizationTarget(
 ) {
   return {
     role: invitation.intended_role,
-    departmentId: invitation.primary_department_id,
+    departmentId: invitation.primary_department_id ?? undefined,
     teamId: invitation.initial_team_ids[0],
     ownerProfileId: invitation.manager_profile_id ?? actorId,
   };
@@ -96,7 +96,7 @@ export const inviteUsers = createServerFn({ method: "POST" })
       assertCanAssignRole(session.profile.role, input.role);
       const target = {
         role: input.role,
-        departmentId: input.primaryDepartmentId ?? null,
+        departmentId: input.primaryDepartmentId,
         teamId: input.initialTeamIds[0],
         ownerProfileId: input.managerProfileId ?? session.profile.id,
       };

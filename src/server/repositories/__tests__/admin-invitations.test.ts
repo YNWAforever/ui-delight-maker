@@ -136,13 +136,17 @@ describe("admin invitation repository", () => {
       [{ id: "invite-1", status: "accepted" }],
       [{ id: "audit-1" }],
     ]);
-    const transaction = vi.fn(async (work: (db: Queryable) => Promise<unknown>) => work(db));
+    let transactionCalls = 0;
+    const transaction = async <T>(work: (db: Queryable) => Promise<T>) => {
+      transactionCalls += 1;
+      return work(db);
+    };
     const repo = createInvitationRepository({ transaction });
 
     await expect(
       repo.acceptInvitation("raw-token", { id: "profile-1", email: "PERSON@example.com" }),
     ).resolves.toMatchObject(profile);
-    expect(transaction).toHaveBeenCalledOnce();
+    expect(transactionCalls).toBe(1);
     expect(db.calls[0].toLowerCase()).toContain("for update");
     expect(db.calls.some((sql) => sql.toLowerCase().includes("team_memberships"))).toBe(true);
     expect(db.calls.some((sql) => sql.toLowerCase().includes("admin_audit_logs"))).toBe(true);
