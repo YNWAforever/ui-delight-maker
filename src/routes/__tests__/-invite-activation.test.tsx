@@ -26,6 +26,9 @@ vi.mock("@/server-functions/admin-invitations", () => ({
   acceptUserInvitation: acceptUserInvitationMock,
 }));
 
+import { Route as InvitationRoute } from "../invite.$token";
+import { Route as InvitationCompletionRoute } from "../invite.$token.complete";
+
 describe("invitation activation routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -42,8 +45,7 @@ describe("invitation activation routes", () => {
   });
 
   it("loads a safe preview and converts invalid tokens into a non-sensitive state", async () => {
-    const { Route } = await import("../invite.$token");
-    const loader = Route.options.loader as unknown as (context: {
+    const loader = InvitationRoute.options.loader as unknown as (context: {
       params: { token: string };
     }) => Promise<unknown>;
 
@@ -64,8 +66,7 @@ describe("invitation activation routes", () => {
   });
 
   it("accepts the invitation and redirects to the welcome account view", async () => {
-    const { Route } = await import("../invite.$token.complete");
-    const loader = Route.options.loader as unknown as (context: {
+    const loader = InvitationCompletionRoute.options.loader as unknown as (context: {
       params: { token: string };
     }) => Promise<unknown>;
 
