@@ -124,6 +124,53 @@ describe("ClientOps account status at sign in", () => {
     await expect(getNeonAuthSession()).resolves.toBeNull();
   });
 
+  it("merges partial top-level and data session shapes field by field", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(
+        () =>
+          new Response(
+            JSON.stringify({
+              session: { id: "session-top" },
+              data: {
+                session: {
+                  createdAt: "2026-07-15T04:00:00.000Z",
+                  expiresAt: "2026-07-16T04:00:00.000Z",
+                  user: { id: "user-1", email: "ada@example.com" },
+                },
+              },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+      ),
+    );
+
+    await expect(getNeonAuthIdentity()).resolves.toEqual({
+      user: { id: "user-1", email: "ada@example.com" },
+      session: {
+        id: "session-top",
+        createdAt: "2026-07-15T04:00:00.000Z",
+        expiresAt: "2026-07-16T04:00:00.000Z",
+      },
+    });
+  });
+
+  it("rejects explicitly expired or malformed upstream expiry metadata", async () => {
+    neonSession({ expiresAt: "2020-01-01T00:00:00.000Z" });
+    await expect(getNeonAuthIdentity()).resolves.toBeNull();
+
+    neonSession({ expiresAt: "not-a-date" });
+    await expect(getNeonAuthIdentity()).resolves.toBeNull();
+  });
+
+  it("accepts a session created exactly at the invalidation boundary", async () => {
+    getProfileByIdMock.mockResolvedValue(
+      profile({ session_invalid_before: "2026-07-15T04:00:00.000Z" }),
+    );
+    await expect(getNeonAuthSession()).resolves.toMatchObject({
+      profile: { status: "active" },
+    });
+  });
   it("returns active app access with upstream session metadata", async () => {
     await expect(getNeonAuthSession()).resolves.toMatchObject({
       user: { id: "user-1" },

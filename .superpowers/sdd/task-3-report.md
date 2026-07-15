@@ -30,3 +30,11 @@ DONE.
 - Session id, creation, and expiry metadata are retained for later revocation controls.
 - Profile auto-creation remains available only as an explicit repository operation for Task 4 invitation acceptance.
 - No live database or external service was accessed.
+## Review Follow-Up
+
+- The reviewer's role-union concern was checked against current source and rejected: canonical \`UserRole\` already contains all seven Task 1 roles, and TypeScript reports no role mismatch.
+- Hardened partial Neon response parsing with field-level fallback between top-level and \`data.session\`.
+- Explicit expired or malformed upstream expiry metadata now fails closed.
+- Added equality-boundary coverage for \`session_invalid_before\`.
+- Focused auth suite now passes 5 files and 23 tests.
+- The first full rerun hit a 5-second unrelated CRM dynamic-import timeout; that file passed 5/5 in isolation, and the immediate full rerun passed 91 files with 487 tests (1 file and 1 test skipped).

@@ -74,24 +74,24 @@ export async function getNeonAuthIdentity(): Promise<AuthIdentity | null> {
   }
 
   const payload = (await response.json()) as NeonSessionResponse;
-  const upstreamSession = payload.session ?? payload.data?.session ?? null;
+  const primarySession = payload.session;
+  const dataSession = payload.data?.session;
   const user =
-    payload.user ??
-    upstreamSession?.user ??
-    payload.data?.user ??
-    payload.data?.session?.user ??
-    null;
+    payload.user ?? primarySession?.user ?? payload.data?.user ?? dataSession?.user ?? null;
 
   if (!user?.id) return null;
 
-  return {
-    user,
-    session: {
-      id: upstreamSession?.id ?? null,
-      createdAt: upstreamSession?.createdAt ?? null,
-      expiresAt: upstreamSession?.expiresAt ?? null,
-    },
+  const session = {
+    id: primarySession?.id ?? dataSession?.id ?? null,
+    createdAt: primarySession?.createdAt ?? dataSession?.createdAt ?? null,
+    expiresAt: primarySession?.expiresAt ?? dataSession?.expiresAt ?? null,
   };
+  if (session.expiresAt) {
+    const expiresAt = Date.parse(session.expiresAt);
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
+  }
+
+  return { user, session };
 }
 
 export async function requireNeonAuthIdentity(): Promise<AuthIdentity> {
