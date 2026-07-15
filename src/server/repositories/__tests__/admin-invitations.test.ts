@@ -210,4 +210,55 @@ describe("admin invitation repository", () => {
       }),
     ).rejects.toThrow(message);
   });
+
+  it("rotates the token when resending and stores only the new hash", async () => {
+    const original = {
+      id: "invite-1",
+      email: "person@example.com",
+      intended_role: "sales",
+      primary_department_id: "dept-1",
+      manager_profile_id: "manager-1",
+      initial_team_ids: ["team-1"],
+      status: "pending",
+      invited_by: "actor-1",
+      expires_at: "2026-07-23T00:00:00.000Z",
+    };
+    const replacement = {
+      ...original,
+      id: "invite-2",
+      token_hash: hashInvitationToken("new-raw-token"),
+      expires_at: "2026-07-24T00:00:00.000Z",
+    };
+    const db = fakeDatabase([[original], [{ ...original, status: "revoked" }], [replacement]]);
+    const repo = createInvitationRepository({
+      transaction: async (work) => work(db),
+      randomToken: () => "new-raw-token",
+      now: () => new Date("2026-07-17T00:00:00.000Z"),
+    });
+
+    const result = await repo.resendInvitation("invite-1", "actor-2");
+
+    expect(result).toEqual({ invitation: replacement, rawToken: "new-raw-token" });
+    expect(db.calls[0].toLowerCase()).toContain("for update");
+    expect(db.calls[1].toLowerCase()).toContain("status = 'revoked'");
+    expect(db.values.flat()).not.toContain("new-raw-token");
+    expect(db.values.flat()).toContain(hashInvitationToken("new-raw-token"));
+  });
+
+  it("loads an invitation by id for target-aware admin authorization", async () => {
+    const stored = {
+      id: "invite-1",
+      email: "person@example.com",
+      intended_role: "sales",
+      primary_department_id: "dept-1",
+      manager_profile_id: "manager-1",
+      initial_team_ids: ["team-1"],
+      status: "pending",
+    };
+    const db = fakeDatabase([[stored]]);
+    const repo = createInvitationRepository({ transaction: async (work) => work(db) });
+
+    await expect(repo.getInvitationById("invite-1")).resolves.toEqual(stored);
+    expect(db.values[0]).toEqual(["invite-1"]);
+  });
 });

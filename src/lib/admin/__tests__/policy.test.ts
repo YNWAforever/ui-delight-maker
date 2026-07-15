@@ -26,6 +26,7 @@ describe("evaluateAuthorization", () => {
     ["super_admin", "users.manage", true],
     ["admin", "users.manage", true],
     ["manager", "users.manage", true],
+    ["manager", "users.invite", true],
     ["sales", "users.manage", false],
     ["client_success", "engagements.update", true],
     ["accounting", "job_sheets.accept", true],
@@ -297,6 +298,7 @@ describe("evaluateAuthorization", () => {
         ],
         "manager": [
           "users.view",
+          "users.invite",
           "users.manage",
           "teams.view",
           "teams.manage",

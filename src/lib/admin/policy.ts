@@ -31,6 +31,7 @@ export const ROLE_GRANTS: Record<UserRole, ReadonlySet<Capability>> = {
   admin: set(...CAPABILITIES.filter((capability) => capability !== "permissions.override")),
   manager: set(
     "users.view",
+    "users.invite",
     "users.manage",
     "teams.view",
     "teams.manage",

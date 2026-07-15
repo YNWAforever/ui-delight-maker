@@ -175,6 +175,20 @@ export function createInvitationRepository(dependencies: InvitationRepositoryDep
     }
   }
 
+  async function getInvitationById(invitationId: string) {
+    return transaction(async (db) => {
+      const result = await db.query<UserInvitation>(
+        `
+          select * from user_invitations
+          where id = $1
+          limit 1
+        `,
+        [invitationId],
+      );
+      return result.rows[0] ?? null;
+    });
+  }
+
   async function getInvitationPreview(rawToken: string): Promise<InvitationPreview> {
     const tokenHash = hashInvitationToken(rawToken);
     return transaction(async (db) => {
@@ -310,6 +324,65 @@ export function createInvitationRepository(dependencies: InvitationRepositoryDep
     });
   }
 
+  async function resendInvitation(invitationId: string, actorId: string) {
+    const rawToken = generateToken();
+    const tokenHash = hashInvitationToken(rawToken);
+    const sentAt = now();
+    const expiresAt = new Date(sentAt.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const invitation = await transaction(async (db) => {
+      const originalResult = await db.query<UserInvitation>(
+        `
+          select * from user_invitations
+          where id = $1
+          limit 1 for update
+        `,
+        [invitationId],
+      );
+      const original = originalResult.rows[0];
+      if (!original || original.status !== "pending") {
+        throw new Error("Invitation is no longer available");
+      }
+
+      const revoked = await db.query<UserInvitation>(
+        `
+          update user_invitations
+          set status = 'revoked', revoked_at = $2, revoked_by = $3, updated_at = $2
+          where id = $1 and status = 'pending'
+          returning *
+        `,
+        [invitationId, sentAt.toISOString(), actorId],
+      );
+      if (!revoked.rows[0]) throw new Error("Invitation is no longer available");
+
+      const replacement = await db.query<UserInvitation>(
+        `
+          insert into user_invitations (
+            email, token_hash, intended_role, primary_department_id,
+            manager_profile_id, initial_team_ids, invited_by, expires_at
+          )
+          values ($1, $2, $3, $4, $5, $6::uuid[], $7, $8)
+          returning *
+        `,
+        [
+          original.email,
+          tokenHash,
+          original.intended_role,
+          original.primary_department_id,
+          original.manager_profile_id,
+          original.initial_team_ids,
+          actorId,
+          expiresAt,
+        ],
+      );
+      const row = replacement.rows[0];
+      if (!row) throw new Error("Failed to resend invitation");
+      return row;
+    });
+
+    return { invitation, rawToken };
+  }
+
   async function revokeInvitation(invitationId: string, actorId: string) {
     return transaction(async (db) => {
       const result = await db.query<UserInvitation>(
@@ -327,12 +400,21 @@ export function createInvitationRepository(dependencies: InvitationRepositoryDep
     });
   }
 
-  return { createInvitation, getInvitationPreview, acceptInvitation, revokeInvitation };
+  return {
+    createInvitation,
+    getInvitationById,
+    getInvitationPreview,
+    acceptInvitation,
+    resendInvitation,
+    revokeInvitation,
+  };
 }
 
 const invitationRepository = createInvitationRepository();
 
 export const createInvitation = invitationRepository.createInvitation;
+export const getInvitationById = invitationRepository.getInvitationById;
 export const getInvitationPreview = invitationRepository.getInvitationPreview;
 export const acceptInvitation = invitationRepository.acceptInvitation;
+export const resendInvitation = invitationRepository.resendInvitation;
 export const revokeInvitation = invitationRepository.revokeInvitation;
