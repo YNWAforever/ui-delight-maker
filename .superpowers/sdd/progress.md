@@ -34,3 +34,5 @@ Final hardening: complete (post-final-review staged fix; lifecycle-controlled qu
 Task 1: complete (commits 0bd96e7..37b97ff, review clean)
 Task 2: complete (commits 6cc4f6d..c696dde, review clean)
 Task 3: complete (commits bfa7518..1238849, review clean; minor: add direct unauthenticated require-identity and absent-expiry tests)
+
+Task 4: complete (commits d55c5c5..9e041dc, review approved after all-team and unscoped-manager authorization fixes; full suite 517 passed, 1 skipped; lint 0 errors/24 baseline warnings; client and SSR build passed; Task 5 authorization orchestration landed early as dependency)

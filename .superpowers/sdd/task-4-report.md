@@ -22,8 +22,9 @@
 
 ## Verification
 
-- Focused Task 4: 8 files, 49 tests passed.
-- Full suite: 97 files passed, 1 skipped; 513 tests passed, 1 skipped.
+- Focused Task 4 before review: 8 files, 49 tests passed.
+- Focused review regressions: 3 files, 35 tests passed.
+- Final full suite: 97 files passed, 1 skipped; 517 tests passed, 1 skipped.
 - Full ESLint: 0 errors, 24 pre-existing Fast Refresh warnings.
 - Direct Vite development build: client and SSR builds passed; invite route chunks generated.
 - TypeScript: Task 4 and generated routes are clean. The only remaining errors are the two known baseline errors in `src/lib/__tests__/eslint-config.test.ts` (missing declaration for `eslint.config.js` and implicit `any` for `entry`).
@@ -36,3 +37,10 @@
 - `2276629` feat: add invitation administration APIs
 - `1e334e4` feat: add invitation-only account activation
 - `9705e44` test: stabilize invitation route coverage
+- `9e041dc` fix: enforce complete manager invitation scope
+
+## Independent Review
+
+- Initial focused review found two Important manager-scope gaps: only the first assigned team was authorized, and an omitted manager could be authorized as actor-owned while persisting null.
+- Fixes authorize every assigned and stored team, persist the actor as manager when a manager invite omits one, and deny legacy unscoped stored invitations to managers.
+- Re-review verdict: APPROVED with no Critical, Important, or Minor findings.
