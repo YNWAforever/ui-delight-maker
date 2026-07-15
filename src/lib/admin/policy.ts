@@ -183,6 +183,14 @@ export function evaluateAuthorization(input: AuthorizationInput): AuthorizationD
 
   if (
     actor.role === "manager" &&
+    capability === "users.manage" &&
+    target.profileId &&
+    !target.role
+  ) {
+    return { allowed: false, reason: "invalid_target" };
+  }
+  if (
+    actor.role === "manager" &&
     target.role &&
     (target.role === "admin" || target.role === "super_admin")
   ) {

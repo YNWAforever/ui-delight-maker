@@ -43,3 +43,10 @@ The first completed review found a Critical cross-actor override flaw and reques
 - Focused suite: 1 file, 19 tests passed.
 - Full suite: 90 files passed, 1 skipped; 476 tests passed, 1 skipped.
 - Full lint: 0 errors and the same 24 existing Fast Refresh warnings.
+### Final Review Fix
+
+The re-review found that a Manager could omit `AuthorizationTarget.role` and bypass protected-role detection. Manager `users.manage` decisions now fail closed with `invalid_target` whenever a profile target lacks resolved role context, before permission overrides are evaluated.
+
+- Adversarial RED reproduced the explicit-allow bypass.
+- Focused GREEN: 1 file, 20 tests.
+- Full suite: 90 files passed, 1 skipped; 477 tests passed, 1 skipped.

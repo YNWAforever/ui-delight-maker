@@ -105,6 +105,7 @@ export type PermissionOverride = {
 export type AuthorizationReason =
   | "inactive_actor"
   | "protected_role"
+  | "invalid_target"
   | "explicit_deny"
   | "explicit_allow"
   | "role_grant"

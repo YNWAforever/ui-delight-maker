@@ -68,6 +68,22 @@ describe("evaluateAuthorization", () => {
     ).toBe(true);
   });
 
+  it("fails closed when a Manager profile target omits its role", () => {
+    expect(
+      evaluateAuthorization({
+        actor: actor("manager", { directReportIds: ["target-1"] }),
+        capability: "users.manage",
+        target: { profileId: "target-1" },
+        overrides: [
+          {
+            profileId: "actor-1",
+            capability: "users.manage",
+            effect: "allow",
+          },
+        ],
+      }),
+    ).toEqual({ allowed: false, reason: "invalid_target" });
+  });
   it("never lets a manager manage an Admin or Super Admin", () => {
     const manager = actor("manager", { directReportIds: ["admin-1"] });
     expect(
