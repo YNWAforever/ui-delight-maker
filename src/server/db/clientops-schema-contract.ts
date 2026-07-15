@@ -8,6 +8,7 @@ export type DatabaseMismatchCategory =
   | "missing_default"
   | "missing_constraint"
   | "missing_index"
+  | "missing_trigger"
   | "migration_order_error";
 
 export type DatabaseContractMismatch = {
@@ -18,11 +19,11 @@ export type DatabaseContractMismatch = {
 };
 
 export type DatabaseReadinessResult =
-  | { ready: true; checkedAt: string; contractVersion: "2026-07-12" }
+  | { ready: true; checkedAt: string; contractVersion: "2026-07-15" }
   | {
       ready: false;
       checkedAt: string;
-      contractVersion: "2026-07-12";
+      contractVersion: "2026-07-15";
       mismatches: DatabaseContractMismatch[];
     };
 
@@ -42,6 +43,14 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "engagements",
     "touchpoints",
     "job_sheets",
+    "departments",
+    "teams",
+    "team_memberships",
+    "user_invitations",
+    "permission_overrides",
+    "access_requests",
+    "work_delegations",
+    "admin_audit_logs",
   ] as const,
   columns: {
     "accounts.id": { type: "uuid", nullable: false },
@@ -54,10 +63,20 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "activity_logs.diff_data": { type: "jsonb", nullable: true },
     "human_approvals.context_data": { type: "jsonb", nullable: true },
     "job_sheets.account_id": { type: "uuid", nullable: true },
+    "profiles.status": { type: "text", nullable: false },
+    "profiles.primary_department_id": { type: "uuid", nullable: true },
+    "profiles.manager_profile_id": { type: "text", nullable: true },
+    "profiles.session_invalid_before": {
+      type: "timestamp with time zone",
+      nullable: true,
+    },
   },
   constraints: [
     "account_contacts_account_id_fkey",
     "relationship_signals_account_id_fkey",
+    "profiles_role_check",
+    "profiles_status_check",
+    "profiles_availability_status_check",
   ] as const,
   indexes: [
     "accounts_last_activity_idx",
@@ -69,7 +88,16 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "activity_logs_object_idx",
     "relationship_signals_account_idx",
     "job_sheets_account_id_idx",
+    "profiles_department_idx",
+    "profiles_manager_idx",
+    "profiles_status_role_idx",
+    "team_memberships_profile_idx",
+    "permission_overrides_profile_idx",
+    "access_requests_status_idx",
+    "admin_audit_target_idx",
+    "admin_audit_actor_idx",
   ] as const,
+  triggers: ["admin_audit_logs_immutable"] as const,
 } as const;
 
 type SchemaContract = typeof CLIENTOPS_SCHEMA_CONTRACT;
@@ -78,7 +106,7 @@ async function inspectContract(
   db: Queryable,
   contract: SchemaContract,
 ): Promise<DatabaseContractMismatch[]> {
-  const [relations, columns, constraints, indexes] = await Promise.all([
+  const [relations, columns, constraints, indexes, triggers] = await Promise.all([
     db.query<{ table_name: string }>(
       `
         select table_name
@@ -120,6 +148,10 @@ async function inspectContract(
           and indexname = any($1::text[])
       `,
       [contract.indexes],
+    ),
+    db.query<{ trigger_name: string }>(
+      "select trigger_name from information_schema.triggers where trigger_schema = 'public' and trigger_name = any($1::text[])",
+      [contract.triggers],
     ),
   ]);
 
@@ -177,6 +209,13 @@ async function inspectContract(
     }
   }
 
+  const existingTriggers = new Set(triggers.rows.map((row) => row.trigger_name));
+  for (const trigger of contract.triggers) {
+    if (!existingTriggers.has(trigger)) {
+      mismatches.push({ category: "missing_trigger", object: trigger });
+    }
+  }
+
   return mismatches;
 }
 
@@ -185,6 +224,6 @@ export async function verifyClientOpsDatabase(db: Queryable): Promise<DatabaseRe
   const mismatches = await inspectContract(db, CLIENTOPS_SCHEMA_CONTRACT);
 
   return mismatches.length === 0
-    ? { ready: true, checkedAt, contractVersion: "2026-07-12" }
-    : { ready: false, checkedAt, contractVersion: "2026-07-12", mismatches };
+    ? { ready: true, checkedAt, contractVersion: "2026-07-15" }
+    : { ready: false, checkedAt, contractVersion: "2026-07-15", mismatches };
 }

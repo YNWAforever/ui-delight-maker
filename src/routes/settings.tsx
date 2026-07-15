@@ -44,9 +44,9 @@ import {
   updateProduct,
   deactivateProductFn,
 } from "@/server-functions/products";
-import type { Product } from "@/lib/types";
+import type { Product, UserRole } from "@/lib/types";
 
-type User = AppUser & { role: "admin" | "manager" | "sales" | "cs" };
+type User = Omit<AppUser, "role"> & { role: UserRole };
 
 type PricingRule = {
   id: string;
@@ -253,10 +253,13 @@ function TeamTab() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="super_admin">Super admin</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="sales">Sales</SelectItem>
-                      <SelectItem value="cs">Client success</SelectItem>
+                      <SelectItem value="client_success">Client success</SelectItem>
+                      <SelectItem value="accounting">Accounting</SelectItem>
+                      <SelectItem value="read_only">Read only</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>

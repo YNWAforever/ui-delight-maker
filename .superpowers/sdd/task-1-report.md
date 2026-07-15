@@ -97,3 +97,25 @@ DONE.
 ### Concerns
 
 - The bootstrap was verified with an injected transaction test double only. It was not run against any live or production database.
+
+## Review Fixes
+
+### First Review
+
+NOT APPROVED with three Important findings: stale fixed-role writers, destructive cascading foreign keys, and incomplete production schema verification. The reviewer also requested stronger migration and rollback tests.
+
+### Fixes
+
+- Updated canonical, mock, seed, shared-user, and settings role boundaries to the exact seven fixed roles while preserving the demo lookup key named `cs`.
+- Replaced cascading foreign keys with `RESTRICT` or `SET NULL` behavior so admin history is not physically deleted.
+- Extended the production database readiness contract to verify all Task 1 tables, profile columns, constraints, indexes, and the immutable audit trigger.
+- Extracted and tested the bootstrap transaction adapter, including rollback and connection release when audit insertion fails.
+
+### Verification
+
+- Focused RED: 4 new regression tests failed before the fixes.
+- Focused GREEN: 2 files, 27 tests passed.
+- Full suite: 89 files passed, 1 skipped; 457 tests passed, 1 skipped.
+- Full lint: 0 errors and the same 24 existing Fast Refresh warnings.
+- TypeScript: only the two known baseline errors in `src/lib/__tests__/eslint-config.test.ts`.
+- No live or production database was accessed.

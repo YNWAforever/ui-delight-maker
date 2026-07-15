@@ -37,6 +37,11 @@ function contractQueryStub(columnTypes: Record<string, string> = {}) {
           rows: CLIENTOPS_SCHEMA_CONTRACT.indexes.map((indexname) => ({ indexname })),
         };
       }
+      if (text.includes("information_schema.triggers")) {
+        return {
+          rows: CLIENTOPS_SCHEMA_CONTRACT.triggers.map((trigger_name) => ({ trigger_name })),
+        };
+      }
 
       throw new Error(`Unexpected contract query: ${text}`);
     }),
@@ -76,5 +81,37 @@ describe("verifyClientOpsDatabase", () => {
         },
       ]),
     });
+  });
+
+  it("verifies the admin organization schema and immutable audit trigger", () => {
+    expect(CLIENTOPS_SCHEMA_CONTRACT.relations).toEqual(
+      expect.arrayContaining([
+        "departments",
+        "teams",
+        "team_memberships",
+        "user_invitations",
+        "permission_overrides",
+        "access_requests",
+        "work_delegations",
+        "admin_audit_logs",
+      ]),
+    );
+    expect(CLIENTOPS_SCHEMA_CONTRACT.columns).toMatchObject({
+      "profiles.status": { type: "text", nullable: false },
+      "profiles.primary_department_id": { type: "uuid", nullable: true },
+      "profiles.manager_profile_id": { type: "text", nullable: true },
+      "profiles.session_invalid_before": {
+        type: "timestamp with time zone",
+        nullable: true,
+      },
+    });
+    expect(CLIENTOPS_SCHEMA_CONTRACT.constraints).toEqual(
+      expect.arrayContaining([
+        "profiles_role_check",
+        "profiles_status_check",
+        "profiles_availability_status_check",
+      ]),
+    );
+    expect(CLIENTOPS_SCHEMA_CONTRACT.triggers).toContain("admin_audit_logs_immutable");
   });
 });

@@ -46,7 +46,14 @@ export type ApprovalType =
   | "forecast_review"
   | "cs_risk_review";
 export type AgentRunStatus = "running" | "completed" | "failed" | "waiting_approval";
-export type UserRole = "admin" | "manager" | "sales" | "cs";
+export type UserRole =
+  | "super_admin"
+  | "admin"
+  | "manager"
+  | "sales"
+  | "client_success"
+  | "accounting"
+  | "read_only";
 
 export type PricingCategory = "AI transformation" | "CRM" | "KOC" | "campaign" | "data" | "custom";
 export type AccountLifecycleStage =

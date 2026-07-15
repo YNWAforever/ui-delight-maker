@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
 import {
   bootstrapSuperAdmin,
+  createBootstrapDatabase,
   type BootstrapDatabase,
 } from "../../../scripts/clientops/bootstrap-super-admin";
 import {
@@ -157,6 +158,29 @@ describe("getClientOpsSchemaMigrationDecision", () => {
     expect(migrationSql).toContain("create table if not exists work_delegations");
     expect(migrationSql).toContain("create table if not exists admin_audit_logs");
     expect(migrationSql).toContain("create trigger admin_audit_logs_immutable");
+    const normalizedSql = migrationSql.replace(/\s+/g, " ");
+    expect(normalizedSql).toContain(
+      "role in ('super_admin','admin','manager','sales','client_success','accounting','read_only')",
+    );
+    expect(normalizedSql).not.toContain("on delete cascade");
+  });
+
+  it("uses the fixed profile roles in seed and UI write boundaries", () => {
+    const seedData = readFileSync(
+      new URL("../../../scripts/clientops/seed-data.ts", import.meta.url),
+      "utf8",
+    );
+    const types = readFileSync(new URL("../types.ts", import.meta.url), "utf8");
+    const mockData = readFileSync(new URL("../mock-data.ts", import.meta.url), "utf8");
+    const settings = readFileSync(new URL("../../routes/settings.tsx", import.meta.url), "utf8");
+
+    expect(seedData).toContain('role: "client_success"');
+    expect(seedData).not.toContain('role: "cs"');
+    expect(types.replace(/\s+/g, " ")).toContain(
+      '"super_admin" | "admin" | "manager" | "sales" | "client_success" | "accounting" | "read_only"',
+    );
+    expect(mockData).not.toContain('role: "cs"');
+    expect(settings).not.toContain('value="cs"');
   });
 
   it("skips deploy-time schema migration when DATABASE_URL is absent", () => {
@@ -500,5 +524,50 @@ describe("bootstrapSuperAdmin", () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0]?.text).toContain("from profiles");
+  });
+
+  it("rolls back and releases the connection when the audit insert fails", async () => {
+    const calls: string[] = [];
+    const client = {
+      query: vi.fn(async (text: string) => {
+        calls.push(text);
+        if (text.includes("from profiles")) {
+          return {
+            rows: [
+              {
+                id: "profile-1",
+                email: "admin@example.com",
+                role: "admin",
+                status: "active",
+              },
+            ],
+          };
+        }
+        if (text.includes("insert into admin_audit_logs")) {
+          throw new Error("audit failed");
+        }
+        return { rows: [] };
+      }),
+      release: vi.fn(),
+    };
+    const pool = {
+      connect: vi.fn().mockResolvedValue(client),
+    };
+
+    await expect(
+      bootstrapSuperAdmin(
+        {
+          DATABASE_URL: "postgres://redacted",
+          CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL: "admin@example.com",
+        },
+        createBootstrapDatabase(pool),
+      ),
+    ).rejects.toThrow("audit failed");
+
+    expect(calls).toEqual(
+      expect.arrayContaining(["begin", expect.stringContaining("from profiles"), "rollback"]),
+    );
+    expect(calls).not.toContain("commit");
+    expect(client.release).toHaveBeenCalledTimes(1);
   });
 });

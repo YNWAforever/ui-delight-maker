@@ -64,7 +64,7 @@ create unique index if not exists teams_active_name_uidx
 
 create table if not exists team_memberships (
   id uuid primary key default gen_random_uuid(),
-  team_id uuid not null references teams(id) on delete cascade,
+  team_id uuid not null references teams(id) on delete restrict,
   profile_id text not null references profiles(id) on delete restrict,
   membership_role text not null default 'member'
     check (membership_role in ('lead','deputy','member')),
@@ -106,8 +106,8 @@ create table if not exists permission_overrides (
   profile_id text not null references profiles(id) on delete restrict,
   capability text not null,
   effect text not null check (effect in ('allow','deny')),
-  department_id uuid references departments(id) on delete cascade,
-  team_id uuid references teams(id) on delete cascade,
+  department_id uuid references departments(id) on delete set null,
+  team_id uuid references teams(id) on delete set null,
   resource_type text,
   resource_id text,
   reason text not null check (length(trim(reason)) >= 8),
@@ -123,7 +123,7 @@ create table if not exists access_requests (
   requester_profile_id text not null references profiles(id) on delete restrict,
   request_type text not null check (request_type in ('capability','team')),
   capability text,
-  team_id uuid references teams(id) on delete cascade,
+  team_id uuid references teams(id) on delete restrict,
   reason text not null check (length(trim(reason)) >= 8),
   status text not null default 'pending' check (status in ('pending','approved','rejected','cancelled')),
   decided_by text references profiles(id) on delete set null,

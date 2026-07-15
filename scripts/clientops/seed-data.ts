@@ -3,7 +3,14 @@ export type DemoProfile = {
   id: string;
   email: string;
   name: string;
-  role: "sales" | "manager" | "cs";
+  role:
+    | "super_admin"
+    | "admin"
+    | "manager"
+    | "sales"
+    | "client_success"
+    | "accounting"
+    | "read_only";
 };
 
 export type DemoProduct = {
@@ -278,7 +285,7 @@ export const DEMO_PROFILES: DemoProfile[] = [
     id: "demo-cs-user",
     email: "cs.demo@fimmick-clientops.example",
     name: "Leo Tse",
-    role: "cs",
+    role: "client_success",
   },
 ];
 

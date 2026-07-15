@@ -19,7 +19,14 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "manager" | "sales" | "cs";
+  role:
+    | "super_admin"
+    | "admin"
+    | "manager"
+    | "sales"
+    | "client_success"
+    | "accounting"
+    | "read_only";
 }
 
 export interface Lead {
@@ -166,7 +173,7 @@ export const users: User[] = [
   { id: "u2", name: "Marcus Lee", email: "marcus@fimmick.com", role: "manager" },
   { id: "u3", name: "Priya Shah", email: "priya@fimmick.com", role: "sales" },
   { id: "u4", name: "Kenji Tan", email: "kenji@fimmick.com", role: "sales" },
-  { id: "u5", name: "Sara Lin", email: "sara@fimmick.com", role: "cs" },
+  { id: "u5", name: "Sara Lin", email: "sara@fimmick.com", role: "client_success" },
 ];
 
 export const userById = (id: string) => users.find((u) => u.id === id);

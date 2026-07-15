@@ -11,10 +11,14 @@ type ProfileRow = {
 };
 
 export type BootstrapQueryClient = {
-  query<Row extends Record<string, unknown> = Record<string, unknown>>(
+  query(
     text: string,
     values?: readonly unknown[],
-  ): Promise<{ rows: Row[] }>;
+  ): Promise<{ rows: Array<Record<string, unknown>> }>;
+};
+
+export type BootstrapPool = {
+  connect(): Promise<BootstrapQueryClient & { release(): void }>;
 };
 
 export type BootstrapDatabase = {
@@ -40,7 +44,7 @@ export async function bootstrapSuperAdmin(
   ).toLowerCase();
 
   return db.transaction(async (client) => {
-    const result = await client.query<ProfileRow>(
+    const result = await client.query(
       `select id, email, role, status
        from profiles
        where lower(email) = $1 and status = 'active'
@@ -48,13 +52,15 @@ export async function bootstrapSuperAdmin(
       [email],
     );
 
-    if (result.rows.length !== 1) {
+    const profiles = result.rows as ProfileRow[];
+
+    if (profiles.length !== 1) {
       throw new Error(
-        `Expected exactly one active profile for bootstrap email; found ${result.rows.length}`,
+        `Expected exactly one active profile for bootstrap email; found ${profiles.length}`,
       );
     }
 
-    const profile = result.rows[0];
+    const profile = profiles[0];
     if (profile.role === "super_admin") {
       return profile.id;
     }
@@ -83,16 +89,13 @@ export async function bootstrapSuperAdmin(
   });
 }
 
-async function run() {
-  const databaseUrl = requiredEnvironmentValue(process.env, "DATABASE_URL");
-  const { Pool } = await import("@neondatabase/serverless");
-  const pool = new Pool({ connectionString: databaseUrl });
-  const db: BootstrapDatabase = {
+export function createBootstrapDatabase(pool: BootstrapPool): BootstrapDatabase {
+  return {
     async transaction(work) {
       const client = await pool.connect();
       try {
         await client.query("begin");
-        const result = await work(client as BootstrapQueryClient);
+        const result = await work(client);
         await client.query("commit");
         return result;
       } catch (error) {
@@ -103,6 +106,12 @@ async function run() {
       }
     },
   };
+}
+async function run() {
+  const databaseUrl = requiredEnvironmentValue(process.env, "DATABASE_URL");
+  const { Pool } = await import("@neondatabase/serverless");
+  const pool = new Pool({ connectionString: databaseUrl });
+  const db = createBootstrapDatabase(pool as BootstrapPool);
 
   try {
     const profileId = await bootstrapSuperAdmin(process.env, db);
