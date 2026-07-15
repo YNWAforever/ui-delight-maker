@@ -297,7 +297,7 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
         [id],
       );
       const before = locked.rows[0];
-      if (!before) throw new AdminError("NOT_FOUND", "Department not found");
+      if (!before) throw new AdminError("CONFLICT", "Department not found");
 
       const updated = await db.query<Record<string, unknown>>(
         `
@@ -374,7 +374,7 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
         [id],
       );
       const before = locked.rows[0];
-      if (!before) throw new AdminError("NOT_FOUND", "Team not found");
+      if (!before) throw new AdminError("CONFLICT", "Team not found");
 
       const updated = await db.query<Record<string, unknown>>(
         `
