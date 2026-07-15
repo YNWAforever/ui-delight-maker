@@ -30,3 +30,5 @@ Final hardening: complete (post-final-review staged fix; lifecycle-controlled qu
 - Started: 2026-07-15
 
 ## Tasks
+
+Task 1: complete (commits 0bd96e7..37b97ff, review clean)
