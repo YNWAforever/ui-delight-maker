@@ -11,6 +11,7 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/004_clientops_schema_hardening.sql",
   "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
   "neon/migrations/006_unified_crm_workspace_foundation.sql",
+  "neon/migrations/007_admin_team_user_management.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
@@ -43,9 +44,21 @@ export const CLIENTOPS_REQUIRED_TABLES = [
   "relationship_signals",
   "workspace_views",
   "workspace_favorites",
+  "departments",
+  "teams",
+  "team_memberships",
+  "user_invitations",
+  "permission_overrides",
+  "access_requests",
+  "work_delegations",
+  "admin_audit_logs",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_COLUMNS = [
+  "profiles.status",
+  "profiles.primary_department_id",
+  "profiles.manager_profile_id",
+  "profiles.session_invalid_before",
   "leads.contact_id",
   "leads.account_id",
   "leads.source_campaign_id",

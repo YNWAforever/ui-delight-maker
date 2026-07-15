@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
 import {
@@ -32,6 +33,7 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/004_clientops_schema_hardening.sql",
       "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
       "neon/migrations/006_unified_crm_workspace_foundation.sql",
+      "neon/migrations/007_admin_team_user_management.sql",
     ]);
   });
 
@@ -43,6 +45,7 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/004_clientops_schema_hardening.sql",
       "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
       "neon/migrations/006_unified_crm_workspace_foundation.sql",
+      "neon/migrations/007_admin_team_user_management.sql",
     ]);
   });
 
@@ -109,6 +112,47 @@ describe("getClientOpsSchemaMigrationDecision", () => {
     expect(CLIENTOPS_REQUIRED_TABLES).toEqual(
       expect.arrayContaining(["workspace_views", "workspace_favorites"]),
     );
+  });
+
+  it("registers administration and organization schema objects", () => {
+    expect(CLIENTOPS_REQUIRED_TABLES).toEqual(
+      expect.arrayContaining([
+        "departments",
+        "teams",
+        "team_memberships",
+        "user_invitations",
+        "permission_overrides",
+        "access_requests",
+        "work_delegations",
+        "admin_audit_logs",
+      ]),
+    );
+
+    expect(CLIENTOPS_REQUIRED_COLUMNS).toEqual(
+      expect.arrayContaining([
+        "profiles.status",
+        "profiles.primary_department_id",
+        "profiles.manager_profile_id",
+        "profiles.session_invalid_before",
+      ]),
+    );
+  });
+  it("defines the registered administration schema in migration 007", () => {
+    const migrationSql = readFileSync(
+      new URL("../../../neon/migrations/007_admin_team_user_management.sql", import.meta.url),
+      "utf8",
+    );
+
+    expect(migrationSql).toContain("update profiles set role = 'client_success' where role = 'cs'");
+    expect(migrationSql).toContain("create table if not exists departments");
+    expect(migrationSql).toContain("create table if not exists teams");
+    expect(migrationSql).toContain("create table if not exists team_memberships");
+    expect(migrationSql).toContain("create table if not exists user_invitations");
+    expect(migrationSql).toContain("create table if not exists permission_overrides");
+    expect(migrationSql).toContain("create table if not exists access_requests");
+    expect(migrationSql).toContain("create table if not exists work_delegations");
+    expect(migrationSql).toContain("create table if not exists admin_audit_logs");
+    expect(migrationSql).toContain("create trigger admin_audit_logs_immutable");
   });
 
   it("skips deploy-time schema migration when DATABASE_URL is absent", () => {
@@ -215,9 +259,9 @@ describe("applyClientOpsSchemaMigrations", () => {
     await expect(
       applyClientOpsSchemaMigrations({
         db,
-        migrationSqls: ["-- 001", "-- 002", "-- 003", "-- 004", "-- 005"],
+        migrationSqls: ["-- 001", "-- 002", "-- 003", "-- 004", "-- 005", "-- 006"],
       }),
-    ).rejects.toThrow("ClientOps schema migration expected 6 SQL files, received 5");
+    ).rejects.toThrow("ClientOps schema migration expected 7 SQL files, received 6");
 
     expect(db.query).not.toHaveBeenCalled();
   });
@@ -226,6 +270,7 @@ describe("applyClientOpsSchemaMigrations", () => {
     const db = {
       query: vi
         .fn()
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
@@ -245,7 +290,7 @@ describe("applyClientOpsSchemaMigrations", () => {
 
     await applyClientOpsSchemaMigrations({
       db,
-      migrationSqls: ["-- 001", "-- 002", "-- 003", "-- 004", "-- 005", "-- 006"],
+      migrationSqls: ["-- 001", "-- 002", "-- 003", "-- 004", "-- 005", "-- 006", "-- 007"],
     });
 
     expect(db.query).toHaveBeenNthCalledWith(1, "-- 001");
@@ -254,13 +299,14 @@ describe("applyClientOpsSchemaMigrations", () => {
     expect(db.query).toHaveBeenNthCalledWith(4, "-- 004");
     expect(db.query).toHaveBeenNthCalledWith(5, "-- 005");
     expect(db.query).toHaveBeenNthCalledWith(6, "-- 006");
+    expect(db.query).toHaveBeenNthCalledWith(7, "-- 007");
     expect(db.query).toHaveBeenNthCalledWith(
-      7,
+      8,
       expect.stringContaining("information_schema.tables"),
       [CLIENTOPS_REQUIRED_TABLES],
     );
     expect(db.query).toHaveBeenNthCalledWith(
-      8,
+      9,
       expect.stringContaining("information_schema.columns"),
       [CLIENTOPS_REQUIRED_COLUMNS],
     );
@@ -270,6 +316,7 @@ describe("applyClientOpsSchemaMigrations", () => {
     const db = {
       query: vi
         .fn()
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
@@ -293,6 +340,7 @@ describe("applyClientOpsSchemaMigrations", () => {
           "select 4;",
           "select 5;",
           "select 6;",
+          "select 7;",
         ],
       }),
     ).rejects.toThrow("ClientOps schema migration missing required tables: campaigns");
@@ -302,6 +350,7 @@ describe("applyClientOpsSchemaMigrations", () => {
     const db = {
       query: vi
         .fn()
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
@@ -331,6 +380,7 @@ describe("applyClientOpsSchemaMigrations", () => {
           "select 4;",
           "select 5;",
           "select 6;",
+          "select 7;",
         ],
       }),
     ).rejects.toThrow("ClientOps schema migration missing required columns: tasks.account_id");
