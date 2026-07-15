@@ -32,3 +32,4 @@ Final hardening: complete (post-final-review staged fix; lifecycle-controlled qu
 ## Tasks
 
 Task 1: complete (commits 0bd96e7..37b97ff, review clean)
+Task 2: complete (commits 6cc4f6d..c696dde, review clean)
