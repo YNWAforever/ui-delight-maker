@@ -1,0 +1,175 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AdminError } from "@/lib/admin/errors";
+import type { AppSession } from "@/lib/auth/neon-auth.server";
+
+const mocks = vi.hoisted(() => ({
+  requireNeonAuthSession: vi.fn(),
+  query: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/neon-auth.server", () => ({
+  requireNeonAuthSession: mocks.requireNeonAuthSession,
+}));
+
+vi.mock("@/server/db/neon.server", () => ({
+  query: mocks.query,
+}));
+
+import { requireAnyCapability, requireCapability } from "../authorization.server";
+
+function session(role: AppSession["profile"]["role"] = "manager"): AppSession {
+  return {
+    user: { id: "actor-1", email: "actor@example.com" },
+    session: { id: "session-1", createdAt: "2026-07-16T00:00:00.000Z" },
+    profile: {
+      id: "actor-1",
+      email: "actor@example.com",
+      name: "Actor",
+      role,
+      status: "active",
+      avatar_url: null,
+      job_title: null,
+      phone: null,
+      locale: "en",
+      timezone: "Asia/Hong_Kong",
+      primary_department_id: "department-home",
+      manager_profile_id: null,
+      last_active_at: null,
+      session_invalid_before: null,
+      suspended_at: null,
+      suspended_by: null,
+      suspension_reason: null,
+      deactivated_at: null,
+      deactivated_by: null,
+      deactivation_reason: null,
+      availability_status: "available",
+      leave_starts_at: null,
+      leave_ends_at: null,
+      created_at: "2026-07-16T00:00:00.000Z",
+    },
+  };
+}
+
+function installDatabaseRows(
+  options: {
+    departments?: string[];
+    teams?: string[];
+    reports?: string[];
+    overrides?: unknown[];
+  } = {},
+) {
+  mocks.query.mockImplementation(async (sql: string, values: readonly unknown[]) => {
+    expect(values).toEqual(["actor-1"]);
+    if (sql.includes("from departments")) {
+      return (options.departments ?? []).map((id) => ({ id }));
+    }
+    if (sql.includes("from teams")) {
+      return (options.teams ?? []).map((id) => ({ id }));
+    }
+    if (sql.includes("manager_profile_id")) {
+      return (options.reports ?? []).map((id) => ({ id }));
+    }
+    if (sql.includes("from permission_overrides")) {
+      return options.overrides ?? [];
+    }
+    throw new Error(`Unexpected authorization query: ${sql}`);
+  });
+}
+
+describe("admin authorization orchestration", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.requireNeonAuthSession.mockResolvedValue(session());
+    installDatabaseRows();
+  });
+
+  it("returns the app session when a manager target is inside DB-derived scope", async () => {
+    const appSession = session();
+    mocks.requireNeonAuthSession.mockResolvedValue(appSession);
+    installDatabaseRows({
+      departments: ["department-managed"],
+      teams: ["team-managed"],
+      reports: ["report-1"],
+    });
+
+    await expect(
+      requireCapability("users.manage", {
+        profileId: "report-1",
+        role: "sales",
+        departmentId: "department-managed",
+        teamId: "team-managed",
+      }),
+    ).resolves.toBe(appSession);
+
+    const sql = mocks.query.mock.calls.map(([text]) => String(text)).join("\n");
+    expect(sql).toContain("head_profile_id");
+    expect(sql).toContain("deputy_profile_id");
+    expect(sql).toContain("lead_profile_id");
+    expect(sql).toContain("manager_profile_id");
+  });
+
+  it("loads only active actor-bound overrides and applies a matching allow", async () => {
+    mocks.requireNeonAuthSession.mockResolvedValue(session("read_only"));
+    installDatabaseRows({
+      overrides: [
+        {
+          profile_id: "actor-1",
+          capability: "accounts.update",
+          effect: "allow",
+          department_id: null,
+          team_id: null,
+          resource_type: "account",
+          resource_id: "account-1",
+          expires_at: "2026-07-17T00:00:00.000Z",
+          revoked_at: null,
+        },
+      ],
+    });
+
+    await expect(
+      requireCapability("accounts.update", {
+        resourceType: "account",
+        resourceId: "account-1",
+      }),
+    ).resolves.toMatchObject({ profile: { id: "actor-1" } });
+
+    const overrideCall = mocks.query.mock.calls.find(([sql]) =>
+      String(sql).includes("from permission_overrides"),
+    );
+    expect(overrideCall?.[0]).toContain("profile_id = $1");
+    expect(overrideCall?.[0]).toContain("revoked_at is null");
+    expect(overrideCall?.[0]).toContain("expires_at > now()");
+    expect(overrideCall?.[1]).toEqual(["actor-1"]);
+  });
+
+  it("maps outside-scope and capability denials to stable AdminErrors", async () => {
+    installDatabaseRows({ departments: ["department-managed"] });
+    await expect(
+      requireCapability("users.manage", {
+        departmentId: "department-other",
+      }),
+    ).rejects.toEqual(new AdminError("OUTSIDE_SCOPE", "Target is outside your management scope"));
+
+    mocks.requireNeonAuthSession.mockResolvedValue(session("sales"));
+    await expect(requireCapability("users.manage")).rejects.toEqual(
+      new AdminError("FORBIDDEN", "You do not have this capability"),
+    );
+  });
+
+  it("tries every capability, returns the first grant, and ignores supplied scope arrays", async () => {
+    mocks.requireNeonAuthSession.mockResolvedValue(session("sales"));
+
+    await expect(requireAnyCapability(["users.manage", "accounts.view"])).resolves.toMatchObject({
+      profile: { id: "actor-1" },
+    });
+    expect(mocks.requireNeonAuthSession).toHaveBeenCalledOnce();
+
+    mocks.requireNeonAuthSession.mockResolvedValue(session());
+    await expect(
+      requireAnyCapability(["users.manage", "teams.manage"], {
+        teamId: "team-injected",
+        managedTeamIds: ["team-injected"],
+      } as never),
+    ).rejects.toMatchObject({ code: "OUTSIDE_SCOPE" });
+  });
+});
