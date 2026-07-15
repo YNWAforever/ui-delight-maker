@@ -2,6 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
 import {
+  bootstrapSuperAdmin,
+  type BootstrapDatabase,
+} from "../../../scripts/clientops/bootstrap-super-admin";
+import {
   CLIENTOPS_SCHEMA_CONTRACT,
   CLIENTOPS_MIGRATION_PATHS,
   CLIENTOPS_REQUIRED_COLUMNS,
@@ -384,5 +388,117 @@ describe("applyClientOpsSchemaMigrations", () => {
         ],
       }),
     ).rejects.toThrow("ClientOps schema migration missing required columns: tasks.account_id");
+  });
+});
+
+describe("bootstrapSuperAdmin", () => {
+  function createDatabase(
+    profiles: Array<{ id: string; email: string; role: string; status: string }>,
+  ) {
+    const calls: Array<{ text: string; values: readonly unknown[] }> = [];
+    const query = vi.fn(async (text: string, values: readonly unknown[] = []) => {
+      calls.push({ text, values });
+      if (text.includes("from profiles")) {
+        return { rows: profiles };
+      }
+      return { rows: [] };
+    });
+    const db = {
+      transaction: vi.fn(async (work: (client: { query: typeof query }) => Promise<unknown>) =>
+        work({ query }),
+      ),
+    };
+
+    return { calls, db: db as unknown as BootstrapDatabase };
+  }
+
+  it("requires both bootstrap environment variables before opening a transaction", async () => {
+    const missingDatabaseUrl = createDatabase([]);
+    await expect(
+      bootstrapSuperAdmin(
+        { CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL: "admin@example.com" },
+        missingDatabaseUrl.db,
+      ),
+    ).rejects.toThrow("DATABASE_URL");
+    expect(missingDatabaseUrl.db.transaction).not.toHaveBeenCalled();
+
+    const missingEmail = createDatabase([]);
+    await expect(
+      bootstrapSuperAdmin({ DATABASE_URL: "postgres://redacted" }, missingEmail.db),
+    ).rejects.toThrow("CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL");
+    expect(missingEmail.db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("normalizes the email, promotes one active profile, and audits the promotion in one transaction", async () => {
+    const { calls, db } = createDatabase([
+      { id: "profile-1", email: "Admin@Example.com", role: "admin", status: "active" },
+    ]);
+
+    await expect(
+      bootstrapSuperAdmin(
+        {
+          DATABASE_URL: "postgres://redacted",
+          CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL: "  ADMIN@EXAMPLE.COM ",
+        },
+        db,
+      ),
+    ).resolves.toBe("profile-1");
+
+    expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(calls[0]).toMatchObject({ values: ["admin@example.com"] });
+    expect(
+      calls.some(({ text }) => text.includes("update profiles") && text.includes("super_admin")),
+    ).toBe(true);
+    expect(
+      calls.some(
+        ({ text, values }) =>
+          text.includes("admin_audit_logs") && values.includes("profile.bootstrap_super_admin"),
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["no active profile", []],
+    [
+      "ambiguous active profiles",
+      [
+        { id: "profile-1", email: "admin@example.com", role: "admin", status: "active" },
+        { id: "profile-2", email: "admin@example.com", role: "admin", status: "active" },
+      ],
+    ],
+  ])("refuses %s without mutating profiles or writing an audit log", async (_label, profiles) => {
+    const { calls, db } = createDatabase(profiles);
+
+    await expect(
+      bootstrapSuperAdmin(
+        {
+          DATABASE_URL: "postgres://redacted",
+          CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL: "admin@example.com",
+        },
+        db,
+      ),
+    ).rejects.toThrow();
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.text).toContain("from profiles");
+  });
+
+  it("never demotes an existing Super Admin when the target is already promoted", async () => {
+    const { calls, db } = createDatabase([
+      { id: "profile-1", email: "admin@example.com", role: "super_admin", status: "active" },
+    ]);
+
+    await expect(
+      bootstrapSuperAdmin(
+        {
+          DATABASE_URL: "postgres://redacted",
+          CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL: "admin@example.com",
+        },
+        db,
+      ),
+    ).resolves.toBe("profile-1");
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.text).toContain("from profiles");
   });
 });

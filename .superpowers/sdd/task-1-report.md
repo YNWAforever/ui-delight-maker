@@ -1,0 +1,99 @@
+# Task 1 Report: Admin and Organization Schema
+
+## Status
+
+NEEDS_CONTEXT. Implementation did not start because the task brief's required sixth migration conflicts with the assigned base commit.
+
+## Files Changed
+
+- `.superpowers/sdd/task-1-report.md` (this report only)
+
+No owned implementation or test files were changed.
+
+## Preflight Evidence
+
+- Worktree: `C:\tmp\ui-delight-maker-git\.worktrees\admin-team-user-management`
+- Branch: `codex/admin-team-user-management`
+- Base HEAD: `0bd96e72eda3a4335918371df0f02a8d0d67d926` (`chore: start admin account management ledger`)
+- The base already contains `neon/migrations/006_unified_crm_workspace_foundation.sql`.
+- `CLIENTOPS_MIGRATION_PATHS` already includes that same `006_unified_crm_workspace_foundation.sql` path.
+
+The brief requires a different file, `neon/migrations/006_admin_team_user_management.sql`, and an exact six-item migration list that replaces the existing unified-workspace migration. Adding the requested migration while preserving the existing migration requires a seventh migration (normally `007_...`), while replacing the existing `006` would alter an unowned, already-committed migration.
+
+## RED Command/Output Summary
+
+Not run. Writing the required failing test first would encode an exact migration list that cannot be made green without resolving the migration-number collision.
+
+## GREEN Command/Output Summary
+
+Not run; no production implementation was written.
+
+## Regression Command/Output Summary
+
+Not run; no behavior was changed.
+
+## Commit Hash
+
+No commit created.
+
+## Self-Review
+
+- Confirmed this is a linked worktree on the requested branch and base commit.
+- Confirmed the worktree is clean before this report.
+- Preserved existing committed migration and schema-contract changes.
+- Did not run the migration against any database.
+
+## Concerns
+
+Please provide the intended migration ordering: either authorize this task to add `007_admin_team_user_management.sql` and retain the existing unified-workspace migration, or provide a base/branch where `006_unified_crm_workspace_foundation.sql` is absent. The exact six-path expectation in the brief must be updated consistently with that decision.
+
+## Task 1A: Neon Migration and Schema Contract
+
+### Status
+
+DONE_WITH_CONCERNS.
+
+### Commands and Results
+
+- RED: `bunx vitest run src/lib/__tests__/clientops-relationship-schema.test.ts` failed as expected with `ENOENT` for `neon/migrations/007_admin_team_user_management.sql` after the test was corrected to load the registered migration.
+- GREEN: `bunx vitest run src/lib/__tests__/clientops-relationship-schema.test.ts` passed: 1 file, 17 tests.
+- Focused regression: re-ran the same Vitest command after formatting; it passed: 1 file, 17 tests.
+- Static review: `git diff --check` passed. Partial-index review confirmed the only predicates are `status = 'active'`, `status = 'pending'`, and `ends_at is null`; none is volatile.
+- Formatting: Prettier formatted the two TypeScript files. It has no configured parser for the SQL migration, so it could not validate that file.
+
+### Files
+
+- `neon/migrations/007_admin_team_user_management.sql`
+- `src/lib/clientops-relationship-schema.ts`
+- `src/lib/__tests__/clientops-relationship-schema.test.ts`
+
+### Commit
+
+- `950bfb1933eecf1285129361c8875a242c139b4a` - `feat: add admin organization schema`
+
+### Concerns
+
+- `bun run clientops:migrate-schema` did not return in this environment and was stopped after waiting; no database-backed migration apply or schema verification is claimed.
+- `scripts/clientops/bootstrap-super-admin.ts` was intentionally not touched; it remains for the separate worker.
+
+## Task 1B: Guarded Super Admin Bootstrap
+
+### Status
+
+DONE.
+
+### Commands and Results
+
+- RED: the focused Vitest suite failed before implementation because the interrupted worker left an incomplete test block and the bootstrap module was absent.
+- GREEN: `bunx vitest run src/lib/__tests__/clientops-relationship-schema.test.ts` passed: 1 file, 22 tests.
+- Focused lint: `bunx eslint scripts/clientops/bootstrap-super-admin.ts src/lib/__tests__/clientops-relationship-schema.test.ts` passed.
+- TypeScript: `bunx tsc --noEmit` reports only the two known baseline errors in `src/lib/__tests__/eslint-config.test.ts`; no Task 1 errors remain.
+
+### Files
+
+- `scripts/clientops/bootstrap-super-admin.ts`
+- `src/lib/__tests__/clientops-relationship-schema.test.ts`
+
+### Concerns
+
+- The bootstrap was verified with an injected transaction test double only. It was not run against any live or production database.
