@@ -91,6 +91,7 @@ export type AuthorizationTarget = {
 };
 
 export type PermissionOverride = {
+  profileId: string;
   capability: Capability;
   effect: "allow" | "deny";
   departmentId?: string | null;

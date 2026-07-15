@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { AdminError } from "../errors";
-import { evaluateAuthorization } from "../policy";
+import { evaluateAuthorization, ROLE_GRANTS } from "../policy";
 import {
   accessRequestSchema,
   invitationInputSchema,
   nonEmptyReasonSchema,
   roleChangeSchema,
 } from "../schemas";
-import type { ActorAccessContext, UserRole } from "../types";
+import { CAPABILITIES, USER_ROLES, type ActorAccessContext, type UserRole } from "../types";
 
 function actor(role: UserRole, overrides: Partial<ActorAccessContext> = {}): ActorAccessContext {
   return {
@@ -75,7 +75,7 @@ describe("evaluateAuthorization", () => {
         actor: manager,
         capability: "users.manage",
         target: { profileId: "admin-1", role: "admin" },
-        overrides: [{ capability: "users.manage", effect: "allow" }],
+        overrides: [{ profileId: "manager-1", capability: "users.manage", effect: "allow" }],
       }),
     ).toEqual({ allowed: false, reason: "protected_role" });
   });
@@ -87,8 +87,8 @@ describe("evaluateAuthorization", () => {
         capability: "accounts.update",
         target: {},
         overrides: [
-          { capability: "accounts.update", effect: "allow" },
-          { capability: "accounts.update", effect: "deny" },
+          { profileId: "actor-1", capability: "accounts.update", effect: "allow" },
+          { profileId: "actor-1", capability: "accounts.update", effect: "deny" },
         ],
       }),
     ).toEqual({ allowed: false, reason: "explicit_deny" });
@@ -102,12 +102,14 @@ describe("evaluateAuthorization", () => {
       now: new Date("2026-07-15T00:00:00.000Z"),
       overrides: [
         {
+          profileId: "actor-1",
           capability: "accounts.update",
           effect: "allow",
           resourceType: "account",
           resourceId: "account-1",
         },
         {
+          profileId: "actor-1",
           capability: "accounts.update",
           effect: "allow",
           expiresAt: "2026-07-14T00:00:00.000Z",
@@ -117,13 +119,310 @@ describe("evaluateAuthorization", () => {
     expect(result).toEqual({ allowed: false, reason: "role_denied" });
   });
 
+  it("binds overrides to the actor and ignores revoked or malformed grants", () => {
+    const base = {
+      actor: actor("read_only"),
+      capability: "accounts.update" as const,
+      target: {},
+      now: new Date("2026-07-15T00:00:00.000Z"),
+    };
+
+    expect(
+      evaluateAuthorization({
+        ...base,
+        overrides: [
+          {
+            profileId: "another-user",
+            capability: "accounts.update",
+            effect: "allow",
+          },
+        ],
+      }),
+    ).toEqual({ allowed: false, reason: "role_denied" });
+
+    expect(
+      evaluateAuthorization({
+        ...base,
+        overrides: [
+          {
+            profileId: "actor-1",
+            capability: "accounts.update",
+            effect: "allow",
+            revokedAt: "2026-07-14T00:00:00.000Z",
+          },
+          {
+            profileId: "actor-1",
+            capability: "accounts.update",
+            effect: "allow",
+            expiresAt: "not-a-date",
+          },
+        ],
+      }),
+    ).toEqual({ allowed: false, reason: "role_denied" });
+  });
+
+  it("applies an explicit actor-bound allow before Manager scope", () => {
+    expect(
+      evaluateAuthorization({
+        actor: actor("manager", { managedDepartmentIds: ["sales"] }),
+        capability: "accounts.update",
+        target: { departmentId: "finance" },
+        overrides: [
+          {
+            profileId: "actor-1",
+            capability: "accounts.update",
+            effect: "allow",
+          },
+        ],
+      }),
+    ).toEqual({ allowed: true, reason: "explicit_allow" });
+  });
+
+  it("locks the complete role and capability grant matrix", () => {
+    expect(
+      Object.fromEntries(
+        USER_ROLES.map((role) => [
+          role,
+          CAPABILITIES.filter((capability) => ROLE_GRANTS[role].has(capability)),
+        ]),
+      ),
+    ).toMatchInlineSnapshot(`
+      {
+        "accounting": [
+          "accounts.view",
+          "contacts.view",
+          "tasks.view",
+          "tasks.update",
+          "quotes.view",
+          "approvals.view",
+          "engagements.view",
+          "job_sheets.view",
+          "job_sheets.accept",
+          "job_sheets.update_billing",
+          "reports.view",
+          "products.view",
+        ],
+        "admin": [
+          "users.view",
+          "users.invite",
+          "users.manage",
+          "users.suspend",
+          "users.deactivate",
+          "teams.view",
+          "teams.manage",
+          "departments.manage",
+          "permissions.view",
+          "access_requests.decide",
+          "sessions.revoke",
+          "audit.view",
+          "audit.export",
+          "accounts.view",
+          "accounts.create",
+          "accounts.update",
+          "leads.view",
+          "leads.create",
+          "leads.update",
+          "leads.convert",
+          "contacts.view",
+          "contacts.create",
+          "contacts.update",
+          "contacts.delete",
+          "campaigns.view",
+          "campaigns.manage",
+          "campaigns.import",
+          "tasks.view",
+          "tasks.create",
+          "tasks.update",
+          "quotes.view",
+          "quotes.create",
+          "quotes.update",
+          "quotes.request_approval",
+          "quotes.approve",
+          "quotes.issue",
+          "approvals.view",
+          "approvals.decide",
+          "engagements.view",
+          "engagements.create",
+          "engagements.update",
+          "job_sheets.view",
+          "job_sheets.accept",
+          "job_sheets.update_billing",
+          "reports.view",
+          "agents.view",
+          "agents.run",
+          "products.view",
+          "products.manage",
+          "api_keys.manage",
+          "automation.manage",
+        ],
+        "client_success": [
+          "accounts.view",
+          "accounts.update",
+          "leads.view",
+          "contacts.view",
+          "contacts.create",
+          "contacts.update",
+          "campaigns.view",
+          "campaigns.manage",
+          "campaigns.import",
+          "tasks.view",
+          "tasks.create",
+          "tasks.update",
+          "quotes.view",
+          "approvals.view",
+          "engagements.view",
+          "engagements.create",
+          "engagements.update",
+          "job_sheets.view",
+          "reports.view",
+          "agents.view",
+          "agents.run",
+          "products.view",
+        ],
+        "manager": [
+          "users.view",
+          "users.manage",
+          "teams.view",
+          "teams.manage",
+          "permissions.view",
+          "accounts.view",
+          "accounts.create",
+          "accounts.update",
+          "leads.view",
+          "leads.create",
+          "leads.update",
+          "leads.convert",
+          "contacts.view",
+          "contacts.create",
+          "contacts.update",
+          "campaigns.view",
+          "campaigns.manage",
+          "tasks.view",
+          "tasks.create",
+          "tasks.update",
+          "quotes.view",
+          "quotes.create",
+          "quotes.update",
+          "quotes.request_approval",
+          "quotes.approve",
+          "approvals.view",
+          "approvals.decide",
+          "engagements.view",
+          "engagements.create",
+          "engagements.update",
+          "job_sheets.view",
+          "reports.view",
+          "agents.view",
+          "agents.run",
+          "products.view",
+        ],
+        "read_only": [
+          "users.view",
+          "teams.view",
+          "accounts.view",
+          "leads.view",
+          "contacts.view",
+          "campaigns.view",
+          "tasks.view",
+          "quotes.view",
+          "approvals.view",
+          "engagements.view",
+          "job_sheets.view",
+          "reports.view",
+          "agents.view",
+          "products.view",
+        ],
+        "sales": [
+          "accounts.view",
+          "accounts.create",
+          "accounts.update",
+          "leads.view",
+          "leads.create",
+          "leads.update",
+          "leads.convert",
+          "contacts.view",
+          "contacts.create",
+          "contacts.update",
+          "campaigns.view",
+          "tasks.view",
+          "tasks.create",
+          "tasks.update",
+          "quotes.view",
+          "quotes.create",
+          "quotes.update",
+          "quotes.request_approval",
+          "approvals.view",
+          "engagements.view",
+          "job_sheets.view",
+          "reports.view",
+          "agents.view",
+          "agents.run",
+          "products.view",
+        ],
+        "super_admin": [
+          "users.view",
+          "users.invite",
+          "users.manage",
+          "users.suspend",
+          "users.deactivate",
+          "teams.view",
+          "teams.manage",
+          "departments.manage",
+          "permissions.view",
+          "permissions.override",
+          "access_requests.decide",
+          "sessions.revoke",
+          "audit.view",
+          "audit.export",
+          "accounts.view",
+          "accounts.create",
+          "accounts.update",
+          "leads.view",
+          "leads.create",
+          "leads.update",
+          "leads.convert",
+          "contacts.view",
+          "contacts.create",
+          "contacts.update",
+          "contacts.delete",
+          "campaigns.view",
+          "campaigns.manage",
+          "campaigns.import",
+          "tasks.view",
+          "tasks.create",
+          "tasks.update",
+          "quotes.view",
+          "quotes.create",
+          "quotes.update",
+          "quotes.request_approval",
+          "quotes.approve",
+          "quotes.issue",
+          "approvals.view",
+          "approvals.decide",
+          "engagements.view",
+          "engagements.create",
+          "engagements.update",
+          "job_sheets.view",
+          "job_sheets.accept",
+          "job_sheets.update_billing",
+          "reports.view",
+          "agents.view",
+          "agents.run",
+          "products.view",
+          "products.manage",
+          "api_keys.manage",
+          "automation.manage",
+        ],
+      }
+    `);
+  });
   it("denies inactive actors before evaluating overrides", () => {
     expect(
       evaluateAuthorization({
         actor: actor("admin", { status: "suspended" }),
         capability: "users.manage",
         target: {},
-        overrides: [{ capability: "users.manage", effect: "allow" }],
+        overrides: [{ profileId: "manager-1", capability: "users.manage", effect: "allow" }],
       }),
     ).toEqual({ allowed: false, reason: "inactive_actor" });
   });

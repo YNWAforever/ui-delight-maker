@@ -136,11 +136,15 @@ export const ROLE_GRANTS: Record<UserRole, ReadonlySet<Capability>> = {
 
 function overrideIsActive(
   override: PermissionOverride,
+  actorProfileId: string,
   target: AuthorizationTarget,
   now: Date,
 ): boolean {
-  if (override.revokedAt) return false;
-  if (override.expiresAt && new Date(override.expiresAt).getTime() <= now.getTime()) return false;
+  if (override.profileId !== actorProfileId || override.revokedAt) return false;
+  if (override.expiresAt) {
+    const expiresAt = Date.parse(override.expiresAt);
+    if (!Number.isFinite(expiresAt) || expiresAt <= now.getTime()) return false;
+  }
   if (override.departmentId && override.departmentId !== target.departmentId) return false;
   if (override.teamId && override.teamId !== target.teamId) return false;
   if (override.resourceType && override.resourceType !== target.resourceType) return false;
@@ -188,7 +192,7 @@ export function evaluateAuthorization(input: AuthorizationInput): AuthorizationD
   const activeOverrides = (input.overrides ?? []).filter(
     (override) =>
       override.capability === capability &&
-      overrideIsActive(override, target, input.now ?? new Date()),
+      overrideIsActive(override, actor.profileId, target, input.now ?? new Date()),
   );
 
   if (activeOverrides.some((override) => override.effect === "deny")) {

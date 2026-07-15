@@ -32,3 +32,14 @@ DONE.
 ## Concerns
 
 - Role grants are intentionally conservative where the design describes broad authority rather than an explicit capability-by-capability matrix. Later server-action tasks should rely on these centralized grants rather than duplicate role checks.
+## Review Fixes
+
+The first completed review found a Critical cross-actor override flaw and requested stronger adversarial and full-matrix tests.
+
+- Added `profileId` to the permission-override domain contract and required exact actor matching during evaluation.
+- Invalid expiry timestamps now deny the override rather than becoming active through `NaN`.
+- Added tests for cross-actor overrides, revoked overrides, malformed expiry, and explicit Manager allows before scope evaluation.
+- Added an inline snapshot that locks the complete role-by-capability grant matrix.
+- Focused suite: 1 file, 19 tests passed.
+- Full suite: 90 files passed, 1 skipped; 476 tests passed, 1 skipped.
+- Full lint: 0 errors and the same 24 existing Fast Refresh warnings.
