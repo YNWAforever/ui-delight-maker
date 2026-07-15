@@ -18,3 +18,15 @@ Task 7: complete (commits 0a8654e..08d51f0, review clean; notes: tsc still fails
 Task 8: complete (commits 08d51f0..f9d3233, review clean; notes: route source test added with ignored `-` prefix to avoid TanStack route warnings)
 Task 9: complete (commits 8d4cca6..177347b, review clean; notes: targeted tests 66/66, full suite 327/327, build pass, tsc only fails on pre-existing automation-playbooks serializability errors; browser smoke reached clean login redirects but authenticated flows need Neon Auth/database session)
 Final hardening: complete (post-final-review staged fix; lifecycle-controlled quote fields blocked from generic updates, quote-send approval/rejection routed through quote workflow actions, Review & Edit approve paths save edits before issuing; verification: broad quote/job-sheet slice 124/124, full suite 357/357, build pass, tsc only fails on pre-existing automation-playbooks serializability baseline)
+
+---
+
+# Admin, Team, and User Account Management SDD Progress
+
+- Plan: C:\Users\laich\Documents\FIMMICK ClientOps\FIMMICK ClientOps\docs\superpowers\plans\2026-07-15-admin-team-user-account-management.md
+- Worktree: C:\tmp\ui-delight-maker-git\.worktrees\admin-team-user-management
+- Branch: codex/admin-team-user-management
+- Base commit: 5f865b2 plus merge of origin/main at f39f303
+- Started: 2026-07-15
+
+## Tasks
