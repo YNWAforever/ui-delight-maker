@@ -39,7 +39,10 @@ function contractQueryStub(columnTypes: Record<string, string> = {}) {
       }
       if (text.includes("information_schema.triggers")) {
         return {
-          rows: CLIENTOPS_SCHEMA_CONTRACT.triggers.map((trigger_name) => ({ trigger_name })),
+          rows: Object.entries(CLIENTOPS_SCHEMA_CONTRACT.triggers).flatMap(
+            ([trigger_name, events]) =>
+              events.map((event_manipulation) => ({ trigger_name, event_manipulation })),
+          ),
         };
       }
 
@@ -112,6 +115,33 @@ describe("verifyClientOpsDatabase", () => {
         "profiles_availability_status_check",
       ]),
     );
-    expect(CLIENTOPS_SCHEMA_CONTRACT.triggers).toContain("admin_audit_logs_immutable");
+    const adminColumnCounts = Object.keys(CLIENTOPS_SCHEMA_CONTRACT.columns).reduce<
+      Record<string, number>
+    >((counts, column) => {
+      const table = column.split(".")[0];
+      counts[table] = (counts[table] ?? 0) + 1;
+      return counts;
+    }, {});
+    expect(adminColumnCounts).toMatchObject({
+      departments: 10,
+      teams: 11,
+      team_memberships: 9,
+      user_invitations: 16,
+      permission_overrides: 14,
+      access_requests: 13,
+      work_delegations: 8,
+      admin_audit_logs: 13,
+    });
+    expect(CLIENTOPS_SCHEMA_CONTRACT.indexes).toEqual(
+      expect.arrayContaining([
+        "departments_active_name_uidx",
+        "teams_active_name_uidx",
+        "team_memberships_active_uidx",
+        "user_invitations_pending_email_uidx",
+      ]),
+    );
+    expect(CLIENTOPS_SCHEMA_CONTRACT.triggers).toMatchObject({
+      admin_audit_logs_immutable: ["DELETE", "UPDATE"],
+    });
   });
 });

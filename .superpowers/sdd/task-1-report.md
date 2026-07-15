@@ -119,3 +119,15 @@ NOT APPROVED with three Important findings: stale fixed-role writers, destructiv
 - Full lint: 0 errors and the same 24 existing Fast Refresh warnings.
 - TypeScript: only the two known baseline errors in `src/lib/__tests__/eslint-config.test.ts`.
 - No live or production database was accessed.
+### Second Review
+
+NOT APPROVED because production readiness covered Task 1 object names but not the full new-table column and constraint inventory, the four partial unique indexes, or both audit-trigger events.
+
+### Second Review Fix
+
+- Added all 94 columns introduced across the eight Task 1 tables with expected Postgres type and nullability.
+- Added Task 1 check and foreign-key constraints plus all four partial unique indexes to readiness verification.
+- Changed trigger verification to require both `DELETE` and `UPDATE` events for `admin_audit_logs_immutable`.
+- Focused schema and bootstrap tests pass: 2 files, 27 tests.
+- Full tests, full lint, TypeScript baseline check, and diff check completed successfully; TypeScript retains only the two documented baseline errors.
+- No live or production database was accessed.
