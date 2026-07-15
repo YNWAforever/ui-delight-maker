@@ -27,9 +27,28 @@ describe("AppSidebar", () => {
         <AppSidebar
           profile={{
             id: "profile-1",
+            email: "ada@example.com",
             name: "Ada",
             role: "sales",
+            status: "active",
             avatar_url: null,
+            job_title: null,
+            phone: null,
+            locale: "en-HK",
+            timezone: "Asia/Hong_Kong",
+            primary_department_id: null,
+            manager_profile_id: null,
+            last_active_at: null,
+            session_invalid_before: null,
+            suspended_at: null,
+            suspended_by: null,
+            suspension_reason: null,
+            deactivated_at: null,
+            deactivated_by: null,
+            deactivation_reason: null,
+            availability_status: "available",
+            leave_starts_at: null,
+            leave_ends_at: null,
             created_at: "2026-01-01T00:00:00Z",
           }}
           onSignOut={vi.fn()}

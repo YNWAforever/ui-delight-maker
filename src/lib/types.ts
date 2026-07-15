@@ -150,9 +150,28 @@ export type TouchpointSentiment = "positive" | "neutral" | "negative";
 
 export interface Profile {
   id: string;
+  email: string | null;
   name: string | null;
   role: UserRole;
+  status: "invited" | "active" | "suspended" | "deactivated";
   avatar_url: string | null;
+  job_title: string | null;
+  phone: string | null;
+  locale: string;
+  timezone: string;
+  primary_department_id: string | null;
+  manager_profile_id: string | null;
+  last_active_at: string | null;
+  session_invalid_before: string | null;
+  suspended_at: string | null;
+  suspended_by: string | null;
+  suspension_reason: string | null;
+  deactivated_at: string | null;
+  deactivated_by: string | null;
+  deactivation_reason: string | null;
+  availability_status: "available" | "limited" | "away";
+  leave_starts_at: string | null;
+  leave_ends_at: string | null;
   created_at: string;
 }
 

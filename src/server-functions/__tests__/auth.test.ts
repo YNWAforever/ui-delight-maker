@@ -3,13 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockSetResponseHeader,
   mockGetRequest,
-  mockEnsureProfileForAuthUser,
+  mockGetProfileById,
   createServerFnChain,
   requestState,
 } = vi.hoisted(() => {
   const requestState = { cookie: null as string | null };
   const mockSetResponseHeader = vi.fn();
-  const mockEnsureProfileForAuthUser = vi.fn();
+  const mockGetProfileById = vi.fn();
   const mockGetRequest = vi.fn(() => ({
     headers: {
       get: (name: string) => (name === "cookie" ? requestState.cookie : null),
@@ -27,7 +27,7 @@ const {
   return {
     mockSetResponseHeader,
     mockGetRequest,
-    mockEnsureProfileForAuthUser,
+    mockGetProfileById,
     createServerFnChain,
     requestState,
   };
@@ -43,7 +43,7 @@ vi.mock("@tanstack/react-start/server", () => ({
 }));
 
 vi.mock("@/server/repositories/profiles", () => ({
-  ensureProfileForAuthUser: mockEnsureProfileForAuthUser,
+  getProfileById: mockGetProfileById,
 }));
 
 import { getSession, signIn, signOut } from "@/server-functions/auth";
@@ -88,17 +88,21 @@ describe("auth server functions", () => {
   it("looks up the current session through the Neon Auth upstream session endpoint", async () => {
     setCookieRequest("__Secure-neon-auth.session_token=abc; unrelated=value");
     process.env.NEON_AUTH_URL = "https://auth.example.com";
-    mockEnsureProfileForAuthUser.mockResolvedValue({
+    mockGetProfileById.mockResolvedValue({
       id: "user_1",
       name: "Ada",
       role: "sales",
+      status: "active",
       avatar_url: null,
+      session_invalid_before: null,
       created_at: "2026-01-01T00:00:00.000Z",
     });
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
           session: {
+            id: "session_1",
+            createdAt: "2026-01-01T00:00:00.000Z",
             user: { id: "user_1", email: "ada@example.com", name: "Ada" },
           },
         }),
@@ -109,11 +113,18 @@ describe("auth server functions", () => {
 
     await expect(getSession()).resolves.toEqual({
       user: { id: "user_1", email: "ada@example.com", name: "Ada" },
+      session: {
+        id: "session_1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        expiresAt: null,
+      },
       profile: {
         id: "user_1",
         name: "Ada",
         role: "sales",
+        status: "active",
         avatar_url: null,
+        session_invalid_before: null,
         created_at: "2026-01-01T00:00:00.000Z",
       },
     });
@@ -122,13 +133,8 @@ describe("auth server functions", () => {
       headers: { Cookie: "__Secure-neon-auth.session_token=abc" },
       cache: "no-store",
     });
-    expect(mockEnsureProfileForAuthUser).toHaveBeenCalledWith({
-      id: "user_1",
-      email: "ada@example.com",
-      name: "Ada",
-    });
+    expect(mockGetProfileById).toHaveBeenCalledWith("user_1");
   });
-
   it("posts email sign-in to the Neon Auth upstream sign-in endpoint", async () => {
     process.env.NEON_AUTH_URL = "https://auth.example.com";
     const response = makeResponse(null, {
