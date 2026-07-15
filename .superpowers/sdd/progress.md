@@ -33,3 +33,4 @@ Final hardening: complete (post-final-review staged fix; lifecycle-controlled qu
 
 Task 1: complete (commits 0bd96e7..37b97ff, review clean)
 Task 2: complete (commits 6cc4f6d..c696dde, review clean)
+Task 3: complete (commits bfa7518..1238849, review clean; minor: add direct unauthenticated require-identity and absent-expiry tests)
