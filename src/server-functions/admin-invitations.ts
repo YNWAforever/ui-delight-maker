@@ -52,19 +52,27 @@ function assertCanAssignRole(actorRole: UserRole, intendedRole: UserRole) {
   }
 }
 
-function authorizationTarget(
-  invitation: Pick<
-    UserInvitation,
-    "intended_role" | "primary_department_id" | "manager_profile_id" | "initial_team_ids"
-  >,
-  actorId: string,
-) {
-  return {
+type InvitationAuthorizationFields = Pick<
+  UserInvitation,
+  "intended_role" | "primary_department_id" | "manager_profile_id" | "initial_team_ids"
+>;
+
+function authorizationTargets(invitation: InvitationAuthorizationFields) {
+  const baseTarget = {
     role: invitation.intended_role,
     departmentId: invitation.primary_department_id ?? undefined,
-    teamId: invitation.initial_team_ids[0],
-    ownerProfileId: invitation.manager_profile_id ?? actorId,
+    ownerProfileId: invitation.manager_profile_id ?? undefined,
   };
+  if (invitation.initial_team_ids.length === 0) {
+    return [baseTarget];
+  }
+  return invitation.initial_team_ids.map((teamId) => ({ ...baseTarget, teamId }));
+}
+
+async function requireInvitationTargets(invitation: InvitationAuthorizationFields) {
+  for (const target of authorizationTargets(invitation)) {
+    await requireCapability("users.invite", target);
+  }
 }
 
 function inviterName(session: Awaited<ReturnType<typeof requireCapability>>) {
@@ -94,14 +102,15 @@ export const inviteUsers = createServerFn({ method: "POST" })
 
     for (const input of data.invitations) {
       assertCanAssignRole(session.profile.role, input.role);
-      const target = {
-        role: input.role,
-        departmentId: input.primaryDepartmentId,
-        teamId: input.initialTeamIds[0],
-        ownerProfileId: input.managerProfileId ?? session.profile.id,
-      };
+      const managerProfileId =
+        input.managerProfileId ?? (session.profile.role === "manager" ? session.profile.id : null);
       if (session.profile.role === "manager") {
-        await requireCapability("users.invite", target);
+        await requireInvitationTargets({
+          intended_role: input.role,
+          primary_department_id: input.primaryDepartmentId ?? null,
+          manager_profile_id: managerProfileId,
+          initial_team_ids: input.initialTeamIds,
+        });
       }
 
       const created = await createInvitation(
@@ -109,7 +118,7 @@ export const inviteUsers = createServerFn({ method: "POST" })
           email: input.email.trim().toLowerCase(),
           intendedRole: input.role,
           primaryDepartmentId: input.primaryDepartmentId ?? null,
-          managerProfileId: input.managerProfileId ?? null,
+          managerProfileId,
           initialTeamIds: input.initialTeamIds,
         },
         session.profile.id,
@@ -149,7 +158,15 @@ async function authorizeStoredInvitation(invitationId: string) {
   }
 
   assertCanAssignRole(session.profile.role, invitation.intended_role);
-  await requireCapability("users.invite", authorizationTarget(invitation, session.profile.id));
+  if (
+    session.profile.role === "manager" &&
+    !invitation.primary_department_id &&
+    !invitation.manager_profile_id &&
+    invitation.initial_team_ids.length === 0
+  ) {
+    throw new AdminError("OUTSIDE_SCOPE", "Invitation is outside your management scope");
+  }
+  await requireInvitationTargets(invitation);
   return { session, invitation };
 }
 

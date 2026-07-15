@@ -206,6 +206,101 @@ describe("admin invitation server functions", () => {
     ).rejects.toThrow("Managers may invite operational roles only");
   });
 
+  it("authorizes every team before a manager invitation is created", async () => {
+    requireCapabilityMock.mockResolvedValue(session("manager"));
+    const { inviteUsers } = await import("../admin-invitations");
+    const firstTeam = "11111111-1111-4111-8111-111111111111";
+    const secondTeam = "22222222-2222-4222-8222-222222222222";
+
+    await inviteUsers({
+      data: {
+        invitations: [
+          {
+            email: "multi-team@example.com",
+            role: "sales",
+            primaryDepartmentId: "sales-dept",
+            managerProfileId: "admin-1",
+            initialTeamIds: [firstTeam, secondTeam],
+          },
+        ],
+      },
+    });
+
+    expect(requireCapabilityMock).toHaveBeenCalledWith("users.invite", {
+      role: "sales",
+      departmentId: "sales-dept",
+      teamId: firstTeam,
+      ownerProfileId: "admin-1",
+    });
+    expect(requireCapabilityMock).toHaveBeenCalledWith("users.invite", {
+      role: "sales",
+      departmentId: "sales-dept",
+      teamId: secondTeam,
+      ownerProfileId: "admin-1",
+    });
+  });
+
+  it("persists the manager as owner when a manager invitation omits manager scope", async () => {
+    requireCapabilityMock.mockResolvedValue(session("manager"));
+    const { inviteUsers } = await import("../admin-invitations");
+
+    await inviteUsers({
+      data: {
+        invitations: [
+          {
+            email: "direct-report@example.com",
+            role: "sales",
+            initialTeamIds: [],
+          },
+        ],
+      },
+    });
+
+    expect(createInvitationMock).toHaveBeenCalledWith(
+      expect.objectContaining({ managerProfileId: "admin-1" }),
+      "admin-1",
+    );
+  });
+
+  it("authorizes every stored team before resend and revoke", async () => {
+    const firstTeam = "11111111-1111-4111-8111-111111111111";
+    const secondTeam = "22222222-2222-4222-8222-222222222222";
+    requireCapabilityMock.mockResolvedValue(session("manager"));
+    getInvitationByIdMock.mockResolvedValue({
+      ...invitation,
+      manager_profile_id: "admin-1",
+      initial_team_ids: [firstTeam, secondTeam],
+    });
+    const { resendUserInvitation, revokeUserInvitation } = await import("../admin-invitations");
+
+    await resendUserInvitation({ data: { invitationId: "invite-1" } });
+    await revokeUserInvitation({ data: { invitationId: "invite-1" } });
+
+    for (const teamId of [firstTeam, secondTeam]) {
+      expect(requireCapabilityMock).toHaveBeenCalledWith("users.invite", {
+        role: "sales",
+        departmentId: undefined,
+        teamId,
+        ownerProfileId: "admin-1",
+      });
+    }
+  });
+
+  it("denies manager actions on a stored invitation with no management scope", async () => {
+    requireCapabilityMock.mockResolvedValue(session("manager"));
+    getInvitationByIdMock.mockResolvedValue({
+      ...invitation,
+      primary_department_id: null,
+      manager_profile_id: null,
+      initial_team_ids: [],
+    });
+    const { resendUserInvitation } = await import("../admin-invitations");
+
+    await expect(resendUserInvitation({ data: { invitationId: "invite-1" } })).rejects.toThrow(
+      "Invitation is outside your management scope",
+    );
+    expect(resendInvitationMock).not.toHaveBeenCalled();
+  });
   it("previews invitations without requiring an active business profile", async () => {
     const { getInvitationPreview } = await import("../admin-invitations");
 
@@ -242,7 +337,7 @@ describe("admin invitation server functions", () => {
       role: "sales",
       departmentId: undefined,
       teamId: undefined,
-      ownerProfileId: "admin-1",
+      ownerProfileId: undefined,
     });
     expect(resendInvitationMock).toHaveBeenCalledWith("invite-1", "admin-1");
     expect(resent.inviteUrl).toBe("https://clientops.example.com/invite/new-raw-token");
