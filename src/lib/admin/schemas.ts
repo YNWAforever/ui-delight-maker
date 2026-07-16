@@ -10,14 +10,32 @@ const profileIdSchema = z.string().trim().min(1);
 const optionalIdSchema = z.string().trim().min(1).optional();
 
 export const adminPeopleSearchSchema = z.object({
-  q: z.string().trim().optional(),
-  role: userRoleSchema.optional(),
-  status: profileStatusSchema.optional(),
-  departmentId: optionalIdSchema,
-  teamId: optionalIdSchema,
-  sort: z.enum(["name", "last_active_at", "role", "status"]).default("name"),
-  page: z.coerce.number().int().positive().default(1),
+  q: z.string().trim().min(1).optional().catch(undefined),
+  status: profileStatusSchema.optional().catch(undefined),
+  role: userRoleSchema.optional().catch(undefined),
+  department: optionalIdSchema.catch(undefined),
+  team: optionalIdSchema.catch(undefined),
+  manager: optionalIdSchema.catch(undefined),
+  activity: z.enum(["active", "stale", "never"]).optional().catch(undefined),
+  user: profileIdSchema.optional().catch(undefined),
+  sort: z.enum(["name", "last_active_at", "role", "status"]).optional().catch(undefined),
+  page: z.coerce.number().int().positive().default(1).catch(1),
 });
+
+export type AdminPeopleSearch = z.infer<typeof adminPeopleSearchSchema>;
+
+export const ADMIN_USER_DETAIL_TABS = [
+  "profile",
+  "access",
+  "teams",
+  "work",
+  "security",
+  "activity",
+] as const;
+
+export const adminUserDetailSearchSchema = z
+  .object({ tab: z.enum(ADMIN_USER_DETAIL_TABS).optional().catch(undefined) })
+  .passthrough();
 
 export const invitationInputSchema = z.object({
   email: z.string().trim().toLowerCase().pipe(z.email()),

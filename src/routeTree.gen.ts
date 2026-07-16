@@ -39,6 +39,7 @@ import { Route as ClientsImportRouteImport } from './routes/clients.import'
 import { Route as ClientsIdRouteImport } from './routes/clients.$id'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as AgentsNameRouteImport } from './routes/agents.$name'
+import { Route as AdminPeopleRouteImport } from './routes/admin.people'
 import { Route as AccountsIdRouteImport } from './routes/accounts.$id'
 import { Route as QuotesIdPdfRouteImport } from './routes/quotes.$id_.pdf'
 import { Route as InviteTokenCompleteRouteImport } from './routes/invite.$token.complete'
@@ -49,6 +50,7 @@ import { Route as ApiWorkflowsQualifyLeadRouteImport } from './routes/api/workfl
 import { Route as ApiWorkflowsDraftReplyRouteImport } from './routes/api/workflows/draft-reply'
 import { Route as ApiWorkflowsDraftQuoteRouteImport } from './routes/api/workflows/draft-quote'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AdminPeopleIdRouteImport } from './routes/admin.people.$id'
 import { Route as ApiWorkflowsContextLeadRouteImport } from './routes/api/workflows/context/lead'
 import { Route as ApiWorkflowsContextEngagementRouteImport } from './routes/api/workflows/context/engagement'
 import { Route as ApiWorkflowsContextAccountRouteImport } from './routes/api/workflows/context/account'
@@ -203,6 +205,11 @@ const AgentsNameRoute = AgentsNameRouteImport.update({
   path: '/$name',
   getParentRoute: () => AgentsRoute,
 } as any)
+const AdminPeopleRoute = AdminPeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AccountsIdRoute = AccountsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -256,6 +263,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPeopleIdRoute = AdminPeopleIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdminPeopleRoute,
+} as any)
 const ApiWorkflowsContextLeadRoute = ApiWorkflowsContextLeadRouteImport.update({
   id: '/api/workflows/context/lead',
   path: '/api/workflows/context/lead',
@@ -295,6 +307,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/accounts/$id': typeof AccountsIdRoute
+  '/admin/people': typeof AdminPeopleRouteWithChildren
   '/agents/$name': typeof AgentsNameRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
@@ -306,6 +319,7 @@ export interface FileRoutesByFullPath {
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin/people/$id': typeof AdminPeopleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
@@ -339,6 +353,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/accounts/$id': typeof AccountsIdRoute
+  '/admin/people': typeof AdminPeopleRouteWithChildren
   '/agents/$name': typeof AgentsNameRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
@@ -350,6 +365,7 @@ export interface FileRoutesByTo {
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
   '/admin': typeof AdminIndexRoute
+  '/admin/people/$id': typeof AdminPeopleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
@@ -385,6 +401,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/accounts/$id': typeof AccountsIdRoute
+  '/admin/people': typeof AdminPeopleRouteWithChildren
   '/agents/$name': typeof AgentsNameRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
@@ -396,6 +413,7 @@ export interface FileRoutesById {
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin/people/$id': typeof AdminPeopleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
@@ -432,6 +450,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/accounts/$id'
+    | '/admin/people'
     | '/agents/$name'
     | '/campaigns/$id'
     | '/clients/$id'
@@ -443,6 +462,7 @@ export interface FileRouteTypes {
     | '/quotes/$id'
     | '/quotes/new'
     | '/admin/'
+    | '/admin/people/$id'
     | '/api/auth/$'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
@@ -476,6 +496,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/accounts/$id'
+    | '/admin/people'
     | '/agents/$name'
     | '/campaigns/$id'
     | '/clients/$id'
@@ -487,6 +508,7 @@ export interface FileRouteTypes {
     | '/quotes/$id'
     | '/quotes/new'
     | '/admin'
+    | '/admin/people/$id'
     | '/api/auth/$'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
@@ -521,6 +543,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/accounts/$id'
+    | '/admin/people'
     | '/agents/$name'
     | '/campaigns/$id'
     | '/clients/$id'
@@ -532,6 +555,7 @@ export interface FileRouteTypes {
     | '/quotes/$id'
     | '/quotes/new'
     | '/admin/'
+    | '/admin/people/$id'
     | '/api/auth/$'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
@@ -791,6 +815,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentsNameRouteImport
       parentRoute: typeof AgentsRoute
     }
+    '/admin/people': {
+      id: '/admin/people'
+      path: '/people'
+      fullPath: '/admin/people'
+      preLoaderRoute: typeof AdminPeopleRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/accounts/$id': {
       id: '/accounts/$id'
       path: '/$id'
@@ -861,6 +892,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/people/$id': {
+      id: '/admin/people/$id'
+      path: '/$id'
+      fullPath: '/admin/people/$id'
+      preLoaderRoute: typeof AdminPeopleIdRouteImport
+      parentRoute: typeof AdminPeopleRoute
+    }
     '/api/workflows/context/lead': {
       id: '/api/workflows/context/lead'
       path: '/api/workflows/context/lead'
@@ -897,11 +935,25 @@ const AccountsRouteWithChildren = AccountsRoute._addFileChildren(
   AccountsRouteChildren,
 )
 
+interface AdminPeopleRouteChildren {
+  AdminPeopleIdRoute: typeof AdminPeopleIdRoute
+}
+
+const AdminPeopleRouteChildren: AdminPeopleRouteChildren = {
+  AdminPeopleIdRoute: AdminPeopleIdRoute,
+}
+
+const AdminPeopleRouteWithChildren = AdminPeopleRoute._addFileChildren(
+  AdminPeopleRouteChildren,
+)
+
 interface AdminRouteChildren {
+  AdminPeopleRoute: typeof AdminPeopleRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminPeopleRoute: AdminPeopleRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
 }
 
