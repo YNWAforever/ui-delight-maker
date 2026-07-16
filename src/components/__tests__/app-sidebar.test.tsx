@@ -62,4 +62,29 @@ describe("AppSidebar", () => {
       "/accounts?view=at-risk",
     );
   });
+
+  it("hides Admin navigation without capability and renders only returned entries", () => {
+    const { rerender } = render(
+      <SidebarProvider>
+        <AppSidebar profile={null} onSignOut={vi.fn()} favorites={[]} adminNavigation={[]} />
+      </SidebarProvider>,
+    );
+
+    expect(screen.queryByRole("link", { name: "People" })).not.toBeTruthy();
+
+    rerender(
+      <SidebarProvider>
+        <AppSidebar
+          profile={null}
+          onSignOut={vi.fn()}
+          favorites={[]}
+          adminNavigation={[
+            { key: "people", label: "People", capability: "users.view", href: "/admin/people" },
+          ]}
+        />
+      </SidebarProvider>,
+    );
+
+    expect(screen.getByRole("link", { name: "People" })).toBeTruthy();
+  });
 });

@@ -70,6 +70,12 @@ export const CAPABILITIES = [
 
 export type Capability = (typeof CAPABILITIES)[number];
 
+export type AdminNavigationItem = {
+  key: "overview" | "people" | "teams" | "access" | "audit";
+  label: string;
+  capability: Capability;
+  href: string;
+};
 export type ActorAccessContext = {
   profileId: string;
   role: UserRole;

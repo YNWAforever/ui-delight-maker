@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { Profile, WorkspaceFavorite } from "@/lib/types";
+import type { AdminNavigationItem } from "@/lib/admin/types";
 import {
   LayoutDashboard,
   Inbox,
@@ -17,6 +18,9 @@ import {
   CalendarDays,
   ClipboardList,
   Star,
+  UsersRound,
+  KeyRound,
+  ScrollText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -75,9 +79,15 @@ interface AppSidebarProps {
   profile: Profile | null;
   onSignOut: () => void;
   favorites: Array<Pick<WorkspaceFavorite, "id" | "label" | "href">>;
+  adminNavigation?: readonly AdminNavigationItem[];
 }
 
-export function AppSidebar({ profile, onSignOut, favorites }: AppSidebarProps) {
+export function AppSidebar({
+  profile,
+  onSignOut,
+  favorites,
+  adminNavigation = [],
+}: AppSidebarProps) {
   const currentPath = useRouterState({
     select: (s) => s.location.pathname,
   });
@@ -136,6 +146,25 @@ export function AppSidebar({ profile, onSignOut, favorites }: AppSidebarProps) {
                 title: favorite.label,
                 url: favorite.href,
                 icon: Star,
+              })),
+            )
+          : null}
+        {adminNavigation.length > 0
+          ? renderGroup(
+              "Admin",
+              adminNavigation.map((item) => ({
+                title: item.label,
+                url: item.href,
+                icon:
+                  item.key === "people"
+                    ? UsersRound
+                    : item.key === "access"
+                      ? KeyRound
+                      : item.key === "teams"
+                        ? Network
+                        : item.key === "audit"
+                          ? ScrollText
+                          : LayoutDashboard,
               })),
             )
           : null}

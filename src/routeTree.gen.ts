@@ -24,9 +24,11 @@ import { Route as CampaignsRouteImport } from './routes/campaigns'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AiReviewRouteImport } from './routes/ai-review'
 import { Route as AgentsRouteImport } from './routes/agents'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as QuotesNewRouteImport } from './routes/quotes.new'
 import { Route as QuotesIdRouteImport } from './routes/quotes.$id'
 import { Route as LoginAuthPathRouteImport } from './routes/login.$authPath'
@@ -126,6 +128,11 @@ const AgentsRoute = AgentsRouteImport.update({
   path: '/agents',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AccountsRoute = AccountsRouteImport.update({
   id: '/accounts',
   path: '/accounts',
@@ -140,6 +147,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const QuotesNewRoute = QuotesNewRouteImport.update({
   id: '/new',
@@ -266,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/accounts': typeof AccountsRouteWithChildren
+  '/admin': typeof AdminRouteWithChildren
   '/agents': typeof AgentsRouteWithChildren
   '/ai-review': typeof AiReviewRoute
   '/approvals': typeof ApprovalsRoute
@@ -292,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
+  '/admin/': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
@@ -335,6 +349,7 @@ export interface FileRoutesByTo {
   '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
+  '/admin': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
@@ -353,6 +368,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/accounts': typeof AccountsRouteWithChildren
+  '/admin': typeof AdminRouteWithChildren
   '/agents': typeof AgentsRouteWithChildren
   '/ai-review': typeof AiReviewRoute
   '/approvals': typeof ApprovalsRoute
@@ -379,6 +395,7 @@ export interface FileRoutesById {
   '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
+  '/admin/': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
@@ -398,6 +415,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/accounts'
+    | '/admin'
     | '/agents'
     | '/ai-review'
     | '/approvals'
@@ -424,6 +442,7 @@ export interface FileRouteTypes {
     | '/login/$authPath'
     | '/quotes/$id'
     | '/quotes/new'
+    | '/admin/'
     | '/api/auth/$'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
@@ -467,6 +486,7 @@ export interface FileRouteTypes {
     | '/login/$authPath'
     | '/quotes/$id'
     | '/quotes/new'
+    | '/admin'
     | '/api/auth/$'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
@@ -484,6 +504,7 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/accounts'
+    | '/admin'
     | '/agents'
     | '/ai-review'
     | '/approvals'
@@ -510,6 +531,7 @@ export interface FileRouteTypes {
     | '/login/$authPath'
     | '/quotes/$id'
     | '/quotes/new'
+    | '/admin/'
     | '/api/auth/$'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
@@ -528,6 +550,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
   AccountsRoute: typeof AccountsRouteWithChildren
+  AdminRoute: typeof AdminRouteWithChildren
   AgentsRoute: typeof AgentsRouteWithChildren
   AiReviewRoute: typeof AiReviewRoute
   ApprovalsRoute: typeof ApprovalsRoute
@@ -663,6 +686,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/accounts': {
       id: '/accounts'
       path: '/accounts'
@@ -683,6 +713,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/quotes/new': {
       id: '/quotes/new'
@@ -860,6 +897,16 @@ const AccountsRouteWithChildren = AccountsRoute._addFileChildren(
   AccountsRouteChildren,
 )
 
+interface AdminRouteChildren {
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface AgentsRouteChildren {
   AgentsNameRoute: typeof AgentsNameRoute
 }
@@ -959,6 +1006,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
   AccountsRoute: AccountsRouteWithChildren,
+  AdminRoute: AdminRouteWithChildren,
   AgentsRoute: AgentsRouteWithChildren,
   AiReviewRoute: AiReviewRoute,
   ApprovalsRoute: ApprovalsRoute,

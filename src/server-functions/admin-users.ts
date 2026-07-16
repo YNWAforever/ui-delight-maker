@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { nonEmptyReasonSchema, profileStatusSchema, userRoleSchema } from "@/lib/admin/schemas";
 import { AdminError } from "@/lib/admin/errors";
-import type { Capability, UserRole } from "@/lib/admin/types";
+import type { AdminNavigationItem, Capability, UserRole } from "@/lib/admin/types";
 import { requireAnyCapability, requireCapability } from "@/server/auth/authorization.server";
 import {
   changeUserRole,
@@ -70,15 +70,32 @@ function idOf(session: Awaited<ReturnType<typeof requireCapability>>) {
   return session.profile.id;
 }
 
+const adminNavigationItems = [
+  { key: "overview", label: "Overview", capability: "users.view", href: "/admin" },
+  { key: "people", label: "People", capability: "users.view", href: "/admin/people" },
+  { key: "teams", label: "Teams", capability: "teams.view", href: "/admin/teams" },
+  { key: "access", label: "Access", capability: "permissions.view", href: "/admin/access" },
+  { key: "audit", label: "Audit", capability: "audit.view", href: "/admin/audit" },
+] as const satisfies readonly AdminNavigationItem[];
+
 export const getAdminNavigationFn = createServerFn({ method: "GET" }).handler(async () => {
   await requireAnyCapability(adminNavigationCapabilities);
-  return [
-    { key: "overview", label: "Overview", capability: "users.view" as const },
-    { key: "people", label: "People", capability: "users.view" as const },
-    { key: "teams", label: "Teams", capability: "teams.view" as const },
-    { key: "access", label: "Access", capability: "permissions.view" as const },
-    { key: "audit", label: "Audit", capability: "audit.view" as const },
-  ];
+  const visibleItems = await Promise.all(
+    adminNavigationItems.map(async (item) => {
+      try {
+        await requireCapability(item.capability);
+        return item;
+      } catch (error) {
+        if (error instanceof AdminError && ["FORBIDDEN", "OUTSIDE_SCOPE"].includes(error.code)) {
+          return null;
+        }
+        throw error;
+      }
+    }),
+  );
+  return visibleItems.filter(
+    (item): item is (typeof adminNavigationItems)[number] => item !== null,
+  );
 });
 
 export const getAdminOverviewFn = createServerFn({ method: "GET" }).handler(async () => {
