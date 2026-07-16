@@ -1,4 +1,5 @@
 import { AdminError } from "@/lib/admin/errors";
+import { redactAuditValue } from "@/server/repositories/admin-access";
 import {
   query as runQuery,
   transaction as runTransaction,
@@ -181,8 +182,8 @@ async function appendAudit(
       input.targetType,
       input.targetId,
       input.action,
-      JSON.stringify(input.before ?? null),
-      JSON.stringify(input.after ?? null),
+      JSON.stringify(redactAuditValue(input.before ?? null)),
+      JSON.stringify(redactAuditValue(input.after ?? null)),
     ],
   );
 }
@@ -416,6 +417,12 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
     validateMembershipWindow(startsAt, endsAt);
 
     return transaction(async (db) => {
+      const teamLock = await db.query<{ id: string }>(
+        "select id from teams where id = $1 for update",
+        [input.teamId],
+      );
+      if (!teamLock.rows[0]) throw new AdminError("CONFLICT", "Team not found");
+
       const overlaps = await db.query<Record<string, unknown>>(
         `
           select *
@@ -483,7 +490,9 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
         `
           select *
           from team_memberships
-          where team_id = $1 and profile_id = $2 and ends_at is null
+          where team_id = $1 and profile_id = $2
+            and (starts_at is null or starts_at <= now())
+            and (ends_at is null or ends_at > now())
           for update
         `,
         [teamId, profileId],
@@ -494,11 +503,11 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
       const updated = await db.query<Record<string, unknown>>(
         `
           update team_memberships
-          set ends_at = $3, updated_at = now()
-          where team_id = $1 and profile_id = $2 and ends_at is null
+          set ends_at = $2, updated_at = now()
+          where id = $1
           returning *
         `,
-        [teamId, profileId, endedAt],
+        [before.id, endedAt],
       );
       const after = updated.rows[0];
       if (!after) throw new AdminError("CONFLICT", "Team membership is already ended");

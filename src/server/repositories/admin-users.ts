@@ -1,5 +1,6 @@
 import { USER_ROLES, type ProfileStatus, type UserRole } from "@/lib/admin/types";
 import { AdminError } from "@/lib/admin/errors";
+import { redactAuditValue } from "@/server/repositories/admin-access";
 import {
   query as runQuery,
   transaction as runTransaction,
@@ -149,15 +150,23 @@ function audit(
   action: string,
   before: unknown,
   after: unknown,
+  reason?: string | null,
 ) {
   return db.query(
     `
       insert into admin_audit_logs (
-        actor_profile_id, target_type, target_id, action, before_snapshot, after_snapshot
+        actor_profile_id, target_type, target_id, action, reason, before_snapshot, after_snapshot
       )
-      values ($1, 'profile', $2, $3, $4::jsonb, $5::jsonb)
+      values ($1, 'profile', $2, $3, $4, $5::jsonb, $6::jsonb)
     `,
-    [actor, targetId, action, JSON.stringify(before ?? null), JSON.stringify(after ?? null)],
+    [
+      actor,
+      targetId,
+      action,
+      reason ?? null,
+      JSON.stringify(redactAuditValue(before ?? null)),
+      JSON.stringify(redactAuditValue(after ?? null)),
+    ],
   );
 }
 
@@ -412,10 +421,10 @@ export function createAdminUsersRepository(dependencies: Dependencies = {}) {
       if (!before) throw new AdminError("CONFLICT", "User profile not found");
 
       if (before.role === "super_admin" && before.status === "active" && role !== "super_admin") {
-        const count = await db.query<{ count: number | string }>(
-          "select count(*)::int as count from profiles where role = 'super_admin' and status = 'active'",
+        const activeSuperAdmins = await db.query<{ id: string }>(
+          "select id from profiles where role = 'super_admin' and status = 'active' order by id for update",
         );
-        if (numberValue(count.rows[0]?.count) <= 1) {
+        if (activeSuperAdmins.rows.length <= 1) {
           throw new AdminError("LAST_SUPER_ADMIN", "Cannot remove the last active Super Admin");
         }
       }
@@ -431,7 +440,7 @@ export function createAdminUsersRepository(dependencies: Dependencies = {}) {
       );
       const after = updated.rows[0];
       if (!after) throw new Error("Failed to change user role");
-      await audit(db, actor, profileId, "profile.role_changed", before, after);
+      await audit(db, actor, profileId, "profile.role_changed", before, after, reason);
       return mapUser(after);
     });
   }
@@ -458,10 +467,10 @@ export function createAdminUsersRepository(dependencies: Dependencies = {}) {
         before.role === "super_admin" &&
         before.status === "active"
       ) {
-        const count = await db.query<{ count: number | string }>(
-          "select count(*)::int as count from profiles where role = 'super_admin' and status = 'active'",
+        const activeSuperAdmins = await db.query<{ id: string }>(
+          "select id from profiles where role = 'super_admin' and status = 'active' order by id for update",
         );
-        if (numberValue(count.rows[0]?.count) <= 1) {
+        if (activeSuperAdmins.rows.length <= 1) {
           throw new AdminError("LAST_SUPER_ADMIN", "Cannot deactivate the last active Super Admin");
         }
       }
@@ -485,7 +494,7 @@ export function createAdminUsersRepository(dependencies: Dependencies = {}) {
       );
       const after = updated.rows[0];
       if (!after) throw new Error("Failed to change user status");
-      await audit(db, actor, profileId, "profile.status_" + action, before, after);
+      await audit(db, actor, profileId, "profile.status_" + action, before, after, reason);
       return mapUser(after);
     });
   }

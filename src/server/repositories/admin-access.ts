@@ -48,6 +48,14 @@ export type WorkDelegation = {
   createdAt: string;
 };
 
+export type JsonSafeValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonSafeValue[]
+  | { [key: string]: JsonSafeValue };
+
 export type AdminAuditLog = {
   id: string;
   actor_profile_id: string | null;
@@ -56,8 +64,8 @@ export type AdminAuditLog = {
   action: string;
   severity: "info" | "warning" | "critical";
   reason?: string | null;
-  before_snapshot: unknown;
-  after_snapshot: unknown;
+  before_snapshot: JsonSafeValue;
+  after_snapshot: JsonSafeValue;
   created_at: string;
 };
 
@@ -117,9 +125,13 @@ type AuditFilters = {
 const SENSITIVE_KEY =
   /password|passcode|token|secret|cookie|session|authorization|api[_-]?key|credential/i;
 
-export function redactAuditValue(value: unknown): unknown {
+export function redactAuditValue(value: unknown): JsonSafeValue {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "string" || typeof value === "boolean" || typeof value === "number") {
+    return value;
+  }
   if (Array.isArray(value)) return value.map(redactAuditValue);
-  if (!value || typeof value !== "object") return value;
+  if (typeof value !== "object") return String(value);
 
   return Object.fromEntries(
     Object.entries(value).map(([key, entry]) => [
@@ -130,7 +142,7 @@ export function redactAuditValue(value: unknown): unknown {
           : "[REDACTED]"
         : redactAuditValue(entry),
     ]),
-  );
+  ) as { [key: string]: JsonSafeValue };
 }
 
 function requireReason(reason: string) {
@@ -323,6 +335,9 @@ export function createAdminAccessRepository(dependencies: Dependencies = {}) {
 
   async function createAccessRequest(input: CreateAccessRequestInput, requester: string) {
     const reason = requireReason(input.reason);
+    if (input.capability && !CAPABILITIES.includes(input.capability)) {
+      throw new AdminError("VALIDATION_FAILED", "Unknown capability");
+    }
     const targetsCapability =
       input.requestType === "capability" && input.capability && !input.teamId;
     const targetsTeam = input.requestType === "team" && input.teamId && !input.capability;
@@ -386,12 +401,8 @@ export function createAdminAccessRepository(dependencies: Dependencies = {}) {
 
       if (input.decision === "approved" && before.request_type === "capability") {
         await db.query(
-          `
-            insert into permission_overrides (
-              profile_id, capability, effect, reason, granted_by, expires_at
-            )
-            values ($1, $2, 'allow', $3, $4, $5)
-          `,
+          "insert into permission_overrides (profile_id, capability, effect, reason, granted_by, expires_at) " +
+            "values ($1, $2, 'allow', $3, $4, $5)",
           [
             before.requester_profile_id,
             before.capability,
@@ -399,6 +410,28 @@ export function createAdminAccessRepository(dependencies: Dependencies = {}) {
             actor,
             input.accessExpiresAt ?? null,
           ],
+        );
+      } else if (input.decision === "approved" && before.request_type === "team") {
+        const teamLock = await db.query<{ id: string }>(
+          "select id from teams where id = $1 for update",
+          [before.team_id],
+        );
+        if (!teamLock.rows[0]) throw new AdminError("CONFLICT", "Team not found");
+        const memberships = await db.query<{ id: string }>(
+          "select id from team_memberships " +
+            "where team_id = $1 and profile_id = $2 " +
+            "and (starts_at is null or starts_at <= now()) " +
+            "and (ends_at is null or ends_at > now()) for update",
+          [before.team_id, before.requester_profile_id],
+        );
+        if (memberships.rows[0]) {
+          throw new AdminError("CONFLICT", "Requester already belongs to this team");
+        }
+        await db.query(
+          "insert into team_memberships " +
+            "(team_id, profile_id, membership_role, starts_at, ends_at, created_by) " +
+            "values ($1, $2, 'member', now(), $3, $4)",
+          [before.team_id, before.requester_profile_id, input.accessExpiresAt ?? null, actor],
         );
       }
 
@@ -427,6 +460,12 @@ export function createAdminAccessRepository(dependencies: Dependencies = {}) {
     }
 
     return transaction(async (db) => {
+      const delegatorLock = await db.query<{ id: string }>(
+        "select id from profiles where id = $1 for update",
+        [input.delegatorProfileId],
+      );
+      if (!delegatorLock.rows[0]) throw new AdminError("CONFLICT", "Delegator profile not found");
+
       const overlaps = await db.query<{ id: string }>(
         `
           select id

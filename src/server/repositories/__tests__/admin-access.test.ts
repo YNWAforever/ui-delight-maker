@@ -118,7 +118,7 @@ describe("admin access repository", () => {
   });
 
   it("rejects overlapping active delegations after locking the window", async () => {
-    const db = fakeDatabase([[{ id: "delegation-existing" }]]);
+    const db = fakeDatabase([[{ id: "profile-1" }], [{ id: "delegation-existing" }]]);
     const repo = createAdminAccessRepository({
       transaction: async <T>(work: (client: Queryable) => Promise<T>) => work(db),
     });
@@ -137,10 +137,71 @@ describe("admin access repository", () => {
     ).rejects.toThrow("Delegation overlaps an active delegation");
 
     expect(db.calls[0].toLowerCase()).toContain("for update");
-    expect(db.calls[0]).toContain("starts_at <");
-    expect(db.calls[0]).toContain("ends_at >");
+    expect(db.calls[1]).toContain("starts_at <");
+    expect(db.calls[1]).toContain("ends_at >");
   });
 
+  it("approves team access by creating a membership in the decision transaction", async () => {
+    const before = {
+      id: "request-1",
+      requester_profile_id: "profile-1",
+      request_type: "team",
+      capability: null,
+      team_id: "team-1",
+      reason: "Need team access",
+      status: "pending",
+      decided_by: null,
+      decision_reason: null,
+      decided_at: null,
+      access_expires_at: null,
+      created_at: "2026-07-16T00:00:00.000Z",
+      updated_at: "2026-07-16T00:00:00.000Z",
+    };
+    const after = {
+      ...before,
+      status: "approved",
+      decided_by: "admin-1",
+      decision_reason: "Approved team access",
+      decided_at: "2026-07-16T00:00:00.000Z",
+      access_expires_at: "2026-07-31T00:00:00.000Z",
+    };
+    const db = fakeDatabase([[before], [after], [{ id: "team-1" }], [], [], [{ id: "audit-1" }]]);
+    const repo = createAdminAccessRepository({
+      transaction: async <T>(work: (client: Queryable) => Promise<T>) => work(db),
+    });
+
+    await expect(
+      repo.decideAccessRequest(
+        {
+          id: "request-1",
+          decision: "approved",
+          reason: "Approved team access",
+          accessExpiresAt: "2026-07-31T00:00:00.000Z",
+        },
+        "admin-1",
+      ),
+    ).resolves.toMatchObject({ id: "request-1", status: "approved", teamId: "team-1" });
+
+    expect(db.calls[4]).toContain("insert into team_memberships");
+    expect(db.values[4]).toEqual(["team-1", "profile-1", "2026-07-31T00:00:00.000Z", "admin-1"]);
+  });
+
+  it("rejects access requests with unknown capabilities", async () => {
+    const repo = createAdminAccessRepository({
+      transaction: async <T>(work: (client: Queryable) => Promise<T>) => work(fakeDatabase()),
+    });
+
+    await expect(
+      repo.createAccessRequest(
+        {
+          requestType: "capability",
+          capability: "not-a-capability" as never,
+          reason: "Need a valid capability",
+        },
+        "profile-1",
+      ),
+    ).rejects.toThrow("Unknown capability");
+  });
   it("clamps audit pagination and recursively redacts sensitive snapshots", async () => {
     const query = vi
       .fn()

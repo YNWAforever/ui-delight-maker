@@ -127,6 +127,7 @@ describe("admin teams repository", () => {
   it("creates a team and writes its audit record in one transaction", async () => {
     const team = {
       id: "team-1",
+      api_token: "plain-token",
       name: "Growth",
       purpose: "Pipeline ownership",
       lead_profile_id: "profile-1",
@@ -161,10 +162,13 @@ describe("admin teams repository", () => {
 
     expect(db.calls.some((sql) => sql.includes("insert into teams"))).toBe(true);
     expect(db.calls.some((sql) => sql.includes("admin_audit_logs"))).toBe(true);
+    expect(db.values[1]?.some((value) => String(value).includes("plain-token"))).toBe(false);
+    expect(db.values[1]?.some((value) => String(value).includes("[REDACTED]"))).toBe(true);
   });
 
   it("rejects overlapping temporary memberships after locking the window", async () => {
     const db = fakeDatabase([
+      [{ id: "team-1" }],
       [
         {
           id: "membership-existing",
@@ -193,8 +197,8 @@ describe("admin teams repository", () => {
     ).rejects.toThrow("Team membership overlaps an existing membership");
 
     expect(db.calls[0]?.toLowerCase()).toContain("for update");
-    expect(db.calls[0]).toContain("starts_at <");
-    expect(db.calls[0]).toContain("ends_at >");
+    expect(db.calls[1]).toContain("starts_at <");
+    expect(db.calls[1]).toContain("ends_at >");
   });
 
   it("ends a membership only after locking the current row", async () => {
@@ -206,7 +210,7 @@ describe("admin teams repository", () => {
           profile_id: "profile-1",
           membership_role: "member",
           starts_at: null,
-          ends_at: null,
+          ends_at: "2026-07-30T00:00:00.000Z",
         },
       ],
       [
@@ -216,7 +220,7 @@ describe("admin teams repository", () => {
           profile_id: "profile-1",
           membership_role: "member",
           starts_at: null,
-          ends_at: "2026-07-30T00:00:00.000Z",
+          ends_at: "2026-07-25T00:00:00.000Z",
         },
       ],
       [{ id: "audit-1" }],
@@ -226,7 +230,7 @@ describe("admin teams repository", () => {
     });
 
     await expect(
-      repo.endTeamMembership("team-1", "profile-1", "2026-07-30T00:00:00.000Z", "admin-1"),
+      repo.endTeamMembership("team-1", "profile-1", "2026-07-25T00:00:00.000Z", "admin-1"),
     ).resolves.toBeUndefined();
 
     expect(db.calls[0]?.toLowerCase()).toContain("for update");

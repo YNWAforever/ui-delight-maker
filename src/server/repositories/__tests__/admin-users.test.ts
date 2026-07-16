@@ -22,6 +22,7 @@ function fakeDatabase(rowsByQuery: unknown[][] = []): Queryable & {
 const profileRow = {
   id: "profile-1",
   email: "person@example.com",
+  password_hash: "plain-password",
   name: "Person",
   role: "sales",
   status: "active",
@@ -133,7 +134,8 @@ describe("admin users repository", () => {
       repo.changeUserRole("super-1", "admin", "Role transition", "admin-1"),
     ).rejects.toThrow("last active Super Admin");
     expect(db.calls[0]?.toLowerCase()).toContain("for update");
-    expect(db.calls[1]).toContain("count");
+    expect(db.calls[1]).toContain("super_admin");
+    expect(db.calls[1]?.toLowerCase()).toContain("for update");
   });
 
   it("updates lifecycle state, invalidates sessions, and audits in one transaction", async () => {
@@ -150,6 +152,8 @@ describe("admin users repository", () => {
     expect(db.calls[0]?.toLowerCase()).toContain("for update");
     expect(db.calls[1]).toContain("session_invalid_before");
     expect(db.calls[2]).toContain("admin_audit_logs");
+    expect(db.values[2]?.some((value) => String(value).includes("plain-password"))).toBe(false);
+    expect(db.values[2]?.some((value) => String(value).includes("[REDACTED]"))).toBe(true);
   });
 
   it("returns workload counts from assigned CRM work", async () => {

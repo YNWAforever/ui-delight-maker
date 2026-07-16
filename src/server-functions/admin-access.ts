@@ -1,0 +1,123 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import {
+  accessRequestSchema,
+  capabilitySchema,
+  delegationSchema,
+  nonEmptyReasonSchema,
+  permissionOverrideSchema,
+} from "@/lib/admin/schemas";
+import { requireCapability } from "@/server/auth/authorization.server";
+import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
+import {
+  cancelWorkDelegation,
+  createAccessRequest,
+  createPermissionOverride,
+  createWorkDelegation,
+  decideAccessRequest,
+  listActiveOverrides,
+  listAdminAuditLogs,
+  revokePermissionOverride,
+} from "@/server/repositories/admin-access";
+
+const idSchema = z.string().trim().min(1);
+const profileSchema = z.object({ profileId: idSchema });
+const decisionSchema = z.object({
+  id: idSchema,
+  decision: z.enum(["approved", "rejected"]),
+  reason: nonEmptyReasonSchema,
+  accessExpiresAt: z.iso.datetime().nullable().optional(),
+});
+const auditSchema = z.object({
+  actorProfileId: idSchema.optional(),
+  targetType: z.string().trim().min(1).optional(),
+  targetId: idSchema.optional(),
+  action: z.string().trim().min(1).optional(),
+  severity: z.enum(["info", "warning", "critical"]).optional(),
+  from: z.iso.datetime().optional(),
+  to: z.iso.datetime().optional(),
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().optional(),
+});
+
+function actorId(session: Awaited<ReturnType<typeof requireCapability>>) {
+  return session.profile.id;
+}
+
+export const getAdminOverridesFn = createServerFn({ method: "GET" })
+  .validator((data: unknown) => profileSchema.parse(data))
+  .handler(async ({ data }) => {
+    const input = profileSchema.parse(data);
+    await requireCapability("permissions.view", { profileId: input.profileId });
+    return listActiveOverrides(input.profileId);
+  });
+
+export const createAdminPermissionOverrideFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => permissionOverrideSchema.parse(data))
+  .handler(async ({ data }) => {
+    const input = permissionOverrideSchema.parse(data);
+    const session = await requireCapability("permissions.override", {
+      profileId: input.profileId,
+      ...(input.departmentId ? { departmentId: input.departmentId } : {}),
+      ...(input.teamId ? { teamId: input.teamId } : {}),
+    });
+    return createPermissionOverride(input, actorId(session));
+  });
+
+export const revokeAdminPermissionOverrideFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => z.object({ id: idSchema }).parse(data))
+  .handler(async ({ data }) => {
+    const input = z.object({ id: idSchema }).parse(data);
+    const session = await requireCapability("permissions.override");
+    return revokePermissionOverride(input.id, actorId(session));
+  });
+
+export const createAdminAccessRequestFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => accessRequestSchema.parse(data))
+  .handler(async ({ data }) => {
+    const input = accessRequestSchema.parse(data);
+    const session = await requireNeonAuthSession();
+    return createAccessRequest(input, session.profile.id);
+  });
+
+export const decideAdminAccessRequestFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => decisionSchema.parse(data))
+  .handler(async ({ data }) => {
+    const input = decisionSchema.parse(data);
+    const session = await requireCapability("access_requests.decide");
+    return decideAccessRequest(input, actorId(session));
+  });
+
+export const createAdminWorkDelegationFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => delegationSchema.parse(data))
+  .handler(async ({ data }) => {
+    const input = delegationSchema.parse(data);
+    const session = await requireCapability("users.manage", {
+      profileId: input.delegatorProfileId,
+    });
+    return createWorkDelegation(input, actorId(session));
+  });
+
+export const cancelAdminWorkDelegationFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => z.object({ id: idSchema }).parse(data))
+  .handler(async ({ data }) => {
+    const input = z.object({ id: idSchema }).parse(data);
+    const session = await requireCapability("users.manage");
+    return cancelWorkDelegation(input.id, actorId(session));
+  });
+
+export const getAdminAuditLogsFn = createServerFn({ method: "GET" })
+  .validator((data: unknown) => auditSchema.parse(data ?? {}))
+  .handler(async ({ data }) => {
+    const input = auditSchema.parse(data ?? {});
+    await requireCapability("audit.view");
+    return listAdminAuditLogs(input);
+  });
+
+export const exportAdminAuditLogsFn = createServerFn({ method: "GET" })
+  .validator((data: unknown) => auditSchema.parse(data ?? {}))
+  .handler(async ({ data }) => {
+    const input = auditSchema.parse(data ?? {});
+    await requireCapability("audit.export");
+    return listAdminAuditLogs(input);
+  });
