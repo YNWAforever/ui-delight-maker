@@ -128,3 +128,21 @@ export const delegationSchema = z
       });
     }
   });
+
+export const ADMIN_ORGANIZATION_TABS = [
+  "overview",
+  "members",
+  "work",
+  "permissions",
+  "activity",
+] as const;
+
+export const adminOrganizationSearchSchema = z.object({
+  kind: z.enum(["department", "team"]).default("department").catch("department"),
+  tab: z.enum(ADMIN_ORGANIZATION_TABS).default("overview").catch("overview"),
+  q: z.string().trim().min(1).optional().catch(undefined),
+  status: z.enum(["active", "archived", "all"]).default("active").catch("active"),
+  unit: profileIdSchema.optional().catch(undefined),
+});
+
+export type AdminOrganizationSearch = z.infer<typeof adminOrganizationSearchSchema>;

@@ -39,6 +39,7 @@ import { Route as ClientsImportRouteImport } from './routes/clients.import'
 import { Route as ClientsIdRouteImport } from './routes/clients.$id'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as AgentsNameRouteImport } from './routes/agents.$name'
+import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminPeopleRouteImport } from './routes/admin.people'
 import { Route as AccountsIdRouteImport } from './routes/accounts.$id'
 import { Route as QuotesIdPdfRouteImport } from './routes/quotes.$id_.pdf'
@@ -50,6 +51,7 @@ import { Route as ApiWorkflowsQualifyLeadRouteImport } from './routes/api/workfl
 import { Route as ApiWorkflowsDraftReplyRouteImport } from './routes/api/workflows/draft-reply'
 import { Route as ApiWorkflowsDraftQuoteRouteImport } from './routes/api/workflows/draft-quote'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AdminTeamsIdRouteImport } from './routes/admin.teams.$id'
 import { Route as AdminPeopleIdRouteImport } from './routes/admin.people.$id'
 import { Route as ApiWorkflowsContextLeadRouteImport } from './routes/api/workflows/context/lead'
 import { Route as ApiWorkflowsContextEngagementRouteImport } from './routes/api/workflows/context/engagement'
@@ -205,6 +207,11 @@ const AgentsNameRoute = AgentsNameRouteImport.update({
   path: '/$name',
   getParentRoute: () => AgentsRoute,
 } as any)
+const AdminTeamsRoute = AdminTeamsRouteImport.update({
+  id: '/teams',
+  path: '/teams',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminPeopleRoute = AdminPeopleRouteImport.update({
   id: '/people',
   path: '/people',
@@ -263,6 +270,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminTeamsIdRoute = AdminTeamsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdminTeamsRoute,
+} as any)
 const AdminPeopleIdRoute = AdminPeopleIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -308,6 +320,7 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof TasksRoute
   '/accounts/$id': typeof AccountsIdRoute
   '/admin/people': typeof AdminPeopleRouteWithChildren
+  '/admin/teams': typeof AdminTeamsRouteWithChildren
   '/agents/$name': typeof AgentsNameRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
@@ -320,6 +333,7 @@ export interface FileRoutesByFullPath {
   '/quotes/new': typeof QuotesNewRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/people/$id': typeof AdminPeopleIdRoute
+  '/admin/teams/$id': typeof AdminTeamsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
@@ -354,6 +368,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksRoute
   '/accounts/$id': typeof AccountsIdRoute
   '/admin/people': typeof AdminPeopleRouteWithChildren
+  '/admin/teams': typeof AdminTeamsRouteWithChildren
   '/agents/$name': typeof AgentsNameRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
@@ -366,6 +381,7 @@ export interface FileRoutesByTo {
   '/quotes/new': typeof QuotesNewRoute
   '/admin': typeof AdminIndexRoute
   '/admin/people/$id': typeof AdminPeopleIdRoute
+  '/admin/teams/$id': typeof AdminTeamsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
@@ -402,6 +418,7 @@ export interface FileRoutesById {
   '/tasks': typeof TasksRoute
   '/accounts/$id': typeof AccountsIdRoute
   '/admin/people': typeof AdminPeopleRouteWithChildren
+  '/admin/teams': typeof AdminTeamsRouteWithChildren
   '/agents/$name': typeof AgentsNameRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
@@ -414,6 +431,7 @@ export interface FileRoutesById {
   '/quotes/new': typeof QuotesNewRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/people/$id': typeof AdminPeopleIdRoute
+  '/admin/teams/$id': typeof AdminTeamsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
@@ -451,6 +469,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/accounts/$id'
     | '/admin/people'
+    | '/admin/teams'
     | '/agents/$name'
     | '/campaigns/$id'
     | '/clients/$id'
@@ -463,6 +482,7 @@ export interface FileRouteTypes {
     | '/quotes/new'
     | '/admin/'
     | '/admin/people/$id'
+    | '/admin/teams/$id'
     | '/api/auth/$'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
@@ -497,6 +517,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/accounts/$id'
     | '/admin/people'
+    | '/admin/teams'
     | '/agents/$name'
     | '/campaigns/$id'
     | '/clients/$id'
@@ -509,6 +530,7 @@ export interface FileRouteTypes {
     | '/quotes/new'
     | '/admin'
     | '/admin/people/$id'
+    | '/admin/teams/$id'
     | '/api/auth/$'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
@@ -544,6 +566,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/accounts/$id'
     | '/admin/people'
+    | '/admin/teams'
     | '/agents/$name'
     | '/campaigns/$id'
     | '/clients/$id'
@@ -556,6 +579,7 @@ export interface FileRouteTypes {
     | '/quotes/new'
     | '/admin/'
     | '/admin/people/$id'
+    | '/admin/teams/$id'
     | '/api/auth/$'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
@@ -815,6 +839,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentsNameRouteImport
       parentRoute: typeof AgentsRoute
     }
+    '/admin/teams': {
+      id: '/admin/teams'
+      path: '/teams'
+      fullPath: '/admin/teams'
+      preLoaderRoute: typeof AdminTeamsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/people': {
       id: '/admin/people'
       path: '/people'
@@ -892,6 +923,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/teams/$id': {
+      id: '/admin/teams/$id'
+      path: '/$id'
+      fullPath: '/admin/teams/$id'
+      preLoaderRoute: typeof AdminTeamsIdRouteImport
+      parentRoute: typeof AdminTeamsRoute
+    }
     '/admin/people/$id': {
       id: '/admin/people/$id'
       path: '/$id'
@@ -947,13 +985,27 @@ const AdminPeopleRouteWithChildren = AdminPeopleRoute._addFileChildren(
   AdminPeopleRouteChildren,
 )
 
+interface AdminTeamsRouteChildren {
+  AdminTeamsIdRoute: typeof AdminTeamsIdRoute
+}
+
+const AdminTeamsRouteChildren: AdminTeamsRouteChildren = {
+  AdminTeamsIdRoute: AdminTeamsIdRoute,
+}
+
+const AdminTeamsRouteWithChildren = AdminTeamsRoute._addFileChildren(
+  AdminTeamsRouteChildren,
+)
+
 interface AdminRouteChildren {
   AdminPeopleRoute: typeof AdminPeopleRouteWithChildren
+  AdminTeamsRoute: typeof AdminTeamsRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminPeopleRoute: AdminPeopleRouteWithChildren,
+  AdminTeamsRoute: AdminTeamsRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
 }
 

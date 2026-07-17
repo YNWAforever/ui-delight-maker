@@ -237,4 +237,99 @@ describe("admin teams repository", () => {
     expect(db.calls[1]).toContain("update team_memberships");
     expect(db.calls[2]).toContain("admin_audit_logs");
   });
+
+  it("blocks department archive while head or deputy responsibilities remain", async () => {
+    const db = fakeDatabase([
+      [
+        {
+          id: "dept-1",
+          name: "Sales",
+          status: "active",
+          head_profile_id: "profile-1",
+          deputy_profile_id: null,
+        },
+      ],
+    ]);
+    const repo = createAdminTeamsRepository({
+      transaction: async <T>(work: (client: Queryable) => Promise<T>) => work(db),
+    });
+
+    await expect(
+      repo.updateDepartment("dept-1", { name: "Sales", status: "archived" }, "admin-1"),
+    ).rejects.toThrow("Clear or reassign the department head and deputy before archiving");
+    expect(db.calls).toHaveLength(1);
+  });
+
+  it("archives a team only after clearing responsibilities and preserves membership history", async () => {
+    const before = {
+      id: "team-1",
+      name: "Growth",
+      purpose: null,
+      lead_profile_id: null,
+      deputy_profile_id: null,
+      default_owner_profile_id: null,
+      status: "active",
+    };
+    const after = { ...before, status: "archived" };
+    const db = fakeDatabase([[before], [after], [], [{ id: "audit-1" }]]);
+    const repo = createAdminTeamsRepository({
+      transaction: async <T>(work: (client: Queryable) => Promise<T>) => work(db),
+    });
+
+    await expect(
+      repo.updateTeam(
+        "team-1",
+        {
+          name: "Growth",
+          status: "archived",
+          leadProfileId: null,
+          deputyProfileId: null,
+          defaultOwnerProfileId: null,
+        },
+        "admin-1",
+      ),
+    ).resolves.toMatchObject({ id: "team-1", status: "archived" });
+
+    expect(db.calls.some((sql) => sql.includes("update team_memberships"))).toBe(true);
+    expect(db.calls.some((sql) => sql.toLowerCase().includes("delete from team_memberships"))).toBe(
+      false,
+    );
+    expect(db.calls.some((sql) => sql.includes("interval '1 second'"))).toBe(true);
+    expect(db.values.some((values) => values.includes("team.archived"))).toBe(true);
+  });
+
+  it("loads open owned work for a team from active members and team responsibilities", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          id: "team-1",
+          name: "Growth",
+          purpose: null,
+          lead_profile_id: "profile-1",
+          deputy_profile_id: null,
+          default_owner_profile_id: "profile-1",
+          status: "active",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "membership-1",
+          team_id: "team-1",
+          profile_id: "profile-2",
+          membership_role: "member",
+          starts_at: null,
+          ends_at: null,
+        },
+      ])
+      .mockResolvedValueOnce([{ count: "3" }]);
+    const repo = createAdminTeamsRepository({ query });
+
+    await expect(repo.getOrganizationUnit("team", "team-1")).resolves.toMatchObject({
+      openOwnedWorkCount: 3,
+    });
+    expect(query).toHaveBeenNthCalledWith(3, expect.stringContaining("job_sheets"), [
+      ["profile-1", "profile-2"],
+    ]);
+  });
 });

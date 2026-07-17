@@ -63,8 +63,18 @@ export type OrganizationDirectory = {
 };
 
 export type OrganizationUnitDetail =
-  | { kind: "department"; unit: Department; memberships: TeamMembership[] }
-  | { kind: "team"; unit: Team; memberships: TeamMembership[] };
+  | {
+      kind: "department";
+      unit: Department;
+      memberships: TeamMembership[];
+      openOwnedWorkCount: number;
+    }
+  | {
+      kind: "team";
+      unit: Team;
+      memberships: TeamMembership[];
+      openOwnedWorkCount: number;
+    };
 
 export type DepartmentInput = {
   name: string;
@@ -159,6 +169,22 @@ function validateMembershipWindow(startsAt: string | null, endsAt: string | null
   }
 }
 
+async function countOpenOwnedWork(
+  query: QueryFunction,
+  profileIds: readonly (string | null | undefined)[],
+) {
+  const owners = [
+    ...new Set(profileIds.filter((profileId): profileId is string => Boolean(profileId))),
+  ];
+  if (owners.length === 0) return 0;
+  const rows = (await query(
+    "select count(*)::int as count from job_sheets where status <> 'cancelled' and " +
+      "(sales_owner = any($1::text[]) or accounting_owner = any($1::text[]))",
+    [owners],
+  )) as Record<string, unknown>[];
+  return Number(rows[0]?.count ?? 0);
+}
+
 async function appendAudit(
   db: Queryable,
   input: {
@@ -234,7 +260,12 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
         unknown
       >[];
       const row = rows[0];
-      return row ? { kind, unit: mapDepartment(row), memberships: [] } : null;
+      if (!row) return null;
+      const openOwnedWorkCount = await countOpenOwnedWork(query, [
+        nullableString(row.head_profile_id),
+        nullableString(row.deputy_profile_id),
+      ]);
+      return { kind, unit: mapDepartment(row), memberships: [], openOwnedWorkCount };
     }
 
     const rows = (await query("select * from teams where id = $1", [id])) as Record<
@@ -254,7 +285,14 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
       `,
       [id],
     )) as Record<string, unknown>[];
-    return { kind, unit: mapTeam(row), memberships: memberships.map(mapMembership) };
+    const mappedMemberships = memberships.map(mapMembership);
+    const openOwnedWorkCount = await countOpenOwnedWork(query, [
+      nullableString(row.lead_profile_id),
+      nullableString(row.deputy_profile_id),
+      nullableString(row.default_owner_profile_id),
+      ...mappedMemberships.map((membership) => membership.profileId),
+    ]);
+    return { kind, unit: mapTeam(row), memberships: mappedMemberships, openOwnedWorkCount };
   }
 
   async function createDepartment(input: DepartmentInput, actor: string) {
@@ -300,6 +338,26 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
       const before = locked.rows[0];
       if (!before) throw new AdminError("CONFLICT", "Department not found");
 
+      const nextStatus = input.status ?? (before.status as UnitStatus);
+      const nextHeadProfileId =
+        input.headProfileId === undefined
+          ? nullableString(before.head_profile_id)
+          : input.headProfileId;
+      const nextDeputyProfileId =
+        input.deputyProfileId === undefined
+          ? nullableString(before.deputy_profile_id)
+          : input.deputyProfileId;
+      if (
+        nextStatus === "archived" &&
+        before.status !== "archived" &&
+        (nextHeadProfileId || nextDeputyProfileId)
+      ) {
+        throw new AdminError(
+          "VALIDATION_FAILED",
+          "Clear or reassign the department head and deputy before archiving",
+        );
+      }
+
       const updated = await db.query<Record<string, unknown>>(
         `
           update departments
@@ -312,9 +370,9 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
           id,
           name,
           input.description?.trim() || null,
-          input.headProfileId ?? null,
-          input.deputyProfileId ?? null,
-          input.status ?? before.status,
+          nextHeadProfileId ?? null,
+          nextDeputyProfileId ?? null,
+          nextStatus,
           actor,
         ],
       );
@@ -324,7 +382,10 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
         actorId: actor,
         targetType: "department",
         targetId: id,
-        action: "department.updated",
+        action:
+          nextStatus === "archived" && before.status !== "archived"
+            ? "department.archived"
+            : "department.updated",
         before,
         after,
       });
@@ -377,6 +438,30 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
       const before = locked.rows[0];
       if (!before) throw new AdminError("CONFLICT", "Team not found");
 
+      const nextStatus = input.status ?? (before.status as UnitStatus);
+      const nextLeadProfileId =
+        input.leadProfileId === undefined
+          ? nullableString(before.lead_profile_id)
+          : input.leadProfileId;
+      const nextDeputyProfileId =
+        input.deputyProfileId === undefined
+          ? nullableString(before.deputy_profile_id)
+          : input.deputyProfileId;
+      const nextDefaultOwnerProfileId =
+        input.defaultOwnerProfileId === undefined
+          ? nullableString(before.default_owner_profile_id)
+          : input.defaultOwnerProfileId;
+      if (
+        nextStatus === "archived" &&
+        before.status !== "archived" &&
+        (nextLeadProfileId || nextDeputyProfileId || nextDefaultOwnerProfileId)
+      ) {
+        throw new AdminError(
+          "VALIDATION_FAILED",
+          "Clear or reassign the team lead, deputy, and default owner before archiving",
+        );
+      }
+
       const updated = await db.query<Record<string, unknown>>(
         `
           update teams
@@ -390,20 +475,31 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
           id,
           name,
           input.purpose?.trim() || null,
-          input.leadProfileId ?? null,
-          input.deputyProfileId ?? null,
-          input.defaultOwnerProfileId ?? null,
-          input.status ?? before.status,
+          nextLeadProfileId ?? null,
+          nextDeputyProfileId ?? null,
+          nextDefaultOwnerProfileId ?? null,
+          nextStatus,
           actor,
         ],
       );
       const after = updated.rows[0];
       if (!after) throw new Error("Failed to update team");
+      if (nextStatus === "archived" && before.status !== "archived") {
+        await db.query(
+          "update team_memberships set ends_at = case " +
+            "when starts_at is not null and starts_at > now() then starts_at + interval '1 second' " +
+            "else now() end, updated_at = now() where team_id = $1 and ends_at is null",
+          [id],
+        );
+      }
       await appendAudit(db, {
         actorId: actor,
         targetType: "team",
         targetId: id,
-        action: "team.updated",
+        action:
+          nextStatus === "archived" && before.status !== "archived"
+            ? "team.archived"
+            : "team.updated",
         before,
         after,
       });
