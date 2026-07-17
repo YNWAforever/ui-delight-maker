@@ -6,6 +6,7 @@ type UserDetailPanelProps = {
   user: AdminUserDetail | null | undefined;
   loading?: boolean;
   onRoleChange?: () => void;
+  onLifecycle?: () => void;
   fullHref?: string;
 };
 
@@ -13,6 +14,7 @@ export function UserDetailPanel({
   user,
   loading = false,
   onRoleChange,
+  onLifecycle,
   fullHref,
 }: UserDetailPanelProps) {
   if (loading)
@@ -82,6 +84,15 @@ export function UserDetailPanel({
               className="min-h-9 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Change role
+            </button>
+          ) : null}
+          {onLifecycle && user.status !== "deactivated" ? (
+            <button
+              type="button"
+              onClick={onLifecycle}
+              className="min-h-9 rounded-md border border-destructive/50 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Manage lifecycle
             </button>
           ) : null}
           {fullHref ? (

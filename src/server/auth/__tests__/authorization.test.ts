@@ -120,7 +120,7 @@ describe("admin authorization orchestration", () => {
           team_id: null,
           resource_type: "account",
           resource_id: "account-1",
-          expires_at: "2026-07-17T00:00:00.000Z",
+          expires_at: new Date(Date.now() + 86_400_000).toISOString(),
           revoked_at: null,
         },
       ],

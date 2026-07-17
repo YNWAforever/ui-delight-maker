@@ -3,6 +3,10 @@ import { z } from "zod";
 import { nonEmptyReasonSchema, profileStatusSchema, userRoleSchema } from "@/lib/admin/schemas";
 import { AdminError } from "@/lib/admin/errors";
 import type { AdminNavigationItem, Capability, UserRole } from "@/lib/admin/types";
+import type {
+  ReassignmentBucketKey,
+  ReassignmentInventory,
+} from "@/server/admin/reassignment.server";
 import { requireAnyCapability, requireCapability } from "@/server/auth/authorization.server";
 import {
   changeUserRole,
@@ -13,6 +17,11 @@ import {
   setUserStatus,
   updateAdminProfile,
 } from "@/server/repositories/admin-users";
+import {
+  deactivateUserWithReassignment,
+  getReassignmentInventory,
+  REASSIGNMENT_BUCKETS,
+} from "@/server/admin/reassignment.server";
 
 const profileIdSchema = z.string().trim().min(1);
 const adminNavigationCapabilities = [
@@ -53,6 +62,34 @@ const profileUpdateSchema = z.object({
 const lifecycleSchema = z.object({
   profileId: profileIdSchema,
   reason: nonEmptyReasonSchema,
+});
+
+const reassignmentBucketKeySchema = z.enum(
+  REASSIGNMENT_BUCKETS.map((bucket) => bucket.key) as [
+    ReassignmentBucketKey,
+    ...ReassignmentBucketKey[],
+  ],
+);
+const reassignmentInventorySchema = z
+  .object({
+    profileId: profileIdSchema,
+    buckets: z.array(
+      z.object({
+        key: reassignmentBucketKeySchema,
+        table: z.string().min(1),
+        column: z.string().min(1),
+        label: z.string().min(1),
+        count: z.coerce.number().int().nonnegative(),
+      }),
+    ),
+    totalCount: z.coerce.number().int().nonnegative(),
+  })
+  .transform((inventory): ReassignmentInventory => inventory as ReassignmentInventory);
+const reassignmentLifecycleSchema = z.object({
+  profileId: profileIdSchema,
+  reason: nonEmptyReasonSchema,
+  reviewedInventory: reassignmentInventorySchema,
+  successors: z.record(z.string(), profileIdSchema),
 });
 
 const operationalRoles = new Set<UserRole>(["sales", "client_success", "accounting", "read_only"]);
@@ -138,8 +175,8 @@ export const changeAdminUserRoleFn = createServerFn({ method: "POST" })
 
 async function setLifecycle(
   data: unknown,
-  action: "suspend" | "reactivate" | "deactivate",
-  capability: "users.suspend" | "users.manage" | "users.deactivate",
+  action: "suspend" | "reactivate",
+  capability: "users.suspend" | "users.manage",
 ) {
   const input = lifecycleSchema.parse(data);
   const session = await requireCapability(capability, { profileId: input.profileId });
@@ -154,9 +191,21 @@ export const reactivateAdminUserFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => lifecycleSchema.parse(data))
   .handler(({ data }) => setLifecycle(data, "reactivate", "users.manage"));
 
-export const deactivateAdminUserFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => lifecycleSchema.parse(data))
-  .handler(({ data }) => setLifecycle(data, "deactivate", "users.deactivate"));
+export const getAdminReassignmentInventoryFn = createServerFn({ method: "GET" })
+  .validator((data: unknown) => targetSchema.parse(data))
+  .handler(async ({ data }) => {
+    const input = targetSchema.parse(data);
+    await requireCapability("users.deactivate", { profileId: input.profileId });
+    return getReassignmentInventory(input.profileId);
+  });
+
+export const deactivateAdminUserWithReassignmentFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => reassignmentLifecycleSchema.parse(data))
+  .handler(async ({ data }) => {
+    const input = reassignmentLifecycleSchema.parse(data);
+    const session = await requireCapability("users.deactivate", { profileId: input.profileId });
+    return deactivateUserWithReassignment(input, idOf(session));
+  });
 
 export const revokeAdminUserSessionsFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => targetSchema.parse(data))

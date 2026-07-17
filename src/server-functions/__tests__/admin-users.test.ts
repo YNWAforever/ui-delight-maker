@@ -8,6 +8,8 @@ const {
   getAdminUserMock,
   updateAdminProfileMock,
   changeUserRoleMock,
+  getReassignmentInventoryMock,
+  deactivateUserWithReassignmentMock,
   setUserStatusMock,
   setSessionInvalidBeforeMock,
   createServerFnChain,
@@ -29,6 +31,8 @@ const {
     getAdminUserMock: vi.fn(),
     updateAdminProfileMock: vi.fn(),
     changeUserRoleMock: vi.fn(),
+    getReassignmentInventoryMock: vi.fn(),
+    deactivateUserWithReassignmentMock: vi.fn(),
     setUserStatusMock: vi.fn(),
     setSessionInvalidBeforeMock: vi.fn(),
     createServerFnChain,
@@ -55,6 +59,23 @@ vi.mock("@/server/repositories/admin-users", () => ({
   getUserWorkload: vi.fn(),
 }));
 
+vi.mock("@/server/admin/reassignment.server", () => ({
+  REASSIGNMENT_BUCKETS: [
+    { key: "leads.assigned_to" },
+    { key: "tasks.assigned_to" },
+    { key: "human_approvals.assigned_to" },
+    { key: "clients.account_owner" },
+    { key: "accounts.account_owner" },
+    { key: "accounts.cs_owner" },
+    { key: "engagements.owner" },
+    { key: "campaigns.owner" },
+    { key: "job_sheets.sales_owner" },
+    { key: "job_sheets.accounting_owner" },
+  ],
+  getReassignmentInventory: getReassignmentInventoryMock,
+  deactivateUserWithReassignment: deactivateUserWithReassignmentMock,
+}));
+
 function session(role: "super_admin" | "admin" | "manager" = "admin") {
   return {
     user: { id: "admin-1", email: "admin@example.com" },
@@ -79,6 +100,17 @@ describe("admin user server functions", () => {
     getAdminUserMock.mockResolvedValue({ id: "profile-1" });
     updateAdminProfileMock.mockResolvedValue({ id: "profile-1" });
     changeUserRoleMock.mockResolvedValue({ id: "profile-1", role: "sales" });
+    getReassignmentInventoryMock.mockResolvedValue({
+      profileId: "profile-1",
+      buckets: [],
+      totalCount: 0,
+    });
+    deactivateUserWithReassignmentMock.mockResolvedValue({
+      profileId: "profile-1",
+      status: "deactivated",
+      requestId: "request-1",
+      reassigned: [],
+    });
     setUserStatusMock.mockResolvedValue({ id: "profile-1", status: "suspended" });
     setSessionInvalidBeforeMock.mockResolvedValue(undefined);
   });
@@ -141,12 +173,8 @@ describe("admin user server functions", () => {
   });
 
   it("routes lifecycle and session actions to their dedicated capabilities", async () => {
-    const {
-      suspendAdminUserFn,
-      reactivateAdminUserFn,
-      deactivateAdminUserFn,
-      revokeAdminUserSessionsFn,
-    } = await import("../admin-users");
+    const { suspendAdminUserFn, reactivateAdminUserFn, revokeAdminUserSessionsFn } =
+      await import("../admin-users");
 
     await suspendAdminUserFn({ data: { profileId: "profile-1", reason: "Security leave" } });
     expect(requireCapabilityMock).toHaveBeenCalledWith("users.suspend", {
@@ -170,16 +198,45 @@ describe("admin user server functions", () => {
       "admin-1",
     );
 
-    await deactivateAdminUserFn({ data: { profileId: "profile-1", reason: "Left company" } });
-    expect(requireCapabilityMock).toHaveBeenCalledWith("users.deactivate", {
-      profileId: "profile-1",
-    });
-
     await revokeAdminUserSessionsFn({ data: { profileId: "profile-1" } });
     expect(requireCapabilityMock).toHaveBeenCalledWith("sessions.revoke", {
       profileId: "profile-1",
     });
     expect(setSessionInvalidBeforeMock).toHaveBeenCalledWith("profile-1", "admin-1");
+  });
+
+  it("loads reassignment inventory and submits safe deactivation under users.deactivate", async () => {
+    const { getAdminReassignmentInventoryFn, deactivateAdminUserWithReassignmentFn } =
+      await import("../admin-users");
+
+    await getAdminReassignmentInventoryFn({ data: { profileId: "profile-1" } });
+    expect(requireCapabilityMock).toHaveBeenCalledWith("users.deactivate", {
+      profileId: "profile-1",
+    });
+    expect(getReassignmentInventoryMock).toHaveBeenCalledWith("profile-1");
+
+    const reviewedInventory = {
+      profileId: "profile-1",
+      buckets: [],
+      totalCount: 0,
+    };
+    await deactivateAdminUserWithReassignmentFn({
+      data: {
+        profileId: "profile-1",
+        reason: "Planned departure",
+        reviewedInventory,
+        successors: {},
+      },
+    });
+    expect(deactivateUserWithReassignmentMock).toHaveBeenCalledWith(
+      {
+        profileId: "profile-1",
+        reason: "Planned departure",
+        reviewedInventory,
+        successors: {},
+      },
+      "admin-1",
+    );
   });
 
   it("uses any admin capability for navigation and overview", async () => {
