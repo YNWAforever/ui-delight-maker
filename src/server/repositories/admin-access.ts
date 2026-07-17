@@ -174,6 +174,16 @@ function overrideFromRow(row: Record<string, unknown>): PermissionOverride {
   };
 }
 
+function permissionOverrideRecordFromRow(row: Record<string, unknown>): PermissionOverrideRecord {
+  return {
+    ...overrideFromRow(row),
+    id: String(row.id),
+    reason: String(row.reason ?? ""),
+    grantedBy: String(row.granted_by ?? ""),
+    createdAt: String(row.created_at ?? ""),
+  };
+}
+
 function accessRequestFromRow(row: Record<string, unknown>): AccessRequest {
   return {
     id: String(row.id),
@@ -256,6 +266,34 @@ export function createAdminAccessRepository(dependencies: Dependencies = {}) {
       [profileId],
     )) as Record<string, unknown>[];
     return rows.map(overrideFromRow);
+  }
+  async function listPermissionOverrideHistory(
+    profileId: string,
+  ): Promise<PermissionOverrideRecord[]> {
+    const rows = (await query(
+      "select * from permission_overrides where profile_id = $1 order by created_at desc, id",
+      [profileId],
+    )) as Record<string, unknown>[];
+    return rows.map(permissionOverrideRecordFromRow);
+  }
+
+  async function listAccessRequests(
+    status: AccessRequest["status"] | "all" = "pending",
+  ): Promise<AccessRequest[]> {
+    const where = status === "all" ? "" : "where status = $1";
+    const rows = (await query(
+      "select * from access_requests " + where + " order by created_at desc, id",
+      status === "all" ? [] : [status],
+    )) as Record<string, unknown>[];
+    return rows.map(accessRequestFromRow);
+  }
+
+  async function getAccessRequest(id: string): Promise<AccessRequest | null> {
+    const rows = (await query("select * from access_requests where id = $1", [id])) as Record<
+      string,
+      unknown
+    >[];
+    return rows[0] ? accessRequestFromRow(rows[0]) : null;
   }
 
   async function createPermissionOverride(input: CreateOverrideInput, actor: string) {
@@ -587,6 +625,9 @@ export function createAdminAccessRepository(dependencies: Dependencies = {}) {
 
   return {
     listActiveOverrides,
+    listPermissionOverrideHistory,
+    listAccessRequests,
+    getAccessRequest,
     createPermissionOverride,
     revokePermissionOverride,
     createAccessRequest,
@@ -600,6 +641,9 @@ export function createAdminAccessRepository(dependencies: Dependencies = {}) {
 const repository = createAdminAccessRepository();
 
 export const listActiveOverrides = repository.listActiveOverrides;
+export const listPermissionOverrideHistory = repository.listPermissionOverrideHistory;
+export const listAccessRequests = repository.listAccessRequests;
+export const getAccessRequest = repository.getAccessRequest;
 export const createPermissionOverride = repository.createPermissionOverride;
 export const revokePermissionOverride = repository.revokePermissionOverride;
 export const createAccessRequest = repository.createAccessRequest;

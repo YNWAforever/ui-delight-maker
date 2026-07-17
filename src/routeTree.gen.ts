@@ -41,6 +41,8 @@ import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as AgentsNameRouteImport } from './routes/agents.$name'
 import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminPeopleRouteImport } from './routes/admin.people'
+import { Route as AdminAuditRouteImport } from './routes/admin.audit'
+import { Route as AdminAccessRouteImport } from './routes/admin.access'
 import { Route as AccountsIdRouteImport } from './routes/accounts.$id'
 import { Route as QuotesIdPdfRouteImport } from './routes/quotes.$id_.pdf'
 import { Route as InviteTokenCompleteRouteImport } from './routes/invite.$token.complete'
@@ -217,6 +219,16 @@ const AdminPeopleRoute = AdminPeopleRouteImport.update({
   path: '/people',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAuditRoute = AdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAccessRoute = AdminAccessRouteImport.update({
+  id: '/access',
+  path: '/access',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AccountsIdRoute = AccountsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -319,6 +331,8 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/accounts/$id': typeof AccountsIdRoute
+  '/admin/access': typeof AdminAccessRoute
+  '/admin/audit': typeof AdminAuditRoute
   '/admin/people': typeof AdminPeopleRouteWithChildren
   '/admin/teams': typeof AdminTeamsRouteWithChildren
   '/agents/$name': typeof AgentsNameRoute
@@ -367,6 +381,8 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/accounts/$id': typeof AccountsIdRoute
+  '/admin/access': typeof AdminAccessRoute
+  '/admin/audit': typeof AdminAuditRoute
   '/admin/people': typeof AdminPeopleRouteWithChildren
   '/admin/teams': typeof AdminTeamsRouteWithChildren
   '/agents/$name': typeof AgentsNameRoute
@@ -417,6 +433,8 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/accounts/$id': typeof AccountsIdRoute
+  '/admin/access': typeof AdminAccessRoute
+  '/admin/audit': typeof AdminAuditRoute
   '/admin/people': typeof AdminPeopleRouteWithChildren
   '/admin/teams': typeof AdminTeamsRouteWithChildren
   '/agents/$name': typeof AgentsNameRoute
@@ -468,6 +486,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/accounts/$id'
+    | '/admin/access'
+    | '/admin/audit'
     | '/admin/people'
     | '/admin/teams'
     | '/agents/$name'
@@ -516,6 +536,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/accounts/$id'
+    | '/admin/access'
+    | '/admin/audit'
     | '/admin/people'
     | '/admin/teams'
     | '/agents/$name'
@@ -565,6 +587,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/accounts/$id'
+    | '/admin/access'
+    | '/admin/audit'
     | '/admin/people'
     | '/admin/teams'
     | '/agents/$name'
@@ -853,6 +877,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPeopleRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/audit': {
+      id: '/admin/audit'
+      path: '/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AdminAuditRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/access': {
+      id: '/admin/access'
+      path: '/access'
+      fullPath: '/admin/access'
+      preLoaderRoute: typeof AdminAccessRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/accounts/$id': {
       id: '/accounts/$id'
       path: '/$id'
@@ -998,12 +1036,16 @@ const AdminTeamsRouteWithChildren = AdminTeamsRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminAccessRoute: typeof AdminAccessRoute
+  AdminAuditRoute: typeof AdminAuditRoute
   AdminPeopleRoute: typeof AdminPeopleRouteWithChildren
   AdminTeamsRoute: typeof AdminTeamsRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAccessRoute: AdminAccessRoute,
+  AdminAuditRoute: AdminAuditRoute,
   AdminPeopleRoute: AdminPeopleRouteWithChildren,
   AdminTeamsRoute: AdminTeamsRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,

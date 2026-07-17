@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { AdminError } from "@/lib/admin/errors";
 import { z } from "zod";
 import {
   accessRequestSchema,
@@ -15,18 +16,27 @@ import {
   createPermissionOverride,
   createWorkDelegation,
   decideAccessRequest,
+  getAccessRequest,
+  listAccessRequests,
   listActiveOverrides,
   listAdminAuditLogs,
+  listPermissionOverrideHistory,
   revokePermissionOverride,
 } from "@/server/repositories/admin-access";
 
 const idSchema = z.string().trim().min(1);
-const profileSchema = z.object({ profileId: idSchema });
+const profileSchema = z.object({
+  profileId: idSchema,
+  includeHistory: z.boolean().optional(),
+});
 const decisionSchema = z.object({
   id: idSchema,
   decision: z.enum(["approved", "rejected"]),
   reason: nonEmptyReasonSchema,
   accessExpiresAt: z.iso.datetime().nullable().optional(),
+});
+const accessRequestListSchema = z.object({
+  status: z.enum(["pending", "approved", "rejected", "cancelled", "all"]).optional(),
 });
 const auditSchema = z.object({
   actorProfileId: idSchema.optional(),
@@ -49,7 +59,17 @@ export const getAdminOverridesFn = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const input = profileSchema.parse(data);
     await requireCapability("permissions.view", { profileId: input.profileId });
-    return listActiveOverrides(input.profileId);
+    return input.includeHistory
+      ? listPermissionOverrideHistory(input.profileId)
+      : listActiveOverrides(input.profileId);
+  });
+
+export const getAdminAccessRequestsFn = createServerFn({ method: "GET" })
+  .validator((data: unknown) => accessRequestListSchema.parse(data ?? {}))
+  .handler(async ({ data }) => {
+    const input = accessRequestListSchema.parse(data ?? {});
+    await requireCapability("access_requests.decide");
+    return listAccessRequests(input.status ?? "pending");
   });
 
 export const createAdminPermissionOverrideFn = createServerFn({ method: "POST" })
@@ -84,7 +104,15 @@ export const decideAdminAccessRequestFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => decisionSchema.parse(data))
   .handler(async ({ data }) => {
     const input = decisionSchema.parse(data);
-    const session = await requireCapability("access_requests.decide");
+    const request = await getAccessRequest(input.id);
+    if (!request) throw new AdminError("CONFLICT", "Access request not found");
+    const session = await requireCapability(
+      "access_requests.decide",
+      request.requestType === "team" && request.teamId ? { teamId: request.teamId } : {},
+    );
+    if (session.profile.role === "manager" && request.requestType === "capability") {
+      throw new AdminError("FORBIDDEN", "Managers can only decide team access requests");
+    }
     return decideAccessRequest(input, actorId(session));
   });
 

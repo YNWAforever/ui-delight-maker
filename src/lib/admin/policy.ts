@@ -35,6 +35,7 @@ export const ROLE_GRANTS: Record<UserRole, ReadonlySet<Capability>> = {
     "users.manage",
     "teams.view",
     "teams.manage",
+    "access_requests.decide",
     "permissions.view",
     "accounts.view",
     "accounts.create",

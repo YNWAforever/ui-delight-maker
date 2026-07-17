@@ -303,6 +303,7 @@ describe("evaluateAuthorization", () => {
           "teams.view",
           "teams.manage",
           "permissions.view",
+          "access_requests.decide",
           "accounts.view",
           "accounts.create",
           "accounts.update",

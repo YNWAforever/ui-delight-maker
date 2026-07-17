@@ -146,3 +146,27 @@ export const adminOrganizationSearchSchema = z.object({
 });
 
 export type AdminOrganizationSearch = z.infer<typeof adminOrganizationSearchSchema>;
+
+export const adminAccessSearchSchema = z.object({
+  tab: z.enum(["requests", "effective"]).default("requests").catch("requests"),
+  profile: profileIdSchema.optional().catch(undefined),
+  requestStatus: z
+    .enum(["pending", "approved", "rejected", "cancelled", "all"])
+    .default("pending")
+    .catch("pending"),
+});
+
+export type AdminAccessSearch = z.infer<typeof adminAccessSearchSchema>;
+
+export const adminAuditSearchSchema = z.object({
+  actor: profileIdSchema.optional().catch(undefined),
+  targetType: z.string().trim().min(1).optional().catch(undefined),
+  target: profileIdSchema.optional().catch(undefined),
+  action: z.string().trim().min(1).optional().catch(undefined),
+  severity: z.enum(["info", "warning", "critical"]).optional().catch(undefined),
+  from: z.iso.datetime().optional().catch(undefined),
+  to: z.iso.datetime().optional().catch(undefined),
+  page: z.coerce.number().int().positive().default(1).catch(1),
+});
+
+export type AdminAuditSearch = z.infer<typeof adminAuditSearchSchema>;

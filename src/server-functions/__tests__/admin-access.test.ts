@@ -4,6 +4,9 @@ const {
   requireCapabilityMock,
   requireNeonAuthSessionMock,
   listActiveOverridesMock,
+  listPermissionOverrideHistoryMock,
+  listAccessRequestsMock,
+  getAccessRequestMock,
   createPermissionOverrideMock,
   revokePermissionOverrideMock,
   createAccessRequestMock,
@@ -25,6 +28,9 @@ const {
     requireCapabilityMock: vi.fn(),
     requireNeonAuthSessionMock: vi.fn(),
     listActiveOverridesMock: vi.fn(),
+    listPermissionOverrideHistoryMock: vi.fn(),
+    listAccessRequestsMock: vi.fn(),
+    getAccessRequestMock: vi.fn(),
     createPermissionOverrideMock: vi.fn(),
     revokePermissionOverrideMock: vi.fn(),
     createAccessRequestMock: vi.fn(),
@@ -45,6 +51,9 @@ vi.mock("@/lib/auth/neon-auth.server", () => ({
 }));
 vi.mock("@/server/repositories/admin-access", () => ({
   listActiveOverrides: listActiveOverridesMock,
+  listPermissionOverrideHistory: listPermissionOverrideHistoryMock,
+  listAccessRequests: listAccessRequestsMock,
+  getAccessRequest: getAccessRequestMock,
   createPermissionOverride: createPermissionOverrideMock,
   revokePermissionOverride: revokePermissionOverrideMock,
   createAccessRequest: createAccessRequestMock,
@@ -68,6 +77,23 @@ describe("admin access server functions", () => {
     requireCapabilityMock.mockResolvedValue(session());
     requireNeonAuthSessionMock.mockResolvedValue(session());
     listActiveOverridesMock.mockResolvedValue([]);
+    listPermissionOverrideHistoryMock.mockResolvedValue([]);
+    listAccessRequestsMock.mockResolvedValue([]);
+    getAccessRequestMock.mockResolvedValue({
+      id: "request-1",
+      requesterProfileId: "profile-2",
+      requestType: "capability",
+      capability: "accounts.update",
+      teamId: null,
+      reason: "Need access",
+      status: "pending",
+      decidedBy: null,
+      decisionReason: null,
+      decidedAt: null,
+      accessExpiresAt: null,
+      createdAt: "2026-07-18T00:00:00.000Z",
+      updatedAt: "2026-07-18T00:00:00.000Z",
+    });
     createPermissionOverrideMock.mockResolvedValue({ profileId: "profile-1" });
     revokePermissionOverrideMock.mockResolvedValue(undefined);
     createAccessRequestMock.mockResolvedValue({ id: "request-1" });
@@ -126,13 +152,54 @@ describe("admin access server functions", () => {
     await decideAdminAccessRequestFn({
       data: { id: "request-1", decision: "approved", reason: "Approved access" },
     });
-    expect(requireCapabilityMock).toHaveBeenCalledWith("access_requests.decide");
+    expect(requireCapabilityMock).toHaveBeenCalledWith("access_requests.decide", {});
     expect(decideAccessRequestMock).toHaveBeenCalledWith(
       { id: "request-1", decision: "approved", reason: "Approved access" },
       "admin-1",
     );
   });
 
+  it("limits managers to scoped team decisions and blocks capability grants", async () => {
+    const { decideAdminAccessRequestFn } = await import("../admin-access");
+    requireCapabilityMock.mockResolvedValue({
+      ...session(),
+      profile: { ...session().profile, role: "manager" },
+    });
+
+    await expect(
+      decideAdminAccessRequestFn({
+        data: { id: "request-1", decision: "approved", reason: "Capability escalation" },
+      }),
+    ).rejects.toThrow("Managers can only decide team access requests");
+    expect(decideAccessRequestMock).not.toHaveBeenCalled();
+
+    getAccessRequestMock.mockResolvedValue({
+      id: "request-1",
+      requesterProfileId: "profile-2",
+      requestType: "team",
+      capability: null,
+      teamId: "team-1",
+      reason: "Need team access",
+      status: "pending",
+      decidedBy: null,
+      decisionReason: null,
+      decidedAt: null,
+      accessExpiresAt: null,
+      createdAt: "2026-07-18T00:00:00.000Z",
+      updatedAt: "2026-07-18T00:00:00.000Z",
+    });
+
+    await decideAdminAccessRequestFn({
+      data: { id: "request-1", decision: "approved", reason: "Team coverage approved" },
+    });
+    expect(requireCapabilityMock).toHaveBeenLastCalledWith("access_requests.decide", {
+      teamId: "team-1",
+    });
+    expect(decideAccessRequestMock).toHaveBeenLastCalledWith(
+      { id: "request-1", decision: "approved", reason: "Team coverage approved" },
+      "admin-1",
+    );
+  });
   it("routes delegations and audit queries through their capabilities", async () => {
     const { createAdminWorkDelegationFn, cancelAdminWorkDelegationFn, getAdminAuditLogsFn } =
       await import("../admin-access");
