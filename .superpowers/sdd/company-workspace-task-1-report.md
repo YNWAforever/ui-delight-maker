@@ -1,0 +1,76 @@
+# Company Workspace Loading Performance: Task 1 Report
+
+## Scope
+
+Established executable baseline contracts and a local deterministic fixture measurement utility. No production route, hook, loader, repository, mutation, credential, or resource behavior changed.
+
+## RED Evidence
+
+Command:
+
+```text
+bunx vitest run src/server/company-workspace/__tests__/performance-contract.test.ts src/routes/__tests__/-account-workspace-loading.test.tsx
+```
+
+Result: failed as expected before the measurement utility existed. Both suites reported `Cannot find module .../scripts/clientops/measure-company-workspace`; no tests ran because the intended contract utility was absent.
+
+## GREEN Evidence
+
+Command:
+
+```text
+bunx vitest run src/server/company-workspace/__tests__/performance-contract.test.ts src/routes/__tests__/-account-workspace-loading.test.tsx
+```
+
+Result: 2 files passed, 2 tests passed.
+
+Final focused verification:
+
+```text
+bunx vitest run src/server/company-workspace/__tests__/performance-contract.test.ts src/routes/__tests__/-account-workspace-loading.test.tsx src/server/company-workspace/__tests__/loaders.test.ts src/routes/__tests__/-accounts-workspace-source.test.ts
+```
+
+Result: 4 files passed, 7 tests passed.
+
+## Baseline Measurements
+
+Command:
+
+```text
+bun scripts/clientops/measure-company-workspace.ts
+```
+
+| Fixture | Server calls | Database queries | Engagement queries | Response bytes | Elapsed duration |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Empty | 5 | 9 | 0 | 267 | 0.414 ms |
+| Typical | 5 | 12 | 3 | 1,006 | 0.114 ms |
+| High activity | 5 | 34 | 25 | 10,600 | 1.130 ms |
+
+The model intentionally requires no credentials or database calls. Server-call and database-query counts represent the current eager route and per-client engagement fan-out. Response bytes are serialized synthetic fixtures. Elapsed duration is local serialization time only, not production request latency. Live production metrics are unavailable by design in this task.
+
+The bounded engagement target is one query per workspace. The typical and high-activity fixtures deliberately fail that target in the current baseline. The route contract also records that all optional sections currently fetch before their tabs are opened.
+
+## Changed Files
+
+- `scripts/clientops/measure-company-workspace.ts`
+- `src/server/company-workspace/__tests__/performance-contract.test.ts`
+- `src/routes/__tests__/-account-workspace-loading.test.tsx`
+- `.superpowers/sdd/company-workspace-task-1-report.md`
+
+## Checks
+
+- `bunx prettier --check scripts/clientops/measure-company-workspace.ts src/server/company-workspace/__tests__/performance-contract.test.ts src/routes/__tests__/-account-workspace-loading.test.tsx`: passed.
+- `git diff --check`: passed.
+- `bunx tsc --noEmit`: Task 1 diagnostics are clean; command remains non-zero for existing `src/lib/__tests__/eslint-config.test.ts` missing declaration and implicit `any` diagnostics.
+
+## Self-review
+
+The contract describes both present behavior and the desired bounded/on-demand behavior without masking the known gaps. The fixtures are fixed and local. The measurement utility does not import runtime database code or use production credentials. No new whole-router invalidation or loading behavior was introduced.
+
+## Commit
+
+Commit hash: recorded in the final task handoff after this report is committed.
+
+## Concerns
+
+The elapsed values are intentionally not production latency, and the repository-wide TypeScript check has two unrelated pre-existing diagnostics in the ESLint configuration test.
