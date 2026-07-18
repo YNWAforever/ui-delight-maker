@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import { getN8nDispatchConfig, triggerN8n } from "@/lib/n8n";
@@ -22,6 +23,7 @@ import type { Account } from "@/lib/types";
 export const getAccounts = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as AccountFilters)
   .handler(async ({ data }) => {
+    await requireCapability("accounts.view");
     await requireNeonAuthSession();
     return listAccounts(data);
   });
@@ -29,6 +31,7 @@ export const getAccounts = createServerFn({ method: "GET" })
 export const getAccount = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
+    await requireCapability("accounts.view", { resourceType: "account", resourceId: data.id });
     await requireNeonAuthSession();
     return getAccountInNeon(data.id);
   });
@@ -36,6 +39,7 @@ export const getAccount = createServerFn({ method: "GET" })
 export const getAccountWorkspace = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
+    await requireCapability("accounts.view", { resourceType: "account", resourceId: data.id });
     await requireNeonAuthSession();
     return getAccountWorkspaceData(data.id);
   });
@@ -43,6 +47,7 @@ export const getAccountWorkspace = createServerFn({ method: "GET" })
 export const createAccount = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateAccountInput)
   .handler(async ({ data }) => {
+    await requireCapability("accounts.create");
     await requireNeonAuthSession();
     return createAccountInNeon(data);
   });
@@ -50,6 +55,7 @@ export const createAccount = createServerFn({ method: "POST" })
 export const updateAccount = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: Partial<Account> })
   .handler(async ({ data }) => {
+    await requireCapability("accounts.update", { resourceType: "account", resourceId: data.id });
     await requireNeonAuthSession();
     return updateAccountInNeon(data.id, data.updates);
   });
@@ -57,6 +63,7 @@ export const updateAccount = createServerFn({ method: "POST" })
 export const triggerRelationshipIntelligence = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { accountId: string })
   .handler(async ({ data }) => {
+    await requireCapability("agents.run", { resourceType: "account", resourceId: data.accountId });
     const session = await requireNeonAuthSession();
     const existingRun = await findActiveRun(data.accountId, "relationship_intelligence", "account");
     if (existingRun) {

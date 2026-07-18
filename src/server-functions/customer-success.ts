@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 // src/server-functions/customer-success.ts
 import { createServerFn } from "@tanstack/react-start";
 import { createSupabaseServerClient } from "@/legacy-supabase/server";
@@ -45,6 +46,7 @@ type CreateSuccessTouchpointInput = Pick<SuccessTouchpoint, "account_id"> &
 export const getCustomerSuccessProfiles = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as GetCustomerSuccessProfilesInput)
   .handler(async ({ data }) => {
+    await requireCapability("engagements.view");
     const supabase = createSupabaseServerClient();
     let query = supabase
       .from("customer_success_profiles")
@@ -64,6 +66,10 @@ export const getCustomerSuccessProfiles = createServerFn({ method: "GET" })
 export const getCustomerSuccessProfile = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { accountId: string })
   .handler(async ({ data }) => {
+    await requireCapability("engagements.view", {
+      resourceType: "account",
+      resourceId: data.accountId,
+    });
     const supabase = createSupabaseServerClient();
     const [profileResult, touchpointsResult, projectsResult, tasksResult] = await Promise.all([
       supabase
@@ -105,6 +111,10 @@ export const getCustomerSuccessProfile = createServerFn({ method: "GET" })
 export const upsertCustomerSuccessProfile = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as UpsertCustomerSuccessProfileInput)
   .handler(async ({ data }) => {
+    await requireCapability("engagements.update", {
+      resourceType: "account",
+      resourceId: data.account_id,
+    });
     const supabase = createSupabaseServerClient();
     const risk = assessRenewalRisk({
       health_score: data.health_score ?? null,
@@ -133,6 +143,10 @@ export const updateCustomerSuccessProfile = createServerFn({ method: "POST" })
       data as { id: string; updates: Partial<Omit<CustomerSuccessProfile, "id" | "account_id">> },
   )
   .handler(async ({ data }) => {
+    await requireCapability("engagements.update", {
+      resourceType: "customer_success_profile",
+      resourceId: data.id,
+    });
     const supabase = createSupabaseServerClient();
     let risk: ReturnType<typeof assessRenewalRisk> | null = null;
     if (data.updates.health_score !== undefined || data.updates.renewal_date !== undefined) {
@@ -186,6 +200,10 @@ export const updateCustomerSuccessProfile = createServerFn({ method: "POST" })
 export const createSuccessTouchpoint = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateSuccessTouchpointInput)
   .handler(async ({ data }) => {
+    await requireCapability("engagements.create", {
+      resourceType: "account",
+      resourceId: data.account_id,
+    });
     const supabase = createSupabaseServerClient();
     const { data: touchpoint, error } = await supabase
       .from("success_touchpoints")
@@ -203,6 +221,7 @@ export const createSuccessTouchpoint = createServerFn({ method: "POST" })
   });
 
 export const getCustomerSuccessDashboard = createServerFn({ method: "GET" }).handler(async () => {
+  await requireCapability("engagements.view");
   const supabase = createSupabaseServerClient();
   const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 

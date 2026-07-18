@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
@@ -37,6 +38,7 @@ type CreateTaskInput = Pick<Task, "title"> &
 export const getTasks = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as GetTasksInput)
   .handler(async ({ data }) => {
+    await requireCapability("tasks.view");
     await requireNeonAuthSession();
     return listTasks(data);
   });
@@ -44,6 +46,7 @@ export const getTasks = createServerFn({ method: "GET" })
 export const createTask = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateTaskInput)
   .handler(async ({ data }) => {
+    await requireCapability("tasks.create");
     await requireNeonAuthSession();
     return createTaskInNeon(data);
   });
@@ -51,6 +54,7 @@ export const createTask = createServerFn({ method: "POST" })
 export const updateTask = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: Partial<Task> })
   .handler(async ({ data }) => {
+    await requireCapability("tasks.update", { resourceType: "task", resourceId: data.id });
     await requireNeonAuthSession();
     return updateTaskInNeon(data.id, data.updates);
   });

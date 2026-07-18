@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 // src/server-functions/projects.ts
 import { createServerFn } from "@tanstack/react-start";
 import { createSupabaseServerClient } from "@/legacy-supabase/server";
@@ -32,6 +33,7 @@ type CreateProjectInput = Pick<Project, "name"> &
 export const getProjects = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as GetProjectsInput)
   .handler(async ({ data }) => {
+    await requireCapability("engagements.view");
     const supabase = createSupabaseServerClient();
     let query = supabase.from("projects").select("*").order("created_at", { ascending: false });
 
@@ -49,6 +51,7 @@ export const getProjects = createServerFn({ method: "GET" })
 export const getProject = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
+    await requireCapability("engagements.view", { resourceType: "project", resourceId: data.id });
     const supabase = createSupabaseServerClient();
     const [projectResult, eventsResult, tasksResult, csResult] = await Promise.all([
       supabase.from("projects").select("*").eq("id", data.id).single(),
@@ -82,6 +85,7 @@ export const getProject = createServerFn({ method: "GET" })
 export const createProject = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateProjectInput)
   .handler(async ({ data }) => {
+    await requireCapability("engagements.create");
     const supabase = createSupabaseServerClient();
     const { data: project, error } = await supabase.from("projects").insert(data).select().single();
     if (error) throw new Error(error.message);
@@ -91,6 +95,7 @@ export const createProject = createServerFn({ method: "POST" })
 export const updateProject = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: Partial<Project> })
   .handler(async ({ data }) => {
+    await requireCapability("engagements.update", { resourceType: "project", resourceId: data.id });
     const supabase = createSupabaseServerClient();
     const { data: project, error } = await supabase
       .from("projects")
@@ -119,6 +124,10 @@ export const updateProject = createServerFn({ method: "POST" })
 export const createProjectFromWonDeal = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { dealId: string })
   .handler(async ({ data }) => {
+    await requireCapability("engagements.create", {
+      resourceType: "deal",
+      resourceId: data.dealId,
+    });
     const supabase = createSupabaseServerClient();
     const { data: deal, error: dealError } = await supabase
       .from("deals")

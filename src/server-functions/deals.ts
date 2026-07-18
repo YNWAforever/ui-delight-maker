@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 // src/server-functions/deals.ts
 import { createServerFn } from "@tanstack/react-start";
 import { createSupabaseServerClient } from "@/legacy-supabase/server";
@@ -35,6 +36,7 @@ type CreateDealInput = Pick<Deal, "name"> &
 export const getDeals = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as GetDealsInput)
   .handler(async ({ data }) => {
+    await requireCapability("accounts.view");
     const supabase = createSupabaseServerClient();
     let query = supabase.from("deals").select("*").order("created_at", { ascending: false });
 
@@ -53,6 +55,7 @@ export const getDeals = createServerFn({ method: "GET" })
 export const getDeal = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
+    await requireCapability("accounts.view", { resourceType: "deal", resourceId: data.id });
     const supabase = createSupabaseServerClient();
     const [dealResult, eventsResult, projectsResult, tasksResult] = await Promise.all([
       supabase.from("deals").select("*").eq("id", data.id).single(),
@@ -82,6 +85,7 @@ export const getDeal = createServerFn({ method: "GET" })
 export const createDeal = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateDealInput)
   .handler(async ({ data }) => {
+    await requireCapability("accounts.create");
     const supabase = createSupabaseServerClient();
     const { data: deal, error } = await supabase.from("deals").insert(data).select().single();
     if (error) throw new Error(error.message);
@@ -91,6 +95,7 @@ export const createDeal = createServerFn({ method: "POST" })
 export const updateDeal = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: Partial<Deal> })
   .handler(async ({ data }) => {
+    await requireCapability("accounts.update", { resourceType: "deal", resourceId: data.id });
     const supabase = createSupabaseServerClient();
     const { data: deal, error } = await supabase
       .from("deals")
@@ -123,6 +128,7 @@ export const updateDeal = createServerFn({ method: "POST" })
 export const getForecast = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as { owner?: string; close_before?: string })
   .handler(async ({ data }) => {
+    await requireCapability("accounts.view");
     const supabase = createSupabaseServerClient();
     let query = supabase.from("deals").select("*").eq("status", "open");
 

@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import { getN8nDispatchConfig, triggerN8n } from "@/lib/n8n";
@@ -60,6 +61,7 @@ type UpdateLeadInput = Partial<
 export const getLeads = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as GetLeadsInput)
   .handler(async ({ data }) => {
+    await requireCapability("leads.view");
     await requireNeonAuthSession();
     return listLeads(data);
   });
@@ -67,6 +69,7 @@ export const getLeads = createServerFn({ method: "GET" })
 export const getLead = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
+    await requireCapability("leads.view", { resourceType: "lead", resourceId: data.id });
     await requireNeonAuthSession();
     const result = await getLeadWithActivity(data.id);
     return {
@@ -78,6 +81,7 @@ export const getLead = createServerFn({ method: "GET" })
 export const createLead = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateLeadInput)
   .handler(async ({ data }) => {
+    await requireCapability("leads.create");
     await requireNeonAuthSession();
     return createLeadInNeon(data);
   });
@@ -85,6 +89,7 @@ export const createLead = createServerFn({ method: "POST" })
 export const updateLead = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: UpdateLeadInput })
   .handler(async ({ data }) => {
+    await requireCapability("leads.update", { resourceType: "lead", resourceId: data.id });
     await requireNeonAuthSession();
     return updateLeadInNeon(data.id, data.updates);
   });
@@ -92,6 +97,7 @@ export const updateLead = createServerFn({ method: "POST" })
 export const moveLeadStage = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; status: LeadStatus; reason?: string })
   .handler(async ({ data }) => {
+    await requireCapability("leads.update", { resourceType: "lead", resourceId: data.id });
     const session = await requireNeonAuthSession();
     return moveLeadStageInNeon({
       id: data.id,
@@ -115,6 +121,7 @@ export const convertWonLead = createServerFn({ method: "POST" })
       },
   )
   .handler(async ({ data }) => {
+    await requireCapability("leads.convert", { resourceType: "lead", resourceId: data.leadId });
     const session = await requireNeonAuthSession();
     return convertWonLeadToEngagement({ ...data, actorId: session.user.id });
   });
@@ -122,6 +129,7 @@ export const convertWonLead = createServerFn({ method: "POST" })
 export const triggerLeadAgent = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { leadId: string })
   .handler(async ({ data }) => {
+    await requireCapability("agents.run", { resourceType: "lead", resourceId: data.leadId });
     const session = await requireNeonAuthSession();
     const existingRun = await findActiveRun(data.leadId, "qualify_lead");
     if (existingRun) {
@@ -178,6 +186,7 @@ export const triggerLeadAgent = createServerFn({ method: "POST" })
 export const triggerLeadReplyDraft = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { leadId: string })
   .handler(async ({ data }) => {
+    await requireCapability("agents.run", { resourceType: "lead", resourceId: data.leadId });
     const session = await requireNeonAuthSession();
     const existingRun = await findActiveRun(data.leadId, "draft_reply");
     if (existingRun) {

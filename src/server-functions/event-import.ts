@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -19,6 +20,7 @@ async function loadEventImportValidationContext() {
 export const validateEventImportRowsFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { rows: EventImportRow[] })
   .handler(async ({ data }) => {
+    await requireCapability("engagements.view");
     await requireNeonAuthSession();
     return validateEventImportRows({
       rows: data.rows,
@@ -29,6 +31,10 @@ export const validateEventImportRowsFn = createServerFn({ method: "POST" })
 export const commitEventImportFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { campaignId: string; rows: EventImportRow[] })
   .handler(async ({ data }) => {
+    await requireCapability("engagements.create", {
+      resourceType: "campaign",
+      resourceId: data.campaignId,
+    });
     const session = await requireNeonAuthSession();
     const validation = validateEventImportRows({
       rows: data.rows,

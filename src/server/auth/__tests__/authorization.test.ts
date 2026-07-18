@@ -5,10 +5,15 @@ import type { AppSession } from "@/lib/auth/neon-auth.server";
 const mocks = vi.hoisted(() => ({
   requireNeonAuthSession: vi.fn(),
   query: vi.fn(),
+  createSupabaseServerClient: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
   requireNeonAuthSession: mocks.requireNeonAuthSession,
+}));
+
+vi.mock("@/legacy-supabase/server", () => ({
+  createSupabaseServerClient: mocks.createSupabaseServerClient,
 }));
 
 vi.mock("@/server/db/neon.server", () => ({
@@ -56,9 +61,13 @@ function installDatabaseRows(
     teams?: string[];
     reports?: string[];
     overrides?: unknown[];
+    resourceOwners?: Record<string, string | null>;
   } = {},
 ) {
   mocks.query.mockImplementation(async (sql: string, values: readonly unknown[]) => {
+    if (sql.includes("from accounts")) {
+      return [{ owner_profile_id: options.resourceOwners?.[String(values[0])] ?? "actor-1" }];
+    }
     expect(values).toEqual(["actor-1"]);
     if (sql.includes("from departments")) {
       return (options.departments ?? []).map((id) => ({ id }));
@@ -72,13 +81,15 @@ function installDatabaseRows(
     if (sql.includes("from permission_overrides")) {
       return options.overrides ?? [];
     }
-    throw new Error(`Unexpected authorization query: ${sql}`);
+    throw new Error("Unexpected authorization query: " + sql);
   });
 }
 
 describe("admin authorization orchestration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    mocks.createSupabaseServerClient.mockReset();
     mocks.requireNeonAuthSession.mockResolvedValue(session());
     installDatabaseRows();
   });
@@ -142,6 +153,71 @@ describe("admin authorization orchestration", () => {
     expect(overrideCall?.[1]).toEqual(["actor-1"]);
   });
 
+  it("resolves account ownership before evaluating manager scope", async () => {
+    installDatabaseRows({
+      reports: ["report-1"],
+      resourceOwners: { "account-1": "report-1" },
+    });
+
+    await expect(
+      requireCapability("accounts.update", {
+        resourceType: "account",
+        resourceId: "account-1",
+      }),
+    ).resolves.toMatchObject({ profile: { id: "actor-1" } });
+
+    const accountScopeCall = mocks.query.mock.calls.find(([sql]) =>
+      String(sql).includes("from accounts"),
+    );
+    expect(accountScopeCall?.[1]).toEqual(["account-1"]);
+  });
+
+  it("rejects a manager target when the server-derived owner is outside scope", async () => {
+    installDatabaseRows({
+      reports: ["report-1"],
+      resourceOwners: { "account-2": "other-1" },
+    });
+
+    await expect(
+      requireCapability("accounts.update", {
+        resourceType: "account",
+        resourceId: "account-2",
+      }),
+    ).rejects.toEqual(new AdminError("OUTSIDE_SCOPE", "Target is outside your management scope"));
+  });
+  it("resolves Supabase-owned records through the Supabase owner scope", async () => {
+    installDatabaseRows({ reports: ["report-1"] });
+
+    const dealRow = {
+      account_id: "account-1",
+      owner: null,
+    };
+    const accountRow = {
+      account_owner: "report-1",
+    };
+    const maybeSingle = vi.fn();
+    const eq = vi.fn(() => ({ maybeSingle }));
+    const select = vi.fn((fields: string) => {
+      maybeSingle.mockResolvedValue({
+        data: fields === "account_id, owner" ? dealRow : accountRow,
+        error: null,
+      });
+      return { eq };
+    });
+    mocks.createSupabaseServerClient.mockReturnValue({
+      from: vi.fn(() => ({ select })),
+    });
+
+    await expect(
+      requireCapability("accounts.update", {
+        resourceType: "deal",
+        resourceId: "deal-1",
+      }),
+    ).resolves.toMatchObject({ profile: { id: "actor-1" } });
+
+    expect(select).toHaveBeenCalledWith("account_id, owner");
+    expect(select).toHaveBeenCalledWith("account_owner");
+  });
   it("maps outside-scope and capability denials to stable AdminErrors", async () => {
     installDatabaseRows({ departments: ["department-managed"] });
     await expect(

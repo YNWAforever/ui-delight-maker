@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
@@ -32,6 +33,7 @@ export const getRelationshipSignals = createServerFn({ method: "GET" })
       (data ?? {}) as { account_id?: string; signal_type?: string; openOnly?: boolean },
   )
   .handler(async ({ data }) => {
+    await requireCapability("engagements.view");
     await requireNeonAuthSession();
     return listRelationshipSignals(data);
   });
@@ -39,6 +41,10 @@ export const getRelationshipSignals = createServerFn({ method: "GET" })
 export const dismissRelationshipSignalFn = createServerFn({ method: "POST" })
   .validator(parseDismissRelationshipSignalInput)
   .handler(async ({ data }) => {
+    await requireCapability("engagements.update", {
+      resourceType: "relationship_signal",
+      resourceId: data.id,
+    });
     const session = await requireNeonAuthSession();
     return dismissRelationshipSignal(data.id, {
       dismissed_by: session.user.id,

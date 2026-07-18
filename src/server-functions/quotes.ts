@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import { getN8nDispatchConfig, triggerN8n } from "@/lib/n8n";
@@ -78,6 +79,7 @@ function assertNoLifecycleQuoteUpdates(updates: Partial<Quote>) {
 export const getQuotes = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as GetQuotesInput)
   .handler(async ({ data }) => {
+    await requireCapability("quotes.view");
     await requireNeonAuthSession();
     return listQuotes(data);
   });
@@ -85,6 +87,7 @@ export const getQuotes = createServerFn({ method: "GET" })
 export const getQuote = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
+    await requireCapability("quotes.view", { resourceType: "quote", resourceId: data.id });
     await requireNeonAuthSession();
     return getQuoteFromNeon(data.id);
   });
@@ -92,6 +95,7 @@ export const getQuote = createServerFn({ method: "GET" })
 export const createQuote = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateQuoteInput)
   .handler(async ({ data }) => {
+    await requireCapability("quotes.create");
     const session = await requireNeonAuthSession();
     return createQuoteInNeon({ ...data, created_by: session.user.id });
   });
@@ -99,6 +103,7 @@ export const createQuote = createServerFn({ method: "POST" })
 export const updateQuote = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: Partial<Quote> })
   .handler(async ({ data }) => {
+    await requireCapability("quotes.update", { resourceType: "quote", resourceId: data.id });
     await requireNeonAuthSession();
     assertNoLifecycleQuoteUpdates(data.updates);
     return updateQuoteInNeon(data.id, data.updates);
@@ -107,6 +112,10 @@ export const updateQuote = createServerFn({ method: "POST" })
 export const requestQuoteApproval = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
+    await requireCapability("quotes.request_approval", {
+      resourceType: "quote",
+      resourceId: data.id,
+    });
     await requireNeonAuthSession();
     return updateQuoteLifecycleInNeon(data.id, { status: "pending_approval" });
   });
@@ -114,6 +123,7 @@ export const requestQuoteApproval = createServerFn({ method: "POST" })
 export const triggerQuoteAgent = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { leadId: string })
   .handler(async ({ data }) => {
+    await requireCapability("agents.run", { resourceType: "lead", resourceId: data.leadId });
     const session = await requireNeonAuthSession();
     const existingRun = await findActiveRun(data.leadId, "draft_quote");
     if (existingRun) {
@@ -168,16 +178,19 @@ export const triggerQuoteAgent = createServerFn({ method: "POST" })
   });
 
 export const getPricingTemplates = createServerFn({ method: "GET" }).handler(async () => {
+  await requireCapability("quotes.view");
   await requireNeonAuthSession();
   return listActivePricingTemplates() as Promise<PricingTemplate[]>;
 });
 
 export const getQuoteTemplates = createServerFn({ method: "GET" }).handler(async () => {
+  await requireCapability("quotes.view");
   await requireNeonAuthSession();
   return listQuoteTemplates();
 });
 
 export const getQuotePdfTemplates = createServerFn({ method: "GET" }).handler(async () => {
+  await requireCapability("quotes.view");
   await requireNeonAuthSession();
   return listPdfTemplates("quote");
 });
@@ -185,6 +198,7 @@ export const getQuotePdfTemplates = createServerFn({ method: "GET" }).handler(as
 export const getQuoteVersions = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { quoteId: string })
   .handler(async ({ data }) => {
+    await requireCapability("quotes.view", { resourceType: "quote", resourceId: data.quoteId });
     await requireNeonAuthSession();
     return listQuoteVersions(data.quoteId);
   });
@@ -324,6 +338,7 @@ async function issueQuoteVersionForSession(
 export const approveQuote = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
+    await requireCapability("quotes.approve", { resourceType: "quote", resourceId: data.id });
     const session = await requireNeonAuthSession();
     return approveQuoteForSession(data.id, session.user.id);
   });
@@ -331,6 +346,7 @@ export const approveQuote = createServerFn({ method: "POST" })
 export const rejectQuote = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; approvalId?: string; notes?: string })
   .handler(async ({ data }) => {
+    await requireCapability("quotes.approve", { resourceType: "quote", resourceId: data.id });
     const session = await requireNeonAuthSession();
     if (data.approvalId) {
       const approval = await getApprovalFromNeon(data.approvalId);
@@ -361,6 +377,7 @@ export const rejectQuote = createServerFn({ method: "POST" })
 export const issueQuoteVersion = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; pdfTemplateId?: string | null })
   .handler(async ({ data }) => {
+    await requireCapability("quotes.issue", { resourceType: "quote", resourceId: data.id });
     const session = await requireNeonAuthSession();
     const quote = await getQuoteFromNeon(data.id);
     return issueQuoteVersionForSession(quote, session.user.id, data.pdfTemplateId);
@@ -372,6 +389,7 @@ export const approveAndIssueQuote = createServerFn({ method: "POST" })
       data as { id: string; approvalId: string; pdfTemplateId?: string | null; notes?: string },
   )
   .handler(async ({ data }) => {
+    await requireCapability("quotes.issue", { resourceType: "quote", resourceId: data.id });
     const session = await requireNeonAuthSession();
     const approval = await getApprovalFromNeon(data.approvalId);
     assertQuoteSendApprovalMatchesQuote(approval, data.id);
@@ -394,6 +412,7 @@ export const approveAndIssueQuote = createServerFn({ method: "POST" })
 export const acceptQuoteAndCreateJobSheet = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
+    await requireCapability("job_sheets.accept", { resourceType: "quote", resourceId: data.id });
     const session = await requireNeonAuthSession();
     const quote = await getQuoteFromNeon(data.id);
     assertQuoteCanBeAccepted(quote);

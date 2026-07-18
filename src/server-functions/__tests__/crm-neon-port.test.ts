@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  requireCapabilityMock,
   createServerFnChain,
   mockRequireNeonAuthSession,
   mockListAccounts,
@@ -27,6 +28,7 @@ const {
   };
 
   return {
+    requireCapabilityMock: vi.fn(),
     createServerFnChain,
     mockRequireNeonAuthSession: vi.fn(),
     mockListAccounts: vi.fn(),
@@ -47,6 +49,10 @@ const {
 
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => createServerFnChain,
+}));
+
+vi.mock("@/server/auth/authorization.server", () => ({
+  requireCapability: requireCapabilityMock,
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
@@ -81,6 +87,8 @@ vi.mock("@/server/repositories/account-timeline", () => ({
 describe("ported CRM server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+
     mockRequireNeonAuthSession.mockResolvedValue({ user: { id: "user-1" } });
   });
 
