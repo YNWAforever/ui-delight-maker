@@ -69,8 +69,21 @@ The contract describes both present behavior and the desired bounded/on-demand b
 
 ## Commit
 
-Commit hash: recorded in the final task handoff after this report is committed.
+Initial baseline commit: `e5f66cb6e9437c634e6f858bc90b2f84c0dbf939`.
+Executable-contract correction: `6178d77`.
 
 ## Concerns
 
-The elapsed values are intentionally not production latency, and the repository-wide TypeScript check has two unrelated pre-existing diagnostics in the ESLint configuration test.
+Deterministic fixtures report elapsed duration as unavailable. Real request latency still requires local server or preview instrumentation. The repository-wide TypeScript check has two unrelated pre-existing diagnostics in the ESLint configuration test.
+
+## Review correction
+
+The first review rejected synthetic anti-contracts. The corrected performance test now invokes the real commercial loader with repository spies, and the route policy test exercises the enablement seam used by the account route. Both desired assertions use Vitest expected-failure semantics while the production behavior is intentionally unchanged; Tasks 3 and 4 must flip them to normal tests when their implementations land.
+
+Covering verification:
+
+```text
+bunx vitest run src/server/company-workspace/__tests__/performance-contract.test.ts src/routes/__tests__/-account-workspace-loading.test.tsx src/server/company-workspace/__tests__/loaders.test.ts src/hooks/__tests__/use-company-workspace-section.test.tsx
+```
+
+Result: 4 files passed; 6 tests passed and 2 expected failures executed. Running the measurement CLI twice produced byte-for-byte identical counts, payload sizes, and `elapsedDurationMs: null` values.
