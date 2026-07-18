@@ -1,6 +1,6 @@
 import { getRequest } from "@tanstack/react-start/server";
 import type { Profile } from "@/lib/types";
-import { getProfileById } from "@/server/repositories/profiles";
+import { getProfileByEmail, getProfileById } from "@/server/repositories/profiles";
 
 export type NeonAuthUser = {
   id: string;
@@ -117,7 +117,10 @@ export async function getNeonAuthSession(): Promise<AppSession | null> {
   const identity = await getNeonAuthIdentity();
   if (!identity) return null;
 
-  const profile = await getProfileById(identity.user.id);
+  const normalizedEmail = identity.user.email?.trim().toLowerCase();
+  const profile =
+    (await getProfileById(identity.user.id)) ??
+    (normalizedEmail ? await getProfileByEmail(normalizedEmail) : null);
   if (!profile || profile.status !== "active" || sessionIsRevoked(identity, profile)) {
     return null;
   }
