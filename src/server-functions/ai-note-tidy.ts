@@ -1,9 +1,11 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 
 export const tidyTouchpointNote = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { notes: string })
   .handler(async ({ data }) => {
+    await requireCapability("engagements.update");
     await requireNeonAuthSession();
 
     const apiKey = process.env.OPENROUTER_API_KEY;
@@ -42,6 +44,7 @@ export const tidyTouchpointNote = createServerFn({ method: "POST" })
   });
 
 export const isAiNoteTidyAvailable = createServerFn({ method: "GET" }).handler(async () => {
+  await requireCapability("agents.view");
   await requireNeonAuthSession();
   return { available: Boolean(process.env.OPENROUTER_API_KEY) };
 });

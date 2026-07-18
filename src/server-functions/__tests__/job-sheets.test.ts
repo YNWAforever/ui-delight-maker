@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  requireCapabilityMock,
   requireNeonAuthSessionMock,
   getJobSheetRepositoryMock,
   listJobSheetsMock,
@@ -19,6 +20,7 @@ const {
   };
 
   return {
+    requireCapabilityMock: vi.fn(),
     requireNeonAuthSessionMock: vi.fn(),
     getJobSheetRepositoryMock: vi.fn(),
     listJobSheetsMock: vi.fn(),
@@ -31,6 +33,10 @@ const {
 
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => createServerFnChain,
+}));
+
+vi.mock("@/server/auth/authorization.server", () => ({
+  requireCapability: requireCapabilityMock,
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
@@ -48,6 +54,8 @@ vi.mock("@/server/repositories/job-sheets", () => ({
 describe("job sheet server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+
     requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "acct-1" } });
     getJobSheetRepositoryMock.mockResolvedValue({ jobSheet: { id: "job-1" }, portions: [] });
     listJobSheetsMock.mockResolvedValue([]);
@@ -130,6 +138,10 @@ describe("job sheet server functions", () => {
 
     await acceptJobSheetForAccounting({ data: { id: "job-1" } });
 
+    expect(requireCapabilityMock).toHaveBeenCalledWith("job_sheets.accept", {
+      resourceType: "job_sheet",
+      resourceId: "job-1",
+    });
     expect(requireNeonAuthSessionMock).toHaveBeenCalled();
     expect(acceptJobSheetMock).toHaveBeenCalledWith("job-1", { accepted_by: "acct-1" });
   });

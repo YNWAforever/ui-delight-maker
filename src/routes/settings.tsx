@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { Copy, Eye, EyeOff, KeyRound, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { settingsSearchSchema } from "@/lib/admin-ux-search";
 import {
   Table,
   TableBody,
@@ -43,9 +44,9 @@ import {
   updateProduct,
   deactivateProductFn,
 } from "@/server-functions/products";
-import type { Product } from "@/lib/types";
+import type { Product, UserRole } from "@/lib/types";
 
-type User = AppUser & { role: "admin" | "manager" | "sales" | "cs" };
+type User = Omit<AppUser, "role"> & { role: UserRole };
 
 type PricingRule = {
   id: string;
@@ -87,6 +88,7 @@ const pricingRules: PricingRule[] = [
 ];
 
 export const Route = createFileRoute("/settings")({
+  validateSearch: settingsSearchSchema,
   loader: () => getProducts({}),
   head: () => ({
     meta: [
@@ -101,6 +103,9 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+
   return (
     <>
       <PageHeader
@@ -109,7 +114,18 @@ function SettingsPage() {
       />
 
       <div className="px-6 py-6">
-        <Tabs defaultValue="profile">
+        <Tabs
+          value={search.tab ?? "profile"}
+          onValueChange={(tab) =>
+            navigate({
+              search: (current) => ({
+                ...current,
+                tab: tab === "profile" ? undefined : (tab as NonNullable<typeof search.tab>),
+              }),
+              replace: true,
+            })
+          }
+        >
           <div className="max-w-full overflow-x-auto pb-1">
             <TabsList className="w-max">
               <TabsTrigger value="profile">Profile</TabsTrigger>
@@ -237,10 +253,13 @@ function TeamTab() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="super_admin">Super admin</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="sales">Sales</SelectItem>
-                      <SelectItem value="cs">Client success</SelectItem>
+                      <SelectItem value="client_success">Client success</SelectItem>
+                      <SelectItem value="accounting">Accounting</SelectItem>
+                      <SelectItem value="read_only">Read only</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>

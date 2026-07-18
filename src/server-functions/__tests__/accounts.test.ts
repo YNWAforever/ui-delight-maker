@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  requireCapabilityMock,
   requireNeonAuthSessionMock,
   findActiveRunMock,
   createAgentRunMock,
@@ -22,6 +23,7 @@ const {
   };
 
   return {
+    requireCapabilityMock: vi.fn(),
     requireNeonAuthSessionMock: vi.fn(),
     findActiveRunMock: vi.fn(),
     createAgentRunMock: vi.fn(),
@@ -37,6 +39,10 @@ const {
 
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => createServerFnChain,
+}));
+
+vi.mock("@/server/auth/authorization.server", () => ({
+  requireCapability: requireCapabilityMock,
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
@@ -74,6 +80,8 @@ describe("accounts server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.N8N_RELATIONSHIP_INTELLIGENCE_WEBHOOK_URL = "https://n8n.example/webhook";
+    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+
     requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "user-1" } });
     findActiveRunMock.mockResolvedValue(null);
     getN8nDispatchConfigMock.mockReturnValue({
@@ -100,6 +108,13 @@ describe("accounts server functions", () => {
     });
 
     expect(requireNeonAuthSessionMock).toHaveBeenCalled();
+
+    expect(requireCapabilityMock).toHaveBeenCalledWith("agents.run", {
+      resourceType: "account",
+
+      resourceId: "account-1",
+    });
+
     expect(findActiveRunMock).toHaveBeenCalledWith(
       "account-1",
       "relationship_intelligence",

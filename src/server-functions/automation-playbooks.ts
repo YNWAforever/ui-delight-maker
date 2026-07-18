@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 // src/server-functions/automation-playbooks.ts
 import { createServerFn } from "@tanstack/react-start";
 import { createSupabaseServerClient } from "@/legacy-supabase/server";
@@ -33,6 +34,7 @@ type CreateAutomationRunInput = Partial<
 export const getAutomationPlaybooks = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as GetAutomationPlaybooksInput)
   .handler(async ({ data }) => {
+    await requireCapability("automation.manage");
     const supabase = createSupabaseServerClient();
     let query = supabase
       .from("automation_playbooks")
@@ -50,6 +52,10 @@ export const getAutomationPlaybooks = createServerFn({ method: "GET" })
 export const getAutomationPlaybook = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
+    await requireCapability("automation.manage", {
+      resourceType: "automation_playbook",
+      resourceId: data.id,
+    });
     const supabase = createSupabaseServerClient();
     const [playbookResult, runsResult] = await Promise.all([
       supabase.from("automation_playbooks").select("*").eq("id", data.id).single(),
@@ -73,6 +79,7 @@ export const getAutomationPlaybook = createServerFn({ method: "GET" })
 export const createAutomationPlaybook = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateAutomationPlaybookInput)
   .handler(async ({ data }) => {
+    await requireCapability("automation.manage");
     const supabase = createSupabaseServerClient();
     const { data: playbook, error } = await supabase
       .from("automation_playbooks")
@@ -86,6 +93,10 @@ export const createAutomationPlaybook = createServerFn({ method: "POST" })
 export const updateAutomationPlaybook = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: Partial<AutomationPlaybook> })
   .handler(async ({ data }) => {
+    await requireCapability("automation.manage", {
+      resourceType: "automation_playbook",
+      resourceId: data.id,
+    });
     const supabase = createSupabaseServerClient();
     const { data: playbook, error } = await supabase
       .from("automation_playbooks")
@@ -106,6 +117,14 @@ export const updateAutomationPlaybook = createServerFn({ method: "POST" })
 export const createAutomationRun = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateAutomationRunInput)
   .handler(async ({ data }) => {
+    await requireCapability(
+      "automation.manage",
+      data.playbook_id
+        ? { resourceType: "automation_playbook", resourceId: data.playbook_id }
+        : data.account_id
+          ? { resourceType: "account", resourceId: data.account_id }
+          : {},
+    );
     const supabase = createSupabaseServerClient();
     const { data: run, error } = await supabase
       .from("automation_runs")
@@ -119,6 +138,10 @@ export const createAutomationRun = createServerFn({ method: "POST" })
 export const updateAutomationRun = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: Partial<AutomationRun> })
   .handler(async ({ data }) => {
+    await requireCapability("automation.manage", {
+      resourceType: "automation_run",
+      resourceId: data.id,
+    });
     const supabase = createSupabaseServerClient();
     const { data: run, error } = await supabase
       .from("automation_runs")

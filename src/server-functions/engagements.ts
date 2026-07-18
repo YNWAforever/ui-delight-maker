@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import { getN8nDispatchConfig, triggerN8n } from "@/lib/n8n";
@@ -21,6 +22,10 @@ import type { Engagement } from "@/lib/types";
 export const getEngagementsByClient = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { clientId: string })
   .handler(async ({ data }) => {
+    await requireCapability("engagements.view", {
+      resourceType: "client",
+      resourceId: data.clientId,
+    });
     await requireNeonAuthSession();
     return listEngagementsByClient(data.clientId);
   });
@@ -28,6 +33,7 @@ export const getEngagementsByClient = createServerFn({ method: "GET" })
 export const getEngagementsForRenewals = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as RenewalsFilters)
   .handler(async ({ data }) => {
+    await requireCapability("engagements.view");
     await requireNeonAuthSession();
     return listEngagementsForRenewals(data);
   });
@@ -44,6 +50,10 @@ export const createEngagement = createServerFn({ method: "POST" })
         >,
   )
   .handler(async ({ data }) => {
+    await requireCapability("engagements.create", {
+      resourceType: "client",
+      resourceId: data.client_id,
+    });
     await requireNeonAuthSession();
     return createEngagementInNeon(data);
   });
@@ -51,6 +61,10 @@ export const createEngagement = createServerFn({ method: "POST" })
 export const renewEngagement = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; reason?: string })
   .handler(async ({ data }) => {
+    await requireCapability("engagements.update", {
+      resourceType: "engagement",
+      resourceId: data.id,
+    });
     const session = await requireNeonAuthSession();
     return markEngagementRenewed({ id: data.id, actorId: session.user.id, reason: data.reason });
   });
@@ -58,6 +72,10 @@ export const renewEngagement = createServerFn({ method: "POST" })
 export const endEngagement = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; reason: string })
   .handler(async ({ data }) => {
+    await requireCapability("engagements.update", {
+      resourceType: "engagement",
+      resourceId: data.id,
+    });
     const session = await requireNeonAuthSession();
     return markEngagementEnded({ id: data.id, actorId: session.user.id, reason: data.reason });
   });
@@ -65,6 +83,10 @@ export const endEngagement = createServerFn({ method: "POST" })
 export const triggerRiskScoreAgent = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { engagementId: string })
   .handler(async ({ data }) => {
+    await requireCapability("agents.run", {
+      resourceType: "engagement",
+      resourceId: data.engagementId,
+    });
     const session = await requireNeonAuthSession();
     const existingRun = await findActiveRun(data.engagementId, "score_renewal_risk", "engagement");
     if (existingRun) {

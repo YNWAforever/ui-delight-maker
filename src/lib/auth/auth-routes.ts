@@ -2,7 +2,11 @@ export const AUTH_BASE_PATH = "/login";
 const DEFAULT_LOGIN_AUTH_PATH = "sign-in";
 
 export function isPublicAuthPath(pathname: string) {
-  return pathname === AUTH_BASE_PATH || pathname.startsWith(`${AUTH_BASE_PATH}/`);
+  return (
+    pathname === AUTH_BASE_PATH ||
+    pathname.startsWith(`${AUTH_BASE_PATH}/`) ||
+    pathname.startsWith("/invite/")
+  );
 }
 
 export function getLoginAuthPath(pathname: string) {

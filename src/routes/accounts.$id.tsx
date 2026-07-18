@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   BrainCircuit,
@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { accountDetailSearchSchema } from "@/lib/admin-ux-search";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
 import { useCompanyWorkspaceSection } from "@/hooks/use-company-workspace-section";
 import { userById } from "@/lib/users";
@@ -29,6 +30,7 @@ import { getCompanyWorkspaceCore } from "@/server-functions/company-workspace";
 import { dismissRelationshipSignalFn } from "@/server-functions/relationship-signals";
 
 export const Route = createFileRoute("/accounts/$id")({
+  validateSearch: accountDetailSearchSchema,
   loader: ({ params }) => getCompanyWorkspaceCore({ data: { accountId: params.id } }),
   head: ({ loaderData }) => ({
     meta: [{ title: `${loaderData?.company.name ?? "Account"} - Fimmick ClientOps` }],
@@ -38,6 +40,8 @@ export const Route = createFileRoute("/accounts/$id")({
 
 function AccountDetailRoute() {
   const { company: account, contacts } = Route.useLoaderData();
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const commercialQuery = useCompanyWorkspaceSection(account.id, "commercial");
   const deliveryFinanceQuery = useCompanyWorkspaceSection(account.id, "delivery_finance");
   const activityQuery = useCompanyWorkspaceSection(account.id, "activity");
@@ -251,7 +255,18 @@ function AccountDetailRoute() {
           })}
         </div>
 
-        <Tabs defaultValue="overview">
+        <Tabs
+          value={search.tab ?? "overview"}
+          onValueChange={(tab) =>
+            navigate({
+              search: (current) => ({
+                ...current,
+                tab: tab === "overview" ? undefined : (tab as NonNullable<typeof search.tab>),
+              }),
+              replace: true,
+            })
+          }
+        >
           <div className="max-w-full overflow-x-auto pb-1">
             <TabsList className="w-max">
               <TabsTrigger value="overview">Overview</TabsTrigger>

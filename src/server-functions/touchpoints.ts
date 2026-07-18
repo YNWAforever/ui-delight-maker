@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
@@ -9,6 +10,10 @@ import type { TouchpointNewSentiment, TouchpointNewType } from "@/lib/types";
 export const getTouchpointsByClient = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { clientId: string })
   .handler(async ({ data }) => {
+    await requireCapability("engagements.view", {
+      resourceType: "client",
+      resourceId: data.clientId,
+    });
     await requireNeonAuthSession();
     return listTouchpointsByClient(data.clientId);
   });
@@ -27,6 +32,10 @@ export const createTouchpoint = createServerFn({ method: "POST" })
       },
   )
   .handler(async ({ data }) => {
+    await requireCapability("engagements.create", {
+      resourceType: "client",
+      resourceId: data.client_id,
+    });
     const session = await requireNeonAuthSession();
     return createTouchpointInNeon({ ...data, logged_by: session.user.id });
   });

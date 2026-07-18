@@ -1,5 +1,11 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
+import {
+  bootstrapSuperAdmin,
+  createBootstrapDatabase,
+  type BootstrapDatabase,
+} from "../../../scripts/clientops/bootstrap-super-admin";
 import {
   CLIENTOPS_SCHEMA_CONTRACT,
   CLIENTOPS_MIGRATION_PATHS,
@@ -32,6 +38,7 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/004_clientops_schema_hardening.sql",
       "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
       "neon/migrations/006_unified_crm_workspace_foundation.sql",
+      "neon/migrations/007_admin_team_user_management.sql",
     ]);
   });
 
@@ -43,6 +50,7 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/004_clientops_schema_hardening.sql",
       "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
       "neon/migrations/006_unified_crm_workspace_foundation.sql",
+      "neon/migrations/007_admin_team_user_management.sql",
     ]);
   });
 
@@ -109,6 +117,70 @@ describe("getClientOpsSchemaMigrationDecision", () => {
     expect(CLIENTOPS_REQUIRED_TABLES).toEqual(
       expect.arrayContaining(["workspace_views", "workspace_favorites"]),
     );
+  });
+
+  it("registers administration and organization schema objects", () => {
+    expect(CLIENTOPS_REQUIRED_TABLES).toEqual(
+      expect.arrayContaining([
+        "departments",
+        "teams",
+        "team_memberships",
+        "user_invitations",
+        "permission_overrides",
+        "access_requests",
+        "work_delegations",
+        "admin_audit_logs",
+      ]),
+    );
+
+    expect(CLIENTOPS_REQUIRED_COLUMNS).toEqual(
+      expect.arrayContaining([
+        "profiles.status",
+        "profiles.primary_department_id",
+        "profiles.manager_profile_id",
+        "profiles.session_invalid_before",
+      ]),
+    );
+  });
+  it("defines the registered administration schema in migration 007", () => {
+    const migrationSql = readFileSync(
+      new URL("../../../neon/migrations/007_admin_team_user_management.sql", import.meta.url),
+      "utf8",
+    );
+
+    expect(migrationSql).toContain("update profiles set role = 'client_success' where role = 'cs'");
+    expect(migrationSql).toContain("create table if not exists departments");
+    expect(migrationSql).toContain("create table if not exists teams");
+    expect(migrationSql).toContain("create table if not exists team_memberships");
+    expect(migrationSql).toContain("create table if not exists user_invitations");
+    expect(migrationSql).toContain("create table if not exists permission_overrides");
+    expect(migrationSql).toContain("create table if not exists access_requests");
+    expect(migrationSql).toContain("create table if not exists work_delegations");
+    expect(migrationSql).toContain("create table if not exists admin_audit_logs");
+    expect(migrationSql).toContain("create trigger admin_audit_logs_immutable");
+    const normalizedSql = migrationSql.replace(/\s+/g, " ");
+    expect(normalizedSql).toContain(
+      "role in ('super_admin','admin','manager','sales','client_success','accounting','read_only')",
+    );
+    expect(normalizedSql).not.toContain("on delete cascade");
+  });
+
+  it("uses the fixed profile roles in seed and UI write boundaries", () => {
+    const seedData = readFileSync(
+      new URL("../../../scripts/clientops/seed-data.ts", import.meta.url),
+      "utf8",
+    );
+    const types = readFileSync(new URL("../types.ts", import.meta.url), "utf8");
+    const mockData = readFileSync(new URL("../mock-data.ts", import.meta.url), "utf8");
+    const settings = readFileSync(new URL("../../routes/settings.tsx", import.meta.url), "utf8");
+
+    expect(seedData).toContain('role: "client_success"');
+    expect(seedData).not.toContain('role: "cs"');
+    expect(types.replace(/\s+/g, " ")).toContain(
+      '"super_admin" | "admin" | "manager" | "sales" | "client_success" | "accounting" | "read_only"',
+    );
+    expect(mockData).not.toContain('role: "cs"');
+    expect(settings).not.toContain('value="cs"');
   });
 
   it("skips deploy-time schema migration when DATABASE_URL is absent", () => {
@@ -215,9 +287,9 @@ describe("applyClientOpsSchemaMigrations", () => {
     await expect(
       applyClientOpsSchemaMigrations({
         db,
-        migrationSqls: ["-- 001", "-- 002", "-- 003", "-- 004", "-- 005"],
+        migrationSqls: ["-- 001", "-- 002", "-- 003", "-- 004", "-- 005", "-- 006"],
       }),
-    ).rejects.toThrow("ClientOps schema migration expected 6 SQL files, received 5");
+    ).rejects.toThrow("ClientOps schema migration expected 7 SQL files, received 6");
 
     expect(db.query).not.toHaveBeenCalled();
   });
@@ -226,6 +298,7 @@ describe("applyClientOpsSchemaMigrations", () => {
     const db = {
       query: vi
         .fn()
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
@@ -245,7 +318,7 @@ describe("applyClientOpsSchemaMigrations", () => {
 
     await applyClientOpsSchemaMigrations({
       db,
-      migrationSqls: ["-- 001", "-- 002", "-- 003", "-- 004", "-- 005", "-- 006"],
+      migrationSqls: ["-- 001", "-- 002", "-- 003", "-- 004", "-- 005", "-- 006", "-- 007"],
     });
 
     expect(db.query).toHaveBeenNthCalledWith(1, "-- 001");
@@ -254,13 +327,14 @@ describe("applyClientOpsSchemaMigrations", () => {
     expect(db.query).toHaveBeenNthCalledWith(4, "-- 004");
     expect(db.query).toHaveBeenNthCalledWith(5, "-- 005");
     expect(db.query).toHaveBeenNthCalledWith(6, "-- 006");
+    expect(db.query).toHaveBeenNthCalledWith(7, "-- 007");
     expect(db.query).toHaveBeenNthCalledWith(
-      7,
+      8,
       expect.stringContaining("information_schema.tables"),
       [CLIENTOPS_REQUIRED_TABLES],
     );
     expect(db.query).toHaveBeenNthCalledWith(
-      8,
+      9,
       expect.stringContaining("information_schema.columns"),
       [CLIENTOPS_REQUIRED_COLUMNS],
     );
@@ -270,6 +344,7 @@ describe("applyClientOpsSchemaMigrations", () => {
     const db = {
       query: vi
         .fn()
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
@@ -293,6 +368,7 @@ describe("applyClientOpsSchemaMigrations", () => {
           "select 4;",
           "select 5;",
           "select 6;",
+          "select 7;",
         ],
       }),
     ).rejects.toThrow("ClientOps schema migration missing required tables: campaigns");
@@ -302,6 +378,7 @@ describe("applyClientOpsSchemaMigrations", () => {
     const db = {
       query: vi
         .fn()
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
@@ -331,8 +408,166 @@ describe("applyClientOpsSchemaMigrations", () => {
           "select 4;",
           "select 5;",
           "select 6;",
+          "select 7;",
         ],
       }),
     ).rejects.toThrow("ClientOps schema migration missing required columns: tasks.account_id");
+  });
+});
+
+describe("bootstrapSuperAdmin", () => {
+  function createDatabase(
+    profiles: Array<{ id: string; email: string; role: string; status: string }>,
+  ) {
+    const calls: Array<{ text: string; values: readonly unknown[] }> = [];
+    const query = vi.fn(async (text: string, values: readonly unknown[] = []) => {
+      calls.push({ text, values });
+      if (text.includes("from profiles")) {
+        return { rows: profiles };
+      }
+      return { rows: [] };
+    });
+    const db = {
+      transaction: vi.fn(async (work: (client: { query: typeof query }) => Promise<unknown>) =>
+        work({ query }),
+      ),
+    };
+
+    return { calls, db: db as unknown as BootstrapDatabase };
+  }
+
+  it("requires both bootstrap environment variables before opening a transaction", async () => {
+    const missingDatabaseUrl = createDatabase([]);
+    await expect(
+      bootstrapSuperAdmin(
+        { CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL: "admin@example.com" },
+        missingDatabaseUrl.db,
+      ),
+    ).rejects.toThrow("DATABASE_URL");
+    expect(missingDatabaseUrl.db.transaction).not.toHaveBeenCalled();
+
+    const missingEmail = createDatabase([]);
+    await expect(
+      bootstrapSuperAdmin({ DATABASE_URL: "postgres://redacted" }, missingEmail.db),
+    ).rejects.toThrow("CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL");
+    expect(missingEmail.db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("normalizes the email, promotes one active profile, and audits the promotion in one transaction", async () => {
+    const { calls, db } = createDatabase([
+      { id: "profile-1", email: "Admin@Example.com", role: "admin", status: "active" },
+    ]);
+
+    await expect(
+      bootstrapSuperAdmin(
+        {
+          DATABASE_URL: "postgres://redacted",
+          CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL: "  ADMIN@EXAMPLE.COM ",
+        },
+        db,
+      ),
+    ).resolves.toBe("profile-1");
+
+    expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(calls[0]).toMatchObject({ values: ["admin@example.com"] });
+    expect(
+      calls.some(({ text }) => text.includes("update profiles") && text.includes("super_admin")),
+    ).toBe(true);
+    expect(
+      calls.some(
+        ({ text, values }) =>
+          text.includes("admin_audit_logs") && values.includes("profile.bootstrap_super_admin"),
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["no active profile", []],
+    [
+      "ambiguous active profiles",
+      [
+        { id: "profile-1", email: "admin@example.com", role: "admin", status: "active" },
+        { id: "profile-2", email: "admin@example.com", role: "admin", status: "active" },
+      ],
+    ],
+  ])("refuses %s without mutating profiles or writing an audit log", async (_label, profiles) => {
+    const { calls, db } = createDatabase(profiles);
+
+    await expect(
+      bootstrapSuperAdmin(
+        {
+          DATABASE_URL: "postgres://redacted",
+          CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL: "admin@example.com",
+        },
+        db,
+      ),
+    ).rejects.toThrow();
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.text).toContain("from profiles");
+  });
+
+  it("never demotes an existing Super Admin when the target is already promoted", async () => {
+    const { calls, db } = createDatabase([
+      { id: "profile-1", email: "admin@example.com", role: "super_admin", status: "active" },
+    ]);
+
+    await expect(
+      bootstrapSuperAdmin(
+        {
+          DATABASE_URL: "postgres://redacted",
+          CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL: "admin@example.com",
+        },
+        db,
+      ),
+    ).resolves.toBe("profile-1");
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.text).toContain("from profiles");
+  });
+
+  it("rolls back and releases the connection when the audit insert fails", async () => {
+    const calls: string[] = [];
+    const client = {
+      query: vi.fn(async (text: string) => {
+        calls.push(text);
+        if (text.includes("from profiles")) {
+          return {
+            rows: [
+              {
+                id: "profile-1",
+                email: "admin@example.com",
+                role: "admin",
+                status: "active",
+              },
+            ],
+          };
+        }
+        if (text.includes("insert into admin_audit_logs")) {
+          throw new Error("audit failed");
+        }
+        return { rows: [] };
+      }),
+      release: vi.fn(),
+    };
+    const pool = {
+      connect: vi.fn().mockResolvedValue(client),
+    };
+
+    await expect(
+      bootstrapSuperAdmin(
+        {
+          DATABASE_URL: "postgres://redacted",
+          CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL: "admin@example.com",
+        },
+        createBootstrapDatabase(pool),
+      ),
+    ).rejects.toThrow("audit failed");
+
+    expect(calls).toEqual(
+      expect.arrayContaining(["begin", expect.stringContaining("from profiles"), "rollback"]),
+    );
+    expect(calls).not.toContain("commit");
+    expect(client.release).toHaveBeenCalledTimes(1);
   });
 });

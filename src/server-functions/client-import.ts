@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 // src/server-functions/client-import.ts
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -20,6 +21,7 @@ async function loadValidationContext() {
 export const validateClientImportRows = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { rows: ImportRow[] })
   .handler(async ({ data }) => {
+    await requireCapability("accounts.view");
     await requireNeonAuthSession();
     const context = await loadValidationContext();
     return validateImportRows(data.rows, context);
@@ -28,6 +30,7 @@ export const validateClientImportRows = createServerFn({ method: "POST" })
 export const commitClientImportFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { rows: ImportRow[] })
   .handler(async ({ data }) => {
+    await requireCapability("accounts.create");
     const session = await requireNeonAuthSession();
     // Defense in depth: this endpoint is gated behind an authenticated
     // session, and the wizard UI only ever sends the `valid` subset from an

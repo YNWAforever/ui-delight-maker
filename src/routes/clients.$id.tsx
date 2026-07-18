@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { Mail, Phone, Star, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { clientDetailSearchSchema } from "@/lib/admin-ux-search";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,7 @@ import type { ClientContact, Task, TouchpointRecord } from "@/lib/types";
 const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined);
 
 export const Route = createFileRoute("/clients/$id")({
+  validateSearch: clientDetailSearchSchema,
   loader: async ({ params }) => {
     const [client, allQuotes, engagements, contacts, touchpoints, products, jobSheets, tasks] =
       await Promise.all([
@@ -100,6 +102,8 @@ function ClientDetail() {
     tasks: clientTasks,
     activityLogs,
   } = Route.useLoaderData();
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const owner = userById(client.account_owner ?? "");
   const clientContacts = contacts.filter((c) => c.client_id === client.id);
   const quoteById = new Map(clientQuotes.map((quote) => [quote.id, quote]));
@@ -140,7 +144,18 @@ function ClientDetail() {
       <div className="grid grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardContent className="p-6">
-            <Tabs defaultValue="overview">
+            <Tabs
+              value={search.tab ?? "overview"}
+              onValueChange={(tab) =>
+                navigate({
+                  search: (current) => ({
+                    ...current,
+                    tab: tab === "overview" ? undefined : (tab as NonNullable<typeof search.tab>),
+                  }),
+                  replace: true,
+                })
+              }
+            >
               <div className="max-w-full overflow-x-auto pb-1">
                 <TabsList className="w-max">
                   <TabsTrigger value="overview">Overview</TabsTrigger>

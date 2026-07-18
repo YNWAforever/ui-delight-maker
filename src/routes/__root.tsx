@@ -21,9 +21,11 @@ import { toast } from "sonner";
 
 import { getSession, signOut } from "@/server-functions/auth";
 import { getWorkspacePreferences } from "@/server-functions/workspace-preferences";
+import { getAdminNavigationFn } from "@/server-functions/admin-users";
 import { isPublicAuthPath } from "@/lib/auth/auth-routes";
-import type { Profile } from "@/lib/types";
+import type { Profile, WorkspaceFavorite } from "@/lib/types";
 import type { RouterContext } from "@/router";
+import type { AdminNavigationItem } from "@/lib/admin/types";
 
 import appCss from "../styles.css?url";
 
@@ -84,13 +86,27 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     if (isPublicAuthPath(location.pathname)) return {};
     const session = await getSession();
     if (!session) throw redirect({ to: "/login" });
+    let favorites: WorkspaceFavorite[] = [];
     try {
-      const { favorites } = await getWorkspacePreferences({ data: { objectType: "account" } });
-      return { user: session.user, profile: session.profile as Profile | null, favorites };
+      const preferences = await getWorkspacePreferences({ data: { objectType: "account" } });
+      favorites = preferences.favorites;
     } catch (error) {
       console.error("Workspace preferences unavailable", error);
-      return { user: session.user, profile: session.profile as Profile | null, favorites: [] };
     }
+
+    let adminNavigation: AdminNavigationItem[] = [];
+    try {
+      adminNavigation = await getAdminNavigationFn();
+    } catch (error) {
+      console.error("Admin navigation unavailable", error);
+    }
+
+    return {
+      user: session.user,
+      profile: session.profile as Profile | null,
+      favorites,
+      adminNavigation,
+    };
   },
   head: () => ({
     meta: [
@@ -142,7 +158,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  const { queryClient, profile, favorites } = Route.useRouteContext();
+  const { queryClient, profile, favorites, adminNavigation } = Route.useRouteContext();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -159,6 +175,7 @@ function RootComponent() {
           <AppSidebar
             profile={profile ?? null}
             favorites={favorites ?? []}
+            adminNavigation={adminNavigation ?? []}
             onSignOut={async () => {
               try {
                 await signOut();

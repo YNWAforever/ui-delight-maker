@@ -1,9 +1,10 @@
 // src/lib/users.ts
+import type { UserRole } from "./types";
 export interface AppUser {
   id: string;
   name: string;
   email: string;
-  role: string;
+  role: UserRole;
 }
 
 export const APP_USERS: AppUser[] = [
@@ -35,7 +36,7 @@ export const APP_USERS: AppUser[] = [
     id: "00000000-0000-0000-0000-000000000005",
     name: "Sara Lin",
     email: "sara@fimmick.com",
-    role: "ops",
+    role: "client_success",
   },
 ];
 

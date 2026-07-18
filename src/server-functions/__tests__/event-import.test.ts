@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  requireCapabilityMock,
   requireNeonAuthSessionMock,
   listEventImportAccountCandidatesMock,
   listEventImportAccountContactsMock,
@@ -17,6 +18,7 @@ const {
   };
 
   return {
+    requireCapabilityMock: vi.fn(),
     requireNeonAuthSessionMock: vi.fn(),
     listEventImportAccountCandidatesMock: vi.fn(),
     listEventImportAccountContactsMock: vi.fn(),
@@ -27,6 +29,10 @@ const {
 
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => createServerFnChain,
+}));
+
+vi.mock("@/server/auth/authorization.server", () => ({
+  requireCapability: requireCapabilityMock,
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
@@ -42,6 +48,8 @@ vi.mock("@/server/repositories/event-import", () => ({
 describe("event import server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+
     requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "user-1" } });
   });
 
@@ -67,6 +75,10 @@ describe("event import server functions", () => {
       },
     });
 
+    expect(requireCapabilityMock).toHaveBeenCalledWith("engagements.create", {
+      resourceType: "campaign",
+      resourceId: "campaign-1",
+    });
     expect(requireNeonAuthSessionMock).toHaveBeenCalled();
     expect(listEventImportAccountCandidatesMock).toHaveBeenCalled();
     expect(listEventImportAccountContactsMock).toHaveBeenCalled();

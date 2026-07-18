@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 // src/server-functions/clients.ts
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -28,6 +29,7 @@ type CreateClientInput = Pick<Client, "company_name"> &
 export const getClients = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as GetClientsInput)
   .handler(async ({ data }) => {
+    await requireCapability("accounts.view");
     await requireNeonAuthSession();
     return listClients(data);
   });
@@ -35,6 +37,7 @@ export const getClients = createServerFn({ method: "GET" })
 export const getClient = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
+    await requireCapability("accounts.view", { resourceType: "client", resourceId: data.id });
     await requireNeonAuthSession();
     return getClientFromNeon(data.id);
   });
@@ -42,6 +45,7 @@ export const getClient = createServerFn({ method: "GET" })
 export const createClient = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateClientInput)
   .handler(async ({ data }) => {
+    await requireCapability("accounts.create");
     await requireNeonAuthSession();
     return createClientInNeon(data);
   });
@@ -49,6 +53,7 @@ export const createClient = createServerFn({ method: "POST" })
 export const updateClient = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: Partial<Client> })
   .handler(async ({ data }) => {
+    await requireCapability("accounts.update", { resourceType: "client", resourceId: data.id });
     await requireNeonAuthSession();
     return updateClientInNeon(data.id, data.updates);
   });

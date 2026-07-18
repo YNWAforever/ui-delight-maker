@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  requireCapabilityMock,
   requireNeonAuthSessionMock,
   createQuoteMock,
   getQuoteMock,
@@ -26,6 +27,7 @@ const {
   };
 
   return {
+    requireCapabilityMock: vi.fn(),
     requireNeonAuthSessionMock: vi.fn(),
     createQuoteMock: vi.fn(),
     getQuoteMock: vi.fn(),
@@ -45,6 +47,10 @@ const {
 
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => createServerFnChain,
+}));
+
+vi.mock("@/server/auth/authorization.server", () => ({
+  requireCapability: requireCapabilityMock,
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
@@ -95,6 +101,8 @@ describe("quote server functions", () => {
     createQuoteVersionMock.mockReset();
     createJobSheetFromAcceptedQuoteMock.mockReset();
     decideApprovalMock.mockReset();
+    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+
     requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "user-1" } });
     listQuoteLineItemsMock.mockResolvedValue([
       {
@@ -279,6 +287,10 @@ describe("quote server functions", () => {
 
     const result = await approveQuote({ data: { id: "quote-1" } });
 
+    expect(requireCapabilityMock).toHaveBeenCalledWith("quotes.approve", {
+      resourceType: "quote",
+      resourceId: "quote-1",
+    });
     expect(getQuoteMock).toHaveBeenCalledWith("quote-1");
     expect(updateQuoteLifecycleMock).toHaveBeenCalledWith("quote-1", {
       status: "approved",

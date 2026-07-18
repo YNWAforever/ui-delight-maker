@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Bot, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/format";
+import { getBusinessDateKey } from "@/lib/business-date";
 import { getTaskBoardMetrics } from "@/lib/sales-workspace";
 import { cn } from "@/lib/utils";
 import { getTasks, createTask, updateTask } from "@/server-functions/tasks";
@@ -52,22 +53,26 @@ const COLUMNS: { id: TaskStatus; label: string }[] = [
   { id: "done", label: "Done" },
 ];
 
-const TODAY = "2026-05-20";
+const replaceOnlyTaskStatus = (tasks: Task[], id: string, status: TaskStatus) =>
+  tasks.map((task) => (task.id === id ? { ...task, status } : task));
 
-const isTaskOverdue = (task: Task) => {
+const isTaskOverdue = (task: Task, today: string) => {
   if (!task.due_date || task.status === "done") return false;
   const dueTime = Date.parse(task.due_date);
-  const todayTime = Date.parse(TODAY);
+  const todayTime = Date.parse(today);
   return !Number.isNaN(dueTime) && !Number.isNaN(todayTime) && dueTime < todayTime;
 };
 
 function TasksBoard() {
   const loaderTasks = Route.useLoaderData();
   const router = useRouter();
+  const today = getBusinessDateKey();
   const [rows, setRows] = useState<Task[]>(loaderTasks);
   const [priority, setPriority] = useState("all");
   const [assignee, setAssignee] = useState("all");
   const [dragging, setDragging] = useState<string | null>(null);
+  const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
+  const pendingTaskIdsRef = useRef(new Set<string>());
 
   const filtered = useMemo(
     () =>
@@ -78,12 +83,41 @@ function TasksBoard() {
       }),
     [rows, priority, assignee],
   );
-  const metrics = getTaskBoardMetrics(rows, TODAY);
+  const metrics = getTaskBoardMetrics(rows, today);
+
+  const markPending = (id: string) => {
+    pendingTaskIdsRef.current.add(id);
+    setPendingTaskIds(new Set(pendingTaskIdsRef.current));
+  };
+
+  const clearPending = (id: string) => {
+    pendingTaskIdsRef.current.delete(id);
+    setPendingTaskIds(new Set(pendingTaskIdsRef.current));
+  };
 
   const move = async (id: string, status: TaskStatus) => {
-    setRows((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
-    await updateTask({ data: { id, updates: { status } } });
-    router.invalidate();
+    if (pendingTaskIdsRef.current.has(id)) return;
+    const previousStatus = rows.find((task) => task.id === id)?.status;
+    if (!previousStatus || previousStatus === status) return;
+
+    markPending(id);
+    setRows((current) => replaceOnlyTaskStatus(current, id, status));
+
+    try {
+      await updateTask({ data: { id, updates: { status } } });
+    } catch {
+      setRows((current) => replaceOnlyTaskStatus(current, id, previousStatus));
+      toast.error("Task move failed. Try again.");
+      clearPending(id);
+      return;
+    }
+
+    clearPending(id);
+    try {
+      await router.invalidate();
+    } catch {
+      toast.error("Task saved, but the board could not refresh.");
+    }
   };
 
   return (
@@ -168,17 +202,23 @@ function TasksBoard() {
                 <div className="flex min-h-[120px] flex-col gap-3 rounded-md bg-muted/20 p-2">
                   {colTasks.map((t) => {
                     const owner = t.assigned_to ? userById(t.assigned_to) : undefined;
-                    const overdue = isTaskOverdue(t);
+                    const overdue = isTaskOverdue(t, today);
+                    const isPending = pendingTaskIds.has(t.id);
                     return (
                       <Card
                         key={t.id}
                         role="button"
-                        tabIndex={0}
+                        tabIndex={isPending ? -1 : 0}
                         aria-label={`${t.title} — ${col.label}. Press left or right arrow to move between columns.`}
-                        draggable
-                        onDragStart={() => setDragging(t.id)}
+                        aria-busy={isPending}
+                        aria-disabled={isPending}
+                        draggable={!isPending}
+                        onDragStart={() => {
+                          if (!isPending) setDragging(t.id);
+                        }}
                         onDragEnd={() => setDragging(null)}
                         onKeyDown={(e) => {
+                          if (isPending) return;
                           if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
                           e.preventDefault();
                           const idx = COLUMNS.findIndex((c) => c.id === col.id);
@@ -188,6 +228,7 @@ function TasksBoard() {
                         className={cn(
                           "cursor-grab p-4 transition-shadow hover:shadow-md active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                           dragging === t.id && "opacity-50",
+                          isPending && "cursor-wait opacity-60",
                         )}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -245,7 +286,9 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
   const [desc, setDesc] = useState("");
   const [pri, setPri] = useState<Task["priority"]>("medium");
   const [assignee, setAssignee] = useState(APP_USERS[0]?.id ?? "");
-  const [due, setDue] = useState("2026-05-25");
+  const [due, setDue] = useState(() =>
+    getBusinessDateKey(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)),
+  );
 
   const submit = async () => {
     if (!title) {

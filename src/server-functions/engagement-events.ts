@@ -1,3 +1,4 @@
+import { requireCapability } from "@/server/auth/authorization.server";
 // src/server-functions/engagement-events.ts
 import { createServerFn } from "@tanstack/react-start";
 import { createSupabaseServerClient } from "@/legacy-supabase/server";
@@ -50,6 +51,14 @@ type UpsertChannelIdentityInput = Pick<ChannelIdentity, "channel"> &
 export const getEngagementEvents = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as GetEngagementEventsInput)
   .handler(async ({ data }) => {
+    await requireCapability(
+      "engagements.view",
+      data.account_id
+        ? { resourceType: "account", resourceId: data.account_id }
+        : data.contact_id
+          ? { resourceType: "contact", resourceId: data.contact_id }
+          : {},
+    );
     const supabase = createSupabaseServerClient();
     let query = supabase
       .from("engagement_events")
@@ -72,6 +81,14 @@ export const getEngagementEvents = createServerFn({ method: "GET" })
 export const createEngagementEvent = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateEngagementEventInput)
   .handler(async ({ data }) => {
+    await requireCapability(
+      "engagements.create",
+      data.account_id
+        ? { resourceType: "account", resourceId: data.account_id }
+        : data.contact_id
+          ? { resourceType: "contact", resourceId: data.contact_id }
+          : {},
+    );
     const supabase = createSupabaseServerClient();
     const { data: event, error } = await supabase
       .from("engagement_events")
@@ -93,6 +110,14 @@ export const createEngagementEvent = createServerFn({ method: "POST" })
 export const upsertChannelIdentity = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as UpsertChannelIdentityInput)
   .handler(async ({ data }) => {
+    await requireCapability(
+      "engagements.update",
+      data.account_id
+        ? { resourceType: "account", resourceId: data.account_id }
+        : data.contact_id
+          ? { resourceType: "contact", resourceId: data.contact_id }
+          : {},
+    );
     const supabase = createSupabaseServerClient();
 
     if (data.external_id) {

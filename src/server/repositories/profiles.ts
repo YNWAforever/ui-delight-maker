@@ -8,12 +8,20 @@ type AuthUserForProfile = {
   image?: string | null;
 };
 
+const PROFILE_COLUMNS = `
+  id, email, name, role, status, avatar_url, job_title, phone, locale, timezone,
+  primary_department_id, manager_profile_id, last_active_at, session_invalid_before,
+  suspended_at, suspended_by, suspension_reason, deactivated_at, deactivated_by,
+  deactivation_reason, availability_status, leave_starts_at, leave_ends_at, created_at
+`;
+
 function fallbackName(user: AuthUserForProfile) {
   if (user.name) return user.name;
   if (user.email) return user.email.split("@")[0] ?? user.email;
   return "Fimmick user";
 }
 
+// Invitation acceptance is the only normal caller that may create a business profile.
 export async function ensureProfileForAuthUser(user: AuthUserForProfile) {
   const profile = await queryOne<Profile>(
     `
@@ -23,7 +31,7 @@ export async function ensureProfileForAuthUser(user: AuthUserForProfile) {
         email = excluded.email,
         name = coalesce(profiles.name, excluded.name),
         avatar_url = coalesce(excluded.avatar_url, profiles.avatar_url)
-      returning id, name, role, avatar_url, created_at
+      returning ${PROFILE_COLUMNS}
     `,
     [user.id, user.email ?? null, fallbackName(user), user.image ?? null],
   );
@@ -36,8 +44,5 @@ export async function ensureProfileForAuthUser(user: AuthUserForProfile) {
 }
 
 export async function getProfileById(id: string) {
-  return queryOne<Profile>(
-    "select id, name, role, avatar_url, created_at from profiles where id = $1",
-    [id],
-  );
+  return queryOne<Profile>(`select ${PROFILE_COLUMNS} from profiles where id = $1`, [id]);
 }

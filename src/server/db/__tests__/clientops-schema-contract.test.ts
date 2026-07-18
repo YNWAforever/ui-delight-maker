@@ -37,6 +37,14 @@ function contractQueryStub(columnTypes: Record<string, string> = {}) {
           rows: CLIENTOPS_SCHEMA_CONTRACT.indexes.map((indexname) => ({ indexname })),
         };
       }
+      if (text.includes("information_schema.triggers")) {
+        return {
+          rows: Object.entries(CLIENTOPS_SCHEMA_CONTRACT.triggers).flatMap(
+            ([trigger_name, events]) =>
+              events.map((event_manipulation) => ({ trigger_name, event_manipulation })),
+          ),
+        };
+      }
 
       throw new Error(`Unexpected contract query: ${text}`);
     }),
@@ -75,6 +83,65 @@ describe("verifyClientOpsDatabase", () => {
           actual: "text",
         },
       ]),
+    });
+  });
+
+  it("verifies the admin organization schema and immutable audit trigger", () => {
+    expect(CLIENTOPS_SCHEMA_CONTRACT.relations).toEqual(
+      expect.arrayContaining([
+        "departments",
+        "teams",
+        "team_memberships",
+        "user_invitations",
+        "permission_overrides",
+        "access_requests",
+        "work_delegations",
+        "admin_audit_logs",
+      ]),
+    );
+    expect(CLIENTOPS_SCHEMA_CONTRACT.columns).toMatchObject({
+      "profiles.status": { type: "text", nullable: false },
+      "profiles.primary_department_id": { type: "uuid", nullable: true },
+      "profiles.manager_profile_id": { type: "text", nullable: true },
+      "profiles.session_invalid_before": {
+        type: "timestamp with time zone",
+        nullable: true,
+      },
+    });
+    expect(CLIENTOPS_SCHEMA_CONTRACT.constraints).toEqual(
+      expect.arrayContaining([
+        "profiles_role_check",
+        "profiles_status_check",
+        "profiles_availability_status_check",
+      ]),
+    );
+    const adminColumnCounts = Object.keys(CLIENTOPS_SCHEMA_CONTRACT.columns).reduce<
+      Record<string, number>
+    >((counts, column) => {
+      const table = column.split(".")[0];
+      counts[table] = (counts[table] ?? 0) + 1;
+      return counts;
+    }, {});
+    expect(adminColumnCounts).toMatchObject({
+      departments: 10,
+      teams: 11,
+      team_memberships: 9,
+      user_invitations: 16,
+      permission_overrides: 14,
+      access_requests: 13,
+      work_delegations: 8,
+      admin_audit_logs: 13,
+    });
+    expect(CLIENTOPS_SCHEMA_CONTRACT.indexes).toEqual(
+      expect.arrayContaining([
+        "departments_active_name_uidx",
+        "teams_active_name_uidx",
+        "team_memberships_active_uidx",
+        "user_invitations_pending_email_uidx",
+      ]),
+    );
+    expect(CLIENTOPS_SCHEMA_CONTRACT.triggers).toMatchObject({
+      admin_audit_logs_immutable: ["DELETE", "UPDATE"],
     });
   });
 });
