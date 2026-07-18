@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { accountDetailSearchSchema } from "@/lib/admin-ux-search";
+import { getCompanyWorkspaceSectionEnablement } from "@/lib/company-workspace/section-enablement";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
 import { useCompanyWorkspaceSection } from "@/hooks/use-company-workspace-section";
 import { userById } from "@/lib/users";
@@ -42,10 +43,19 @@ function AccountDetailRoute() {
   const { company: account, contacts } = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const commercialQuery = useCompanyWorkspaceSection(account.id, "commercial");
-  const deliveryFinanceQuery = useCompanyWorkspaceSection(account.id, "delivery_finance");
-  const activityQuery = useCompanyWorkspaceSection(account.id, "activity");
-  const intelligenceQuery = useCompanyWorkspaceSection(account.id, "intelligence");
+  const sectionEnablement = getCompanyWorkspaceSectionEnablement(search.tab ?? "overview");
+  const commercialQuery = useCompanyWorkspaceSection(account.id, "commercial", {
+    enabled: sectionEnablement.commercial,
+  });
+  const deliveryFinanceQuery = useCompanyWorkspaceSection(account.id, "delivery_finance", {
+    enabled: sectionEnablement.delivery_finance,
+  });
+  const activityQuery = useCompanyWorkspaceSection(account.id, "activity", {
+    enabled: sectionEnablement.activity,
+  });
+  const intelligenceQuery = useCompanyWorkspaceSection(account.id, "intelligence", {
+    enabled: sectionEnablement.intelligence,
+  });
   const [dismissedSignalIds, setDismissedSignalIds] = useState<string[]>([]);
   const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});

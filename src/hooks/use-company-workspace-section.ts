@@ -11,6 +11,7 @@ const transientRetryDelayMs = 250;
 export function useCompanyWorkspaceSection<S extends CompanyWorkspaceSection>(
   accountId: string,
   section: S,
+  options: { enabled?: boolean } = {},
 ) {
   const fetchSection = async (): Promise<SectionState<CompanyWorkspaceSectionData[S]>> =>
     (await getCompanyWorkspaceSection({
@@ -19,7 +20,7 @@ export function useCompanyWorkspaceSection<S extends CompanyWorkspaceSection>(
 
   return useQuery<SectionState<CompanyWorkspaceSectionData[S]>>({
     queryKey: ["company-workspace", accountId, section],
-    enabled: Boolean(accountId),
+    enabled: Boolean(accountId) && (options.enabled ?? true),
     retry: false,
     queryFn: async () => {
       const first = await fetchSection();

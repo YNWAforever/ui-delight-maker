@@ -17,7 +17,7 @@ export type CompanyWorkspaceMeasurement = {
   databaseQueryCount: number;
   engagementQueryCount: number;
   responseBytes: number;
-  elapsedDurationMs: number;
+  elapsedDurationMs: null;
   meetsEngagementQueryTarget: boolean;
 };
 
@@ -66,13 +66,6 @@ export const COMPANY_WORKSPACE_PERFORMANCE_FIXTURES: Record<
   },
 };
 
-export const UNOPENED_OPTIONAL_SECTIONS = [
-  "activity",
-  "commercial",
-  "delivery_finance",
-  "intelligence",
-] as const;
-
 function createRecords(prefix: string, count: number) {
   return Array.from({ length: count }, (_, index) => ({ id: `${prefix}-${index + 1}` }));
 }
@@ -105,11 +98,8 @@ function createFixtureResponse(fixture: CompanyWorkspacePerformanceFixture) {
 
 export function measureCompanyWorkspaceFixture(
   fixture: CompanyWorkspacePerformanceFixture,
-  now: () => number = performance.now,
 ): CompanyWorkspaceMeasurement {
-  const startedAt = now();
   const response = JSON.stringify(createFixtureResponse(fixture));
-  const elapsedDurationMs = Number((now() - startedAt).toFixed(3));
   const engagementQueryCount = fixture.clientCount;
 
   return {
@@ -120,31 +110,15 @@ export function measureCompanyWorkspaceFixture(
     databaseQueryCount: 9 + engagementQueryCount,
     engagementQueryCount,
     responseBytes: Buffer.byteLength(response, "utf8"),
-    elapsedDurationMs,
+    elapsedDurationMs: null,
     meetsEngagementQueryTarget: engagementQueryCount <= MAX_ENGAGEMENT_QUERIES_PER_WORKSPACE,
   };
 }
 
-export function measureCompanyWorkspaceFixtures(now: () => number = performance.now) {
+export function measureCompanyWorkspaceFixtures() {
   return Object.values(COMPANY_WORKSPACE_PERFORMANCE_FIXTURES).map((fixture) =>
-    measureCompanyWorkspaceFixture(fixture, now),
+    measureCompanyWorkspaceFixture(fixture),
   );
-}
-
-export function getInitialCompanyWorkspaceSectionFetches(source: string) {
-  const initialFetches = Array.from(
-    source.matchAll(/useCompanyWorkspaceSection\(account\.id, "([^"]+)"\)/g),
-    (match) => match[1],
-  );
-  const unopenedOptionalFetches = UNOPENED_OPTIONAL_SECTIONS.filter((section) =>
-    initialFetches.includes(section),
-  );
-
-  return {
-    initialFetches,
-    unopenedOptionalFetches,
-    meetsUnopenedTabPolicy: unopenedOptionalFetches.length === 0,
-  };
 }
 
 export function formatCompanyWorkspaceMeasurements(measurements: CompanyWorkspaceMeasurement[]) {
@@ -153,7 +127,7 @@ export function formatCompanyWorkspaceMeasurements(measurements: CompanyWorkspac
       measurement: "deterministic local fixture model",
       notes: [
         "No production credentials or database calls are used.",
-        "Elapsed duration measures local response serialization only; it is not production latency.",
+        "Elapsed duration is unavailable in the deterministic fixture model; measure real request latency separately.",
       ],
       measurements,
     },
