@@ -41,6 +41,8 @@ export type AdminUserSummary = {
   lastActiveAt: string | null;
   sessionInvalidBefore: string | null;
   availabilityStatus: string;
+  leaveStartsAt?: string | null;
+  leaveEndsAt?: string | null;
   createdAt: string;
   departmentName: string | null;
   managerName: string | null;
@@ -127,6 +129,8 @@ function mapUser(row: Record<string, unknown>): AdminUserSummary {
     lastActiveAt: nullableString(row.last_active_at),
     sessionInvalidBefore: nullableString(row.session_invalid_before),
     availabilityStatus: requiredString(row.availability_status),
+    leaveStartsAt: nullableString(row.leave_starts_at),
+    leaveEndsAt: nullableString(row.leave_ends_at),
     createdAt: requiredString(row.created_at),
     departmentName: nullableString(row.department_name),
     managerName: nullableString(row.manager_name),

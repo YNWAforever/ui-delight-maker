@@ -21,6 +21,8 @@ import {
   requireNeonAuthIdentity,
 } from "../neon-auth.server";
 
+const sessionCreatedAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+const sessionExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
 function profile(overrides: Record<string, unknown> = {}) {
   return {
     id: "user-1",
@@ -60,8 +62,8 @@ function neonSession(overrides: Record<string, unknown> = {}) {
           JSON.stringify({
             session: {
               id: "session-1",
-              createdAt: "2026-07-15T04:00:00.000Z",
-              expiresAt: "2026-07-16T04:00:00.000Z",
+              createdAt: sessionCreatedAt,
+              expiresAt: sessionExpiresAt,
               user: { id: "user-1", email: "ada@example.com", name: "Ada" },
               ...overrides,
             },
@@ -88,8 +90,8 @@ describe("ClientOps account status at sign in", () => {
       user: { id: "user-1", email: "ada@example.com", name: "Ada" },
       session: {
         id: "session-1",
-        createdAt: "2026-07-15T04:00:00.000Z",
-        expiresAt: "2026-07-16T04:00:00.000Z",
+        createdAt: sessionCreatedAt,
+        expiresAt: sessionExpiresAt,
       },
     });
     expect(getProfileByIdMock).not.toHaveBeenCalled();
@@ -110,15 +112,25 @@ describe("ClientOps account status at sign in", () => {
 
   it("rejects a session created before session_invalid_before", async () => {
     getProfileByIdMock.mockResolvedValue(
-      profile({ session_invalid_before: "2026-07-15T03:00:00.000Z" }),
+      profile({
+        session_invalid_before: new Date(
+          Date.parse(sessionCreatedAt) - 60 * 60 * 1000,
+        ).toISOString(),
+      }),
     );
-    neonSession({ createdAt: "2026-07-15T02:00:00.000Z" });
+    neonSession({
+      createdAt: new Date(Date.parse(sessionCreatedAt) - 2 * 60 * 60 * 1000).toISOString(),
+    });
     await expect(getNeonAuthSession()).resolves.toBeNull();
   });
 
   it("fails closed when revocation is set but upstream session creation is missing", async () => {
     getProfileByIdMock.mockResolvedValue(
-      profile({ session_invalid_before: "2026-07-15T03:00:00.000Z" }),
+      profile({
+        session_invalid_before: new Date(
+          Date.parse(sessionCreatedAt) - 60 * 60 * 1000,
+        ).toISOString(),
+      }),
     );
     neonSession({ createdAt: null });
     await expect(getNeonAuthSession()).resolves.toBeNull();
@@ -134,8 +146,8 @@ describe("ClientOps account status at sign in", () => {
               session: { id: "session-top" },
               data: {
                 session: {
-                  createdAt: "2026-07-15T04:00:00.000Z",
-                  expiresAt: "2026-07-16T04:00:00.000Z",
+                  createdAt: sessionCreatedAt,
+                  expiresAt: sessionExpiresAt,
                   user: { id: "user-1", email: "ada@example.com" },
                 },
               },
@@ -149,8 +161,8 @@ describe("ClientOps account status at sign in", () => {
       user: { id: "user-1", email: "ada@example.com" },
       session: {
         id: "session-top",
-        createdAt: "2026-07-15T04:00:00.000Z",
-        expiresAt: "2026-07-16T04:00:00.000Z",
+        createdAt: sessionCreatedAt,
+        expiresAt: sessionExpiresAt,
       },
     });
   });
@@ -164,9 +176,7 @@ describe("ClientOps account status at sign in", () => {
   });
 
   it("accepts a session created exactly at the invalidation boundary", async () => {
-    getProfileByIdMock.mockResolvedValue(
-      profile({ session_invalid_before: "2026-07-15T04:00:00.000Z" }),
-    );
+    getProfileByIdMock.mockResolvedValue(profile({ session_invalid_before: sessionCreatedAt }));
     await expect(getNeonAuthSession()).resolves.toMatchObject({
       profile: { status: "active" },
     });
@@ -174,7 +184,7 @@ describe("ClientOps account status at sign in", () => {
   it("returns active app access with upstream session metadata", async () => {
     await expect(getNeonAuthSession()).resolves.toMatchObject({
       user: { id: "user-1" },
-      session: { id: "session-1", createdAt: "2026-07-15T04:00:00.000Z" },
+      session: { id: "session-1", createdAt: sessionCreatedAt },
       profile: { id: "user-1", status: "active" },
     });
   });
