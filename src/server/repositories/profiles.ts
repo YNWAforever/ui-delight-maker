@@ -46,3 +46,12 @@ export async function ensureProfileForAuthUser(user: AuthUserForProfile) {
 export async function getProfileById(id: string) {
   return queryOne<Profile>(`select ${PROFILE_COLUMNS} from profiles where id = $1`, [id]);
 }
+
+export async function getProfileByEmail(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) return null;
+
+  return queryOne<Profile>(`select ${PROFILE_COLUMNS} from profiles where lower(email) = $1`, [
+    normalizedEmail,
+  ]);
+}

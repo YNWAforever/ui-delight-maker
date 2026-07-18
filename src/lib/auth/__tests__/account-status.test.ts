@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getProfileByIdMock, requestState } = vi.hoisted(() => ({
+const { getProfileByEmailMock, getProfileByIdMock, requestState } = vi.hoisted(() => ({
+  getProfileByEmailMock: vi.fn(),
   getProfileByIdMock: vi.fn(),
   requestState: { cookie: "__Secure-neon-auth.session_token=abc" as string | null },
 }));
@@ -12,6 +13,7 @@ vi.mock("@tanstack/react-start/server", () => ({
 }));
 
 vi.mock("@/server/repositories/profiles", () => ({
+  getProfileByEmail: getProfileByEmailMock,
   getProfileById: getProfileByIdMock,
 }));
 
@@ -81,6 +83,7 @@ describe("ClientOps account status at sign in", () => {
     process.env.NEON_AUTH_URL = "https://auth.example.com";
     requestState.cookie = "__Secure-neon-auth.session_token=abc";
     neonSession();
+    getProfileByEmailMock.mockResolvedValue(null);
     getProfileByIdMock.mockResolvedValue(profile());
   });
 
@@ -103,6 +106,20 @@ describe("ClientOps account status at sign in", () => {
   it("rejects an authenticated identity without a ClientOps profile", async () => {
     getProfileByIdMock.mockResolvedValue(null);
     await expect(getNeonAuthSession()).resolves.toBeNull();
+  });
+
+  it("loads an existing legacy profile by normalized auth email", async () => {
+    getProfileByIdMock.mockResolvedValue(null);
+    getProfileByEmailMock.mockResolvedValue(
+      profile({ id: "legacy-profile", email: "ada@example.com" }),
+    );
+    neonSession({ user: { id: "new-auth-id", email: " ADA@EXAMPLE.COM ", name: "Ada" } });
+
+    await expect(getNeonAuthSession()).resolves.toMatchObject({
+      user: { id: "new-auth-id" },
+      profile: { id: "legacy-profile", status: "active" },
+    });
+    expect(getProfileByEmailMock).toHaveBeenCalledWith("ada@example.com");
   });
 
   it.each(["suspended", "deactivated"])("rejects a %s profile", async (status) => {
