@@ -3,12 +3,20 @@ import type { NewJobSheetPortion } from "@/lib/quote-to-cash";
 import type { JobSheet, JobSheetPortion, JsonValue, QuoteLineItemRecord } from "@/lib/types";
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
 import { buildFilters } from "@/server/db/query-builders";
+import {
+  normalizePagination,
+  parseCount,
+  type PaginatedResult,
+  type PaginationInput,
+} from "@/server/repositories/pagination";
 
 export type JobSheetFilters = {
   status?: string;
   client_id?: string;
   account_id?: string;
 };
+
+export type JobSheetPageFilters = JobSheetFilters & PaginationInput;
 
 export type CreateJobSheetFromAcceptedQuoteInput = {
   quote_id: string;
@@ -142,6 +150,35 @@ export async function listJobSheets(filters: JobSheetFilters = {}): Promise<JobS
     `,
     where.values,
   );
+}
+
+export async function listJobSheetsPage(
+  filters: JobSheetPageFilters = {},
+): Promise<PaginatedResult<JobSheet>> {
+  const where = buildFilters([
+    ["status", filters.status],
+    ["client_id", filters.client_id],
+    ["account_id", filters.account_id],
+  ]);
+  const { page, limit, offset } = normalizePagination(filters);
+  const [items, count] = await Promise.all([
+    query<JobSheet>(
+      `
+        select *
+        from job_sheets
+        ${where.sql}
+        order by created_at desc
+        limit $${where.values.length + 1} offset $${where.values.length + 2}
+      `,
+      [...where.values, limit, offset],
+    ),
+    queryOne<{ total: number | string }>(
+      `select count(*) as total from job_sheets ${where.sql}`,
+      where.values,
+    ),
+  ]);
+
+  return { items, total: parseCount(count), page, limit };
 }
 
 export async function getJobSheet(id: string): Promise<JobSheetDetail> {
