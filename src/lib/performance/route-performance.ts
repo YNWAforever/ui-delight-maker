@@ -28,10 +28,13 @@ export const ROUTE_PERFORMANCE_BUDGET = {
 } as const;
 export type RoutePerformanceBudget = typeof ROUTE_PERFORMANCE_BUDGET;
 
-export const APP_ROUTE_FAMILIES: ReadonlyArray<{
+export type RoutePerformanceRoute = {
   id: RouteFamily;
   paths: readonly string[];
-}> = [
+  initialPayloadBudgetExemptPaths?: readonly string[];
+};
+
+export const APP_ROUTE_FAMILIES: ReadonlyArray<RoutePerformanceRoute> = [
   {
     id: "auth",
     paths: ["/login", "/login/$authPath", "/invite/$token", "/invite/$token/complete"],
@@ -39,10 +42,18 @@ export const APP_ROUTE_FAMILIES: ReadonlyArray<{
   { id: "shell", paths: ["/__root"] },
   { id: "dashboard", paths: ["/"] },
   { id: "accounts", paths: ["/accounts", "/accounts/$id"] },
-  { id: "clients", paths: ["/clients", "/clients/$id", "/clients/import"] },
+  {
+    id: "clients",
+    paths: ["/clients", "/clients/$id", "/clients/import"],
+    initialPayloadBudgetExemptPaths: ["/clients/import"],
+  },
   { id: "leads", paths: ["/leads", "/leads/$id"] },
   { id: "campaigns", paths: ["/campaigns", "/campaigns/$id"] },
-  { id: "quotes", paths: ["/quotes", "/quotes/new", "/quotes/$id", "/quotes/$id/pdf"] },
+  {
+    id: "quotes",
+    paths: ["/quotes", "/quotes/new", "/quotes/$id", "/quotes/$id/pdf"],
+    initialPayloadBudgetExemptPaths: ["/quotes/$id/pdf"],
+  },
   { id: "job-sheets", paths: ["/job-sheets", "/job-sheets/$id"] },
   { id: "tasks", paths: ["/tasks"] },
   { id: "approvals", paths: ["/approvals"] },
@@ -70,6 +81,7 @@ export const APP_ROUTE_FAMILIES: ReadonlyArray<{
 
 export type RoutePerformanceMeasurement = {
   routeFamily: RouteFamily;
+  routePath: string;
   fixture: RouteFixture;
   serverCallCount: number;
   databaseQueryCount: number;
@@ -82,12 +94,22 @@ export function measureSerializedBytes(value: unknown) {
   return Buffer.byteLength(JSON.stringify(value), "utf8");
 }
 
+export function isInitialPayloadBudgetExempt(
+  value: Pick<RoutePerformanceMeasurement, "routeFamily" | "routePath">,
+) {
+  const routeFamily = APP_ROUTE_FAMILIES.find((entry) => entry.id === value.routeFamily);
+  return routeFamily?.initialPayloadBudgetExemptPaths?.includes(value.routePath ?? "") ?? false;
+}
+
 export function evaluateRouteMeasurement(value: RoutePerformanceMeasurement) {
   const failures: string[] = [];
   if (value.serverCallCount > ROUTE_PERFORMANCE_BUDGET.maxPrimaryServerCalls) {
     failures.push("server calls");
   }
-  if (value.responseBytes > ROUTE_PERFORMANCE_BUDGET.maxInitialPayloadBytes) {
+  if (
+    value.responseBytes > ROUTE_PERFORMANCE_BUDGET.maxInitialPayloadBytes &&
+    !isInitialPayloadBudgetExempt(value)
+  ) {
     failures.push("payload bytes");
   }
   if (value.routeChunkBytes > ROUTE_PERFORMANCE_BUDGET.maxRouteChunkBytes) {

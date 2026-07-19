@@ -8,6 +8,7 @@ import {
 } from "../../src/lib/performance/route-performance";
 
 const ROUTE_FIXTURES: readonly RouteFixture[] = ["empty", "typical", "high-activity"];
+export type RoutePerformanceMeasurementMode = "baseline" | "verify";
 
 type RouteMeasurementResult = RoutePerformanceMeasurement & { failures: string[] };
 
@@ -21,8 +22,10 @@ function measureRouteFixture(
     typical: 1,
     "high-activity": 2,
   }[fixture];
+  const routePath = APP_ROUTE_FAMILIES.find((entry) => entry.id === routeFamily)?.paths[0] ?? "/";
   const response = {
     routeFamily,
+    routePath,
     fixture,
     records: Array.from({ length: fixtureLoad * 100 }, (_, index) => ({
       id: `${routeFamily}-${index + 1}`,
@@ -32,6 +35,7 @@ function measureRouteFixture(
 
   return {
     routeFamily,
+    routePath,
     fixture,
     serverCallCount: fixture === "high-activity" ? 2 : 1,
     databaseQueryCount: routeCount + fixtureLoad,
@@ -41,7 +45,7 @@ function measureRouteFixture(
   };
 }
 
-function measureRoutePerformance(): RouteMeasurementResult[] {
+export function measureRoutePerformance(): RouteMeasurementResult[] {
   return APP_ROUTE_FAMILIES.flatMap((routeFamily) =>
     ROUTE_FIXTURES.map((fixture) => {
       const measurement = measureRouteFixture(routeFamily.id, fixture, routeFamily.paths.length);
@@ -54,12 +58,14 @@ function getMode() {
   return process.argv.includes("--mode=verify") ? "verify" : "baseline";
 }
 
-function main() {
-  const mode = getMode();
+export function runRoutePerformanceMeasurement(
+  mode: RoutePerformanceMeasurementMode,
+  writeOutput: (value: string) => void = (value) => process.stdout.write(value),
+) {
   const measurements = measureRoutePerformance();
   const failingMeasurements = measurements.filter((measurement) => measurement.failures.length > 0);
 
-  process.stdout.write(
+  writeOutput(
     `${JSON.stringify(
       {
         measurement: "deterministic local route fixture model",
@@ -74,9 +80,15 @@ function main() {
     )}\n`,
   );
 
-  if (mode === "verify" && failingMeasurements.length > 0) process.exitCode = 1;
+  return mode === "verify" && failingMeasurements.length > 0 ? 1 : 0;
+}
+function main() {
+  const exitCode = runRoutePerformanceMeasurement(getMode());
+  if (exitCode !== 0) process.exitCode = exitCode;
 }
 
-if (process.argv[1]?.replaceAll("\\", "/").endsWith("scripts/clientops/measure-route-performance.ts")) {
+if (
+  process.argv[1]?.replaceAll("\\", "/").endsWith("scripts/clientops/measure-route-performance.ts")
+) {
   main();
 }
