@@ -1,8 +1,15 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
 import { query, queryOne, type Queryable } from "@/server/db/neon.server";
 import type { Campaign, CampaignMember } from "@/lib/types";
+import {
+  normalizePagination,
+  parseCount,
+  type PaginatedResult,
+  type PaginationInput,
+} from "@/server/repositories/pagination";
 
 export type CampaignFilters = { status?: string; type?: string; owner?: string };
+export type CampaignPageFilters = CampaignFilters & PaginationInput;
 
 export type CreateCampaignInput = Pick<Campaign, "name"> &
   Partial<
@@ -51,6 +58,39 @@ export async function listCampaigns(filters: CampaignFilters = {}) {
   );
 }
 
+export async function listCampaignsPage(
+  filters: CampaignPageFilters = {},
+): Promise<PaginatedResult<Campaign>> {
+  const where = buildFilters([
+    ["status", filters.status],
+    ["type", filters.type],
+    ["owner", filters.owner],
+  ]);
+  const { page, limit, offset } = normalizePagination(filters);
+
+  const [items, count] = await Promise.all([
+    query<Campaign>(
+      `
+        select *
+        from campaigns
+        ${where.sql}
+        order by created_at desc
+        limit $${where.values.length + 1} offset $${where.values.length + 2}
+      `,
+      [...where.values, limit, offset],
+    ),
+    queryOne<{ total: number | string }>(
+      `
+        select count(*) as total
+        from campaigns
+        ${where.sql}
+      `,
+      where.values,
+    ),
+  ]);
+
+  return { items, total: parseCount(count), page, limit };
+}
 export async function getCampaignWithMembers(id: string) {
   const [campaign, members] = await Promise.all([
     queryOne<Campaign>("select * from campaigns where id = $1", [id]),

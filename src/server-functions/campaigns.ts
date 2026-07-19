@@ -6,7 +6,9 @@ import {
   createCampaignMember,
   getCampaignWithMembers,
   listCampaigns,
+  listCampaignsPage,
   type CampaignFilters,
+  type CampaignPageFilters,
   type CreateCampaignInput,
   type CreateCampaignMemberInput,
   updateCampaign as updateCampaignInNeon,
@@ -22,6 +24,13 @@ export const getCampaigns = createServerFn({ method: "GET" })
     return listCampaigns(data);
   });
 
+export const getCampaignsPage = createServerFn({ method: "GET" })
+  .validator((data: unknown) => (data ?? {}) as CampaignPageFilters)
+  .handler(async ({ data }) => {
+    await requireCapability("campaigns.view");
+    await requireNeonAuthSession();
+    return listCampaignsPage(data);
+  });
 export const getCampaign = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
