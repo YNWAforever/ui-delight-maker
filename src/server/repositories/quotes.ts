@@ -1,8 +1,14 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
 import type { PricingTemplate, Quote, QuoteLineItem, QuoteLineItemRecord } from "@/lib/types";
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
+import {
+  normalizePagination,
+  parseCount,
+  type PaginatedResult,
+  type PaginationInput,
+} from "@/server/repositories/pagination";
 
-type QuoteFilters = {
+export type QuoteFilters = {
   status?: string;
   lead_id?: string;
   client_id?: string;
@@ -10,6 +16,8 @@ type QuoteFilters = {
   account_id?: string;
   deal_id?: string;
 };
+
+export type QuotePageFilters = QuoteFilters & PaginationInput;
 
 type CreateQuoteInput = Pick<Quote, "lead_id" | "currency"> &
   Partial<
@@ -108,6 +116,42 @@ export async function listQuotes(filters: QuoteFilters = {}) {
     `,
     where.values,
   );
+}
+
+export async function listQuotesPage(
+  filters: QuotePageFilters = {},
+): Promise<PaginatedResult<Quote>> {
+  const where = buildFilters([
+    ["status", filters.status],
+    ["lead_id", filters.lead_id],
+    ["client_id", filters.client_id],
+    ["contact_id", filters.contact_id],
+    ["account_id", filters.account_id],
+    ["deal_id", filters.deal_id],
+  ]);
+  const { page, limit, offset } = normalizePagination(filters);
+  const [items, count] = await Promise.all([
+    query<Quote>(
+      `
+        select *
+        from quotes
+        ${where.sql}
+        order by created_at desc
+        limit $${where.values.length + 1} offset $${where.values.length + 2}
+      `,
+      [...where.values, limit, offset],
+    ),
+    queryOne<{ total: number | string }>(
+      `
+        select count(*) as total
+        from quotes
+        ${where.sql}
+      `,
+      where.values,
+    ),
+  ]);
+
+  return { items, total: parseCount(count), page, limit };
 }
 
 export async function getQuote(id: string) {

@@ -21,6 +21,8 @@ import {
   listActivePricingTemplates,
   listQuoteLineItems,
   listQuotes,
+  listQuotesPage,
+  type QuotePageFilters,
   updateQuoteLifecycle as updateQuoteLifecycleInNeon,
   updateQuote as updateQuoteInNeon,
 } from "@/server/repositories/quotes";
@@ -82,6 +84,14 @@ export const getQuotes = createServerFn({ method: "GET" })
     await requireCapability("quotes.view");
     await requireNeonAuthSession();
     return listQuotes(data);
+  });
+
+export const getQuotesPage = createServerFn({ method: "GET" })
+  .validator((data: unknown) => (data ?? {}) as QuotePageFilters)
+  .handler(async ({ data }) => {
+    await requireCapability("quotes.view");
+    await requireNeonAuthSession();
+    return listQuotesPage(data);
   });
 
 export const getQuote = createServerFn({ method: "GET" })
