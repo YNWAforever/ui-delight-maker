@@ -147,7 +147,11 @@ function RootComponent() {
   const router = useRouter();
 
   if (isPublicAuthPath(pathname)) {
-    return <Outlet />;
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+      </QueryClientProvider>
+    );
   }
 
   return (
@@ -161,6 +165,7 @@ function RootComponent() {
             onSignOut={async () => {
               try {
                 await signOut();
+                queryClient.removeQueries({ queryKey: crmQueryKeys.shell(), exact: true });
                 await router.invalidate();
                 await router.navigate({ to: "/login" });
               } catch (error) {
