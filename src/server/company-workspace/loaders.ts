@@ -1,7 +1,10 @@
 import { getAccountTimeline } from "@/server/repositories/account-timeline";
 import { listAccountContacts } from "@/server/repositories/account-contacts";
 import { getAccount } from "@/server/repositories/accounts";
-import { getCompanyWorkspaceOverviewMetrics } from "@/server/repositories/company-workspace";
+import {
+  getCompanyWorkspaceOverviewMetrics,
+  listCompanyWorkspaceQuoteTotals,
+} from "@/server/repositories/company-workspace";
 import { listClients } from "@/server/repositories/clients";
 import { listEngagementsByClient } from "@/server/repositories/engagements";
 import { listJobSheets } from "@/server/repositories/job-sheets";
@@ -47,8 +50,9 @@ async function loadCompanyWorkspaceOverview(
   requestId: string,
 ): Promise<SectionState<CompanyWorkspaceOverview>> {
   try {
-    const [metrics, signals] = await Promise.all([
+    const [metrics, quoteTotals, signals] = await Promise.all([
       getCompanyWorkspaceOverviewMetrics(accountId),
+      listCompanyWorkspaceQuoteTotals(accountId),
       listRelationshipSignals({ account_id: accountId, openOnly: true }),
     ]);
     return {
@@ -57,8 +61,11 @@ async function loadCompanyWorkspaceOverview(
         linkedClientCount: metrics.linked_client_count,
         activeEngagementCount: metrics.active_engagement_count,
         quoteCount: metrics.quote_count,
-        quoteTotalValue: metrics.quote_total_value,
-        quoteCurrency: metrics.quote_currency,
+        quoteTotals: quoteTotals.map((total) => ({
+          currency: total.currency,
+          quoteCount: total.quote_count,
+          totalValue: total.total_value,
+        })),
         openSignalCount: metrics.open_signal_count,
         openSignals: signals.slice(0, 5),
       },
@@ -124,7 +131,9 @@ export async function loadCompanyWorkspaceRead(
   accountId: string,
   requestedSections: CompanyWorkspaceSection[] = [],
   requestId: string = crypto.randomUUID(),
+  now: () => Date = () => new Date(),
 ): Promise<CompanyWorkspaceRead> {
+  const cacheMetadata = { fetchedAt: now().toISOString(), freshForMs: 30_000 };
   const [core, overview, sectionEntries] = await Promise.all([
     loadCompanyWorkspaceCore(accountId),
     loadCompanyWorkspaceOverview(accountId, requestId),
@@ -136,7 +145,17 @@ export async function loadCompanyWorkspaceRead(
     ),
   ]);
 
-  return { requestId, core, overview, sections: Object.fromEntries(sectionEntries) };
+  return {
+    requestId,
+    core,
+    overview,
+    sections: Object.fromEntries(sectionEntries),
+    cache: {
+      core: cacheMetadata,
+      overview: cacheMetadata,
+      sections: Object.fromEntries(requestedSections.map((section) => [section, cacheMetadata])),
+    },
+  };
 }
 
 export async function loadCompanyWorkspace(

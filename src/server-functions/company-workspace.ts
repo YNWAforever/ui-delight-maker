@@ -26,11 +26,12 @@ function validateCompanyWorkspaceInput(data: unknown): CompanyWorkspaceInput {
   if (
     !data ||
     typeof data !== "object" ||
-    typeof (data as { accountId?: unknown }).accountId !== "string"
+    typeof (data as { accountId?: unknown }).accountId !== "string" ||
+    !(data as { accountId: string }).accountId.trim()
   ) {
     throw new Error("Company Workspace account ID is required");
   }
-  return { accountId: (data as { accountId: string }).accountId };
+  return { accountId: (data as { accountId: string }).accountId.trim() };
 }
 
 function validateCompanyWorkspaceSectionInput(data: unknown): CompanyWorkspaceSectionInput {
@@ -44,7 +45,8 @@ function validateCompanyWorkspaceSectionInput(data: unknown): CompanyWorkspaceSe
 
 function validateCompanyWorkspaceReadInput(data: unknown): CompanyWorkspaceReadInput {
   const input = validateCompanyWorkspaceInput(data);
-  const sections = (data as { sections?: unknown }).sections ?? [];
+  const rawSections = (data as { sections?: unknown }).sections;
+  const sections = rawSections === undefined ? [] : rawSections;
   if (!Array.isArray(sections)) throw new Error("Company Workspace sections must be an array");
   if (
     sections.some(

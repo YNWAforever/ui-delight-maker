@@ -56,4 +56,16 @@ describe("Company Workspace deep read server function", () => {
     ).rejects.toThrow("Invalid Company Workspace section");
     expect(requireSession).not.toHaveBeenCalled();
   });
+
+  it("rejects blank account IDs and explicit null sections before authenticating", async () => {
+    const { getCompanyWorkspaceRead } = await import("../company-workspace");
+
+    await expect(
+      getCompanyWorkspaceRead({ data: { accountId: "  ", sections: [] } }),
+    ).rejects.toThrow("account ID is required");
+    await expect(
+      getCompanyWorkspaceRead({ data: { accountId: "account-1", sections: null } }),
+    ).rejects.toThrow("sections must be an array");
+    expect(requireSession).not.toHaveBeenCalled();
+  });
 });

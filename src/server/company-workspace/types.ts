@@ -49,8 +49,7 @@ export type CompanyWorkspaceOverview = {
   linkedClientCount: number;
   activeEngagementCount: number;
   quoteCount: number;
-  quoteTotalValue: number;
-  quoteCurrency: string;
+  quoteTotals: Array<{ currency: string; quoteCount: number; totalValue: number }>;
   openSignalCount: number;
   openSignals: RelationshipSignal[];
 };
@@ -83,9 +82,19 @@ export type CompanyWorkspace = {
   sections: CompanyWorkspaceSections;
 };
 
+export type CompanyWorkspaceCacheMetadata = {
+  fetchedAt: string;
+  freshForMs: number;
+};
+
 export type CompanyWorkspaceRead = {
   requestId: string;
   core: CompanyWorkspaceCore;
   overview: SectionState<CompanyWorkspaceOverview>;
   sections: Partial<CompanyWorkspaceSections>;
+  cache: {
+    core: CompanyWorkspaceCacheMetadata;
+    overview: CompanyWorkspaceCacheMetadata;
+    sections: Partial<Record<CompanyWorkspaceSection, CompanyWorkspaceCacheMetadata>>;
+  };
 };
