@@ -8,6 +8,15 @@ describe("root shell hydration", () => {
   it("allows auth UI theme scripts to update the html element before hydration", () => {
     expect(rootSource).toMatch(/<html\b(?=[^>]*\blang="en")(?=[^>]*\bsuppressHydrationWarning\b)/);
   });
+
+  it("uses the shared authenticated shell query rather than independent browser reads", () => {
+    expect(rootSource).toContain("getAppShellRead");
+    expect(rootSource).toContain("crmQueryKeys.shell()");
+    expect(rootSource).toContain("routeQueryOptions");
+    expect(rootSource).toContain("ensureQueryData");
+    expect(rootSource).not.toContain("getWorkspacePreferences");
+    expect(rootSource).not.toContain("getAdminNavigationFn");
+  });
 });
 
 describe("sales route source copy", () => {
