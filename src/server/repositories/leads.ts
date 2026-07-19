@@ -103,7 +103,7 @@ export async function listLeadsPage(
         select *
         from leads
         ${where.sql}
-        order by created_at desc
+        order by created_at desc, id desc
         limit $${where.values.length + 1} offset $${where.values.length + 2}
       `,
       [...where.values, limit, offset],

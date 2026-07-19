@@ -126,7 +126,7 @@ export async function listClientsPage(
     query<ClientRollupRow>(
       `
         ${scopedRollup}
-        order by c.company_name
+        order by c.company_name, c.id desc
         limit $${filterValues.length + 1} offset $${filterValues.length + 2}
       `,
       [...filterValues, limit, offset],

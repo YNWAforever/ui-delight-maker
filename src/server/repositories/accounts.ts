@@ -109,7 +109,7 @@ export async function listAccountsPage(
         select *
         from accounts
         ${where.sql}${querySearch}
-        order by coalesce(last_activity_at, created_at) desc
+        order by coalesce(last_activity_at, created_at) desc, id desc
         limit $${filterValues.length + 1} offset $${filterValues.length + 2}
       `,
       [...filterValues, limit, offset],
