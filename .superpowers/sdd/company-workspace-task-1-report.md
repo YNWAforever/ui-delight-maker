@@ -12,7 +12,7 @@ Command:
 bunx vitest run src/server/company-workspace/__tests__/performance-contract.test.ts src/routes/__tests__/-account-workspace-loading.test.tsx
 ```
 
-Result: failed as expected before the measurement utility existed. Both suites reported `Cannot find module .../scripts/clientops/measure-company-workspace`; no tests ran because the intended contract utility was absent.
+Initial scaffolding failed on a missing measurement module and was not accepted as behavioral RED evidence. After correction, both desired assertions were temporarily run without `it.fails`: the real commercial loader test failed because engagement loading made 25 calls instead of 1, and the route policy test failed because all four optional sections were enabled instead of disabled. The run reported 2 failed files and 2 failed tests for exactly those assertions.
 
 ## GREEN Evidence
 
@@ -22,7 +22,7 @@ Command:
 bunx vitest run src/server/company-workspace/__tests__/performance-contract.test.ts src/routes/__tests__/-account-workspace-loading.test.tsx
 ```
 
-Result: 2 files passed, 2 tests passed.
+Result after restoring the temporary expected-failure wrappers: 2 files passed and 2 expected failures executed.
 
 Final focused verification:
 
@@ -30,7 +30,7 @@ Final focused verification:
 bunx vitest run src/server/company-workspace/__tests__/performance-contract.test.ts src/routes/__tests__/-account-workspace-loading.test.tsx src/server/company-workspace/__tests__/loaders.test.ts src/routes/__tests__/-accounts-workspace-source.test.ts
 ```
 
-Result: 4 files passed, 7 tests passed.
+Result after correction: 4 files passed; 6 tests passed and 2 expected failures executed.
 
 ## Baseline Measurements
 
@@ -42,11 +42,11 @@ bun scripts/clientops/measure-company-workspace.ts
 
 | Fixture | Server calls | Database queries | Engagement queries | Response bytes | Elapsed duration |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Empty | 5 | 9 | 0 | 267 | 0.414 ms |
-| Typical | 5 | 12 | 3 | 1,006 | 0.114 ms |
-| High activity | 5 | 34 | 25 | 10,600 | 1.130 ms |
+| Empty | 5 | 9 | 0 | 267 | Unavailable |
+| Typical | 5 | 12 | 3 | 1,006 | Unavailable |
+| High activity | 5 | 34 | 25 | 10,600 | Unavailable |
 
-The model intentionally requires no credentials or database calls. Server-call and database-query counts represent the current eager route and per-client engagement fan-out. Response bytes are serialized synthetic fixtures. Elapsed duration is local serialization time only, not production request latency. Live production metrics are unavailable by design in this task.
+The model intentionally requires no credentials or database calls. Server-call and database-query counts represent the current eager route and per-client engagement fan-out. Response bytes are serialized synthetic fixtures. Deterministic elapsed duration is reported as unavailable; real request latency requires local server or preview instrumentation.
 
 The bounded engagement target is one query per workspace. The typical and high-activity fixtures deliberately fail that target in the current baseline. The route contract also records that all optional sections currently fetch before their tabs are opened.
 
