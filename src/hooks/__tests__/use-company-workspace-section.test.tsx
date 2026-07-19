@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { getCompanyWorkspaceSectionMock } = vi.hoisted(() => ({
@@ -104,5 +104,37 @@ describe("useCompanyWorkspaceSection", () => {
       }),
     );
     expect(getCompanyWorkspaceSectionMock).toHaveBeenCalledTimes(2);
+  });
+  it("retains last-known data when a refresh fails", async () => {
+    getCompanyWorkspaceSectionMock.mockResolvedValueOnce({
+      status: "ready",
+      data: { timeline: [{ id: "event-1" }] },
+    });
+
+    const { result } = renderHook(() => useCompanyWorkspaceSection("account-1", "activity"), {
+      wrapper: createQueryWrapper(),
+    });
+    await waitFor(() => expect(result.current.data?.status).toBe("ready"));
+
+    getCompanyWorkspaceSectionMock.mockResolvedValueOnce({
+      status: "error",
+      error: {
+        code: "schema_mismatch",
+        requestId: "request-refresh",
+        retryable: false,
+        section: "activity",
+      },
+    });
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    await waitFor(() => {
+      expect(getCompanyWorkspaceSectionMock).toHaveBeenCalledTimes(2);
+      expect(result.current.data).toMatchObject({
+        status: "error",
+        staleData: { timeline: [{ id: "event-1" }] },
+      });
+    });
   });
 });

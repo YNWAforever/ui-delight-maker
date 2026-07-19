@@ -34,7 +34,7 @@ export type CompanyWorkspaceError = {
 export type SectionState<T> =
   | { status: "ready"; data: T }
   | { status: "empty"; data: T }
-  | { status: "error"; error: CompanyWorkspaceError };
+  | { status: "error"; error: CompanyWorkspaceError; staleData?: T };
 
 export type CompanyWorkspaceCore = {
   company: Account;

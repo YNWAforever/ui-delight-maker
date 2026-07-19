@@ -27,6 +27,7 @@ import {
   invalidateCompanyWorkspaceMutation,
 } from "@/lib/company-workspace/invalidation";
 import { getCompanyWorkspaceSectionEnablement } from "@/lib/company-workspace/section-enablement";
+import { retainCompanyWorkspaceSectionData } from "@/lib/company-workspace/section-state";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
 import {
   COMPANY_WORKSPACE_STALE_TIME_MS,
@@ -51,9 +52,17 @@ function AccountDetailRoute() {
   const initialRead = Route.useLoaderData();
   const accountId = initialRead.core.company.id;
   const queryClient = useQueryClient();
+  const overviewQueryKey = companyWorkspaceQueryKey(accountId, "overview");
   const workspaceReadQuery = useQuery({
-    queryKey: companyWorkspaceQueryKey(accountId, "overview"),
-    queryFn: () => getCompanyWorkspaceRead({ data: { accountId, sections: [] } }),
+    queryKey: overviewQueryKey,
+    queryFn: async () => {
+      const next = await getCompanyWorkspaceRead({ data: { accountId, sections: [] } });
+      const previous = queryClient.getQueryData<typeof initialRead>(overviewQueryKey);
+      return {
+        ...next,
+        overview: retainCompanyWorkspaceSectionData(next.overview, previous?.overview),
+      };
+    },
     initialData: initialRead,
     staleTime: COMPANY_WORKSPACE_STALE_TIME_MS,
     refetchOnWindowFocus: true,
@@ -318,6 +327,7 @@ function AccountDetailRoute() {
                 <CompanyWorkspaceSectionState
                   state={overview}
                   isLoading={false}
+                  isRefreshing={workspaceReadQuery.isFetching}
                   emptyMessage="No open relationship signals for this account."
                   onRetry={() => void workspaceReadQuery.refetch()}
                 >
@@ -398,6 +408,7 @@ function AccountDetailRoute() {
             <CompanyWorkspaceSectionState
               state={activityQuery.data}
               isLoading={activityQuery.isLoading}
+              isRefreshing={activityQuery.isFetching}
               emptyMessage="No timeline activity yet."
               onRetry={() => void activityQuery.refetch()}
             >
@@ -415,6 +426,7 @@ function AccountDetailRoute() {
                   <CompanyWorkspaceSectionState
                     state={commercialQuery.data}
                     isLoading={commercialQuery.isLoading}
+                    isRefreshing={commercialQuery.isFetching}
                     emptyMessage="No commercial activity is linked to this company yet."
                     onRetry={() => void commercialQuery.refetch()}
                   >
@@ -448,6 +460,7 @@ function AccountDetailRoute() {
                   <CompanyWorkspaceSectionState
                     state={activityQuery.data}
                     isLoading={activityQuery.isLoading}
+                    isRefreshing={activityQuery.isFetching}
                     emptyMessage="No approval or campaign activity yet."
                     onRetry={() => void activityQuery.refetch()}
                   >
@@ -469,6 +482,7 @@ function AccountDetailRoute() {
                   <CompanyWorkspaceSectionState
                     state={deliveryFinanceQuery.data}
                     isLoading={deliveryFinanceQuery.isLoading}
+                    isRefreshing={deliveryFinanceQuery.isFetching}
                     emptyMessage="No open commercial tasks."
                     onRetry={() => void deliveryFinanceQuery.refetch()}
                   >
@@ -502,6 +516,7 @@ function AccountDetailRoute() {
                   <CompanyWorkspaceSectionState
                     state={deliveryFinanceQuery.data}
                     isLoading={deliveryFinanceQuery.isLoading}
+                    isRefreshing={deliveryFinanceQuery.isFetching}
                     emptyMessage="No open account tasks right now."
                     onRetry={() => void deliveryFinanceQuery.refetch()}
                   >
@@ -558,6 +573,7 @@ function AccountDetailRoute() {
                   <CompanyWorkspaceSectionState
                     state={commercialQuery.data}
                     isLoading={commercialQuery.isLoading}
+                    isRefreshing={commercialQuery.isFetching}
                     emptyMessage="No active delivery engagements for this company."
                     onRetry={() => void commercialQuery.refetch()}
                   >
@@ -616,6 +632,7 @@ function AccountDetailRoute() {
                   <CompanyWorkspaceSectionState
                     state={deliveryFinanceQuery.data}
                     isLoading={deliveryFinanceQuery.isLoading}
+                    isRefreshing={deliveryFinanceQuery.isFetching}
                     emptyMessage="No accepted quote job sheets for this account yet."
                     onRetry={() => void deliveryFinanceQuery.refetch()}
                   >

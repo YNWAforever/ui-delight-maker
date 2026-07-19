@@ -77,4 +77,65 @@ describe("CompanyWorkspaceSectionState", () => {
     expect(screen.getByText(/Reference request-2/)).toBeTruthy();
     expect(screen.queryByText(/schema_mismatch/)).not.toBeTruthy();
   });
+  it("keeps last-known content visible with an accessible stale status", () => {
+    render(
+      <CompanyWorkspaceSectionState
+        state={{
+          status: "error",
+          error: { code: "query_timeout", requestId: "request-3", retryable: true },
+          staleData: { label: "Saved activity" },
+        }}
+        isLoading={false}
+        emptyMessage="No activity."
+        onRetry={() => undefined}
+      >
+        {(data) => <span>{data.label}</span>}
+      </CompanyWorkspaceSectionState>,
+    );
+
+    expect(screen.getByText("Saved activity")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("saved company details");
+    expect(screen.getByRole("button", { name: "Retry section" })).toBeTruthy();
+  });
+
+  it("retains retry focus and stale content while refreshing", async () => {
+    const user = userEvent.setup();
+    const state = {
+      status: "error" as const,
+      error: { code: "query_timeout" as const, requestId: "request-4", retryable: true },
+      staleData: { label: "Saved activity" },
+    };
+    const { rerender } = render(
+      <CompanyWorkspaceSectionState
+        state={state}
+        isLoading={false}
+        emptyMessage="No activity."
+        onRetry={() =>
+          rerender(
+            <CompanyWorkspaceSectionState
+              state={state}
+              isLoading={false}
+              isRefreshing
+              emptyMessage="No activity."
+              onRetry={() => undefined}
+            >
+              {(data) => <span>{data.label}</span>}
+            </CompanyWorkspaceSectionState>,
+          )
+        }
+      >
+        {(data) => <span>{data.label}</span>}
+      </CompanyWorkspaceSectionState>,
+    );
+
+    const retryButton = screen.getByRole("button", { name: "Retry section" });
+    retryButton.focus();
+    await user.click(retryButton);
+
+    expect(document.activeElement).toBe(retryButton);
+    expect(screen.getByText("Saved activity")).toBeTruthy();
+    expect(screen.getByTestId("company-workspace-section-state").getAttribute("aria-busy")).toBe(
+      "true",
+    );
+  });
 });
