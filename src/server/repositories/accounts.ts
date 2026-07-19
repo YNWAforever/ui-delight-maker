@@ -8,6 +8,12 @@ import { listClients } from "@/server/repositories/clients";
 import { listLeads } from "@/server/repositories/leads";
 import { listQuotes } from "@/server/repositories/quotes";
 import { listTasks } from "@/server/repositories/tasks";
+import {
+  normalizePagination,
+  parseCount,
+  type PaginatedResult,
+  type PaginationInput,
+} from "@/server/repositories/pagination";
 
 export type AccountFilters = {
   owner?: string;
@@ -15,6 +21,8 @@ export type AccountFilters = {
   lifecycle_stage?: string;
   query?: string;
 };
+
+export type AccountPageFilters = AccountFilters & PaginationInput;
 
 export type CreateAccountInput = Pick<Account, "name"> &
   Partial<
@@ -78,6 +86,46 @@ export async function listAccounts(filters: AccountFilters = {}) {
   );
 }
 
+export async function listAccountsPage(
+  filters: AccountPageFilters = {},
+): Promise<PaginatedResult<Account>> {
+  const where = buildFilters([
+    ["account_owner", filters.owner],
+    ["cs_owner", filters.cs_owner],
+    ["lifecycle_stage", filters.lifecycle_stage],
+  ]);
+  const filterValues = [...where.values];
+  let querySearch = "";
+
+  if (filters.query?.trim()) {
+    filterValues.push(`%${filters.query.trim()}%`);
+    querySearch = `${where.sql ? " and" : " where"} name ilike $${filterValues.length}`;
+  }
+
+  const { page, limit, offset } = normalizePagination(filters);
+  const [items, count] = await Promise.all([
+    query<Account>(
+      `
+        select *
+        from accounts
+        ${where.sql}${querySearch}
+        order by coalesce(last_activity_at, created_at) desc
+        limit $${filterValues.length + 1} offset $${filterValues.length + 2}
+      `,
+      [...filterValues, limit, offset],
+    ),
+    queryOne<{ total: number | string }>(
+      `
+        select count(*) as total
+        from accounts
+        ${where.sql}${querySearch}
+      `,
+      filterValues,
+    ),
+  ]);
+
+  return { items, total: parseCount(count), page, limit };
+}
 export async function getAccount(id: string, db?: Queryable) {
   const account = await queryOne<Account>("select * from accounts where id = $1", [id], db);
   if (!account) throw new Error("Account not found");
