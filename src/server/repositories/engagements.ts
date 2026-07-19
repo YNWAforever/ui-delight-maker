@@ -19,6 +19,19 @@ export async function listEngagementsByClient(clientId: string) {
   );
 }
 
+export async function listEngagementsByClientIds(clientIds: string[]) {
+  if (clientIds.length === 0) return [];
+  return query<Engagement>(
+    `
+      select *
+      from engagements
+      where client_id = any($1::uuid[])
+      order by start_date desc
+    `,
+    [clientIds],
+  );
+}
+
 export async function getEngagement(id: string, db?: Queryable) {
   const engagement = await queryOne<Engagement>(
     "select * from engagements where id = $1",

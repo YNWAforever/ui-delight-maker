@@ -6,7 +6,7 @@ import {
   listCompanyWorkspaceQuoteTotals,
 } from "@/server/repositories/company-workspace";
 import { listClients } from "@/server/repositories/clients";
-import { listEngagementsByClient } from "@/server/repositories/engagements";
+import { listEngagementsByClientIds } from "@/server/repositories/engagements";
 import { listJobSheets } from "@/server/repositories/job-sheets";
 import { listLeads } from "@/server/repositories/leads";
 import { listQuotes } from "@/server/repositories/quotes";
@@ -85,9 +85,7 @@ async function loadSectionData<Section extends CompanyWorkspaceSection>(
       listLeads({ account_id: accountId }),
       listQuotes({ account_id: accountId }),
     ]);
-    const engagements = (
-      await Promise.all(clients.map((client) => listEngagementsByClient(client.id)))
-    ).flat();
+    const engagements = await listEngagementsByClientIds(clients.map((client) => client.id));
     return {
       clients,
       engagements,
