@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   BrainCircuit,
@@ -21,9 +22,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { accountDetailSearchSchema } from "@/lib/admin-ux-search";
+import {
+  companyWorkspaceQueryKey,
+  invalidateCompanyWorkspaceMutation,
+} from "@/lib/company-workspace/invalidation";
 import { getCompanyWorkspaceSectionEnablement } from "@/lib/company-workspace/section-enablement";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
-import { useCompanyWorkspaceSection } from "@/hooks/use-company-workspace-section";
+import {
+  COMPANY_WORKSPACE_STALE_TIME_MS,
+  useCompanyWorkspaceSection,
+} from "@/hooks/use-company-workspace-section";
 import { userById } from "@/lib/users";
 import type { RelationshipSignal } from "@/lib/types";
 import { triggerRelationshipIntelligence } from "@/server-functions/accounts";
@@ -40,11 +48,20 @@ export const Route = createFileRoute("/accounts/$id")({
 });
 
 function AccountDetailRoute() {
-  const { core, overview } = Route.useLoaderData();
+  const initialRead = Route.useLoaderData();
+  const accountId = initialRead.core.company.id;
+  const queryClient = useQueryClient();
+  const workspaceReadQuery = useQuery({
+    queryKey: companyWorkspaceQueryKey(accountId, "overview"),
+    queryFn: () => getCompanyWorkspaceRead({ data: { accountId, sections: [] } }),
+    initialData: initialRead,
+    staleTime: COMPANY_WORKSPACE_STALE_TIME_MS,
+    refetchOnWindowFocus: true,
+  });
+  const { core, overview } = workspaceReadQuery.data;
   const { company: account, contacts } = core;
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const router = useRouter();
   const sectionEnablement = getCompanyWorkspaceSectionEnablement(search.tab ?? "overview");
   const commercialQuery = useCompanyWorkspaceSection(account.id, "commercial", {
     enabled: sectionEnablement.commercial,
@@ -112,6 +129,11 @@ function AccountDetailRoute() {
         delete next[signal.id];
         return next;
       });
+      void invalidateCompanyWorkspaceMutation(
+        queryClient,
+        account.id,
+        "dismiss_relationship_signal",
+      );
       toast.success("Signal dismissed");
     } catch {
       toast.error("Could not dismiss signal");
@@ -139,6 +161,11 @@ function AccountDetailRoute() {
         return;
       }
 
+      void invalidateCompanyWorkspaceMutation(
+        queryClient,
+        account.id,
+        "run_relationship_intelligence",
+      );
       toast.success("Relationship intelligence started");
     } catch (error) {
       toast.error(
@@ -292,7 +319,7 @@ function AccountDetailRoute() {
                   state={overview}
                   isLoading={false}
                   emptyMessage="No open relationship signals for this account."
-                  onRetry={() => void router.invalidate()}
+                  onRetry={() => void workspaceReadQuery.refetch()}
                 >
                   {(data) => {
                     const openSignals = data.openSignals.filter(

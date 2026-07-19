@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { companyWorkspaceQueryKey } from "@/lib/company-workspace/invalidation";
 import { getCompanyWorkspaceSection } from "@/server-functions/company-workspace";
 import type {
   CompanyWorkspaceSection,
@@ -20,7 +21,7 @@ export function useCompanyWorkspaceSection<S extends CompanyWorkspaceSection>(
     })) as SectionState<CompanyWorkspaceSectionData[S]>;
 
   return useQuery<SectionState<CompanyWorkspaceSectionData[S]>>({
-    queryKey: ["company-workspace", accountId, section],
+    queryKey: companyWorkspaceQueryKey(accountId, section),
     enabled: Boolean(accountId) && (options.enabled ?? true),
     staleTime: COMPANY_WORKSPACE_STALE_TIME_MS,
     refetchOnWindowFocus: true,
