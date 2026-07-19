@@ -1,6 +1,7 @@
 import { getAccountTimeline } from "@/server/repositories/account-timeline";
 import { listAccountContacts } from "@/server/repositories/account-contacts";
 import { getAccount } from "@/server/repositories/accounts";
+import { getCompanyWorkspaceOverviewMetrics } from "@/server/repositories/company-workspace";
 import { listClients } from "@/server/repositories/clients";
 import { listEngagementsByClient } from "@/server/repositories/engagements";
 import { listJobSheets } from "@/server/repositories/job-sheets";
@@ -12,6 +13,8 @@ import { toCompanyWorkspaceError } from "./errors";
 import type {
   CompanyWorkspace,
   CompanyWorkspaceCore,
+  CompanyWorkspaceOverview,
+  CompanyWorkspaceRead,
   CompanyWorkspaceSection,
   CompanyWorkspaceSectionData,
   SectionState,
@@ -37,6 +40,32 @@ export async function loadCompanyWorkspaceCore(accountId: string): Promise<Compa
     },
     contacts,
   };
+}
+
+async function loadCompanyWorkspaceOverview(
+  accountId: string,
+  requestId: string,
+): Promise<SectionState<CompanyWorkspaceOverview>> {
+  try {
+    const [metrics, signals] = await Promise.all([
+      getCompanyWorkspaceOverviewMetrics(accountId),
+      listRelationshipSignals({ account_id: accountId, openOnly: true }),
+    ]);
+    return {
+      status: "ready",
+      data: {
+        linkedClientCount: metrics.linked_client_count,
+        activeEngagementCount: metrics.active_engagement_count,
+        quoteCount: metrics.quote_count,
+        quoteTotalValue: metrics.quote_total_value,
+        quoteCurrency: metrics.quote_currency,
+        openSignalCount: metrics.open_signal_count,
+        openSignals: signals.slice(0, 5),
+      },
+    };
+  } catch (error) {
+    return { status: "error", error: toCompanyWorkspaceError(error, undefined, requestId) };
+  }
 }
 
 async function loadSectionData<Section extends CompanyWorkspaceSection>(
@@ -89,6 +118,25 @@ export async function loadCompanyWorkspaceSection<Section extends CompanyWorkspa
   } catch (error) {
     return { status: "error", error: toCompanyWorkspaceError(error, section, requestId) };
   }
+}
+
+export async function loadCompanyWorkspaceRead(
+  accountId: string,
+  requestedSections: CompanyWorkspaceSection[] = [],
+  requestId: string = crypto.randomUUID(),
+): Promise<CompanyWorkspaceRead> {
+  const [core, overview, sectionEntries] = await Promise.all([
+    loadCompanyWorkspaceCore(accountId),
+    loadCompanyWorkspaceOverview(accountId, requestId),
+    Promise.all(
+      requestedSections.map(
+        async (section) =>
+          [section, await loadCompanyWorkspaceSection(accountId, section, requestId)] as const,
+      ),
+    ),
+  ]);
+
+  return { requestId, core, overview, sections: Object.fromEntries(sectionEntries) };
 }
 
 export async function loadCompanyWorkspace(

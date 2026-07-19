@@ -45,6 +45,16 @@ export type CompanyWorkspaceCore = {
   contacts: AccountContact[];
 };
 
+export type CompanyWorkspaceOverview = {
+  linkedClientCount: number;
+  activeEngagementCount: number;
+  quoteCount: number;
+  quoteTotalValue: number;
+  quoteCurrency: string;
+  openSignalCount: number;
+  openSignals: RelationshipSignal[];
+};
+
 export type CompanyWorkspaceSectionData = {
   commercial: {
     clients: Client[];
@@ -71,4 +81,11 @@ export type CompanyWorkspaceSections = {
 export type CompanyWorkspace = {
   core: CompanyWorkspaceCore;
   sections: CompanyWorkspaceSections;
+};
+
+export type CompanyWorkspaceRead = {
+  requestId: string;
+  core: CompanyWorkspaceCore;
+  overview: SectionState<CompanyWorkspaceOverview>;
+  sections: Partial<CompanyWorkspaceSections>;
 };

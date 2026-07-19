@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
   loadCompanyWorkspaceCore,
+  loadCompanyWorkspaceRead,
   loadCompanyWorkspaceSection,
 } from "@/server/company-workspace/loaders";
 import type { CompanyWorkspaceSection } from "@/server/company-workspace/types";
@@ -9,6 +10,9 @@ import type { CompanyWorkspaceSection } from "@/server/company-workspace/types";
 type CompanyWorkspaceInput = { accountId: string };
 type CompanyWorkspaceSectionInput = CompanyWorkspaceInput & {
   section: CompanyWorkspaceSection;
+};
+type CompanyWorkspaceReadInput = CompanyWorkspaceInput & {
+  sections: CompanyWorkspaceSection[];
 };
 
 const companyWorkspaceSections = [
@@ -37,6 +41,30 @@ function validateCompanyWorkspaceSectionInput(data: unknown): CompanyWorkspaceSe
   }
   return { ...input, section: section as CompanyWorkspaceSection };
 }
+
+function validateCompanyWorkspaceReadInput(data: unknown): CompanyWorkspaceReadInput {
+  const input = validateCompanyWorkspaceInput(data);
+  const sections = (data as { sections?: unknown }).sections ?? [];
+  if (!Array.isArray(sections)) throw new Error("Company Workspace sections must be an array");
+  if (
+    sections.some(
+      (section) => !companyWorkspaceSections.includes(section as CompanyWorkspaceSection),
+    )
+  ) {
+    throw new Error("Invalid Company Workspace section");
+  }
+  if (new Set(sections).size !== sections.length) {
+    throw new Error("Company Workspace sections must be unique");
+  }
+  return { ...input, sections: sections as CompanyWorkspaceSection[] };
+}
+
+export const getCompanyWorkspaceRead = createServerFn({ method: "GET" })
+  .validator(validateCompanyWorkspaceReadInput)
+  .handler(async ({ data }) => {
+    await requireNeonAuthSession();
+    return loadCompanyWorkspaceRead(data.accountId, data.sections);
+  });
 
 export const getCompanyWorkspaceCore = createServerFn({ method: "GET" })
   .validator(validateCompanyWorkspaceInput)
