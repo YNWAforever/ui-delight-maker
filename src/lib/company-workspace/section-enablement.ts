@@ -4,14 +4,20 @@ export type CompanyWorkspaceTab = "overview" | "stakeholders" | "timeline" | "ev
 
 export type CompanyWorkspaceSectionEnablement = Record<CompanyWorkspaceSection, boolean>;
 
-// Task 1 preserves the eager baseline. Task 4 replaces this policy with tab-scoped loading.
+const none: CompanyWorkspaceSectionEnablement = {
+  commercial: false,
+  delivery_finance: false,
+  activity: false,
+  intelligence: false,
+};
+
 export function getCompanyWorkspaceSectionEnablement(
-  _tab: CompanyWorkspaceTab,
+  tab: CompanyWorkspaceTab,
 ): CompanyWorkspaceSectionEnablement {
-  return {
-    commercial: true,
-    delivery_finance: true,
-    activity: true,
-    intelligence: true,
-  };
+  if (tab === "timeline") return { ...none, activity: true };
+  if (tab === "events") {
+    return { ...none, commercial: true, delivery_finance: true, activity: true };
+  }
+  if (tab === "tasks") return { ...none, commercial: true, delivery_finance: true };
+  return none;
 }

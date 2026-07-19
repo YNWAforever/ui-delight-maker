@@ -7,6 +7,7 @@ import type {
 } from "@/server/company-workspace/types";
 
 const transientRetryDelayMs = 250;
+export const COMPANY_WORKSPACE_STALE_TIME_MS = 30_000;
 
 export function useCompanyWorkspaceSection<S extends CompanyWorkspaceSection>(
   accountId: string,
@@ -21,6 +22,8 @@ export function useCompanyWorkspaceSection<S extends CompanyWorkspaceSection>(
   return useQuery<SectionState<CompanyWorkspaceSectionData[S]>>({
     queryKey: ["company-workspace", accountId, section],
     enabled: Boolean(accountId) && (options.enabled ?? true),
+    staleTime: COMPANY_WORKSPACE_STALE_TIME_MS,
+    refetchOnWindowFocus: true,
     retry: false,
     queryFn: async () => {
       const first = await fetchSection();
