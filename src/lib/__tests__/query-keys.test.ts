@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CRM_STALE_TIME_MS } from "../performance/query-policy";
 import { crmQueryKeys } from "../query-keys";
 import { routeQueryOptions } from "../route-query";
 
@@ -36,5 +37,6 @@ describe("route query options", () => {
 
     expect(options.queryKey).toEqual(["clients", "detail", "c1"]);
     expect(options.queryFn).toBe(queryFn);
+    expect(options.staleTime).toBe(CRM_STALE_TIME_MS);
   });
 });

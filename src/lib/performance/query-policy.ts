@@ -3,13 +3,27 @@ import { QueryClient } from "@tanstack/react-query";
 export const CRM_STALE_TIME_MS = 30_000;
 export const CRM_GC_TIME_MS = 300_000;
 
-export function shouldRetryRead(failureCount: number, error: unknown) {
-  const status =
-    typeof error === "object" && error !== null && "status" in error
-      ? Number((error as { status: unknown }).status)
-      : 0;
+const transientNetworkCodes = new Set(["ECONNRESET", "ETIMEDOUT", "ECONNREFUSED", "EAI_AGAIN"]);
 
-  return failureCount < 1 && (status === 0 || status >= 500);
+export function shouldRetryRead(failureCount: number, error: unknown) {
+  if (failureCount >= 1) {
+    return false;
+  }
+
+  if (error instanceof TypeError) {
+    return true;
+  }
+
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+
+  const { code, status } = error as { code?: unknown; status?: unknown };
+  if (typeof status === "number" && status >= 500) {
+    return true;
+  }
+
+  return typeof code === "string" && transientNetworkCodes.has(code.toUpperCase());
 }
 
 export function createAppQueryClient() {
