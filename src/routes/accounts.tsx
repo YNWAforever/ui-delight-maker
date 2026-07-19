@@ -4,14 +4,12 @@ import { PageHeader } from "@/components/page-header";
 import { AccountSummaryCard } from "@/components/relationship/account-summary-card";
 import { AccountPreviewPanel } from "@/components/relationship/account-preview-panel";
 import { WorkspaceViewSwitcher } from "@/components/relationship/workspace-view-switcher";
-import { getClients } from "@/server-functions/clients";
-import { getAccounts } from "@/server-functions/accounts";
 import { getCompanyWorkspaceCore } from "@/server-functions/company-workspace";
-import {
-  getWorkspacePreferences,
-  togglePersonalWorkspaceFavorite,
-} from "@/server-functions/workspace-preferences";
-import { getRelationshipSignals } from "@/server-functions/relationship-signals";
+import { getClientsPage } from "@/server-functions/clients";
+import { getAccountsIndexRead } from "@/server-functions/accounts-index";
+import { togglePersonalWorkspaceFavorite } from "@/server-functions/workspace-preferences";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import { toCompanyWorkspaceSummary } from "@/lib/relationship/company-workspace";
 import { useIsExactPath } from "@/lib/routing-utils";
 import { companiesSearchSchema, companySortFromKey, companySortToKey } from "@/lib/admin-ux-search";
@@ -25,16 +23,17 @@ const DEFAULT_ACCOUNT_VIEW_CONFIG: WorkspaceViewConfig = {
 
 export const Route = createFileRoute("/accounts")({
   validateSearch: companiesSearchSchema,
-  loader: async () => {
-    const [accounts, clients, signals, preferences] = await Promise.all([
-      getAccounts({}),
-      getClients({}),
-      getRelationshipSignals({ data: { openOnly: true } }),
-      getWorkspacePreferences({ data: { objectType: "account" } }),
-    ]);
-
-    return { accounts, clients, signals, preferences };
-  },
+  loaderDeps: ({ search }) => ({ search }),
+  loader: ({ context, deps: { search } }) =>
+    context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: crmQueryKeys.accounts.list(search),
+        queryFn: () =>
+          getAccountsIndexRead({
+            data: { lifecycle_stage: search.lifecycle, page: 1, limit: 50 },
+          }),
+      }),
+    ),
   head: () => ({
     meta: [{ title: "Accounts - Fimmick ClientOps" }],
   }),
@@ -50,7 +49,7 @@ function AccountsRoute() {
 }
 
 function AccountsIndex() {
-  const { accounts, clients, signals, preferences } = Route.useLoaderData();
+  const { accounts, accountCounts, preferences } = Route.useLoaderData();
   const router = useRouter();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -75,23 +74,6 @@ function AccountsIndex() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
-  const signalCountByAccount = new Map<string, number>();
-  const clientCountByAccount = new Map<string, number>();
-
-  for (const signal of signals) {
-    signalCountByAccount.set(
-      signal.account_id,
-      (signalCountByAccount.get(signal.account_id) ?? 0) + 1,
-    );
-  }
-
-  for (const client of clients) {
-    if (!client.account_id) continue;
-    clientCountByAccount.set(
-      client.account_id,
-      (clientCountByAccount.get(client.account_id) ?? 0) + 1,
-    );
-  }
 
   const rows = useMemo(() => {
     const filtered = accounts.filter((account) => {
@@ -135,7 +117,7 @@ function AccountsIndex() {
       toCompanyWorkspaceSummary({
         account,
         contacts: [],
-        clients: clients.filter((client) => client.account_id === account.id),
+        clients: [],
         leads: [],
         quotes: [],
         tasks: [],
@@ -144,14 +126,17 @@ function AccountsIndex() {
     setPreviewLoading(true);
     setPreviewError(null);
 
-    void getCompanyWorkspaceCore({ data: { accountId: selectedAccountId } })
-      .then((core) => {
+    void Promise.all([
+      getCompanyWorkspaceCore({ data: { accountId: selectedAccountId } }),
+      getClientsPage({ data: { account_id: selectedAccountId, page: 1, limit: 100 } }),
+    ])
+      .then(([core, clientPage]) => {
         if (!cancelled) {
           setSelectedSummary(
             toCompanyWorkspaceSummary({
               account: core.company,
               contacts: core.contacts,
-              clients: clients.filter((client) => client.account_id === core.company.id),
+              clients: clientPage.items,
               leads: [],
               quotes: [],
               tasks: [],
@@ -169,7 +154,7 @@ function AccountsIndex() {
     return () => {
       cancelled = true;
     };
-  }, [accounts, clients, retryKey, selectedAccountId]);
+  }, [accounts, retryKey, selectedAccountId]);
 
   const selectedFavorite = selectedSummary
     ? preferences.favorites.some((favorite) => favorite.href === `/accounts/${selectedSummary.id}`)
@@ -294,8 +279,8 @@ function AccountsIndex() {
               >
                 <AccountSummaryCard
                   account={account}
-                  openSignalCount={signalCountByAccount.get(account.id) ?? 0}
-                  linkedClientCount={clientCountByAccount.get(account.id) ?? 0}
+                  openSignalCount={accountCounts[account.id]?.openSignalCount ?? 0}
+                  linkedClientCount={accountCounts[account.id]?.linkedClientCount ?? 0}
                 />
               </button>
             ))}

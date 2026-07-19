@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useRouter } from "@tanstack/react-router";
 import { Download, Plus, Sparkles, X } from "lucide-react";
+import { z } from "zod";
 import { toast } from "sonner";
 
 import {
@@ -47,10 +48,18 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useIsExactPath } from "@/lib/routing-utils";
 import type { Lead } from "@/lib/types";
-import { getLeads, createLead, updateLead } from "@/server-functions/leads";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
+import { getLeadsPage, createLead, updateLead } from "@/server-functions/leads";
+
+const leadListSearchSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1).catch(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50).catch(50),
+});
 
 export const Route = createFileRoute("/leads")({
-  head: () => ({
+  validateSearch: leadListSearchSchema,
+  loaderDeps: ({ search }) => ({ search }),  head: () => ({
     meta: [
       { title: "Leads — Fimmick ClientOps" },
       {
@@ -59,8 +68,13 @@ export const Route = createFileRoute("/leads")({
       },
     ],
   }),
-  loader: () => getLeads({}),
-  component: LeadsRoute,
+  loader: ({ context, deps: { search } }) =>
+    context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: crmQueryKeys.leads.list(search),
+        queryFn: () => getLeadsPage({ data: search }),
+      }),
+    ),  component: LeadsRoute,
 });
 
 const STATUSES = ["new", "qualified", "replied", "quoted", "approved", "won", "lost"];
@@ -75,7 +89,7 @@ function LeadsRoute() {
 }
 
 function LeadsPage() {
-  const loaderLeads = Route.useLoaderData();
+  const loaderLeads = Route.useLoaderData().items;
   const router = useRouter();
   const [rows, setRows] = useState<Lead[]>(loaderLeads);
   const [query, setQuery] = useState("");

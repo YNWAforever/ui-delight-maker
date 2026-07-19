@@ -1,4 +1,5 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { z } from "zod";
 
 import { JobSheetStatusBadge } from "@/components/job-sheets/job-sheet-status-badge";
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
@@ -15,7 +16,9 @@ import {
 import { formatCurrencyAmount, formatDate } from "@/lib/format";
 import { useIsExactPath } from "@/lib/routing-utils";
 import type { JobSheet } from "@/lib/types";
-import { getJobSheets } from "@/server-functions/job-sheets";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
+import { getJobSheetsPage } from "@/server-functions/job-sheets";
 
 type AcceptedValueSummaryRow = Pick<JobSheet, "status" | "currency" | "total_amount">;
 
@@ -38,9 +41,21 @@ export function formatAcceptedValueSummary(rows: AcceptedValueSummaryRow[]): str
     .join(" / ");
 }
 
+const jobSheetListSearchSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1).catch(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50).catch(50),
+});
+
 export const Route = createFileRoute("/job-sheets")({
-  loader: () => getJobSheets({}),
-  head: () => ({
+  validateSearch: jobSheetListSearchSchema,
+  loaderDeps: ({ search }) => ({ search }),
+  loader: ({ context, deps: { search } }) =>
+    context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: crmQueryKeys.jobSheets.list(search),
+        queryFn: () => getJobSheetsPage({ data: search }),
+      }),
+    ),  head: () => ({
     meta: [
       { title: "Job Sheets - Fimmick ClientOps" },
       {
@@ -61,7 +76,7 @@ function JobSheetsPage() {
 }
 
 function JobSheetsIndex() {
-  const rows = Route.useLoaderData();
+  const rows = Route.useLoaderData().items;
   const awaitingReview = rows.filter((row) => row.status !== "accepted").length;
   const acceptedValue = formatAcceptedValueSummary(rows);
 

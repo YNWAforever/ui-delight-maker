@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { Archive, Copy, MoreHorizontal, Plus } from "lucide-react";
+import { z } from "zod";
 import { toast } from "sonner";
 
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
@@ -25,7 +26,9 @@ import {
 } from "@/components/ui/table";
 import { formatCurrencyAmount, formatDate, formatHKD } from "@/lib/format";
 import { useIsExactPath } from "@/lib/routing-utils";
-import { getQuotes } from "@/server-functions/quotes";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
+import { getQuotesPage } from "@/server-functions/quotes";
 import { USER_RECORD } from "@/lib/users";
 import type { Quote } from "@/lib/types";
 
@@ -35,9 +38,21 @@ const userById = (id: string | null | undefined) =>
 const leadById = (_id: string | null | undefined): { company_name: string } | undefined =>
   undefined;
 
+const quoteListSearchSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1).catch(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50).catch(50),
+});
+
 export const Route = createFileRoute("/quotes")({
-  loader: () => getQuotes({}),
-  head: () => ({
+  validateSearch: quoteListSearchSchema,
+  loaderDeps: ({ search }) => ({ search }),
+  loader: ({ context, deps: { search } }) =>
+    context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: crmQueryKeys.quotes.list(search),
+        queryFn: () => getQuotesPage({ data: search }),
+      }),
+    ),  head: () => ({
     meta: [
       { title: "Quotes — Fimmick ClientOps" },
       { name: "description", content: "All quotes with status, value, and approval state." },
@@ -65,7 +80,7 @@ function QuotesPage() {
 }
 
 function QuotesIndex() {
-  const loaderQuotes = Route.useLoaderData();
+  const loaderQuotes = Route.useLoaderData().items;
   const [rows, setRows] = useState<Quote[]>(loaderQuotes);
   const [tab, setTab] = useState("all");
   const [query, setQuery] = useState("");

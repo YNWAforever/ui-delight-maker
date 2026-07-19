@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useRouter } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
+import { z } from "zod";
 import { toast } from "sonner";
 
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
@@ -35,16 +36,30 @@ import {
 import { formatCompactHKD, formatCount, formatDate } from "@/lib/format";
 import { getRenewalWindow } from "@/lib/engagement-utils";
 import { getClientPortfolioMetrics } from "@/lib/sales-workspace";
-import { getClients, createClient } from "@/server-functions/clients";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
+import { getClientsPage, createClient } from "@/server-functions/clients";
 import { APP_USERS, userById } from "@/lib/users";
 import { useIsExactPath } from "@/lib/routing-utils";
 import type { Client, RenewalRisk } from "@/lib/types";
 
 type ClientRow = Client & { renewal_risk: RenewalRisk };
 
+const clientListSearchSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1).catch(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50).catch(50),
+});
+
 export const Route = createFileRoute("/clients")({
-  loader: () => getClients({}),
-  head: () => ({
+  validateSearch: clientListSearchSchema,
+  loaderDeps: ({ search }) => ({ search }),
+  loader: ({ context, deps: { search } }) =>
+    context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: crmQueryKeys.clients.list(search),
+        queryFn: () => getClientsPage({ data: search }),
+      }),
+    ),  head: () => ({
     meta: [
       { title: "Clients — Fimmick ClientOps" },
       { name: "description", content: "Active clients with health score, tier, and renewal date." },
@@ -68,7 +83,7 @@ function ClientsPage() {
 }
 
 function ClientsIndex() {
-  const loaderClients = Route.useLoaderData();
+  const loaderClients = Route.useLoaderData().items;
   const router = useRouter();
   const [rows, setRows] = useState<ClientRow[]>(loaderClients);
   const [tier, setTier] = useState("all");

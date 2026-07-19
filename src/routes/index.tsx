@@ -21,23 +21,23 @@ import {
 } from "@/lib/admin-ux-search";
 import type { ActivityLog, Lead, LeadStatus } from "@/lib/types";
 import { APP_USERS } from "@/lib/users";
-import { getActivityLogs } from "@/server-functions/agent-runs";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
+import { getDashboardRead } from "@/server-functions/dashboard";
 import { moveLeadStage, triggerLeadAgent, triggerLeadReplyDraft } from "@/server-functions/leads";
-import { getPipelineData } from "@/server-functions/pipeline";
-import { getProducts } from "@/server-functions/products";
 import { triggerQuoteAgent } from "@/server-functions/quotes";
 import { createTask } from "@/server-functions/tasks";
 
 export const Route = createFileRoute("/")({
   validateSearch: revenueDeskSearchSchema,
-  loader: async () => {
-    const [pipeline, activityLogs, products] = await Promise.all([
-      getPipelineData(),
-      getActivityLogs({}),
-      getProducts({ data: { activeOnly: true } }),
-    ]);
-    return { ...pipeline, activityLogs, products };
-  },
+  loaderDeps: ({ search }) => ({ search }),
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: crmQueryKeys.dashboard(),
+        queryFn: () => getDashboardRead(),
+      }),
+    ),
   head: () => ({
     meta: [
       { title: "Revenue Desk - Fimmick ClientOps" },
