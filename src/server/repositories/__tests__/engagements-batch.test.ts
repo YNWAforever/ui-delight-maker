@@ -15,11 +15,14 @@ describe("listEngagementsByClientIds", () => {
     queryMock.mockResolvedValue([]);
   });
 
-  it("loads all client engagements in one UUID-array query", async () => {
+  it("loads all client engagements in one UUID-array query preserving client order", async () => {
     await listEngagementsByClientIds(["client-1", "client-2"]);
 
     expect(queryMock).toHaveBeenCalledTimes(1);
     expect(queryMock.mock.calls[0]?.[0]).toContain("client_id = any($1::uuid[])");
+    expect(queryMock.mock.calls[0]?.[0]).toContain(
+      "array_position($1::uuid[], client_id), start_date desc",
+    );
     expect(queryMock.mock.calls[0]?.[1]).toEqual([["client-1", "client-2"]]);
   });
 

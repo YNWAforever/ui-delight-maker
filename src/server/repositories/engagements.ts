@@ -26,7 +26,7 @@ export async function listEngagementsByClientIds(clientIds: string[]) {
       select *
       from engagements
       where client_id = any($1::uuid[])
-      order by start_date desc
+      order by array_position($1::uuid[], client_id), start_date desc
     `,
     [clientIds],
   );
