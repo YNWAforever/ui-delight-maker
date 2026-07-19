@@ -20,6 +20,7 @@ type PageResult = {
 
 const loadAccountsPage = async () => (await import("../accounts")).listAccountsPage;
 const loadClientsPage = async () => (await import("../clients")).listClientsPage;
+const loadLeadsPage = async () => (await import("../leads")).listLeadsPage;
 const accountFilters = {
   owner: "owner-1",
   cs_owner: "cs-1",
@@ -35,6 +36,23 @@ const clientFilters = {
 };
 const clientFilterValues = ["enterprise", "account-1", 75];
 const clientSqlMarkers = ["c.tier", "c.account_id", "rollup_health_score"];
+const leadFilters = {
+  status: "qualified",
+  source: "web",
+  assigned_to: "owner-1",
+  contact_id: "contact-1",
+  account_id: "account-1",
+  source_campaign_id: "campaign-1",
+};
+const leadFilterValues = ["qualified", "web", "owner-1", "contact-1", "account-1", "campaign-1"];
+const leadSqlMarkers = [
+  "status",
+  "source",
+  "assigned_to",
+  "contact_id",
+  "account_id",
+  "source_campaign_id",
+];
 
 describe("paginated account repository", () => {
   beforeEach(() => {
@@ -132,6 +150,58 @@ describe("paginated client repository", () => {
     mockQuery.mockResolvedValueOnce([]);
     mockQueryOne.mockResolvedValueOnce({ total: 12 });
     const listPage = await loadClientsPage();
+
+    await expect(listPage({ page: 4, limit: 10 })).resolves.toEqual({
+      items: [],
+      total: 12,
+      page: 4,
+      limit: 10,
+    });
+  });
+});
+describe("paginated lead repository", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockQuery.mockResolvedValue([{ id: "lead-1" }]);
+    mockQueryOne.mockResolvedValue({ total: "7" });
+  });
+
+  it("defaults to page 1 with 50 rows and returns the total", async () => {
+    const listPage = await loadLeadsPage();
+
+    await expect(listPage()).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: "lead-1" })],
+      total: 7,
+      page: 1,
+      limit: 50,
+    });
+
+    const [listSql, listValues] = mockQuery.mock.calls[0];
+    expect(listSql).toMatch(/order by created_at desc[\s\S]+limit \$1 offset \$2/i);
+    expect(listValues).toEqual([50, 0]);
+    expect(mockQueryOne).toHaveBeenCalledWith(expect.stringContaining("count(*)"), []);
+  });
+
+  it("pushes filters into list/count SQL and clamps the limit to 100", async () => {
+    const listPage = await loadLeadsPage();
+
+    const result = await listPage({ ...leadFilters, page: 2, limit: 500 });
+
+    expect(result).toMatchObject({ total: 7, page: 2, limit: 100 });
+    const [listSql, listValues] = mockQuery.mock.calls[0];
+    const [countSql, countValues] = mockQueryOne.mock.calls[0];
+    for (const marker of leadSqlMarkers) {
+      expect(listSql).toContain(marker);
+      expect(countSql).toContain(marker);
+    }
+    expect(listValues).toEqual([...leadFilterValues, 100, 100]);
+    expect(countValues).toEqual(leadFilterValues);
+  });
+
+  it("returns an empty page without changing the total", async () => {
+    mockQuery.mockResolvedValueOnce([]);
+    mockQueryOne.mockResolvedValueOnce({ total: 12 });
+    const listPage = await loadLeadsPage();
 
     await expect(listPage({ page: 4, limit: 10 })).resolves.toEqual({
       items: [],

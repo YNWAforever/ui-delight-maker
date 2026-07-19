@@ -13,8 +13,10 @@ import {
   createLead as createLeadInNeon,
   getLeadWithActivity,
   listLeads,
+  listLeadsPage,
   moveLeadStage as moveLeadStageInNeon,
   updateLead as updateLeadInNeon,
+  type LeadPageFilters,
 } from "@/server/repositories/leads";
 import { serializeActivityLog, serializeAgentRun } from "@/server-functions/serializers";
 import type { Engagement, Lead, LeadStatus } from "@/lib/types";
@@ -64,6 +66,14 @@ export const getLeads = createServerFn({ method: "GET" })
     await requireCapability("leads.view");
     await requireNeonAuthSession();
     return listLeads(data);
+  });
+
+export const getLeadsPage = createServerFn({ method: "GET" })
+  .validator((data: unknown) => (data ?? {}) as LeadPageFilters)
+  .handler(async ({ data }) => {
+    await requireCapability("leads.view");
+    await requireNeonAuthSession();
+    return listLeadsPage(data);
   });
 
 export const getLead = createServerFn({ method: "GET" })

@@ -4,8 +4,14 @@ import { createClient } from "@/server/repositories/clients";
 import { createClientContact } from "@/server/repositories/client-contacts";
 import { createEngagement } from "@/server/repositories/engagements";
 import type { ActivityLog, Engagement, Lead, LeadStatus } from "@/lib/types";
+import {
+  normalizePagination,
+  parseCount,
+  type PaginatedResult,
+  type PaginationInput,
+} from "@/server/repositories/pagination";
 
-type LeadFilters = {
+export type LeadFilters = {
   status?: string;
   source?: string;
   assigned_to?: string;
@@ -13,6 +19,8 @@ type LeadFilters = {
   account_id?: string;
   source_campaign_id?: string;
 };
+
+export type LeadPageFilters = LeadFilters & PaginationInput;
 
 type CreateLeadInput = Pick<Lead, "company_name" | "source"> &
   Partial<
@@ -74,6 +82,43 @@ export async function listLeads(filters: LeadFilters = {}) {
     `,
     where.values,
   );
+}
+
+export async function listLeadsPage(
+  filters: LeadPageFilters = {},
+): Promise<PaginatedResult<Lead>> {
+  const where = buildFilters([
+    ["status", filters.status],
+    ["source", filters.source],
+    ["assigned_to", filters.assigned_to],
+    ["contact_id", filters.contact_id],
+    ["account_id", filters.account_id],
+    ["source_campaign_id", filters.source_campaign_id],
+  ]);
+  const { page, limit, offset } = normalizePagination(filters);
+
+  const [items, count] = await Promise.all([
+    query<Lead>(
+      `
+        select *
+        from leads
+        ${where.sql}
+        order by created_at desc
+        limit $${where.values.length + 1} offset $${where.values.length + 2}
+      `,
+      [...where.values, limit, offset],
+    ),
+    queryOne<{ total: number | string }>(
+      `
+        select count(*) as total
+        from leads
+        ${where.sql}
+      `,
+      where.values,
+    ),
+  ]);
+
+  return { items, total: parseCount(count), page, limit };
 }
 
 export async function getLeadWithActivity(id: string) {
