@@ -1,8 +1,12 @@
 import { getAccountTimeline } from "@/server/repositories/account-timeline";
 import { listAccountContacts } from "@/server/repositories/account-contacts";
 import { getAccount } from "@/server/repositories/accounts";
+import {
+  getCompanyWorkspaceOverviewMetrics,
+  listCompanyWorkspaceQuoteTotals,
+} from "@/server/repositories/company-workspace";
 import { listClients } from "@/server/repositories/clients";
-import { listEngagementsByClient } from "@/server/repositories/engagements";
+import { listEngagementsByClientIds } from "@/server/repositories/engagements";
 import { listJobSheets } from "@/server/repositories/job-sheets";
 import { listLeads } from "@/server/repositories/leads";
 import { listQuotes } from "@/server/repositories/quotes";
@@ -12,6 +16,8 @@ import { toCompanyWorkspaceError } from "./errors";
 import type {
   CompanyWorkspace,
   CompanyWorkspaceCore,
+  CompanyWorkspaceOverview,
+  CompanyWorkspaceRead,
   CompanyWorkspaceSection,
   CompanyWorkspaceSectionData,
   SectionState,
@@ -39,6 +45,36 @@ export async function loadCompanyWorkspaceCore(accountId: string): Promise<Compa
   };
 }
 
+async function loadCompanyWorkspaceOverview(
+  accountId: string,
+  requestId: string,
+): Promise<SectionState<CompanyWorkspaceOverview>> {
+  try {
+    const [metrics, quoteTotals, signals] = await Promise.all([
+      getCompanyWorkspaceOverviewMetrics(accountId),
+      listCompanyWorkspaceQuoteTotals(accountId),
+      listRelationshipSignals({ account_id: accountId, openOnly: true }),
+    ]);
+    return {
+      status: "ready",
+      data: {
+        linkedClientCount: metrics.linked_client_count,
+        activeEngagementCount: metrics.active_engagement_count,
+        quoteCount: metrics.quote_count,
+        quoteTotals: quoteTotals.map((total) => ({
+          currency: total.currency,
+          quoteCount: total.quote_count,
+          totalValue: total.total_value,
+        })),
+        openSignalCount: metrics.open_signal_count,
+        openSignals: signals.slice(0, 5),
+      },
+    };
+  } catch (error) {
+    return { status: "error", error: toCompanyWorkspaceError(error, undefined, requestId) };
+  }
+}
+
 async function loadSectionData<Section extends CompanyWorkspaceSection>(
   accountId: string,
   section: Section,
@@ -49,9 +85,7 @@ async function loadSectionData<Section extends CompanyWorkspaceSection>(
       listLeads({ account_id: accountId }),
       listQuotes({ account_id: accountId }),
     ]);
-    const engagements = (
-      await Promise.all(clients.map((client) => listEngagementsByClient(client.id)))
-    ).flat();
+    const engagements = await listEngagementsByClientIds(clients.map((client) => client.id));
     return {
       clients,
       engagements,
@@ -89,6 +123,37 @@ export async function loadCompanyWorkspaceSection<Section extends CompanyWorkspa
   } catch (error) {
     return { status: "error", error: toCompanyWorkspaceError(error, section, requestId) };
   }
+}
+
+export async function loadCompanyWorkspaceRead(
+  accountId: string,
+  requestedSections: CompanyWorkspaceSection[] = [],
+  requestId: string = crypto.randomUUID(),
+  now: () => Date = () => new Date(),
+): Promise<CompanyWorkspaceRead> {
+  const cacheMetadata = { fetchedAt: now().toISOString(), freshForMs: 30_000 };
+  const [core, overview, sectionEntries] = await Promise.all([
+    loadCompanyWorkspaceCore(accountId),
+    loadCompanyWorkspaceOverview(accountId, requestId),
+    Promise.all(
+      requestedSections.map(
+        async (section) =>
+          [section, await loadCompanyWorkspaceSection(accountId, section, requestId)] as const,
+      ),
+    ),
+  ]);
+
+  return {
+    requestId,
+    core,
+    overview,
+    sections: Object.fromEntries(sectionEntries),
+    cache: {
+      core: cacheMetadata,
+      overview: cacheMetadata,
+      sections: Object.fromEntries(requestedSections.map((section) => [section, cacheMetadata])),
+    },
+  };
 }
 
 export async function loadCompanyWorkspace(

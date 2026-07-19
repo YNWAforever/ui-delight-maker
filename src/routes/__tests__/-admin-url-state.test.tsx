@@ -29,6 +29,15 @@ vi.mock("@tanstack/react-router", () => ({
   useRouter: vi.fn(() => ({ invalidate: invalidateMock })),
 }));
 
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: ({ initialData }: { initialData: unknown }) => ({
+    data: initialData,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
+  useQueryClient: () => ({ getQueryData: vi.fn(), invalidateQueries: vi.fn() }),
+}));
+
 vi.mock("@/components/pipeline/pipeline-toolbar", () => ({
   PipelineToolbar: (props: Record<string, unknown>) => {
     captures.toolbar = props;
@@ -77,7 +86,13 @@ vi.mock("@/components/quotes/quote-pdf-preview", () => ({
   }),
 }));
 vi.mock("@/hooks/use-company-workspace-section", () => ({
-  useCompanyWorkspaceSection: () => ({ data: undefined, isLoading: false, refetch: vi.fn() }),
+  COMPANY_WORKSPACE_STALE_TIME_MS: 30_000,
+  useCompanyWorkspaceSection: () => ({
+    data: undefined,
+    isLoading: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
 }));
 vi.mock("@/hooks/use-route-polling-refresh", () => ({ useRoutePollingRefresh: vi.fn() }));
 vi.mock("@/lib/business-date", () => ({ getBusinessDateKey: () => "2026-07-14" }));
@@ -145,6 +160,7 @@ vi.mock("@/server-functions/workspace-preferences", () => ({
 }));
 vi.mock("@/server-functions/company-workspace", () => ({
   getCompanyWorkspaceCore: vi.fn(),
+  getCompanyWorkspaceRead: vi.fn(),
 }));
 import { Route } from "../index";
 import { Route as AccountsRoute } from "../accounts";
@@ -429,17 +445,38 @@ describe("Admin detail tab runtime navigation", () => {
       name: "account",
       route: AccountDetailRoute,
       loader: {
-        company: {
-          id: "account-1",
-          name: "Northstar",
-          lifecycle_stage: "active_client",
-          account_owner: null,
-          cs_owner: null,
-          arr: 0,
-          created_at: "2026-07-01",
-          updated_at: "2026-07-14",
+        requestId: "request-account",
+        core: {
+          company: {
+            id: "account-1",
+            name: "Northstar",
+            lifecycle_stage: "active_client",
+            account_owner: null,
+            cs_owner: null,
+            arr: 0,
+            created_at: "2026-07-01",
+            updated_at: "2026-07-14",
+          },
+          ownership: { accountOwnerId: null, csOwnerId: null },
+          contacts: [],
         },
-        contacts: [],
+        overview: {
+          status: "ready",
+          data: {
+            linkedClientCount: 0,
+            activeEngagementCount: 0,
+            quoteCount: 0,
+            quoteTotals: [],
+            openSignalCount: 0,
+            openSignals: [],
+          },
+        },
+        sections: {},
+        cache: {
+          core: { fetchedAt: "2026-07-14", freshForMs: 30_000 },
+          overview: { fetchedAt: "2026-07-14", freshForMs: 30_000 },
+          sections: {},
+        },
       },
       currentTab: "timeline",
       defaultTab: "overview",

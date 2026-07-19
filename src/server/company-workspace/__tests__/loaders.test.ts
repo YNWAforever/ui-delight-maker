@@ -4,7 +4,7 @@ const repositories = vi.hoisted(() => ({
   getAccount: vi.fn(),
   listAccountContacts: vi.fn(),
   listClients: vi.fn(),
-  listEngagementsByClient: vi.fn(),
+  listEngagementsByClientIds: vi.fn(),
   listLeads: vi.fn(),
   listQuotes: vi.fn(),
   listTasks: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock("@/server/repositories/account-contacts", () => ({
 }));
 vi.mock("@/server/repositories/clients", () => ({ listClients: repositories.listClients }));
 vi.mock("@/server/repositories/engagements", () => ({
-  listEngagementsByClient: repositories.listEngagementsByClient,
+  listEngagementsByClientIds: repositories.listEngagementsByClientIds,
 }));
 vi.mock("@/server/repositories/leads", () => ({ listLeads: repositories.listLeads }));
 vi.mock("@/server/repositories/quotes", () => ({ listQuotes: repositories.listQuotes }));
@@ -50,7 +50,7 @@ describe("Company Workspace loaders", () => {
     });
     repositories.listAccountContacts.mockResolvedValue([{ id: "contact-1" }]);
     repositories.listClients.mockResolvedValue([]);
-    repositories.listEngagementsByClient.mockResolvedValue([]);
+    repositories.listEngagementsByClientIds.mockResolvedValue([]);
     repositories.listLeads.mockResolvedValue([]);
     repositories.listQuotes.mockResolvedValue([]);
     repositories.listTasks.mockResolvedValue([]);
@@ -68,11 +68,12 @@ describe("Company Workspace loaders", () => {
     expect(repositories.listClients).not.toHaveBeenCalled();
   });
 
-  it("loads engagements for every client in the commercial section", async () => {
+  it("loads all client engagements in one batch for the commercial section", async () => {
     repositories.listClients.mockResolvedValue([{ id: "client-1" }, { id: "client-2" }]);
-    repositories.listEngagementsByClient
-      .mockResolvedValueOnce([{ id: "engagement-1" }])
-      .mockResolvedValueOnce([{ id: "engagement-2" }]);
+    repositories.listEngagementsByClientIds.mockResolvedValue([
+      { id: "engagement-1" },
+      { id: "engagement-2" },
+    ]);
 
     const result = await loadCompanyWorkspaceSection("account-1", "commercial", "request-1");
 
@@ -80,7 +81,8 @@ describe("Company Workspace loaders", () => {
       status: "ready",
       data: { engagements: [{ id: "engagement-1" }, { id: "engagement-2" }] },
     });
-    expect(repositories.listEngagementsByClient).toHaveBeenCalledTimes(2);
+    expect(repositories.listEngagementsByClientIds).toHaveBeenCalledTimes(1);
+    expect(repositories.listEngagementsByClientIds).toHaveBeenCalledWith(["client-1", "client-2"]);
   });
 
   it("isolates an optional schema failure from healthy sections", async () => {

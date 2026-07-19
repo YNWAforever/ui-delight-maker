@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -21,31 +22,65 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { accountDetailSearchSchema } from "@/lib/admin-ux-search";
+import {
+  companyWorkspaceQueryKey,
+  invalidateCompanyWorkspaceMutation,
+} from "@/lib/company-workspace/invalidation";
+import { getCompanyWorkspaceSectionEnablement } from "@/lib/company-workspace/section-enablement";
+import { retainCompanyWorkspaceSectionData } from "@/lib/company-workspace/section-state";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
-import { useCompanyWorkspaceSection } from "@/hooks/use-company-workspace-section";
+import {
+  COMPANY_WORKSPACE_STALE_TIME_MS,
+  useCompanyWorkspaceSection,
+} from "@/hooks/use-company-workspace-section";
 import { userById } from "@/lib/users";
 import type { RelationshipSignal } from "@/lib/types";
 import { triggerRelationshipIntelligence } from "@/server-functions/accounts";
-import { getCompanyWorkspaceCore } from "@/server-functions/company-workspace";
+import { getCompanyWorkspaceRead } from "@/server-functions/company-workspace";
 import { dismissRelationshipSignalFn } from "@/server-functions/relationship-signals";
 
 export const Route = createFileRoute("/accounts/$id")({
   validateSearch: accountDetailSearchSchema,
-  loader: ({ params }) => getCompanyWorkspaceCore({ data: { accountId: params.id } }),
+  loader: ({ params }) => getCompanyWorkspaceRead({ data: { accountId: params.id, sections: [] } }),
   head: ({ loaderData }) => ({
-    meta: [{ title: `${loaderData?.company.name ?? "Account"} - Fimmick ClientOps` }],
+    meta: [{ title: `${loaderData?.core.company.name ?? "Account"} - Fimmick ClientOps` }],
   }),
   component: AccountDetailRoute,
 });
 
 function AccountDetailRoute() {
-  const { company: account, contacts } = Route.useLoaderData();
+  const initialRead = Route.useLoaderData();
+  const accountId = initialRead.core.company.id;
+  const queryClient = useQueryClient();
+  const overviewQueryKey = companyWorkspaceQueryKey(accountId, "overview");
+  const workspaceReadQuery = useQuery({
+    queryKey: overviewQueryKey,
+    queryFn: async () => {
+      const next = await getCompanyWorkspaceRead({ data: { accountId, sections: [] } });
+      const previous = queryClient.getQueryData<typeof initialRead>(overviewQueryKey);
+      return {
+        ...next,
+        overview: retainCompanyWorkspaceSectionData(next.overview, previous?.overview),
+      };
+    },
+    initialData: initialRead,
+    staleTime: COMPANY_WORKSPACE_STALE_TIME_MS,
+    refetchOnWindowFocus: true,
+  });
+  const { core, overview } = workspaceReadQuery.data;
+  const { company: account, contacts } = core;
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const commercialQuery = useCompanyWorkspaceSection(account.id, "commercial");
-  const deliveryFinanceQuery = useCompanyWorkspaceSection(account.id, "delivery_finance");
-  const activityQuery = useCompanyWorkspaceSection(account.id, "activity");
-  const intelligenceQuery = useCompanyWorkspaceSection(account.id, "intelligence");
+  const sectionEnablement = getCompanyWorkspaceSectionEnablement(search.tab ?? "overview");
+  const commercialQuery = useCompanyWorkspaceSection(account.id, "commercial", {
+    enabled: sectionEnablement.commercial,
+  });
+  const deliveryFinanceQuery = useCompanyWorkspaceSection(account.id, "delivery_finance", {
+    enabled: sectionEnablement.delivery_finance,
+  });
+  const activityQuery = useCompanyWorkspaceSection(account.id, "activity", {
+    enabled: sectionEnablement.activity,
+  });
   const [dismissedSignalIds, setDismissedSignalIds] = useState<string[]>([]);
   const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
@@ -103,6 +138,11 @@ function AccountDetailRoute() {
         delete next[signal.id];
         return next;
       });
+      void invalidateCompanyWorkspaceMutation(
+        queryClient,
+        account.id,
+        "dismiss_relationship_signal",
+      );
       toast.success("Signal dismissed");
     } catch {
       toast.error("Could not dismiss signal");
@@ -130,6 +170,11 @@ function AccountDetailRoute() {
         return;
       }
 
+      void invalidateCompanyWorkspaceMutation(
+        queryClient,
+        account.id,
+        "run_relationship_intelligence",
+      );
       toast.success("Relationship intelligence started");
     } catch (error) {
       toast.error(
@@ -140,6 +185,12 @@ function AccountDetailRoute() {
     }
   };
 
+  const overviewData =
+    overview.status === "ready" || overview.status === "empty" ? overview.data : null;
+  const quoteTotals = overviewData?.quoteTotals
+    .map(({ currency, totalValue }) => formatCurrencyAmount(totalValue, currency))
+    .join(" | ");
+
   const summaryItems = [
     {
       label: "Stakeholders",
@@ -149,54 +200,24 @@ function AccountDetailRoute() {
     },
     {
       label: "Open signals",
-      value:
-        intelligenceQuery.data?.status === "ready" || intelligenceQuery.data?.status === "empty"
-          ? intelligenceQuery.data.data.signals.filter(
-              (signal) => !dismissedSignalIds.includes(signal.id),
-            ).length
-          : "—",
-      hint:
-        intelligenceQuery.data?.status === "error"
-          ? "unavailable"
-          : intelligenceQuery.data
-            ? "needs action"
-            : "loading",
+      value: overviewData
+        ? Math.max(overviewData.openSignalCount - dismissedSignalIds.length, 0)
+        : "--",
+      hint: overview.status === "error" ? "unavailable" : "needs action",
       icon: BriefcaseBusiness,
     },
     {
       label: "Linked clients",
-      value:
-        commercialQuery.data?.status === "ready" || commercialQuery.data?.status === "empty"
-          ? commercialQuery.data.data.clients.length
-          : "—",
-      hint:
-        commercialQuery.data?.status === "ready" || commercialQuery.data?.status === "empty"
-          ? commercialQuery.data.data.engagements.filter(
-              (engagement) => engagement.status === "active",
-            ).length + " active engagements"
-          : commercialQuery.data?.status === "error"
-            ? "unavailable"
-            : "loading",
+      value: overviewData?.linkedClientCount ?? "--",
+      hint: overviewData
+        ? `${overviewData.activeEngagementCount} active engagements`
+        : "unavailable",
       icon: CalendarClock,
     },
     {
       label: "Quotes",
-      value:
-        commercialQuery.data?.status === "ready" || commercialQuery.data?.status === "empty"
-          ? commercialQuery.data.data.quotes.length
-          : "—",
-      hint:
-        commercialQuery.data?.status === "ready" || commercialQuery.data?.status === "empty"
-          ? formatCurrencyAmount(
-              commercialQuery.data.data.quotes.reduce(
-                (sum, quote) => sum + (quote.total_value ?? 0),
-                0,
-              ),
-              commercialQuery.data.data.quotes[0]?.currency ?? "HKD",
-            )
-          : commercialQuery.data?.status === "error"
-            ? "unavailable"
-            : "loading",
+      value: overviewData?.quoteCount ?? "--",
+      hint: quoteTotals || (overview.status === "error" ? "unavailable" : "no quoted value"),
       icon: FileText,
     },
   ];
@@ -208,15 +229,6 @@ function AccountDetailRoute() {
         description={`${account.lifecycle_stage.replace(/_/g, " ")} account relationship`}
         actions={
           <>
-            {(commercialQuery.data?.status === "ready" ||
-              commercialQuery.data?.status === "empty") &&
-            commercialQuery.data.data.clients[0] ? (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/clients/$id" params={{ id: commercialQuery.data.data.clients[0].id }}>
-                  Client profile
-                </Link>
-              </Button>
-            ) : null}
             <Button
               variant="outline"
               size="sm"
@@ -313,13 +325,14 @@ function AccountDetailRoute() {
                 </div>
 
                 <CompanyWorkspaceSectionState
-                  state={intelligenceQuery.data}
-                  isLoading={intelligenceQuery.isLoading}
+                  state={overview}
+                  isLoading={false}
+                  isRefreshing={workspaceReadQuery.isFetching}
                   emptyMessage="No open relationship signals for this account."
-                  onRetry={() => void intelligenceQuery.refetch()}
+                  onRetry={() => void workspaceReadQuery.refetch()}
                 >
                   {(data) => {
-                    const openSignals = data.signals.filter(
+                    const openSignals = data.openSignals.filter(
                       (signal) => !dismissedSignalIds.includes(signal.id),
                     );
 
@@ -370,37 +383,18 @@ function AccountDetailRoute() {
                 <CardHeader>
                   <CardTitle className="text-base">Linked clients</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <CompanyWorkspaceSectionState
-                    state={commercialQuery.data}
-                    isLoading={commercialQuery.isLoading}
-                    emptyMessage="No client profile is linked to this account yet."
-                    onRetry={() => void commercialQuery.refetch()}
-                  >
-                    {(data) => (
-                      <ul className="space-y-2">
-                        {data.clients.map((client) => (
-                          <li
-                            key={client.id}
-                            className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm"
-                          >
-                            <div className="min-w-0">
-                              <p className="truncate font-medium">{client.company_name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Health {client.health_score} | Renewal{" "}
-                                {formatDate(client.renewal_date)}
-                              </p>
-                            </div>
-                            <Button variant="outline" size="sm" asChild>
-                              <Link to="/clients/$id" params={{ id: client.id }}>
-                                Open
-                              </Link>
-                            </Button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </CompanyWorkspaceSectionState>
+                <CardContent className="space-y-3 text-sm">
+                  <SummaryRow
+                    label="Client profiles"
+                    value={String(overviewData?.linkedClientCount ?? 0)}
+                  />
+                  <SummaryRow
+                    label="Active engagements"
+                    value={String(overviewData?.activeEngagementCount ?? 0)}
+                  />
+                  <p className="text-muted-foreground">
+                    Open the Commercial tab to inspect linked clients and engagement details.
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -414,6 +408,7 @@ function AccountDetailRoute() {
             <CompanyWorkspaceSectionState
               state={activityQuery.data}
               isLoading={activityQuery.isLoading}
+              isRefreshing={activityQuery.isFetching}
               emptyMessage="No timeline activity yet."
               onRetry={() => void activityQuery.refetch()}
             >
@@ -431,6 +426,7 @@ function AccountDetailRoute() {
                   <CompanyWorkspaceSectionState
                     state={commercialQuery.data}
                     isLoading={commercialQuery.isLoading}
+                    isRefreshing={commercialQuery.isFetching}
                     emptyMessage="No commercial activity is linked to this company yet."
                     onRetry={() => void commercialQuery.refetch()}
                   >
@@ -464,6 +460,7 @@ function AccountDetailRoute() {
                   <CompanyWorkspaceSectionState
                     state={activityQuery.data}
                     isLoading={activityQuery.isLoading}
+                    isRefreshing={activityQuery.isFetching}
                     emptyMessage="No approval or campaign activity yet."
                     onRetry={() => void activityQuery.refetch()}
                   >
@@ -485,6 +482,7 @@ function AccountDetailRoute() {
                   <CompanyWorkspaceSectionState
                     state={deliveryFinanceQuery.data}
                     isLoading={deliveryFinanceQuery.isLoading}
+                    isRefreshing={deliveryFinanceQuery.isFetching}
                     emptyMessage="No open commercial tasks."
                     onRetry={() => void deliveryFinanceQuery.refetch()}
                   >
@@ -518,6 +516,7 @@ function AccountDetailRoute() {
                   <CompanyWorkspaceSectionState
                     state={deliveryFinanceQuery.data}
                     isLoading={deliveryFinanceQuery.isLoading}
+                    isRefreshing={deliveryFinanceQuery.isFetching}
                     emptyMessage="No open account tasks right now."
                     onRetry={() => void deliveryFinanceQuery.refetch()}
                   >
@@ -574,6 +573,7 @@ function AccountDetailRoute() {
                   <CompanyWorkspaceSectionState
                     state={commercialQuery.data}
                     isLoading={commercialQuery.isLoading}
+                    isRefreshing={commercialQuery.isFetching}
                     emptyMessage="No active delivery engagements for this company."
                     onRetry={() => void commercialQuery.refetch()}
                   >
@@ -632,6 +632,7 @@ function AccountDetailRoute() {
                   <CompanyWorkspaceSectionState
                     state={deliveryFinanceQuery.data}
                     isLoading={deliveryFinanceQuery.isLoading}
+                    isRefreshing={deliveryFinanceQuery.isFetching}
                     emptyMessage="No accepted quote job sheets for this account yet."
                     onRetry={() => void deliveryFinanceQuery.refetch()}
                   >

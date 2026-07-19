@@ -34,7 +34,7 @@ export type CompanyWorkspaceError = {
 export type SectionState<T> =
   | { status: "ready"; data: T }
   | { status: "empty"; data: T }
-  | { status: "error"; error: CompanyWorkspaceError };
+  | { status: "error"; error: CompanyWorkspaceError; staleData?: T };
 
 export type CompanyWorkspaceCore = {
   company: Account;
@@ -43,6 +43,15 @@ export type CompanyWorkspaceCore = {
     csOwnerId: string | null;
   };
   contacts: AccountContact[];
+};
+
+export type CompanyWorkspaceOverview = {
+  linkedClientCount: number;
+  activeEngagementCount: number;
+  quoteCount: number;
+  quoteTotals: Array<{ currency: string; quoteCount: number; totalValue: number }>;
+  openSignalCount: number;
+  openSignals: RelationshipSignal[];
 };
 
 export type CompanyWorkspaceSectionData = {
@@ -71,4 +80,21 @@ export type CompanyWorkspaceSections = {
 export type CompanyWorkspace = {
   core: CompanyWorkspaceCore;
   sections: CompanyWorkspaceSections;
+};
+
+export type CompanyWorkspaceCacheMetadata = {
+  fetchedAt: string;
+  freshForMs: number;
+};
+
+export type CompanyWorkspaceRead = {
+  requestId: string;
+  core: CompanyWorkspaceCore;
+  overview: SectionState<CompanyWorkspaceOverview>;
+  sections: Partial<CompanyWorkspaceSections>;
+  cache: {
+    core: CompanyWorkspaceCacheMetadata;
+    overview: CompanyWorkspaceCacheMetadata;
+    sections: Partial<Record<CompanyWorkspaceSection, CompanyWorkspaceCacheMetadata>>;
+  };
 };

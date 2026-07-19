@@ -9,7 +9,17 @@ import type { CompanyWorkspaceCore } from "@/server/company-workspace/types";
 const sectionHook = vi.hoisted(() => vi.fn());
 
 vi.mock("@/hooks/use-company-workspace-section", () => ({
+  COMPANY_WORKSPACE_STALE_TIME_MS: 30_000,
   useCompanyWorkspaceSection: sectionHook,
+}));
+
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: ({ initialData }: { initialData: unknown }) => ({
+    data: initialData,
+    isFetching: false,
+    refetch: vi.fn(),
+  }),
+  useQueryClient: () => ({ getQueryData: vi.fn(), invalidateQueries: vi.fn() }),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -64,6 +74,28 @@ const core = {
     },
   ],
 } satisfies CompanyWorkspaceCore;
+
+const workspaceRead = {
+  requestId: "request-overview",
+  core,
+  overview: {
+    status: "ready" as const,
+    data: {
+      linkedClientCount: 1,
+      activeEngagementCount: 0,
+      quoteCount: 1,
+      quoteTotals: [{ currency: "HKD", quoteCount: 1, totalValue: 1000 }],
+      openSignalCount: 0,
+      openSignals: [],
+    },
+  },
+  sections: {},
+  cache: {
+    core: { fetchedAt: "2026-07-13T00:00:00.000Z", freshForMs: 30_000 },
+    overview: { fetchedAt: "2026-07-13T00:00:00.000Z", freshForMs: 30_000 },
+    sections: {},
+  },
+};
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -152,7 +184,7 @@ describe("Company Workspace resilience", () => {
     sectionHook.mockImplementation(
       (_accountId: string, section: keyof typeof sections) => sections[section],
     );
-    vi.spyOn(Route, "useLoaderData").mockReturnValue(core);
+    vi.spyOn(Route, "useLoaderData").mockReturnValue(workspaceRead);
 
     const AccountDetailRoute = Route.options.component as ComponentType;
     const view = render(<AccountDetailRoute />);
@@ -160,7 +192,6 @@ describe("Company Workspace resilience", () => {
     expect(screen.getByText("Northstar Media")).toBeTruthy();
     expect(screen.getByText("Account owner")).toBeTruthy();
     expect(screen.getAllByText("Unassigned").length).toBeGreaterThan(0);
-    expect(screen.getByText("Northstar Retainer")).toBeTruthy();
 
     vi.mocked(Route.useSearch).mockReturnValue({ tab: "stakeholders" });
     view.rerender(<AccountDetailRoute />);
@@ -243,7 +274,7 @@ describe("Company Workspace resilience", () => {
     sectionHook.mockImplementation(
       (_accountId: string, section: keyof typeof sections) => sections[section],
     );
-    vi.spyOn(Route, "useLoaderData").mockReturnValue(core);
+    vi.spyOn(Route, "useLoaderData").mockReturnValue(workspaceRead);
 
     vi.mocked(Route.useSearch).mockReturnValue({ tab: "events" });
     const AccountDetailRoute = Route.options.component as ComponentType;
@@ -310,7 +341,7 @@ describe("Company Workspace resilience", () => {
     sectionHook.mockImplementation(
       (_accountId: string, section: keyof typeof sections) => sections[section],
     );
-    vi.spyOn(Route, "useLoaderData").mockReturnValue(core);
+    vi.spyOn(Route, "useLoaderData").mockReturnValue(workspaceRead);
 
     vi.mocked(Route.useSearch).mockReturnValue({ tab: "tasks" });
     const AccountDetailRoute = Route.options.component as ComponentType;
