@@ -3,6 +3,7 @@ import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-rout
 import { CalendarDays, Plus, Users } from "lucide-react";
 import { z } from "zod";
 import { PageHeader } from "@/components/page-header";
+import { ListPagination } from "@/components/list-pagination";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -68,7 +69,7 @@ function CampaignsRoute() {
 function CampaignsIndex() {
   const { campaignPage } = Route.useLoaderData();
   const campaigns = campaignPage.items;
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: Route.fullPath });
   const [newCampaignOpen, setNewCampaignOpen] = useState(false);
   const activeCount = campaigns.filter((campaign) => campaign.status === "active").length;
   const completedCount = campaigns.filter((campaign) => campaign.status === "completed").length;
@@ -98,6 +99,14 @@ function CampaignsIndex() {
         }
       />
       <main className="space-y-4 px-6 py-6">
+        <ListPagination
+          page={campaignPage.page}
+          limit={campaignPage.limit}
+          total={campaignPage.total}
+          onPageChange={(page) =>
+            navigate({ search: (current) => ({ ...current, page }), replace: true })
+          }
+        />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <SummaryCard label="Campaigns" value={campaigns.length} hint="follow-up workspaces" />
           <SummaryCard label="Active" value={activeCount} hint="currently running" />

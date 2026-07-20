@@ -1,7 +1,8 @@
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { JobSheetStatusBadge } from "@/components/job-sheets/job-sheet-status-badge";
+import { ListPagination } from "@/components/list-pagination";
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -76,7 +77,9 @@ function JobSheetsPage() {
 }
 
 function JobSheetsIndex() {
-  const rows = Route.useLoaderData().items;
+  const jobSheetPage = Route.useLoaderData();
+  const rows = jobSheetPage.items;
+  const navigate = useNavigate({ from: Route.fullPath });
   const awaitingReview = rows.filter((row) => row.status !== "accepted").length;
   const acceptedValue = formatAcceptedValueSummary(rows);
 
@@ -89,6 +92,14 @@ function JobSheetsIndex() {
       />
 
       <div className="space-y-4 px-6 py-6">
+        <ListPagination
+          page={jobSheetPage.page}
+          limit={jobSheetPage.limit}
+          total={jobSheetPage.total}
+          onPageChange={(page) =>
+            navigate({ search: (current) => ({ ...current, page }), replace: true })
+          }
+        />
         <MetricStrip
           metrics={[
             { label: "Needs review", value: String(awaitingReview), hint: "not accepted" },

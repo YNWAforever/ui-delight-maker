@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, Outlet, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
+import { ListPagination } from "@/components/list-pagination";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -48,6 +49,7 @@ type ClientRow = Client & { renewal_risk: RenewalRisk };
 const clientListSearchSchema = z.object({
   page: z.coerce.number().int().min(1).default(1).catch(1),
   limit: z.coerce.number().int().min(1).max(100).default(50).catch(50),
+  tier: z.string().trim().min(1).optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/clients")({
@@ -83,10 +85,22 @@ function ClientsPage() {
 }
 
 function ClientsIndex() {
-  const loaderClients = Route.useLoaderData().items;
+  const clientPage = Route.useLoaderData();
+  const loaderClients = clientPage.items;
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
+  const setTier = (value: string) =>
+    navigate({
+      search: (current) => ({
+        ...current,
+        page: 1,
+        tier: value === "all" ? undefined : value,
+      }),
+      replace: true,
+    });
   const [rows, setRows] = useState<ClientRow[]>(loaderClients);
-  const [tier, setTier] = useState("all");
+  const tier = search.tier ?? "all";
   const [riskFilter, setRiskFilter] = useState<"all" | RenewalRisk>("all");
   const [windowFilter, setWindowFilter] = useState<"all" | "overdue" | "30" | "60" | "90">("all");
   const [sortKey, setSortKey] = useState<"arr" | "health" | "renewal">("arr");
@@ -143,6 +157,14 @@ function ClientsIndex() {
       />
 
       <div className="space-y-4 px-6 py-6">
+        <ListPagination
+          page={clientPage.page}
+          limit={clientPage.limit}
+          total={clientPage.total}
+          onPageChange={(page) =>
+            navigate({ search: (current) => ({ ...current, page }), replace: true })
+          }
+        />
         <MetricStrip
           metrics={[
             {
@@ -166,7 +188,19 @@ function ClientsIndex() {
 
         <Card className="p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={tier} onValueChange={setTier}>
+            <Select
+              value={tier}
+              onValueChange={(value) =>
+                navigate({
+                  search: (current) => ({
+                    ...current,
+                    page: 1,
+                    tier: value === "all" ? undefined : value,
+                  }),
+                  replace: true,
+                })
+              }
+            >
               <SelectTrigger className="h-9 w-[160px]" aria-label="Filter by tier">
                 <SelectValue placeholder="Tier" />
               </SelectTrigger>

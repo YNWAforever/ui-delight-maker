@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { Archive, Copy, MoreHorizontal, Plus } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
+import { ListPagination } from "@/components/list-pagination";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -80,7 +81,9 @@ function QuotesPage() {
 }
 
 function QuotesIndex() {
-  const loaderQuotes = Route.useLoaderData().items;
+  const quotePage = Route.useLoaderData();
+  const loaderQuotes = quotePage.items;
+  const navigate = useNavigate({ from: Route.fullPath });
   const [rows, setRows] = useState<Quote[]>(loaderQuotes);
   const [tab, setTab] = useState("all");
   const [query, setQuery] = useState("");
@@ -134,6 +137,14 @@ function QuotesIndex() {
       />
 
       <div className="space-y-4 px-6 py-6">
+        <ListPagination
+          page={quotePage.page}
+          limit={quotePage.limit}
+          total={quotePage.total}
+          onPageChange={(page) =>
+            navigate({ search: (current) => ({ ...current, page }), replace: true })
+          }
+        />
         <MetricStrip
           metrics={[
             {

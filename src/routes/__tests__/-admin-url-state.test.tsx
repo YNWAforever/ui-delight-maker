@@ -152,7 +152,11 @@ vi.mock("@/server-functions/accounts", () => ({
   getAccounts: vi.fn(),
   triggerRelationshipIntelligence: vi.fn(),
 }));
-vi.mock("@/server-functions/clients", () => ({ getClient: vi.fn(), getClients: vi.fn() }));
+vi.mock("@/server-functions/clients", () => ({
+  getClient: vi.fn(),
+  getClients: vi.fn(),
+  getClientsPage: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, limit: 100 }),
+}));
 vi.mock("@/server-functions/relationship-signals", () => ({ getRelationshipSignals: vi.fn() }));
 vi.mock("@/server-functions/workspace-preferences", () => ({
   getWorkspacePreferences: vi.fn(),
@@ -315,6 +319,7 @@ describe("Companies URL state", () => {
     expect(lifecycleNavigation.replace).toBe(true);
     expect(lifecycleNavigation.search(AccountsRoute.useSearch())).toEqual({
       lifecycle: "prospect",
+      page: 1,
       sort: "name:asc",
       account: "account-2",
       unrelated: "keep",

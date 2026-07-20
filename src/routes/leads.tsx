@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, Outlet, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { Download, Plus, Sparkles, X } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
+import { ListPagination } from "@/components/list-pagination";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -55,6 +56,8 @@ import { getLeadsPage, createLead, updateLead } from "@/server-functions/leads";
 const leadListSearchSchema = z.object({
   page: z.coerce.number().int().min(1).default(1).catch(1),
   limit: z.coerce.number().int().min(1).max(100).default(50).catch(50),
+  status: z.string().trim().min(1).optional().catch(undefined),
+  source: z.string().trim().min(1).optional().catch(undefined),
 });
 
 export const Route = createFileRoute("/leads")({
@@ -89,12 +92,33 @@ function LeadsRoute() {
 }
 
 function LeadsPage() {
-  const loaderLeads = Route.useLoaderData().items;
+  const leadPage = Route.useLoaderData();
+  const loaderLeads = leadPage.items;
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
+  const setStatus = (value: string) =>
+    navigate({
+      search: (current) => ({
+        ...current,
+        page: 1,
+        status: value === "all" ? undefined : value,
+      }),
+      replace: true,
+    });
+  const setSource = (value: string) =>
+    navigate({
+      search: (current) => ({
+        ...current,
+        page: 1,
+        source: value === "all" ? undefined : value,
+      }),
+      replace: true,
+    });
   const [rows, setRows] = useState<Lead[]>(loaderLeads);
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("all");
-  const [source, setSource] = useState("all");
+  const status = search.status ?? "all";
+  const source = search.source ?? "all";
   const [owner, setOwner] = useState("all");
   const [sort, setSort] = useState<"recent" | "score">("recent");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -182,6 +206,14 @@ function LeadsPage() {
       />
 
       <div className="space-y-4 px-6 py-6">
+        <ListPagination
+          page={leadPage.page}
+          limit={leadPage.limit}
+          total={leadPage.total}
+          onPageChange={(page) =>
+            navigate({ search: (current) => ({ ...current, page }), replace: true })
+          }
+        />
         <MetricStrip
           metrics={[
             {
@@ -214,7 +246,7 @@ function LeadsPage() {
               onChange={(e) => setQuery(e.target.value)}
               className="h-9 min-w-[220px] flex-1"
             />
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status} onValueChange={(value) => navigate({ search: (current) => ({ ...current, page: 1, status: value === "all" ? undefined : value }), replace: true })}>
               <SelectTrigger className="h-9 w-[150px]" aria-label="Filter by status">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -227,7 +259,7 @@ function LeadsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={source} onValueChange={setSource}>
+            <Select value={source} onValueChange={(value) => setSource(value)}>
               <SelectTrigger className="h-9 w-[150px]" aria-label="Filter by source">
                 <SelectValue placeholder="Source" />
               </SelectTrigger>
@@ -518,7 +550,7 @@ function NewLeadDialog({
             <Label htmlFor="new-lead-source" className="text-xs">
               Source
             </Label>
-            <Select value={source} onValueChange={setSource}>
+            <Select value={source} onValueChange={(value) => setSource(value)}>
               <SelectTrigger id="new-lead-source" className="mt-1">
                 <SelectValue />
               </SelectTrigger>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { PageHeader } from "@/components/page-header";
+import { ListPagination } from "@/components/list-pagination";
 import { AccountSummaryCard } from "@/components/relationship/account-summary-card";
 import { AccountPreviewPanel } from "@/components/relationship/account-preview-panel";
 import { WorkspaceViewSwitcher } from "@/components/relationship/workspace-view-switcher";
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/accounts")({
         queryKey: crmQueryKeys.accounts.list(search),
         queryFn: () =>
           getAccountsIndexRead({
-            data: { lifecycle_stage: search.lifecycle, page: 1, limit: 50 },
+            data: { lifecycle_stage: search.lifecycle, page: search.page, limit: search.limit },
           }),
       }),
     ),
@@ -49,10 +50,16 @@ function AccountsRoute() {
 }
 
 function AccountsIndex() {
-  const { accounts, accountCounts, preferences } = Route.useLoaderData();
+  const loaderData = Route.useLoaderData();
+  const { accounts, accountCounts, preferences } = loaderData;
   const router = useRouter();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const pagination = loaderData.pagination ?? {
+    page: search.page ?? 1,
+    limit: search.limit ?? 50,
+    total: accounts.length,
+  };
   const [savedViewConfig, setSavedViewConfig] = useState(DEFAULT_ACCOUNT_VIEW_CONFIG);
   const activeConfig = useMemo<WorkspaceViewConfig>(
     () => ({
@@ -167,6 +174,14 @@ function AccountsIndex() {
         description="Company records across prospects, clients, partners, vendors, and event participants."
       />
       <main className="space-y-4 px-4 py-5 sm:px-6 sm:py-6">
+        <ListPagination
+          page={pagination.page}
+          limit={pagination.limit}
+          total={pagination.total}
+          onPageChange={(page) =>
+            navigate({ search: (current) => ({ ...current, page }), replace: true })
+          }
+        />
         <div className="flex flex-wrap items-end justify-between gap-3 border-b pb-4">
           <div className="flex flex-wrap items-end gap-2">
             <div className="space-y-1.5">
@@ -187,6 +202,7 @@ function AccountsIndex() {
                       const nextSearch = { ...current };
                       delete nextSearch.lifecycle;
                       if (lifecycle) nextSearch.lifecycle = lifecycle;
+                      nextSearch.page = 1;
                       return nextSearch;
                     },
                     replace: true,
@@ -279,8 +295,8 @@ function AccountsIndex() {
               >
                 <AccountSummaryCard
                   account={account}
-                  openSignalCount={accountCounts[account.id]?.openSignalCount ?? 0}
-                  linkedClientCount={accountCounts[account.id]?.linkedClientCount ?? 0}
+                  openSignalCount={accountCounts?.[account.id]?.openSignalCount ?? 0}
+                  linkedClientCount={accountCounts?.[account.id]?.linkedClientCount ?? 0}
                 />
               </button>
             ))}
