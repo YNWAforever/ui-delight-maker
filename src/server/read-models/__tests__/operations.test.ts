@@ -5,6 +5,7 @@ const {
   queryOneMock,
   requireCapabilityChecksMock,
   requireCapabilityMock,
+  requireCapabilitySetMock,
   createServerFnChain,
 } = vi.hoisted(() => {
   const createServerFnChain = {
@@ -21,6 +22,7 @@ const {
     queryOneMock: vi.fn(),
     requireCapabilityChecksMock: vi.fn(),
     requireCapabilityMock: vi.fn(),
+    requireCapabilitySetMock: vi.fn(),
     createServerFnChain,
   };
 });
@@ -29,6 +31,7 @@ vi.mock("@tanstack/react-start", () => ({ createServerFn: () => createServerFnCh
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapabilityChecks: requireCapabilityChecksMock,
   requireCapability: requireCapabilityMock,
+  requireCapabilitySet: requireCapabilitySetMock,
 }));
 vi.mock("@/server/db/neon.server", () => ({ query: queryMock, queryOne: queryOneMock }));
 
@@ -41,6 +44,7 @@ describe("operations read models", () => {
     queryOneMock.mockResolvedValue(null);
     requireCapabilityChecksMock.mockResolvedValue({ user: { id: "user-1" } });
     requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireCapabilitySetMock.mockResolvedValue({ "quotes.view": true, "accounts.view": true });
   });
 
   it("loads one job sheet with portions and compact linked summaries", async () => {
@@ -70,6 +74,21 @@ describe("operations read models", () => {
     expect(sqlText(queryMock.mock.calls[0]?.[0])).not.toContain("select *");
   });
 
+  it("returns the complete portion set beyond one hundred rows", async () => {
+    const { loadJobSheetRead } = await import("../operations");
+    queryOneMock.mockResolvedValueOnce({ id: "job-1", quote_id: "quote-1" });
+    queryMock.mockResolvedValueOnce(
+      Array.from({ length: 101 }, (_, index) => ({
+        id: `portion-${index}`,
+        job_sheet_id: "job-1",
+      })),
+    );
+
+    const result = await loadJobSheetRead("job-1");
+
+    expect(result.portions).toHaveLength(101);
+    expect(sqlText(queryMock.mock.calls[0]?.[0])).not.toContain("limit 100");
+  });
   it("throws when the job sheet does not exist", async () => {
     const { loadJobSheetRead } = await import("../operations");
     await expect(loadJobSheetRead("missing")).rejects.toThrow("Job sheet not found");
@@ -176,7 +195,10 @@ describe("operations read models", () => {
     ]);
     expect(queryOneMock).toHaveBeenCalledTimes(1);
     expect(queryMock).not.toHaveBeenCalled();
-    expect(sqlText(queryOneMock.mock.calls[0]?.[0])).not.toContain("generate_series");
+    const summarySql = sqlText(queryOneMock.mock.calls[0]?.[0]);
+    expect(summarySql).not.toContain("generate_series");
+    expect(summarySql).toMatch(/status = 'won'[\s\S]*created_at >=/);
+    expect(summarySql).not.toMatch(/status = 'won'[\s\S]*updated_at >=/);
   });
 
   it.each([
@@ -212,6 +234,7 @@ describe("operations read models", () => {
       "job-1",
       [
         {
+          id: "portion-1",
           name: "Strategy",
           source_quote_line_item_ids: ["11111111-1111-4111-8111-111111111111"],
           description: "Updated",
@@ -232,6 +255,41 @@ describe("operations read models", () => {
     expect(queryOneMock.mock.calls[1]?.[1]).toContain("portion-1");
   });
 
+  it("rejects replacing a Xero-linked portion through an unknown identity", async () => {
+    const db = { query: vi.fn() };
+    queryOneMock.mockResolvedValueOnce({ id: "job-1", status: "draft", locked_at: null });
+    queryMock.mockResolvedValueOnce([
+      {
+        id: "portion-1",
+        source_quote_line_item_ids: ["11111111-1111-4111-8111-111111111111"],
+        sort_order: 0,
+        status: "entered_in_xero",
+        xero_invoice_number: "INV-42",
+      },
+    ]);
+    const { replaceJobSheetPortions } = await import("@/server/repositories/job-sheets");
+
+    await expect(
+      replaceJobSheetPortions(
+        "job-1",
+        [
+          {
+            id: "portion-forged",
+            name: "Strategy",
+            source_quote_line_item_ids: ["11111111-1111-4111-8111-111111111111"],
+            description: "Replacement",
+            amount: 125,
+            currency: "HKD",
+            billing_type: "progress",
+            status: "planned",
+            sort_order: 0,
+          },
+        ],
+        db,
+      ),
+    ).rejects.toThrow("Billing portion ID does not belong to this job sheet");
+    expect(queryOneMock).toHaveBeenCalledTimes(1);
+  });
   it("rejects removing a portion after Xero details are saved", async () => {
     const db = { query: vi.fn() };
     queryOneMock.mockResolvedValueOnce({ id: "job-1", status: "draft", locked_at: null });
@@ -266,21 +324,38 @@ describe("operations server functions", () => {
     });
   });
 
-  it("authorizes a job sheet and linked quote and client in one capability context", async () => {
+  it("grants the core job sheet while redacting denied linked summaries by actual ID", async () => {
+    requireCapabilitySetMock
+      .mockResolvedValueOnce({ "quotes.view": false })
+      .mockResolvedValueOnce({ "accounts.view": false });
     const { getJobSheetRead } = await import("@/server-functions/operations");
-    await getJobSheetRead({ data: { id: "job-1" } });
-    expect(requireCapabilityChecksMock).toHaveBeenCalledTimes(1);
-    expect(requireCapabilityChecksMock).toHaveBeenCalledWith([
-      {
-        capability: "job_sheets.view",
-        target: { resourceType: "job_sheet", resourceId: "job-1" },
-      },
-      { capability: "quotes.view" },
-      { capability: "accounts.view" },
-    ]);
-    expect(requireCapabilityMock).not.toHaveBeenCalled();
+
+    const result = await getJobSheetRead({ data: { id: "job-1" } });
+
+    expect(requireCapabilityMock).toHaveBeenCalledWith("job_sheets.view", {
+      resourceType: "job_sheet",
+      resourceId: "job-1",
+    });
+    expect(requireCapabilitySetMock).toHaveBeenNthCalledWith(1, [], {
+      optional: ["quotes.view"],
+      target: { resourceType: "quote", resourceId: "quote-1" },
+    });
+    expect(requireCapabilitySetMock).toHaveBeenNthCalledWith(2, [], {
+      optional: ["accounts.view"],
+      target: { resourceType: "client", resourceId: "client-1" },
+    });
+    expect(result.quote).toBeNull();
+    expect(result.client).toBeNull();
   });
 
+  it("does not swallow linked authorization infrastructure failures", async () => {
+    requireCapabilitySetMock.mockRejectedValueOnce(new Error("authorization database unavailable"));
+    const { getJobSheetRead } = await import("@/server-functions/operations");
+
+    await expect(getJobSheetRead({ data: { id: "job-1" } })).rejects.toThrow(
+      "authorization database unavailable",
+    );
+  });
   it("authorizes renewal rows and product summaries together", async () => {
     const { getRenewalsRead } = await import("@/server-functions/operations");
     await getRenewalsRead({ data: { renewalWindow: "all", asOf: "2026-07-20" } });

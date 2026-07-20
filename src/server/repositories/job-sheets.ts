@@ -296,25 +296,20 @@ export async function replaceJobSheetPortions(
         client,
       )) ?? [];
 
-    const sourceKey = (ids: string[]) => [...ids].sort().join("|");
-    const availableBySource = new Map<string, JobSheetPortion[]>();
-    for (const portion of existing) {
-      const key = sourceKey(portion.source_quote_line_item_ids);
-      availableBySource.set(key, [...(availableBySource.get(key) ?? []), portion]);
-    }
-
+    const existingById = new Map(existing.map((portion) => [portion.id, portion]));
     const usedIds = new Set<string>();
     const matched = portions.map((portion) => {
-      const candidates = availableBySource.get(sourceKey(portion.source_quote_line_item_ids)) ?? [];
-      const bySource = candidates.find((candidate) => !usedIds.has(candidate.id));
-      const byPosition = existing.find(
-        (candidate) => candidate.sort_order === portion.sort_order && !usedIds.has(candidate.id),
-      );
-      const current = bySource ?? byPosition ?? null;
-      if (current) usedIds.add(current.id);
+      if (!portion.id) return { portion, current: null };
+      const current = existingById.get(portion.id);
+      if (!current) {
+        throw new Error("Billing portion ID does not belong to this job sheet");
+      }
+      if (usedIds.has(current.id)) {
+        throw new Error("Billing portion ID is duplicated in the update");
+      }
+      usedIds.add(current.id);
       return { portion, current };
     });
-
     const removed = existing.filter((portion) => !usedIds.has(portion.id));
     const hasXeroData = (portion: JobSheetPortion) =>
       portion.status === "entered_in_xero" ||
@@ -527,7 +522,6 @@ export async function getJobSheetOperationsRead(id: string): Promise<JobSheetOpe
       from job_sheet_portions
       where job_sheet_id = $1
       order by sort_order asc, created_at asc, id asc
-      limit 100
     `,
     [id],
   );

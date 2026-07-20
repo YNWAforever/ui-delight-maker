@@ -1,5 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireCapability, requireCapabilityChecks } from "@/server/auth/authorization.server";
+import {
+  requireCapability,
+  requireCapabilityChecks,
+  requireCapabilitySet,
+} from "@/server/auth/authorization.server";
 import {
   loadJobSheetRead,
   loadRenewalsRead,
@@ -74,17 +78,31 @@ function parseDatasetInput(data: unknown): { report: ReportId; range: ReportRang
 export const getJobSheetRead = createServerFn({ method: "GET" })
   .validator(parseJobSheetInput)
   .handler(async ({ data }) => {
-    await requireCapabilityChecks([
-      {
-        capability: "job_sheets.view",
-        target: { resourceType: "job_sheet", resourceId: data.id },
-      },
-      { capability: "quotes.view" },
-      { capability: "accounts.view" },
-    ]);
-    return loadJobSheetRead(data.id);
-  });
+    await requireCapability("job_sheets.view", {
+      resourceType: "job_sheet",
+      resourceId: data.id,
+    });
+    const read = await loadJobSheetRead(data.id);
 
+    const quoteAccess = read.quote
+      ? await requireCapabilitySet([], {
+          optional: ["quotes.view"],
+          target: { resourceType: "quote", resourceId: read.quote.id },
+        })
+      : {};
+    const clientAccess = read.client
+      ? await requireCapabilitySet([], {
+          optional: ["accounts.view"],
+          target: { resourceType: "client", resourceId: read.client.id },
+        })
+      : {};
+
+    return {
+      ...read,
+      quote: quoteAccess["quotes.view"] ? read.quote : null,
+      client: clientAccess["accounts.view"] ? read.client : null,
+    };
+  });
 export const getRenewalsRead = createServerFn({ method: "GET" })
   .validator(parseRenewalsInput)
   .handler(async ({ data }) => {

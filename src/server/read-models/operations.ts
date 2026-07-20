@@ -86,7 +86,7 @@ export async function loadReportSummary(input: { range: ReportRange }) {
           select count(*)
           from leads
           where status = 'won'
-            and updated_at >= now() - ($1::integer * interval '1 day')
+            and created_at >= now() - ($1::integer * interval '1 day')
         ) as won_leads,
         (
           select count(*)
