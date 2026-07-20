@@ -224,3 +224,138 @@ export async function touchAllActiveEngagementsForClient(
     db,
   );
 }
+export type RenewalWindowFilter = "all" | "overdue" | "30" | "60" | "90" | "later";
+
+export type RenewalsReadFilters = {
+  renewalWindow: RenewalWindowFilter;
+  risk?: RenewalRisk;
+  productId?: string;
+  asOf: string;
+  page?: number;
+  limit?: number;
+};
+
+export type RenewalReadRow = Pick<
+  Engagement,
+  | "id"
+  | "client_id"
+  | "product_id"
+  | "owner"
+  | "value"
+  | "billing_period"
+  | "start_date"
+  | "renewal_date"
+  | "status"
+  | "health_score"
+  | "renewal_risk"
+  | "risk_reasoning"
+  | "next_action"
+  | "last_touch_at"
+> & {
+  client_company_name: string;
+  client_tier: string | null;
+  product_name: string;
+};
+
+export type ActiveProductSummary = { id: string; name: string; category: string | null };
+
+function renewalWindowClause(window: RenewalWindowFilter, asOf: string) {
+  switch (window) {
+    case "all":
+      return null;
+    case "overdue":
+      return `e.renewal_date < ${asOf}`;
+    case "30":
+      return `e.renewal_date between ${asOf} and (${asOf} + interval '30 days')`;
+    case "60":
+      return `e.renewal_date between (${asOf} + interval '31 days') and (${asOf} + interval '60 days')`;
+    case "90":
+      return `e.renewal_date between (${asOf} + interval '61 days') and (${asOf} + interval '90 days')`;
+    case "later":
+      return `(e.renewal_date is null or e.renewal_date > (${asOf} + interval '90 days'))`;
+  }
+}
+
+function metric(value: number | string | null | undefined) {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export async function listRenewalsRead(filters: RenewalsReadFilters) {
+  const page = Math.max(1, Math.trunc(Number.isFinite(filters.page) ? filters.page! : 1));
+  const requestedLimit = Math.max(
+    1,
+    Math.trunc(Number.isFinite(filters.limit) ? filters.limit! : 25),
+  );
+  const limit = Math.min(requestedLimit, 50);
+  const offset = (page - 1) * limit;
+  const values: unknown[] = [filters.asOf];
+  const clauses = ["e.status = 'active'"];
+  const windowClause = renewalWindowClause(filters.renewalWindow, "$1::date");
+  if (windowClause) clauses.push(windowClause);
+  if (filters.risk) {
+    values.push(filters.risk);
+    clauses.push(`e.renewal_risk = $${values.length}`);
+  }
+  if (filters.productId) {
+    values.push(filters.productId);
+    clauses.push(`e.product_id = $${values.length}`);
+  }
+  const where = clauses.join(" and ");
+  const limitIndex = values.length + 1;
+  const offsetIndex = limitIndex + 1;
+
+  const [items, aggregate, products] = await Promise.all([
+    query<RenewalReadRow>(
+      `
+        select e.id, e.client_id, e.product_id, e.owner, e.value, e.billing_period,
+               e.start_date, e.renewal_date, e.status, e.health_score, e.renewal_risk,
+               e.risk_reasoning, e.next_action, e.last_touch_at,
+               c.company_name as client_company_name, c.tier as client_tier,
+               p.name as product_name
+        from engagements e
+        join clients c on c.id = e.client_id
+        join products p on p.id = e.product_id
+        where ${where}
+        order by e.renewal_date asc nulls last, e.id asc
+        limit $${limitIndex} offset $${offsetIndex}
+      `,
+      [...values, limit, offset],
+    ),
+    queryOne<{
+      total: number | string;
+      annualized_value: number | string;
+      arr_at_risk: number | string;
+      due_soon: number | string;
+      stale: number | string;
+    }>(
+      `
+        select count(*) as total,
+          coalesce(sum(case e.billing_period when 'monthly' then coalesce(e.value, 0) * 12 when 'quarterly' then coalesce(e.value, 0) * 4 when 'annual' then coalesce(e.value, 0) else 0 end), 0) as annualized_value,
+          coalesce(sum(case when e.renewal_risk = 'high' then case e.billing_period when 'monthly' then coalesce(e.value, 0) * 12 when 'quarterly' then coalesce(e.value, 0) * 4 when 'annual' then coalesce(e.value, 0) else 0 end else 0 end), 0) as arr_at_risk,
+          count(*) filter (where e.renewal_date <= $1::date + interval '90 days') as due_soon,
+          count(*) filter (where e.last_touch_at is null or e.last_touch_at < $1::date - interval '30 days') as stale
+        from engagements e
+        where ${where}
+      `,
+      values,
+    ),
+    query<ActiveProductSummary>(
+      `select p.id, p.name, p.category from products p where p.active = true order by p.name asc, p.id asc limit 200`,
+    ),
+  ]);
+
+  return {
+    items,
+    total: metric(aggregate?.total),
+    page,
+    limit,
+    metrics: {
+      annualizedValue: metric(aggregate?.annualized_value),
+      arrAtRisk: metric(aggregate?.arr_at_risk),
+      dueSoon: metric(aggregate?.due_soon),
+      stale: metric(aggregate?.stale),
+    },
+    products,
+  };
+}
