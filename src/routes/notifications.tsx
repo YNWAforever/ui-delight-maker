@@ -1,15 +1,14 @@
-import { useState, useMemo } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
-  Bell,
   CheckCheck,
   ShieldAlert,
   CalendarClock,
   AlertTriangle,
   Clock,
   MailOpen,
-  Filter,
 } from "lucide-react";
+import { z } from "zod";
 
 import { useNotifications } from "@/hooks/use-notifications";
 import { PageHeader } from "@/components/page-header";
@@ -17,9 +16,34 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { relativeTime, formatDateTime } from "@/lib/format";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
+import { getNotifications } from "@/server-functions/notifications";
 import type { NotificationRecord } from "@/lib/types";
 
+const notificationSearchSchema = z.object({
+  filter: z
+    .enum([
+      "all",
+      "unread",
+      "approval_pending",
+      "renewal_window",
+      "risk_change",
+      "stale_touchpoint",
+    ])
+    .default("all")
+    .catch("all"),
+});
+
 export const Route = createFileRoute("/notifications")({
+  validateSearch: notificationSearchSchema,
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: crmQueryKeys.notifications.list({}),
+        queryFn: () => getNotifications(),
+      }),
+    ),
   component: NotificationsPage,
 });
 
@@ -55,7 +79,10 @@ type FilterTab =
 
 function NotificationsPage() {
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
-  const [filter, setFilter] = useState<FilterTab>("all");
+  const { filter } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const setFilter = (next: FilterTab) =>
+    navigate({ search: (current) => ({ ...current, filter: next }), replace: true });
 
   const filtered = useMemo(() => {
     let list = [...notifications].sort(
