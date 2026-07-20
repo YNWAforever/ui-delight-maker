@@ -81,9 +81,14 @@ describe("useClientWorkspaceSection", () => {
     const query = queryClient.getQueryCache().find({
       queryKey: crmQueryKeys.clients.section("client-1", "contacts"),
     });
-    expect(query?.options.staleTime).toBe(CLIENT_WORKSPACE_STALE_TIME_MS);
-    expect(query?.options.refetchOnWindowFocus).toBe(true);
-    expect(query?.options.retry).toBe(false);
+    const options = query?.options as {
+      staleTime?: number;
+      refetchOnWindowFocus?: boolean;
+      retry?: boolean;
+    };
+    expect(options.staleTime).toBe(CLIENT_WORKSPACE_STALE_TIME_MS);
+    expect(options.refetchOnWindowFocus).toBe(true);
+    expect(options.retry).toBe(false);
   });
 
   it("retries a transient client section error exactly once", async () => {

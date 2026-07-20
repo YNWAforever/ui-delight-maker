@@ -8,7 +8,7 @@ const {
   listJobSheetsMock,
   queryMock,
   queryOneMock,
-  requireCapabilityMock,
+  requireCapabilitySetMock,
   createServerFnChain,
 } = vi.hoisted(() => {
   const createServerFnChain = {
@@ -28,7 +28,7 @@ const {
     listJobSheetsMock: vi.fn(),
     queryMock: vi.fn(),
     queryOneMock: vi.fn(),
-    requireCapabilityMock: vi.fn(),
+    requireCapabilitySetMock: vi.fn(),
     createServerFnChain,
   };
 });
@@ -38,7 +38,7 @@ vi.mock("@tanstack/react-start", () => ({
 }));
 
 vi.mock("@/server/auth/authorization.server", () => ({
-  requireCapability: requireCapabilityMock,
+  requireCapabilitySet: requireCapabilitySetMock,
 }));
 
 vi.mock("@/server/db/neon.server", () => ({
@@ -96,7 +96,13 @@ describe("client workspace read model", () => {
     listQuotesMock.mockResolvedValue([]);
     listJobSheetsMock.mockResolvedValue([]);
     queryMock.mockResolvedValue([]);
-    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireCapabilitySetMock.mockResolvedValue({
+      "accounts.view": true,
+      "contacts.view": true,
+      "engagements.view": true,
+      "quotes.view": true,
+      "job_sheets.view": true,
+    });
   });
 
   it("loads only identity, ownership, relationship summary, and counts initially", async () => {
@@ -111,6 +117,7 @@ describe("client workspace read model", () => {
         companyName: "Acme",
         industry: "Technology",
         tier: "enterprise",
+        createdAt: "2026-01-01T00:00:00.000Z",
       },
       ownership: { accountOwnerId: "owner-1" },
       relationship: {
@@ -125,6 +132,13 @@ describe("client workspace read model", () => {
 
     expect(getClientMock).toHaveBeenCalledWith("client-1");
     expect(queryOneMock).toHaveBeenCalledTimes(1);
+    expect(queryOneMock).toHaveBeenCalledWith(expect.stringContaining("$2::boolean"), [
+      "client-1",
+      true,
+      true,
+      true,
+      true,
+    ]);
     expect(listClientContactsMock).not.toHaveBeenCalled();
     expect(listEngagementsByClientMock).not.toHaveBeenCalled();
     expect(listQuotesMock).not.toHaveBeenCalled();
@@ -169,31 +183,51 @@ describe("client workspace read model", () => {
   });
 
   it("authorizes both server reads before starting repository work", async () => {
-    const authorization = deferred<{ user: { id: string } }>();
-    requireCapabilityMock.mockReturnValueOnce(authorization.promise);
-    const { getClientWorkspaceRead, getClientWorkspaceSection } = await import(
-      "@/server-functions/client-workspace"
-    );
+    const authorization = deferred<Record<string, boolean>>();
+    requireCapabilitySetMock.mockReturnValueOnce(authorization.promise);
+    const { getClientWorkspaceRead, getClientWorkspaceSection } =
+      await import("@/server-functions/client-workspace");
 
     const readPromise = getClientWorkspaceRead({ data: { clientId: "client-1" } });
 
-    expect(requireCapabilityMock).toHaveBeenCalledWith("accounts.view", {
-      resourceType: "client",
-      resourceId: "client-1",
+    expect(requireCapabilitySetMock).toHaveBeenCalledWith(["accounts.view"], {
+      optional: ["contacts.view", "engagements.view", "quotes.view", "job_sheets.view"],
+      target: { resourceType: "client", resourceId: "client-1" },
     });
     expect(getClientMock).not.toHaveBeenCalled();
     expect(queryOneMock).not.toHaveBeenCalled();
 
-    authorization.resolve({ user: { id: "user-1" } });
+    authorization.resolve({
+      "accounts.view": true,
+      "contacts.view": true,
+      "engagements.view": true,
+      "quotes.view": true,
+      "job_sheets.view": true,
+    });
     await readPromise;
 
     await getClientWorkspaceSection({
       data: { clientId: "client-1", section: "contacts" },
     });
-    expect(requireCapabilityMock).toHaveBeenLastCalledWith("accounts.view", {
-      resourceType: "client",
-      resourceId: "client-1",
+    expect(requireCapabilitySetMock).toHaveBeenLastCalledWith(["accounts.view", "contacts.view"], {
+      target: { resourceType: "client", resourceId: "client-1" },
     });
     expect(listClientContactsMock).toHaveBeenCalledWith("client-1");
+
+    await getClientWorkspaceSection({
+      data: { clientId: "client-1", section: "engagements" },
+    });
+    expect(requireCapabilitySetMock).toHaveBeenLastCalledWith(
+      ["accounts.view", "engagements.view"],
+      { target: { resourceType: "client", resourceId: "client-1" } },
+    );
+
+    await getClientWorkspaceSection({
+      data: { clientId: "client-1", section: "job_sheets" },
+    });
+    expect(requireCapabilitySetMock).toHaveBeenLastCalledWith(
+      ["accounts.view", "job_sheets.view"],
+      { target: { resourceType: "client", resourceId: "client-1" } },
+    );
   });
 });

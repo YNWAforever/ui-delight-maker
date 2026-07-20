@@ -62,6 +62,7 @@ export const LEAD_DETAIL_TABS = [
 export const CLIENT_DETAIL_TABS = [
   "overview",
   "contacts",
+  "engagements",
   "quotes",
   "job-sheets",
   "tasks",

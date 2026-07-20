@@ -20,7 +20,11 @@ vi.mock("@/server/db/neon.server", () => ({
   query: mocks.query,
 }));
 
-import { requireAnyCapability, requireCapability } from "../authorization.server";
+import {
+  requireAnyCapability,
+  requireCapability,
+  requireCapabilitySet,
+} from "../authorization.server";
 
 function session(role: AppSession["profile"]["role"] = "manager"): AppSession {
   return {
@@ -232,6 +236,34 @@ describe("admin authorization orchestration", () => {
     );
   });
 
+  it("evaluates required and optional capabilities from one authorization context", async () => {
+    installDatabaseRows({
+      overrides: [
+        {
+          profile_id: "actor-1",
+          capability: "job_sheets.view",
+          effect: "deny",
+          department_id: null,
+          team_id: null,
+          resource_type: null,
+          resource_id: null,
+          expires_at: null,
+          revoked_at: null,
+        },
+      ],
+    });
+
+    await expect(
+      requireCapabilitySet(["accounts.view"], {
+        optional: ["contacts.view", "job_sheets.view"],
+      }),
+    ).resolves.toEqual({
+      "accounts.view": true,
+      "contacts.view": true,
+      "job_sheets.view": false,
+    });
+    expect(mocks.requireNeonAuthSession).toHaveBeenCalledOnce();
+  });
   it("tries every capability, returns the first grant, and ignores supplied scope arrays", async () => {
     mocks.requireNeonAuthSession.mockResolvedValue(session("sales"));
 

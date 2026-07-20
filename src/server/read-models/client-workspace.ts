@@ -8,6 +8,7 @@ import type {
   RenewalRisk,
 } from "@/lib/types";
 import { queryOne } from "@/server/db/neon.server";
+import { serializeActivityLog, type SerializableActivityLog } from "@/server-functions/serializers";
 import { listActivityLogsByClientAndEngagementIds } from "@/server/repositories/activity-logs";
 import { listClientContacts } from "@/server/repositories/client-contacts";
 import { getClient } from "@/server/repositories/clients";
@@ -19,16 +20,18 @@ export const clientWorkspaceSections = [
   "contacts",
   "activity",
   "commercial",
-  "delivery",
+  "engagements",
+  "job_sheets",
 ] as const;
 
 export type ClientWorkspaceSection = (typeof clientWorkspaceSections)[number];
 
 export type ClientWorkspaceSectionData = {
   contacts: { contacts: ClientContact[] };
-  activity: { activityLogs: ActivityLog[] };
+  activity: { activityLogs: SerializableActivityLog[] };
   commercial: { quotes: Quote[] };
-  delivery: { engagements: Engagement[]; jobSheets: JobSheet[] };
+  engagements: { engagements: Engagement[] };
+  job_sheets: { jobSheets: JobSheet[] };
 };
 
 export type ClientWorkspaceSectionState<T> =
@@ -53,6 +56,7 @@ export type ClientWorkspaceRead = {
     companyName: string;
     industry: string | null;
     tier: Client["tier"];
+    createdAt: string;
   };
   ownership: { accountOwnerId: string | null };
   relationship: {
@@ -62,28 +66,54 @@ export type ClientWorkspaceRead = {
     renewalRisk: RenewalRisk | null;
     arr: number | null;
   };
-  counts: { contacts: number; engagements: number; quotes: number; jobSheets: number };
+  counts: {
+    contacts: number | null;
+    engagements: number | null;
+    quotes: number | null;
+    jobSheets: number | null;
+  };
 };
 
 type ClientCountRow = {
-  contact_count: number | string;
-  engagement_count: number | string;
-  quote_count: number | string;
-  job_sheet_count: number | string;
+  contact_count: number | string | null;
+  engagement_count: number | string | null;
+  quote_count: number | string | null;
+  job_sheet_count: number | string | null;
 };
 
-const parseCount = (value: number | string | undefined) => Number(value ?? 0);
+const parseCount = (value: number | string | null | undefined) =>
+  value == null ? null : Number(value);
 
-async function getClientWorkspaceCounts(clientId: string) {
+export type ClientWorkspaceVisibility = {
+  contacts: boolean;
+  engagements: boolean;
+  quotes: boolean;
+  jobSheets: boolean;
+};
+
+const allClientWorkspaceCountsVisible: ClientWorkspaceVisibility = {
+  contacts: true,
+  engagements: true,
+  quotes: true,
+  jobSheets: true,
+};
+
+async function getClientWorkspaceCounts(clientId: string, visibility: ClientWorkspaceVisibility) {
   const row = await queryOne<ClientCountRow>(
     `
       select
-        (select count(*) from client_contacts where client_id = $1) as contact_count,
-        (select count(*) from engagements where client_id = $1) as engagement_count,
-        (select count(*) from quotes where client_id = $1) as quote_count,
-        (select count(*) from job_sheets where client_id = $1) as job_sheet_count
+        case when $2::boolean then (select count(*) from client_contacts where client_id = $1) else null end as contact_count,
+        case when $3::boolean then (select count(*) from engagements where client_id = $1) else null end as engagement_count,
+        case when $4::boolean then (select count(*) from quotes where client_id = $1) else null end as quote_count,
+        case when $5::boolean then (select count(*) from job_sheets where client_id = $1) else null end as job_sheet_count
     `,
-    [clientId],
+    [
+      clientId,
+      visibility.contacts,
+      visibility.engagements,
+      visibility.quotes,
+      visibility.jobSheets,
+    ],
   );
   return {
     contacts: parseCount(row?.contact_count),
@@ -96,8 +126,12 @@ async function getClientWorkspaceCounts(clientId: string) {
 export async function loadClientWorkspaceRead(
   clientId: string,
   requestId: string = crypto.randomUUID(),
+  visibility: ClientWorkspaceVisibility = allClientWorkspaceCountsVisible,
 ): Promise<ClientWorkspaceRead> {
-  const [client, counts] = await Promise.all([getClient(clientId), getClientWorkspaceCounts(clientId)]);
+  const [client, counts] = await Promise.all([
+    getClient(clientId),
+    getClientWorkspaceCounts(clientId, visibility),
+  ]);
   const renewalRisk = "renewal_risk" in client ? (client.renewal_risk as RenewalRisk) : null;
   return {
     requestId,
@@ -108,6 +142,7 @@ export async function loadClientWorkspaceRead(
       companyName: client.company_name,
       industry: client.industry,
       tier: client.tier,
+      createdAt: client.created_at,
     },
     ownership: { accountOwnerId: client.account_owner },
     relationship: {
@@ -134,16 +169,23 @@ async function loadSectionData<Section extends ClientWorkspaceSection>(
       clientId,
       engagements.map((engagement) => engagement.id),
     );
-    return { activityLogs } as ClientWorkspaceSectionData[Section];
+    return {
+      activityLogs: activityLogs.map(serializeActivityLog),
+    } as ClientWorkspaceSectionData[Section];
   }
   if (section === "commercial") {
-    return { quotes: await listQuotes({ client_id: clientId }) } as ClientWorkspaceSectionData[Section];
+    return {
+      quotes: await listQuotes({ client_id: clientId }),
+    } as ClientWorkspaceSectionData[Section];
   }
-  const [engagements, jobSheets] = await Promise.all([
-    listEngagementsByClient(clientId),
-    listJobSheets({ client_id: clientId }),
-  ]);
-  return { engagements, jobSheets } as ClientWorkspaceSectionData[Section];
+  if (section === "engagements") {
+    return {
+      engagements: await listEngagementsByClient(clientId),
+    } as ClientWorkspaceSectionData[Section];
+  }
+  return {
+    jobSheets: await listJobSheets({ client_id: clientId }),
+  } as ClientWorkspaceSectionData[Section];
 }
 
 function isEmptySection(data: ClientWorkspaceSectionData[ClientWorkspaceSection]) {

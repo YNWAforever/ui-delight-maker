@@ -332,6 +332,29 @@ export async function requireCapability(
   return context.session;
 }
 
+export async function requireCapabilitySet(
+  required: readonly Capability[],
+  options: {
+    optional?: readonly Capability[];
+    target?: AuthorizationTarget;
+  } = {},
+): Promise<Partial<Record<Capability, boolean>>> {
+  const context = await loadAuthorizationContext();
+  const resolvedTarget = await resolveAuthorizationTarget(options.target ?? {});
+  const access: Partial<Record<Capability, boolean>> = {};
+
+  for (const capability of required) {
+    const decision = evaluate(context, capability, resolvedTarget);
+    if (!decision.allowed) throw decisionError(decision);
+    access[capability] = true;
+  }
+
+  for (const capability of options.optional ?? []) {
+    access[capability] = evaluate(context, capability, resolvedTarget).allowed;
+  }
+
+  return access;
+}
 export async function requireAnyCapability(
   capabilities: readonly Capability[],
   target: AuthorizationTarget = {},
