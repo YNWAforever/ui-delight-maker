@@ -186,29 +186,42 @@ function TouchpointLoggerLoader({
 }) {
   // Contacts/engagements are fetched lazily on click via TouchpointLogger's own
   // trigger-wrapped dialog rather than blocking the panel's initial render.
-  const [data, setData] = useState<{
+  type TouchpointData = {
     engagements: Engagement[];
     contacts: Awaited<ReturnType<typeof getClientContacts>>;
-  } | null>(null);
+  };
+  const [touchpointDataByClientId, setTouchpointDataByClientId] = useState<
+    Record<string, TouchpointData>
+  >({});
+  const [loadingByClientId, setLoadingByClientId] = useState<Record<string, boolean>>({});
+  const touchpointData = touchpointDataByClientId[clientId];
 
   return (
     <TouchpointLogger
       clientId={clientId}
-      engagements={data?.engagements ?? []}
-      contacts={data?.contacts ?? []}
+      engagements={touchpointData?.engagements ?? []}
+      contacts={touchpointData?.contacts ?? []}
       defaultEngagementId={engagementId}
       onLogged={onLogged}
       trigger={
         <Button
           variant="outline"
           size="sm"
+          disabled={loadingByClientId[clientId] === true}
           onClick={async () => {
-            if (!data) {
+            if (touchpointData || loadingByClientId[clientId]) return;
+            setLoadingByClientId((current) => ({ ...current, [clientId]: true }));
+            try {
               const [engagements, contacts] = await Promise.all([
                 getEngagementsByClient({ data: { clientId } }),
                 getClientContacts({ data: { clientId } }),
               ]);
-              setData({ engagements, contacts });
+              setTouchpointDataByClientId((current) => ({
+                ...current,
+                [clientId]: { engagements, contacts },
+              }));
+            } finally {
+              setLoadingByClientId((current) => ({ ...current, [clientId]: false }));
             }
           }}
         >
