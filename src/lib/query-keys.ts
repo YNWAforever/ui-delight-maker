@@ -24,9 +24,13 @@ export function normalizeQueryFilters(filters: QueryFilters = {}) {
 function createRouteQueryKeys(route: string) {
   return {
     all: () => [route] as const,
+    lists: () => [route, "list"] as const,
     list: (filters: QueryFilters = {}) => [route, "list", normalizeQueryFilters(filters)] as const,
     detail: (id: string) => [route, "detail", id] as const,
-    section: (id: string, section: string) => [route, "detail", id, "section", section] as const,
+    section: (id: string, section: string, filters?: QueryFilters) =>
+      filters
+        ? ([route, "detail", id, "section", section, normalizeQueryFilters(filters)] as const)
+        : ([route, "detail", id, "section", section] as const),
   };
 }
 

@@ -99,7 +99,7 @@ describe("sales route source copy", () => {
     const relationshipSource = readRoute("relationships.tsx");
 
     expect(relationshipSource).toContain('title="Relationship Command Center"');
-    expect(relationshipSource).toContain("getRelationshipSignals");
+    expect(relationshipSource).toContain("getRelationshipIndexRead");
     expect(relationshipSource).toContain("RelationshipCommandCenter");
     expect(relationshipSource).not.toContain("hero");
     expect(relationshipSource).not.toContain("landing");

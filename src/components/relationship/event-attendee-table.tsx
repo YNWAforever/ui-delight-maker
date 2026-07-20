@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,20 +11,35 @@ import {
 } from "@/components/ui/table";
 import type { CampaignMember } from "@/lib/types";
 
-function fallbackName(member: CampaignMember) {
+type EventAttendee = Pick<
+  CampaignMember,
+  | "id"
+  | "contact_id"
+  | "account_id"
+  | "raw_company_name"
+  | "raw_contact_name"
+  | "raw_email"
+  | "raw_phone"
+  | "attendee_status"
+  | "interests"
+  | "follow_up_status"
+  | "conversion_outcome"
+>;
+
+function fallbackName(member: EventAttendee) {
   if (member.raw_contact_name?.trim()) return member.raw_contact_name;
   if (member.raw_email?.trim()) return member.raw_email;
   if (member.contact_id) return "Matched contact";
   return "Unnamed attendee";
 }
 
-function fallbackCompany(member: CampaignMember) {
+function fallbackCompany(member: EventAttendee) {
   if (member.raw_company_name?.trim()) return member.raw_company_name;
   if (member.account_id) return "Matched account";
   return "Unmatched company";
 }
 
-function fallbackPhone(member: CampaignMember) {
+function fallbackPhone(member: EventAttendee) {
   return member.raw_phone?.trim() ? member.raw_phone : "No phone";
 }
 
@@ -31,11 +47,21 @@ export function EventAttendeeTable({
   members,
   onCreateTasks,
   isCreatingTasks = false,
+  page,
+  pageSize,
+  totalCount,
+  onPageChange,
 }: {
-  members: CampaignMember[];
+  members: EventAttendee[];
   onCreateTasks: () => void;
   isCreatingTasks?: boolean;
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  onPageChange: (page: number) => void;
 }) {
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
   if (members.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
@@ -49,7 +75,7 @@ export function EventAttendeeTable({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          {members.length} attendee{members.length === 1 ? "" : "s"} in follow-up scope.
+          Showing {members.length} of {totalCount} attendee{totalCount === 1 ? "" : "s"}.
         </p>
         <Button size="sm" onClick={onCreateTasks} disabled={isCreatingTasks}>
           {isCreatingTasks ? "Creating tasks..." : "Create follow-up tasks"}
@@ -105,6 +131,31 @@ export function EventAttendeeTable({
             ))}
           </TableBody>
         </Table>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          Page {page} of {totalPages}
+        </p>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Previous attendee page"
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Next attendee page"
+            disabled={page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );

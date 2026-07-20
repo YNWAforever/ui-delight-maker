@@ -25,6 +25,11 @@ type PermissionOverrideRow = {
   revoked_at: string | null;
 };
 
+export type CapabilityCheck = {
+  capability: Capability;
+  target?: AuthorizationTarget;
+};
+
 type AuthorizationContext = {
   session: AppSession;
   actor: ActorAccessContext;
@@ -321,6 +326,21 @@ function evaluate(
   });
 }
 
+export async function requireCapabilityChecks(
+  checks: readonly CapabilityCheck[],
+): Promise<AppSession> {
+  const context = await loadAuthorizationContext();
+  const resolvedTargets = await Promise.all(
+    checks.map(({ target = {} }) => resolveAuthorizationTarget(target)),
+  );
+
+  checks.forEach(({ capability }, index) => {
+    const decision = evaluate(context, capability, resolvedTargets[index]);
+    if (!decision.allowed) throw decisionError(decision);
+  });
+
+  return context.session;
+}
 export async function requireCapability(
   capability: Capability,
   target: AuthorizationTarget = {},

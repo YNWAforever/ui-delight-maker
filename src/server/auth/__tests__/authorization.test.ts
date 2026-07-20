@@ -23,6 +23,7 @@ vi.mock("@/server/db/neon.server", () => ({
 import {
   requireAnyCapability,
   requireCapability,
+  requireCapabilityChecks,
   requireCapabilitySet,
 } from "../authorization.server";
 
@@ -236,6 +237,22 @@ describe("admin authorization orchestration", () => {
     );
   });
 
+  it("evaluates independently targeted capability checks from one authorization context", async () => {
+    const appSession = session();
+    mocks.requireNeonAuthSession.mockResolvedValue(appSession);
+
+    await expect(
+      requireCapabilityChecks([
+        {
+          capability: "leads.view",
+          target: { departmentId: "department-home" },
+        },
+        { capability: "quotes.view" },
+      ]),
+    ).resolves.toBe(appSession);
+
+    expect(mocks.requireNeonAuthSession).toHaveBeenCalledOnce();
+  });
   it("evaluates required and optional capabilities from one authorization context", async () => {
     installDatabaseRows({
       overrides: [

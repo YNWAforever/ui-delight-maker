@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { requireCapability, requireCapabilitySet } from "@/server/auth/authorization.server";
+import {
+  requireCapability,
+  requireCapabilityChecks,
+  requireCapabilitySet,
+} from "@/server/auth/authorization.server";
 import {
   loadCampaignWorkspaceRead,
   loadCampaignWorkspaceSection,
@@ -48,12 +51,13 @@ function parseRelationshipIndexInput(data: unknown): RelationshipIndexFilters {
 export const getLeadWorkspaceRead = createServerFn({ method: "GET" })
   .validator(parseIdInput)
   .handler(async ({ data }) => {
-    await requireCapability("leads.view", {
-      resourceType: "lead",
-      resourceId: data.id,
-    });
-    await requireCapability("quotes.view");
-    await requireNeonAuthSession();
+    await requireCapabilityChecks([
+      {
+        capability: "leads.view",
+        target: { resourceType: "lead", resourceId: data.id },
+      },
+      { capability: "quotes.view" },
+    ]);
     return loadLeadWorkspaceRead(data.id);
   });
 
@@ -64,7 +68,6 @@ export const getCampaignWorkspaceRead = createServerFn({ method: "GET" })
       resourceType: "campaign",
       resourceId: data.id,
     });
-    await requireNeonAuthSession();
     return loadCampaignWorkspaceRead(data.id);
   });
 
@@ -75,7 +78,6 @@ export const getCampaignWorkspaceSection = createServerFn({ method: "GET" })
       resourceType: "campaign",
       resourceId: data.campaignId,
     });
-    await requireNeonAuthSession();
     return loadCampaignWorkspaceSection(data.campaignId, data);
   });
 
@@ -83,6 +85,5 @@ export const getRelationshipIndexRead = createServerFn({ method: "GET" })
   .validator(parseRelationshipIndexInput)
   .handler(async ({ data }) => {
     await requireCapabilitySet(["accounts.view", "engagements.view"]);
-    await requireNeonAuthSession();
     return loadRelationshipIndexRead(data);
   });

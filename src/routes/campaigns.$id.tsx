@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type ReactNode } from "react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, FileUp } from "lucide-react";
 import { toast } from "sonner";
 import { EventAttendeeTable } from "@/components/relationship/event-attendee-table";
@@ -13,10 +14,17 @@ import {
   type EventImportRow,
 } from "@/lib/relationship/event-import";
 import { formatDate } from "@/lib/format";
-import { createCampaignFollowUpTasksFn, getCampaign } from "@/server-functions/campaigns";
+import { createCampaignFollowUpTasksFn } from "@/server-functions/campaigns";
 import { commitEventImportFn, validateEventImportRowsFn } from "@/server-functions/event-import";
+import { crmQueryKeys } from "@/lib/query-keys";
+import {
+  getCampaignWorkspaceRead,
+  getCampaignWorkspaceSection,
+} from "@/server-functions/relationship-workspaces";
 
 type CommitEventImportResponse = Awaited<ReturnType<typeof commitEventImportFn>>;
+
+const ATTENDEE_PAGE_SIZE = 50;
 
 function isCommitValidationFailure(
   result: CommitEventImportResponse,
@@ -25,16 +33,61 @@ function isCommitValidationFailure(
 }
 
 export const Route = createFileRoute("/campaigns/$id")({
-  loader: async ({ params }) => getCampaign({ data: { id: params.id } }),
+  loader: ({ params }) => getCampaignWorkspaceRead({ data: { id: params.id } }),
   head: ({ loaderData }) => ({
     meta: [{ title: `${loaderData?.campaign.name ?? "Campaign"} - Fimmick ClientOps` }],
   }),
   component: CampaignDetailRoute,
 });
 
+export const campaignMutationQueryKeys = {
+  attendee_import: (campaignId: string) => [
+    crmQueryKeys.campaigns.detail(campaignId),
+    crmQueryKeys.campaigns.section(campaignId, "attendees"),
+    crmQueryKeys.accounts.lists(),
+    crmQueryKeys.contacts.lists(),
+  ],
+  follow_up_tasks: (campaignId: string) => [
+    crmQueryKeys.campaigns.detail(campaignId),
+    crmQueryKeys.campaigns.section(campaignId, "attendees"),
+    crmQueryKeys.tasks.lists(),
+  ],
+} as const;
+
+async function invalidateCampaignMutation(
+  queryClient: ReturnType<typeof useQueryClient>,
+  campaignId: string,
+  mutation: keyof typeof campaignMutationQueryKeys,
+) {
+  await Promise.all(
+    campaignMutationQueryKeys[mutation](campaignId).map((queryKey) =>
+      queryClient.invalidateQueries({ queryKey }),
+    ),
+  );
+}
 function CampaignDetailRoute() {
-  const { campaign, members } = Route.useLoaderData();
-  const router = useRouter();
+  const initialRead = Route.useLoaderData();
+  const campaignId = initialRead.campaign.id;
+  const queryClient = useQueryClient();
+  const workspaceQuery = useQuery({
+    queryKey: crmQueryKeys.campaigns.detail(campaignId),
+    queryFn: () => getCampaignWorkspaceRead({ data: { id: campaignId } }),
+    initialData: initialRead,
+    staleTime: 30_000,
+  });
+  const { campaign, attendeeSummary } = workspaceQuery.data;
+  const [attendeePage, setAttendeePage] = useState(1);
+  const attendeeFilters = { page: attendeePage, limit: ATTENDEE_PAGE_SIZE };
+  const attendeeQuery = useQuery({
+    queryKey: crmQueryKeys.campaigns.section(campaign.id, "attendees", attendeeFilters),
+    queryFn: () =>
+      getCampaignWorkspaceSection({
+        data: { campaignId: campaign.id, ...attendeeFilters },
+      }),
+    staleTime: 30_000,
+    placeholderData: (previousData) => previousData,
+  });
+  const members = attendeeQuery.data?.members ?? [];
   const inputId = useId();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [rows, setRows] = useState<EventImportRow[]>([]);
@@ -105,7 +158,8 @@ function CampaignDetailRoute() {
         return;
       }
 
-      await router.invalidate();
+      setAttendeePage(1);
+      await invalidateCampaignMutation(queryClient, campaign.id, "attendee_import");
       setRows([]);
       setErrors([]);
       resetInput();
@@ -129,7 +183,7 @@ function CampaignDetailRoute() {
 
     try {
       const result = await createCampaignFollowUpTasksFn({ data: { campaignId: campaign.id } });
-      await router.invalidate();
+      await invalidateCampaignMutation(queryClient, campaign.id, "follow_up_tasks");
       toast.success(
         `Created ${result.createdTasks} follow-up task${result.createdTasks === 1 ? "" : "s"}.`,
       );
@@ -160,7 +214,7 @@ function CampaignDetailRoute() {
           <SummaryCard label="Campaign status" value={<StatusBadge value={campaign.status} />} />
           <SummaryCard
             label="Attendees"
-            value={<span>{members.length}</span>}
+            value={<span>{attendeeSummary.total}</span>}
             hint="current imported records"
           />
           <SummaryCard
@@ -169,11 +223,7 @@ function CampaignDetailRoute() {
           />
           <SummaryCard
             label="Follow-up state"
-            value={
-              <span>
-                {members.filter((member) => member.follow_up_status !== "completed").length}
-              </span>
-            }
+            value={<span>{attendeeSummary.openFollowUp}</span>}
             hint="attendees still in progress"
           />
         </div>
@@ -184,11 +234,28 @@ function CampaignDetailRoute() {
               <CardTitle className="text-base">Attendee follow-up</CardTitle>
             </CardHeader>
             <CardContent>
-              <EventAttendeeTable
-                members={members}
-                onCreateTasks={() => void createFollowUpTasks()}
-                isCreatingTasks={isCreatingTasks}
-              />
+              {attendeeQuery.isPending ? (
+                <p role="status" className="text-sm text-muted-foreground">
+                  Loading attendees...
+                </p>
+              ) : attendeeQuery.isError ? (
+                <div role="alert" className="flex items-center justify-between gap-3 text-sm">
+                  <span>Attendees are temporarily unavailable.</span>
+                  <Button variant="outline" size="sm" onClick={() => void attendeeQuery.refetch()}>
+                    Retry
+                  </Button>
+                </div>
+              ) : (
+                <EventAttendeeTable
+                  members={members}
+                  onCreateTasks={() => void createFollowUpTasks()}
+                  isCreatingTasks={isCreatingTasks}
+                  page={attendeePage}
+                  pageSize={attendeeQuery.data.limit}
+                  totalCount={attendeeQuery.data.total}
+                  onPageChange={setAttendeePage}
+                />
+              )}
             </CardContent>
           </Card>
 

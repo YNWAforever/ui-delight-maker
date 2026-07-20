@@ -4,6 +4,7 @@ const {
   queryMock,
   queryOneMock,
   requireCapabilitySetMock,
+  requireCapabilityChecksMock,
   requireCapabilityMock,
   requireNeonAuthSessionMock,
   createServerFnChain,
@@ -21,6 +22,7 @@ const {
     queryMock: vi.fn(),
     queryOneMock: vi.fn(),
     requireCapabilitySetMock: vi.fn(),
+    requireCapabilityChecksMock: vi.fn(),
     requireCapabilityMock: vi.fn(),
     requireNeonAuthSessionMock: vi.fn(),
     createServerFnChain,
@@ -33,6 +35,7 @@ vi.mock("@tanstack/react-start", () => ({
 
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapability: requireCapabilityMock,
+  requireCapabilityChecks: requireCapabilityChecksMock,
   requireCapabilitySet: requireCapabilitySetMock,
 }));
 
@@ -68,6 +71,7 @@ describe("relationship workspace read models", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requireCapabilityMock.mockResolvedValue(undefined);
+    requireCapabilityChecksMock.mockResolvedValue(undefined);
     requireCapabilitySetMock.mockResolvedValue({});
     requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "user-1" } });
 
@@ -284,11 +288,13 @@ describe("relationship workspace read models", () => {
     } = await import("@/server-functions/relationship-workspaces");
 
     await getLeadWorkspaceRead({ data: { id: "lead-1" } });
-    expect(requireCapabilityMock).toHaveBeenNthCalledWith(1, "leads.view", {
-      resourceType: "lead",
-      resourceId: "lead-1",
-    });
-    expect(requireCapabilityMock).toHaveBeenNthCalledWith(2, "quotes.view");
+    expect(requireCapabilityChecksMock).toHaveBeenCalledWith([
+      {
+        capability: "leads.view",
+        target: { resourceType: "lead", resourceId: "lead-1" },
+      },
+      { capability: "quotes.view" },
+    ]);
 
     await getCampaignWorkspaceRead({ data: { id: "campaign-1" } });
     expect(requireCapabilityMock).toHaveBeenCalledWith("campaigns.view", {
@@ -309,6 +315,6 @@ describe("relationship workspace read models", () => {
       "accounts.view",
       "engagements.view",
     ]);
-    expect(requireNeonAuthSessionMock).toHaveBeenCalledTimes(4);
+    expect(requireNeonAuthSessionMock).not.toHaveBeenCalled();
   });
 });

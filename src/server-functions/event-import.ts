@@ -21,6 +21,8 @@ export const validateEventImportRowsFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { rows: EventImportRow[] })
   .handler(async ({ data }) => {
     await requireCapability("engagements.view");
+    await requireCapability("accounts.view");
+    await requireCapability("contacts.view");
     await requireNeonAuthSession();
     return validateEventImportRows({
       rows: data.rows,
@@ -35,6 +37,12 @@ export const commitEventImportFn = createServerFn({ method: "POST" })
       resourceType: "campaign",
       resourceId: data.campaignId,
     });
+    await requireCapability("campaigns.manage", {
+      resourceType: "campaign",
+      resourceId: data.campaignId,
+    });
+    await requireCapability("accounts.create");
+    await requireCapability("contacts.create");
     const session = await requireNeonAuthSession();
     const validation = validateEventImportRows({
       rows: data.rows,
