@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   ACCOUNT_DETAIL_TABS,
@@ -102,7 +102,7 @@ describe("admin search contracts", () => {
     ).toEqual({});
     expect(
       companiesSearchSchema.parse({ lifecycle: "obsolete", sort: "old", account: "" }),
-    ).toEqual({});
+    ).toEqual({ lifecycle: undefined, sort: undefined, account: undefined, page: 1, limit: 50 });
   });
 
   it("accepts every current company lifecycle, sort, and account selection value", () => {
