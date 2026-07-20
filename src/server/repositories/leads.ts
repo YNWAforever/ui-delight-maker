@@ -3,7 +3,7 @@ import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.s
 import { createClient } from "@/server/repositories/clients";
 import { createClientContact } from "@/server/repositories/client-contacts";
 import { createEngagement } from "@/server/repositories/engagements";
-import type { ActivityLog, Engagement, Lead, LeadStatus } from "@/lib/types";
+import type { ActivityLog, Engagement, Lead, LeadStatus, Quote } from "@/lib/types";
 import {
   normalizePagination,
   parseCount,
@@ -84,9 +84,7 @@ export async function listLeads(filters: LeadFilters = {}) {
   );
 }
 
-export async function listLeadsPage(
-  filters: LeadPageFilters = {},
-): Promise<PaginatedResult<Lead>> {
+export async function listLeadsPage(filters: LeadPageFilters = {}): Promise<PaginatedResult<Lead>> {
   const where = buildFilters([
     ["status", filters.status],
     ["source", filters.source],
@@ -139,6 +137,62 @@ export async function getLeadWithActivity(id: string) {
 
   if (!lead) throw new Error("Lead not found");
   return { lead, activityLogs };
+}
+
+export type LeadQuoteSummary = Pick<
+  Quote,
+  "id" | "number" | "status" | "total_value" | "currency" | "valid_until" | "created_at"
+> & { lineItemCount: number };
+
+type LeadQuoteSummaryRow = Omit<LeadQuoteSummary, "lineItemCount"> & {
+  line_item_count: number | string;
+};
+
+export async function getLeadWorkspaceData(id: string) {
+  const activityLimit = 20;
+  const quoteLimit = 25;
+  const [lead, activityLogs, quoteRows] = await Promise.all([
+    queryOne<Lead>(
+      `
+        select id, contact_id, account_id, source_campaign_id, campaign_member_id,
+               company_name, contact_name, contact_email, contact_phone, source, status,
+               assigned_to, lead_score, qualification_data, enquiry_text, created_at, updated_at
+        from leads
+        where id = $1
+      `,
+      [id],
+    ),
+    query<ActivityLog>(
+      `
+        select id, actor_type, actor_id, actor_name, action, object_type, object_id,
+               diff_data, created_at
+        from activity_logs
+        where object_type = 'lead'
+          and object_id = $1
+        order by created_at desc, id desc
+        limit $2
+      `,
+      [id, activityLimit],
+    ),
+    query<LeadQuoteSummaryRow>(
+      `
+        select q.id, q.number, q.status, q.total_value, q.currency, q.valid_until, q.created_at,
+               (select count(*) from quote_line_items qli where qli.quote_id = q.id) as line_item_count
+        from quotes q
+        where lead_id = $1
+        order by created_at desc, id desc
+        limit $2
+      `,
+      [id, quoteLimit],
+    ),
+  ]);
+
+  if (!lead) throw new Error("Lead not found");
+  const quotes = quoteRows.map(({ line_item_count, ...quote }) => ({
+    ...quote,
+    lineItemCount: Number(line_item_count),
+  }));
+  return { lead, activityLogs, quotes };
 }
 
 export async function assertLeadExists(id: string, db?: Queryable) {
