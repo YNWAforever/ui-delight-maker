@@ -1,5 +1,13 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
-import type { PricingTemplate, Quote, QuoteLineItem, QuoteLineItemRecord } from "@/lib/types";
+import type {
+  Client,
+  Lead,
+  PricingTemplate,
+  Product,
+  Quote,
+  QuoteLineItem,
+  QuoteLineItemRecord,
+} from "@/lib/types";
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
 import {
   normalizePagination,
@@ -381,4 +389,236 @@ export async function listActivePricingTemplates() {
       order by service
     `,
   );
+}
+
+export type QuoteReferenceKind = "lead" | "client" | "product" | "pricing";
+
+export type QuoteLeadReference = Pick<Lead, "id" | "company_name" | "contact_name" | "status">;
+export type QuoteClientReference = Pick<Client, "id" | "company_name" | "industry" | "tier">;
+export type QuoteProductReference = Pick<
+  Product,
+  "id" | "name" | "description" | "category" | "billing_type"
+>;
+export type QuotePricingReference = Pick<
+  PricingTemplate,
+  "id" | "service" | "description" | "category" | "unit_price" | "currency" | "product_id"
+>;
+
+export type QuoteReferenceItemMap = {
+  lead: QuoteLeadReference;
+  client: QuoteClientReference;
+  product: QuoteProductReference;
+  pricing: QuotePricingReference;
+};
+
+export type QuoteReferencePage<K extends QuoteReferenceKind = QuoteReferenceKind> = {
+  items: QuoteReferenceItemMap[K][];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+export type QuoteReferencePageInput<K extends QuoteReferenceKind = QuoteReferenceKind> = {
+  kind: K;
+  search?: string;
+  selectedId?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type QuoteClientSummary = Pick<Client, "id" | "company_name" | "industry" | "tier">;
+export type QuoteLeadSummary = Pick<Lead, "id" | "company_name" | "contact_name" | "contact_email">;
+
+const QUOTE_COLUMNS = `
+  id, number, lead_id, client_id, contact_id, account_id, deal_id, status,
+  quote_template_id, accepted_version_id, issued_version_id, document_sections,
+  cover_text, assumptions, payment_terms, accepted_at, accepted_by, parent_quote_id,
+  change_order_reason, total_value, currency, valid_until, line_items, pdf_url,
+  created_by, approved_by, created_at, updated_at
+`;
+
+function normalizeQuoteReferencePagination(input: { page?: number; limit?: number }) {
+  const page = Math.max(1, Math.trunc(input.page ?? 1));
+  const limit = Math.min(25, Math.max(1, Math.trunc(input.limit ?? 25)));
+  return { page, limit, offset: (page - 1) * limit };
+}
+
+function matchesReferenceSearch(item: { id: string } & Record<string, unknown>, search?: string) {
+  if (!search) return true;
+  const needle = search.toLowerCase();
+  return Object.values(item).some(
+    (value) => typeof value === "string" && value.toLowerCase().includes(needle),
+  );
+}
+
+async function mergeSelectedReference<T extends { id: string }>(
+  items: T[],
+  selected: T | null,
+  limit: number,
+) {
+  if (!selected) return items.slice(0, limit);
+  return [selected, ...items.filter((item) => item.id !== selected.id)].slice(0, limit);
+}
+
+export async function listQuoteReferencePage<K extends QuoteReferenceKind>(
+  input: QuoteReferencePageInput<K>,
+): Promise<QuoteReferencePage<K>> {
+  const { page, limit, offset } = normalizeQuoteReferencePagination(input);
+  const search = input.search?.trim();
+  const pattern = search ? `%${search}%` : undefined;
+
+  let items: QuoteReferenceItemMap[K][];
+  let selected: QuoteReferenceItemMap[K] | null = null;
+  let count: { total: number | string } | null;
+
+  if (input.kind === "lead") {
+    const where = pattern
+      ? "where id::text ilike $1 or company_name ilike $1 or coalesce(contact_name, '') ilike $1"
+      : "";
+    const values = pattern ? [pattern] : [];
+    [items, count, selected] = (await Promise.all([
+      query<QuoteLeadReference>(
+        `select id, company_name, contact_name, status from leads ${where}
+         order by company_name asc, id asc limit $${values.length + 1} offset $${values.length + 2}`,
+        [...values, limit, offset],
+      ),
+      queryOne<{ total: number | string }>(`select count(*) as total from leads ${where}`, values),
+      input.selectedId
+        ? queryOne<QuoteLeadReference>(
+            "select id, company_name, contact_name, status from leads where id = $1",
+            [input.selectedId],
+          )
+        : Promise.resolve(null),
+    ])) as [
+      QuoteReferenceItemMap[K][],
+      { total: number | string } | null,
+      QuoteReferenceItemMap[K] | null,
+    ];
+  } else if (input.kind === "client") {
+    const where = pattern
+      ? "where id::text ilike $1 or company_name ilike $1 or coalesce(industry, '') ilike $1"
+      : "";
+    const values = pattern ? [pattern] : [];
+    [items, count, selected] = (await Promise.all([
+      query<QuoteClientReference>(
+        `select id, company_name, industry, tier from clients ${where}
+         order by company_name asc, id asc limit $${values.length + 1} offset $${values.length + 2}`,
+        [...values, limit, offset],
+      ),
+      queryOne<{ total: number | string }>(
+        `select count(*) as total from clients ${where}`,
+        values,
+      ),
+      input.selectedId
+        ? queryOne<QuoteClientReference>(
+            "select id, company_name, industry, tier from clients where id = $1",
+            [input.selectedId],
+          )
+        : Promise.resolve(null),
+    ])) as [
+      QuoteReferenceItemMap[K][],
+      { total: number | string } | null,
+      QuoteReferenceItemMap[K] | null,
+    ];
+  } else if (input.kind === "product") {
+    const where = pattern
+      ? "where active = true and (id::text ilike $1 or name ilike $1 or coalesce(description, '') ilike $1)"
+      : "where active = true";
+    const values = pattern ? [pattern] : [];
+    [items, count, selected] = (await Promise.all([
+      query<QuoteProductReference>(
+        `select id, name, description, category, billing_type from products ${where}
+         order by name asc, id asc limit $${values.length + 1} offset $${values.length + 2}`,
+        [...values, limit, offset],
+      ),
+      queryOne<{ total: number | string }>(
+        `select count(*) as total from products ${where}`,
+        values,
+      ),
+      input.selectedId
+        ? queryOne<QuoteProductReference>(
+            "select id, name, description, category, billing_type from products where id = $1 and active = true",
+            [input.selectedId],
+          )
+        : Promise.resolve(null),
+    ])) as [
+      QuoteReferenceItemMap[K][],
+      { total: number | string } | null,
+      QuoteReferenceItemMap[K] | null,
+    ];
+  } else {
+    const where = pattern
+      ? "where active = true and (id::text ilike $1 or service ilike $1 or coalesce(description, '') ilike $1)"
+      : "where active = true";
+    const values = pattern ? [pattern] : [];
+    [items, count, selected] = (await Promise.all([
+      query<QuotePricingReference>(
+        `select id, service, description, category, unit_price, currency, product_id
+         from pricing_templates ${where}
+         order by service asc, id asc limit $${values.length + 1} offset $${values.length + 2}`,
+        [...values, limit, offset],
+      ),
+      queryOne<{ total: number | string }>(
+        `select count(*) as total from pricing_templates ${where}`,
+        values,
+      ),
+      input.selectedId
+        ? queryOne<QuotePricingReference>(
+            `select id, service, description, category, unit_price, currency, product_id
+             from pricing_templates where id = $1 and active = true`,
+            [input.selectedId],
+          )
+        : Promise.resolve(null),
+    ])) as [
+      QuoteReferenceItemMap[K][],
+      { total: number | string } | null,
+      QuoteReferenceItemMap[K] | null,
+    ];
+  }
+
+  const merged = await mergeSelectedReference(items, selected, limit);
+  const selectedAddsToSearch = selected && !matchesReferenceSearch(selected, search);
+  return {
+    items: merged,
+    total: Number(count?.total ?? 0) + (selectedAddsToSearch ? 1 : 0),
+    page,
+    limit,
+  };
+}
+
+export async function listQuoteCreatePricingTemplates(
+  limit = 10,
+  selectedProductId?: string,
+): Promise<QuotePricingReference[]> {
+  const boundedLimit = Math.min(10, Math.max(1, Math.trunc(limit)));
+  return query<QuotePricingReference>(
+    `select id, service, description, category, unit_price, currency, product_id
+     from pricing_templates
+     where active = true
+     order by case when product_id = $1 then 0 else 1 end, service asc, id asc
+     limit $2`,
+    [selectedProductId ?? null, boundedLimit],
+  );
+}
+
+export async function getQuoteWorkspaceDetail(id: string) {
+  const quote = await queryOne<Quote>(`select ${QUOTE_COLUMNS} from quotes where id = $1`, [id]);
+  if (!quote) throw new Error("Quote not found");
+
+  const [client, lead] = await Promise.all([
+    quote.client_id
+      ? queryOne<QuoteClientSummary>(
+          "select id, company_name, industry, tier from clients where id = $1",
+          [quote.client_id],
+        )
+      : Promise.resolve(null),
+    quote.lead_id
+      ? queryOne<QuoteLeadSummary>(
+          "select id, company_name, contact_name, contact_email from leads where id = $1",
+          [quote.lead_id],
+        )
+      : Promise.resolve(null),
+  ]);
+
+  return { quote, client, lead };
 }

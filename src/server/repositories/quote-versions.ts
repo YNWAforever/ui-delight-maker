@@ -63,3 +63,71 @@ export async function listQuoteVersions(quoteId: string): Promise<QuoteVersion[]
     [quoteId],
   );
 }
+
+export type QuoteVersionSummary = Omit<QuoteVersion, "snapshot">;
+
+function normalizeQuoteVersionPagination(input: { page?: number; limit?: number } = {}) {
+  const page = Math.max(1, Math.trunc(input.page ?? 1));
+  const limit = Math.min(25, Math.max(1, Math.trunc(input.limit ?? 25)));
+  return { page, limit, offset: (page - 1) * limit };
+}
+
+export async function listQuoteVersionSummariesPage(
+  quoteId: string,
+  input: { page?: number; limit?: number } = {},
+) {
+  const { page, limit, offset } = normalizeQuoteVersionPagination(input);
+  const [items, count] = await Promise.all([
+    query<QuoteVersion>(
+      `
+        select id, quote_id, version_number, reason, pdf_template_id, pdf_url,
+               created_by, created_at
+        from quote_versions
+        where quote_id = $1
+        order by version_number desc, id desc
+        limit $2 offset $3
+      `,
+      [quoteId, limit, offset],
+    ),
+    queryOne<{ total: number | string }>(
+      "select count(*) as total from quote_versions where quote_id = $1",
+      [quoteId],
+    ),
+  ]);
+  return {
+    items: items.map(({ snapshot: _snapshot, ...summary }) => summary),
+    total: Number(count?.total ?? 0),
+    page,
+    limit,
+  };
+}
+
+export async function getQuoteDocumentVersion(
+  quoteId: string,
+  versionId?: string | null,
+): Promise<QuoteVersion | null> {
+  const rows = versionId
+    ? await query<QuoteVersion>(
+        `
+          select id, quote_id, version_number, reason, snapshot, pdf_template_id,
+                 pdf_url, created_by, created_at
+          from quote_versions
+          where quote_id = $1 and id = $2
+          order by version_number desc, id desc
+          limit $3
+        `,
+        [quoteId, versionId, 1],
+      )
+    : await query<QuoteVersion>(
+        `
+          select id, quote_id, version_number, reason, snapshot, pdf_template_id,
+                 pdf_url, created_by, created_at
+          from quote_versions
+          where quote_id = $1
+          order by version_number desc, id desc
+          limit $2
+        `,
+        [quoteId, 1],
+      );
+  return rows[0] ?? null;
+}
