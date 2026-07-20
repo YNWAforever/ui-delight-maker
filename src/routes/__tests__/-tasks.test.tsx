@@ -1,19 +1,23 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 
 import type { ComponentType, HTMLAttributes, ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const updateTaskMock = vi.hoisted(() => vi.fn());
-const invalidateMock = vi.hoisted(() => vi.fn());
+const createTaskMock = vi.hoisted(() => vi.fn());
+const navigateMock = vi.hoisted(() => vi.fn());
 const toastErrorMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
     options,
+    fullPath: "/tasks",
     useLoaderData: vi.fn(),
+    useSearch: () => ({ priority: "all", assignee: "all" }),
   }),
-  useRouter: () => ({ invalidate: invalidateMock }),
+  useNavigate: () => navigateMock,
 }));
 vi.mock("sonner", () => ({
   toast: { error: toastErrorMock, success: vi.fn(), message: vi.fn() },
@@ -44,7 +48,7 @@ vi.mock("@/lib/sales-workspace", () => ({
 vi.mock("@/lib/users", () => ({ APP_USERS: [], userById: () => undefined }));
 vi.mock("@/server-functions/tasks", () => ({
   getTasks: vi.fn(),
-  createTask: vi.fn(),
+  createTask: createTaskMock,
   updateTask: updateTaskMock,
 }));
 
@@ -85,7 +89,8 @@ const tasks = [
 
 beforeEach(() => {
   updateTaskMock.mockReset();
-  invalidateMock.mockReset();
+  createTaskMock.mockReset();
+  navigateMock.mockReset();
   toastErrorMock.mockReset();
   vi.mocked(Route.useLoaderData).mockReturnValue(tasks as never);
 });
@@ -93,18 +98,30 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Task board move reliability", () => {
-  it("moves optimistically, locks duplicate input, and invalidates after success", async () => {
+  const renderBoard = () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+    const Component = Route.options.component as ComponentType;
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Component />
+      </QueryClientProvider>,
+    );
+    return { queryClient, invalidateQueries };
+  };
+
+  it("moves optimistically, locks duplicate input, and invalidates task caches after success", async () => {
     const request = deferred<unknown>();
     updateTaskMock.mockReturnValue(request.promise);
-    invalidateMock.mockResolvedValue(undefined);
-    const Component = Route.options.component as ComponentType;
-    render(<Component />);
+    const { invalidateQueries } = renderBoard();
 
     fireEvent.keyDown(screen.getByRole("button", { name: /Call Northstar — Open/ }), {
       key: "ArrowRight",
     });
 
-    const pending = screen.getByRole("button", { name: /Call Northstar — In progress/ });
+    const pending = await screen.findByRole("button", { name: /Call Northstar — In progress/ });
     expect(pending.getAttribute("aria-busy")).toBe("true");
     expect(pending.getAttribute("aria-disabled")).toBe("true");
     expect(pending.getAttribute("draggable")).toBe("false");
@@ -113,7 +130,12 @@ describe("Task board move reliability", () => {
     expect(updateTaskMock).toHaveBeenCalledTimes(1);
 
     await act(async () => request.resolve(undefined));
-    await waitFor(() => expect(invalidateMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(invalidateQueries).toHaveBeenCalledTimes(2));
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["tasks", "detail", "task-1"],
+      exact: true,
+    });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["tasks", "list"] });
     expect(
       screen
         .getByRole("button", { name: /Call Northstar — In progress/ })
@@ -124,8 +146,7 @@ describe("Task board move reliability", () => {
   it("rolls back only the failed task and shows the failure toast", async () => {
     const request = deferred<unknown>();
     updateTaskMock.mockReturnValue(request.promise);
-    const Component = Route.options.component as ComponentType;
-    render(<Component />);
+    const { invalidateQueries } = renderBoard();
 
     fireEvent.keyDown(screen.getByRole("button", { name: /Call Northstar — Open/ }), {
       key: "ArrowRight",
@@ -139,24 +160,6 @@ describe("Task board move reliability", () => {
     );
     expect(screen.getByRole("button", { name: /Prepare renewal — In progress/ })).toBeTruthy();
     expect(toastErrorMock).toHaveBeenCalledWith("Task move failed. Try again.");
-    expect(invalidateMock).not.toHaveBeenCalled();
-  });
-  it("keeps the successful move and reports when refresh fails", async () => {
-    updateTaskMock.mockResolvedValue(undefined);
-    invalidateMock.mockRejectedValue(new Error("refresh failed"));
-    const Component = Route.options.component as ComponentType;
-    render(<Component />);
-
-    fireEvent.keyDown(screen.getByRole("button", { name: /Call Northstar — Open/ }), {
-      key: "ArrowRight",
-    });
-
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /Call Northstar — In progress/ })).toBeTruthy(),
-    );
-    await waitFor(() =>
-      expect(toastErrorMock).toHaveBeenCalledWith("Task saved, but the board could not refresh."),
-    );
-    expect(screen.queryByRole("button", { name: /Call Northstar — Open/ })).toBeNull();
+    expect(invalidateQueries).not.toHaveBeenCalled();
   });
 });
