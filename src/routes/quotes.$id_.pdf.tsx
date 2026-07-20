@@ -6,32 +6,10 @@ import {
   resolveQuotePdfSource,
 } from "@/components/quotes/quote-pdf-preview";
 import { Button } from "@/components/ui/button";
-import { getClient } from "@/server-functions/clients";
-import { getLead } from "@/server-functions/leads";
-import { getQuote, getQuoteVersions } from "@/server-functions/quotes";
+import { getQuoteDocumentRead } from "@/server-functions/quote-workspace";
 
 export const Route = createFileRoute("/quotes/$id_/pdf")({
-  loader: async ({ params }) => {
-    const quote = await getQuote({ data: { id: params.id } });
-    const clientPromise = quote.client_id
-      ? getClient({ data: { id: quote.client_id } }).catch(() => null)
-      : Promise.resolve(null);
-    const leadPromise = quote.lead_id
-      ? getLead({ data: { id: quote.lead_id } }).catch(() => null)
-      : Promise.resolve(null);
-    const [versions, client, leadResult] = await Promise.all([
-      getQuoteVersions({ data: { quoteId: quote.id } }),
-      clientPromise,
-      leadPromise,
-    ]);
-
-    return {
-      quote,
-      versions,
-      client,
-      lead: leadResult?.lead ?? null,
-    };
-  },
+  loader: ({ params }) => getQuoteDocumentRead({ data: { id: params.id } }),
   head: () => ({
     meta: [{ title: "Quote PDF - Fimmick ClientOps" }],
   }),

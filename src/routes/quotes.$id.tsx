@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { useState, type SetStateAction } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  ArrowRight,
   Check,
   CheckCircle2,
   Download,
@@ -19,14 +21,7 @@ import {
   resolveQuotePdfSource,
 } from "@/components/quotes/quote-pdf-preview";
 import { StatusBadge } from "@/components/status-badge";
-import type {
-  Client,
-  Lead,
-  PricingTemplate,
-  QuoteLineItem,
-  QuoteStatus,
-  QuoteVersion,
-} from "@/lib/types";
+import type { PricingTemplate, QuoteLineItem, QuoteStatus, QuoteVersion } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +30,8 @@ import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { quoteDetailSearchSchema } from "@/lib/admin-ux-search";
+import { useQuoteReferenceData } from "@/hooks/use-quote-reference-data";
+import { crmQueryKeys } from "@/lib/query-keys";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
 import { calculateTotal, newLineItem } from "@/lib/quote-utils";
@@ -42,16 +39,16 @@ import {
   acceptQuoteAndCreateJobSheet,
   approveAndIssueQuote,
   approveQuote,
-  getQuoteVersions,
-  getQuote,
-  getPricingTemplates,
   issueQuoteVersion,
   rejectQuote,
   requestQuoteApproval,
   updateQuote,
 } from "@/server-functions/quotes";
-import { getClient } from "@/server-functions/clients";
-import { getLead } from "@/server-functions/leads";
+import {
+  getQuoteDetailRead,
+  getQuoteDocumentRead,
+  getQuoteVersionsSection,
+} from "@/server-functions/quote-workspace";
 import { USER_RECORD } from "@/lib/users";
 
 type Comment = { id: string; quote_id: string; author: string; body: string; created_at: string };
@@ -70,24 +67,7 @@ const quoteFiles: QuoteFile[] = [];
 
 export const Route = createFileRoute("/quotes/$id")({
   validateSearch: quoteDetailSearchSchema,
-  loader: async ({ params }) => {
-    const [quote, templates] = await Promise.all([
-      getQuote({ data: { id: params.id } }),
-      getPricingTemplates(),
-    ]);
-    const clientPromise = quote.client_id
-      ? getClient({ data: { id: quote.client_id } }).catch(() => null)
-      : Promise.resolve(null);
-    const leadPromise = quote.lead_id
-      ? getLead({ data: { id: quote.lead_id } }).catch(() => null)
-      : Promise.resolve(null);
-    const [versions, client, leadResult] = await Promise.all([
-      getQuoteVersions({ data: { quoteId: quote.id } }),
-      clientPromise,
-      leadPromise,
-    ]);
-    return { quote, templates, versions, client, lead: leadResult?.lead ?? null };
-  },
+  loader: ({ params }) => getQuoteDetailRead({ data: { id: params.id } }),
   head: ({ loaderData }) => ({
     meta: [
       { title: `${loaderData?.quote?.number ?? "Quote"} — ClientOps` },
@@ -121,30 +101,112 @@ const VERSION_REASON_LABELS: Record<QuoteVersion["reason"], string> = {
   change_order: "Change order snapshot",
 };
 
+const quoteMutationQueryKeys = {
+  save: (quoteId: string) => [crmQueryKeys.quotes.detail(quoteId), crmQueryKeys.quotes.lists()],
+  approval: (quoteId: string) => [
+    crmQueryKeys.quotes.detail(quoteId),
+    crmQueryKeys.quotes.lists(),
+    crmQueryKeys.approvals.lists(),
+  ],
+  approval_issue: (quoteId: string) => [
+    crmQueryKeys.quotes.detail(quoteId),
+    crmQueryKeys.quotes.lists(),
+    crmQueryKeys.approvals.lists(),
+    crmQueryKeys.quotes.section(quoteId, "versions"),
+    crmQueryKeys.quotes.section(quoteId, "document"),
+  ],
+  issue: (quoteId: string) => [
+    crmQueryKeys.quotes.detail(quoteId),
+    crmQueryKeys.quotes.lists(),
+    crmQueryKeys.quotes.section(quoteId, "versions"),
+    crmQueryKeys.quotes.section(quoteId, "document"),
+  ],
+  accept: (quoteId: string) => [
+    crmQueryKeys.quotes.detail(quoteId),
+    crmQueryKeys.quotes.lists(),
+    crmQueryKeys.quotes.section(quoteId, "versions"),
+    crmQueryKeys.quotes.section(quoteId, "document"),
+    crmQueryKeys.jobSheets.lists(),
+  ],
+} as const;
+
+async function invalidateQuoteMutation(
+  queryClient: ReturnType<typeof useQueryClient>,
+  quoteId: string,
+  mutation: keyof typeof quoteMutationQueryKeys,
+) {
+  await Promise.all(
+    quoteMutationQueryKeys[mutation](quoteId).map((queryKey) =>
+      queryClient.invalidateQueries({ queryKey }),
+    ),
+  );
+}
+
 function QuoteDetail() {
-  const { quote, templates, versions, lead, client } = Route.useLoaderData();
+  const initialRead = Route.useLoaderData();
   const search = Route.useSearch();
+  const queryClient = useQueryClient();
+  const detailQuery = useQuery({
+    queryKey: crmQueryKeys.quotes.detail(initialRead.quote.id),
+    queryFn: () => getQuoteDetailRead({ data: { id: initialRead.quote.id } }),
+    initialData: initialRead,
+    staleTime: 30_000,
+  });
+  const { quote, lead, client } = detailQuery.data;
+  const versionsQuery = useQuery({
+    queryKey: crmQueryKeys.quotes.section(quote.id, "versions"),
+    queryFn: () => getQuoteVersionsSection({ data: { id: quote.id, page: 1, limit: 25 } }),
+    enabled: search.tab === "versions",
+    staleTime: 30_000,
+  });
+  const documentQuery = useQuery({
+    queryKey: crmQueryKeys.quotes.section(quote.id, "document"),
+    queryFn: () => getQuoteDocumentRead({ data: { id: quote.id } }),
+    enabled: search.tab === "preview",
+    staleTime: 30_000,
+  });
+  const versions = versionsQuery.data?.items ?? [];
   const { edit, approvalId } = search;
   const isEditMode = edit === true || quote.status === "draft";
-  const router = useRouter();
   const creator = userById(quote.created_by ?? "");
   const approver = quote.approved_by ? userById(quote.approved_by) : null;
   const initialComments = quoteComments.filter((c) => c.quote_id === quote.id);
   const initialFiles = quoteFiles.filter((f) => f.quote_id === quote.id);
 
   const navigate = useNavigate({ from: Route.fullPath });
-  const [status, setStatus] = useState<QuoteStatus>(quote.status as QuoteStatus);
+  const [statusByQuoteId, setStatusByQuoteId] = useState<Record<string, QuoteStatus>>({});
+  const status = statusByQuoteId[quote.id] ?? (quote.status as QuoteStatus);
+  const setStatus = (nextStatus: QuoteStatus) => {
+    setStatusByQuoteId((previousStatuses) => ({
+      ...previousStatuses,
+      [quote.id]: nextStatus,
+    }));
+  };
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [composer, setComposer] = useState("");
   const [files, setFiles] = useState<QuoteFile[]>(initialFiles);
-  const [editItems, setEditItems] = useState<QuoteLineItem[]>(quote.line_items ?? []);
+  const [editorDrafts, setEditorDrafts] = useState<Record<string, QuoteLineItem[]>>(() => ({
+    [quote.id]: quote.line_items ?? [],
+  }));
   const [saving, setSaving] = useState(false);
   const [catalogueOpen, setCatalogueOpen] = useState(false);
+  const editItems = editorDrafts[quote.id] ?? quote.line_items ?? [];
+
+  const setEditItems = (nextState: SetStateAction<QuoteLineItem[]>) => {
+    setEditorDrafts((previousDrafts) => {
+      const previousItems = previousDrafts[quote.id] ?? quote.line_items ?? [];
+      const nextItems = typeof nextState === "function" ? nextState(previousItems) : nextState;
+      return { ...previousDrafts, [quote.id]: nextItems };
+    });
+  };
 
   const totalValue = calculateTotal(editItems);
-  const resolvedPdfSource = resolveQuotePdfSource(quote, versions);
+  const documentRead = documentQuery.data;
+  const resolvedPdfSource = documentRead
+    ? resolveQuotePdfSource(documentRead.quote, documentRead.versions)
+    : null;
   const previewSource =
-    resolvedPdfSource.state !== "live"
+    !resolvedPdfSource || resolvedPdfSource.state !== "live"
       ? resolvedPdfSource
       : {
           ...resolvedPdfSource,
@@ -155,7 +217,7 @@ function QuoteDetail() {
         };
   const clientName =
     client?.company_name ?? lead?.company_name ?? quote.client_id ?? quote.lead_id ?? "Client";
-  const currentPreviewVersionId = resolvedPdfSource.sourceVersion?.id ?? null;
+  const currentPreviewVersionId = quote.accepted_version_id ?? quote.issued_version_id ?? null;
 
   const updateItemQty = (idx: number, qty: number) => {
     setEditItems((prev) =>
@@ -192,6 +254,7 @@ function QuoteDetail() {
     await saveEditableQuoteFields();
     const result = await approveAndIssueQuote({ data: { id: quote.id, approvalId } });
     setStatus(result.quote.status);
+    await invalidateQuoteMutation(queryClient, quote.id, "approval_issue");
     toast.success("Quote approved and issued");
     navigate({ to: "/approvals" });
   };
@@ -201,7 +264,7 @@ function QuoteDetail() {
     try {
       await saveEditableQuoteFields();
       toast.success("Draft saved");
-      router.invalidate();
+      await invalidateQuoteMutation(queryClient, quote.id, "save");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -221,7 +284,7 @@ function QuoteDetail() {
         await requestQuoteApproval({ data: { id: quote.id } });
         setStatus("pending_approval");
         toast.success("Quote submitted for approval");
-        router.invalidate();
+        await invalidateQuoteMutation(queryClient, quote.id, "approval");
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Submit failed");
@@ -235,7 +298,7 @@ function QuoteDetail() {
   const handleRequestApproval = async () => {
     await requestQuoteApproval({ data: { id: quote.id } });
     setStatus("pending_approval");
-    router.invalidate();
+    await invalidateQuoteMutation(queryClient, quote.id, "approval");
     toast.success("Submitted for approval");
   };
 
@@ -245,10 +308,9 @@ function QuoteDetail() {
       const result = await rejectQuote({ data: { id: quote.id, approvalId } });
       setStatus(result.status);
       toast.success("Quote rejected");
+      await invalidateQuoteMutation(queryClient, quote.id, "approval");
       if (approvalId) {
         navigate({ to: "/approvals" });
-      } else {
-        router.invalidate();
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Reject failed");
@@ -267,7 +329,7 @@ function QuoteDetail() {
 
       const result = await approveQuote({ data: { id: quote.id } });
       setStatus(result.status);
-      router.invalidate();
+      await invalidateQuoteMutation(queryClient, quote.id, "approval");
       toast.success("Quote approved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Approval failed");
@@ -281,7 +343,7 @@ function QuoteDetail() {
       setSaving(true);
       const result = await issueQuoteVersion({ data: { id: quote.id } });
       setStatus(result.quote.status);
-      router.invalidate();
+      await invalidateQuoteMutation(queryClient, quote.id, "issue");
       toast.success("Quote issued and PDF version created");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Issue failed");
@@ -295,7 +357,7 @@ function QuoteDetail() {
       setSaving(true);
       const result = await acceptQuoteAndCreateJobSheet({ data: { id: quote.id } });
       setStatus(result.quote.status);
-      router.invalidate();
+      await invalidateQuoteMutation(queryClient, quote.id, "accept");
       toast.success(`Quote accepted. Job sheet ${result.jobSheet.number} is ready for accounting.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Acceptance failed");
@@ -407,11 +469,13 @@ function QuoteDetail() {
                     <TabsTrigger value="items">Line items</TabsTrigger>
                     <TabsTrigger value="comments">Comments ({comments.length})</TabsTrigger>
                     <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
-                    <TabsTrigger value="versions">Versions ({versions.length})</TabsTrigger>
+                    <TabsTrigger value="versions">
+                      Versions
+                      {versionsQuery.data ? " (" + versionsQuery.data.total + ")" : null}
+                    </TabsTrigger>
                     <TabsTrigger value="preview">PDF preview</TabsTrigger>
                   </TabsList>
                 </div>
-
                 <TabsContent value="items" className="mt-4">
                   {isEditMode ? (
                     <div className="space-y-4">
@@ -504,26 +568,9 @@ function QuoteDetail() {
                           <SheetHeader>
                             <SheetTitle>Service Catalogue</SheetTitle>
                           </SheetHeader>
-                          <ScrollArea className="mt-4 h-[calc(100vh-120px)]">
-                            <ul className="space-y-2 pr-4">
-                              {templates.map((tpl) => (
-                                <li key={tpl.id}>
-                                  <button
-                                    onClick={() => addFromTemplate(tpl)}
-                                    className="w-full rounded-md border border-border p-3 text-left text-sm hover:bg-muted/50 transition-colors"
-                                  >
-                                    <div className="font-medium">{tpl.service}</div>
-                                    <div className="text-xs text-muted-foreground mt-0.5">
-                                      {tpl.description}
-                                    </div>
-                                    <div className="text-xs font-medium text-primary mt-1">
-                                      {formatCurrencyAmount(tpl.unit_price, "HKD")}
-                                    </div>
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          </ScrollArea>
+                          {catalogueOpen ? (
+                            <QuotePricingCatalogue onSelect={addFromTemplate} />
+                          ) : null}
                         </SheetContent>
                       </Sheet>
 
@@ -584,7 +631,6 @@ function QuoteDetail() {
                     </div>
                   )}
                 </TabsContent>
-
                 <TabsContent value="comments" className="mt-4">
                   <div className="space-y-3">
                     {comments.map((c) => (
@@ -619,34 +665,45 @@ function QuoteDetail() {
                     </div>
                   </div>
                 </TabsContent>
-
                 <TabsContent value="versions" className="mt-4">
-                  <ol className="space-y-3">
-                    {versions.map((v) => (
-                      <li key={v.id} className="flex items-start gap-3">
-                        <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium">
-                          v{v.version_number}
-                        </span>
-                        <div className="text-sm">
-                          <p className="font-medium">
-                            {VERSION_REASON_LABELS[v.reason]}
-                            {v.id === currentPreviewVersionId ? " (current preview)" : ""}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {(v.created_by ? userById(v.created_by)?.name : null) ??
-                              v.created_by ??
-                              "System"}{" "}
-                            · {formatDateTime(v.created_at)}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                    {versions.length === 0 && (
-                      <p className="text-sm text-muted-foreground">No version history.</p>
-                    )}
-                  </ol>
+                  {versionsQuery.isPending ? (
+                    <p className="py-8 text-center text-sm text-muted-foreground">
+                      Loading version history...
+                    </p>
+                  ) : versionsQuery.isError ? (
+                    <div className="space-y-3 py-8 text-center text-sm text-muted-foreground">
+                      <p>Version history could not be loaded.</p>
+                      <Button variant="outline" size="sm" onClick={() => versionsQuery.refetch()}>
+                        Retry
+                      </Button>
+                    </div>
+                  ) : (
+                    <ol className="space-y-3">
+                      {versions.map((version) => (
+                        <li key={version.id} className="flex items-start gap-3">
+                          <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium">
+                            v{version.version_number}
+                          </span>
+                          <div className="text-sm">
+                            <p className="font-medium">
+                              {VERSION_REASON_LABELS[version.reason]}
+                              {version.id === currentPreviewVersionId ? " (current preview)" : ""}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {(version.created_by ? userById(version.created_by)?.name : null) ??
+                                version.created_by ??
+                                "System"}{" "}
+                              · {formatDateTime(version.created_at)}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                      {versions.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No version history.</p>
+                      ) : null}
+                    </ol>
+                  )}
                 </TabsContent>
-
                 <TabsContent value="files" className="mt-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-muted-foreground">
@@ -695,18 +752,28 @@ function QuoteDetail() {
                     </ul>
                   )}
                 </TabsContent>
-
                 <TabsContent value="preview" className="mt-4">
                   <div className="overflow-hidden rounded-md border border-border bg-muted/20 p-3">
-                    {previewSource.state === "invalid" ? (
+                    {documentQuery.isPending ? (
+                      <p className="py-12 text-center text-sm text-muted-foreground">
+                        Loading PDF preview...
+                      </p>
+                    ) : documentQuery.isError ? (
+                      <div className="space-y-3 py-12 text-center text-sm text-muted-foreground">
+                        <p>PDF preview could not be loaded.</p>
+                        <Button variant="outline" size="sm" onClick={() => documentQuery.refetch()}>
+                          Retry
+                        </Button>
+                      </div>
+                    ) : previewSource?.state === "invalid" ? (
                       <QuotePdfPreviewUnavailable error={previewSource.error} />
-                    ) : (
+                    ) : previewSource ? (
                       <QuotePdfPreview
                         quote={previewSource.quote}
                         lineItems={previewSource.lineItems}
                         clientName={clientName}
                       />
-                    )}
+                    ) : null}
                   </div>
                 </TabsContent>
               </Tabs>
@@ -790,6 +857,84 @@ function QuoteDetail() {
         </div>
       </div>
     </>
+  );
+}
+
+function QuotePricingCatalogue({ onSelect }: { onSelect: (template: PricingTemplate) => void }) {
+  const catalogue = useQuoteReferenceData<PricingTemplate>("pricing", {
+    items: [],
+    total: 0,
+    page: 1,
+    limit: 25,
+  });
+  const pageCount = Math.max(1, Math.ceil(catalogue.data.total / catalogue.data.limit));
+
+  return (
+    <div className="mt-4 space-y-3">
+      <Input
+        aria-label="Search service catalogue"
+        placeholder="Search services"
+        value={catalogue.search}
+        onChange={(event) => catalogue.setSearch(event.target.value)}
+      />
+      <ScrollArea className="h-[calc(100vh-210px)]">
+        {catalogue.isError ? (
+          <div className="space-y-3 py-8 text-center text-sm text-muted-foreground">
+            <p>Service catalogue could not be loaded.</p>
+            <Button variant="outline" size="sm" onClick={() => catalogue.refetch()}>
+              Retry
+            </Button>
+          </div>
+        ) : catalogue.data.items.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {catalogue.isFetching ? "Loading services..." : "No matching services."}
+          </p>
+        ) : (
+          <ul className="space-y-2 pr-4">
+            {catalogue.data.items.map((template) => (
+              <li key={template.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(template)}
+                  className="w-full rounded-md border border-border p-3 text-left text-sm transition-colors hover:bg-muted/50"
+                >
+                  <div className="font-medium">{template.service}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">{template.description}</div>
+                  <div className="mt-1 text-xs font-medium text-primary">
+                    {formatCurrencyAmount(template.unit_price, "HKD")}
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </ScrollArea>
+      {pageCount > 1 ? (
+        <div className="flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Previous catalogue page"
+            disabled={catalogue.page <= 1 || catalogue.isFetching}
+            onClick={() => catalogue.setPage((page) => Math.max(1, page - 1))}
+          >
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+          </Button>
+          <span>
+            Page {catalogue.page} of {pageCount}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Next catalogue page"
+            disabled={catalogue.page >= pageCount || catalogue.isFetching}
+            onClick={() => catalogue.setPage((page) => Math.min(pageCount, page + 1))}
+          >
+            <ArrowRight aria-hidden="true" className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
