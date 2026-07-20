@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useRouter } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 
@@ -13,9 +14,54 @@ import { getClientContacts } from "@/server-functions/client-contacts";
 import { getEngagementsByClient } from "@/server-functions/engagements";
 import { annualizeValue } from "@/lib/engagement-utils";
 import { formatCompactHKD, formatDate } from "@/lib/format";
+import { crmQueryKeys } from "@/lib/query-keys";
 import type { Engagement } from "@/lib/types";
 
 type RenewalRow = Engagement & { client_company_name: string; product_name: string };
+
+type RenewalMutation = "score" | "touchpoint" | "renew" | "end";
+
+const renewalMutationQueryKeys = {
+  score: (engagementId: string, clientId: string) => [
+    crmQueryKeys.renewals.lists(),
+    crmQueryKeys.engagements.detail(engagementId),
+    crmQueryKeys.clients.section(clientId, "engagements"),
+  ],
+  touchpoint: (engagementId: string, clientId: string) => [
+    crmQueryKeys.renewals.lists(),
+    crmQueryKeys.engagements.detail(engagementId),
+    crmQueryKeys.clients.section(clientId, "engagements"),
+    crmQueryKeys.clients.section(clientId, "touchpoints"),
+    crmQueryKeys.clients.section(clientId, "activity"),
+  ],
+  renew: (engagementId: string, clientId: string) => [
+    crmQueryKeys.renewals.lists(),
+    crmQueryKeys.engagements.detail(engagementId),
+    crmQueryKeys.engagements.lists(),
+    crmQueryKeys.clients.section(clientId, "engagements"),
+    crmQueryKeys.clients.section(clientId, "commercial"),
+  ],
+  end: (engagementId: string, clientId: string) => [
+    crmQueryKeys.renewals.lists(),
+    crmQueryKeys.engagements.detail(engagementId),
+    crmQueryKeys.engagements.lists(),
+    crmQueryKeys.clients.section(clientId, "engagements"),
+    crmQueryKeys.clients.section(clientId, "commercial"),
+  ],
+} as const;
+
+async function invalidateRenewalMutation(
+  queryClient: ReturnType<typeof useQueryClient>,
+  mutation: RenewalMutation,
+  engagementId: string,
+  clientId: string,
+) {
+  await Promise.all(
+    renewalMutationQueryKeys[mutation](engagementId, clientId).map((queryKey) =>
+      queryClient.invalidateQueries({ queryKey }),
+    ),
+  );
+}
 
 export function RenewalsPreviewPanel({
   engagement,
@@ -24,7 +70,7 @@ export function RenewalsPreviewPanel({
   engagement: RenewalRow | null;
   onClose: () => void;
 }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [dialogAction, setDialogAction] = useState<"renew" | "end" | null>(null);
   const [scoreStatus, setScoreStatus] = useState<"idle" | "running" | "failed">("idle");
@@ -50,7 +96,7 @@ export function RenewalsPreviewPanel({
       } else {
         toast.success("Renewal risk scoring started.");
       }
-      router.invalidate();
+      await invalidateRenewalMutation(queryClient, "score", engagement.id, engagement.client_id);
       setScoreStatus("idle");
     } catch {
       toast.error("Renewal risk scoring failed to start.");
@@ -122,7 +168,14 @@ export function RenewalsPreviewPanel({
               <TouchpointLoggerLoader
                 clientId={engagement.client_id}
                 engagementId={engagement.id}
-                onLogged={() => router.invalidate()}
+                onLogged={() =>
+                  invalidateRenewalMutation(
+                    queryClient,
+                    "touchpoint",
+                    engagement.id,
+                    engagement.client_id,
+                  )
+                }
               />
               <Button
                 variant="outline"
@@ -164,8 +217,14 @@ export function RenewalsPreviewPanel({
             action={dialogAction}
             onClose={() => setDialogAction(null)}
             onDone={() => {
+              const mutation = dialogAction === "end" ? "end" : "renew";
               setDialogAction(null);
-              router.invalidate();
+              void invalidateRenewalMutation(
+                queryClient,
+                mutation,
+                engagement.id,
+                engagement.client_id,
+              );
               onClose();
             }}
           />
@@ -182,7 +241,7 @@ function TouchpointLoggerLoader({
 }: {
   clientId: string;
   engagementId: string;
-  onLogged: () => void;
+  onLogged: () => void | Promise<void>;
 }) {
   // Contacts/engagements are fetched lazily on click via TouchpointLogger's own
   // trigger-wrapped dialog rather than blocking the panel's initial render.
@@ -202,7 +261,12 @@ function TouchpointLoggerLoader({
       engagements={touchpointData?.engagements ?? []}
       contacts={touchpointData?.contacts ?? []}
       defaultEngagementId={engagementId}
-      onLogged={onLogged}
+      onLogged={() => {
+        setTouchpointDataByClientId((current) =>
+          Object.fromEntries(Object.entries(current).filter(([id]) => id !== clientId)),
+        );
+        void onLogged();
+      }}
       trigger={
         <Button
           variant="outline"

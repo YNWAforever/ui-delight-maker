@@ -86,9 +86,7 @@ function ReportsPage() {
   const summary = Route.useLoaderData() as ReportSummaryView;
   const { range } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const [selectedReport, setSelectedReport] = useState<ReportId | null>(
-    summary.reports[0]?.id ?? null,
-  );
+  const [selectedReport, setSelectedReport] = useState<ReportId | null>(null);
   const selectedDefinition = summary.reports.find((report) => report.id === selectedReport) ?? null;
   const datasetQuery = useQuery({
     queryKey: crmQueryKeys.reports.list({ view: "dataset", range, report: selectedReport }),
@@ -152,7 +150,7 @@ function ReportsPage() {
           </Card>
         ) : (
           <Tabs
-            value={selectedReport ?? undefined}
+            value={selectedReport ?? ""}
             onValueChange={(value) => setSelectedReport(value as ReportId)}
           >
             <TabsList className="h-auto max-w-full justify-start overflow-x-auto">
@@ -163,25 +161,27 @@ function ReportsPage() {
               ))}
             </TabsList>
 
-            <Card className="mt-4">
-              <CardHeader>
-                <CardTitle className="text-base">{selectedDefinition?.title}</CardTitle>
-                <p className="text-sm text-muted-foreground">{selectedDefinition?.description}</p>
-              </CardHeader>
-              <CardContent>
-                {datasetQuery.isError ? (
-                  <div className="flex h-64 items-center justify-center text-sm text-destructive">
-                    Report data could not be loaded.
-                  </div>
-                ) : datasetQuery.isPending || !selectedReport ? (
-                  <ChartSkeleton />
-                ) : (
-                  <Suspense fallback={<ChartSkeleton />}>
-                    <ReportChart report={selectedReport} data={datasetQuery.data.data} />
-                  </Suspense>
-                )}
-              </CardContent>
-            </Card>
+            {selectedReport && selectedDefinition ? (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="text-base">{selectedDefinition.title}</CardTitle>
+                  <p className="text-sm text-muted-foreground">{selectedDefinition.description}</p>
+                </CardHeader>
+                <CardContent>
+                  {datasetQuery.isError ? (
+                    <div className="flex h-64 items-center justify-center text-sm text-destructive">
+                      Report data could not be loaded.
+                    </div>
+                  ) : datasetQuery.isPending ? (
+                    <ChartSkeleton />
+                  ) : (
+                    <Suspense fallback={<ChartSkeleton />}>
+                      <ReportChart report={selectedReport} data={datasetQuery.data.data} />
+                    </Suspense>
+                  )}
+                </CardContent>
+              </Card>
+            ) : null}
           </Tabs>
         )}
       </div>
