@@ -260,7 +260,7 @@ export function getJobSheetMutationQueryKeys(
   }
   if (mutation === "accept" && jobSheet.account_id) {
     queryKeys.push(
-      crmQueryKeys.companyWorkspace.section(jobSheet.account_id, "delivery"),
+      crmQueryKeys.companyWorkspace.section(jobSheet.account_id, "delivery_finance"),
       crmQueryKeys.companyWorkspace.section(jobSheet.account_id, "commercial"),
     );
   }

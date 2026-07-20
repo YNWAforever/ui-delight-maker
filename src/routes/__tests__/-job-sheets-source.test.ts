@@ -317,7 +317,7 @@ describe("job sheet accounting workspace behavior", () => {
       ["job-sheets", "list"],
       ["clients", "detail", "client-1", "section", "job_sheets"],
       ["clients", "detail", "client-1", "section", "commercial"],
-      ["company-workspace", "account-1", "delivery"],
+      ["company-workspace", "account-1", "delivery_finance"],
       ["company-workspace", "account-1", "commercial"],
     ]);
   });

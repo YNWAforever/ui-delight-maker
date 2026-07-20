@@ -64,7 +64,7 @@ describe("sales route source copy", () => {
     expect(renewalsSource).toContain('status="Retain"');
     expect(renewalsSource).toContain("No renewals in this window.");
     expect(renewalsSource).toContain("formatCompactHKD");
-    expect(renewalsSource).toContain("annualizeValue");
+    expect(renewalsSource).toContain("metrics.annualizedValue");
 
     expect(renewalCardSource).toContain("formatDate");
     expect(renewalCardSource).toContain("formatCompactHKD");
