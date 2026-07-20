@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { z } from "zod";
@@ -100,6 +100,7 @@ function ClientsIndex() {
       replace: true,
     });
   const [rows, setRows] = useState<ClientRow[]>(loaderClients);
+  useEffect(() => setRows(loaderClients), [loaderClients]);
   const tier = search.tier ?? "all";
   const [riskFilter, setRiskFilter] = useState<"all" | RenewalRisk>("all");
   const [windowFilter, setWindowFilter] = useState<"all" | "overdue" | "30" | "60" | "90">("all");

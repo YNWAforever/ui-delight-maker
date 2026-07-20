@@ -24,6 +24,13 @@ describe("paginated CRM list routes", () => {
     }
   });
 
+  it("refreshes mutable table rows when cached loader pages change", () => {
+    for (const route of ["clients.tsx", "leads.tsx", "quotes.tsx"]) {
+      const source = readSource(`../${route}`);
+      expect(source, route).toMatch(/useEffect\(\(\) => setRows\(loader\w+\), \[loader\w+\]\)/);
+    }
+  });
+
   it("forwards client tier and lead status/source URL filters to paginated server reads", () => {
     const clients = readSource("../clients.tsx");
     const leads = readSource("../leads.tsx");

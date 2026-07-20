@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { Download, Plus, Sparkles, X } from "lucide-react";
 import { z } from "zod";
@@ -116,6 +116,7 @@ function LeadsPage() {
       replace: true,
     });
   const [rows, setRows] = useState<Lead[]>(loaderLeads);
+  useEffect(() => setRows(loaderLeads), [loaderLeads]);
   const [query, setQuery] = useState("");
   const status = search.status ?? "all";
   const source = search.source ?? "all";

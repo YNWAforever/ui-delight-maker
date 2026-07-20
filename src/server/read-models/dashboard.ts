@@ -2,11 +2,11 @@ import type { ActivityLog, AgentRun, HumanApproval, Lead, Product, Quote, Task }
 import { query } from "@/server/db/neon.server";
 
 const DASHBOARD_LIMITS = {
-  leads: 50,
-  quotes: 100,
-  tasks: 100,
-  approvals: 50,
-  agentRuns: 50,
+  leads: 40,
+  quotes: 40,
+  tasks: 60,
+  approvals: 30,
+  agentRuns: 30,
   activityLogs: 20,
   products: 50,
 } as const;
@@ -39,8 +39,15 @@ export async function getDashboardReadModel(): Promise<DashboardReadModel> {
   const [leads, quotes, tasks, approvals, agentRuns, activityLogs, products, totalRows] = await Promise.all([
     query<Lead>(
       `select id, contact_id, account_id, source_campaign_id, campaign_member_id,
-                company_name, contact_name, contact_email, contact_phone, source, status,
-                assigned_to, lead_score, qualification_data, enquiry_text, created_at, updated_at
+                left(company_name, 160) as company_name,
+                left(contact_name, 120) as contact_name,
+                left(contact_email, 254) as contact_email,
+                left(contact_phone, 64) as contact_phone,
+                source, status, assigned_to, lead_score,
+                case when qualification_data is null then null else
+                  jsonb_build_object('next_action', left(qualification_data->>'next_action', 240))
+                end as qualification_data,
+                left(enquiry_text, 500) as enquiry_text, created_at, updated_at
          from leads
          where status not in ('won', 'lost')
          order by created_at desc, id desc
@@ -48,9 +55,9 @@ export async function getDashboardReadModel(): Promise<DashboardReadModel> {
       [DASHBOARD_LIMITS.leads],
     ),
     query<Quote>(
-      `select q.id, q.number, q.lead_id, q.client_id, q.contact_id, q.account_id, q.deal_id,
-                q.status, q.total_value, q.currency, q.valid_until, q.line_items,
-                q.created_by, q.created_at, q.updated_at
+      `select q.id, left(q.number, 64) as number, q.lead_id, q.client_id, q.contact_id,
+                q.account_id, q.deal_id, q.status, q.total_value, q.currency, q.valid_until,
+                '[]'::jsonb as line_items, q.created_by, q.created_at, q.updated_at
          from quotes q
          inner join leads l on l.id = q.lead_id
          where l.status not in ('won', 'lost')
@@ -59,7 +66,7 @@ export async function getDashboardReadModel(): Promise<DashboardReadModel> {
       [DASHBOARD_LIMITS.quotes],
     ),
     query<Task>(
-      `select id, title, assigned_to, lead_id, client_id, account_id, due_date,
+      `select id, left(title, 240) as title, assigned_to, lead_id, client_id, account_id, due_date,
                 priority, status, created_at
          from tasks
          where status <> 'done'
@@ -69,7 +76,8 @@ export async function getDashboardReadModel(): Promise<DashboardReadModel> {
     ),
     query<HumanApproval>(
       `select id, agent_run_id, approval_type, assigned_to, status,
-                context_data, context_summary, created_at
+                jsonb_build_object('lead_id', context_data->>'lead_id') as context_data,
+                left(context_summary, 300) as context_summary, created_at
          from human_approvals
          where status = 'pending'
          order by created_at desc, id desc
@@ -77,21 +85,26 @@ export async function getDashboardReadModel(): Promise<DashboardReadModel> {
       [DASHBOARD_LIMITS.approvals],
     ),
     query<AgentRun>(
-      `select id, agent_name, input_data, output_summary, status, created_at
+      `select id, left(agent_name, 120) as agent_name,
+                jsonb_build_object('lead_id', input_data::jsonb->>'lead_id') as input_data,
+                left(output_summary, 500) as output_summary, status, created_at
          from agent_runs
          order by created_at desc, id desc
          limit $1`,
       [DASHBOARD_LIMITS.agentRuns],
     ),
     query<ActivityLog>(
-      `select id, actor_type, actor_id, actor_name, action, object_type, object_id, created_at
+      `select id, actor_type, actor_id, left(actor_name, 120) as actor_name,
+                left(action, 240) as action, left(object_type, 64) as object_type,
+                object_id, created_at
          from activity_logs
          order by created_at desc, id desc
          limit $1`,
       [DASHBOARD_LIMITS.activityLogs],
     ),
     query<Product>(
-      `select id, name, description, category, billing_type, default_term_months, active,
+      `select id, left(name, 160) as name, left(description, 300) as description,
+                left(category, 80) as category, billing_type, default_term_months, active,
                 created_at, updated_at
          from products
          where active = true

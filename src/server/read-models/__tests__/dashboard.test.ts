@@ -48,17 +48,21 @@ describe("dashboard read model", () => {
     const sql = calls.map(([statement]) => statement.replace(/\s+/g, " ").trim());
     expect(sql.slice(0, 7).every((statement) => /limit \$1/i.test(statement))).toBe(true);
     expect(calls.map(([, values]) => values)).toEqual([
-      [50],
-      [100],
-      [100],
-      [50],
-      [50],
+      [40],
+      [40],
+      [60],
+      [30],
+      [30],
       [20],
       [50],
       undefined,
     ]);
     expect(sql[5]).toContain("from activity_logs");
     expect(sql.slice(0, 7).every((statement) => !/select\s+(?:\w+\.)?\*/i.test(statement))).toBe(true);
+    expect(sql[0]).toContain("left(enquiry_text, 500)");
+    expect(sql[1]).toContain("'[]'::jsonb as line_items");
+    expect(sql[3]).toContain("jsonb_build_object('lead_id'");
+    expect(sql[4]).toContain("jsonb_build_object('lead_id'");
 
     const rows = [
       [{ id: "lead-1" }],

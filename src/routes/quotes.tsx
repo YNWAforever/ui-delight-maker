@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { Archive, Copy, MoreHorizontal, Plus } from "lucide-react";
 import { z } from "zod";
@@ -85,6 +85,7 @@ function QuotesIndex() {
   const loaderQuotes = quotePage.items;
   const navigate = useNavigate({ from: Route.fullPath });
   const [rows, setRows] = useState<Quote[]>(loaderQuotes);
+  useEffect(() => setRows(loaderQuotes), [loaderQuotes]);
   const [tab, setTab] = useState("all");
   const [query, setQuery] = useState("");
 
