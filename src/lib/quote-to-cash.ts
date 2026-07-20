@@ -7,6 +7,7 @@ import type {
 } from "@/lib/types";
 
 export type NewJobSheetPortion = {
+  id?: string;
   name: string;
   source_quote_line_item_ids: string[];
   description: string;

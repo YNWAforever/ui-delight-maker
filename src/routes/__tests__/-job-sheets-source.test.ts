@@ -17,6 +17,9 @@ import {
   isAcceptAndLockDisabled,
   isJobSheetEditorBusy,
   isJobSheetCommercialLocked,
+  getJobSheetMutationQueryKeys,
+  rebaseBillingDrafts,
+  rebaseXeroDrafts,
   resetBillingDrafts,
   resetXeroDrafts,
   toPortionDrafts,
@@ -261,16 +264,61 @@ describe("job sheet accounting workspace behavior", () => {
 
     expect(buildPortionSavePayload(drafts, portions)).toEqual([
       expect.objectContaining({
+        id: "portion-planned",
         name: "Deposit updated",
         amount: 450,
         status: "cancelled",
         target_invoice_date: "2026-08-01",
       }),
       expect.objectContaining({
+        id: "portion-entered",
         amount: 550,
         status: "entered_in_xero",
         target_invoice_date: null,
       }),
+    ]);
+  });
+
+  it("rebases clean drafts to a refreshed server baseline without overwriting dirty drafts", () => {
+    const previous = [makePortion({ amount: 400, xero_notes: null })];
+    const refreshed = [makePortion({ amount: 450, xero_notes: "Synced by accounting" })];
+    const dirtyBilling = [{ ...toPortionDrafts(previous)[0], amount: "475" }];
+    const dirtyXero = {
+      "portion-1": { ...toXeroDrafts(previous)["portion-1"], xero_notes: "Local note" },
+    };
+
+    expect(rebaseBillingDrafts(toPortionDrafts(previous), previous, refreshed)).toEqual(
+      toPortionDrafts(refreshed),
+    );
+    expect(rebaseXeroDrafts(toXeroDrafts(previous), previous, refreshed)).toEqual(
+      toXeroDrafts(refreshed),
+    );
+    expect(rebaseBillingDrafts(dirtyBilling, previous, refreshed)).toBe(dirtyBilling);
+    expect(rebaseXeroDrafts(dirtyXero, previous, refreshed)).toBe(dirtyXero);
+  });
+
+  it("uses mutation-specific job-sheet and linked workspace invalidation keys", () => {
+    const jobSheet = makeJobSheet({
+      id: "job-1",
+      client_id: "client-1",
+      account_id: "account-1",
+    });
+
+    expect(getJobSheetMutationQueryKeys(jobSheet, "billing")).toEqual([
+      ["job-sheets", "detail", "job-1"],
+      ["clients", "detail", "client-1", "section", "job_sheets"],
+    ]);
+    expect(getJobSheetMutationQueryKeys(jobSheet, "xero")).toEqual([
+      ["job-sheets", "detail", "job-1"],
+      ["clients", "detail", "client-1", "section", "job_sheets"],
+    ]);
+    expect(getJobSheetMutationQueryKeys(jobSheet, "accept")).toEqual([
+      ["job-sheets", "detail", "job-1"],
+      ["job-sheets", "list"],
+      ["clients", "detail", "client-1", "section", "job_sheets"],
+      ["clients", "detail", "client-1", "section", "commercial"],
+      ["company-workspace", "account-1", "delivery"],
+      ["company-workspace", "account-1", "commercial"],
     ]);
   });
 
@@ -521,6 +569,15 @@ describe("job sheet accounting workspace behavior", () => {
 
     expect(detailSource).toContain("Discard billing changes");
     expect(detailSource).toContain("Discard Xero changes");
+  });
+
+  it("wires refreshed portions through the per-job-sheet server baseline", () => {
+    const detailSource = readRoute("job-sheets.$id.tsx");
+
+    expect(detailSource).toContain("serverPortionBaselinesByJobSheetId");
+    expect(detailSource).toContain("rebaseBillingDrafts(current[jobSheet.id]");
+    expect(detailSource).toContain("rebaseXeroDrafts(current[jobSheet.id]");
+    expect(detailSource).toContain("[jobSheet.id]: portions");
   });
 
   it("derives both billing and xero editor disabled states from the shared busy flag", () => {
