@@ -138,16 +138,42 @@ describe("quote workspace read models", () => {
 
   it("searches and paginates each compact reference kind with a selected row", async () => {
     const { loadQuoteReferencePage } = await import("../quote-workspace");
+    queryMock.mockImplementation((sql: unknown) => {
+      if (sqlText(sql).includes("from leads")) {
+        return Promise.resolve(
+          Array.from({ length: 25 }, (_, index) => ({
+            id: "lead-" + (index + 1),
+            company_name: "Needle " + (index + 1),
+            contact_name: null,
+          })),
+        );
+      }
+      return Promise.resolve([]);
+    });
+    queryOneMock.mockImplementation((sql: unknown, values?: unknown[]) => {
+      const text = sqlText(sql);
+      if (text.includes("count(*) as total")) return Promise.resolve({ total: "25" });
+      if (text.includes("from leads") && values?.[0] === "lead-selected") {
+        return Promise.resolve({
+          id: "lead-selected",
+          company_name: "Pinned company",
+          contact_name: "Ada",
+        });
+      }
+      return Promise.resolve(null);
+    });
 
     const page = await loadQuoteReferencePage({
       kind: "lead",
-      search: "acme",
+      search: "needle",
       selectedId: "lead-selected",
       page: 2,
       limit: 500,
     });
 
-    expect(page).toMatchObject({ total: 1, page: 2, limit: 25 });
+    expect(page).toMatchObject({ total: 26, page: 2, limit: 25 });
+    expect(page.items).toHaveLength(26);
+    expect(page.items.at(-1)?.id).toBe("lead-25");
     expect(new Set(page.items.map((item) => item.id)).size).toBe(page.items.length);
     const rowsCall = queryMock.mock.calls.find(([sql]) => sqlText(sql).includes("from leads"));
     const rowsSql = sqlText(rowsCall?.[0]);
@@ -155,7 +181,7 @@ describe("quote workspace read models", () => {
     expect(rowsSql).toContain("id::text ilike");
     expect(rowsSql).toContain("company_name ilike");
     expect(rowsSql).toMatch(/order by .*company_name.*id.*limit \$\d+ offset \$\d+/);
-    expect(rowsCall?.[1]).toEqual(expect.arrayContaining(["%acme%", 25, 25]));
+    expect(rowsCall?.[1]).toEqual(expect.arrayContaining(["%needle%", 25, 25]));
     const selectedCall = queryOneMock.mock.calls.find(
       ([sql, values]) => sqlText(sql).includes("from leads") && values?.[0] === "lead-selected",
     );
@@ -313,7 +339,6 @@ describe("quote workspace read models", () => {
 
     for (const call of [
       () => getQuoteDetailRead({ data: { id: "quote-1" } }),
-      () => getQuoteVersionsSection({ data: { id: "quote-1", page: 1 } }),
       () => getQuoteDocumentRead({ data: { id: "quote-1" } }),
     ]) {
       await call();
@@ -321,6 +346,18 @@ describe("quote workspace read models", () => {
         resourceType: "quote",
         resourceId: "quote-1",
       });
+      expect(requireCapabilityChecksMock).toHaveBeenLastCalledWith([
+        { capability: "accounts.view", target: { resourceType: "client", resourceId: "client-1" } },
+        { capability: "leads.view", target: { resourceType: "lead", resourceId: "lead-1" } },
+      ]);
     }
+
+    requireCapabilityChecksMock.mockClear();
+    await getQuoteVersionsSection({ data: { id: "quote-1", page: 1 } });
+    expect(requireCapabilityMock).toHaveBeenLastCalledWith("quotes.view", {
+      resourceType: "quote",
+      resourceId: "quote-1",
+    });
+    expect(requireCapabilityChecksMock).not.toHaveBeenCalled();
   });
 });

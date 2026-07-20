@@ -153,9 +153,19 @@ function QuoteDetail() {
     staleTime: 30_000,
   });
   const { quote, lead, client } = detailQuery.data;
+  const [versionPageByQuoteId, setVersionPageByQuoteId] = useState<Record<string, number>>({});
+  const versionPage = versionPageByQuoteId[quote.id] ?? 1;
+  const setVersionPage = (nextState: SetStateAction<number>) => {
+    setVersionPageByQuoteId((previousPages) => {
+      const previousPage = previousPages[quote.id] ?? 1;
+      const nextPage = typeof nextState === "function" ? nextState(previousPage) : nextState;
+      return { ...previousPages, [quote.id]: nextPage };
+    });
+  };
   const versionsQuery = useQuery({
-    queryKey: crmQueryKeys.quotes.section(quote.id, "versions"),
-    queryFn: () => getQuoteVersionsSection({ data: { id: quote.id, page: 1, limit: 25 } }),
+    queryKey: crmQueryKeys.quotes.section(quote.id, "versions", { page: versionPage }),
+    queryFn: () =>
+      getQuoteVersionsSection({ data: { id: quote.id, page: versionPage, limit: 25 } }),
     enabled: search.tab === "versions",
     staleTime: 30_000,
   });
@@ -357,7 +367,19 @@ function QuoteDetail() {
       setSaving(true);
       const result = await acceptQuoteAndCreateJobSheet({ data: { id: quote.id } });
       setStatus(result.quote.status);
-      await invalidateQuoteMutation(queryClient, quote.id, "accept");
+      await Promise.all([
+        invalidateQuoteMutation(queryClient, quote.id, "accept"),
+        quote.client_id
+          ? queryClient.invalidateQueries({
+              queryKey: crmQueryKeys.clients.section(quote.client_id, "commercial"),
+            })
+          : Promise.resolve(),
+        quote.client_id
+          ? queryClient.invalidateQueries({
+              queryKey: crmQueryKeys.clients.section(quote.client_id, "job_sheets"),
+            })
+          : Promise.resolve(),
+      ]);
       toast.success(`Quote accepted. Job sheet ${result.jobSheet.number} is ready for accounting.`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Acceptance failed");
@@ -678,30 +700,62 @@ function QuoteDetail() {
                       </Button>
                     </div>
                   ) : (
-                    <ol className="space-y-3">
-                      {versions.map((version) => (
-                        <li key={version.id} className="flex items-start gap-3">
-                          <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium">
-                            v{version.version_number}
+                    <div className="space-y-4">
+                      <ol className="space-y-3">
+                        {versions.map((version) => (
+                          <li key={version.id} className="flex items-start gap-3">
+                            <span className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-xs font-medium">
+                              v{version.version_number}
+                            </span>
+                            <div className="text-sm">
+                              <p className="font-medium">
+                                {VERSION_REASON_LABELS[version.reason]}
+                                {version.id === currentPreviewVersionId ? " (current preview)" : ""}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {(version.created_by ? userById(version.created_by)?.name : null) ??
+                                  version.created_by ??
+                                  "System"}{" "}
+                                · {formatDateTime(version.created_at)}
+                              </p>
+                            </div>
+                          </li>
+                        ))}
+                        {versions.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No version history.</p>
+                        ) : null}
+                      </ol>
+                      {versionsQuery.data && versionsQuery.data.total > versionsQuery.data.limit ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            aria-label="Previous version page"
+                            disabled={versionPage <= 1}
+                            onClick={() => setVersionPage((page) => Math.max(1, page - 1))}
+                          >
+                            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+                          </Button>
+                          <span className="text-xs text-muted-foreground">
+                            {versionPage} /{" "}
+                            {Math.ceil(versionsQuery.data.total / versionsQuery.data.limit)}
                           </span>
-                          <div className="text-sm">
-                            <p className="font-medium">
-                              {VERSION_REASON_LABELS[version.reason]}
-                              {version.id === currentPreviewVersionId ? " (current preview)" : ""}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {(version.created_by ? userById(version.created_by)?.name : null) ??
-                                version.created_by ??
-                                "System"}{" "}
-                              · {formatDateTime(version.created_at)}
-                            </p>
-                          </div>
-                        </li>
-                      ))}
-                      {versions.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No version history.</p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            aria-label="Next version page"
+                            disabled={
+                              versionPage * versionsQuery.data.limit >= versionsQuery.data.total
+                            }
+                            onClick={() => setVersionPage((page) => page + 1)}
+                          >
+                            <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                          </Button>
+                        </div>
                       ) : null}
-                    </ol>
+                    </div>
                   )}
                 </TabsContent>
                 <TabsContent value="files" className="mt-4 space-y-3">

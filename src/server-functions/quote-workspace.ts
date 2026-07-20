@@ -1,5 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireCapability, requireCapabilityChecks } from "@/server/auth/authorization.server";
+import {
+  requireCapability,
+  requireCapabilityChecks,
+  type CapabilityCheck,
+} from "@/server/auth/authorization.server";
 import {
   loadQuoteCreateBootstrap,
   loadQuoteDetailRead,
@@ -91,11 +95,32 @@ async function authorizeQuote(id: string) {
   await requireCapability("quotes.view", { resourceType: "quote", resourceId: id });
 }
 
+async function authorizeLinkedQuoteParties(read: {
+  quote: { client_id?: string | null; lead_id?: string | null };
+}) {
+  const checks: CapabilityCheck[] = [];
+  if (read.quote.client_id) {
+    checks.push({
+      capability: "accounts.view",
+      target: { resourceType: "client", resourceId: read.quote.client_id },
+    });
+  }
+  if (read.quote.lead_id) {
+    checks.push({
+      capability: "leads.view",
+      target: { resourceType: "lead", resourceId: read.quote.lead_id },
+    });
+  }
+  if (checks.length) await requireCapabilityChecks(checks);
+}
+
 export const getQuoteDetailRead = createServerFn({ method: "GET" })
   .validator(parseIdInput)
   .handler(async ({ data }) => {
     await authorizeQuote(data.id);
-    return loadQuoteDetailRead(data.id);
+    const read = await loadQuoteDetailRead(data.id);
+    await authorizeLinkedQuoteParties(read);
+    return read;
   });
 
 export const getQuoteVersionsSection = createServerFn({ method: "GET" })
@@ -109,5 +134,7 @@ export const getQuoteDocumentRead = createServerFn({ method: "GET" })
   .validator(parseIdInput)
   .handler(async ({ data }) => {
     await authorizeQuote(data.id);
-    return loadQuoteDocumentRead(data.id);
+    const read = await loadQuoteDocumentRead(data.id);
+    await authorizeLinkedQuoteParties(read);
+    return read;
   });

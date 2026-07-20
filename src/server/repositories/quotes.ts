@@ -457,7 +457,7 @@ async function mergeSelectedReference<T extends { id: string }>(
   limit: number,
 ) {
   if (!selected) return items.slice(0, limit);
-  return [selected, ...items.filter((item) => item.id !== selected.id)].slice(0, limit);
+  return [selected, ...items.filter((item) => item.id !== selected.id)];
 }
 
 export async function listQuoteReferencePage<K extends QuoteReferenceKind>(
