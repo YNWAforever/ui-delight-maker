@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -120,6 +120,7 @@ function ApprovalsInbox() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [bulk, setBulk] = useState<Set<string>>(new Set());
+  const approvalMutationTokensRef = useRef(new Map<string, symbol>());
 
   const pending = useMemo(
     () =>
@@ -140,9 +141,15 @@ function ApprovalsInbox() {
     mutation: () => Promise<unknown>,
   ) => {
     await queryClient.cancelQueries({ queryKey: approvalsQueryKey, exact: true });
-    const previous = queryClient.getQueryData<ApprovalRead>(approvalsQueryKey);
+    const previousById = new Map(
+      (queryClient.getQueryData<ApprovalRead>(approvalsQueryKey) ?? [])
+        .filter((approval) => ids.includes(approval.id))
+        .map((approval) => [approval.id, approval] as const),
+    );
     const decidedAt = new Date().toISOString();
     const selectedIds = new Set(ids);
+    const mutationToken = Symbol("approval-decision");
+    ids.forEach((id) => approvalMutationTokensRef.current.set(id, mutationToken));
     queryClient.setQueryData<ApprovalRead>(approvalsQueryKey, (current) =>
       current?.map((approval) =>
         selectedIds.has(approval.id)
@@ -159,11 +166,31 @@ function ApprovalsInbox() {
     try {
       await mutation();
     } catch (error) {
-      queryClient.setQueryData(approvalsQueryKey, previous);
+      queryClient.setQueryData<ApprovalRead>(approvalsQueryKey, (current) =>
+        current?.map((approval) => {
+          const previous = previousById.get(approval.id);
+          return previous && approvalMutationTokensRef.current.get(approval.id) === mutationToken
+            ? previous
+            : approval;
+        }),
+      );
+      ids.forEach((id) => {
+        if (approvalMutationTokensRef.current.get(id) === mutationToken) {
+          approvalMutationTokensRef.current.delete(id);
+        }
+      });
       throw error;
     }
 
-    await queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true });
+    ids.forEach((id) => {
+      if (approvalMutationTokensRef.current.get(id) === mutationToken) {
+        approvalMutationTokensRef.current.delete(id);
+      }
+    });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true }),
+      queryClient.invalidateQueries({ queryKey: crmQueryKeys.aiReview.all() }),
+    ]);
   };
 
   const decide = async (id: string, status: "approved" | "rejected" | "escalated", msg: string) => {

@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { crmQueryKeys } from "@/lib/query-keys";
@@ -38,6 +38,7 @@ function markRead(
 
 export function useNotifications() {
   const queryClient = useQueryClient();
+  const readMutationTokensRef = useRef(new Map<string, symbol>());
   const query = useQuery(
     routeQueryOptions({
       queryKey: notificationsQueryKey,
@@ -45,42 +46,77 @@ export function useNotifications() {
     }),
   );
 
-  const updateCachedData = useCallback(
-    async (update: (current: NotificationsRead | undefined) => NotificationsRead | undefined) => {
+  const beginReadMutation = useCallback(
+    async (predicate: (notification: NotificationRecord) => boolean) => {
       await queryClient.cancelQueries({ queryKey: notificationsQueryKey, exact: true });
-      const previous = queryClient.getQueryData<NotificationsRead>(notificationsQueryKey);
-      queryClient.setQueryData<NotificationsRead>(notificationsQueryKey, update);
-      return previous;
+      const previousById = new Map<string, NotificationRecord>();
+      const mutationToken = Symbol("notification-read");
+      queryClient.setQueryData<NotificationsRead>(notificationsQueryKey, (current) => {
+        current?.notifications.forEach((notification) => {
+          if (predicate(notification) && !notification.read_at) {
+            previousById.set(notification.id, notification);
+            readMutationTokensRef.current.set(notification.id, mutationToken);
+          }
+        });
+        return markRead(current, predicate);
+      });
+      return { previousById, mutationToken };
+    },
+    [queryClient],
+  );
+
+  const finishReadMutation = useCallback(
+    (previousById: Map<string, NotificationRecord>, mutationToken: symbol, rollback: boolean) => {
+      if (rollback) {
+        queryClient.setQueryData<NotificationsRead>(notificationsQueryKey, (current) => {
+          if (!current) return current;
+          const notifications = current.notifications.map((notification) => {
+            const previous = previousById.get(notification.id);
+            return previous && readMutationTokensRef.current.get(notification.id) === mutationToken
+              ? previous
+              : notification;
+          });
+          return {
+            notifications,
+            unreadCount: notifications.filter((notification) => !notification.read_at).length,
+          };
+        });
+      }
+      previousById.forEach((_, id) => {
+        if (readMutationTokensRef.current.get(id) === mutationToken) {
+          readMutationTokensRef.current.delete(id);
+        }
+      });
     },
     [queryClient],
   );
 
   const markAsRead = useCallback(
     async (id: string) => {
-      const previous = await updateCachedData((current) =>
-        markRead(current, (notification) => notification.id === id),
-      );
+      const mutation = await beginReadMutation((notification) => notification.id === id);
       try {
         await markNotificationReadFn({ data: { id } });
       } catch (error) {
-        queryClient.setQueryData(notificationsQueryKey, previous);
+        finishReadMutation(mutation.previousById, mutation.mutationToken, true);
         throw error;
       }
+      finishReadMutation(mutation.previousById, mutation.mutationToken, false);
       await queryClient.invalidateQueries({ queryKey: notificationsQueryKey, exact: true });
     },
-    [queryClient, updateCachedData],
+    [beginReadMutation, finishReadMutation, queryClient],
   );
 
   const markAllRead = useCallback(async () => {
-    const previous = await updateCachedData((current) => markRead(current, () => true));
+    const mutation = await beginReadMutation(() => true);
     try {
       await markAllNotificationsReadFn();
     } catch (error) {
-      queryClient.setQueryData(notificationsQueryKey, previous);
+      finishReadMutation(mutation.previousById, mutation.mutationToken, true);
       throw error;
     }
+    finishReadMutation(mutation.previousById, mutation.mutationToken, false);
     await queryClient.invalidateQueries({ queryKey: notificationsQueryKey, exact: true });
-  }, [queryClient, updateCachedData]);
+  }, [beginReadMutation, finishReadMutation, queryClient]);
 
   const refresh = useCallback(
     () => queryClient.invalidateQueries({ queryKey: notificationsQueryKey, exact: true }),

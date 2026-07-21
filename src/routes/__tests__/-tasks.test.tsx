@@ -162,4 +162,30 @@ describe("Task board move reliability", () => {
     expect(toastErrorMock).toHaveBeenCalledWith("Task move failed. Try again.");
     expect(invalidateQueries).not.toHaveBeenCalled();
   });
+  it("preserves a later successful move when an earlier move rolls back", async () => {
+    const firstRequest = deferred<unknown>();
+    const secondRequest = deferred<unknown>();
+    updateTaskMock
+      .mockReturnValueOnce(firstRequest.promise)
+      .mockReturnValueOnce(secondRequest.promise);
+    renderBoard();
+
+    fireEvent.keyDown(screen.getByRole("button", { name: /Call Northstar — Open/ }), {
+      key: "ArrowRight",
+    });
+    fireEvent.keyDown(screen.getByRole("button", { name: /Prepare renewal — In progress/ }), {
+      key: "ArrowRight",
+    });
+
+    await act(async () => secondRequest.resolve(undefined));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Prepare renewal — Done/ })).toBeTruthy(),
+    );
+    await act(async () => firstRequest.reject(new Error("network")));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Call Northstar — Open/ })).toBeTruthy(),
+    );
+    expect(screen.getByRole("button", { name: /Prepare renewal — Done/ })).toBeTruthy();
+  });
 });

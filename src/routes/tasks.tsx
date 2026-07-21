@@ -133,9 +133,6 @@ function TasksBoard() {
 
     markPending(id);
     await queryClient.cancelQueries({ queryKey: crmQueryKeys.tasks.lists() });
-    const snapshots = queryClient.getQueriesData<Task[]>({
-      queryKey: crmQueryKeys.tasks.lists(),
-    });
     queryClient.setQueriesData<Task[]>({ queryKey: crmQueryKeys.tasks.lists() }, (current) =>
       current ? replaceOnlyTaskStatus(current, id, status) : current,
     );
@@ -143,9 +140,9 @@ function TasksBoard() {
     try {
       await updateTask({ data: { id, updates: { status } } });
     } catch {
-      for (const [queryKey, snapshot] of snapshots) {
-        queryClient.setQueryData(queryKey, snapshot);
-      }
+      queryClient.setQueriesData<Task[]>({ queryKey: crmQueryKeys.tasks.lists() }, (current) =>
+        current ? replaceOnlyTaskStatus(current, id, previousStatus) : current,
+      );
       toast.error("Task move failed. Try again.");
       clearPending(id);
       return;

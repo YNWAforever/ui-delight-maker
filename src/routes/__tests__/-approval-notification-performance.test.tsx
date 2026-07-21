@@ -29,6 +29,9 @@ describe("approval and notification queue performance", () => {
 
     expect(source).toContain("setQueryData<ApprovalRead>");
     expect(source).toContain("invalidateQueries({ queryKey: approvalsQueryKey, exact: true })");
+    expect(source).toContain("crmQueryKeys.aiReview.all()");
+    expect(source).toContain("previousById");
+    expect(source).not.toContain("setQueryData(approvalsQueryKey, previous)");
   });
 
   it("updates notification data before exact cache invalidation", () => {
@@ -36,6 +39,9 @@ describe("approval and notification queue performance", () => {
 
     expect(source).toContain("setQueryData<NotificationsRead>");
     expect(source).toContain("invalidateQueries({ queryKey: notificationsQueryKey, exact: true })");
+    expect(source).toContain("readMutationTokensRef");
+    expect(source).toContain("previousById");
+    expect(source).not.toContain("setQueryData(notificationsQueryKey, previous)");
     expect(source).not.toContain("useEffect");
     expect(source).not.toContain("useState");
   });
