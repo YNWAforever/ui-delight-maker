@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Copy, Eye, EyeOff, KeyRound, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,6 +29,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { settingsSearchSchema } from "@/lib/admin-ux-search";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import {
   Table,
   TableBody,
@@ -87,9 +90,17 @@ const pricingRules: PricingRule[] = [
   },
 ];
 
+const settingsProductsQueryKey = crmQueryKeys.settings.detail("products");
+
+const settingsProductsQueryOptions = () =>
+  routeQueryOptions({
+    queryKey: settingsProductsQueryKey,
+    queryFn: () => getProducts({}),
+  });
+
 export const Route = createFileRoute("/settings")({
   validateSearch: settingsSearchSchema,
-  loader: () => getProducts({}),
+  loader: ({ context }) => context.queryClient.ensureQueryData(settingsProductsQueryOptions()),
   head: () => ({
     meta: [
       { title: "Settings — Fimmick ClientOps" },
@@ -324,9 +335,13 @@ function PricingTab() {
 }
 
 function ProductsTab() {
-  const products = Route.useLoaderData();
-  const router = useRouter();
-  const [rows, setRows] = useState<Product[]>(products);
+  const loadedProducts = Route.useLoaderData();
+  const queryClient = useQueryClient();
+  const productsQuery = useQuery({
+    ...settingsProductsQueryOptions(),
+    initialData: loadedProducts,
+  });
+  const rows = productsQuery.data;
   const [newOpen, setNewOpen] = useState(false);
   const [name, setName] = useState("");
   const [category, setCategory] = useState<Product["category"]>("custom");
@@ -342,10 +357,12 @@ function ProductsTab() {
         default_term_months: termMonths,
       },
     });
-    setRows((prev) => [...prev, created]);
+    queryClient.setQueryData<Product[]>(settingsProductsQueryKey, (current = []) => [
+      ...current,
+      created,
+    ]);
     setNewOpen(false);
     setName("");
-    router.invalidate();
     toast.success(`Added product ${created.name}`);
   };
 
@@ -353,8 +370,9 @@ function ProductsTab() {
     const updated = product.active
       ? await deactivateProductFn({ data: { id: product.id } })
       : await updateProduct({ data: { id: product.id, updates: { active: true } } });
-    setRows((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-    router.invalidate();
+    queryClient.setQueryData<Product[]>(settingsProductsQueryKey, (current = []) =>
+      current.map((item) => (item.id === updated.id ? updated : item)),
+    );
   };
 
   return (
