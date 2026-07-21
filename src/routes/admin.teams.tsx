@@ -38,7 +38,7 @@ const adminTeamQueryKey = (kind: "department" | "team", id: string) =>
   crmQueryKeys.admin.section(`${kind}:${id}`, "organization-unit");
 const adminPeopleQueryKey = (profileId?: string) =>
   profileId
-    ? crmQueryKeys.admin.detail(`person:${profileId}`)
+    ? crmQueryKeys.admin.detail(profileId)
     : crmQueryKeys.admin.section("people", "team-member-options");
 
 async function loadUsers(): Promise<TeamMemberUser[]> {
@@ -200,13 +200,18 @@ function AdminTeamsRoute() {
     }
     toast.success(value.id ? "Organization unit updated" : "Organization unit created");
     setDialog(null);
-    const input = value.input as DepartmentInput | TeamInput;
-    const profileIds = [
-      input.headProfileId,
-      input.deputyProfileId,
-      input.leadProfileId,
-      input.defaultOwnerProfileId,
-    ].filter((profileId): profileId is string => Boolean(profileId));
+    const profileIds = (
+      value.kind === "department"
+        ? [
+            (value.input as DepartmentInput).headProfileId,
+            (value.input as DepartmentInput).deputyProfileId,
+          ]
+        : [
+            (value.input as TeamInput).leadProfileId,
+            (value.input as TeamInput).deputyProfileId,
+            (value.input as TeamInput).defaultOwnerProfileId,
+          ]
+    ).filter((profileId): profileId is string => Boolean(profileId));
     await refreshOrganization(value.kind, value.id ?? saved.id, profileIds, true);
   }
 

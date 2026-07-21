@@ -1,8 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const readRoute = (file: string) =>
-  readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+const readRoute = (file: string) => readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 
 const loaderBlock = (source: string) => {
   const start = source.indexOf("loader:");
@@ -31,17 +30,17 @@ describe("account and admin loading performance", () => {
   });
 
   it.each([
-    ["admin.index.tsx", "getAdminOverviewFn", "getAdminAuditLogsFn"],
+    ["admin.index.tsx", "getAdminOverviewFn", "getAdminAuditSummaryFn"],
     ["admin.people.tsx", "getAdminUsersFn", "getAdminUserFn"],
     ["admin.teams.tsx", "getAdminOrganizationFn", "getAdminOrganizationUnitFn"],
     ["admin.teams.$id.tsx", "getAdminOrganizationUnitFn", "getAdminUsersFn"],
     ["admin.access.tsx", "getAdminAccessRequestsFn", "getAdminOverridesFn"],
   ])("starts permitted %s primary reads concurrently", (file, firstRead, secondRead) => {
-    const loader = loaderBlock(readRoute(file));
+    const source = readRoute(file);
 
-    expect(loader).toContain("Promise.all");
-    expect(loader).toContain(firstRead);
-    expect(loader).toContain(secondRead);
+    expect(source).toContain("Promise.all");
+    expect(source).toContain(firstRead);
+    expect(source).toContain(secondRead);
   });
 
   it("keeps reassignment inventory out of the people loader", () => {
