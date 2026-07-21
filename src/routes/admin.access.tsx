@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   AccessRequestQueue,
@@ -11,6 +12,8 @@ import {
   type PermissionOverrideSubmit,
 } from "@/components/admin/permission-override-dialog";
 import { AdminError } from "@/lib/admin/errors";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import { adminAccessSearchSchema, type AdminAccessSearch } from "@/lib/admin/schemas";
 import { ROLE_GRANTS } from "@/lib/admin/policy";
 import { CAPABILITIES } from "@/lib/admin/types";
@@ -23,34 +26,65 @@ import {
 } from "@/server-functions/admin-access";
 import { getAdminUsersFn } from "@/server-functions/admin-users";
 
+const adminOverviewQueryKey = crmQueryKeys.admin.section("overview", "summary");
+const accessRequestsQueryKey = (search: AdminAccessSearch) =>
+  crmQueryKeys.admin.list({ scope: "access-requests", status: search.requestStatus });
+const accessUsersQueryKey = crmQueryKeys.admin.list({
+  scope: "access-users",
+  status: "active",
+  page: 1,
+  limit: 100,
+});
+const accessOverridesQueryKey = (profileId: string) =>
+  crmQueryKeys.admin.section(profileId, "access-overrides", { includeHistory: true });
+const requestsQueryOptions = (search: AdminAccessSearch) =>
+  routeQueryOptions({
+    queryKey: accessRequestsQueryKey(search),
+    queryFn: () => getAdminAccessRequestsFn({ data: { status: search.requestStatus } }),
+  });
+const usersQueryOptions = () =>
+  routeQueryOptions({
+    queryKey: accessUsersQueryKey,
+    queryFn: () => getAdminUsersFn({ data: { status: "active", page: 1, limit: 100 } }),
+  });
+const overridesQueryOptions = (profileId: string) =>
+  routeQueryOptions({
+    queryKey: accessOverridesQueryKey(profileId),
+    queryFn: () =>
+      getAdminOverridesFn({ data: { profileId, includeHistory: true } }) as Promise<
+        PermissionOverrideRecord[]
+      >,
+  });
+
 export const Route = createFileRoute("/admin/access")({
   validateSearch: adminAccessSearchSchema,
   loaderDeps: ({ search }) => ({ search }),
-  loader: async ({ deps: { search } }) => {
+  loader: async ({ context, deps: { search } }) => {
     try {
-      const [requests, users] = await Promise.all([
-        getAdminAccessRequestsFn({ data: { status: search.requestStatus } }),
-        getAdminUsersFn({ data: { status: "active", page: 1, limit: 100 } }),
+      const requestedProfileId = search.profile;
+      const [requests, users, requestedOverrides] = await Promise.all([
+        context.queryClient.ensureQueryData(requestsQueryOptions(search)),
+        context.queryClient.ensureQueryData(usersQueryOptions()),
+        requestedProfileId
+          ? context.queryClient.ensureQueryData(overridesQueryOptions(requestedProfileId))
+          : Promise.resolve([] as PermissionOverrideRecord[]),
       ]);
-      const selectedProfileId = search.profile ?? users.items[0]?.id;
+      const selectedProfileId = requestedProfileId ?? users.items[0]?.id;
       const selectedUser = users.items.find((user) => user.id === selectedProfileId) ?? null;
-      const overrides = selectedProfileId
-        ? ((await getAdminOverridesFn({
-            data: { profileId: selectedProfileId, includeHistory: true },
-          })) as PermissionOverrideRecord[])
-        : [];
+      const overrides =
+        selectedProfileId && selectedProfileId !== requestedProfileId
+          ? await context.queryClient.ensureQueryData(overridesQueryOptions(selectedProfileId))
+          : requestedOverrides;
       return { requests, users: users.items, selectedUser, overrides, forbidden: false };
     } catch (error) {
-      if (error instanceof AdminError && ["FORBIDDEN", "OUTSIDE_SCOPE"].includes(error.code)) {
+      if (error instanceof AdminError && ["FORBIDDEN", "OUTSIDE_SCOPE"].includes(error.code))
         return { requests: [], users: [], selectedUser: null, overrides: [], forbidden: true };
-      }
       throw error;
     }
   },
-  head: () => ({ meta: [{ title: "Access review • Admin • Fimmick ClientOps" }] }),
+  head: () => ({ meta: [{ title: "Access review - Admin - Fimmick ClientOps" }] }),
   component: AdminAccessRoute,
 });
-
 function OverrideHistory({ overrides }: { overrides: readonly PermissionOverrideRecord[] }) {
   const history = overrides.filter((entry) => {
     return (
@@ -102,10 +136,27 @@ function OverrideHistory({ overrides }: { overrides: readonly PermissionOverride
 
 function AdminAccessRoute() {
   const search = Route.useSearch();
-  const { requests, users, selectedUser, overrides, forbidden } = Route.useLoaderData();
+  const loaded = Route.useLoaderData();
   const { profile } = Route.useRouteContext();
   const navigate = useNavigate({ from: Route.fullPath });
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const requestsQuery = useQuery({ ...requestsQueryOptions(search), initialData: loaded.requests });
+  const usersQuery = useQuery({
+    ...usersQueryOptions(),
+    initialData: { items: loaded.users, total: loaded.users.length, page: 1, limit: 100 },
+  });
+  const selectedUser =
+    usersQuery.data.items.find((user) => user.id === (search.profile ?? loaded.selectedUser?.id)) ??
+    loaded.selectedUser;
+  const overridesQuery = useQuery({
+    ...overridesQueryOptions(selectedUser?.id ?? "unselected"),
+    initialData: loaded.overrides,
+    enabled: Boolean(selectedUser),
+  });
+  const requests = requestsQuery.data;
+  const users = usersQuery.data.items;
+  const overrides = overridesQuery.data;
+  const forbidden = loaded.forbidden;
   const [overrideOpen, setOverrideOpen] = useState(false);
 
   const updateSearch = (next: AdminAccessSearch) => navigate({ search: () => next, replace: true });
@@ -113,10 +164,31 @@ function AdminAccessRoute() {
     return !entry.revokedAt && (!entry.expiresAt || Date.parse(entry.expiresAt) > Date.now());
   });
 
+  async function refreshAdminAccessCaches(profileId?: string) {
+    const auditKeys = queryClient
+      .getQueriesData({ queryKey: crmQueryKeys.admin.lists() })
+      .map(([queryKey]) => queryKey)
+      .filter((queryKey) => (queryKey[2] as { scope?: string } | undefined)?.scope === "audit");
+    const invalidations = [
+      queryClient.invalidateQueries({ queryKey: accessRequestsQueryKey(search), exact: true }),
+      queryClient.invalidateQueries({ queryKey: adminOverviewQueryKey, exact: true }),
+      queryClient.invalidateQueries({ queryKey: crmQueryKeys.shell(), exact: true }),
+      ...auditKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey, exact: true })),
+    ];
+    if (profileId) {
+      invalidations.push(
+        queryClient.invalidateQueries({
+          queryKey: accessOverridesQueryKey(profileId),
+          exact: true,
+        }),
+      );
+    }
+    await Promise.all(invalidations);
+  }
   async function decide(input: AccessRequestDecision) {
     await decideAdminAccessRequestFn({ data: input });
     toast.success(input.decision === "approved" ? "Access approved" : "Access rejected");
-    await router.invalidate();
+    await refreshAdminAccessCaches(selectedUser?.id);
   }
 
   async function createOverride(input: PermissionOverrideSubmit) {
@@ -130,7 +202,7 @@ function AdminAccessRoute() {
       },
     });
     toast.success("Permission override created");
-    await router.invalidate();
+    await refreshAdminAccessCaches(input.profileId);
   }
 
   if (forbidden) {
