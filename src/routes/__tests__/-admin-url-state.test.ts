@@ -38,7 +38,7 @@ it("controls every existing admin detail tab from validated URL search", () => {
     ["../leads.$id.tsx", "leadDetailSearchSchema", "overview"],
     ["../clients.$id.tsx", "clientDetailSearchSchema", "overview"],
     ["../quotes.$id.tsx", "quoteDetailSearchSchema", "items"],
-    ["../agents.$name.tsx", "agentDetailSearchSchema", "runs"],
+    ["../agents.$name.tsx", "agentHistorySearchSchema", "runs"],
     ["../settings.tsx", "settingsSearchSchema", "profile"],
   ] as const;
 
