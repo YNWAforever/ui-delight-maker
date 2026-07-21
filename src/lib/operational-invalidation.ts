@@ -24,7 +24,7 @@ export function getOperationalMutationKeys(mutation: OperationalMutation) {
       ];
     case "agent-run":
       return [
-        crmQueryKeys.agents.detail(mutation.agent),
+        crmQueryKeys.agents.section(mutation.agent, "history"),
         crmQueryKeys.agents.lists(),
         crmQueryKeys.aiReview.all(),
       ];

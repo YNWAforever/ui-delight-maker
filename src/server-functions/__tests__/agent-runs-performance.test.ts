@@ -83,6 +83,25 @@ describe("agent operational read models", () => {
     expect(result).toMatchObject({ page: 2, limit: 25, total: 51 });
   });
 
+  it("clamps an out-of-range history page before querying its rows", async () => {
+    const { getAgentHistoryPage } = await loadModule();
+    mocks.query
+      .mockResolvedValueOnce([{ total: 51 }])
+      .mockResolvedValueOnce([{ id: "run-51", input_data: {}, output_data: {} }])
+      .mockResolvedValueOnce([{ runs_24h: 2, avg_confidence: 0.8 }]);
+
+    const result = await getAgentHistoryPage({
+      data: { agent: "Qualification Agent", page: 999, limit: 25 },
+    });
+
+    expect(mocks.query).toHaveBeenNthCalledWith(2, expect.stringContaining("limit $2 offset $3"), [
+      "Qualification Agent",
+      25,
+      50,
+    ]);
+    expect(result).toMatchObject({ page: 3, limit: 25, total: 51 });
+  });
+
   it("requires approval and agent visibility for the single AI review read", async () => {
     const { getAiReviewRead } = await loadModule();
     mocks.query

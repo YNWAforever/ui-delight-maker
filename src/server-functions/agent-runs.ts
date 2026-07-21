@@ -152,11 +152,15 @@ export const getAgentHistoryPage = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     await requireCapability("agents.view");
-    const offset = (data.page - 1) * data.limit;
-    const [countRows, runs, summaryRows] = await Promise.all([
-      query<CountRow>("select count(*)::int as total from agent_runs where agent_name = $1", [
-        data.agent,
-      ]),
+    const countRows = await query<CountRow>(
+      "select count(*)::int as total from agent_runs where agent_name = $1",
+      [data.agent],
+    );
+    const total = Number(countRows[0]?.total ?? 0);
+    const lastPage = Math.max(1, Math.ceil(total / data.limit));
+    const page = Math.min(data.page, lastPage);
+    const offset = (page - 1) * data.limit;
+    const [runs, summaryRows] = await Promise.all([
       query<AgentRun>(
         `
           select *
@@ -182,8 +186,8 @@ export const getAgentHistoryPage = createServerFn({ method: "GET" })
 
     return {
       items: runs.map(serializeAgentRun),
-      total: Number(countRows[0]?.total ?? 0),
-      page: data.page,
+      total,
+      page,
       limit: data.limit,
       summary: {
         runs_24h: Number(summary?.runs_24h ?? 0),

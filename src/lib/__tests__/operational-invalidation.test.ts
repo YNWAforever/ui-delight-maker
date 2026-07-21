@@ -26,9 +26,9 @@ describe("operational mutation invalidation", () => {
     ]);
   });
 
-  it("targets agent detail, list, and AI review after agent runs change", () => {
+  it("targets every agent history page, list, and AI review after agent runs change", () => {
     expect(getOperationalMutationKeys({ type: "agent-run", agent: "Renewal Risk Agent" })).toEqual([
-      crmQueryKeys.agents.detail("Renewal Risk Agent"),
+      crmQueryKeys.agents.section("Renewal Risk Agent", "history"),
       crmQueryKeys.agents.lists(),
       crmQueryKeys.aiReview.all(),
     ]);
