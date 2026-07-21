@@ -1,6 +1,6 @@
 import { formatCurrencyAmount, formatDate } from "@/lib/format";
 import type { JsonValue, Quote, QuoteLineItem, QuoteVersion } from "@/lib/types";
-import { normalizeQuoteDocumentSections } from "@/components/quotes/quote-document-editor";
+import { normalizeQuoteDocumentSections } from "@/lib/quote-document";
 
 export type QuotePdfQuote = Pick<
   Quote,

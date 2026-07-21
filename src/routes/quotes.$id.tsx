@@ -1,4 +1,4 @@
-import { useState, type SetStateAction } from "react";
+import { lazy, Suspense, useState, type SetStateAction } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -15,11 +15,6 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
-import {
-  QuotePdfPreview,
-  QuotePdfPreviewUnavailable,
-  resolveQuotePdfSource,
-} from "@/components/quotes/quote-pdf-preview";
 import { StatusBadge } from "@/components/status-badge";
 import type { PricingTemplate, QuoteLineItem, QuoteStatus, QuoteVersion } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -50,6 +45,12 @@ import {
   getQuoteVersionsSection,
 } from "@/server-functions/quote-workspace";
 import { USER_RECORD } from "@/lib/users";
+
+const QuoteDocumentPreview = lazy(() =>
+  import("@/components/quotes/quote-document-tools").then((module) => ({
+    default: module.QuoteDocumentPreview,
+  })),
+);
 
 type Comment = { id: string; quote_id: string; author: string; body: string; created_at: string };
 type QuoteFile = {
@@ -212,19 +213,14 @@ function QuoteDetail() {
 
   const totalValue = calculateTotal(editItems);
   const documentRead = documentQuery.data;
-  const resolvedPdfSource = documentRead
-    ? resolveQuotePdfSource(documentRead.quote, documentRead.versions)
-    : null;
-  const previewSource =
-    !resolvedPdfSource || resolvedPdfSource.state !== "live"
-      ? resolvedPdfSource
-      : {
-          ...resolvedPdfSource,
-          quote: isEditMode
-            ? { ...resolvedPdfSource.quote, total_value: totalValue }
-            : resolvedPdfSource.quote,
-          lineItems: isEditMode ? editItems : resolvedPdfSource.lineItems,
-        };
+  const previewQuote =
+    documentRead && isEditMode
+      ? {
+          ...documentRead.quote,
+          total_value: totalValue,
+          line_items: editItems,
+        }
+      : documentRead?.quote;
   const clientName =
     client?.company_name ?? lead?.company_name ?? quote.client_id ?? quote.lead_id ?? "Client";
   const currentPreviewVersionId = quote.accepted_version_id ?? quote.issued_version_id ?? null;
@@ -819,14 +815,14 @@ function QuoteDetail() {
                           Retry
                         </Button>
                       </div>
-                    ) : previewSource?.state === "invalid" ? (
-                      <QuotePdfPreviewUnavailable error={previewSource.error} />
-                    ) : previewSource ? (
-                      <QuotePdfPreview
-                        quote={previewSource.quote}
-                        lineItems={previewSource.lineItems}
-                        clientName={clientName}
-                      />
+                    ) : previewQuote && documentRead ? (
+                      <Suspense fallback={<QuoteDocumentPreviewSkeleton />}>
+                        <QuoteDocumentPreview
+                          quote={previewQuote}
+                          versions={documentRead.versions}
+                          clientName={clientName}
+                        />
+                      </Suspense>
                     ) : null}
                   </div>
                 </TabsContent>
@@ -998,5 +994,14 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <span className="text-muted-foreground">{label}</span>
       <span>{children}</span>
     </div>
+  );
+}
+
+function QuoteDocumentPreviewSkeleton() {
+  return (
+    <div
+      className="min-h-[420px] animate-pulse rounded-md bg-muted"
+      aria-label="Loading quote PDF preview"
+    />
   );
 }

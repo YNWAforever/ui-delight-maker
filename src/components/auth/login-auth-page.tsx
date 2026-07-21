@@ -1,6 +1,11 @@
-import { AuthView } from "@neondatabase/auth-ui";
+import { lazy, Suspense } from "react";
 import { Sparkles } from "lucide-react";
-import { NeonAuthProvider } from "@/components/auth/neon-auth-provider";
+
+const LoginAuthForm = lazy(() =>
+  import("@/components/auth/login-auth-form").then((module) => ({
+    default: module.LoginAuthForm,
+  })),
+);
 
 type LoginAuthPageProps = {
   authPath?: string;
@@ -21,19 +26,29 @@ export function LoginAuthPage({
     (isSignUp ? "Create an account with your @fimmick.com email" : "Sign in to your workspace");
 
   return (
-    <NeonAuthProvider redirectTo={redirectTo} emailOTP={false} basePath="/login" signUp>
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div className="w-full max-w-sm space-y-6">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Sparkles className="h-6 w-6" />
-            </div>
-            <h1 className="text-xl font-semibold">{title}</h1>
-            <p className="text-sm leading-6 text-muted-foreground">{supportingCopy}</p>
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm space-y-6">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <Sparkles className="h-6 w-6" />
           </div>
-          <AuthView path={authPath} cardFooter={false} />
+          <h1 className="text-xl font-semibold">{title}</h1>
+          <p className="text-sm leading-6 text-muted-foreground">{supportingCopy}</p>
         </div>
+        <Suspense fallback={<LoginAuthFormSkeleton />}>
+          <LoginAuthForm authPath={authPath} redirectTo={redirectTo} />
+        </Suspense>
       </div>
-    </NeonAuthProvider>
+    </div>
+  );
+}
+
+function LoginAuthFormSkeleton() {
+  return (
+    <div className="space-y-4" aria-label="Loading sign-in form">
+      <div className="h-10 animate-pulse rounded-md bg-muted" />
+      <div className="h-10 animate-pulse rounded-md bg-muted" />
+      <div className="h-10 animate-pulse rounded-md bg-muted" />
+    </div>
   );
 }

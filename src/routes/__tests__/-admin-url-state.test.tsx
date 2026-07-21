@@ -217,7 +217,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Revenue Desk URL state", () => {
-  it("restores filters and selected lead, then navigates with the intended history semantics", () => {
+  it("restores filters and selected lead, then navigates with the intended history semantics", async () => {
     const Component = Route.options.component as ComponentType;
     render(<Component />);
 
@@ -228,7 +228,9 @@ describe("Revenue Desk URL state", () => {
       urgency: "overdue",
       aiState: "ready_for_review",
     });
-    expect((captures.inspector?.lead as { id: string }).id).toBe("lead-2");
+    await waitFor(() =>
+      expect((captures.inspector?.lead as { id: string } | undefined)?.id).toBe("lead-2"),
+    );
 
     act(() => {
       (captures.toolbar?.onFiltersChange as (filters: unknown) => void)({

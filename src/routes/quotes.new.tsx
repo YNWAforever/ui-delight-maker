@@ -1,4 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, Plus, Send, Trash2 } from "lucide-react";
@@ -6,11 +15,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { PageHeader } from "@/components/page-header";
-import {
-  QuoteDocumentEditor,
-  type QuoteDocumentDraft,
-  normalizeQuoteDocumentSections,
-} from "@/components/quotes/quote-document-editor";
+import { normalizeQuoteDocumentSections, type QuoteDocumentDraft } from "@/lib/quote-document";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,6 +35,12 @@ import { getQuoteCreateBootstrap } from "@/server-functions/quote-workspace";
 import { useQuoteReferenceData } from "@/hooks/use-quote-reference-data";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { APP_USERS } from "@/lib/users";
+
+const QuoteDocumentTools = lazy(() =>
+  import("@/components/quotes/quote-document-tools").then((module) => ({
+    default: module.QuoteDocumentTools,
+  })),
+);
 
 const searchSchema = z.object({
   leadId: z.string().optional(),
@@ -568,7 +579,9 @@ function QuoteBuilder() {
                 <CardTitle className="text-base">PDF sections</CardTitle>
               </CardHeader>
               <CardContent>
-                <QuoteDocumentEditor value={documentDraft} onChange={setDocumentDraft} />
+                <Suspense fallback={<QuoteDocumentToolsSkeleton />}>
+                  <QuoteDocumentTools value={documentDraft} onChange={setDocumentDraft} />
+                </Suspense>
               </CardContent>
             </Card>
           )}
@@ -795,6 +808,16 @@ function ReferencePager({
           <ArrowRight className="h-4 w-4" />
         </Button>
       </div>
+    </div>
+  );
+}
+
+function QuoteDocumentToolsSkeleton() {
+  return (
+    <div className="space-y-4" aria-label="Loading quote document editor">
+      <div className="h-28 animate-pulse rounded-md bg-muted" />
+      <div className="h-24 animate-pulse rounded-md bg-muted" />
+      <div className="h-24 animate-pulse rounded-md bg-muted" />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowUpRight, Clock, Flame, Plus, ShieldCheck, Target } from "lucide-react";
 import { toast } from "sonner";
@@ -27,6 +27,12 @@ import { getDashboardRead } from "@/server-functions/dashboard";
 import { moveLeadStage, triggerLeadAgent, triggerLeadReplyDraft } from "@/server-functions/leads";
 import { triggerQuoteAgent } from "@/server-functions/quotes";
 import { createTask } from "@/server-functions/tasks";
+
+const DashboardInsights = lazy(() =>
+  import("@/components/dashboard/dashboard-insights").then((module) => ({
+    default: module.DashboardInsights,
+  })),
+);
 
 export const Route = createFileRoute("/")({
   validateSearch: revenueDeskSearchSchema,
@@ -324,35 +330,26 @@ function PipelineCommandCenter() {
           </section>
         </div>
 
-        <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="min-w-0 overflow-hidden">
-            <PipelineBoard
-              leads={filteredLeads}
-              tasks={tasks}
-              quotes={quotes}
-              approvals={approvals}
-              agentRuns={agentRuns}
-              selectedLeadId={selectedLead?.id ?? null}
-              onSelectLead={(lead) =>
-                navigate({ search: (current) => ({ ...current, lead: lead.id }) })
-              }
-              onMoveLead={moveLead}
-            />
-          </div>
-          <LeadPreviewPanel
-            lead={selectedLead}
+        <Suspense fallback={<DashboardInsightsSkeleton />}>
+          <DashboardInsights
+            leads={filteredLeads}
             tasks={tasks}
             quotes={quotes}
             approvals={approvals}
             agentRuns={agentRuns}
             activityLogs={activityLogs as ActivityLog[]}
+            selectedLead={selectedLead}
+            onSelectLead={(lead) =>
+              navigate({ search: (current) => ({ ...current, lead: lead.id }) })
+            }
+            onMoveLead={moveLead}
             onQualify={qualifyLead}
             onDraftReply={draftReply}
             onDraftQuote={draftQuote}
             onSummarize={summarizeTimeline}
             onCreateTask={createFollowUpTask}
           />
-        </div>
+        </Suspense>
       </div>
 
       <StageMoveDialog
@@ -375,5 +372,14 @@ function PipelineCommandCenter() {
         onDone={() => setWonLead(null)}
       />
     </>
+  );
+}
+
+function DashboardInsightsSkeleton() {
+  return (
+    <div
+      className="min-h-[480px] animate-pulse rounded-md border border-border bg-muted/30"
+      aria-label="Loading pipeline insights"
+    />
   );
 }
