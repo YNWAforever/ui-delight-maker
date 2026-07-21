@@ -30,6 +30,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
+  queryOptions: (options: unknown) => options,
   useQuery: ({ initialData }: { initialData: unknown }) => ({
     data: initialData,
     isFetching: false,
@@ -110,6 +111,7 @@ vi.mock("@/lib/pipeline", () => ({
 vi.mock("@/lib/sales-workspace", () => ({ buildRevenueActions: () => [] }));
 vi.mock("@/server-functions/agent-runs", () => ({
   getActivityLogs: vi.fn(),
+  getAgentHistoryPage: vi.fn(),
   getAgentRuns: vi.fn(),
 }));
 vi.mock("@/server-functions/leads", () => ({
@@ -548,7 +550,13 @@ describe("Admin detail tab runtime navigation", () => {
           human_approval: false,
           model: "test-model",
         },
-        runs: [],
+        history: {
+          items: [],
+          total: 0,
+          page: 1,
+          limit: 25,
+          summary: { runs_24h: 0, avg_confidence: null },
+        },
       },
       currentTab: "memory",
       defaultTab: "runs",

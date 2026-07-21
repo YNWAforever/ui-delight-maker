@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bot, CheckCircle2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,14 +13,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime, formatPercent } from "@/lib/format";
 import type { HumanApproval } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { getAgentRuns } from "@/server-functions/agent-runs";
-import { decideApproval, getApprovals } from "@/server-functions/approvals";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
+import { getAiReviewRead } from "@/server-functions/agent-runs";
+import { decideApproval } from "@/server-functions/approvals";
+
+const aiReviewQuery = () =>
+  routeQueryOptions({
+    queryKey: crmQueryKeys.aiReview.list({ view: "queue" }),
+    queryFn: () => getAiReviewRead(),
+  });
 
 export const Route = createFileRoute("/ai-review")({
-  loader: async () => {
-    const [approvals, agentRuns] = await Promise.all([getApprovals({}), getAgentRuns({})]);
-    return { approvals, agentRuns };
-  },
+  loader: ({ context }) => context.queryClient.ensureQueryData(aiReviewQuery()),
   head: () => ({
     meta: [
       { title: "AI Review - Fimmick ClientOps" },
@@ -30,10 +36,11 @@ export const Route = createFileRoute("/ai-review")({
 });
 
 function AiReviewPage() {
-  const { approvals, agentRuns } = Route.useLoaderData();
-  const router = useRouter();
-  const pending = approvals.filter((approval) => approval.status === "pending");
-  const humanReviewRuns = agentRuns.filter((run) => run.human_review_required);
+  const initialData = Route.useLoaderData();
+  const queryClient = useQueryClient();
+  const { data } = useQuery({ ...aiReviewQuery(), initialData });
+  const pending = data.approvals;
+  const humanReviewRuns = data.humanReviewRuns;
   const [selectedId, setSelectedId] = useState<string | null>(pending[0]?.id ?? null);
   const [notes, setNotes] = useState("");
   const [submittingId, setSubmittingId] = useState<string | null>(null);
@@ -54,7 +61,17 @@ function AiReviewPage() {
 
     try {
       await decideApproval({ data: { id: approval.id, decision, notes: notes || undefined } });
-      await router.invalidate();
+      queryClient.setQueryData(crmQueryKeys.aiReview.list({ view: "queue" }), {
+        ...data,
+        approvals: data.approvals.filter((item) => item.id !== approval.id),
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: crmQueryKeys.aiReview.list({ view: "queue" }),
+          exact: true,
+        }),
+        queryClient.invalidateQueries({ queryKey: crmQueryKeys.approvals.lists() }),
+      ]);
       toast.success(decision === "approved" ? "AI action approved" : "AI action updated");
       setNotes("");
     } catch (error) {
@@ -71,7 +88,16 @@ function AiReviewPage() {
         status="Acquire"
         description={`${pending.length} AI-generated sales actions need human judgment before they move forward.`}
         actions={
-          <Button size="sm" variant="outline" onClick={() => router.invalidate()}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              void queryClient.invalidateQueries({
+                queryKey: crmQueryKeys.aiReview.list({ view: "queue" }),
+                exact: true,
+              })
+            }
+          >
             <RefreshCw className="mr-2 h-4 w-4" /> Refresh
           </Button>
         }

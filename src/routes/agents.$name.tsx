@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
 import { ArrowLeft, Bot, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,17 +14,32 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { agentDetailSearchSchema } from "@/lib/admin-ux-search";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import { formatCount, formatDateTime } from "@/lib/format";
-import { getAgentRuns } from "@/server-functions/agent-runs";
+import { getAgentHistoryPage } from "@/server-functions/agent-runs";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
 
+const agentHistorySearchSchema = agentDetailSearchSchema.extend({
+  page: z.coerce.number().int().min(1).default(1).catch(1),
+});
+
+const historyQuery = (agent: string, page: number) =>
+  routeQueryOptions({
+    queryKey: crmQueryKeys.agents.section(agent, "history", { page, limit: 25 }),
+    queryFn: () => getAgentHistoryPage({ data: { agent, page, limit: 25 } }),
+  });
+
 export const Route = createFileRoute("/agents/$name")({
-  validateSearch: agentDetailSearchSchema,
-  loader: async ({ params }) => {
-    const agent = AGENT_DEFINITIONS.find((a) => a.name === params.name);
+  validateSearch: agentHistorySearchSchema,
+  loaderDeps: ({ search }) => ({ page: search.page }),
+  loader: async ({ context, params, deps }) => {
+    const agent = AGENT_DEFINITIONS.find((item) => item.name === params.name);
     if (!agent) throw notFound();
-    const runs = await getAgentRuns({ data: { agent: agent.display_name } });
-    return { agent, runs };
+    const history = await context.queryClient.ensureQueryData(
+      historyQuery(agent.display_name, deps.page),
+    );
+    return { agent, history };
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -45,12 +62,14 @@ export const Route = createFileRoute("/agents/$name")({
 });
 
 function AgentDetail() {
-  const loaderData = Route.useLoaderData() as {
-    agent: (typeof AGENT_DEFINITIONS)[0];
-    runs: import("@/lib/types").AgentRun[];
-  };
-  const { agent, runs } = loaderData;
+  const loaderData = Route.useLoaderData();
+  const { agent } = loaderData;
   const search = Route.useSearch();
+  const { data: history } = useQuery({
+    ...historyQuery(agent.display_name, search.page),
+    initialData: loaderData.history,
+  });
+  const runs = history.items;
   const navigate = useNavigate({ from: Route.fullPath });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [temp, setTemp] = useState([0.4]);
@@ -58,15 +77,8 @@ function AgentDetail() {
   const [enabled, setEnabled] = useState(agent.status === "active");
   const [autoApprove, setAutoApprove] = useState(!agent.human_approval);
 
-  const { runs_24h, avg_confidence } = useMemo(() => {
-    const since24h = Date.now() - 24 * 60 * 60 * 1000;
-    const recent = runs.filter((r) => new Date(r.created_at).getTime() >= since24h);
-    const scores = runs.filter((r) => r.confidence_score != null).map((r) => r.confidence_score!);
-    return {
-      runs_24h: recent.length,
-      avg_confidence: scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null,
-    };
-  }, [runs]);
+  const { runs_24h, avg_confidence } = history.summary;
+  const lastPage = Math.max(1, Math.ceil(history.total / history.limit));
 
   return (
     <>
@@ -107,7 +119,7 @@ function AgentDetail() {
 
               <TabsContent value="runs" className="mt-4">
                 {runs.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No runs in the last 24h.</p>
+                  <p className="text-sm text-muted-foreground">No runs on this page.</p>
                 ) : (
                   <ul className="divide-y divide-border">
                     {runs.map((r) => {
@@ -160,6 +172,41 @@ function AgentDetail() {
                     })}
                   </ul>
                 )}
+                <div className="mt-4 flex items-center justify-end gap-2 border-t border-border pt-3">
+                  <span className="text-xs text-muted-foreground">
+                    Page {history.page} of {lastPage} ({history.total} runs)
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="Previous agent history page"
+                    disabled={history.page <= 1}
+                    onClick={() =>
+                      navigate({
+                        search: (current) => ({ ...current, page: history.page - 1 }),
+                        replace: true,
+                      })
+                    }
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="Next agent history page"
+                    disabled={history.page >= lastPage}
+                    onClick={() =>
+                      navigate({
+                        search: (current) => ({ ...current, page: history.page + 1 }),
+                        replace: true,
+                      })
+                    }
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </TabsContent>
 
               <TabsContent value="memory" className="mt-4">
