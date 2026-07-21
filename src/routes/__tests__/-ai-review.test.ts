@@ -10,13 +10,15 @@ describe("AI Review route source", () => {
     );
   });
 
-  it("guards approval decisions while submitting and reports failures", () => {
+  it("guards approval decisions and refreshes only affected caches", () => {
     expect(aiReviewSource).toContain(
       "const [submittingId, setSubmittingId] = useState<string | null>(null);",
     );
     expect(aiReviewSource).toMatch(
-      /setSubmittingId\(approval\.id\);[\s\S]*try \{[\s\S]*await decideApproval[\s\S]*await router\.invalidate\(\);[\s\S]*catch[\s\S]*toast\.error[\s\S]*finally \{[\s\S]*setSubmittingId\(null\);/,
+      /setSubmittingId\(approval\.id\);[\s\S]*try \{[\s\S]*await decideApproval[\s\S]*queryClient\.setQueryData\(crmQueryKeys\.aiReview[\s\S]*queryClient\.invalidateQueries\(\{[\s\S]*crmQueryKeys\.approvals\.lists\(\)[\s\S]*catch[\s\S]*toast\.error[\s\S]*finally \{[\s\S]*setSubmittingId\(null\);/,
     );
+
+    expect(aiReviewSource).not.toContain("router.invalidate");
 
     const disabledDecisionButtons = aiReviewSource.match(/disabled=\{isSubmitting\}/g) ?? [];
     expect(disabledDecisionButtons).toHaveLength(3);
