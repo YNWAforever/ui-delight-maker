@@ -27,6 +27,9 @@ import {
 import { getAdminUsersFn } from "@/server-functions/admin-users";
 
 const adminOverviewQueryKey = crmQueryKeys.admin.section("overview", "summary");
+const adminOrganizationQueryKey = crmQueryKeys.admin.section("organization", "directory");
+const adminTeamQueryKey = (teamId: string) =>
+  crmQueryKeys.admin.section(`team:${teamId}`, "organization-unit");
 const accessRequestsQueryKey = (search: AdminAccessSearch) =>
   crmQueryKeys.admin.list({ scope: "access-requests", status: search.requestStatus });
 const accessUsersQueryKey = crmQueryKeys.admin.list({
@@ -164,33 +167,40 @@ function AdminAccessRoute() {
     return !entry.revokedAt && (!entry.expiresAt || Date.parse(entry.expiresAt) > Date.now());
   });
 
-  async function refreshAdminAccessCaches(profileId?: string) {
-    const auditKeys = queryClient
+  async function refreshAdminAccessCaches(profileId?: string, teamId?: string) {
+    const adminListKeys = queryClient
       .getQueriesData({ queryKey: crmQueryKeys.admin.lists() })
-      .map(([queryKey]) => queryKey)
-      .filter((queryKey) => (queryKey[2] as { scope?: string } | undefined)?.scope === "audit");
-    const invalidations = [
-      queryClient.invalidateQueries({ queryKey: accessRequestsQueryKey(search), exact: true }),
-      queryClient.invalidateQueries({ queryKey: adminOverviewQueryKey, exact: true }),
-      queryClient.invalidateQueries({ queryKey: crmQueryKeys.shell(), exact: true }),
-      ...auditKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey, exact: true })),
+      .map(([queryKey]) => queryKey);
+    const requestKeys = adminListKeys.filter((queryKey) => {
+      const scope = (queryKey[2] as { scope?: string } | undefined)?.scope;
+      return scope === "access-requests";
+    });
+    const auditKeys = adminListKeys.filter(
+      (queryKey) => (queryKey[2] as { scope?: string } | undefined)?.scope === "audit",
+    );
+    const keys = [
+      accessUsersQueryKey,
+      adminOverviewQueryKey,
+      crmQueryKeys.shell(),
+      ...requestKeys,
+      ...auditKeys,
     ];
     if (profileId) {
-      invalidations.push(
-        queryClient.invalidateQueries({
-          queryKey: accessOverridesQueryKey(profileId),
-          exact: true,
-        }),
-      );
+      keys.push(accessOverridesQueryKey(profileId), crmQueryKeys.admin.detail(profileId));
     }
-    await Promise.all(invalidations);
+    if (teamId) {
+      keys.push(adminOrganizationQueryKey, adminTeamQueryKey(teamId));
+    }
+    await Promise.all(
+      keys.map((queryKey) => queryClient.invalidateQueries({ queryKey, exact: true })),
+    );
   }
   async function decide(input: AccessRequestDecision) {
+    const request = requests.find((item) => item.id === input.id);
     await decideAdminAccessRequestFn({ data: input });
     toast.success(input.decision === "approved" ? "Access approved" : "Access rejected");
-    await refreshAdminAccessCaches(selectedUser?.id);
+    await refreshAdminAccessCaches(request?.requesterProfileId, request?.teamId ?? undefined);
   }
-
   async function createOverride(input: PermissionOverrideSubmit) {
     await createAdminPermissionOverrideFn({
       data: {

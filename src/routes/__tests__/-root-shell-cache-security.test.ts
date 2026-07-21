@@ -7,15 +7,13 @@ import { routeQueryOptions } from "@/lib/route-query";
 const rootSource = readFileSync(new URL("../__root.tsx", import.meta.url), "utf8");
 
 describe("root shell auth cache boundaries", () => {
-  it("removes the exact shell cache before invalidating or navigating after sign-out", () => {
-    const removeShellCache = rootSource.indexOf("queryClient.removeQueries({");
-    const invalidate = rootSource.indexOf("await router.invalidate()", removeShellCache);
-    const navigate = rootSource.indexOf('await router.navigate({ to: "/login" })', removeShellCache);
+  it("clears every user-scoped query before invalidating or navigating after sign-out", () => {
+    const clearUserCache = rootSource.indexOf("queryClient.clear()");
+    const invalidate = rootSource.indexOf("await router.invalidate()", clearUserCache);
+    const navigate = rootSource.indexOf('await router.navigate({ to: "/login" })', clearUserCache);
 
-    expect(removeShellCache).toBeGreaterThan(rootSource.indexOf("await signOut()"));
-    expect(rootSource.slice(removeShellCache, invalidate)).toContain("crmQueryKeys.shell()");
-    expect(rootSource.slice(removeShellCache, invalidate)).toContain("exact: true");
-    expect(invalidate).toBeGreaterThan(removeShellCache);
+    expect(clearUserCache).toBeGreaterThan(rootSource.indexOf("await signOut()"));
+    expect(invalidate).toBeGreaterThan(clearUserCache);
     expect(navigate).toBeGreaterThan(invalidate);
   });
 
@@ -26,7 +24,9 @@ describe("root shell auth cache boundaries", () => {
     await queryClient.ensureQueryData(
       routeQueryOptions({ queryKey: crmQueryKeys.shell(), queryFn: readUserA }),
     );
-    queryClient.removeQueries({ queryKey: crmQueryKeys.shell(), exact: true });
+    queryClient.setQueryData(crmQueryKeys.account.detail("me"), { profile: { id: "user-a" } });
+    queryClient.clear();
+    expect(queryClient.getQueryData(crmQueryKeys.account.detail("me"))).toBeUndefined();
 
     const readUserB = vi.fn().mockResolvedValue({ user: { id: "user-b" } });
     await expect(

@@ -124,7 +124,13 @@ function AdminPeopleRoute() {
   const canManageLifecycle = ["super_admin", "admin"].includes(profile?.role ?? "");
 
   const refreshPeople = async (profileId?: string, includeShell = false) => {
-    const refreshes = [queryClient.invalidateQueries({ queryKey: crmQueryKeys.admin.lists() })];
+    const refreshes = [
+      queryClient.invalidateQueries({ queryKey: crmQueryKeys.admin.lists() }),
+      queryClient.invalidateQueries({
+        queryKey: crmQueryKeys.admin.section("overview", "summary"),
+        exact: true,
+      }),
+    ];
     if (profileId) {
       refreshes.push(
         queryClient.invalidateQueries({

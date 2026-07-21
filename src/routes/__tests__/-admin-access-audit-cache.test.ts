@@ -29,6 +29,10 @@ describe("admin overview, access, and audit cache contracts", () => {
     expect(source).toContain("accessOverridesQueryKey");
     expect(source).toContain("exact: true");
     expect(source).toContain("crmQueryKeys.shell()");
+    expect(source).toContain("requesterProfileId");
+    expect(source).toContain("teamId");
+    expect(source).toContain('scope === "access-requests"');
+    expect(source).toContain('crmQueryKeys.admin.section("organization", "directory")');
     expect(source).not.toContain("router.invalidate");
   });
 

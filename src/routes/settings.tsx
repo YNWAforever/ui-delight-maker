@@ -361,6 +361,7 @@ function ProductsTab() {
       ...current,
       created,
     ]);
+    await queryClient.invalidateQueries({ queryKey: crmQueryKeys.products.lists() });
     setNewOpen(false);
     setName("");
     toast.success(`Added product ${created.name}`);
@@ -373,6 +374,7 @@ function ProductsTab() {
     queryClient.setQueryData<Product[]>(settingsProductsQueryKey, (current = []) =>
       current.map((item) => (item.id === updated.id ? updated : item)),
     );
+    await queryClient.invalidateQueries({ queryKey: crmQueryKeys.products.lists() });
   };
 
   return (

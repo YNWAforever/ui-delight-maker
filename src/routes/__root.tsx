@@ -165,7 +165,7 @@ function RootComponent() {
             onSignOut={async () => {
               try {
                 await signOut();
-                queryClient.removeQueries({ queryKey: crmQueryKeys.shell(), exact: true });
+                queryClient.clear();
                 await router.invalidate();
                 await router.navigate({ to: "/login" });
               } catch (error) {

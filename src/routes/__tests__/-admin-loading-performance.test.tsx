@@ -47,4 +47,10 @@ describe("account and admin loading performance", () => {
     const loader = loaderBlock(readRoute("admin.people.tsx"));
     expect(loader).not.toContain("getAdminReassignmentInventoryFn");
   });
+  it("refreshes cross-route product and overview consumers after mutations", () => {
+    expect(readRoute("settings.tsx")).toContain("crmQueryKeys.products.lists()");
+    expect(readRoute("admin.people.tsx")).toContain(
+      'crmQueryKeys.admin.section("overview", "summary")',
+    );
+  });
 });
