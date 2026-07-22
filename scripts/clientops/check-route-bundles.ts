@@ -35,6 +35,9 @@ function normalizeSourcePath(value: string) {
 }
 
 function routeOwner(chunkKey: string, chunk: ManifestChunk) {
+  if (chunk.dynamicImports?.includes("src/components/dashboard/dashboard-insights.tsx")) {
+    return "dashboard";
+  }
   const source = normalizeSourcePath(chunk.src ?? chunkKey);
   const [sourcePath, query = ""] = source.split("?", 2);
   if (query && query !== "tsr-split=component") return null;

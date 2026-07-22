@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Download, Plus, Sparkles, X } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -62,7 +63,8 @@ const leadListSearchSchema = z.object({
 
 export const Route = createFileRoute("/leads")({
   validateSearch: leadListSearchSchema,
-  loaderDeps: ({ search }) => ({ search }),  head: () => ({
+  loaderDeps: ({ search }) => ({ search }),
+  head: () => ({
     meta: [
       { title: "Leads — Fimmick ClientOps" },
       {
@@ -77,7 +79,8 @@ export const Route = createFileRoute("/leads")({
         queryKey: crmQueryKeys.leads.list(search),
         queryFn: () => getLeadsPage({ data: search }),
       }),
-    ),  component: LeadsRoute,
+    ),
+  component: LeadsRoute,
 });
 
 const STATUSES = ["new", "qualified", "replied", "quoted", "approved", "won", "lost"];
@@ -97,6 +100,7 @@ function LeadsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
+  const queryClient = useQueryClient();
   const setStatus = (value: string) =>
     navigate({
       search: (current) => ({
@@ -133,7 +137,8 @@ function LeadsPage() {
     contact_email?: string;
   }) => {
     await createLead({ data: formData });
-    router.invalidate();
+    await queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.lists() });
+    await router.invalidate({ filter: (match) => match.routeId === "/leads" });
     setNewOpen(false);
     toast.success("Lead created");
   };
@@ -247,7 +252,19 @@ function LeadsPage() {
               onChange={(e) => setQuery(e.target.value)}
               className="h-9 min-w-[220px] flex-1"
             />
-            <Select value={status} onValueChange={(value) => navigate({ search: (current) => ({ ...current, page: 1, status: value === "all" ? undefined : value }), replace: true })}>
+            <Select
+              value={status}
+              onValueChange={(value) =>
+                navigate({
+                  search: (current) => ({
+                    ...current,
+                    page: 1,
+                    status: value === "all" ? undefined : value,
+                  }),
+                  replace: true,
+                })
+              }
+            >
               <SelectTrigger className="h-9 w-[150px]" aria-label="Filter by status">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -323,7 +340,8 @@ function LeadsPage() {
                 ),
               );
               setSelected(new Set());
-              router.invalidate();
+              await queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.lists() });
+              await router.invalidate({ filter: (match) => match.routeId === "/leads" });
             }}
             onMarkStatus={(s) => {
               setRows((prev) => prev.map((l) => (selected.has(l.id) ? { ...l, status: s } : l)));

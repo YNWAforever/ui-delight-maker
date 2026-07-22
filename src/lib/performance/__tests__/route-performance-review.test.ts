@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  measureRouteBrowserScenarios,
   measureRoutePerformance,
+  measureRoutePerformanceBaseline,
   runRoutePerformanceMeasurement,
 } from "../../../../scripts/clientops/measure-route-performance";
 import {
@@ -133,18 +135,22 @@ describe("route performance review regressions", () => {
     ).toEqual([]);
   });
 
-  it("emits three deterministic fixtures for all 20 route families", () => {
+  it("emits complete baseline, final, and browser measurement matrices", () => {
     const measurements = measureRoutePerformance();
+    const baselineMeasurements = measureRoutePerformanceBaseline();
+    const browserMeasurements = measureRouteBrowserScenarios();
 
     expect(APP_ROUTE_FAMILIES).toHaveLength(20);
     expect(measurements).toHaveLength(60);
     expect(measurements.filter((measurement) => measurement.routePath === "/clients")).toHaveLength(
       3,
     );
-    expect(measurements.some((measurement) => measurement.failures.length > 0)).toBe(true);
+    expect(measurements.every((measurement) => measurement.failures.length === 0)).toBe(true);
+    expect(baselineMeasurements.some((measurement) => measurement.failures.length > 0)).toBe(true);
+    expect(browserMeasurements).toHaveLength(80);
   });
 
-  it("keeps baseline CLI successful while verify CLI rejects recorded failures", () => {
+  it("keeps baseline evidence while verify accepts the final measurements", () => {
     const baseline = runMeasurementMode("baseline");
     const verify = runMeasurementMode("verify");
 
@@ -159,11 +165,18 @@ describe("route performance review regressions", () => {
         (measurement: { failures: string[] }) => measurement.failures.length > 0,
       ),
     ).toBe(true);
-    expect(verify.exitCode).toBe(1);
+    expect(verify.exitCode).toBe(0);
     expect(verify.output).toMatchObject({
       mode: "verify",
+      phase: "final",
       routeFamilyCount: 20,
       measurementCount: 60,
+      browserMeasurementCount: 80,
     });
+    expect(
+      verify.output.measurements.every(
+        (measurement: { failures: string[] }) => measurement.failures.length === 0,
+      ),
+    ).toBe(true);
   });
 });

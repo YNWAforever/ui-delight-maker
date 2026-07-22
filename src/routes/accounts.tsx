@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/page-header";
 import { ListPagination } from "@/components/list-pagination";
 import { AccountSummaryCard } from "@/components/relationship/account-summary-card";
@@ -53,6 +54,7 @@ function AccountsIndex() {
   const loaderData = Route.useLoaderData();
   const { accounts, accountCounts, preferences } = loaderData;
   const router = useRouter();
+  const queryClient = useQueryClient();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const pagination = loaderData.pagination ?? {
@@ -332,7 +334,19 @@ function AccountsIndex() {
                     accountId: selectedSummary.id,
                   },
                 });
-                await router.invalidate();
+                await Promise.all([
+                  queryClient.invalidateQueries({
+                    queryKey: crmQueryKeys.accounts.list(search),
+                    exact: true,
+                  }),
+                  queryClient.invalidateQueries({
+                    queryKey: crmQueryKeys.shell(),
+                    exact: true,
+                  }),
+                ]);
+                await router.invalidate({
+                  filter: (match) => match.routeId === "__root__" || match.routeId === "/accounts",
+                });
               }
             : undefined
         }

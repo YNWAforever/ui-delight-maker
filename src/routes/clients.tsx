@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -61,7 +62,8 @@ export const Route = createFileRoute("/clients")({
         queryKey: crmQueryKeys.clients.list(search),
         queryFn: () => getClientsPage({ data: search }),
       }),
-    ),  head: () => ({
+    ),
+  head: () => ({
     meta: [
       { title: "Clients — Fimmick ClientOps" },
       { name: "description", content: "Active clients with health score, tier, and renewal date." },
@@ -90,6 +92,7 @@ function ClientsIndex() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
+  const queryClient = useQueryClient();
   const setTier = (value: string) =>
     navigate({
       search: (current) => ({
@@ -148,7 +151,12 @@ function ClientsIndex() {
                   const created = await createClient({ data: c });
                   setRows((prev) => [{ ...created, renewal_risk: "low" }, ...prev]);
                   setNewOpen(false);
-                  router.invalidate();
+                  await queryClient.invalidateQueries({
+                    queryKey: crmQueryKeys.clients.lists(),
+                  });
+                  await router.invalidate({
+                    filter: (match) => match.routeId === "/clients",
+                  });
                   toast.success(`Created client ${created.company_name}`);
                 }}
               />

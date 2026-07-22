@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, Clock, Flame, Plus, ShieldCheck, Target } from "lucide-react";
 import { toast } from "sonner";
 
@@ -61,6 +62,7 @@ function PipelineCommandCenter() {
   const { leads, quotes, tasks, approvals, agentRuns, activityLogs, products } =
     Route.useLoaderData();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const today = getBusinessDateKey();
@@ -68,6 +70,14 @@ function PipelineCommandCenter() {
   const [moveDialog, setMoveDialog] = useState<{ lead: Lead; status: LeadStatus } | null>(null);
   const [moveReason, setMoveReason] = useState("");
   const [wonLead, setWonLead] = useState<Lead | null>(null);
+
+  const refreshDashboard = async (...queryKeys: ReadonlyArray<readonly unknown[]>) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: crmQueryKeys.dashboard(), exact: true }),
+      ...queryKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+    ]);
+    await router.invalidate({ filter: (match) => match.routeId === "/" });
+  };
 
   const filteredLeads = useMemo(
     () =>
@@ -120,7 +130,7 @@ function PipelineCommandCenter() {
     navigate({ search: (current) => ({ ...current, lead: moveDialog.lead.id }) });
     setMoveDialog(null);
     setMoveReason("");
-    router.invalidate();
+    await refreshDashboard(crmQueryKeys.leads.all());
   };
 
   const moveLead = async (lead: Lead, status: LeadStatus) => {
@@ -132,7 +142,7 @@ function PipelineCommandCenter() {
     await moveLeadStage({ data: { id: lead.id, status } });
     toast.success(`${lead.company_name} moved to ${status.replace(/_/g, " ")}`);
     navigate({ search: (current) => ({ ...current, lead: lead.id }) });
-    router.invalidate();
+    await refreshDashboard(crmQueryKeys.leads.all());
   };
 
   const qualifyLead = async (lead: Lead) => {
@@ -147,7 +157,7 @@ function PipelineCommandCenter() {
         return;
       }
       toast.success("Qualification agent queued");
-      router.invalidate();
+      await refreshDashboard(crmQueryKeys.leads.all());
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Workflow request failed");
     }
@@ -165,7 +175,7 @@ function PipelineCommandCenter() {
         return;
       }
       toast.success("Reply draft agent queued");
-      router.invalidate();
+      await refreshDashboard(crmQueryKeys.leads.all());
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Workflow request failed");
     }
@@ -183,7 +193,7 @@ function PipelineCommandCenter() {
         return;
       }
       toast.success("Quote agent queued");
-      router.invalidate();
+      await refreshDashboard(crmQueryKeys.leads.all(), crmQueryKeys.quotes.lists());
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Workflow request failed");
     }
@@ -203,7 +213,7 @@ function PipelineCommandCenter() {
       },
     });
     toast.success("Follow-up task created");
-    router.invalidate();
+    await refreshDashboard(crmQueryKeys.tasks.lists(), crmQueryKeys.leads.detail(lead.id));
   };
 
   const openRevenueAction = (href: string) => {

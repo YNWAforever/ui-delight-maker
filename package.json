@@ -15,6 +15,7 @@
     "performance:bundles": "bun scripts/clientops/check-route-bundles.ts",
     "performance:routes": "bun scripts/clientops/measure-route-performance.ts --mode=baseline",
     "performance:routes:verify": "bun scripts/clientops/measure-route-performance.ts --mode=verify",
+    "performance:verify": "bun run performance:routes:verify && bun run performance:bundles",
     "test:database-contract": "bunx vitest run src/server/db/__tests__/clientops-schema.integration.test.ts",
     "preview": "vite preview",
     "lint": "eslint .",

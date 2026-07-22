@@ -17,17 +17,22 @@ function createManifestFixture() {
 
   writeFileSync(join(assetsDirectory, "entry.js"), Buffer.alloc(100_000));
   writeFileSync(join(assetsDirectory, "dashboard.js"), Buffer.alloc(200_000));
+  writeFileSync(join(assetsDirectory, "dashboard-insights.js"), Buffer.alloc(1_000));
   writeFileSync(join(assetsDirectory, "reports.js"), Buffer.alloc(300_000));
   writeFileSync(join(assetsDirectory, "quote-pdf.js"), Buffer.alloc(1_000));
   writeFileSync(join(assetsDirectory, "vendor-auth.js"), Buffer.alloc(400_000));
   writeFileSync(
     join(manifestDirectory, "manifest.json"),
     JSON.stringify({
-      "src/routes/index.tsx?tsr-split=component": {
+      "_index-dashboard.js": {
         file: "assets/dashboard.js",
-        isEntry: true,
-        src: "src/routes/index.tsx?tsr-split=component",
+        name: "index",
         imports: ["node_modules/app/client.ts", "_vendor-auth.js"],
+        dynamicImports: ["src/components/dashboard/dashboard-insights.tsx"],
+      },
+      "src/components/dashboard/dashboard-insights.tsx": {
+        file: "assets/dashboard-insights.js",
+        src: "src/components/dashboard/dashboard-insights.tsx",
       },
       "_vendor-auth.js": {
         file: "assets/vendor-auth.js",
@@ -45,10 +50,7 @@ function createManifestFixture() {
       "node_modules/app/client.ts": {
         file: "assets/entry.js",
         src: "node_modules/app/client.ts",
-        dynamicImports: [
-          "src/routes/index.tsx?tsr-split=component",
-          "src/routes/reports.tsx?tsr-split=component",
-        ],
+        dynamicImports: ["_index-dashboard.js", "src/routes/reports.tsx?tsr-split=component"],
       },
     }),
   );
@@ -68,7 +70,7 @@ describe("route bundle budgets", () => {
 
     expect(measurements.routes).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ route: "dashboard", bytes: 200_000 }),
+        expect.objectContaining({ route: "dashboard", bytes: 201_000 }),
         expect.objectContaining({ route: "reports", bytes: 300_000 }),
         expect.objectContaining({ route: "quotes/:id/pdf", bytes: 1_000 }),
       ]),
