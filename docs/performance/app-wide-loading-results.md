@@ -41,22 +41,23 @@ Measured on 2026-07-22 from branch `codex/company-workspace-loading-performance`
 
 ## Browser Evidence
 
-| Environment                     | Scenario            | Result                           | Observed timing                                 | Evidence                                          |
-| ------------------------------- | ------------------- | -------------------------------- | ----------------------------------------------- | ------------------------------------------------- |
-| Local desktop 1440x900          | Cold auth shell     | Pass                             | 596 ms load                                     | docs/performance/evidence/local-login-desktop.png |
-| Local desktop 1440x900          | Protected deep link | Pass: redirected to login        | Redirect completed without browser errors       | Account detail fixture URL                        |
-| Local desktop 1440x900          | Cached              | Contract pass; live auth pending | Deterministic cache contract                    | Completion audit                                  |
-| Local desktop 1440x900          | Stale refresh       | Contract pass; live auth pending | Deterministic retained-content contract         | Completion audit                                  |
-| Local mobile 390x844            | Auth shell          | Pass                             | 115 ms load; no horizontal overflow             | docs/performance/evidence/local-login-mobile.png  |
-| Local mobile 390x844            | Cached              | Contract pass; live auth pending | Deterministic cache contract                    | Completion audit                                  |
-| Vercel preview desktop 1440x900 | Cold and cached     | Blocked                          | Private-worktree upload needs explicit approval | No deployment created                             |
-| Vercel preview mobile 390x844   | Cold and cached     | Blocked                          | Private-worktree upload needs explicit approval | No deployment created                             |
+| Environment                     | Scenario            | Result                           | Observed timing                                  | Evidence                                          |
+| ------------------------------- | ------------------- | -------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
+| Local desktop 1440x900          | Cold auth shell     | Partial: shell rendered          | 596 ms; local auth session proxy failed          | docs/performance/evidence/local-login-desktop.png |
+| Local desktop 1440x900          | Protected deep link | Partial: redirected to login     | No page error; server auth proxy env was missing | Account detail fixture URL                        |
+| Local desktop 1440x900          | Cached              | Contract pass; live auth pending | Deterministic cache contract                     | Completion audit                                  |
+| Local desktop 1440x900          | Stale refresh       | Contract pass; live auth pending | Deterministic retained-content contract          | Completion audit                                  |
+| Local mobile 390x844            | Auth shell          | Partial: shell rendered          | 115 ms; no overflow; auth session proxy failed   | docs/performance/evidence/local-login-mobile.png  |
+| Local mobile 390x844            | Cached              | Contract pass; live auth pending | Deterministic cache contract                     | Completion audit                                  |
+| Vercel preview desktop 1440x900 | Cold and cached     | Blocked                          | Private-worktree upload needs explicit approval  | No deployment created                             |
+| Vercel preview mobile 390x844   | Cold and cached     | Blocked                          | Private-worktree upload needs explicit approval  | No deployment created                             |
 
 ## Recorded Warnings
 
 - The production build warns about the 658,379-byte shared client entry. It is shared framework/application infrastructure, not route-owned; follow-up PERF-13 is assigned to the Platform owner.
 - The 614,482-byte authentication form is lazy and shared only by auth and invitation routes. Follow-up PERF-14 is assigned to the Identity owner.
 - Existing TanStack SSR unused-import warnings originate in package code and do not change the client bundle budget result.
-- Authenticated route-by-route browser verification requires an approved development account; the clean automation profile verified public auth, responsive layout, and protected-route redirects only.
+- Authenticated route-by-route browser verification requires an approved development account; the clean automation profile verified the rendered auth shell, responsive layout, and protected-route redirect only.
+- The local auth proxy logged ERR_INVALID_URL for null/get-session because its auth base URL environment value was absent. The browser page-error stream stayed empty, but this blocks a valid local login/session check.
 - Vercel preview deployment was not created because the execution safety layer requires fresh explicit approval to upload the private worktree.
 - use-route-polling-refresh.ts retains visibility-aware broad invalidation as unused compatibility code. Follow-up PERF-15 is assigned to the Platform owner to remove it or replace it with key-scoped live updates.
