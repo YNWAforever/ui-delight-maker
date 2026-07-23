@@ -41,16 +41,16 @@ Measured on 2026-07-22 from branch `codex/company-workspace-loading-performance`
 
 ## Browser Evidence
 
-| Environment                     | Scenario            | Result                           | Observed timing                                  | Evidence                                          |
-| ------------------------------- | ------------------- | -------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
-| Local desktop 1440x900          | Cold auth shell     | Partial: shell rendered          | 596 ms; local auth session proxy failed          | docs/performance/evidence/local-login-desktop.png |
-| Local desktop 1440x900          | Protected deep link | Partial: redirected to login     | No page error; server auth proxy env was missing | Account detail fixture URL                        |
-| Local desktop 1440x900          | Cached              | Contract pass; live auth pending | Deterministic cache contract                     | Completion audit                                  |
-| Local desktop 1440x900          | Stale refresh       | Contract pass; live auth pending | Deterministic retained-content contract          | Completion audit                                  |
-| Local mobile 390x844            | Auth shell          | Partial: shell rendered          | 115 ms; no overflow; auth session proxy failed   | docs/performance/evidence/local-login-mobile.png  |
-| Local mobile 390x844            | Cached              | Contract pass; live auth pending | Deterministic cache contract                     | Completion audit                                  |
-| Vercel preview desktop 1440x900 | Cold and cached     | Blocked                          | Private-worktree upload needs explicit approval  | No deployment created                             |
-| Vercel preview mobile 390x844   | Cold and cached     | Blocked                          | Private-worktree upload needs explicit approval  | No deployment created                             |
+| Environment                     | Scenario            | Result                           | Observed timing                                  | Evidence                                                    |
+| ------------------------------- | ------------------- | -------------------------------- | ------------------------------------------------ | ----------------------------------------------------------- |
+| Local desktop 1440x900          | Cold auth shell     | Partial: shell rendered          | 596 ms; local auth session proxy failed          | docs/performance/evidence/local-login-desktop.png           |
+| Local desktop 1440x900          | Protected deep link | Partial: redirected to login     | No page error; server auth proxy env was missing | Account detail fixture URL                                  |
+| Local desktop 1440x900          | Cached              | Contract pass; live auth pending | Deterministic cache contract                     | Completion audit                                            |
+| Local desktop 1440x900          | Stale refresh       | Contract pass; live auth pending | Deterministic retained-content contract          | Completion audit                                            |
+| Local mobile 390x844            | Auth shell          | Partial: shell rendered          | 115 ms; no overflow; auth session proxy failed   | docs/performance/evidence/local-login-mobile.png            |
+| Local mobile 390x844            | Cached              | Contract pass; live auth pending | Deterministic cache contract                     | Completion audit                                            |
+| Vercel preview desktop 1440x900 | Cold and cached     | READY; auth matrix pending       | Chrome control failed before viewport audit      | dpl_CqGFRapEMoua7uAoPqaVAbMmUu67                            |
+| Vercel preview mobile 390x844   | Cold and cached     | READY; auth matrix pending       | Chrome control failed before viewport audit      | ui-delight-maker-ozp7e2vwg-ynwaforevers-projects.vercel.app |
 
 ## Recorded Warnings
 
@@ -59,5 +59,7 @@ Measured on 2026-07-22 from branch `codex/company-workspace-loading-performance`
 - Existing TanStack SSR unused-import warnings originate in package code and do not change the client bundle budget result.
 - Authenticated route-by-route browser verification requires an approved development account; the clean automation profile verified the rendered auth shell, responsive layout, and protected-route redirect only.
 - The local auth proxy logged ERR_INVALID_URL for null/get-session because its auth base URL environment value was absent. The browser page-error stream stayed empty, but this blocks a valid local login/session check.
-- Vercel preview deployment was not created because the execution safety layer requires fresh explicit approval to upload the private worktree.
+- Vercel preview dpl_CqGFRapEMoua7uAoPqaVAbMmUu67 reached READY at https://ui-delight-maker-ozp7e2vwg-ynwaforevers-projects.vercel.app.
+- Direct requests to preview login and account-detail routes returned 302 to Vercel SSO, confirming deployment protection is active.
+- The approved authenticated Chrome connection failed twice during browser runtime startup because the Windows sandbox ACL helper exited before Chrome discovery. No clean-profile browser was substituted, so the protected desktop/mobile matrix remains pending.
 - use-route-polling-refresh.ts retains visibility-aware broad invalidation as unused compatibility code. Follow-up PERF-15 is assigned to the Platform owner to remove it or replace it with key-scoped live updates.
