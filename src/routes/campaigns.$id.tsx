@@ -76,6 +76,7 @@ function CampaignDetailRoute() {
     staleTime: 30_000,
   });
   const { campaign, attendeeSummary } = workspaceQuery.data;
+  const campaignTypeLabel = campaign.type?.replace(/_/g, " ") ?? "campaign";
   const [attendeePage, setAttendeePage] = useState(1);
   const attendeeFilters = { page: attendeePage, limit: ATTENDEE_PAGE_SIZE };
   const attendeeQuery = useQuery({
@@ -198,7 +199,7 @@ function CampaignDetailRoute() {
     <>
       <PageHeader
         title={campaign.name}
-        description={`${campaign.type.replace(/_/g, " ")} follow-up workspace`}
+        description={`${campaignTypeLabel} follow-up workspace`}
         actions={
           <Button variant="outline" size="sm" asChild>
             <Link to="/campaigns">
@@ -357,7 +358,7 @@ function CampaignDetailRoute() {
                 <CardTitle className="text-base">Campaign scope</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <SummaryRow label="Type" value={campaign.type.replace(/_/g, " ")} />
+                <SummaryRow label="Type" value={campaignTypeLabel} />
                 <SummaryRow label="Status" value={<StatusBadge value={campaign.status} />} />
                 <SummaryRow
                   label="Objective"

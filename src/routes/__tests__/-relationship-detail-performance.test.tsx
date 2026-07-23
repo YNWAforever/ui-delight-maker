@@ -29,6 +29,13 @@ describe("relationship detail performance contracts", () => {
     expect(source).not.toContain("router.invalidate");
   });
 
+  it("renders campaign type safely for legacy rows", () => {
+    const source = readRoute("campaigns.$id.tsx");
+
+    expect(source).not.toContain("campaign.type.replace");
+    expect(source).toContain('campaign.type?.replace(/_/g, " ") ?? "campaign"');
+  });
+
   it("loads a bounded relationship index with server-side open-signal filtering", () => {
     const source = readRoute("relationships.tsx");
 
