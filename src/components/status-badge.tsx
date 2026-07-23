@@ -43,11 +43,12 @@ export function StatusBadge({
   className,
   label,
 }: {
-  value: string;
+  value: string | null | undefined;
   className?: string;
   label?: string;
 }) {
-  const style = STATUS_STYLES[value] ?? "bg-muted text-muted-foreground border-border";
+  const normalizedValue = value?.trim() || "Unknown";
+  const style = STATUS_STYLES[normalizedValue] ?? "bg-muted text-muted-foreground border-border";
   return (
     <span
       className={cn(
@@ -56,7 +57,7 @@ export function StatusBadge({
         className,
       )}
     >
-      {label ?? value.replace(/_/g, " ")}
+      {label ?? normalizedValue.replace(/_/g, " ")}
     </span>
   );
 }
