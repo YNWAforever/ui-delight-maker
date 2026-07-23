@@ -1,8 +1,15 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
 import { query, queryOne, type Queryable } from "@/server/db/neon.server";
 import type { Client, RenewalRisk } from "@/lib/types";
+import {
+  normalizePagination,
+  parseCount,
+  type PaginatedResult,
+  type PaginationInput,
+} from "@/server/repositories/pagination";
 
-type ClientFilters = { tier?: string; health_min?: number; account_id?: string };
+export type ClientFilters = { tier?: string; health_min?: number; account_id?: string };
+export type ClientPageFilters = ClientFilters & PaginationInput;
 
 type CreateClientInput = Pick<Client, "company_name"> &
   Partial<
@@ -96,6 +103,46 @@ export async function listClients(filters: ClientFilters = {}) {
   return filters.health_min !== undefined
     ? mapped.filter((c) => c.health_score >= filters.health_min!)
     : mapped;
+}
+
+export async function listClientsPage(
+  filters: ClientPageFilters = {},
+): Promise<PaginatedResult<Client & { renewal_risk: RenewalRisk }>> {
+  const where = buildFilters([
+    ["c.tier", filters.tier],
+    ["c.account_id", filters.account_id],
+  ]);
+  const filterValues = [...where.values];
+  let healthFilter = "";
+
+  if (filters.health_min !== undefined) {
+    filterValues.push(filters.health_min);
+    healthFilter = `${where.sql ? " and" : " where"} coalesce(r.health_score, 50) >= $${filterValues.length}`;
+  }
+
+  const { page, limit, offset } = normalizePagination(filters);
+  const scopedRollup = `${ROLLUP_SELECT} ${where.sql}${healthFilter}`;
+  const [rows, count] = await Promise.all([
+    query<ClientRollupRow>(
+      `
+        ${scopedRollup}
+        order by c.company_name, c.id desc
+        limit $${filterValues.length + 1} offset $${filterValues.length + 2}
+      `,
+      [...filterValues, limit, offset],
+    ),
+    queryOne<{ total: number | string }>(
+      `select count(*) as total from (${scopedRollup}) scoped_clients`,
+      filterValues,
+    ),
+  ]);
+
+  return {
+    items: rows.map(mapRollupRow),
+    total: parseCount(count),
+    page,
+    limit,
+  };
 }
 
 export async function getClient(id: string) {

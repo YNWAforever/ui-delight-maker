@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { AdminError } from "@/lib/admin/errors";
 import { adminPeopleSearchSchema, type AdminPeopleSearch } from "@/lib/admin/schemas";
@@ -13,6 +14,8 @@ import {
 import { UserRoleDialog } from "@/components/admin/user-role-dialog";
 import type { LifecycleSuccessorOption } from "@/components/admin/work-reassignment-table";
 import type { ReassignmentInventory } from "@/server/admin/reassignment.server";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import {
   changeAdminUserRoleFn,
   deactivateAdminUserWithReassignmentFn,
@@ -35,25 +38,49 @@ function toUserFilters(search: AdminPeopleSearch) {
   };
 }
 
+const peopleDirectoryQuery = (search: AdminPeopleSearch) =>
+  routeQueryOptions({
+    queryKey: crmQueryKeys.admin.list({ resource: "people", ...toUserFilters(search) }),
+    queryFn: () => getAdminUsersFn({ data: toUserFilters(search) }),
+  });
+
+const adminUserQuery = (profileId: string) =>
+  routeQueryOptions({
+    queryKey: crmQueryKeys.admin.detail(profileId),
+    queryFn: () => getAdminUserFn({ data: { profileId } }),
+  });
+
 export const Route = createFileRoute("/admin/people")({
   validateSearch: adminPeopleSearchSchema,
   loaderDeps: ({ search }) => ({ search }),
-  loader: async ({ deps: { search } }) => {
-    try {
-      const directory = await getAdminUsersFn({ data: toUserFilters(search) });
-      let selectedUser = null;
-      if (search.user) {
-        try {
-          selectedUser = await getAdminUserFn({ data: { profileId: search.user } });
-        } catch (error) {
-          if (
-            !(error instanceof AdminError) ||
-            !["FORBIDDEN", "OUTSIDE_SCOPE"].includes(error.code)
-          ) {
+  loader: async ({ context, deps: { search } }) => {
+    const directoryPromise = context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: crmQueryKeys.admin.list({ resource: "people", ...toUserFilters(search) }),
+        queryFn: () => getAdminUsersFn({ data: toUserFilters(search) }),
+      }),
+    );
+    const selectedUserPromise = search.user
+      ? context.queryClient
+          .ensureQueryData(
+            routeQueryOptions({
+              queryKey: crmQueryKeys.admin.detail(search.user),
+              queryFn: () => getAdminUserFn({ data: { profileId: search.user! } }),
+            }),
+          )
+          .catch((error) => {
+            if (
+              error instanceof AdminError &&
+              ["FORBIDDEN", "OUTSIDE_SCOPE"].includes(error.code)
+            ) {
+              return null;
+            }
             throw error;
-          }
-        }
-      }
+          })
+      : Promise.resolve(null);
+
+    try {
+      const [directory, selectedUser] = await Promise.all([directoryPromise, selectedUserPromise]);
       return { directory, selectedUser, forbidden: false };
     } catch (error) {
       if (error instanceof AdminError && ["FORBIDDEN", "OUTSIDE_SCOPE"].includes(error.code)) {
@@ -68,10 +95,22 @@ export const Route = createFileRoute("/admin/people")({
 
 function AdminPeopleRoute() {
   const search = Route.useSearch();
-  const { directory, selectedUser, forbidden } = Route.useLoaderData();
+  const loaderData = Route.useLoaderData();
+  const { data: directory } = useQuery({
+    ...peopleDirectoryQuery(search),
+    initialData: loaderData.directory,
+    enabled: !loaderData.forbidden,
+  });
+  const { data: selectedUserData } = useQuery({
+    ...adminUserQuery(search.user ?? "unselected"),
+    initialData: loaderData.selectedUser ?? undefined,
+    enabled: !loaderData.forbidden && Boolean(search.user),
+  });
+  const selectedUser = selectedUserData ?? null;
+  const forbidden = loaderData.forbidden;
   const { profile } = Route.useRouteContext();
   const navigate = useNavigate({ from: Route.fullPath });
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const lifecycleRequest = useRef(0);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [roleUser, setRoleUser] = useState(selectedUser);
@@ -83,6 +122,30 @@ function AdminPeopleRoute() {
   const updateSearch = (next: AdminPeopleSearch) => navigate({ search: () => next, replace: true });
   const canInvite = ["super_admin", "admin", "manager"].includes(profile?.role ?? "");
   const canManageLifecycle = ["super_admin", "admin"].includes(profile?.role ?? "");
+
+  const refreshPeople = async (profileId?: string, includeShell = false) => {
+    const refreshes = [
+      queryClient.invalidateQueries({ queryKey: crmQueryKeys.admin.lists() }),
+      queryClient.invalidateQueries({
+        queryKey: crmQueryKeys.admin.section("overview", "summary"),
+        exact: true,
+      }),
+    ];
+    if (profileId) {
+      refreshes.push(
+        queryClient.invalidateQueries({
+          queryKey: crmQueryKeys.admin.detail(profileId),
+          exact: true,
+        }),
+      );
+    }
+    if (includeShell) {
+      refreshes.push(
+        queryClient.invalidateQueries({ queryKey: crmQueryKeys.shell(), exact: true }),
+      );
+    }
+    await Promise.all(refreshes);
+  };
 
   const openLifecycle = async () => {
     if (!selectedUser) return;
@@ -142,7 +205,7 @@ function AdminPeopleRoute() {
       toast.success("User deactivated");
     }
     closeLifecycle(false);
-    await router.invalidate();
+    await refreshPeople(input.profileId);
   };
 
   if (forbidden) {
@@ -188,7 +251,7 @@ function AdminPeopleRoute() {
         onSubmit={async (invitations) => {
           const result = await inviteUsers({ data: { invitations } });
           toast.success("Invitation batch processed");
-          await router.invalidate();
+          await refreshPeople();
           return result;
         }}
       />
@@ -205,7 +268,7 @@ function AdminPeopleRoute() {
           await changeAdminUserRoleFn({ data: { profileId: roleUser.id, role, reason } });
           toast.success("Role updated");
           setRoleUser(null);
-          await router.invalidate();
+          await refreshPeople(roleUser.id, true);
         }}
       />
 

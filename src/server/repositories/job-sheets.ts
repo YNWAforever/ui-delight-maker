@@ -3,12 +3,20 @@ import type { NewJobSheetPortion } from "@/lib/quote-to-cash";
 import type { JobSheet, JobSheetPortion, JsonValue, QuoteLineItemRecord } from "@/lib/types";
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
 import { buildFilters } from "@/server/db/query-builders";
+import {
+  normalizePagination,
+  parseCount,
+  type PaginatedResult,
+  type PaginationInput,
+} from "@/server/repositories/pagination";
 
 export type JobSheetFilters = {
   status?: string;
   client_id?: string;
   account_id?: string;
 };
+
+export type JobSheetPageFilters = JobSheetFilters & PaginationInput;
 
 export type CreateJobSheetFromAcceptedQuoteInput = {
   quote_id: string;
@@ -144,6 +152,35 @@ export async function listJobSheets(filters: JobSheetFilters = {}): Promise<JobS
   );
 }
 
+export async function listJobSheetsPage(
+  filters: JobSheetPageFilters = {},
+): Promise<PaginatedResult<JobSheet>> {
+  const where = buildFilters([
+    ["status", filters.status],
+    ["client_id", filters.client_id],
+    ["account_id", filters.account_id],
+  ]);
+  const { page, limit, offset } = normalizePagination(filters);
+  const [items, count] = await Promise.all([
+    query<JobSheet>(
+      `
+        select *
+        from job_sheets
+        ${where.sql}
+        order by created_at desc, id desc
+        limit $${where.values.length + 1} offset $${where.values.length + 2}
+      `,
+      [...where.values, limit, offset],
+    ),
+    queryOne<{ total: number | string }>(
+      `select count(*) as total from job_sheets ${where.sql}`,
+      where.values,
+    ),
+  ]);
+
+  return { items, total: parseCount(count), page, limit };
+}
+
 export async function getJobSheet(id: string): Promise<JobSheetDetail> {
   const jobSheet = await getJobSheetById(id);
   const portions = await listJobSheetPortions(id);
@@ -236,34 +273,100 @@ export async function replaceJobSheetPortions(
   db?: Queryable,
 ): Promise<JobSheetPortion[]> {
   const work = async (client: Queryable) => {
-    // Keep the parent row lock, immutability check, delete, and reinsert in one transaction.
     const jobSheet = await getJobSheetByIdWithOptions(jobSheetId, client, { forUpdate: true });
 
     if (jobSheet.status === "accepted" || jobSheet.locked_at) {
       throw new Error("Accepted job sheet commercial fields are immutable");
     }
 
-    await query("delete from job_sheet_portions where job_sheet_id = $1", [jobSheetId], client);
+    const existing =
+      (await query<JobSheetPortion>(
+        `
+          /* Stable updates replace the former delete from job_sheet_portions rewrite. */
+          select id, job_sheet_id, name, source_quote_line_item_ids, description,
+                 amount, currency, target_invoice_date, billing_type, status,
+                 xero_invoice_number, xero_invoice_reference, xero_invoice_date,
+                 xero_notes, internal_note, sort_order, created_at, updated_at
+          from job_sheet_portions
+          where job_sheet_id = $1
+          order by sort_order, created_at
+          for update
+        `,
+        [jobSheetId],
+        client,
+      )) ?? [];
 
-    const inserted: JobSheetPortion[] = [];
-    for (const portion of portions) {
+    const existingById = new Map(existing.map((portion) => [portion.id, portion]));
+    const usedIds = new Set<string>();
+    const matched = portions.map((portion) => {
+      if (!portion.id) return { portion, current: null };
+      const current = existingById.get(portion.id);
+      if (!current) {
+        throw new Error("Billing portion ID does not belong to this job sheet");
+      }
+      if (usedIds.has(current.id)) {
+        throw new Error("Billing portion ID is duplicated in the update");
+      }
+      usedIds.add(current.id);
+      return { portion, current };
+    });
+    const removed = existing.filter((portion) => !usedIds.has(portion.id));
+    const hasXeroData = (portion: JobSheetPortion) =>
+      portion.status === "entered_in_xero" ||
+      Boolean(
+        portion.xero_invoice_number ||
+        portion.xero_invoice_reference ||
+        portion.xero_invoice_date ||
+        portion.xero_notes,
+      );
+    if (removed.some(hasXeroData)) {
+      throw new Error("Cannot remove or replace a billing portion after Xero details are saved");
+    }
+
+    const saved: JobSheetPortion[] = [];
+    for (const { portion, current } of matched) {
+      if (current) {
+        const row = await queryOne<JobSheetPortion>(
+          `
+            update job_sheet_portions
+            set name = $1,
+                source_quote_line_item_ids = $2::uuid[],
+                description = $3,
+                amount = $4,
+                currency = $5,
+                target_invoice_date = $6,
+                billing_type = $7,
+                status = case when status = 'entered_in_xero' then status else $8 end,
+                sort_order = $9
+            where id = $10 and job_sheet_id = $11
+            returning *
+          `,
+          [
+            portion.name,
+            portion.source_quote_line_item_ids,
+            portion.description,
+            portion.amount,
+            portion.currency,
+            portion.target_invoice_date ?? null,
+            portion.billing_type,
+            portion.status,
+            portion.sort_order,
+            current.id,
+            jobSheetId,
+          ],
+          client,
+        );
+        if (!row) throw new Error("Job sheet portion not found during update");
+        saved.push(row);
+        continue;
+      }
+
       const row = await queryOne<JobSheetPortion>(
         `
           insert into job_sheet_portions
-            (
-              job_sheet_id,
-              name,
-              source_quote_line_item_ids,
-              description,
-              amount,
-              currency,
-              target_invoice_date,
-              billing_type,
-              status,
-              sort_order
-            )
-          values
-            ($1, $2, $3::uuid[], $4, $5, $6, $7, $8, $9, $10)
+            (job_sheet_id, name, source_quote_line_item_ids, description, amount, currency,
+             target_invoice_date, billing_type, status, sort_order)
+          values ($1, $2, $3::uuid[], $4, $5, $6, $7, $8, $9, $10)
           returning *
         `,
         [
@@ -280,24 +383,24 @@ export async function replaceJobSheetPortions(
         ],
         client,
       );
-
-      if (!row) {
-        throw new Error("Failed to insert job sheet portion");
-      }
-
-      inserted.push(row);
+      if (!row) throw new Error("Failed to insert job sheet portion");
+      saved.push(row);
     }
 
-    return inserted;
+    if (removed.length > 0) {
+      await query(
+        "delete from job_sheet_portions where job_sheet_id = $1 and id = any($2::uuid[])",
+        [jobSheetId, removed.map((portion) => portion.id)],
+        client,
+      );
+    }
+
+    return saved;
   };
 
-  if (db) {
-    return work(db);
-  }
-
+  if (db) return work(db);
   return transaction(work);
 }
-
 export async function acceptJobSheet(id: string, input: AcceptJobSheetInput): Promise<JobSheet> {
   return transaction(async (client) => {
     const jobSheet = await getJobSheetByIdWithOptions(id, client, { forUpdate: true });
@@ -375,4 +478,63 @@ export async function updateJobSheetXeroReference(
   }
 
   return portion;
+}
+
+type JobSheetOperationsRow = JobSheet & {
+  quote_number: string | null;
+  quote_status: string | null;
+  client_company_name: string | null;
+};
+
+export type JobSheetOperationsRead = JobSheetDetail & {
+  quote: { id: string; number: string | null; status: string | null } | null;
+  client: { id: string; company_name: string } | null;
+};
+
+export async function getJobSheetOperationsRead(id: string): Promise<JobSheetOperationsRead> {
+  const row = await queryOne<JobSheetOperationsRow>(
+    `
+      select js.id, js.number, js.quote_id, js.accepted_quote_version_id,
+             js.account_id, js.client_id, js.contact_id, js.sales_owner,
+             js.accounting_owner, js.status, js.accepted_scope_summary,
+             js.po_number, js.client_order_number, js.xero_customer_reference,
+             js.accounting_notes, js.special_billing_instructions,
+             js.total_amount, js.currency, js.accepted_at, js.accepted_by,
+             js.locked_at, js.created_by, js.created_at, js.updated_at,
+             q.number as quote_number, q.status as quote_status,
+             c.company_name as client_company_name
+      from job_sheets js
+      left join quotes q on q.id = js.quote_id
+      left join clients c on c.id = js.client_id
+      where js.id = $1
+    `,
+    [id],
+  );
+  if (!row) throw new Error("Job sheet not found");
+
+  const { quote_number, quote_status, client_company_name, ...jobSheet } = row;
+  const portions = await query<JobSheetPortion>(
+    `
+      select id, job_sheet_id, name, source_quote_line_item_ids, description,
+             amount, currency, target_invoice_date, billing_type, status,
+             xero_invoice_number, xero_invoice_reference, xero_invoice_date,
+             xero_notes, internal_note, sort_order, created_at, updated_at
+      from job_sheet_portions
+      where job_sheet_id = $1
+      order by sort_order asc, created_at asc, id asc
+    `,
+    [id],
+  );
+
+  return {
+    jobSheet,
+    portions,
+    quote: jobSheet.quote_id
+      ? { id: jobSheet.quote_id, number: quote_number ?? null, status: quote_status ?? null }
+      : null,
+    client:
+      jobSheet.client_id && client_company_name
+        ? { id: jobSheet.client_id, company_name: client_company_name }
+        : null,
+  };
 }

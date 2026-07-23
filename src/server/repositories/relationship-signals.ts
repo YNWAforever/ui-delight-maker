@@ -1,7 +1,12 @@
 import { buildFilters } from "@/server/db/query-builders";
 import { query, queryOne, type Queryable } from "@/server/db/neon.server";
-import type { RelationshipSignal } from "@/lib/types";
+import type { Account, RelationshipSignal } from "@/lib/types";
 import type { RelationshipSignalDraft } from "@/lib/relationship/types";
+import {
+  normalizePagination,
+  parseCount,
+  type PaginationInput,
+} from "@/server/repositories/pagination";
 
 export type RelationshipSignalFilters = {
   account_id?: string;
@@ -29,6 +34,132 @@ export async function listRelationshipSignals(filters: RelationshipSignalFilters
     `,
     where.values,
   );
+}
+
+export type RelationshipIndexFilters = PaginationInput & {
+  severity?: RelationshipSignal["severity"];
+  signalType?: string;
+};
+
+export type RelationshipSignalSummary = RelationshipSignal;
+
+type RelationshipIndexRowRecord = Account & {
+  open_signal_count: number | string;
+  highest_severity: RelationshipSignal["severity"] | null;
+  latest_signal_at: string | null;
+  signal_summaries: RelationshipSignalSummary[] | string | null;
+};
+
+function parseSignalSummaries(value: RelationshipIndexRowRecord["signal_summaries"]) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string") return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? (parsed as RelationshipSignalSummary[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function listRelationshipIndexPage(filters: RelationshipIndexFilters = {}) {
+  const { page, limit, offset } = normalizePagination(filters);
+  const values: unknown[] = [];
+  const signalClauses = ["rs.dismissed_at is null"];
+
+  if (filters.severity) {
+    values.push(filters.severity);
+    signalClauses.push(`rs.severity = $${values.length}`);
+  }
+  if (filters.signalType) {
+    values.push(filters.signalType);
+    signalClauses.push(`rs.signal_type = $${values.length}`);
+  }
+
+  const signalWhere = signalClauses.join(" and ");
+  const limitIndex = values.length + 1;
+  const offsetIndex = values.length + 2;
+  const queryValues = [...values, limit, offset];
+
+  const [records, count] = await Promise.all([
+    query<RelationshipIndexRowRecord>(
+      `
+        select
+          a.id, a.name, a.website, a.domain, a.industry, a.region, a.tier,
+          a.account_owner, a.lifecycle_stage, a.cs_owner, a.source, a.tags, a.notes,
+          a.relationship_health, a.last_activity_at, a.next_action, a.health_score,
+          a.renewal_date, a.arr, a.created_at, a.updated_at,
+          count(rs.id) as open_signal_count,
+          case min(case rs.severity when 'high' then 1 when 'medium' then 2 else 3 end)
+            when 1 then 'high'
+            when 2 then 'medium'
+            when 3 then 'low'
+            else null
+          end as highest_severity,
+          max(rs.created_at) as latest_signal_at,
+          to_jsonb((array_agg(
+            jsonb_build_object(
+              'id', rs.id,
+              'account_id', rs.account_id,
+              'signal_type', rs.signal_type,
+              'severity', rs.severity,
+              'title', rs.title,
+              'reason', rs.reason,
+              'suggested_action', rs.suggested_action,
+              'source', rs.source,
+              'dedupe_key', rs.dedupe_key,
+              'dismissed_at', rs.dismissed_at,
+              'dismissed_by', rs.dismissed_by,
+              'dismissal_reason', rs.dismissal_reason,
+              'created_at', rs.created_at,
+              'updated_at', rs.updated_at
+            ) order by
+              case rs.severity when 'high' then 1 when 'medium' then 2 else 3 end,
+              rs.created_at desc,
+              rs.id desc
+          ))[1:10]) as signal_summaries
+        from accounts a
+        join relationship_signals rs
+          on rs.account_id = a.id
+         and ${signalWhere}
+        group by a.id
+        order by latest_signal_at desc, a.id asc
+        limit $${limitIndex} offset $${offsetIndex}
+      `,
+      queryValues,
+    ),
+    queryOne<{ total: number | string }>(
+      `
+        select count(distinct a.id) as total
+        from accounts a
+        join relationship_signals rs
+          on rs.account_id = a.id
+         and ${signalWhere}
+      `,
+      values,
+    ),
+  ]);
+
+  return {
+    items: records.map((record) => {
+      const {
+        open_signal_count,
+        highest_severity,
+        latest_signal_at,
+        signal_summaries,
+        ...account
+      } = record;
+      return {
+        account,
+        openSignalCount: Number(open_signal_count),
+        highestSeverity: highest_severity,
+        latestSignalAt: latest_signal_at,
+        signalSummaries: parseSignalSummaries(signal_summaries),
+      };
+    }),
+    total: parseCount(count),
+    page,
+    limit,
+  };
 }
 
 export async function upsertRelationshipSignals(

@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { CompanyWorkspaceSection } from "@/server/company-workspace/types";
+import { crmQueryKeys } from "@/lib/query-keys";
 
 export type CompanyWorkspaceQueryTarget = "overview" | CompanyWorkspaceSection;
 export type CompanyWorkspaceMutation =
@@ -12,7 +13,7 @@ const affectedTargets: Record<CompanyWorkspaceMutation, CompanyWorkspaceQueryTar
 };
 
 export function companyWorkspaceQueryKey(accountId: string, target: CompanyWorkspaceQueryTarget) {
-  return ["company-workspace", accountId, target] as const;
+  return crmQueryKeys.companyWorkspace.section(accountId, target);
 }
 
 export function getCompanyWorkspaceMutationQueryKeys(

@@ -1,5 +1,6 @@
-import { Fragment, useMemo, useState } from "react";
-import { createFileRoute, Link, Outlet, useRouter } from "@tanstack/react-router";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { Bot, ChevronDown, ChevronRight, Play, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,47 +25,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCount, formatDateTime } from "@/lib/format";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import { useIsExactPath } from "@/lib/routing-utils";
-import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
-import { getAgentRuns } from "@/server-functions/agent-runs";
-import { AGENT_DEFINITIONS } from "@/lib/agents";
-import type { AgentRun } from "@/lib/types";
+import { getAgentDirectoryRead, type AgentDirectoryRead } from "@/server-functions/agent-runs";
 
-const SPARKLINE_HOURS = 14;
-
-/** Compute per-agent stats from the raw run list. */
-function computeAgentStats(runs: AgentRun[]) {
-  const now = Date.now();
-  const since24h = now - 24 * 60 * 60 * 1000;
-  const sinceSparkline = now - SPARKLINE_HOURS * 60 * 60 * 1000;
-
-  const map: Record<string, { runs24h: number; confidences: number[]; sparkline: number[] }> = {};
-
-  for (const run of runs) {
-    const key = run.agent_name;
-    if (!map[key]) {
-      map[key] = { runs24h: 0, confidences: [], sparkline: Array(SPARKLINE_HOURS).fill(0) };
-    }
-    const ts = new Date(run.created_at).getTime();
-    if (ts >= since24h) map[key].runs24h++;
-    if (run.confidence_score != null) map[key].confidences.push(run.confidence_score);
-    if (ts >= sinceSparkline) {
-      const bucket = Math.min(
-        SPARKLINE_HOURS - 1,
-        Math.floor((ts - sinceSparkline) / (60 * 60 * 1000)),
-      );
-      map[key].sparkline[bucket]++;
-    }
-  }
-
-  return map;
-}
+const agentDirectoryQuery = () =>
+  routeQueryOptions({
+    queryKey: crmQueryKeys.agents.list({ view: "directory" }),
+    queryFn: () => getAgentDirectoryRead(),
+  });
 
 export const Route = createFileRoute("/agents")({
-  loader: () => getAgentRuns({}),
+  loader: ({ context }) => context.queryClient.ensureQueryData(agentDirectoryQuery()),
   head: () => ({
     meta: [
-      { title: "Agents — Fimmick ClientOps" },
+      { title: "Agents - Fimmick ClientOps" },
       { name: "description", content: "Agent runs, tool calls, and confidence scores." },
     ],
   }),
@@ -73,49 +49,43 @@ export const Route = createFileRoute("/agents")({
 
 function AgentsRoute() {
   const isIndexRoute = useIsExactPath("/agents");
-
   if (!isIndexRoute) return <Outlet />;
-
   return <AgentsMonitor />;
 }
 
 function AgentsMonitor() {
-  const agentRuns = Route.useLoaderData() as AgentRun[];
-  const router = useRouter();
+  const initialData = Route.useLoaderData() as AgentDirectoryRead;
+  const queryClient = useQueryClient();
+  const { data: directory } = useQuery({ ...agentDirectoryQuery(), initialData });
   const [open, setOpen] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
-
-  useRoutePollingRefresh();
-
-  const stats = useMemo(() => computeAgentStats(agentRuns), [agentRuns]);
-
-  const agents = useMemo(
-    () =>
-      AGENT_DEFINITIONS.map((a) => {
-        const s = stats[a.display_name];
-        const confidences = s?.confidences ?? [];
-        const avg_confidence =
-          confidences.length > 0
-            ? confidences.reduce((acc, c) => acc + c, 0) / confidences.length
-            : null;
-        return {
-          ...a,
-          runs_24h: s?.runs24h ?? 0,
-          avg_confidence,
-          sparkline: s?.sparkline ?? Array(SPARKLINE_HOURS).fill(0),
-        };
-      }),
-    [stats],
-  );
-
   const [agentStates, setAgentStates] = useState(() =>
-    Object.fromEntries(agents.map((a) => [a.name, a.status === "active"])),
+    Object.fromEntries(directory.agents.map((agent) => [agent.name, agent.status === "active"])),
   );
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void queryClient.invalidateQueries({
+        queryKey: crmQueryKeys.agents.list({ view: "directory" }),
+        exact: true,
+      });
+    }, 45_000);
+    return () => window.clearInterval(timer);
+  }, [queryClient]);
 
   const filteredRuns = useMemo(
-    () => (statusFilter === "all" ? agentRuns : agentRuns.filter((r) => r.status === statusFilter)),
-    [agentRuns, statusFilter],
+    () =>
+      statusFilter === "all"
+        ? directory.recentRuns
+        : directory.recentRuns.filter((run) => run.status === statusFilter),
+    [directory.recentRuns, statusFilter],
   );
+
+  const refresh = () =>
+    queryClient.invalidateQueries({
+      queryKey: crmQueryKeys.agents.list({ view: "directory" }),
+      exact: true,
+    });
 
   return (
     <>
@@ -127,7 +97,7 @@ function AgentsMonitor() {
             <Button size="sm" variant="outline" asChild>
               <Link to="/ai-review">Open AI Review</Link>
             </Button>
-            <Button size="sm" variant="outline" onClick={() => router.invalidate()}>
+            <Button size="sm" variant="outline" onClick={() => void refresh()}>
               <RefreshCw className="mr-2 h-4 w-4" /> Refresh
             </Button>
           </div>
@@ -136,59 +106,59 @@ function AgentsMonitor() {
 
       <div className="space-y-6 px-6 py-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {agents.map((a) => (
-            <Card key={a.name} className="p-4">
-              <div className="flex items-start justify-between">
-                <Link
-                  to="/agents/$name"
-                  params={{ name: a.name }}
-                  className="flex items-center gap-2 hover:text-primary"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <Bot className="h-4 w-4" />
+          {directory.agents.map((agent) => {
+            const maxCount = Math.max(...agent.sparkline, 1);
+            return (
+              <Card key={agent.name} className="p-4">
+                <div className="flex items-start justify-between">
+                  <Link
+                    to="/agents/$name"
+                    params={{ name: agent.name }}
+                    className="flex items-center gap-2 hover:text-primary"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Bot className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{agent.display_name}</p>
+                      <p className="text-xs text-muted-foreground">{agent.runs_24h} runs / 24h</p>
+                    </div>
+                  </Link>
+                  <Switch
+                    checked={agentStates[agent.name]}
+                    onCheckedChange={(enabled) => {
+                      setAgentStates((current) => ({ ...current, [agent.name]: enabled }));
+                      toast.success(`${agent.display_name} ${enabled ? "enabled" : "paused"}`);
+                    }}
+                  />
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="text-muted-foreground">Confidence</p>
+                    <p className="font-medium">
+                      {agent.avg_confidence == null
+                        ? "-"
+                        : `${(agent.avg_confidence * 100).toFixed(0)}%`}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{a.display_name}</p>
-                    <p className="text-xs text-muted-foreground">{a.runs_24h} runs / 24h</p>
+                    <p className="text-muted-foreground">Approval</p>
+                    <p className="font-medium">{agent.human_approval ? "Required" : "Auto"}</p>
                   </div>
-                </Link>
-                <Switch
-                  checked={agentStates[a.name]}
-                  onCheckedChange={(v) => {
-                    setAgentStates((p) => ({ ...p, [a.name]: v }));
-                    toast.success(`${a.display_name} ${v ? "enabled" : "paused"}`);
-                  }}
-                />
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <p className="text-muted-foreground">Confidence</p>
-                  <p className="font-medium">
-                    {a.avg_confidence != null ? `${(a.avg_confidence * 100).toFixed(0)}%` : "—"}
-                  </p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Approval</p>
-                  <p className="font-medium">{a.human_approval ? "Required" : "Auto"}</p>
-                </div>
-              </div>
-              {/* Real sparkline — last 14 hours of activity */}
-              <div className="mt-3 flex h-6 items-end gap-0.5">
-                {a.sparkline.map((count, i) => {
-                  const maxCount = Math.max(...a.sparkline, 1);
-                  const heightPct = Math.max(8, Math.round((count / maxCount) * 100));
-                  return (
+                <div className="mt-3 flex h-6 items-end gap-0.5">
+                  {agent.sparkline.map((count, index) => (
                     <div
-                      key={i}
-                      title={`${count} run${count !== 1 ? "s" : ""}`}
-                      className={`flex-1 rounded-sm transition-[height,background-color] ${count > 0 ? "bg-primary/60" : "bg-muted"}`}
-                      style={{ height: `${heightPct}%` }}
+                      key={index}
+                      title={`${count} run${count === 1 ? "" : "s"}`}
+                      className={`flex-1 rounded-sm ${count > 0 ? "bg-primary/60" : "bg-muted"}`}
+                      style={{ height: `${Math.max(8, Math.round((count / maxCount) * 100))}%` }}
                     />
-                  );
-                })}
-              </div>
-            </Card>
-          ))}
+                  ))}
+                </div>
+              </Card>
+            );
+          })}
         </div>
 
         <Card className="p-3">
@@ -206,8 +176,7 @@ function AgentsMonitor() {
               </SelectContent>
             </Select>
             <span className="text-xs text-muted-foreground">
-              {filteredRuns.length} run{filteredRuns.length !== 1 ? "s" : ""} · click a row to
-              inspect
+              {filteredRuns.length} recent run{filteredRuns.length === 1 ? "" : "s"}
             </span>
           </div>
         </Card>
@@ -234,7 +203,7 @@ function AgentsMonitor() {
                     colSpan={9}
                     className="py-10 text-center text-sm text-muted-foreground"
                   >
-                    No agent runs yet. Trigger a lead to start the pipeline.
+                    No recent agent runs match this status.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -246,9 +215,9 @@ function AgentsMonitor() {
                         className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                         tabIndex={0}
                         onClick={() => setOpen(expanded ? null : run.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            if (e.key === " ") e.preventDefault();
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
                             setOpen(expanded ? null : run.id);
                           }
                         }}
@@ -262,23 +231,23 @@ function AgentsMonitor() {
                         </TableCell>
                         <TableCell className="font-medium">{run.agent_name}</TableCell>
                         <TableCell className="text-xs capitalize text-muted-foreground">
-                          {run.trigger_type ?? "—"}
+                          {run.trigger_type ?? "-"}
                         </TableCell>
                         <TableCell>
                           <StatusBadge value={run.status} />
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-sm">
-                          {run.duration_ms != null
-                            ? `${(run.duration_ms / 1000).toFixed(1)}s`
-                            : "—"}
+                          {run.duration_ms == null
+                            ? "-"
+                            : `${(run.duration_ms / 1000).toFixed(1)}s`}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-sm">
-                          {run.tokens_used != null ? formatCount(run.tokens_used) : "—"}
+                          {run.tokens_used == null ? "-" : formatCount(run.tokens_used)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-sm">
-                          {run.confidence_score != null
-                            ? `${(run.confidence_score * 100).toFixed(0)}%`
-                            : "—"}
+                          {run.confidence_score == null
+                            ? "-"
+                            : `${(run.confidence_score * 100).toFixed(0)}%`}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {formatDateTime(run.created_at)}
@@ -287,8 +256,8 @@ function AgentsMonitor() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
+                            onClick={(event) => {
+                              event.stopPropagation();
                               toast.message(`Replaying ${run.id}`);
                             }}
                           >
@@ -296,23 +265,13 @@ function AgentsMonitor() {
                           </Button>
                         </TableCell>
                       </TableRow>
-                      {expanded && (
+                      {expanded ? (
                         <TableRow>
-                          <TableCell colSpan={9} className="bg-muted/30">
-                            <div className="space-y-3 py-2">
-                              <KV label="Output" value={run.output_summary ?? "—"} />
-                              <div>
-                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                  Input data
-                                </p>
-                                <pre className="mt-1 overflow-auto rounded-md border border-border bg-card p-2 text-xs text-muted-foreground">
-                                  {run.input_data ? JSON.stringify(run.input_data, null, 2) : "—"}
-                                </pre>
-                              </div>
-                            </div>
+                          <TableCell colSpan={9} className="bg-muted/30 py-4 text-sm">
+                            {run.output_summary ?? "No output summary recorded."}
                           </TableCell>
                         </TableRow>
-                      )}
+                      ) : null}
                     </Fragment>
                   );
                 })
@@ -322,14 +281,5 @@ function AgentsMonitor() {
         </Card>
       </div>
     </>
-  );
-}
-
-function KV({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-sm">{value}</p>
-    </div>
   );
 }

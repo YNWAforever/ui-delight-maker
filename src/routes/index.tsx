@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpRight, Clock, Flame, Plus, ShieldCheck, Target } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,23 +22,29 @@ import {
 } from "@/lib/admin-ux-search";
 import type { ActivityLog, Lead, LeadStatus } from "@/lib/types";
 import { APP_USERS } from "@/lib/users";
-import { getActivityLogs } from "@/server-functions/agent-runs";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
+import { getDashboardRead } from "@/server-functions/dashboard";
 import { moveLeadStage, triggerLeadAgent, triggerLeadReplyDraft } from "@/server-functions/leads";
-import { getPipelineData } from "@/server-functions/pipeline";
-import { getProducts } from "@/server-functions/products";
 import { triggerQuoteAgent } from "@/server-functions/quotes";
 import { createTask } from "@/server-functions/tasks";
 
+const DashboardInsights = lazy(() =>
+  import("@/components/dashboard/dashboard-insights").then((module) => ({
+    default: module.DashboardInsights,
+  })),
+);
+
 export const Route = createFileRoute("/")({
   validateSearch: revenueDeskSearchSchema,
-  loader: async () => {
-    const [pipeline, activityLogs, products] = await Promise.all([
-      getPipelineData(),
-      getActivityLogs({}),
-      getProducts({ data: { activeOnly: true } }),
-    ]);
-    return { ...pipeline, activityLogs, products };
-  },
+  loaderDeps: ({ search }) => ({ search }),
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: crmQueryKeys.dashboard(),
+        queryFn: () => getDashboardRead(),
+      }),
+    ),
   head: () => ({
     meta: [
       { title: "Revenue Desk - Fimmick ClientOps" },
@@ -55,6 +62,7 @@ function PipelineCommandCenter() {
   const { leads, quotes, tasks, approvals, agentRuns, activityLogs, products } =
     Route.useLoaderData();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const today = getBusinessDateKey();
@@ -62,6 +70,14 @@ function PipelineCommandCenter() {
   const [moveDialog, setMoveDialog] = useState<{ lead: Lead; status: LeadStatus } | null>(null);
   const [moveReason, setMoveReason] = useState("");
   const [wonLead, setWonLead] = useState<Lead | null>(null);
+
+  const refreshDashboard = async (...queryKeys: ReadonlyArray<readonly unknown[]>) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: crmQueryKeys.dashboard(), exact: true }),
+      ...queryKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+    ]);
+    await router.invalidate({ filter: (match) => match.routeId === "/" });
+  };
 
   const filteredLeads = useMemo(
     () =>
@@ -114,7 +130,7 @@ function PipelineCommandCenter() {
     navigate({ search: (current) => ({ ...current, lead: moveDialog.lead.id }) });
     setMoveDialog(null);
     setMoveReason("");
-    router.invalidate();
+    await refreshDashboard(crmQueryKeys.leads.all());
   };
 
   const moveLead = async (lead: Lead, status: LeadStatus) => {
@@ -126,7 +142,7 @@ function PipelineCommandCenter() {
     await moveLeadStage({ data: { id: lead.id, status } });
     toast.success(`${lead.company_name} moved to ${status.replace(/_/g, " ")}`);
     navigate({ search: (current) => ({ ...current, lead: lead.id }) });
-    router.invalidate();
+    await refreshDashboard(crmQueryKeys.leads.all());
   };
 
   const qualifyLead = async (lead: Lead) => {
@@ -141,7 +157,7 @@ function PipelineCommandCenter() {
         return;
       }
       toast.success("Qualification agent queued");
-      router.invalidate();
+      await refreshDashboard(crmQueryKeys.leads.all());
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Workflow request failed");
     }
@@ -159,7 +175,7 @@ function PipelineCommandCenter() {
         return;
       }
       toast.success("Reply draft agent queued");
-      router.invalidate();
+      await refreshDashboard(crmQueryKeys.leads.all());
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Workflow request failed");
     }
@@ -177,7 +193,7 @@ function PipelineCommandCenter() {
         return;
       }
       toast.success("Quote agent queued");
-      router.invalidate();
+      await refreshDashboard(crmQueryKeys.leads.all(), crmQueryKeys.quotes.lists());
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Workflow request failed");
     }
@@ -197,7 +213,7 @@ function PipelineCommandCenter() {
       },
     });
     toast.success("Follow-up task created");
-    router.invalidate();
+    await refreshDashboard(crmQueryKeys.tasks.lists(), crmQueryKeys.leads.detail(lead.id));
   };
 
   const openRevenueAction = (href: string) => {
@@ -324,35 +340,26 @@ function PipelineCommandCenter() {
           </section>
         </div>
 
-        <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="min-w-0 overflow-hidden">
-            <PipelineBoard
-              leads={filteredLeads}
-              tasks={tasks}
-              quotes={quotes}
-              approvals={approvals}
-              agentRuns={agentRuns}
-              selectedLeadId={selectedLead?.id ?? null}
-              onSelectLead={(lead) =>
-                navigate({ search: (current) => ({ ...current, lead: lead.id }) })
-              }
-              onMoveLead={moveLead}
-            />
-          </div>
-          <LeadPreviewPanel
-            lead={selectedLead}
+        <Suspense fallback={<DashboardInsightsSkeleton />}>
+          <DashboardInsights
+            leads={filteredLeads}
             tasks={tasks}
             quotes={quotes}
             approvals={approvals}
             agentRuns={agentRuns}
             activityLogs={activityLogs as ActivityLog[]}
+            selectedLead={selectedLead}
+            onSelectLead={(lead) =>
+              navigate({ search: (current) => ({ ...current, lead: lead.id }) })
+            }
+            onMoveLead={moveLead}
             onQualify={qualifyLead}
             onDraftReply={draftReply}
             onDraftQuote={draftQuote}
             onSummarize={summarizeTimeline}
             onCreateTask={createFollowUpTask}
           />
-        </div>
+        </Suspense>
       </div>
 
       <StageMoveDialog
@@ -375,5 +382,14 @@ function PipelineCommandCenter() {
         onDone={() => setWonLead(null)}
       />
     </>
+  );
+}
+
+function DashboardInsightsSkeleton() {
+  return (
+    <div
+      className="min-h-[480px] animate-pulse rounded-md border border-border bg-muted/30"
+      aria-label="Loading pipeline insights"
+    />
   );
 }

@@ -10,6 +10,7 @@ import type { Task } from "@/lib/types";
 
 type GetTasksInput = {
   status?: string;
+  priority?: Task["priority"];
   assigned_to?: string;
   client_id?: string;
   contact_id?: string;
@@ -40,7 +41,9 @@ export const getTasks = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await requireCapability("tasks.view");
     await requireNeonAuthSession();
-    return listTasks(data);
+    const { priority, ...filters } = data;
+    const tasks = await listTasks(filters);
+    return priority ? tasks.filter((task) => task.priority === priority) : tasks;
   });
 
 export const createTask = createServerFn({ method: "POST" })

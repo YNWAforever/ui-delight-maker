@@ -30,6 +30,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
+  queryOptions: (options: unknown) => options,
   useQuery: ({ initialData }: { initialData: unknown }) => ({
     data: initialData,
     isFetching: false,
@@ -110,6 +111,7 @@ vi.mock("@/lib/pipeline", () => ({
 vi.mock("@/lib/sales-workspace", () => ({ buildRevenueActions: () => [] }));
 vi.mock("@/server-functions/agent-runs", () => ({
   getActivityLogs: vi.fn(),
+  getAgentHistoryPage: vi.fn(),
   getAgentRuns: vi.fn(),
 }));
 vi.mock("@/server-functions/leads", () => ({
@@ -152,7 +154,11 @@ vi.mock("@/server-functions/accounts", () => ({
   getAccounts: vi.fn(),
   triggerRelationshipIntelligence: vi.fn(),
 }));
-vi.mock("@/server-functions/clients", () => ({ getClient: vi.fn(), getClients: vi.fn() }));
+vi.mock("@/server-functions/clients", () => ({
+  getClient: vi.fn(),
+  getClients: vi.fn(),
+  getClientsPage: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, limit: 100 }),
+}));
 vi.mock("@/server-functions/relationship-signals", () => ({ getRelationshipSignals: vi.fn() }));
 vi.mock("@/server-functions/workspace-preferences", () => ({
   getWorkspacePreferences: vi.fn(),
@@ -211,7 +217,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Revenue Desk URL state", () => {
-  it("restores filters and selected lead, then navigates with the intended history semantics", () => {
+  it("restores filters and selected lead, then navigates with the intended history semantics", async () => {
     const Component = Route.options.component as ComponentType;
     render(<Component />);
 
@@ -222,7 +228,9 @@ describe("Revenue Desk URL state", () => {
       urgency: "overdue",
       aiState: "ready_for_review",
     });
-    expect((captures.inspector?.lead as { id: string }).id).toBe("lead-2");
+    await waitFor(() =>
+      expect((captures.inspector?.lead as { id: string } | undefined)?.id).toBe("lead-2"),
+    );
 
     act(() => {
       (captures.toolbar?.onFiltersChange as (filters: unknown) => void)({
@@ -315,6 +323,7 @@ describe("Companies URL state", () => {
     expect(lifecycleNavigation.replace).toBe(true);
     expect(lifecycleNavigation.search(AccountsRoute.useSearch())).toEqual({
       lifecycle: "prospect",
+      page: 1,
       sort: "name:asc",
       account: "account-2",
       unrelated: "keep",
@@ -509,27 +518,25 @@ describe("Admin detail tab runtime navigation", () => {
       name: "client",
       route: ClientDetailRoute,
       loader: {
-        client: {
+        requestId: "request-1",
+        identity: {
           id: "client-1",
-          company_name: "Northstar",
-          tier: "A",
+          accountId: null,
+          primaryContactId: null,
+          companyName: "Northstar",
           industry: "Technology",
-          account_owner: null,
-          account_id: null,
-          health_score: 80,
-          arr: 0,
-          renewal_date: null,
-          onboarding_status: "active",
-          created_at: "2026-07-01",
+          tier: "A",
+          createdAt: "2026-07-01",
         },
-        quotes: [],
-        engagements: [],
-        contacts: [],
-        products: [],
-        touchpoints: [],
-        jobSheets: [],
-        tasks: [],
-        activityLogs: [],
+        ownership: { accountOwnerId: null },
+        relationship: {
+          healthScore: 80,
+          onboardingStatus: "active",
+          renewalDate: null,
+          renewalRisk: null,
+          arr: 0,
+        },
+        counts: { contacts: 0, engagements: 0, quotes: 0, jobSheets: 0 },
       },
       currentTab: "contacts",
       defaultTab: "overview",
@@ -545,7 +552,13 @@ describe("Admin detail tab runtime navigation", () => {
           human_approval: false,
           model: "test-model",
         },
-        runs: [],
+        history: {
+          items: [],
+          total: 0,
+          page: 1,
+          limit: 25,
+          summary: { runs_24h: 0, avg_confidence: null },
+        },
       },
       currentTab: "memory",
       defaultTab: "runs",

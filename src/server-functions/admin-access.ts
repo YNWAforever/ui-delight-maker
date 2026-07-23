@@ -142,6 +142,19 @@ export const getAdminAuditLogsFn = createServerFn({ method: "GET" })
     return listAdminAuditLogs(input);
   });
 
+export const getAdminAuditSummaryFn = createServerFn({ method: "GET" })
+  .validator((data: unknown) => auditSchema.pick({ limit: true }).parse(data ?? {}))
+  .handler(async ({ data }) => {
+    try {
+      await requireCapability("audit.view");
+      return (await listAdminAuditLogs({ limit: data.limit ?? 5 })).items;
+    } catch (error) {
+      if (error instanceof AdminError && ["FORBIDDEN", "OUTSIDE_SCOPE"].includes(error.code)) {
+        return [];
+      }
+      throw error;
+    }
+  });
 export const exportAdminAuditLogsFn = createServerFn({ method: "GET" })
   .validator((data: unknown) => auditSchema.parse(data ?? {}))
   .handler(async ({ data }) => {

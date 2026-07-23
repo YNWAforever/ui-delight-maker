@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Bot,
@@ -33,10 +34,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { leadDetailSearchSchema } from "@/lib/admin-ux-search";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
-import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
 import type { Lead, LeadStatus } from "@/lib/types";
-import { getLead, triggerLeadAgent, updateLead } from "@/server-functions/leads";
-import { getQuotes, triggerQuoteAgent } from "@/server-functions/quotes";
+import { triggerLeadAgent, updateLead } from "@/server-functions/leads";
+import { triggerQuoteAgent } from "@/server-functions/quotes";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { getLeadWorkspaceRead } from "@/server-functions/relationship-workspaces";
 
 // Local types for UI-only state that is not yet persisted server-side.
 type LeadComment = {
@@ -58,13 +60,7 @@ type LeadFile = {
 
 export const Route = createFileRoute("/leads/$id")({
   validateSearch: leadDetailSearchSchema,
-  loader: async ({ params }) => {
-    const [leadData, quotes] = await Promise.all([
-      getLead({ data: { id: params.id } }),
-      getQuotes({ data: { lead_id: params.id } }),
-    ]);
-    return { ...leadData, quotes };
-  },
+  loader: ({ params }) => getLeadWorkspaceRead({ data: { id: params.id } }),
   head: ({ loaderData }) => ({
     meta: [
       { title: `${loaderData?.lead.company_name ?? "Lead"} — ClientOps` },
@@ -90,14 +86,44 @@ export const Route = createFileRoute("/leads/$id")({
 
 const STATUSES: LeadStatus[] = ["new", "qualified", "replied", "quoted", "approved", "won", "lost"];
 
+export const leadMutationQueryKeys = {
+  status_change: (leadId: string) => [
+    crmQueryKeys.leads.detail(leadId),
+    crmQueryKeys.leads.lists(),
+  ],
+} as const;
+
+async function invalidateLeadMutation(
+  queryClient: ReturnType<typeof useQueryClient>,
+  leadId: string,
+  mutation: keyof typeof leadMutationQueryKeys,
+) {
+  await Promise.all(
+    leadMutationQueryKeys[mutation](leadId).map((queryKey) =>
+      queryClient.invalidateQueries({ queryKey }),
+    ),
+  );
+}
+
 function LeadDetail() {
-  const { lead, activityLogs, quotes: relatedQuotes } = Route.useLoaderData();
-  const router = useRouter();
+  const initialRead = Route.useLoaderData();
+  const leadId = initialRead.lead.id;
+  const queryClient = useQueryClient();
+  const workspaceQuery = useQuery({
+    queryKey: crmQueryKeys.leads.detail(leadId),
+    queryFn: () => getLeadWorkspaceRead({ data: { id: leadId } }),
+    initialData: initialRead,
+    staleTime: 30_000,
+    refetchInterval: 12_000,
+    refetchIntervalInBackground: false,
+  });
+  const { lead, activityLogs, quotes: relatedQuotes } = workspaceQuery.data;
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  useRoutePollingRefresh();
 
   const [status, setStatus] = useState<LeadStatus>(lead.status);
+
+  useEffect(() => setStatus(lead.status), [lead.status]);
   const [notes, setNotes] = useState<
     { id: string; lead_id: string; author: string; body: string; created_at: string }[]
   >([]);
@@ -115,7 +141,7 @@ function LeadDetail() {
     setStatus(nextStatus);
     await updateLead({ data: { id: lead.id, updates: { status: nextStatus } } });
     toast.success(`Status updated to ${nextStatus.replace(/_/g, " ")}`);
-    router.invalidate();
+    await invalidateLeadMutation(queryClient, lead.id, "status_change");
   };
 
   const handleQualifyLead = async () => {
@@ -187,7 +213,7 @@ function LeadDetail() {
                 <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" /> All leads
               </Link>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => router.invalidate()}>
+            <Button variant="outline" size="sm" onClick={() => void workspaceQuery.refetch()}>
               <RefreshCw aria-hidden="true" className="mr-2 h-4 w-4" /> Refresh
             </Button>
             <Button variant="outline" size="sm" onClick={handleQualifyLead}>
@@ -331,7 +357,7 @@ function LeadDetail() {
                               {q.number}
                             </Link>
                             <p className="text-xs text-muted-foreground">
-                              {q.line_items.length} items · valid until {q.valid_until}
+                              {q.lineItemCount} items · valid until {q.valid_until}
                             </p>
                           </div>
                           <div className="flex items-center gap-3">

@@ -8,7 +8,9 @@ import {
   getAccount as getAccountInNeon,
   getAccountWorkspaceData,
   listAccounts,
+  listAccountsPage,
   type AccountFilters,
+  type AccountPageFilters,
   type CreateAccountInput,
   updateAccount as updateAccountInNeon,
 } from "@/server/repositories/accounts";
@@ -28,6 +30,13 @@ export const getAccounts = createServerFn({ method: "GET" })
     return listAccounts(data);
   });
 
+export const getAccountsPage = createServerFn({ method: "GET" })
+  .validator((data: unknown) => (data ?? {}) as AccountPageFilters)
+  .handler(async ({ data }) => {
+    await requireCapability("accounts.view");
+    await requireNeonAuthSession();
+    return listAccountsPage(data);
+  });
 export const getAccount = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {

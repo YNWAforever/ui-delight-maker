@@ -5,70 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import type { JsonValue } from "@/lib/types";
-
-export type QuoteDocumentDraft = {
-  cover_text: string;
-  assumptions: string;
-  payment_terms: string;
-  document_sections: JsonValue;
-};
-
-export type QuoteDocumentSection = {
-  title: string;
-  label: string;
-  body: string;
-  visible: boolean;
-};
+import {
+  createEmptyQuoteDocumentSection,
+  normalizeQuoteDocumentSections,
+  type QuoteDocumentDraft,
+  type QuoteDocumentSection,
+} from "@/lib/quote-document";
 
 type QuoteDocumentEditorProps = {
   value: QuoteDocumentDraft;
   onChange: (value: QuoteDocumentDraft) => void;
 };
 
-const EMPTY_SECTION: QuoteDocumentSection = {
-  title: "",
-  label: "",
-  body: "",
-  visible: true,
-};
-
-export function normalizeQuoteDocumentSections(value: JsonValue): QuoteDocumentSection[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.flatMap((entry) => {
-    if (typeof entry === "string") {
-      return [{ ...EMPTY_SECTION, title: entry }];
-    }
-
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
-      return [];
-    }
-
-    const record = entry as Record<string, unknown>;
-
-    return [
-      {
-        title:
-          typeof record.title === "string"
-            ? record.title
-            : typeof record.heading === "string"
-              ? record.heading
-              : "",
-        label: typeof record.label === "string" ? record.label : "",
-        body:
-          typeof record.body === "string"
-            ? record.body
-            : typeof record.content === "string"
-              ? record.content
-              : "",
-        visible: typeof record.visible === "boolean" ? record.visible : true,
-      },
-    ];
-  });
-}
+const EMPTY_SECTION = createEmptyQuoteDocumentSection();
 
 export function QuoteDocumentEditor({ value, onChange }: QuoteDocumentEditorProps) {
   const sections = normalizeQuoteDocumentSections(value.document_sections);

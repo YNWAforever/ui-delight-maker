@@ -1,16 +1,27 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { AdminError } from "@/lib/admin/errors";
 import { adminUserDetailSearchSchema } from "@/lib/admin/schemas";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import { getAdminUserFn } from "@/server-functions/admin-users";
 import { formatDateTime } from "@/lib/format";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserDetailPanel } from "@/components/admin/user-detail-panel";
 
+const adminUserQuery = (profileId: string) =>
+  routeQueryOptions({
+    queryKey: crmQueryKeys.admin.detail(profileId),
+    queryFn: () => getAdminUserFn({ data: { profileId } }),
+  });
 export const Route = createFileRoute("/admin/people/$id")({
   validateSearch: adminUserDetailSearchSchema,
-  loader: async ({ params }) => {
+  loader: async ({ context, params }) => {
     try {
-      return { user: await getAdminUserFn({ data: { profileId: params.id } }), forbidden: false };
+      return {
+        user: await context.queryClient.ensureQueryData(adminUserQuery(params.id)),
+        forbidden: false,
+      };
     } catch (error) {
       if (error instanceof AdminError && ["FORBIDDEN", "OUTSIDE_SCOPE"].includes(error.code)) {
         return { user: null, forbidden: true };
@@ -24,7 +35,15 @@ export const Route = createFileRoute("/admin/people/$id")({
 
 function AdminUserRoute() {
   const search = Route.useSearch();
-  const { user, forbidden } = Route.useLoaderData();
+  const params = Route.useParams();
+  const loaderData = Route.useLoaderData();
+  const { data: userData } = useQuery({
+    ...adminUserQuery(params.id),
+    initialData: loaderData.user ?? undefined,
+    enabled: !loaderData.forbidden,
+  });
+  const user = userData ?? null;
+  const forbidden = loaderData.forbidden;
   const navigate = useNavigate({ from: Route.fullPath });
 
   if (forbidden) {

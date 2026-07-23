@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { CalendarDays, Plus, Users } from "lucide-react";
+import { z } from "zod";
 import { PageHeader } from "@/components/page-header";
+import { ListPagination } from "@/components/list-pagination";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,13 +26,32 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { APP_USERS } from "@/lib/users";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import type { CampaignStatus, CampaignType } from "@/lib/types";
-import { createCampaign, getCampaigns } from "@/server-functions/campaigns";
+import { createCampaign, getCampaignsPage } from "@/server-functions/campaigns";
 import { useIsExactPath } from "@/lib/routing-utils";
 import { toast } from "sonner";
 
+const campaignListSearchSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1).catch(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50).catch(50),
+  status: z.string().trim().min(1).optional().catch(undefined),
+  type: z.string().trim().min(1).optional().catch(undefined),
+  owner: z.string().trim().min(1).optional().catch(undefined),
+});
+
 export const Route = createFileRoute("/campaigns")({
-  loader: async () => ({ campaigns: await getCampaigns({}) }),
+  validateSearch: campaignListSearchSchema,
+  loaderDeps: ({ search }) => ({ search }),
+  loader: async ({ context, deps: { search } }) => ({
+    campaignPage: await context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: crmQueryKeys.campaigns.list(search),
+        queryFn: () => getCampaignsPage({ data: search }),
+      }),
+    ),
+  }),
   head: () => ({
     meta: [{ title: "Campaigns & Events - Fimmick ClientOps" }],
   }),
@@ -46,8 +67,9 @@ function CampaignsRoute() {
 }
 
 function CampaignsIndex() {
-  const { campaigns } = Route.useLoaderData();
-  const navigate = useNavigate();
+  const { campaignPage } = Route.useLoaderData();
+  const campaigns = campaignPage.items;
+  const navigate = useNavigate({ from: Route.fullPath });
   const [newCampaignOpen, setNewCampaignOpen] = useState(false);
   const activeCount = campaigns.filter((campaign) => campaign.status === "active").length;
   const completedCount = campaigns.filter((campaign) => campaign.status === "completed").length;
@@ -77,6 +99,14 @@ function CampaignsIndex() {
         }
       />
       <main className="space-y-4 px-6 py-6">
+        <ListPagination
+          page={campaignPage.page}
+          limit={campaignPage.limit}
+          total={campaignPage.total}
+          onPageChange={(page) =>
+            navigate({ search: (current) => ({ ...current, page }), replace: true })
+          }
+        />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <SummaryCard label="Campaigns" value={campaigns.length} hint="follow-up workspaces" />
           <SummaryCard label="Active" value={activeCount} hint="currently running" />

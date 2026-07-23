@@ -64,3 +64,20 @@ export async function listActivityLogs(input: { object_id?: string } = {}) {
     values,
   );
 }
+
+export async function listActivityLogsByClientAndEngagementIds(
+  clientId: string,
+  engagementIds: string[],
+) {
+  return query<ActivityLog>(
+    `
+      select *
+      from activity_logs
+      where (object_type = 'client' and object_id = $1)
+         or (object_type = 'engagement' and object_id = any($2::uuid[]))
+      order by created_at desc
+      limit $3
+    `,
+    [clientId, engagementIds, 100],
+  );
+}

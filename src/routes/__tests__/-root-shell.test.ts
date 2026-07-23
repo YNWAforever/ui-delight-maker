@@ -8,6 +8,15 @@ describe("root shell hydration", () => {
   it("allows auth UI theme scripts to update the html element before hydration", () => {
     expect(rootSource).toMatch(/<html\b(?=[^>]*\blang="en")(?=[^>]*\bsuppressHydrationWarning\b)/);
   });
+
+  it("uses the shared authenticated shell query rather than independent browser reads", () => {
+    expect(rootSource).toContain("getAppShellRead");
+    expect(rootSource).toContain("crmQueryKeys.shell()");
+    expect(rootSource).toContain("routeQueryOptions");
+    expect(rootSource).toContain("ensureQueryData");
+    expect(rootSource).not.toContain("getWorkspacePreferences");
+    expect(rootSource).not.toContain("getAdminNavigationFn");
+  });
 });
 
 describe("sales route source copy", () => {
@@ -55,7 +64,7 @@ describe("sales route source copy", () => {
     expect(renewalsSource).toContain('status="Retain"');
     expect(renewalsSource).toContain("No renewals in this window.");
     expect(renewalsSource).toContain("formatCompactHKD");
-    expect(renewalsSource).toContain("annualizeValue");
+    expect(renewalsSource).toContain("metrics.annualizedValue");
 
     expect(renewalCardSource).toContain("formatDate");
     expect(renewalCardSource).toContain("formatCompactHKD");
@@ -90,7 +99,7 @@ describe("sales route source copy", () => {
     const relationshipSource = readRoute("relationships.tsx");
 
     expect(relationshipSource).toContain('title="Relationship Command Center"');
-    expect(relationshipSource).toContain("getRelationshipSignals");
+    expect(relationshipSource).toContain("getRelationshipIndexRead");
     expect(relationshipSource).toContain("RelationshipCommandCenter");
     expect(relationshipSource).not.toContain("hero");
     expect(relationshipSource).not.toContain("landing");

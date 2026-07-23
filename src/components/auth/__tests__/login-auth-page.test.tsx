@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ReactNode } from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const providerPropsMock = vi.hoisted(() => vi.fn());
@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 describe("LoginAuthPage", () => {
-  it("forwards an invitation completion redirect to Neon Auth", () => {
+  it("forwards an invitation completion redirect to Neon Auth", async () => {
     render(
       <LoginAuthPage
         authPath="sign-up"
@@ -35,8 +35,10 @@ describe("LoginAuthPage", () => {
       />,
     );
 
-    expect(providerPropsMock).toHaveBeenCalledWith(
-      expect.objectContaining({ redirectTo: "/invite/raw-token/complete" }),
+    await waitFor(() =>
+      expect(providerPropsMock).toHaveBeenCalledWith(
+        expect.objectContaining({ redirectTo: "/invite/raw-token/complete" }),
+      ),
     );
     expect(screen.getByRole("heading", { name: "Join Fimmick ClientOps" })).toBeTruthy();
     expect(screen.getByText("Invitation for person@example.com")).toBeTruthy();

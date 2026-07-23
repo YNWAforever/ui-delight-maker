@@ -7,9 +7,9 @@ describe("client and account job sheet integration source", () => {
   it("loads and renders client job sheets", () => {
     const clientSource = readRoute("clients.$id.tsx");
 
-    expect(clientSource).toContain("getJobSheets({ data: { client_id: params.id } })");
+    expect(clientSource).toMatch(/useClientWorkspaceSection\(clientId, "job_sheets"/);
     expect(clientSource).toContain(
-      '<TabsTrigger value="job-sheets">Job Sheets ({jobSheets.length})</TabsTrigger>',
+      '<CountedTabLabel label="Job Sheets" count={counts.jobSheets} />',
     );
     expect(clientSource).toContain('to="/job-sheets/$id"');
   });

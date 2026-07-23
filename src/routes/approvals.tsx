@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { useMemo, useRef, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Bot,
@@ -10,6 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
 import { StatusBadge } from "@/components/status-badge";
@@ -44,20 +46,36 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import { formatDateTime } from "@/lib/format";
-import { useRoutePollingRefresh } from "@/hooks/use-route-polling-refresh";
 import { getApprovals, decideApproval } from "@/server-functions/approvals";
+import type { SerializableHumanApproval } from "@/server-functions/serializers";
 import { approveAndIssueQuote, rejectQuote } from "@/server-functions/quotes";
 import type { HumanApproval } from "@/lib/types";
 import { APP_USERS, userById } from "@/lib/users";
 
 type ApprovalStatus = "pending" | "approved" | "rejected" | "escalated";
+type ApprovalRead = SerializableHumanApproval[];
 
 const approvalDecisionLabel = (status: ApprovalStatus) =>
   status === "escalated" ? "changes requested" : status;
 
+const approvalSearchSchema = z.object({
+  type: z.string().default("all").catch("all"),
+});
+
+const approvalsQueryKey = crmQueryKeys.approvals.list({});
+
 export const Route = createFileRoute("/approvals")({
-  loader: () => getApprovals({}),
+  validateSearch: approvalSearchSchema,
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: approvalsQueryKey,
+        queryFn: () => getApprovals({}),
+      }),
+    ),
   head: () => ({
     meta: [
       { title: "Approvals — Fimmick ClientOps" },
@@ -84,15 +102,25 @@ function slaChip(createdAt: string) {
 }
 
 function ApprovalsInbox() {
-  const allApprovals = Route.useLoaderData();
-  const router = useRouter();
-  const navigate = useNavigate();
-  useRoutePollingRefresh();
-
-  const [typeFilter, setTypeFilter] = useState("all");
+  const loadedApprovals = Route.useLoaderData() as ApprovalRead;
+  const queryClient = useQueryClient();
+  const approvalsQuery = useQuery({
+    ...routeQueryOptions({
+      queryKey: approvalsQueryKey,
+      queryFn: () => getApprovals({}),
+    }),
+    initialData: loadedApprovals,
+    refetchInterval: 12_000,
+  });
+  const allApprovals = approvalsQuery.data;
+  const { type: typeFilter } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const setTypeFilter = (type: string) =>
+    navigate({ search: (current) => ({ ...current, type }), replace: true });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [bulk, setBulk] = useState<Set<string>>(new Set());
+  const approvalMutationTokensRef = useRef(new Map<string, symbol>());
 
   const pending = useMemo(
     () =>
@@ -106,11 +134,72 @@ function ApprovalsInbox() {
   const pendingQuoteSends = pending.filter((a) => a.approval_type === "quote_send").length;
   const selected = pending.find((a) => a.id === selectedId) ?? pending[0];
 
+  const updateApprovalDecision = async (
+    ids: string[],
+    status: "approved" | "rejected" | "escalated",
+    notes: string | undefined,
+    mutation: () => Promise<unknown>,
+  ) => {
+    await queryClient.cancelQueries({ queryKey: approvalsQueryKey, exact: true });
+    const previousById = new Map(
+      (queryClient.getQueryData<ApprovalRead>(approvalsQueryKey) ?? [])
+        .filter((approval) => ids.includes(approval.id))
+        .map((approval) => [approval.id, approval] as const),
+    );
+    const decidedAt = new Date().toISOString();
+    const selectedIds = new Set(ids);
+    const mutationToken = Symbol("approval-decision");
+    ids.forEach((id) => approvalMutationTokensRef.current.set(id, mutationToken));
+    queryClient.setQueryData<ApprovalRead>(approvalsQueryKey, (current) =>
+      current?.map((approval) =>
+        selectedIds.has(approval.id)
+          ? {
+              ...approval,
+              status,
+              reviewer_notes: notes ?? approval.reviewer_notes,
+              decided_at: decidedAt,
+            }
+          : approval,
+      ),
+    );
+
+    try {
+      await mutation();
+    } catch (error) {
+      queryClient.setQueryData<ApprovalRead>(approvalsQueryKey, (current) =>
+        current?.map((approval) => {
+          const previous = previousById.get(approval.id);
+          return previous && approvalMutationTokensRef.current.get(approval.id) === mutationToken
+            ? previous
+            : approval;
+        }),
+      );
+      ids.forEach((id) => {
+        if (approvalMutationTokensRef.current.get(id) === mutationToken) {
+          approvalMutationTokensRef.current.delete(id);
+        }
+      });
+      throw error;
+    }
+
+    ids.forEach((id) => {
+      if (approvalMutationTokensRef.current.get(id) === mutationToken) {
+        approvalMutationTokensRef.current.delete(id);
+      }
+    });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true }),
+      queryClient.invalidateQueries({ queryKey: crmQueryKeys.aiReview.all() }),
+    ]);
+  };
+
   const decide = async (id: string, status: "approved" | "rejected" | "escalated", msg: string) => {
-    await decideApproval({ data: { id, decision: status, notes: reason || undefined } });
+    const notes = reason || undefined;
+    await updateApprovalDecision([id], status, notes, () =>
+      decideApproval({ data: { id, decision: status, notes } }),
+    );
     toast.success(msg);
     setReason("");
-    router.invalidate();
   };
 
   const getQuoteId = (approval: HumanApproval): string | null => {
@@ -138,10 +227,12 @@ function ApprovalsInbox() {
   };
 
   const approveQuoteSendAsIs = async (approval: HumanApproval) => {
-    await approveApproval(approval, reason || undefined);
+    const notes = reason || undefined;
+    await updateApprovalDecision([approval.id], "approved", notes, () =>
+      approveApproval(approval, notes),
+    );
     toast.success("Quote approved and issued");
     setReason("");
-    router.invalidate();
   };
 
   const rejectApproval = async (approval: HumanApproval, notes?: string) => {
@@ -163,10 +254,12 @@ function ApprovalsInbox() {
   };
 
   const rejectSelectedApproval = async (approval: HumanApproval) => {
-    await rejectApproval(approval, reason || undefined);
+    const notes = reason || undefined;
+    await updateApprovalDecision([approval.id], "rejected", notes, () =>
+      rejectApproval(approval, notes),
+    );
     toast.success("Approval rejected");
     setReason("");
-    router.invalidate();
   };
 
   const [confirm, setConfirm] = useState<null | {
@@ -184,17 +277,19 @@ function ApprovalsInbox() {
   const bulkApprove = async () => {
     const n = bulk.size;
     const selectedApprovals = allApprovals.filter((approval) => bulk.has(approval.id));
-    await Promise.all(selectedApprovals.map((approval) => approveApproval(approval)));
+    await updateApprovalDecision([...bulk], "approved", undefined, () =>
+      Promise.all(selectedApprovals.map((approval) => approveApproval(approval))),
+    );
     toast.success(`Approved ${n} request${n > 1 ? "s" : ""}`);
     setBulk(new Set());
-    router.invalidate();
   };
 
   const bulkReject = async () => {
     const n = bulk.size;
     const selectedApprovals = allApprovals.filter((approval) => bulk.has(approval.id));
-    await Promise.all(
-      selectedApprovals.map((approval) => rejectApproval(approval, rejectReason || undefined)),
+    const notes = rejectReason || undefined;
+    await updateApprovalDecision([...bulk], "rejected", notes, () =>
+      Promise.all(selectedApprovals.map((approval) => rejectApproval(approval, notes))),
     );
     toast.success(
       `Rejected ${n} request${n > 1 ? "s" : ""}${rejectReason ? ` — "${rejectReason}"` : ""}`,
@@ -202,9 +297,7 @@ function ApprovalsInbox() {
     setBulk(new Set());
     setRejectReason("");
     setRejectOpen(false);
-    router.invalidate();
   };
-
   const bulkAssign = () => {
     const n = bulk.size;
     // assignment not yet backed by server function — show toast only
@@ -223,7 +316,13 @@ function ApprovalsInbox() {
         status="Convert"
         description={`${pendingCount} pending approvals across quote sends, agent decisions, and escalation requests.`}
         actions={
-          <Button size="sm" variant="outline" onClick={() => router.invalidate()}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true })
+            }
+          >
             <RefreshCw className="mr-2 h-4 w-4" /> Refresh
           </Button>
         }
@@ -294,7 +393,13 @@ function ApprovalsInbox() {
             title="No approvals yet"
             description="Agent approval requests will appear here when quote sends, discounts, or qualification decisions need review."
             action={
-              <Button size="sm" variant="outline" onClick={() => router.invalidate()}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true })
+                }
+              >
                 <RefreshCw className="mr-2 h-4 w-4" /> Refresh
               </Button>
             }

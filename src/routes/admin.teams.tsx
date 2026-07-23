@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AdminError } from "@/lib/admin/errors";
 import { adminOrganizationSearchSchema, type AdminOrganizationSearch } from "@/lib/admin/schemas";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import { OrganizationDirectory } from "@/components/admin/organization-directory";
 import { OrganizationUnitDetail } from "@/components/admin/organization-unit-detail";
 import {
@@ -30,32 +33,13 @@ import {
 } from "@/server-functions/admin-teams";
 import { getAdminUsersFn } from "@/server-functions/admin-users";
 
-export const Route = createFileRoute("/admin/teams")({
-  validateSearch: adminOrganizationSearchSchema,
-  loaderDeps: ({ search }) => ({ search }),
-  loader: async ({ deps: { search } }) => {
-    const directory = await getAdminOrganizationFn();
-    const users = await loadUsers();
-    let selectedUnit: OrganizationUnitDetailData | null = null;
-    if (search.unit) {
-      try {
-        selectedUnit = await getAdminOrganizationUnitFn({
-          data: { kind: search.kind, id: search.unit },
-        });
-      } catch (error) {
-        if (
-          !(error instanceof AdminError) ||
-          !["FORBIDDEN", "OUTSIDE_SCOPE", "CONFLICT"].includes(error.code)
-        ) {
-          throw error;
-        }
-      }
-    }
-    return { directory, users, selectedUnit };
-  },
-  head: () => ({ meta: [{ title: "Organization - Admin - Fimmick ClientOps" }] }),
-  component: AdminTeamsRoute,
-});
+const adminOrganizationQueryKey = crmQueryKeys.admin.section("organization", "directory");
+const adminTeamQueryKey = (kind: "department" | "team", id: string) =>
+  crmQueryKeys.admin.section(`${kind}:${id}`, "organization-unit");
+const adminPeopleQueryKey = (profileId?: string) =>
+  profileId
+    ? crmQueryKeys.admin.detail(profileId)
+    : crmQueryKeys.admin.section("people", "team-member-options");
 
 async function loadUsers(): Promise<TeamMemberUser[]> {
   try {
@@ -74,12 +58,98 @@ async function loadUsers(): Promise<TeamMemberUser[]> {
   }
 }
 
+async function loadUnit(kind: "department" | "team", id: string) {
+  try {
+    return await getAdminOrganizationUnitFn({ data: { kind, id } });
+  } catch (error) {
+    if (
+      error instanceof AdminError &&
+      ["FORBIDDEN", "OUTSIDE_SCOPE", "CONFLICT"].includes(error.code)
+    ) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export const Route = createFileRoute("/admin/teams")({
+  validateSearch: adminOrganizationSearchSchema,
+  loaderDeps: ({ search }) => ({ search }),
+  loader: async ({ context, deps: { search } }) => {
+    const [directory, users, selectedUnit] = await Promise.all([
+      context.queryClient.ensureQueryData(
+        routeQueryOptions({
+          queryKey: adminOrganizationQueryKey,
+          queryFn: () => getAdminOrganizationFn(),
+        }),
+      ),
+      context.queryClient.ensureQueryData(
+        routeQueryOptions({
+          queryKey: adminPeopleQueryKey(),
+          queryFn: async () => {
+            // Keep the permitted people read concurrent with the organization directory.
+            await Promise.resolve(getAdminUsersFn);
+            return loadUsers();
+          },
+        }),
+      ),
+      search.unit
+        ? context.queryClient.ensureQueryData(
+            routeQueryOptions({
+              queryKey: adminTeamQueryKey(search.kind, search.unit),
+              queryFn: () =>
+                getAdminOrganizationUnitFn({
+                  data: { kind: search.kind, id: search.unit! },
+                }).catch((error) => {
+                  if (
+                    error instanceof AdminError &&
+                    ["FORBIDDEN", "OUTSIDE_SCOPE", "CONFLICT"].includes(error.code)
+                  ) {
+                    return null;
+                  }
+                  throw error;
+                }),
+            }),
+          )
+        : Promise.resolve(null),
+    ]);
+    return { directory, users, selectedUnit };
+  },
+  head: () => ({ meta: [{ title: "Organization - Admin - Fimmick ClientOps" }] }),
+  component: AdminTeamsRoute,
+});
+
 function AdminTeamsRoute() {
   const search = Route.useSearch();
-  const { directory, users, selectedUnit } = Route.useLoaderData();
+  const loaded = Route.useLoaderData();
   const { profile } = Route.useRouteContext();
   const navigate = useNavigate({ from: Route.fullPath });
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const directoryQuery = useQuery({
+    ...routeQueryOptions({
+      queryKey: adminOrganizationQueryKey,
+      queryFn: () => getAdminOrganizationFn(),
+    }),
+    initialData: loaded.directory,
+    placeholderData: (previous) => previous,
+  });
+  const usersQuery = useQuery({
+    ...routeQueryOptions({ queryKey: adminPeopleQueryKey(), queryFn: loadUsers }),
+    initialData: loaded.users,
+    placeholderData: (previous) => previous,
+  });
+  const selectedUnitQuery = useQuery({
+    ...routeQueryOptions({
+      queryKey: adminTeamQueryKey(search.kind, search.unit ?? "none"),
+      queryFn: () => (search.unit ? loadUnit(search.kind, search.unit) : Promise.resolve(null)),
+    }),
+    initialData: loaded.selectedUnit,
+    placeholderData: (previous) => previous,
+    enabled: Boolean(search.unit),
+  });
+  const directory = directoryQuery.data;
+  const users = usersQuery.data;
+  const selectedUnit = selectedUnitQuery.data;
   const [dialog, setDialog] = useState<{
     kind: OrganizationUnitKind;
     unit: Department | Team | null;
@@ -97,25 +167,52 @@ function AdminTeamsRoute() {
   const updateSearch = (next: AdminOrganizationSearch) =>
     navigate({ search: () => next, replace: true });
 
+  const refreshOrganization = async (
+    kind: "department" | "team",
+    id: string,
+    profileIds: string[] = [],
+    includeShell = false,
+  ) => {
+    const keys = [
+      adminOrganizationQueryKey,
+      adminTeamQueryKey(kind, id),
+      adminPeopleQueryKey(),
+      ...profileIds.map((profileId) => adminPeopleQueryKey(profileId)),
+      ...(includeShell ? [crmQueryKeys.shell()] : []),
+    ];
+    await Promise.all(
+      keys.map((queryKey) => queryClient.invalidateQueries({ queryKey, exact: true })),
+    );
+  };
+
   async function saveUnit(value: OrganizationUnitSubmit) {
+    let saved: Department | Team;
     if (value.kind === "department") {
       const input = value.input as DepartmentInput;
-      if (value.id) {
-        await updateDepartmentFn({ data: { id: value.id, input } });
-      } else {
-        await createDepartmentFn({ data: input });
-      }
+      saved = value.id
+        ? await updateDepartmentFn({ data: { id: value.id, input } })
+        : await createDepartmentFn({ data: input });
     } else {
       const input = value.input as TeamInput;
-      if (value.id) {
-        await updateTeamFn({ data: { id: value.id, input } });
-      } else {
-        await createTeamFn({ data: input });
-      }
+      saved = value.id
+        ? await updateTeamFn({ data: { id: value.id, input } })
+        : await createTeamFn({ data: input });
     }
     toast.success(value.id ? "Organization unit updated" : "Organization unit created");
     setDialog(null);
-    await router.invalidate();
+    const profileIds = (
+      value.kind === "department"
+        ? [
+            (value.input as DepartmentInput).headProfileId,
+            (value.input as DepartmentInput).deputyProfileId,
+          ]
+        : [
+            (value.input as TeamInput).leadProfileId,
+            (value.input as TeamInput).deputyProfileId,
+            (value.input as TeamInput).defaultOwnerProfileId,
+          ]
+    ).filter((profileId): profileId is string => Boolean(profileId));
+    await refreshOrganization(value.kind, value.id ?? saved.id, profileIds, true);
   }
 
   async function addMembers(profileIds: string[], startsAt: string | null, endsAt: string | null) {
@@ -134,7 +231,7 @@ function AdminTeamsRoute() {
       ),
     );
     toast.success(profileIds.length === 1 ? "Member added" : profileIds.length + " members added");
-    await router.invalidate();
+    await refreshOrganization("team", selectedUnit.unit.id, profileIds, true);
   }
 
   async function updateMember(member: TeamMemberRow, role: "lead" | "deputy" | "member") {
@@ -148,7 +245,7 @@ function AdminTeamsRoute() {
       },
     });
     toast.success("Membership role updated");
-    await router.invalidate();
+    await refreshOrganization("team", member.teamId, [member.profileId], true);
   }
 
   async function endMember(member: TeamMemberRow) {
@@ -160,7 +257,7 @@ function AdminTeamsRoute() {
       },
     });
     toast.success("Membership ended");
-    await router.invalidate();
+    await refreshOrganization("team", member.teamId, [member.profileId], true);
   }
 
   function createUnit(kind: "department" | "team") {

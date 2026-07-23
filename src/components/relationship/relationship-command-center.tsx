@@ -7,9 +7,13 @@ import { dismissRelationshipSignalFn } from "@/server-functions/relationship-sig
 export function RelationshipCommandCenter({
   accounts,
   signals,
+  hiddenSignalCount = 0,
+  onDismissed,
 }: {
   accounts: Account[];
   signals: RelationshipSignal[];
+  hiddenSignalCount?: number;
+  onDismissed?: () => void;
 }) {
   const [rows, setRows] = useState(signals);
   const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
@@ -68,6 +72,7 @@ export function RelationshipCommandCenter({
         delete next[signal.id];
         return next;
       });
+      onDismissed?.();
       toast.success("Signal dismissed");
     } catch {
       toast.error("Could not dismiss signal");
@@ -87,6 +92,12 @@ export function RelationshipCommandCenter({
 
   return (
     <div className="space-y-3">
+      {hiddenSignalCount > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Showing the 10 highest-priority signals per account. {hiddenSignalCount} additional open
+          signal{hiddenSignalCount === 1 ? " is" : "s are"} available on account records.
+        </p>
+      ) : null}
       {rows.map((signal) => (
         <RelationshipSignalCard
           key={signal.id}

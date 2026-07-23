@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { AdminError } from "@/lib/admin/errors";
 import { adminOrganizationSearchSchema } from "@/lib/admin/schemas";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import { OrganizationUnitDetail } from "@/components/admin/organization-unit-detail";
 import {
   OrganizationUnitDialog,
@@ -13,7 +16,6 @@ import type { TeamMemberRow, TeamMemberUser } from "@/components/admin/team-memb
 import type {
   Department,
   DepartmentInput,
-  OrganizationUnitDetail as OrganizationUnitDetailData,
   Team,
   TeamInput,
 } from "@/server/repositories/admin-teams";
@@ -26,18 +28,13 @@ import {
 } from "@/server-functions/admin-teams";
 import { getAdminUsersFn } from "@/server-functions/admin-users";
 
-export const Route = createFileRoute("/admin/teams/$id")({
-  validateSearch: adminOrganizationSearchSchema,
-  loaderDeps: ({ search }) => ({ search }),
-  loader: async ({ params, deps }) => {
-    const detail = await getAdminOrganizationUnitFn({
-      data: { kind: deps.search.kind, id: params.id },
-    });
-    return { detail, users: await loadUsers() };
-  },
-  head: () => ({ meta: [{ title: "Organization unit - Admin - Fimmick ClientOps" }] }),
-  component: AdminTeamDetailRoute,
-});
+const adminOrganizationQueryKey = crmQueryKeys.admin.section("organization", "directory");
+const adminTeamQueryKey = (kind: "department" | "team", id: string) =>
+  crmQueryKeys.admin.section(`${kind}:${id}`, "organization-unit");
+const adminPeopleQueryKey = (profileId?: string) =>
+  profileId
+    ? crmQueryKeys.admin.detail(profileId)
+    : crmQueryKeys.admin.section("people", "team-member-options");
 
 async function loadUsers(): Promise<TeamMemberUser[]> {
   try {
@@ -56,12 +53,46 @@ async function loadUsers(): Promise<TeamMemberUser[]> {
   }
 }
 
+const detailQuery = (kind: "department" | "team", id: string) =>
+  routeQueryOptions({
+    queryKey: adminTeamQueryKey(kind, id),
+    queryFn: () => getAdminOrganizationUnitFn({ data: { kind, id } }),
+  });
+
+const usersQuery = () => routeQueryOptions({ queryKey: adminPeopleQueryKey(), queryFn: loadUsers });
+
+export const Route = createFileRoute("/admin/teams/$id")({
+  validateSearch: adminOrganizationSearchSchema,
+  loaderDeps: ({ search }) => ({ search }),
+  loader: async ({ context, params, deps }) => {
+    const [detail, users] = await Promise.all([
+      context.queryClient.ensureQueryData(detailQuery(deps.search.kind, params.id)),
+      context.queryClient.ensureQueryData(usersQuery()),
+    ]);
+    return { detail, users };
+  },
+  head: () => ({ meta: [{ title: "Organization unit - Admin - Fimmick ClientOps" }] }),
+  component: AdminTeamDetailRoute,
+});
+
 function AdminTeamDetailRoute() {
   const search = Route.useSearch();
-  const { detail, users } = Route.useLoaderData();
+  const loaded = Route.useLoaderData();
   const { profile } = Route.useRouteContext();
   const navigate = useNavigate({ from: Route.fullPath });
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const detailQueryResult = useQuery({
+    ...detailQuery(search.kind, loaded.detail?.unit.id ?? "missing"),
+    initialData: loaded.detail,
+    placeholderData: (previous) => previous,
+  });
+  const usersQueryResult = useQuery({
+    ...usersQuery(),
+    initialData: loaded.users,
+    placeholderData: (previous) => previous,
+  });
+  const detail = detailQueryResult.data;
+  const users = usersQueryResult.data;
   const [dialog, setDialog] = useState<{
     kind: OrganizationUnitKind;
     unit: Department | Team | null;
@@ -72,6 +103,24 @@ function AdminTeamDetailRoute() {
     detail?.kind === "department"
       ? ["super_admin", "admin"].includes(actorRole)
       : ["super_admin", "admin", "manager"].includes(actorRole);
+
+  const refreshOrganization = async (
+    kind: "department" | "team",
+    id: string,
+    profileIds: string[] = [],
+    includeShell = false,
+  ) => {
+    const keys = [
+      adminOrganizationQueryKey,
+      adminTeamQueryKey(kind, id),
+      adminPeopleQueryKey(),
+      ...profileIds.map((profileId) => adminPeopleQueryKey(profileId)),
+      ...(includeShell ? [crmQueryKeys.shell()] : []),
+    ];
+    await Promise.all(
+      keys.map((queryKey) => queryClient.invalidateQueries({ queryKey, exact: true })),
+    );
+  };
 
   async function saveUnit(value: OrganizationUnitSubmit) {
     if (!value.id) return;
@@ -84,7 +133,19 @@ function AdminTeamDetailRoute() {
     }
     toast.success("Organization unit updated");
     setDialog(null);
-    await router.invalidate();
+    const profileIds = (
+      value.kind === "department"
+        ? [
+            (value.input as DepartmentInput).headProfileId,
+            (value.input as DepartmentInput).deputyProfileId,
+          ]
+        : [
+            (value.input as TeamInput).leadProfileId,
+            (value.input as TeamInput).deputyProfileId,
+            (value.input as TeamInput).defaultOwnerProfileId,
+          ]
+    ).filter((profileId): profileId is string => Boolean(profileId));
+    await refreshOrganization(value.kind, value.id, profileIds, true);
   }
 
   async function addMembers(profileIds: string[], startsAt: string | null, endsAt: string | null) {
@@ -103,7 +164,7 @@ function AdminTeamDetailRoute() {
       ),
     );
     toast.success(profileIds.length + " members added");
-    await router.invalidate();
+    await refreshOrganization("team", detail.unit.id, profileIds, true);
   }
 
   async function updateMember(member: TeamMemberRow, role: "lead" | "deputy" | "member") {
@@ -116,7 +177,7 @@ function AdminTeamDetailRoute() {
         ...(member.endsAt ? { endsAt: member.endsAt } : {}),
       },
     });
-    await router.invalidate();
+    await refreshOrganization("team", member.teamId, [member.profileId], true);
   }
 
   async function endMember(member: TeamMemberRow) {
@@ -127,7 +188,7 @@ function AdminTeamDetailRoute() {
         endedAt: new Date().toISOString(),
       },
     });
-    await router.invalidate();
+    await refreshOrganization("team", member.teamId, [member.profileId], true);
   }
 
   if (!detail) {

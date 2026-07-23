@@ -79,6 +79,12 @@ describe("event import server functions", () => {
       resourceType: "campaign",
       resourceId: "campaign-1",
     });
+    expect(requireCapabilityMock).toHaveBeenCalledWith("campaigns.manage", {
+      resourceType: "campaign",
+      resourceId: "campaign-1",
+    });
+    expect(requireCapabilityMock).toHaveBeenCalledWith("accounts.create");
+    expect(requireCapabilityMock).toHaveBeenCalledWith("contacts.create");
     expect(requireNeonAuthSessionMock).toHaveBeenCalled();
     expect(listEventImportAccountCandidatesMock).toHaveBeenCalled();
     expect(listEventImportAccountContactsMock).toHaveBeenCalled();
@@ -121,6 +127,9 @@ describe("event import server functions", () => {
       contactId: "contact-1",
       matchedBy: "email",
     });
+    expect(requireCapabilityMock).toHaveBeenCalledWith("engagements.view");
+    expect(requireCapabilityMock).toHaveBeenCalledWith("accounts.view");
+    expect(requireCapabilityMock).toHaveBeenCalledWith("contacts.view");
     expect(listEventImportAccountCandidatesMock).toHaveBeenCalledTimes(1);
   });
 });

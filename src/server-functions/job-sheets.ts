@@ -6,9 +6,11 @@ import {
   acceptJobSheet as acceptJobSheetInRepository,
   getJobSheet as getJobSheetFromRepository,
   listJobSheets,
+  listJobSheetsPage,
   replaceJobSheetPortions,
   updateJobSheetXeroReference,
   type JobSheetFilters,
+  type JobSheetPageFilters,
   type UpdateJobSheetXeroReferenceInput,
 } from "@/server/repositories/job-sheets";
 
@@ -18,6 +20,14 @@ export const getJobSheets = createServerFn({ method: "GET" })
     await requireCapability("job_sheets.view");
     await requireNeonAuthSession();
     return listJobSheets(data);
+  });
+
+export const getJobSheetsPage = createServerFn({ method: "GET" })
+  .validator((data: unknown) => (data ?? {}) as JobSheetPageFilters)
+  .handler(async ({ data }) => {
+    await requireCapability("job_sheets.view");
+    await requireNeonAuthSession();
+    return listJobSheetsPage(data);
   });
 
 export const getJobSheet = createServerFn({ method: "GET" })

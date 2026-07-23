@@ -1,7 +1,9 @@
 import { useMemo, useRef, useState } from "react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Bot, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
 import { StatusBadge } from "@/components/status-badge";
@@ -28,13 +30,37 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/format";
 import { getBusinessDateKey } from "@/lib/business-date";
 import { getTaskBoardMetrics } from "@/lib/sales-workspace";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import { cn } from "@/lib/utils";
 import { getTasks, createTask, updateTask } from "@/server-functions/tasks";
 import { APP_USERS, userById } from "@/lib/users";
 import type { Task, TaskStatus } from "@/lib/types";
 
+const taskSearchSchema = z.object({
+  priority: z.enum(["all", "high", "medium", "low"]).default("all").catch("all"),
+  assignee: z.string().default("all").catch("all"),
+});
+
+type TaskSearch = z.infer<typeof taskSearchSchema>;
+
+const getTaskReadInput = (filters: TaskSearch) => ({
+  priority: filters.priority === "all" ? undefined : filters.priority,
+  assigned_to: filters.assignee === "all" ? undefined : filters.assignee,
+});
 export const Route = createFileRoute("/tasks")({
-  loader: () => getTasks({}),
+  validateSearch: taskSearchSchema,
+  loaderDeps: ({ search }) => ({
+    priority: search.priority,
+    assignee: search.assignee,
+  }),
+  loader: ({ context, deps }) =>
+    context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: crmQueryKeys.tasks.list(deps),
+        queryFn: () => getTasks({ data: getTaskReadInput(deps) }),
+      }),
+    ),
   head: () => ({
     meta: [
       { title: "Tasks — Fimmick ClientOps" },
@@ -65,26 +91,31 @@ const isTaskOverdue = (task: Task, today: string) => {
 
 function TasksBoard() {
   const loaderTasks = Route.useLoaderData();
-  const router = useRouter();
+  const filters = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const queryClient = useQueryClient();
   const today = getBusinessDateKey();
-  const [rows, setRows] = useState<Task[]>(loaderTasks);
-  const [priority, setPriority] = useState("all");
-  const [assignee, setAssignee] = useState("all");
+  const tasksQueryKey = crmQueryKeys.tasks.list(filters);
+  const tasksQuery = useQuery({
+    ...routeQueryOptions({
+      queryKey: tasksQueryKey,
+      queryFn: () => getTasks({ data: getTaskReadInput(filters) }),
+    }),
+    initialData: loaderTasks,
+  });
+  const rows = tasksQuery.data;
   const [dragging, setDragging] = useState<string | null>(null);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
   const pendingTaskIdsRef = useRef(new Set<string>());
 
-  const filtered = useMemo(
-    () =>
-      rows.filter((t) => {
-        if (priority !== "all" && t.priority !== priority) return false;
-        if (assignee !== "all" && t.assigned_to !== assignee) return false;
-        return true;
-      }),
-    [rows, priority, assignee],
-  );
-  const metrics = getTaskBoardMetrics(rows, today);
+  const setFilters = (patch: Partial<TaskSearch>) =>
+    navigate({
+      search: (current) => ({ ...current, ...patch }),
+      replace: true,
+    });
 
+  const filtered = useMemo(() => rows, [rows]);
+  const metrics = getTaskBoardMetrics(rows, today);
   const markPending = (id: string) => {
     pendingTaskIdsRef.current.add(id);
     setPendingTaskIds(new Set(pendingTaskIdsRef.current));
@@ -101,12 +132,17 @@ function TasksBoard() {
     if (!previousStatus || previousStatus === status) return;
 
     markPending(id);
-    setRows((current) => replaceOnlyTaskStatus(current, id, status));
+    await queryClient.cancelQueries({ queryKey: crmQueryKeys.tasks.lists() });
+    queryClient.setQueriesData<Task[]>({ queryKey: crmQueryKeys.tasks.lists() }, (current) =>
+      current ? replaceOnlyTaskStatus(current, id, status) : current,
+    );
 
     try {
       await updateTask({ data: { id, updates: { status } } });
     } catch {
-      setRows((current) => replaceOnlyTaskStatus(current, id, previousStatus));
+      queryClient.setQueriesData<Task[]>({ queryKey: crmQueryKeys.tasks.lists() }, (current) =>
+        current ? replaceOnlyTaskStatus(current, id, previousStatus) : current,
+      );
       toast.error("Task move failed. Try again.");
       clearPending(id);
       return;
@@ -114,12 +150,17 @@ function TasksBoard() {
 
     clearPending(id);
     try {
-      await router.invalidate();
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: crmQueryKeys.tasks.detail(id),
+          exact: true,
+        }),
+        queryClient.invalidateQueries({ queryKey: crmQueryKeys.tasks.lists() }),
+      ]);
     } catch {
       toast.error("Task saved, but the board could not refresh.");
     }
   };
-
   return (
     <>
       <CommandHeader
@@ -130,8 +171,11 @@ function TasksBoard() {
           <NewTaskDialog
             onCreate={async (t) => {
               const created = await createTask({ data: t });
-              setRows((prev) => [created, ...prev]);
-              router.invalidate();
+              queryClient.setQueryData<Task[]>(tasksQueryKey, (current) => [
+                created,
+                ...(current ?? []),
+              ]);
+              await queryClient.invalidateQueries({ queryKey: crmQueryKeys.tasks.lists() });
               toast.success("Task created");
             }}
           />
@@ -150,7 +194,12 @@ function TasksBoard() {
 
         <Card className="p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={priority} onValueChange={setPriority}>
+            <Select
+              value={filters.priority}
+              onValueChange={(priority) =>
+                setFilters({ priority: priority as TaskSearch["priority"] })
+              }
+            >
               <SelectTrigger className="h-9 w-[150px]" aria-label="Filter tasks by priority">
                 <SelectValue />
               </SelectTrigger>
@@ -161,7 +210,7 @@ function TasksBoard() {
                 <SelectItem value="low">Low</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={assignee} onValueChange={setAssignee}>
+            <Select value={filters.assignee} onValueChange={(assignee) => setFilters({ assignee })}>
               <SelectTrigger className="h-9 w-[160px]" aria-label="Filter tasks by assignee">
                 <SelectValue />
               </SelectTrigger>

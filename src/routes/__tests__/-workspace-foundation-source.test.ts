@@ -19,7 +19,7 @@ describe("unified CRM workspace source wiring", () => {
       "getCompanyWorkspaceRead",
     );
     expect(readFileSync(new URL("../__root.tsx", import.meta.url), "utf8")).toContain(
-      "getWorkspacePreferences",
+      "getAppShellRead",
     );
   });
 });

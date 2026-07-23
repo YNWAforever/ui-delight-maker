@@ -19,13 +19,12 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 
-import { getSession, signOut } from "@/server-functions/auth";
-import { getWorkspacePreferences } from "@/server-functions/workspace-preferences";
-import { getAdminNavigationFn } from "@/server-functions/admin-users";
+import { signOut } from "@/server-functions/auth";
+import { getAppShellRead } from "@/server-functions/app-shell";
 import { isPublicAuthPath } from "@/lib/auth/auth-routes";
-import type { Profile, WorkspaceFavorite } from "@/lib/types";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import type { RouterContext } from "@/router";
-import type { AdminNavigationItem } from "@/lib/admin/types";
 
 import appCss from "../styles.css?url";
 
@@ -82,31 +81,14 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-  beforeLoad: async ({ location }) => {
+  beforeLoad: async ({ context, location }) => {
     if (isPublicAuthPath(location.pathname)) return {};
-    const session = await getSession();
-    if (!session) throw redirect({ to: "/login" });
-    let favorites: WorkspaceFavorite[] = [];
-    try {
-      const preferences = await getWorkspacePreferences({ data: { objectType: "account" } });
-      favorites = preferences.favorites;
-    } catch (error) {
-      console.error("Workspace preferences unavailable", error);
-    }
-
-    let adminNavigation: AdminNavigationItem[] = [];
-    try {
-      adminNavigation = await getAdminNavigationFn();
-    } catch (error) {
-      console.error("Admin navigation unavailable", error);
-    }
-
-    return {
-      user: session.user,
-      profile: session.profile as Profile | null,
-      favorites,
-      adminNavigation,
-    };
+    return context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: crmQueryKeys.shell(),
+        queryFn: () => getAppShellRead(),
+      }),
+    );
   },
   head: () => ({
     meta: [
@@ -165,7 +147,11 @@ function RootComponent() {
   const router = useRouter();
 
   if (isPublicAuthPath(pathname)) {
-    return <Outlet />;
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+      </QueryClientProvider>
+    );
   }
 
   return (
@@ -179,6 +165,7 @@ function RootComponent() {
             onSignOut={async () => {
               try {
                 await signOut();
+                queryClient.clear();
                 await router.invalidate();
                 await router.navigate({ to: "/login" });
               } catch (error) {

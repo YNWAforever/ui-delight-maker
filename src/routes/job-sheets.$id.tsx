@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type SetStateAction } from "react";
+import { useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft, CheckCircle2, Lock, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,8 +22,10 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
+import { crmQueryKeys } from "@/lib/query-keys";
 import { canAcceptJobSheet, type NewJobSheetPortion } from "@/lib/quote-to-cash";
 import type {
+  JobSheet,
   JobSheetBillingType,
   JobSheetPortion,
   JobSheetPortionStatus,
@@ -30,10 +33,10 @@ import type {
 } from "@/lib/types";
 import {
   acceptJobSheetForAccounting,
-  getJobSheet,
   updateJobSheetPortions,
   updatePortionXeroReference,
 } from "@/server-functions/job-sheets";
+import { getJobSheetRead } from "@/server-functions/operations";
 
 const BILLING_TYPE_OPTIONS: Array<{ value: JobSheetBillingType; label: string }> = [
   { value: "deposit", label: "Deposit" },
@@ -162,13 +165,16 @@ export function buildPreviewPortions(input: {
   });
 }
 
+export type JobSheetPortionSavePayload = NewJobSheetPortion & { id: string };
+
 export function buildPortionSavePayload(
   drafts: PortionDraft[],
   originals: JobSheetPortion[],
-): NewJobSheetPortion[] {
+): JobSheetPortionSavePayload[] {
   const originalsById = new Map(originals.map((portion) => [portion.id, portion]));
 
   return drafts.map((draft, index) => ({
+    id: draft.id,
     name: draft.name.trim(),
     source_quote_line_item_ids: draft.source_quote_line_item_ids,
     description: draft.description.trim(),
@@ -219,6 +225,48 @@ export function hasUnsavedXeroDraftChanges(
   });
 }
 
+export function rebaseBillingDrafts(
+  drafts: PortionDraft[] | undefined,
+  previousBaseline: JobSheetPortion[],
+  nextBaseline: JobSheetPortion[],
+): PortionDraft[] {
+  if (drafts && hasUnsavedBillingDraftChanges(drafts, previousBaseline)) return drafts;
+  return toPortionDrafts(nextBaseline);
+}
+
+export function rebaseXeroDrafts(
+  drafts: Record<string, XeroDraft> | undefined,
+  previousBaseline: JobSheetPortion[],
+  nextBaseline: JobSheetPortion[],
+): Record<string, XeroDraft> {
+  if (drafts && hasUnsavedXeroDraftChanges(drafts, previousBaseline)) return drafts;
+  return toXeroDrafts(nextBaseline);
+}
+
+type JobSheetMutation = "billing" | "xero" | "accept";
+
+export function getJobSheetMutationQueryKeys(
+  jobSheet: Pick<JobSheet, "id" | "client_id" | "account_id">,
+  mutation: JobSheetMutation,
+): QueryKey[] {
+  const queryKeys: QueryKey[] = [crmQueryKeys.jobSheets.detail(jobSheet.id)];
+
+  if (mutation === "accept") queryKeys.push(crmQueryKeys.jobSheets.lists());
+  if (jobSheet.client_id) {
+    queryKeys.push(crmQueryKeys.clients.section(jobSheet.client_id, "job_sheets"));
+    if (mutation === "accept") {
+      queryKeys.push(crmQueryKeys.clients.section(jobSheet.client_id, "commercial"));
+    }
+  }
+  if (mutation === "accept" && jobSheet.account_id) {
+    queryKeys.push(
+      crmQueryKeys.companyWorkspace.section(jobSheet.account_id, "delivery_finance"),
+      crmQueryKeys.companyWorkspace.section(jobSheet.account_id, "commercial"),
+    );
+  }
+
+  return queryKeys;
+}
 export function canShowAcceptAndLockAction(
   status: JobSheetStatus,
   lockedAt: string | null | undefined,
@@ -331,7 +379,7 @@ export function getAcceptanceGateAlertConfig(input: {
 }
 
 export const Route = createFileRoute("/job-sheets/$id")({
-  loader: ({ params }) => getJobSheet({ data: { id: params.id } }),
+  loader: ({ params }) => getJobSheetRead({ data: { id: params.id } }),
   head: ({ loaderData }) => ({
     meta: [
       { title: `${loaderData?.jobSheet.number ?? "Job Sheet"} - Fimmick ClientOps` },
@@ -346,19 +394,69 @@ export const Route = createFileRoute("/job-sheets/$id")({
 });
 
 function JobSheetDetailPage() {
-  const router = useRouter();
-  const { jobSheet, portions } = Route.useLoaderData();
-  const [portionDrafts, setPortionDrafts] = useState(() => toPortionDrafts(portions));
-  const [xeroDrafts, setXeroDrafts] = useState(() => toXeroDrafts(portions));
+  const initialRead = Route.useLoaderData();
+  const queryClient = useQueryClient();
+  const jobSheetQuery = useQuery({
+    queryKey: crmQueryKeys.jobSheets.detail(initialRead.jobSheet.id),
+    queryFn: () => getJobSheetRead({ data: { id: initialRead.jobSheet.id } }),
+    initialData: initialRead,
+    staleTime: 30_000,
+  });
+  const { jobSheet, portions } = jobSheetQuery.data;
+  const [billingDraftsByJobSheetId, setBillingDraftsByJobSheetId] = useState<
+    Record<string, PortionDraft[]>
+  >(() => ({ [jobSheet.id]: toPortionDrafts(portions) }));
+  const [xeroDraftsByJobSheetId, setXeroDraftsByJobSheetId] = useState<
+    Record<string, Record<string, XeroDraft>>
+  >(() => ({ [jobSheet.id]: toXeroDrafts(portions) }));
+  const serverPortionBaselinesByJobSheetId = useRef<Record<string, JobSheetPortion[]>>({
+    [jobSheet.id]: portions,
+  });
   const [savingPortions, setSavingPortions] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [savingXeroFor, setSavingXeroFor] = useState<string | null>(null);
+  const portionDrafts = billingDraftsByJobSheetId[jobSheet.id] ?? toPortionDrafts(portions);
+  const xeroDrafts = xeroDraftsByJobSheetId[jobSheet.id] ?? toXeroDrafts(portions);
 
   useEffect(() => {
-    setPortionDrafts(resetBillingDrafts(portions));
-    setXeroDrafts(resetXeroDrafts(portions));
-  }, [portions]);
+    const previousBaseline = serverPortionBaselinesByJobSheetId.current[jobSheet.id] ?? portions;
+    setBillingDraftsByJobSheetId((current) => ({
+      ...current,
+      [jobSheet.id]: rebaseBillingDrafts(current[jobSheet.id], previousBaseline, portions),
+    }));
+    setXeroDraftsByJobSheetId((current) => ({
+      ...current,
+      [jobSheet.id]: rebaseXeroDrafts(current[jobSheet.id], previousBaseline, portions),
+    }));
+    serverPortionBaselinesByJobSheetId.current = {
+      ...serverPortionBaselinesByJobSheetId.current,
+      [jobSheet.id]: portions,
+    };
+  }, [jobSheet.id, portions]);
 
+  const setPortionDrafts = (nextState: SetStateAction<PortionDraft[]>) => {
+    setBillingDraftsByJobSheetId((previousDrafts) => {
+      const currentDrafts = previousDrafts[jobSheet.id] ?? toPortionDrafts(portions);
+      const nextDrafts = typeof nextState === "function" ? nextState(currentDrafts) : nextState;
+      return { ...previousDrafts, [jobSheet.id]: nextDrafts };
+    });
+  };
+
+  const setXeroDrafts = (nextState: SetStateAction<Record<string, XeroDraft>>) => {
+    setXeroDraftsByJobSheetId((previousDrafts) => {
+      const currentDrafts = previousDrafts[jobSheet.id] ?? toXeroDrafts(portions);
+      const nextDrafts = typeof nextState === "function" ? nextState(currentDrafts) : nextState;
+      return { ...previousDrafts, [jobSheet.id]: nextDrafts };
+    });
+  };
+
+  const invalidateJobSheetReads = async (mutation: JobSheetMutation) => {
+    await Promise.all(
+      getJobSheetMutationQueryKeys(jobSheet, mutation).map((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      ),
+    );
+  };
   const commercialLocked = isJobSheetCommercialLocked(jobSheet.status, jobSheet.locked_at);
   const hasUnsavedBillingChanges = useMemo(
     () => hasUnsavedBillingDraftChanges(portionDrafts, portions),
@@ -425,9 +523,13 @@ function JobSheetDetailPage() {
 
     setSavingPortions(true);
     try {
-      await updateJobSheetPortions({ data: { id: jobSheet.id, portions: payload } });
+      const savedPortions = await updateJobSheetPortions({
+        data: { id: jobSheet.id, portions: payload },
+      });
+      setPortionDrafts(toPortionDrafts(savedPortions));
+      setXeroDrafts(toXeroDrafts(savedPortions));
       toast.success("Billing plan saved");
-      await router.invalidate();
+      await invalidateJobSheetReads("billing");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save billing plan");
     } finally {
@@ -455,7 +557,7 @@ function JobSheetDetailPage() {
     try {
       await acceptJobSheetForAccounting({ data: { id: jobSheet.id } });
       toast.success("Job sheet accepted and locked");
-      await router.invalidate();
+      await invalidateJobSheetReads("accept");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to accept job sheet");
     } finally {
@@ -474,11 +576,15 @@ function JobSheetDetailPage() {
 
     setSavingXeroFor(portionId);
     try {
-      await updatePortionXeroReference({
+      const savedPortion = await updatePortionXeroReference({
         data: { portion_id: portionId, ...buildXeroSavePayload(draft) },
       });
+      setXeroDrafts((current) => ({
+        ...current,
+        [portionId]: toXeroDrafts([savedPortion])[portionId],
+      }));
       toast.success("Manual Xero reference saved");
-      await router.invalidate();
+      await invalidateJobSheetReads("xero");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save Xero reference");
     } finally {

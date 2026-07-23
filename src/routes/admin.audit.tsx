@@ -1,45 +1,44 @@
 import { useState, type FormEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AdminAuditTable } from "@/components/admin/admin-audit-table";
 import { AdminError } from "@/lib/admin/errors";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
 import { adminAuditSearchSchema, type AdminAuditSearch } from "@/lib/admin/schemas";
 import { exportAdminAuditLogsFn, getAdminAuditLogsFn } from "@/server-functions/admin-access";
+
+const auditQueryKey = (search: AdminAuditSearch) =>
+  crmQueryKeys.admin.list({ scope: "audit", ...auditFilters(search) });
+
+const auditQueryOptions = (search: AdminAuditSearch) =>
+  routeQueryOptions({
+    queryKey: auditQueryKey(search),
+    queryFn: async () => {
+      try {
+        return {
+          data: await getAdminAuditLogsFn({ data: auditFilters(search) }),
+          forbidden: false,
+        };
+      } catch (error) {
+        if (error instanceof AdminError && ["FORBIDDEN", "OUTSIDE_SCOPE"].includes(error.code)) {
+          return { data: { items: [], total: 0, page: 1, limit: 50 }, forbidden: true };
+        }
+        throw error;
+      }
+    },
+  });
 
 export const Route = createFileRoute("/admin/audit")({
   validateSearch: adminAuditSearchSchema,
   loaderDeps: ({ search }) => ({ search }),
-  loader: async ({ deps: { search } }) => {
-    try {
-      const data = await getAdminAuditLogsFn({
-        data: {
-          actorProfileId: search.actor,
-          targetType: search.targetType,
-          targetId: search.target,
-          action: search.action,
-          severity: search.severity,
-          from: search.from,
-          to: search.to,
-          page: search.page,
-          limit: 50,
-        },
-      });
-      return { data, forbidden: false };
-    } catch (error) {
-      if (error instanceof AdminError && ["FORBIDDEN", "OUTSIDE_SCOPE"].includes(error.code)) {
-        return {
-          data: { items: [], total: 0, page: 1, limit: 50 },
-          forbidden: true,
-        };
-      }
-      throw error;
-    }
-  },
-  head: () => ({ meta: [{ title: "Admin audit • Fimmick ClientOps" }] }),
+  loader: ({ context, deps: { search } }) =>
+    context.queryClient.ensureQueryData(auditQueryOptions(search)),
+  head: () => ({ meta: [{ title: "Admin audit - Fimmick ClientOps" }] }),
   component: AdminAuditRoute,
 });
-
-function filterData(search: AdminAuditSearch) {
+function auditFilters(search: AdminAuditSearch) {
   return {
     actorProfileId: search.actor,
     targetType: search.targetType,
@@ -55,7 +54,9 @@ function filterData(search: AdminAuditSearch) {
 
 function AdminAuditRoute() {
   const search = Route.useSearch();
-  const { data, forbidden } = Route.useLoaderData();
+  const loaded = Route.useLoaderData();
+  const { data: auditRead } = useQuery({ ...auditQueryOptions(search), initialData: loaded });
+  const { data, forbidden } = auditRead;
   const navigate = useNavigate({ from: Route.fullPath });
   const [actor, setActor] = useState(search.actor ?? "");
   const [targetType, setTargetType] = useState(search.targetType ?? "");
@@ -81,7 +82,7 @@ function AdminAuditRoute() {
 
   async function exportAudit() {
     try {
-      const result = await exportAdminAuditLogsFn({ data: filterData(search) });
+      const result = await exportAdminAuditLogsFn({ data: auditFilters(search) });
       const blob = new Blob([JSON.stringify(result.items, null, 2)], {
         type: "application/json",
       });

@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { z } from "zod";
 
+import { RenewalsPreviewPanel } from "@/components/renewals/renewals-preview-panel";
+import { RenewalCard } from "@/components/renewals/renewal-card";
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,12 +15,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getEngagementsForRenewals } from "@/server-functions/engagements";
-import { getProducts } from "@/server-functions/products";
-import { annualizeValue, getRenewalWindow } from "@/lib/engagement-utils";
+import { getRenewalWindow } from "@/lib/engagement-utils";
 import { formatCompactHKD } from "@/lib/format";
-import { RenewalsPreviewPanel } from "@/components/renewals/renewals-preview-panel";
-import { RenewalCard } from "@/components/renewals/renewal-card";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { routeQueryOptions } from "@/lib/route-query";
+import { getRenewalsRead } from "@/server-functions/operations";
 import type { Engagement, RenewalRisk, RenewalWindowBucket } from "@/lib/types";
 
 type RenewalRow = Engagement & {
@@ -25,25 +28,57 @@ type RenewalRow = Engagement & {
   product_name: string;
 };
 
+type RenewalsView = {
+  rows: RenewalRow[];
+  total: number;
+  page: number;
+  limit: number;
+  products: Array<{ id: string; name: string }>;
+  metrics: RenewalMetrics;
+};
+
+type RenewalMetrics = {
+  annualizedValue: number;
+  arrAtRisk: number;
+  dueSoon: number;
+  stale: number;
+};
+
 const COLUMNS: { key: RenewalWindowBucket; label: string }[] = [
   { key: "overdue", label: "Overdue" },
-  { key: "30", label: "≤30 days" },
-  { key: "60", label: "≤60 days" },
-  { key: "90", label: "≤90 days" },
+  { key: "30", label: "<=30 days" },
+  { key: "60", label: "<=60 days" },
+  { key: "90", label: "<=90 days" },
   { key: "later", label: "Later" },
 ];
 
+const renewalSearchSchema = z.object({
+  risk: z.enum(["all", "high", "medium", "low"]).default("all").catch("all"),
+  productId: z.string().default("all").catch("all"),
+  renewalWindow: z.enum(["all", "overdue", "30", "60", "90", "later"]).default("all").catch("all"),
+  page: z.coerce.number().int().min(1).default(1).catch(1),
+  limit: z.coerce.number().int().min(1).max(50).default(50).catch(50),
+});
+
 export const Route = createFileRoute("/renewals")({
-  loader: async () => {
-    const [engagements, products] = await Promise.all([
-      getEngagementsForRenewals({}),
-      getProducts({ data: { activeOnly: true } }),
-    ]);
-    return { engagements, products };
-  },
+  validateSearch: renewalSearchSchema,
+  loaderDeps: ({ search }) => ({
+    risk: search.risk,
+    productId: search.productId,
+    renewalWindow: search.renewalWindow,
+    page: search.page,
+    limit: 50,
+  }),
+  loader: ({ context, deps }) =>
+    context.queryClient.ensureQueryData(
+      routeQueryOptions({
+        queryKey: crmQueryKeys.renewals.list(deps),
+        queryFn: () => getRenewalsRead({ data: deps }),
+      }),
+    ),
   head: () => ({
     meta: [
-      { title: "Renewals — Fimmick ClientOps" },
+      { title: "Renewals - Fimmick ClientOps" },
       {
         name: "description",
         content: "Engagements by renewal window with risk and health signals.",
@@ -54,23 +89,18 @@ export const Route = createFileRoute("/renewals")({
 });
 
 function RenewalsPage() {
-  const { engagements, products } = Route.useLoaderData();
-  const [risk, setRisk] = useState<"all" | RenewalRisk>("all");
-  const [productId, setProductId] = useState<string>("all");
+  const renewalRead = Route.useLoaderData() as unknown as RenewalsView;
+  const filters = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const today = new Date().toISOString().slice(0, 10);
+  const rows = renewalRead.rows;
+  const metrics = renewalRead.metrics;
 
-  const rows = engagements as RenewalRow[];
-
-  const filtered = useMemo(
-    () =>
-      rows.filter(
-        (e) =>
-          (risk === "all" || e.renewal_risk === risk) &&
-          (productId === "all" || e.product_id === productId),
-      ),
-    [rows, risk, productId],
-  );
+  const setFilters = (patch: Partial<typeof filters>) =>
+    navigate({ search: (current) => ({ ...current, ...patch, page: 1 }), replace: true });
+  const setPage = (page: number) =>
+    navigate({ search: (current) => ({ ...current, page }), replace: true });
 
   const byColumn = useMemo(() => {
     const grouped: Record<RenewalWindowBucket, RenewalRow[]> = {
@@ -80,36 +110,21 @@ function RenewalsPage() {
       "90": [],
       later: [],
     };
-    for (const e of filtered) {
-      grouped[getRenewalWindow(e.renewal_date, today)].push(e);
+    for (const engagement of rows) {
+      grouped[getRenewalWindow(engagement.renewal_date, today)].push(engagement);
     }
     return grouped;
-  }, [filtered, today]);
+  }, [rows, today]);
 
-  const arrAtRisk = filtered
-    .filter((e) => e.renewal_risk === "high")
-    .reduce((sum, e) => sum + annualizeValue(e.value, e.billing_period), 0);
-  const annualizedValue = filtered.reduce(
-    (sum, e) => sum + annualizeValue(e.value, e.billing_period),
-    0,
-  );
-  const dueSoon = filtered.filter((e) =>
-    ["overdue", "30", "60", "90"].includes(getRenewalWindow(e.renewal_date, today)),
-  ).length;
-  const stale = filtered.filter((e) => {
-    if (!e.last_touch_at) return true;
-    const days = Math.floor((Date.parse(today) - Date.parse(e.last_touch_at)) / 86400000);
-    return days >= 30;
-  }).length;
-
-  const selected = filtered.find((e) => e.id === selectedId) ?? null;
+  const selected = rows.find((engagement) => engagement.id === selectedId) ?? null;
+  const lastPage = Math.max(1, Math.ceil(renewalRead.total / renewalRead.limit));
 
   return (
     <>
       <CommandHeader
         title="Renewal Board"
         status="Retain"
-        description={`${filtered.length} of ${rows.length} active engagements by renewal window, product, and risk.`}
+        description={`${rows.length} shown of ${renewalRead.total} matching active engagements.`}
       />
 
       <div className="space-y-4 px-6 py-6">
@@ -117,22 +132,25 @@ function RenewalsPage() {
           metrics={[
             {
               label: "Annualized value",
-              value: formatCompactHKD(annualizedValue),
-              hint: "filtered active work",
+              value: formatCompactHKD(metrics.annualizedValue),
+              hint: "matching active work",
             },
             {
               label: "ARR at risk",
-              value: formatCompactHKD(arrAtRisk),
+              value: formatCompactHKD(metrics.arrAtRisk),
               hint: "high-risk engagements",
             },
-            { label: "Due within 90 days", value: dueSoon, hint: "overdue + 30/60/90" },
-            { label: "Stale engagements", value: stale, hint: "30+ days without touch" },
+            { label: "Due within 90 days", value: metrics.dueSoon, hint: "including overdue" },
+            { label: "Stale engagements", value: metrics.stale, hint: "30+ days without touch" },
           ]}
         />
 
         <Card className="p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={risk} onValueChange={(v) => setRisk(v as typeof risk)}>
+            <Select
+              value={filters.risk}
+              onValueChange={(risk) => setFilters({ risk: risk as "all" | RenewalRisk })}
+            >
               <SelectTrigger className="h-9 w-[160px]" aria-label="Filter renewals by risk">
                 <SelectValue placeholder="Risk" />
               </SelectTrigger>
@@ -143,26 +161,72 @@ function RenewalsPage() {
                 <SelectItem value="low">Low</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={productId} onValueChange={setProductId}>
+            <Select
+              value={filters.productId}
+              onValueChange={(productId) => setFilters({ productId })}
+            >
               <SelectTrigger className="h-9 w-[200px]" aria-label="Filter renewals by product">
                 <SelectValue placeholder="Product" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All products</SelectItem>
-                {products.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
+                {renewalRead.products.map((product) => (
+                  <SelectItem key={product.id} value={product.id}>
+                    {product.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <Select
+              value={filters.renewalWindow}
+              onValueChange={(renewalWindow) =>
+                setFilters({ renewalWindow: renewalWindow as typeof filters.renewalWindow })
+              }
+            >
+              <SelectTrigger className="h-9 w-[190px]" aria-label="Filter by renewal window">
+                <SelectValue placeholder="Renewal window" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All renewal windows</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+                <SelectItem value="30">Next 30 days</SelectItem>
+                <SelectItem value="60">Next 31-60 days</SelectItem>
+                <SelectItem value="90">Next 61-90 days</SelectItem>
+                <SelectItem value="later">Later than 90 days</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="ml-auto flex items-center gap-1">
+              <span className="mr-1 text-xs text-muted-foreground">
+                Page {renewalRead.page} of {lastPage}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Previous renewal page"
+                disabled={renewalRead.page <= 1}
+                onClick={() => setPage(renewalRead.page - 1)}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Next renewal page"
+                disabled={renewalRead.page >= lastPage}
+                onClick={() => setPage(renewalRead.page + 1)}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </Card>
 
-        {rows.length === 0 ? (
+        {renewalRead.total === 0 ? (
           <WorkSurfaceEmpty
-            title="No engagements yet"
-            description="Bring in your existing client book or convert a won lead to get started."
+            title="No matching engagements"
+            description="Adjust the renewal filters or bring in an existing client engagement."
             action={
               <div className="flex flex-wrap justify-center gap-2">
                 <Button size="sm" asChild>
@@ -176,24 +240,26 @@ function RenewalsPage() {
           />
         ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-            {COLUMNS.map((col) => (
-              <div key={col.key} className="space-y-2">
+            {COLUMNS.map((column) => (
+              <div key={column.key} className="space-y-2">
                 <div className="flex items-center justify-between px-1">
-                  <h3 className="text-sm font-semibold">{col.label}</h3>
-                  <span className="text-xs text-muted-foreground">{byColumn[col.key].length}</span>
+                  <h3 className="text-sm font-semibold">{column.label}</h3>
+                  <span className="text-xs text-muted-foreground">
+                    {byColumn[column.key].length}
+                  </span>
                 </div>
                 <div className="space-y-2">
-                  {byColumn[col.key].length === 0 ? (
+                  {byColumn[column.key].length === 0 ? (
                     <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
                       No renewals in this window.
                     </p>
                   ) : (
-                    byColumn[col.key].map((e) => (
+                    byColumn[column.key].map((engagement) => (
                       <RenewalCard
-                        key={e.id}
-                        engagement={e}
-                        selected={e.id === selectedId}
-                        onSelect={() => setSelectedId(e.id)}
+                        key={engagement.id}
+                        engagement={engagement}
+                        selected={engagement.id === selectedId}
+                        onSelect={() => setSelectedId(engagement.id)}
                       />
                     ))
                   )}

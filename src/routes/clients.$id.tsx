@@ -1,6 +1,7 @@
-import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Mail, Phone, Star, ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
@@ -20,20 +21,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useClientWorkspaceSection } from "@/hooks/use-client-workspace-section";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
-import { getClient } from "@/server-functions/clients";
-import { getQuotes } from "@/server-functions/quotes";
-import { getEngagementsByClient } from "@/server-functions/engagements";
-import {
-  getClientContacts,
-  createClientContact,
-  deleteClientContact,
-} from "@/server-functions/client-contacts";
+import { crmQueryKeys } from "@/lib/query-keys";
+import { createClientContact, deleteClientContact } from "@/server-functions/client-contacts";
 import { getTouchpointsByClient } from "@/server-functions/touchpoints";
-import { getProducts } from "@/server-functions/products";
-import { getActivityLogsForClient } from "@/server-functions/activity-logs";
-import { getJobSheets } from "@/server-functions/job-sheets";
 import { getTasks } from "@/server-functions/tasks";
+import { getProducts } from "@/server-functions/products";
+import { getClientWorkspaceRead } from "@/server-functions/client-workspace";
 import type { SerializableActivityLog } from "@/server-functions/serializers";
 import { USER_RECORD } from "@/lib/users";
 import type { ClientContact, Task, TouchpointRecord } from "@/lib/types";
@@ -42,40 +37,10 @@ const userById = (id: string) => (USER_RECORD[id] ? { name: USER_RECORD[id] } : 
 
 export const Route = createFileRoute("/clients/$id")({
   validateSearch: clientDetailSearchSchema,
-  loader: async ({ params }) => {
-    const [client, allQuotes, engagements, contacts, touchpoints, products, jobSheets, tasks] =
-      await Promise.all([
-        getClient({ data: { id: params.id } }),
-        getQuotes({}),
-        getEngagementsByClient({ data: { clientId: params.id } }),
-        getClientContacts({ data: { clientId: params.id } }),
-        getTouchpointsByClient({ data: { clientId: params.id } }),
-        getProducts({ data: { activeOnly: true } }),
-        getJobSheets({ data: { client_id: params.id } }),
-        getTasks({ data: { client_id: params.id } }),
-      ]);
-
-    const [clientLogs, ...engagementLogLists] = await Promise.all([
-      getActivityLogsForClient({ data: { clientId: params.id } }),
-      ...engagements.map((e) => getActivityLogsForClient({ data: { clientId: e.id } })),
-    ]);
-    const activityLogs = [...clientLogs, ...engagementLogLists.flat()];
-
-    return {
-      client,
-      quotes: allQuotes.filter((q) => q.client_id === params.id),
-      engagements,
-      contacts,
-      touchpoints,
-      products,
-      jobSheets,
-      tasks,
-      activityLogs,
-    };
-  },
+  loader: ({ params }) => getClientWorkspaceRead({ data: { clientId: params.id } }),
   head: ({ loaderData }) => ({
     meta: [
-      { title: `${loaderData?.client?.company_name ?? "Client"} — ClientOps` },
+      { title: `${loaderData?.identity.companyName ?? "Client"} — ClientOps` },
       { name: "description", content: `Client profile, tasks, and history.` },
     ],
   }),
@@ -91,43 +56,92 @@ export const Route = createFileRoute("/clients/$id")({
 });
 
 function ClientDetail() {
-  const {
-    client,
-    quotes: clientQuotes,
-    engagements,
-    contacts,
-    products,
-    touchpoints,
-    jobSheets,
-    tasks: clientTasks,
-    activityLogs,
-  } = Route.useLoaderData();
+  const workspace = Route.useLoaderData();
+  const { identity, ownership, relationship, counts } = workspace;
+  const clientId = identity.id;
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const owner = userById(client.account_owner ?? "");
-  const clientContacts = contacts.filter((c) => c.client_id === client.id);
+  const activeTab = search.tab ?? "overview";
+  const contactsQuery = useClientWorkspaceSection(clientId, "contacts", {
+    enabled: activeTab === "contacts",
+  });
+  const commercialQuery = useClientWorkspaceSection(clientId, "commercial", {
+    enabled: activeTab === "quotes",
+  });
+  const engagementsQuery = useClientWorkspaceSection(clientId, "engagements", {
+    enabled: activeTab === "engagements",
+  });
+  const jobSheetsQuery = useClientWorkspaceSection(clientId, "job_sheets", {
+    enabled: activeTab === "job-sheets",
+  });
+  const productsQuery = useQuery({
+    queryKey: crmQueryKeys.products.list({ activeOnly: true }),
+    queryFn: () => getProducts({ data: { activeOnly: true } }),
+    enabled: activeTab === "engagements",
+    staleTime: 5 * 60_000,
+  });
+  const activityQuery = useClientWorkspaceSection(clientId, "activity", {
+    enabled: activeTab === "timeline",
+  });
+  const tasksQuery = useQuery({
+    queryKey: crmQueryKeys.tasks.list({ client_id: clientId }),
+    queryFn: () => getTasks({ data: { client_id: clientId } }),
+    enabled: activeTab === "tasks",
+    staleTime: 60_000,
+  });
+  const touchpointsQuery = useQuery({
+    queryKey: crmQueryKeys.clients.section(clientId, "touchpoints"),
+    queryFn: () => getTouchpointsByClient({ data: { clientId } }),
+    enabled: activeTab === "timeline",
+    staleTime: 60_000,
+  });
+  const owner = userById(ownership.accountOwnerId ?? "");
+  const clientContacts =
+    contactsQuery.data?.status === "error"
+      ? (contactsQuery.data.staleData?.contacts ?? [])
+      : (contactsQuery.data?.data.contacts ?? []);
+  const clientQuotes =
+    commercialQuery.data?.status === "error"
+      ? (commercialQuery.data.staleData?.quotes ?? [])
+      : (commercialQuery.data?.data.quotes ?? []);
+  const engagements =
+    engagementsQuery.data?.status === "error"
+      ? (engagementsQuery.data.staleData?.engagements ?? [])
+      : (engagementsQuery.data?.data.engagements ?? []);
+  const jobSheets =
+    jobSheetsQuery.data?.status === "error"
+      ? (jobSheetsQuery.data.staleData?.jobSheets ?? [])
+      : (jobSheetsQuery.data?.data.jobSheets ?? []);
+  const activityLogs =
+    activityQuery.data?.status === "error"
+      ? (activityQuery.data.staleData?.activityLogs ?? [])
+      : (activityQuery.data?.data.activityLogs ?? []);
+  const clientTasks = tasksQuery.data ?? [];
+  const touchpoints = touchpointsQuery.data ?? [];
   const quoteById = new Map(clientQuotes.map((quote) => [quote.id, quote]));
-
-  const productById = (id: string) => products.find((p) => p.id === id);
+  const products = productsQuery.isError ? [] : (productsQuery.data ?? []);
+  const productById = new Map(products.map((product) => [product.id, product]));
   const activeProductIds = new Set(
-    engagements.filter((e) => e.status === "active").map((e) => e.product_id),
+    engagements
+      .filter((engagement) => engagement.status === "active")
+      .map((engagement) => engagement.product_id),
   );
-  const missingProducts = products.filter((p) => !activeProductIds.has(p.id));
+  const missingProducts = products.filter((product) => !activeProductIds.has(product.id));
   const latestRiskReasoning =
     engagements
-      .filter((e) => e.risk_reasoning)
-      .sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0]?.risk_reasoning ?? null;
-
+      .filter((engagement) => engagement.risk_reasoning)
+      .sort((left, right) => right.updated_at.localeCompare(left.updated_at))[0]?.risk_reasoning ??
+    null;
   return (
     <>
       <PageHeader
-        title={client.company_name}
-        description={`${client.tier} · ${client.industry}`}
+        title={identity.companyName}
+        description={identity.tier + " | " + (identity.industry ?? "Industry not set")}
         actions={
           <>
-            {client.account_id && (
+            {identity.accountId && (
               <Button variant="outline" size="sm" asChild>
-                <Link to="/accounts/$id" params={{ id: client.account_id }}>
+                <Link to="/accounts/$id" params={{ id: identity.accountId }}>
                   Account 360
                 </Link>
               </Button>
@@ -159,141 +173,224 @@ function ClientDetail() {
               <div className="max-w-full overflow-x-auto pb-1">
                 <TabsList className="w-max">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="contacts">Contacts ({clientContacts.length})</TabsTrigger>
-                  <TabsTrigger value="quotes">Quotes ({clientQuotes.length})</TabsTrigger>
-                  <TabsTrigger value="job-sheets">Job Sheets ({jobSheets.length})</TabsTrigger>
-                  <TabsTrigger value="tasks">Tasks ({clientTasks.length})</TabsTrigger>
+                  <TabsTrigger value="contacts">
+                    <CountedTabLabel label="Contacts" count={counts.contacts} />
+                  </TabsTrigger>
+                  <TabsTrigger value="engagements">
+                    <CountedTabLabel label="Engagements" count={counts.engagements} />
+                  </TabsTrigger>
+                  <TabsTrigger value="quotes">
+                    <CountedTabLabel label="Quotes" count={counts.quotes} />
+                  </TabsTrigger>
+                  <TabsTrigger value="job-sheets">
+                    <CountedTabLabel label="Job Sheets" count={counts.jobSheets} />
+                  </TabsTrigger>
+                  <TabsTrigger value="tasks">Tasks</TabsTrigger>
                   <TabsTrigger value="timeline">Timeline</TabsTrigger>
                 </TabsList>
               </div>
 
               <TabsContent value="overview" className="mt-4 space-y-4">
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  <Stat label="Health score" value={String(client.health_score)} />
-                  <Stat label="ARR" value={formatCurrencyAmount(client.arr, "HKD")} />
-                  <Stat label="Renewal" value={client.renewal_date ?? "—"} />
-                  <Stat label="Onboarding" value={client.onboarding_status.replace(/_/g, " ")} />
+                  <Stat label="Health score" value={String(relationship.healthScore)} />
+                  <Stat label="ARR" value={formatCurrencyAmount(relationship.arr, "HKD")} />
+                  <Stat label="Renewal" value={relationship.renewalDate ?? "Not set"} />
+                  <Stat
+                    label="Onboarding"
+                    value={relationship.onboardingStatus.replace(/_/g, " ")}
+                  />
                 </div>
-
-                {latestRiskReasoning && (
-                  <Card className="bg-muted/30">
-                    <CardContent className="p-4 text-sm text-muted-foreground">
-                      {latestRiskReasoning}
-                    </CardContent>
-                  </Card>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <Stat label="Contacts" value={formatWorkspaceCount(counts.contacts)} />
+                  <Stat label="Engagements" value={formatWorkspaceCount(counts.engagements)} />
+                  <Stat label="Quotes" value={formatWorkspaceCount(counts.quotes)} />
+                  <Stat label="Job sheets" value={formatWorkspaceCount(counts.jobSheets)} />
+                </div>
+                {relationship.renewalRisk && (
+                  <div className="flex items-center gap-2 rounded-md border border-border p-3 text-sm">
+                    <span className="text-muted-foreground">Renewal risk</span>
+                    <StatusBadge value={relationship.renewalRisk} />
+                  </div>
                 )}
-
-                <div>
-                  <h3 className="mb-2 text-sm font-semibold">Engagements</h3>
-                  {engagements.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No engagements yet.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {engagements.map((e) => (
-                        <Card key={e.id} className="p-3">
-                          <p className="text-sm font-medium">
-                            {productById(e.product_id)?.name ?? e.product_id}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {e.status} · {e.billing_period} · {formatCurrencyAmount(e.value, "HKD")}
-                          </p>
-                          <div className="mt-2 flex items-center justify-between">
-                            <StatusBadge value={e.renewal_risk} />
-                            <span className="text-xs text-muted-foreground">
-                              {e.renewal_date ?? "—"}
-                            </span>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <Card className="border-dashed">
-                  <CardContent className="p-4 text-sm">
-                    <span className="font-medium">
-                      Uses {activeProductIds.size} of {products.length} products.
-                    </span>{" "}
-                    {missingProducts.length > 0 && (
-                      <span className="text-muted-foreground">
-                        Gaps: {missingProducts.map((p) => p.name).join(", ")}.
-                      </span>
-                    )}
-                  </CardContent>
-                </Card>
               </TabsContent>
 
+              <TabsContent value="engagements" className="mt-4">
+                <DeferredTab
+                  isLoading={engagementsQuery.isPending}
+                  hasError={
+                    engagementsQuery.isError ||
+                    (engagementsQuery.data?.status === "error" && !engagementsQuery.data.staleData)
+                  }
+                  onRetry={() => {
+                    void engagementsQuery.refetch();
+                  }}
+                >
+                  <div className="space-y-4">
+                    {latestRiskReasoning && (
+                      <Card className="bg-muted/30">
+                        <CardContent className="p-4 text-sm text-muted-foreground">
+                          {latestRiskReasoning}
+                        </CardContent>
+                      </Card>
+                    )}
+                    {engagements.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No engagements yet.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {engagements.map((engagement) => (
+                          <Card key={engagement.id} className="p-3">
+                            <p className="text-sm font-medium">
+                              {productById.get(engagement.product_id)?.name ??
+                                engagement.product_id}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {engagement.status} | {engagement.billing_period} |{" "}
+                              {formatCurrencyAmount(engagement.value, "HKD")}
+                            </p>
+                            <div className="mt-2 flex items-center justify-between">
+                              <StatusBadge value={engagement.renewal_risk} />
+                              <span className="text-xs text-muted-foreground">
+                                {engagement.renewal_date ?? "Not set"}
+                              </span>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                    {products.length > 0 && (
+                      <div className="rounded-md border border-dashed border-border p-4 text-sm">
+                        <span className="font-medium">
+                          Uses {activeProductIds.size} of {products.length} active products.
+                        </span>{" "}
+                        {missingProducts.length > 0 && (
+                          <span className="text-muted-foreground">
+                            Gaps: {missingProducts.map((product) => product.name).join(", ")}.
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </DeferredTab>
+              </TabsContent>
               <TabsContent value="contacts" className="mt-4">
-                <ClientContactsPanel clientId={client.id} initialContacts={clientContacts} />
+                <DeferredTab
+                  isLoading={contactsQuery.isPending}
+                  hasError={
+                    contactsQuery.isError ||
+                    (contactsQuery.data?.status === "error" && !contactsQuery.data.staleData)
+                  }
+                  onRetry={() => void contactsQuery.refetch()}
+                >
+                  <ClientContactsPanel clientId={clientId} initialContacts={clientContacts} />
+                </DeferredTab>
               </TabsContent>
 
               <TabsContent value="quotes" className="mt-4">
-                {clientQuotes.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No quotes linked.</p>
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {clientQuotes.map((q) => (
-                      <li key={q.id} className="flex items-center justify-between py-3">
-                        <Link
-                          to="/quotes/$id"
-                          params={{ id: q.id }}
-                          className="text-sm font-medium hover:text-primary hover:underline"
-                        >
-                          {q.number}
-                        </Link>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm tabular-nums">
-                            {formatCurrencyAmount(q.total_value, q.currency)}
-                          </span>
-                          <StatusBadge value={q.status} />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <DeferredTab
+                  isLoading={commercialQuery.isPending}
+                  hasError={
+                    commercialQuery.isError ||
+                    (commercialQuery.data?.status === "error" && !commercialQuery.data.staleData)
+                  }
+                  onRetry={() => void commercialQuery.refetch()}
+                >
+                  {clientQuotes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No quotes linked.</p>
+                  ) : (
+                    <ul className="divide-y divide-border">
+                      {clientQuotes.map((q) => (
+                        <li key={q.id} className="flex items-center justify-between py-3">
+                          <Link
+                            to="/quotes/$id"
+                            params={{ id: q.id }}
+                            className="text-sm font-medium hover:text-primary hover:underline"
+                          >
+                            {q.number}
+                          </Link>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm tabular-nums">
+                              {formatCurrencyAmount(q.total_value, q.currency)}
+                            </span>
+                            <StatusBadge value={q.status} />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </DeferredTab>
               </TabsContent>
 
               <TabsContent value="job-sheets" className="mt-4">
-                {jobSheets.length === 0 ? (
-                  <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-                    No accepted quote job sheets for this client yet.
-                  </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {jobSheets.map((sheet) => {
-                      const quote = quoteById.get(sheet.quote_id);
+                <DeferredTab
+                  isLoading={jobSheetsQuery.isPending}
+                  hasError={
+                    jobSheetsQuery.isError ||
+                    (jobSheetsQuery.data?.status === "error" && !jobSheetsQuery.data.staleData)
+                  }
+                  onRetry={() => {
+                    void jobSheetsQuery.refetch();
+                  }}
+                >
+                  {jobSheets.length === 0 ? (
+                    <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+                      No accepted quote job sheets for this client yet.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {jobSheets.map((sheet) => {
+                        const quote = quoteById.get(sheet.quote_id);
 
-                      return (
-                        <li key={sheet.id}>
-                          <Link
-                            to="/job-sheets/$id"
-                            params={{ id: sheet.id }}
-                            className="block rounded-md border border-border p-3 hover:bg-muted/50"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="font-medium">{sheet.number}</span>
-                              <JobSheetStatusBadge status={sheet.status} />
-                            </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                              <span>Quote {quote?.number ?? sheet.quote_id}</span>
-                              <span>
-                                {formatCurrencyAmount(sheet.total_amount, sheet.currency)}
-                              </span>
-                            </div>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+                        return (
+                          <li key={sheet.id}>
+                            <Link
+                              to="/job-sheets/$id"
+                              params={{ id: sheet.id }}
+                              className="block rounded-md border border-border p-3 hover:bg-muted/50"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="font-medium">{sheet.number}</span>
+                                <JobSheetStatusBadge status={sheet.status} />
+                              </div>
+                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                                <span>Quote {quote?.number ?? sheet.quote_id}</span>
+                                <span>
+                                  {formatCurrencyAmount(sheet.total_amount, sheet.currency)}
+                                </span>
+                              </div>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </DeferredTab>
               </TabsContent>
 
               <TabsContent value="tasks" className="mt-4">
-                <ClientTasksPanel tasks={clientTasks} />
+                <DeferredTab
+                  isLoading={tasksQuery.isPending}
+                  hasError={tasksQuery.isError}
+                  onRetry={() => void tasksQuery.refetch()}
+                >
+                  <ClientTasksPanel tasks={clientTasks} />
+                </DeferredTab>
               </TabsContent>
 
               <TabsContent value="timeline" className="mt-4">
-                <ClientTimeline touchpoints={touchpoints} activityLogs={activityLogs} />
+                <DeferredTab
+                  isLoading={activityQuery.isPending || touchpointsQuery.isPending}
+                  hasError={
+                    activityQuery.isError ||
+                    (activityQuery.data?.status === "error" && !activityQuery.data.staleData) ||
+                    touchpointsQuery.isError
+                  }
+                  onRetry={() => {
+                    void activityQuery.refetch();
+                    void touchpointsQuery.refetch();
+                  }}
+                >
+                  <ClientTimeline touchpoints={touchpoints} activityLogs={activityLogs} />
+                </DeferredTab>
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -305,10 +402,11 @@ function ClientDetail() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <Row label="Owner" value={owner?.name ?? "—"} />
-            <Row label="Industry" value={client.industry ?? "—"} />
-            <Row label="Tier" value={client.tier ?? "—"} />
-            <Row label="Customer since" value={formatDate(client.created_at)} />
-            <Row label="Health score" value={String(client.health_score)} />
+            <Row label="Industry" value={identity.industry ?? "Not set"} />
+            <Row label="Tier" value={identity.tier ?? "Not set"} />
+            <Row label="Customer since" value={formatDate(identity.createdAt)} />
+            <Row label="Renewal" value={relationship.renewalDate ?? "Not set"} />
+            <Row label="Health score" value={String(relationship.healthScore)} />
           </CardContent>
         </Card>
       </div>
@@ -316,6 +414,48 @@ function ClientDetail() {
   );
 }
 
+function formatWorkspaceCount(count: number | null) {
+  return count === null ? "Restricted" : String(count);
+}
+
+function CountedTabLabel({ label, count }: { label: string; count: number | null }) {
+  return count === null ? label : label + " (" + count + ")";
+}
+function DeferredTab({
+  isLoading,
+  hasError,
+  onRetry,
+  children,
+}: {
+  isLoading: boolean;
+  hasError: boolean;
+  onRetry: () => void;
+  children: ReactNode;
+}) {
+  if (isLoading) {
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        Loading client details...
+      </p>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div
+        role="alert"
+        className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm"
+      >
+        <span>Client details are temporarily unavailable.</span>
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  return children;
+}
 function ClientContactsPanel({
   clientId,
   initialContacts,

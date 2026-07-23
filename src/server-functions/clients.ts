@@ -6,11 +6,12 @@ import {
   createClient as createClientInNeon,
   getClient as getClientFromNeon,
   listClients,
+  listClientsPage,
+  type ClientFilters,
+  type ClientPageFilters,
   updateClient as updateClientInNeon,
 } from "@/server/repositories/clients";
 import type { Client } from "@/lib/types";
-
-type GetClientsInput = { tier?: string; health_min?: number; account_id?: string };
 type CreateClientInput = Pick<Client, "company_name"> &
   Partial<
     Pick<
@@ -27,11 +28,19 @@ type CreateClientInput = Pick<Client, "company_name"> &
   >;
 
 export const getClients = createServerFn({ method: "GET" })
-  .validator((data: unknown) => (data ?? {}) as GetClientsInput)
+  .validator((data: unknown) => (data ?? {}) as ClientFilters)
   .handler(async ({ data }) => {
     await requireCapability("accounts.view");
     await requireNeonAuthSession();
     return listClients(data);
+  });
+
+export const getClientsPage = createServerFn({ method: "GET" })
+  .validator((data: unknown) => (data ?? {}) as ClientPageFilters)
+  .handler(async ({ data }) => {
+    await requireCapability("accounts.view");
+    await requireNeonAuthSession();
+    return listClientsPage(data);
   });
 
 export const getClient = createServerFn({ method: "GET" })

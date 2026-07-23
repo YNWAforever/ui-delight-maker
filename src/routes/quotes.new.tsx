@@ -1,15 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, Plus, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { PageHeader } from "@/components/page-header";
-import {
-  QuoteDocumentEditor,
-  type QuoteDocumentDraft,
-  normalizeQuoteDocumentSections,
-} from "@/components/quotes/quote-document-editor";
+import { normalizeQuoteDocumentSections, type QuoteDocumentDraft } from "@/lib/quote-document";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,17 +30,17 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { formatHKD } from "@/lib/format";
-import {
-  createQuote,
-  getPricingTemplates,
-  getQuotePdfTemplates,
-  getQuoteTemplates,
-  type CreateQuoteInput,
-} from "@/server-functions/quotes";
-import { getLeads } from "@/server-functions/leads";
-import { getClients } from "@/server-functions/clients";
-import { getProducts } from "@/server-functions/products";
+import { createQuote, type CreateQuoteInput } from "@/server-functions/quotes";
+import { getQuoteCreateBootstrap } from "@/server-functions/quote-workspace";
+import { useQuoteReferenceData } from "@/hooks/use-quote-reference-data";
+import { crmQueryKeys } from "@/lib/query-keys";
 import { APP_USERS } from "@/lib/users";
+
+const QuoteDocumentTools = lazy(() =>
+  import("@/components/quotes/quote-document-tools").then((module) => ({
+    default: module.QuoteDocumentTools,
+  })),
+);
 
 const searchSchema = z.object({
   leadId: z.string().optional(),
@@ -44,17 +50,12 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/quotes/new")({
   validateSearch: searchSchema,
-  loader: async () => {
-    const [templates, leads, clients, products, quoteTemplates, pdfTemplates] = await Promise.all([
-      getPricingTemplates(),
-      getLeads({}),
-      getClients({}),
-      getProducts({}),
-      getQuoteTemplates(),
-      getQuotePdfTemplates(),
-    ]);
-    return { templates, leads, clients, products, quoteTemplates, pdfTemplates };
-  },
+  loaderDeps: ({ search }) => ({
+    leadId: search.leadId,
+    clientId: search.clientId,
+    productId: search.productId,
+  }),
+  loader: ({ deps }) => getQuoteCreateBootstrap({ data: deps }),
   head: () => ({
     meta: [
       { title: "New quote — Fimmick ClientOps" },
@@ -86,16 +87,24 @@ function QuoteBuilder() {
     clientId: initialClientId,
     productId: initialProductId,
   } = Route.useSearch();
-  const { templates, leads, clients, products, quoteTemplates, pdfTemplates } =
-    Route.useLoaderData();
+  const bootstrap = Route.useLoaderData();
+  const templates = bootstrap.pricingTemplates;
+  const quoteTemplates = bootstrap.quoteTemplates;
+  const pdfTemplates = bootstrap.pdfTemplates;
+  const [leadId, setLeadId] = useState(initialLeadId ?? bootstrap.leads.items[0]?.id ?? "");
+  const [clientId, setClientId] = useState(initialClientId ?? bootstrap.clients.items[0]?.id ?? "");
+  const leadReferences = useQuoteReferenceData("lead", bootstrap.leads, leadId);
+  const clientReferences = useQuoteReferenceData("client", bootstrap.clients, clientId);
+  const productReferences = useQuoteReferenceData("product", bootstrap.products, initialProductId);
+  const leads = leadReferences.data.items;
+  const clients = clientReferences.data.items;
+  const products = productReferences.data.items;
   const navigate = useNavigate();
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const initialQuoteTemplate = quoteTemplates[0];
 
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<"lead" | "client">(initialClientId ? "client" : "lead");
-  const [leadId, setLeadId] = useState(initialLeadId ?? leads[0]?.id ?? "");
-  const [clientId, setClientId] = useState(initialClientId ?? clients[0]?.id ?? "");
   const [approver, setApprover] = useState(APP_USERS[1]?.id ?? APP_USERS[0]?.id ?? "");
   const [validUntil, setValidUntil] = useState("2026-06-30");
   const [discount, setDiscount] = useState(0);
@@ -219,7 +228,17 @@ function QuoteBuilder() {
     } satisfies CreateQuoteInput;
 
     const quote = await createQuote({ data: payload });
-    router.invalidate();
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: crmQueryKeys.quotes.lists() }),
+      leadId
+        ? queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.detail(leadId) })
+        : Promise.resolve(),
+      clientId
+        ? queryClient.invalidateQueries({
+            queryKey: crmQueryKeys.clients.section(clientId, "commercial"),
+          })
+        : Promise.resolve(),
+    ]);
     toast.success("Quote submitted for approval.");
     navigate({ to: "/quotes/$id", params: { id: quote.id } });
   };
@@ -314,6 +333,12 @@ function QuoteBuilder() {
                     <Label htmlFor="quote-client" className="text-xs">
                       Client
                     </Label>
+                    <Input
+                      value={clientReferences.search}
+                      onChange={(event) => clientReferences.setSearch(event.target.value)}
+                      placeholder="Search clients"
+                      className="mt-1.5 mb-2"
+                    />
                     <Select value={clientId} onValueChange={setClientId}>
                       <SelectTrigger id="quote-client" className="mt-1.5">
                         <SelectValue />
@@ -326,12 +351,19 @@ function QuoteBuilder() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <ReferencePager reference={clientReferences} label="client" />
                   </div>
                 ) : (
                   <div className="sm:col-span-2">
                     <Label htmlFor="quote-lead" className="text-xs">
                       Lead
                     </Label>
+                    <Input
+                      value={leadReferences.search}
+                      onChange={(event) => leadReferences.setSearch(event.target.value)}
+                      placeholder="Search leads"
+                      className="mt-1.5 mb-2"
+                    />
                     <Select value={leadId} onValueChange={setLeadId}>
                       <SelectTrigger id="quote-lead" className="mt-1.5">
                         <SelectValue />
@@ -344,6 +376,7 @@ function QuoteBuilder() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <ReferencePager reference={leadReferences} label="lead" />
                   </div>
                 )}
               </CardContent>
@@ -546,7 +579,9 @@ function QuoteBuilder() {
                 <CardTitle className="text-base">PDF sections</CardTitle>
               </CardHeader>
               <CardContent>
-                <QuoteDocumentEditor value={documentDraft} onChange={setDocumentDraft} />
+                <Suspense fallback={<QuoteDocumentToolsSkeleton />}>
+                  <QuoteDocumentTools value={documentDraft} onChange={setDocumentDraft} />
+                </Suspense>
               </CardContent>
             </Card>
           )}
@@ -727,6 +762,62 @@ function ReviewBlock({ label, value }: { label: string; value: string }) {
     <div className="rounded-md border border-border p-3">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 whitespace-pre-wrap text-sm">{value || "—"}</p>
+    </div>
+  );
+}
+
+function ReferencePager({
+  reference,
+  label,
+}: {
+  reference: {
+    data: { total: number; limit: number };
+    page: number;
+    setPage: Dispatch<SetStateAction<number>>;
+    isFetching: boolean;
+  };
+  label: string;
+}) {
+  const totalPages = Math.max(1, Math.ceil(reference.data.total / reference.data.limit));
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="mt-2 flex items-center justify-between gap-2">
+      <span className="text-xs text-muted-foreground">
+        Page {reference.page} of {totalPages}
+      </span>
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label={`Previous ${label} page`}
+          disabled={reference.page <= 1 || reference.isFetching}
+          onClick={() => reference.setPage((page) => Math.max(1, page - 1))}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label={`Next ${label} page`}
+          disabled={reference.page >= totalPages || reference.isFetching}
+          onClick={() => reference.setPage((page) => Math.min(totalPages, page + 1))}
+        >
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function QuoteDocumentToolsSkeleton() {
+  return (
+    <div className="space-y-4" aria-label="Loading quote document editor">
+      <div className="h-28 animate-pulse rounded-md bg-muted" />
+      <div className="h-24 animate-pulse rounded-md bg-muted" />
+      <div className="h-24 animate-pulse rounded-md bg-muted" />
     </div>
   );
 }
