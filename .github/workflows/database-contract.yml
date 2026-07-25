@@ -26,7 +26,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      # Whole directory, not a single file: this picks up the schema contract, the route
-      # loader contract and its completeness check, plus any future src/server/db test,
-      # without needing another workflow edit.
-      - run: bunx vitest run src/server/db/__tests__/
+      # The whole suite, not just src/server/db/__tests__/. DATABASE_TEST_URL is set above,
+      # so the integration tests that self-skip locally execute here: 887 tests run with it
+      # set versus 852 passed / 35 skipped without. That makes this one command a superset of
+      # the previous step, and picks up any future test without another workflow edit.
+      - run: bun run test
