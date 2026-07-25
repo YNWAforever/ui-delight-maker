@@ -17,30 +17,10 @@ import {
 import { formatCurrencyAmount, formatDate } from "@/lib/format";
 import { useIsExactPath } from "@/lib/routing-utils";
 import type { JobSheet } from "@/lib/types";
+import { formatAcceptedValueSummary } from "@/lib/job-sheet-editor";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { getJobSheetsPage } from "@/server-functions/job-sheets";
-
-type AcceptedValueSummaryRow = Pick<JobSheet, "status" | "currency" | "total_amount">;
-
-export function formatAcceptedValueSummary(rows: AcceptedValueSummaryRow[]): string {
-  const totals = new Map<string, number>();
-
-  for (const row of rows) {
-    if (row.status !== "accepted") continue;
-    const currency = row.currency || "HKD";
-    totals.set(currency, (totals.get(currency) ?? 0) + row.total_amount);
-  }
-
-  if (totals.size === 0) {
-    return "None";
-  }
-
-  return [...totals.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([currency, amount]) => formatCurrencyAmount(amount, currency))
-    .join(" / ");
-}
 
 const jobSheetListSearchSchema = z.object({
   page: z.coerce.number().int().min(1).default(1).catch(1),

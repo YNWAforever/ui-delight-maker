@@ -1,9 +1,6 @@
 import { QuoteDocumentEditor } from "@/components/quotes/quote-document-editor";
-import {
-  QuotePdfPreview,
-  QuotePdfPreviewUnavailable,
-  resolveQuotePdfSource,
-} from "@/components/quotes/quote-pdf-preview";
+import { QuotePdfPreview, QuotePdfPreviewUnavailable } from "@/components/quotes/quote-pdf-preview";
+import { resolveQuotePdfSource } from "@/lib/quote-pdf-source";
 import type { QuoteDocumentDraft } from "@/lib/quote-document";
 import type { QuoteVersion } from "@/lib/types";
 

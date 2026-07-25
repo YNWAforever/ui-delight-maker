@@ -86,7 +86,7 @@ export const Route = createFileRoute("/leads/$id")({
 
 const STATUSES: LeadStatus[] = ["new", "qualified", "replied", "quoted", "approved", "won", "lost"];
 
-export const leadMutationQueryKeys = {
+const leadMutationQueryKeys = {
   status_change: (leadId: string) => [
     crmQueryKeys.leads.detail(leadId),
     crmQueryKeys.leads.lists(),

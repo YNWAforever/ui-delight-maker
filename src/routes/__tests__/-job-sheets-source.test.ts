@@ -24,8 +24,8 @@ import {
   resetXeroDrafts,
   toPortionDrafts,
   toXeroDrafts,
-} from "../job-sheets.$id";
-import { formatAcceptedValueSummary as formatAcceptedQueueValueSummary } from "../job-sheets";
+} from "@/lib/job-sheet-editor";
+import { formatAcceptedValueSummary as formatAcceptedQueueValueSummary } from "@/lib/job-sheet-editor";
 
 const readRoute = (name: string) => readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
 

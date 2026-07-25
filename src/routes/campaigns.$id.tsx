@@ -40,7 +40,7 @@ export const Route = createFileRoute("/campaigns/$id")({
   component: CampaignDetailRoute,
 });
 
-export const campaignMutationQueryKeys = {
+const campaignMutationQueryKeys = {
   attendee_import: (campaignId: string) => [
     crmQueryKeys.campaigns.detail(campaignId),
     crmQueryKeys.campaigns.section(campaignId, "attendees"),
