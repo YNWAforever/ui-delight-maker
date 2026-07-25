@@ -1,5 +1,5 @@
 // src/lib/types.ts
-// Canonical types matching the Supabase schema.
+// Canonical types matching the Neon schema in neon/migrations/.
 // mock-data.ts types are kept for backward compat during migration but will be removed.
 
 import type { RelationshipSignalDraft } from "@/lib/relationship/types";

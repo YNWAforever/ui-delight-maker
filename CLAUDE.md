@@ -1,92 +1,106 @@
 # Fimmick ClientOps
 
-Multi-agent client operations workspace — frontend-only prototype built on TanStack Start + Cloudflare Workers.
+Full-stack CRM workspace (leads → quotes → clients → renewals) with invitation-only user
+management, scoped teams, capability-based authorization, and n8n agent workflows.
+TanStack Start SSR, deployed to **Vercel**.
 
 ## Tech Stack
 
-| Layer | Technology | Version |
-|-------|------------|---------|
-| Language | TypeScript | 5.8 |
-| Framework | TanStack Start (SSR) | 1.x |
-| Router | TanStack Router (file-based) | 1.x |
-| UI | React 19 + shadcn/ui (Radix UI) | 19.x |
-| Styling | Tailwind CSS 4 | 4.x |
-| Data fetching | TanStack Query | 5.x |
-| Charts | Recharts | 2.x |
-| Forms | react-hook-form + zod | 7.x / 3.x |
-| Package manager | Bun | — |
-| Deployment | Cloudflare Workers | — |
-| Build | Vite 7 via `@lovable.dev/vite-tanstack-config` | 7.x |
+| Layer | Technology |
+|-------|------------|
+| Language | TypeScript 5.8 (strict, no `any`) |
+| Framework | TanStack Start 1.x (SSR) + TanStack Router (file-based) |
+| UI | React 19 + shadcn/ui (Radix) + Tailwind CSS 4 |
+| Data fetching | TanStack Query 5 |
+| Database | **Neon Postgres** — raw parameterized SQL, no ORM |
+| Auth | Neon Auth (`src/lib/auth/neon-auth.server.ts`) |
+| Agents | n8n webhooks → OpenRouter (`anthropic/claude-sonnet-4-6`) |
+| Forms / validation | react-hook-form + zod 4 |
+| Charts | Recharts |
+| Build / deploy | Vite 7 via `@lovable.dev/vite-tanstack-config` → Vercel |
+| Package manager | Bun |
 
 ## Build & Run
 
 ```bash
-bun install          # install deps
-bun run dev          # dev server (Vite)
-bun run build        # production build (Cloudflare Workers output)
-bun run lint         # ESLint
-bun run format       # Prettier
+bun install
+bun run dev            # Vite dev server (http://localhost:5173)
+bun run test           # Vitest
+bun run lint           # ESLint
+bun run format         # Prettier
+bunx tsc --noEmit      # Type check
+bun run build          # migrate schema → verify schema → vite build → seed on deploy
 ```
+
+Full verification gate before merging: `bun run test`, `bun run lint`, `bunx tsc --noEmit`,
+`bun run build`, `git diff --check`.
+
+## Architecture — Request Lifecycle
+
+```
+src/routes/*.tsx           Route + loader (routeQueryOptions + crmQueryKeys)
+  → src/server-functions/   createServerFn — the BFF boundary
+      requireCapability("leads.view")     authorization
+      requireNeonAuthSession()            auth
+  → src/server/repositories/  writes + single-entity reads (raw SQL)
+    src/server/read-models/   composed multi-table dashboard/workspace reads
+  → src/server/db/neon.server.ts   query() / queryOne() / transaction()
+  → Neon Postgres
+```
+
+n8n calls back in via `src/routes/api/workflows/*` — each handler runs
+`assertWorkflowToken(request)` then a writeback in `src/server/workflows/`.
 
 ## Project Structure
 
 ```
-src/
-  routes/          # File-based pages (TanStack Router)
-  components/      # App-specific components
-  components/ui/   # shadcn/ui primitives — DO NOT hand-edit
-  lib/             # mock-data.ts, format.ts, utils.ts, error helpers
-  hooks/           # Custom React hooks
-  router.tsx       # createRouter() with QueryClient context
-  server.ts        # Cloudflare Workers SSR entry (error wrapper)
-  start.ts         # TanStack Start instance + middleware
-  styles.css       # Global CSS / Tailwind design tokens
+src/routes/            File-based pages; routes/api/ for workflow + auth handlers
+src/server-functions/  BFF layer — every client data call goes through here
+src/server/            Server-only: repositories, read-models, auth, db, workflows
+src/components/        Feature components; components/ui/ = shadcn primitives
+src/lib/               types.ts (source of truth), format.ts, query-keys.ts, n8n.ts
+neon/migrations/       Active SQL migrations (001–007)
+scripts/clientops/     Migrate, verify, seed, perf-budget, bootstrap scripts
+n8n/workflows/         Agent workflow JSON definitions
 ```
 
-## Routing
+## Conventions
 
-Routes live in `src/routes/`. TanStack Router auto-generates `src/routeTree.gen.ts` — **never edit it manually**.
-
-| File | URL |
-|------|-----|
-| `__root.tsx` | Shell: sidebar, header, QueryClientProvider |
-| `index.tsx` | `/` — Dashboard |
-| `leads.tsx` | `/leads` |
-| `leads.$id.tsx` | `/leads/:id` |
-| `quotes.tsx` | `/quotes` |
-| `quotes.new.tsx` | `/quotes/new` |
-| `quotes.$id.tsx` | `/quotes/:id` |
-| `clients.tsx` | `/clients` |
-| `clients.$id.tsx` | `/clients/:id` |
-| `tasks.tsx` | `/tasks` |
-| `approvals.tsx` | `/approvals` |
-| `agents.tsx` | `/agents` |
-| `agents.$name.tsx` | `/agents/:name` |
-| `reports.tsx` | `/reports` |
-| `notifications.tsx` | `/notifications` |
-| `settings.tsx` | `/settings` |
-
-## Data Layer
-
-Persistence is handled by **Supabase (PostgreSQL)**. The app uses `@supabase/ssr` for server-side auth and session management.
-
-- **Server functions** in `src/server-functions/` act as the BFF (Backend for Frontend) layer — all data fetches and mutations go through these.
-- `src/lib/supabase.server.ts` — server-side Supabase client (SSR cookies)
-- `src/lib/supabase.client.ts` — browser Supabase client (realtime / auth UI)
-- `src/lib/types.ts` is the source of truth for TypeScript types (mirrors the Supabase schema)
-- `src/lib/mock-data.ts` is kept for backward compatibility only; do not add new data or types to it
-- Shared UI constants (users, agents) live in `src/lib/users.ts` and `src/lib/agents.ts`
-
-## Code Style
-
-- Prettier: 100 char print width, double quotes, semicolons, trailing commas
-- TypeScript strict mode — no `any`
-- Path alias `@/*` maps to `src/*`
-- Formatting: `bun run format`; linting: `bun run lint`
+- **Files** kebab-case; components PascalCase. Server-only modules end in `.server.ts`
+  (there is no `server-only` package — ESLint blocks importing it).
+- **Tests** live in `__tests__/` next to source, named `*.test.ts(x)`. Vitest runs in `node`
+  by default — component tests need `// @vitest-environment jsdom` at the top of the file.
+- **Query keys** always via `crmQueryKeys` in `src/lib/query-keys.ts`; route loaders use
+  `routeQueryOptions` so stale time stays consistent.
+- **Dates** must use `src/lib/format.ts` (fixed `en-GB` + UTC) to avoid SSR hydration mismatch.
+- **Prettier** 100 cols, double quotes, semicolons, trailing commas. Path alias `@/*` → `src/*`.
+- **Commits** Conventional Commits, lowercase imperative: `feat:`, `fix:`, `perf:`, `test:`,
+  `docs:`. Branches `codex/<slug>` (also `fix/<slug>`, `feat/<slug>`). PRs land as merge
+  commits, not squashes.
 
 ## Important Constraints
 
-- **Do NOT add plugins manually to `vite.config.ts`** — `@lovable.dev/vite-tanstack-config` already bundles tanstackStart, viteReact, tailwindcss, tsConfigPaths, cloudflare, and others. Duplicating any of them will break the build.
-- **Do NOT edit `src/routeTree.gen.ts`** — auto-generated by TanStack Router plugin.
-- `src/components/ui/` contains shadcn/ui primitives installed via `components.json`. Update them via `bunx shadcn@latest add <component>`, not by hand.
-- Date formatting must use `src/lib/format.ts` helpers (fixed `en-GB` + UTC) to avoid SSR hydration mismatches.
+- **Do NOT add plugins to `vite.config.ts`** — `@lovable.dev/vite-tanstack-config` already
+  bundles tanstackStart, viteReact, tailwindcss, and tsConfigPaths. Duplicating breaks the build.
+- **Do NOT edit `src/routeTree.gen.ts`** — generated by the TanStack Router plugin.
+- **Do NOT hand-edit `src/components/ui/`** — install via `bunx shadcn@latest add <component>`.
+- **New DB work goes in `neon/migrations/`.** `supabase/migrations/` is frozen legacy.
+- `bunfig.toml` enforces a 24h `minimumReleaseAge` supply-chain guard. Confirm with the user
+  before adding any package to `minimumReleaseAgeExcludes`.
+- Never set `N8N_USER_INVITATION_WEBHOOK_URL` or `CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL`
+  without explicit operator approval — see `README.md` production gates.
+- Seed env vars (`CLIENTOPS_SEED_*`) must never point at production.
+
+## Migration In Progress: Supabase → Neon
+
+Neon is the target. Supabase runtime code is quarantined in `src/legacy-supabase/`.
+Still importing it (do not add more):
+
+- `src/server-functions/` — `automation-playbooks`, `customer-success`, `deals`,
+  `engagement-events`, `projects`
+- `src/server/auth/authorization.server.ts`
+
+`src/lib/mock-data.ts` (1689 lines) has zero importers, but it is not free-standing: the test
+`src/lib/__tests__/clientops-relationship-schema.test.ts` reads it off disk with `readFileSync`
+to assert the stale `role: "cs"` value never reappears. Deleting the file means dropping that
+assertion in the same change, or the test throws.
