@@ -18,7 +18,7 @@ import {
   CalendarDays,
   ClipboardList,
   Star,
-  Handshake,
+  BadgeCheck,
   UserCog,
   type LucideIcon,
 } from "lucide-react";
@@ -36,6 +36,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 
 const todayItems = [{ title: "Revenue Desk", url: "/", icon: LayoutDashboard }];
@@ -54,7 +55,7 @@ const convertItems = [
 
 const retainItems = [
   { title: "Accounts", url: "/accounts", icon: Building2 },
-  { title: "Active Clients", url: "/clients", icon: Handshake },
+  { title: "Active Clients", url: "/clients", icon: BadgeCheck },
   { title: "Relationships", url: "/relationships", icon: Network },
   { title: "Renewals", url: "/renewals", icon: RefreshCw },
   { title: "Tasks", url: "/tasks", icon: CheckSquare },
@@ -99,9 +100,11 @@ export function AppSidebar({
     return currentPath === path || currentPath.startsWith(path + "/");
   };
 
-  const renderGroup = (label: string, items: SidebarItem[]) => (
+  // A null label renders the group unlabelled, for single-entry groups where a heading
+  // would be redundant chrome above one item.
+  const renderGroup = (label: string | null, items: SidebarItem[]) => (
     <SidebarGroup>
-      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      {label ? <SidebarGroupLabel>{label}</SidebarGroupLabel> : null}
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => (
@@ -149,8 +152,12 @@ export function AppSidebar({
         {renderGroup("Convert", convertItems)}
         {renderGroup("Retain", retainItems)}
         {renderGroup("Operate", operateItems)}
-        {adminNavigation.length > 0
-          ? renderGroup("Administration", [
+        {adminNavigation.length > 0 ? (
+          <>
+            {/* A rule rather than a group heading: one entry does not need a section
+                label, but admin still needs separating from workflow navigation. */}
+            <SidebarSeparator />
+            {renderGroup(null, [
               {
                 title: "Admin workspace",
                 // Point at the first destination this actor is permitted to open so the
@@ -161,8 +168,9 @@ export function AppSidebar({
                 // AdminShell sidebar then navigates.
                 activePath: "/admin",
               },
-            ])
-          : null}
+            ])}
+          </>
+        ) : null}
       </SidebarContent>
 
       <SidebarFooter>

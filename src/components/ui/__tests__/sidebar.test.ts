@@ -71,7 +71,10 @@ describe("sidebar responsive display", () => {
       "utf8",
     );
 
-    expect(appSidebarSource).toContain('renderGroup("Administration"');
+    // Separated by a rule rather than a section heading, since one entry does not
+    // warrant a group label.
+    expect(appSidebarSource).toContain("<SidebarSeparator />");
+    expect(appSidebarSource).toContain("renderGroup(null, [");
     // The entry resolves to the first permitted destination rather than a hardcoded
     // /admin an actor without overview capability could not open.
     expect(appSidebarSource).toContain("adminNavigation[0].href");
