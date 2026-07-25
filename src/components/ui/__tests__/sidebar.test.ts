@@ -30,10 +30,10 @@ describe("sidebar responsive display", () => {
       { title: "Revenue Desk", url: "/" },
       { title: "Leads", url: "/leads" },
       { title: "AI Review", url: "/ai-review" },
-      { title: "Pipeline", url: "/" },
       { title: "Quotes", url: "/quotes" },
       { title: "Approvals", url: "/approvals" },
-      { title: "Clients", url: "/clients" },
+      { title: "Accounts", url: "/accounts" },
+      { title: "Active Clients", url: "/clients" },
       { title: "Renewals", url: "/renewals" },
       { title: "Tasks", url: "/tasks" },
       { title: "Agents", url: "/agents" },
@@ -50,16 +50,31 @@ describe("sidebar responsive display", () => {
     }
   });
 
-  it("does not mark Pipeline active on the Revenue Desk route", () => {
+  it("gives the Revenue Desk route exactly one nav entry", () => {
     const appSidebarSource = readFileSync(
       new URL("../../app-sidebar.tsx", import.meta.url),
       "utf8",
     );
 
-    expect(appSidebarSource).toContain(
-      '{ title: "Pipeline", url: "/", icon: LayoutDashboard, activePath: null }',
-    );
+    // Previously "Pipeline" also pointed at "/" and was pinned inactive via activePath:
+    // null. One destination owning one entry removes the need for that workaround.
+    const rootEntries = appSidebarSource.match(/url: "\/"/g) ?? [];
+    expect(rootEntries).toHaveLength(1);
+    expect(appSidebarSource).not.toContain("activePath: null");
     expect(appSidebarSource).toContain("const isActive = (item: SidebarItem)");
     expect(appSidebarSource).toContain("isActive(item)");
+  });
+
+  it("keeps admin as a single global entry with sub-navigation in the AdminShell", () => {
+    const appSidebarSource = readFileSync(
+      new URL("../../app-sidebar.tsx", import.meta.url),
+      "utf8",
+    );
+
+    expect(appSidebarSource).toContain('renderGroup("Administration"');
+    // The entry resolves to the first permitted destination rather than a hardcoded
+    // /admin an actor without overview capability could not open.
+    expect(appSidebarSource).toContain("adminNavigation[0].href");
+    expect(appSidebarSource).not.toContain("adminNavigation.map(");
   });
 });

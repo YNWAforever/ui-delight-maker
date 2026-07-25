@@ -111,7 +111,7 @@ describe("sales route source copy", () => {
     const accountDetailSource = readRoute("accounts.$id.tsx");
 
     expect(authAccountSource).toContain("AccountSettings");
-    expect(accountsSource).toContain('title="Companies"');
+    expect(accountsSource).toContain('title="Accounts"');
     expect(accountDetailSource).toContain("Stakeholders");
     expect(accountDetailSource).toContain("AccountTimeline");
   });

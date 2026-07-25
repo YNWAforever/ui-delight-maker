@@ -18,9 +18,8 @@ import {
   CalendarDays,
   ClipboardList,
   Star,
-  UsersRound,
-  KeyRound,
-  ScrollText,
+  Handshake,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 
@@ -47,7 +46,6 @@ const acquireItems = [
 ];
 
 const convertItems = [
-  { title: "Pipeline", url: "/", icon: LayoutDashboard, activePath: null },
   { title: "Quotes", url: "/quotes", icon: FileText },
   { title: "Job Sheets", url: "/job-sheets", icon: ClipboardList },
   { title: "Approvals", url: "/approvals", icon: ShieldCheck },
@@ -55,8 +53,8 @@ const convertItems = [
 ];
 
 const retainItems = [
-  { title: "Companies", url: "/accounts", icon: Building2 },
-  { title: "Clients", url: "/clients", icon: Building2 },
+  { title: "Accounts", url: "/accounts", icon: Building2 },
+  { title: "Active Clients", url: "/clients", icon: Handshake },
   { title: "Relationships", url: "/relationships", icon: Network },
   { title: "Renewals", url: "/renewals", icon: RefreshCw },
   { title: "Tasks", url: "/tasks", icon: CheckSquare },
@@ -137,8 +135,6 @@ export function AppSidebar({
 
       <SidebarContent>
         {renderGroup("Today", todayItems)}
-        {renderGroup("Acquire", acquireItems)}
-        {renderGroup("Convert", convertItems)}
         {favorites.length > 0
           ? renderGroup(
               "Favorites",
@@ -149,27 +145,24 @@ export function AppSidebar({
               })),
             )
           : null}
-        {adminNavigation.length > 0
-          ? renderGroup(
-              "Admin",
-              adminNavigation.map((item) => ({
-                title: item.label,
-                url: item.href,
-                icon:
-                  item.key === "people"
-                    ? UsersRound
-                    : item.key === "access"
-                      ? KeyRound
-                      : item.key === "teams"
-                        ? Network
-                        : item.key === "audit"
-                          ? ScrollText
-                          : LayoutDashboard,
-              })),
-            )
-          : null}
+        {renderGroup("Acquire", acquireItems)}
+        {renderGroup("Convert", convertItems)}
         {renderGroup("Retain", retainItems)}
         {renderGroup("Operate", operateItems)}
+        {adminNavigation.length > 0
+          ? renderGroup("Administration", [
+              {
+                title: "Admin workspace",
+                // Point at the first destination this actor is permitted to open so the
+                // entry never lands on a page their capabilities exclude.
+                url: adminNavigation[0].href,
+                icon: UserCog,
+                // Keep the entry highlighted across every /admin/* sub-page, which the
+                // AdminShell sidebar then navigates.
+                activePath: "/admin",
+              },
+            ])
+          : null}
       </SidebarContent>
 
       <SidebarFooter>
