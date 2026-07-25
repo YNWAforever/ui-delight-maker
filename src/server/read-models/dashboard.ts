@@ -36,9 +36,10 @@ export interface DashboardReadModel {
 }
 
 export async function getDashboardReadModel(): Promise<DashboardReadModel> {
-  const [leads, quotes, tasks, approvals, agentRuns, activityLogs, products, totalRows] = await Promise.all([
-    query<Lead>(
-      `select id, contact_id, account_id, source_campaign_id, campaign_member_id,
+  const [leads, quotes, tasks, approvals, agentRuns, activityLogs, products, totalRows] =
+    await Promise.all([
+      query<Lead>(
+        `select id, contact_id, account_id, source_campaign_id, campaign_member_id,
                 left(company_name, 160) as company_name,
                 left(contact_name, 120) as contact_name,
                 left(contact_email, 254) as contact_email,
@@ -52,10 +53,10 @@ export async function getDashboardReadModel(): Promise<DashboardReadModel> {
          where status not in ('won', 'lost')
          order by created_at desc, id desc
          limit $1`,
-      [DASHBOARD_LIMITS.leads],
-    ),
-    query<Quote>(
-      `select q.id, left(q.number, 64) as number, q.lead_id, q.client_id, q.contact_id,
+        [DASHBOARD_LIMITS.leads],
+      ),
+      query<Quote>(
+        `select q.id, left(q.number, 64) as number, q.lead_id, q.client_id, q.contact_id,
                 q.account_id, q.deal_id, q.status, q.total_value, q.currency, q.valid_until,
                 '[]'::jsonb as line_items, q.created_by, q.created_at, q.updated_at
          from quotes q
@@ -63,64 +64,64 @@ export async function getDashboardReadModel(): Promise<DashboardReadModel> {
          where l.status not in ('won', 'lost')
          order by q.created_at desc, q.id desc
          limit $1`,
-      [DASHBOARD_LIMITS.quotes],
-    ),
-    query<Task>(
-      `select id, left(title, 240) as title, assigned_to, lead_id, client_id, account_id, due_date,
+        [DASHBOARD_LIMITS.quotes],
+      ),
+      query<Task>(
+        `select id, left(title, 240) as title, assigned_to, lead_id, client_id, account_id, due_date,
                 priority, status, created_at
          from tasks
          where status <> 'done'
          order by due_date asc nulls last, created_at desc, id desc
          limit $1`,
-      [DASHBOARD_LIMITS.tasks],
-    ),
-    query<HumanApproval>(
-      `select id, agent_run_id, approval_type, assigned_to, status,
+        [DASHBOARD_LIMITS.tasks],
+      ),
+      query<HumanApproval>(
+        `select id, agent_run_id, approval_type, assigned_to, status,
                 jsonb_build_object('lead_id', context_data->>'lead_id') as context_data,
                 left(context_summary, 300) as context_summary, created_at
          from human_approvals
          where status = 'pending'
          order by created_at desc, id desc
          limit $1`,
-      [DASHBOARD_LIMITS.approvals],
-    ),
-    query<AgentRun>(
-      `select id, left(agent_name, 120) as agent_name,
+        [DASHBOARD_LIMITS.approvals],
+      ),
+      query<AgentRun>(
+        `select id, left(agent_name, 120) as agent_name,
                 jsonb_build_object('lead_id', input_data::jsonb->>'lead_id') as input_data,
                 left(output_summary, 500) as output_summary, status, created_at
          from agent_runs
          order by created_at desc, id desc
          limit $1`,
-      [DASHBOARD_LIMITS.agentRuns],
-    ),
-    query<ActivityLog>(
-      `select id, actor_type, actor_id, left(actor_name, 120) as actor_name,
+        [DASHBOARD_LIMITS.agentRuns],
+      ),
+      query<ActivityLog>(
+        `select id, actor_type, actor_id, left(actor_name, 120) as actor_name,
                 left(action, 240) as action, left(object_type, 64) as object_type,
                 object_id, created_at
          from activity_logs
          order by created_at desc, id desc
          limit $1`,
-      [DASHBOARD_LIMITS.activityLogs],
-    ),
-    query<Product>(
-      `select id, left(name, 160) as name, left(description, 300) as description,
+        [DASHBOARD_LIMITS.activityLogs],
+      ),
+      query<Product>(
+        `select id, left(name, 160) as name, left(description, 300) as description,
                 left(category, 80) as category, billing_type, default_term_months, active,
                 created_at, updated_at
          from products
          where active = true
          order by name, id
          limit $1`,
-      [DASHBOARD_LIMITS.products],
-    ),
-    query<PipelineTotalsRow>(
-      `select
+        [DASHBOARD_LIMITS.products],
+      ),
+      query<PipelineTotalsRow>(
+        `select
          (select count(*) from leads where status not in ('won', 'lost')) as open_leads,
          (select coalesce(sum(total_value), 0) from quotes
            where status in ('pending_approval', 'sent', 'viewed')) as active_quote_value,
          (select count(*) from tasks where status <> 'done') as open_tasks,
          (select count(*) from human_approvals where status = 'pending') as pending_approvals`,
-    ),
-  ]);
+      ),
+    ]);
 
   const totals = totalRows[0];
   const pipelineTotals = {

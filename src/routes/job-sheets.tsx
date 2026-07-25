@@ -56,7 +56,8 @@ export const Route = createFileRoute("/job-sheets")({
         queryKey: crmQueryKeys.jobSheets.list(search),
         queryFn: () => getJobSheetsPage({ data: search }),
       }),
-    ),  head: () => ({
+    ),
+  head: () => ({
     meta: [
       { title: "Job Sheets - Fimmick ClientOps" },
       {

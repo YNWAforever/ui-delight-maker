@@ -30,9 +30,7 @@ describe("primary CRM list route query cache contracts", () => {
     ({ file, keyExpression }) => {
       const source = readRoute(file);
 
-      expect(source).toMatch(
-        /loaderDeps:\s*\(\{\s*search\s*\}\)\s*=>\s*\(\{\s*search\s*\}\)/,
-      );
+      expect(source).toMatch(/loaderDeps:\s*\(\{\s*search\s*\}\)\s*=>\s*\(\{\s*search\s*\}\)/);
       expect(source).toContain("ensureQueryData");
       expect(source).toContain("routeQueryOptions");
       expect(source).toContain(keyExpression);
@@ -45,7 +43,9 @@ describe("primary CRM list route query cache contracts", () => {
     const firstKey = crmQueryKeys.clients.list({ page: 1, status: "active", owner: undefined });
     const reorderedKey = crmQueryKeys.clients.list({ status: "active", page: 1 });
 
-    await queryClient.ensureQueryData(routeQueryOptions({ queryKey: firstKey, queryFn: readClients }));
+    await queryClient.ensureQueryData(
+      routeQueryOptions({ queryKey: firstKey, queryFn: readClients }),
+    );
     await queryClient.ensureQueryData(
       routeQueryOptions({ queryKey: reorderedKey, queryFn: readClients }),
     );

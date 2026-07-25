@@ -11,11 +11,7 @@ type NeonAuthProviderProps = Omit<
   children: ReactNode;
 };
 
-export function NeonAuthProvider({
-  children,
-  onSessionChange,
-  ...props
-}: NeonAuthProviderProps) {
+export function NeonAuthProvider({ children, onSessionChange, ...props }: NeonAuthProviderProps) {
   const queryClient = useQueryClient();
 
   return (

@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ROUTE_PERFORMANCE_BUDGET, measureSerializedBytes } from "@/lib/performance/route-performance";
+import {
+  ROUTE_PERFORMANCE_BUDGET,
+  measureSerializedBytes,
+} from "@/lib/performance/route-performance";
 
 const { queryMock, requireCapabilityMock, createServerFnChain } = vi.hoisted(() => {
   const createServerFnChain = {
@@ -58,7 +61,9 @@ describe("dashboard read model", () => {
       undefined,
     ]);
     expect(sql[5]).toContain("from activity_logs");
-    expect(sql.slice(0, 7).every((statement) => !/select\s+(?:\w+\.)?\*/i.test(statement))).toBe(true);
+    expect(sql.slice(0, 7).every((statement) => !/select\s+(?:\w+\.)?\*/i.test(statement))).toBe(
+      true,
+    );
     expect(sql[0]).toContain("left(enquiry_text, 500)");
     expect(sql[1]).toContain("'[]'::jsonb as line_items");
     expect(sql[3]).toContain("jsonb_build_object('lead_id'");
@@ -72,7 +77,14 @@ describe("dashboard read model", () => {
       [{ id: "run-1", input_data: {}, output_data: {} }],
       [{ id: "activity-1", diff_data: {} }],
       [{ id: "product-1", category: "CRM" }],
-      [{ open_leads: "80", active_quote_value: "120000", open_tasks: "25", pending_approvals: "4" }],
+      [
+        {
+          open_leads: "80",
+          active_quote_value: "120000",
+          open_tasks: "25",
+          pending_approvals: "4",
+        },
+      ],
     ];
     pending.forEach((item, index) => item.resolve(rows[index]));
 
@@ -84,7 +96,12 @@ describe("dashboard read model", () => {
       agentRuns: rows[4],
       activityLogs: rows[5],
       products: rows[6],
-      pipelineTotals: { openLeads: 80, activeQuoteValue: 120000, openTasks: 25, pendingApprovals: 4 },
+      pipelineTotals: {
+        openLeads: 80,
+        activeQuoteValue: 120000,
+        openTasks: 25,
+        pendingApprovals: 4,
+      },
       productSummary: { CRM: 1 },
     });
   });

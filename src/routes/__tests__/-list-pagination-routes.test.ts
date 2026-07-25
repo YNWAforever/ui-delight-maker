@@ -20,7 +20,9 @@ describe("paginated CRM list routes", () => {
       const source = readSource(`../${route}`);
       expect(source, route).toContain("ListPagination");
       expect(source, route).toContain("onPageChange");
-      expect(source, route).toMatch(/search:\s*\(current\)\s*=>\s*\(\{\s*\.\.\.current,\s*page\s*\}\)/);
+      expect(source, route).toMatch(
+        /search:\s*\(current\)\s*=>\s*\(\{\s*\.\.\.current,\s*page\s*\}\)/,
+      );
     }
   });
 

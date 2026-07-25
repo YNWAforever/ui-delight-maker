@@ -16,7 +16,10 @@ export function ListPagination({ page, limit, total, onPageChange }: ListPaginat
 
   return (
     <nav aria-label="List pagination" className="flex items-center justify-end gap-2 py-1">
-      <p aria-live="polite" className="min-w-28 text-right text-xs tabular-nums text-muted-foreground">
+      <p
+        aria-live="polite"
+        className="min-w-28 text-right text-xs tabular-nums text-muted-foreground"
+      >
         {start}-{end} of {total}
       </p>
       <Button
