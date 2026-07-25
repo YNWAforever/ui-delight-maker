@@ -1,3 +1,4 @@
+import { AGENT_DEFINITIONS } from "@/lib/agents";
 import { listMyAccessRequests, listMyDelegations } from "@/server/repositories/account";
 import { listAccessRequests, listAdminAuditLogs } from "@/server/repositories/admin-access";
 import { getInvitationPreview } from "@/server/repositories/admin-invitations";
@@ -13,6 +14,11 @@ import { listProducts } from "@/server/repositories/products";
 import { listQuotesPage } from "@/server/repositories/quotes";
 import { listTasks } from "@/server/repositories/tasks";
 import { getAccountsIndexReadModel } from "@/server/read-models/accounts-index";
+import {
+  loadAgentDirectoryRead,
+  loadAgentHistoryPage,
+  loadAiReviewRead,
+} from "@/server/read-models/agent-workspaces";
 import { loadClientWorkspaceRead } from "@/server/read-models/client-workspace";
 import { getDashboardReadModel } from "@/server/read-models/dashboard";
 import {
@@ -167,6 +173,37 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     run: () => getOrganizationUnit("department", MISSING_ID),
   },
   {
+    // getAgentDirectoryRead() (src/server-functions/agent-runs.ts) awaits
+    // requireCapability("agents.view"), then calls loadAgentDirectoryRead() — the read model
+    // this SQL was extracted into so the gate could reach it. It takes no arguments: the
+    // route's loader passes none.
+    route: "agents",
+    run: () => loadAgentDirectoryRead(),
+  },
+  {
+    // getAgentHistoryPage() (src/server-functions/agent-runs.ts) awaits
+    // requireCapability("agents.view"), then calls loadAgentHistoryPage(data) with the
+    // already-normalized validator output. The route resolves params.name to an
+    // AGENT_DEFINITIONS entry and passes its display_name, so a real definition is used here
+    // rather than a placeholder — the agent name is a plain text filter, and page/limit mirror
+    // the loader's own { page: search.page, limit: 25 }.
+    route: "agents.$name",
+    run: () =>
+      loadAgentHistoryPage({
+        agent: AGENT_DEFINITIONS[0].display_name,
+        page: 1,
+        limit: 25,
+      }),
+  },
+  {
+    // getAiReviewRead() (src/server-functions/agent-runs.ts) awaits requireCapabilityChecks
+    // for approvals.view + agents.view, then calls loadAiReviewRead() — likewise extracted
+    // out of the handler so this gate can execute it. No arguments; the route's loader passes
+    // none.
+    route: "ai-review",
+    run: () => loadAiReviewRead(),
+  },
+  {
     route: "approvals",
     run: () => listApprovals({}),
   },
@@ -289,19 +326,6 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
  * routes cannot slip through unnoticed.
  */
 export const ACKNOWLEDGED_UNCOVERED_ROUTES: string[] = [
-  // agents and ai-review: getAgentDirectoryRead() and getAiReviewRead() (both in
-  // src/server-functions/agent-runs.ts) run their query() calls directly inside the
-  // createServerFn handler, after requireCapability/requireCapabilityChecks — there is no
-  // separately exported, non-authenticated function to import. Registering the exported
-  // server function would just prove that an unauthenticated call throws before touching SQL
-  // (the exact vacuous-pass trap this gate exists to avoid), and hand-copying the inline SQL
-  // into this file would test a duplicate instead of the production code, which is precisely
-  // the silent-drift failure mode route-loader-completeness.test.ts calls out. Covering these
-  // properly requires extracting the query logic into an importable read model first, which is
-  // a production code change outside this test-coverage task.
-  "agents",
-  "agents.$name",
-  "ai-review",
   // invite.$token.complete: its loader calls acceptUserInvitation (src/server-functions/
   // admin-invitations.ts), which is a mutation — it accepts the invitation and inserts a
   // profile row via requireNeonAuthIdentity() + acceptInvitation(). This gate covers read
