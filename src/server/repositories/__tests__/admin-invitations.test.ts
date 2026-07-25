@@ -97,7 +97,10 @@ describe("admin invitation repository", () => {
       ],
       [{ id: "invite-1", status: "revoked" }],
     ]);
-    const repo = createInvitationRepository({ transaction: async (work) => work(db) });
+    const repo = createInvitationRepository({
+      transaction: async (work) => work(db),
+      now: () => new Date("2026-07-16T00:00:00.000Z"),
+    });
 
     await expect(repo.getInvitationPreview("raw-token")).resolves.toEqual({
       email: "person@example.com",
@@ -141,7 +144,10 @@ describe("admin invitation repository", () => {
       transactionCalls += 1;
       return work(db);
     };
-    const repo = createInvitationRepository({ transaction });
+    const repo = createInvitationRepository({
+      transaction,
+      now: () => new Date("2026-07-16T00:00:00.000Z"),
+    });
 
     await expect(
       repo.acceptInvitation("raw-token", { id: "profile-1", email: "PERSON@example.com" }),
@@ -165,7 +171,10 @@ describe("admin invitation repository", () => {
         },
       ],
     ]);
-    const repo = createInvitationRepository({ transaction: async (work) => work(mismatchDb) });
+    const repo = createInvitationRepository({
+      transaction: async (work) => work(mismatchDb),
+      now: () => new Date("2026-07-16T00:00:00.000Z"),
+    });
     await expect(
       repo.acceptInvitation("raw-token", { id: "profile-1", email: "other@example.com" }),
     ).rejects.toThrow("Invitation email does not match");
@@ -182,6 +191,7 @@ describe("admin invitation repository", () => {
     ]);
     const acceptedRepo = createInvitationRepository({
       transaction: async (work) => work(acceptedDb),
+      now: () => new Date("2026-07-16T00:00:00.000Z"),
     });
     await expect(
       acceptedRepo.acceptInvitation("raw-token", { id: "profile-1", email: "person@example.com" }),
