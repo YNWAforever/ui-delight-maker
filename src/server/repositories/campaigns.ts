@@ -95,7 +95,12 @@ export async function getCampaignWithMembers(id: string) {
   const [campaign, members] = await Promise.all([
     queryOne<Campaign>(
       `
-        select id, name, type, channel, status, objective, audience_filter, scheduled_at,
+        -- Only columns the campaigns table actually has. channel, audience_filter and
+        -- scheduled_at were selected here but no migration creates them, so Postgres
+        -- rejected the query and broke /campaigns/$id. All three are optional on the
+        -- Campaign type, and the UI already falls back (channel ?? "unknown",
+        -- starts_at ?? scheduled_at).
+        select id, name, type, status, objective,
                owner, starts_at, ends_at, notes, created_at, updated_at
         from campaigns
         where id = $1
@@ -133,7 +138,12 @@ export async function getCampaignWithAttendeeSummary(id: string) {
   const [campaign, summary] = await Promise.all([
     queryOne<Campaign>(
       `
-        select id, name, type, channel, status, objective, audience_filter, scheduled_at,
+        -- Only columns the campaigns table actually has. channel, audience_filter and
+        -- scheduled_at were selected here but no migration creates them, so Postgres
+        -- rejected the query and broke /campaigns/$id. All three are optional on the
+        -- Campaign type, and the UI already falls back (channel ?? "unknown",
+        -- starts_at ?? scheduled_at).
+        select id, name, type, status, objective,
                owner, starts_at, ends_at, notes, created_at, updated_at
         from campaigns
         where id = $1
