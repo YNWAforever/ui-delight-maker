@@ -172,8 +172,8 @@ function AccountsIndex() {
   return (
     <>
       <PageHeader
-        title="Companies"
-        description="Company records across prospects, clients, partners, vendors, and event participants."
+        title="Accounts"
+        description="All organisation records, from prospects through to clients, partners, vendors, and event participants."
       />
       <main className="space-y-4 px-4 py-5 sm:px-6 sm:py-6">
         <ListPagination

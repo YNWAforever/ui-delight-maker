@@ -18,9 +18,8 @@ import {
   CalendarDays,
   ClipboardList,
   Star,
-  UsersRound,
-  KeyRound,
-  ScrollText,
+  BadgeCheck,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +36,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 
 const todayItems = [{ title: "Revenue Desk", url: "/", icon: LayoutDashboard }];
@@ -47,7 +47,6 @@ const acquireItems = [
 ];
 
 const convertItems = [
-  { title: "Pipeline", url: "/", icon: LayoutDashboard, activePath: null },
   { title: "Quotes", url: "/quotes", icon: FileText },
   { title: "Job Sheets", url: "/job-sheets", icon: ClipboardList },
   { title: "Approvals", url: "/approvals", icon: ShieldCheck },
@@ -55,8 +54,8 @@ const convertItems = [
 ];
 
 const retainItems = [
-  { title: "Companies", url: "/accounts", icon: Building2 },
-  { title: "Clients", url: "/clients", icon: Building2 },
+  { title: "Accounts", url: "/accounts", icon: Building2 },
+  { title: "Active Clients", url: "/clients", icon: BadgeCheck },
   { title: "Relationships", url: "/relationships", icon: Network },
   { title: "Renewals", url: "/renewals", icon: RefreshCw },
   { title: "Tasks", url: "/tasks", icon: CheckSquare },
@@ -101,9 +100,11 @@ export function AppSidebar({
     return currentPath === path || currentPath.startsWith(path + "/");
   };
 
-  const renderGroup = (label: string, items: SidebarItem[]) => (
+  // A null label renders the group unlabelled, for single-entry groups where a heading
+  // would be redundant chrome above one item.
+  const renderGroup = (label: string | null, items: SidebarItem[]) => (
     <SidebarGroup>
-      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      {label ? <SidebarGroupLabel>{label}</SidebarGroupLabel> : null}
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => (
@@ -137,8 +138,6 @@ export function AppSidebar({
 
       <SidebarContent>
         {renderGroup("Today", todayItems)}
-        {renderGroup("Acquire", acquireItems)}
-        {renderGroup("Convert", convertItems)}
         {favorites.length > 0
           ? renderGroup(
               "Favorites",
@@ -149,27 +148,29 @@ export function AppSidebar({
               })),
             )
           : null}
-        {adminNavigation.length > 0
-          ? renderGroup(
-              "Admin",
-              adminNavigation.map((item) => ({
-                title: item.label,
-                url: item.href,
-                icon:
-                  item.key === "people"
-                    ? UsersRound
-                    : item.key === "access"
-                      ? KeyRound
-                      : item.key === "teams"
-                        ? Network
-                        : item.key === "audit"
-                          ? ScrollText
-                          : LayoutDashboard,
-              })),
-            )
-          : null}
+        {renderGroup("Acquire", acquireItems)}
+        {renderGroup("Convert", convertItems)}
         {renderGroup("Retain", retainItems)}
         {renderGroup("Operate", operateItems)}
+        {adminNavigation.length > 0 ? (
+          <>
+            {/* A rule rather than a group heading: one entry does not need a section
+                label, but admin still needs separating from workflow navigation. */}
+            <SidebarSeparator />
+            {renderGroup(null, [
+              {
+                title: "Admin workspace",
+                // Point at the first destination this actor is permitted to open so the
+                // entry never lands on a page their capabilities exclude.
+                url: adminNavigation[0].href,
+                icon: UserCog,
+                // Keep the entry highlighted across every /admin/* sub-page, which the
+                // AdminShell sidebar then navigates.
+                activePath: "/admin",
+              },
+            ])}
+          </>
+        ) : null}
       </SidebarContent>
 
       <SidebarFooter>
