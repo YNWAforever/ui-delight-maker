@@ -7,7 +7,6 @@ import type { RelationshipSignalDraft } from "@/lib/relationship/types";
 export type LeadStatus = "new" | "qualified" | "replied" | "quoted" | "approved" | "won" | "lost";
 export type LeadSource = "website" | "whatsapp" | "email" | "linkedin" | "csv" | "event" | "manual";
 export type LifecycleChannel = LeadSource;
-export type CampaignChannel = LifecycleChannel | "omnichannel";
 export type QuoteStatus =
   | "draft"
   | "pending_approval"
@@ -603,11 +602,11 @@ export interface Campaign {
   id: string;
   name: string;
   type: CampaignType;
-  channel?: CampaignChannel | null;
   status: CampaignStatus;
   objective: string | null;
-  audience_filter?: JsonValue;
-  scheduled_at?: string | null;
+  // No channel/audience_filter/scheduled_at: no migration creates those columns, so they
+  // could never be populated. Declaring them invited SQL that selected them, which broke
+  // /campaigns/$id. Campaign timing lives on starts_at/ends_at.
   owner: string | null;
   starts_at?: string | null;
   ends_at?: string | null;

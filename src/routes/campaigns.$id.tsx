@@ -220,7 +220,7 @@ function CampaignDetailRoute() {
           />
           <SummaryCard
             label="Scheduled"
-            value={<span>{formatDate(campaign.starts_at ?? campaign.scheduled_at ?? null)}</span>}
+            value={<span>{formatDate(campaign.starts_at ?? null)}</span>}
           />
           <SummaryCard
             label="Follow-up state"
