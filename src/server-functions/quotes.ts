@@ -1,3 +1,4 @@
+import { agentNameFor } from "@/lib/agents";
 import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -153,7 +154,7 @@ export const triggerQuoteAgent = createServerFn({ method: "POST" })
     }
 
     const { run, created } = await createAgentRun({
-      agent_name: "Quote Draft Agent",
+      agent_name: agentNameFor("draft_quote"),
       workflow_type: "draft_quote",
       subject_id: data.leadId,
       input_data: { lead_id: data.leadId },
