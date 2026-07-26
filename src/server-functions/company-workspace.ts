@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
+import { requireCapability } from "@/server/auth/authorization.server";
 import {
   loadCompanyWorkspaceCore,
   loadCompanyWorkspaceRead,
@@ -64,20 +64,44 @@ function validateCompanyWorkspaceReadInput(data: unknown): CompanyWorkspaceReadI
 export const getCompanyWorkspaceRead = createServerFn({ method: "GET" })
   .validator(validateCompanyWorkspaceReadInput)
   .handler(async ({ data }) => {
-    await requireNeonAuthSession();
+    // Same guard getAccount and getAccountWorkspace already apply to this account's data.
+    // A bare session check let this path skip two things they enforce: an explicit
+    // permission-override deny, and the manager scope check — so a manager barred from an
+    // account could still read it here, which is the primary account screen.
+    // requireCapability loads the session itself, so no separate session check is needed.
+    await requireCapability("accounts.view", {
+      resourceType: "account",
+      resourceId: data.accountId,
+    });
     return loadCompanyWorkspaceRead(data.accountId, data.sections);
   });
 
 export const getCompanyWorkspaceCore = createServerFn({ method: "GET" })
   .validator(validateCompanyWorkspaceInput)
   .handler(async ({ data }) => {
-    await requireNeonAuthSession();
+    // Same guard getAccount and getAccountWorkspace already apply to this account's data.
+    // A bare session check let this path skip two things they enforce: an explicit
+    // permission-override deny, and the manager scope check — so a manager barred from an
+    // account could still read it here, which is the primary account screen.
+    // requireCapability loads the session itself, so no separate session check is needed.
+    await requireCapability("accounts.view", {
+      resourceType: "account",
+      resourceId: data.accountId,
+    });
     return loadCompanyWorkspaceCore(data.accountId);
   });
 
 export const getCompanyWorkspaceSection = createServerFn({ method: "GET" })
   .validator(validateCompanyWorkspaceSectionInput)
   .handler(async ({ data }) => {
-    await requireNeonAuthSession();
+    // Same guard getAccount and getAccountWorkspace already apply to this account's data.
+    // A bare session check let this path skip two things they enforce: an explicit
+    // permission-override deny, and the manager scope check — so a manager barred from an
+    // account could still read it here, which is the primary account screen.
+    // requireCapability loads the session itself, so no separate session check is needed.
+    await requireCapability("accounts.view", {
+      resourceType: "account",
+      resourceId: data.accountId,
+    });
     return loadCompanyWorkspaceSection(data.accountId, data.section);
   });

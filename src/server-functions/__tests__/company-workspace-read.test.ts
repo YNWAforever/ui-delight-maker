@@ -18,7 +18,7 @@ const { requireSession, loadRead, createServerFnChain } = vi.hoisted(() => {
 });
 
 vi.mock("@tanstack/react-start", () => ({ createServerFn: () => createServerFnChain() }));
-vi.mock("@/lib/auth/neon-auth.server", () => ({ requireNeonAuthSession: requireSession }));
+vi.mock("@/server/auth/authorization.server", () => ({ requireCapability: requireSession }));
 vi.mock("@/server/company-workspace/loaders", () => ({
   loadCompanyWorkspaceCore: vi.fn(),
   loadCompanyWorkspaceSection: vi.fn(),
@@ -32,7 +32,7 @@ describe("Company Workspace deep read server function", () => {
     loadRead.mockResolvedValue({ requestId: "request-1", sections: {} });
   });
 
-  it("validates one request and authenticates once for all requested sections", async () => {
+  it("validates one request and authorizes once for all requested sections", async () => {
     const { getCompanyWorkspaceRead } = await import("../company-workspace");
 
     await getCompanyWorkspaceRead({
@@ -43,7 +43,7 @@ describe("Company Workspace deep read server function", () => {
     expect(loadRead).toHaveBeenCalledWith("account-1", ["activity", "commercial"]);
   });
 
-  it("rejects duplicate or unknown section names before authenticating", async () => {
+  it("rejects duplicate or unknown section names before authorizing", async () => {
     const { getCompanyWorkspaceRead } = await import("../company-workspace");
 
     await expect(
@@ -57,7 +57,7 @@ describe("Company Workspace deep read server function", () => {
     expect(requireSession).not.toHaveBeenCalled();
   });
 
-  it("rejects blank account IDs and explicit null sections before authenticating", async () => {
+  it("rejects blank account IDs and explicit null sections before authorizing", async () => {
     const { getCompanyWorkspaceRead } = await import("../company-workspace");
 
     await expect(
