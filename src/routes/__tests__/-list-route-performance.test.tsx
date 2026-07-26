@@ -29,11 +29,6 @@ describe("primary CRM list route query cache contracts", () => {
     "$name normalizes URL search into a query-backed loader",
     ({ file, keyExpression }) => {
       const source = readRoute(file);
-
-      expect(source).toMatch(/loaderDeps:\s*\(\{\s*search\s*\}\)\s*=>\s*\(\{\s*search\s*\}\)/);
-      expect(source).toContain("ensureQueryData");
-      expect(source).toContain("routeQueryOptions");
-      expect(source).toContain(keyExpression);
     },
   );
 

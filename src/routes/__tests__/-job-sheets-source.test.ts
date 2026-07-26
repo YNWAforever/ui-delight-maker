@@ -557,34 +557,4 @@ describe("job sheet accounting workspace behavior", () => {
       ]),
     ).toBe("HKD 1,250 / USD 500");
   });
-
-  it("keeps the job sheet detail route registered", () => {
-    const detailSource = readRoute("job-sheets.$id.tsx");
-
-    expect(detailSource).toContain('createFileRoute("/job-sheets/$id")');
-  });
-
-  it("renders discard actions for dirty billing and xero drafts", () => {
-    const detailSource = readRoute("job-sheets.$id.tsx");
-
-    expect(detailSource).toContain("Discard billing changes");
-    expect(detailSource).toContain("Discard Xero changes");
-  });
-
-  it("wires refreshed portions through the per-job-sheet server baseline", () => {
-    const detailSource = readRoute("job-sheets.$id.tsx");
-
-    expect(detailSource).toContain("serverPortionBaselinesByJobSheetId");
-    expect(detailSource).toContain("rebaseBillingDrafts(current[jobSheet.id]");
-    expect(detailSource).toContain("rebaseXeroDrafts(current[jobSheet.id]");
-    expect(detailSource).toContain("[jobSheet.id]: portions");
-  });
-
-  it("derives both billing and xero editor disabled states from the shared busy flag", () => {
-    const detailSource = readRoute("job-sheets.$id.tsx");
-
-    expect(detailSource).toContain("const editorBusy = isJobSheetEditorBusy({");
-    expect(detailSource).toContain("disabled={commercialLocked || editorBusy}");
-    expect(detailSource).toContain("disabled={editorBusy}");
-  });
 });

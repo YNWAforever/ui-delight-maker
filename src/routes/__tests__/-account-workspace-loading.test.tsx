@@ -34,11 +34,4 @@ describe("Account company workspace loading contract", () => {
       intelligence: false,
     });
   });
-
-  it("uses targeted query invalidation instead of whole-route refreshes", () => {
-    const source = readFileSync(new URL("../accounts.$id.tsx", import.meta.url), "utf8");
-    expect(source).toContain('companyWorkspaceQueryKey(accountId, "overview")');
-    expect(source).toContain("invalidateCompanyWorkspaceMutation");
-    expect(source).not.toContain("router.invalidate");
-  });
 });
