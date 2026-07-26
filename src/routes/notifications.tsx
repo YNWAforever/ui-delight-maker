@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { relativeTime, formatDateTime } from "@/lib/format";
+import { useClientNow } from "@/hooks/use-client-now";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { getNotifications } from "@/server-functions/notifications";
@@ -78,6 +79,7 @@ type FilterTab =
   | "stale_touchpoint";
 
 function NotificationsPage() {
+  const clientNow = useClientNow();
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
   const { filter } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -174,7 +176,8 @@ function NotificationsPage() {
                     {isUnread && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {formatDateTime(n.created_at)} · {relativeTime(n.created_at)}
+                    {formatDateTime(n.created_at)}
+                    {clientNow === null ? null : ` · ${relativeTime(n.created_at, clientNow)}`}
                   </p>
                 </div>
 

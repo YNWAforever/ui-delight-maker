@@ -1167,61 +1167,6 @@ export const revenueTrend = [
   { week: "W20", revenue: 920 },
 ];
 
-export const agentLeaderboard = [
-  { name: "Qualification", runs: 37, success: 96 },
-  { name: "Lead Intake", runs: 41, success: 99 },
-  { name: "Sales Reply", runs: 22, success: 88 },
-  { name: "Quotation", runs: 12, success: 92 },
-  { name: "Approval", runs: 9, success: 95 },
-  { name: "Client Success", runs: 14, success: 94 },
-  { name: "Orchestrator", runs: 24, success: 98 },
-];
-
-// Daily breakdown — used by the dashboard leaderboard widget for date filtering.
-export interface AgentLeaderboardDay {
-  agent: string;
-  date: string; // ISO date (UTC)
-  runs: number;
-  successes: number;
-  value: number; // HKD attributed
-}
-
-const LB_AGENTS = [
-  "Lead Intake",
-  "Qualification",
-  "Sales Reply",
-  "Quotation",
-  "Approval",
-  "Client Success",
-  "Orchestrator",
-];
-
-// Deterministic seed so SSR + client match.
-function lbSeed(agentIdx: number, dayIdx: number, salt: number) {
-  const x = Math.sin(agentIdx * 9301 + dayIdx * 49297 + salt * 233280) * 10000;
-  return x - Math.floor(x);
-}
-
-export const agentLeaderboardDaily: AgentLeaderboardDay[] = (() => {
-  const out: AgentLeaderboardDay[] = [];
-  // 14 days ending 2026-05-19 inclusive.
-  const end = new Date("2026-05-19T00:00:00Z").getTime();
-  for (let d = 0; d < 14; d++) {
-    const date = new Date(end - (13 - d) * 86_400_000).toISOString().slice(0, 10);
-    LB_AGENTS.forEach((agent, ai) => {
-      const base = [6, 5, 4, 2, 1, 2, 3][ai];
-      const runs = Math.max(0, Math.round(base + lbSeed(ai, d, 1) * 6 - 2));
-      const successes = Math.max(
-        0,
-        Math.min(runs, Math.round(runs * (0.78 + lbSeed(ai, d, 2) * 0.22))),
-      );
-      const value = Math.round(runs * (35 + lbSeed(ai, d, 3) * 65) * 1000);
-      out.push({ agent, date, runs, successes, value });
-    });
-  }
-  return out;
-})();
-
 export const taskThroughput = [
   { day: "Mon", created: 14, completed: 10 },
   { day: "Tue", created: 18, completed: 16 },
