@@ -3,10 +3,7 @@ import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import type { AutomationPlaybook, AutomationRun } from "@/lib/types";
-import {
-  serializeAutomationPlaybook,
-  serializeAutomationRun,
-} from "@/server-functions/serializers";
+import { serializeAutomationPlaybook, serializeAutomationRun } from "@/lib/serializable";
 
 type GetAutomationPlaybooksInput = {
   status?: string;

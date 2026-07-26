@@ -4,13 +4,15 @@ import {
   requireCapabilityChecks,
   requireCapabilitySet,
 } from "@/server/auth/authorization.server";
+import { loadLeadWorkspaceRead } from "@/server/read-models/relationship-workspaces";
 import {
-  loadCampaignWorkspaceRead,
-  loadCampaignWorkspaceSection,
-  loadLeadWorkspaceRead,
-  loadRelationshipIndexRead,
+  getCampaignWithAttendeeSummary,
+  listCampaignAttendeeImportSection,
+} from "@/server/repositories/campaigns";
+import {
+  listRelationshipIndexPage,
   type RelationshipIndexFilters,
-} from "@/server/read-models/relationship-workspaces";
+} from "@/server/repositories/relationship-signals";
 
 function parseIdInput(data: unknown) {
   const id = data && typeof data === "object" ? (data as { id?: unknown }).id : undefined;
@@ -68,7 +70,7 @@ export const getCampaignWorkspaceRead = createServerFn({ method: "GET" })
       resourceType: "campaign",
       resourceId: data.id,
     });
-    return loadCampaignWorkspaceRead(data.id);
+    return getCampaignWithAttendeeSummary(data.id);
   });
 
 export const getCampaignWorkspaceSection = createServerFn({ method: "GET" })
@@ -78,12 +80,12 @@ export const getCampaignWorkspaceSection = createServerFn({ method: "GET" })
       resourceType: "campaign",
       resourceId: data.campaignId,
     });
-    return loadCampaignWorkspaceSection(data.campaignId, data);
+    return listCampaignAttendeeImportSection(data.campaignId, data);
   });
 
 export const getRelationshipIndexRead = createServerFn({ method: "GET" })
   .validator(parseRelationshipIndexInput)
   .handler(async ({ data }) => {
     await requireCapabilitySet(["accounts.view", "engagements.view"]);
-    return loadRelationshipIndexRead(data);
+    return listRelationshipIndexPage(data);
   });

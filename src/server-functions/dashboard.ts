@@ -5,7 +5,7 @@ import {
   serializeActivityLog,
   serializeAgentRun,
   serializeHumanApproval,
-} from "@/server-functions/serializers";
+} from "@/lib/serializable";
 
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
   await requireCapability("leads.view");

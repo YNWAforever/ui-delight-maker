@@ -53,6 +53,20 @@ export type SerializablePipelineData = {
   agentRuns: SerializableAgentRun[];
 };
 
+/**
+ * Narrows a value read out of a `jsonb` column to what a server function's caller will
+ * actually receive.
+ *
+ * This is not the same job as `normalizeDbValue` in `@/server/db/neon.server`, and the two
+ * are not interchangeable. That one converts `Date` instances to ISO strings so rows are
+ * serialisable at all. This one drops `undefined`-valued keys, which `normalizeDbValue`
+ * deliberately preserves — it rebuilds objects entry by entry.
+ *
+ * The hop between a server function and its caller is JSON, so `{ a: undefined }` arrives
+ * as `{}` regardless. Applying this on the server means the value the server holds and the
+ * value the client receives are the same shape, and the `Serializable*` types above describe
+ * both. Skip it and the type claims a key survives the wire when it does not.
+ */
 export function toJsonValue(value: unknown): JsonValue {
   if (value === undefined) return null;
   return JSON.parse(JSON.stringify(value ?? null)) as JsonValue;

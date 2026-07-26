@@ -87,5 +87,3 @@ export async function getAccountsIndexReadModel(
     preferences: { views, favorites },
   };
 }
-export type AccountsIndexRead = AccountsIndexReadModel;
-export const getAccountsIndexRead = getAccountsIndexReadModel;

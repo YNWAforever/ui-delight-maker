@@ -1,27 +1,20 @@
+import { serializeActivityLog } from "@/lib/serializable";
 import type { Lead } from "@/lib/types";
-import {
-  getCampaignWithAttendeeSummary,
-  listCampaignAttendeeImportSection,
-  type CampaignAttendeePageFilters,
-} from "@/server/repositories/campaigns";
 import { getLeadWorkspaceData } from "@/server/repositories/leads";
-import {
-  listRelationshipIndexPage,
-  type RelationshipIndexFilters,
-} from "@/server/repositories/relationship-signals";
-import { serializeActivityLog } from "@/server-functions/serializers";
 
-export type {
-  CampaignAttendeeRow,
-  CampaignAttendeeSummary,
-  CampaignImportHistoryEntry,
-} from "@/server/repositories/campaigns";
 export type { LeadQuoteSummary } from "@/server/repositories/leads";
-export type {
-  RelationshipIndexFilters,
-  RelationshipSignalSummary,
-} from "@/server/repositories/relationship-signals";
 
+/**
+ * The lead workspace read is the only member of this module: it reshapes one repository
+ * result into a payload the route consumes, so it earns a name of its own.
+ *
+ * The campaign and relationship-index reads used to live here too, as one-line delegations
+ * to `@/server/repositories/campaigns` and `@/server/repositories/relationship-signals`.
+ * They were deleted rather than kept for symmetry — a read model that only forwards is a
+ * second name for the same behaviour, and a reader asking "what shaping happens on the
+ * campaign read path" had to open two files to learn the answer is "none". Callers import
+ * those repository functions directly, as 20 of the server functions already did.
+ */
 export async function loadLeadWorkspaceRead(id: string) {
   const data = await getLeadWorkspaceData(id);
   return {
@@ -40,22 +33,4 @@ export async function loadLeadWorkspaceRead(id: string) {
   };
 }
 
-export function loadCampaignWorkspaceRead(id: string) {
-  return getCampaignWithAttendeeSummary(id);
-}
-
-export function loadCampaignWorkspaceSection(
-  campaignId: string,
-  filters: CampaignAttendeePageFilters = {},
-) {
-  return listCampaignAttendeeImportSection(campaignId, filters);
-}
-
-export function loadRelationshipIndexRead(filters: RelationshipIndexFilters = {}) {
-  return listRelationshipIndexPage(filters);
-}
-
 export type LeadWorkspaceRead = Awaited<ReturnType<typeof loadLeadWorkspaceRead>>;
-export type CampaignWorkspaceRead = Awaited<ReturnType<typeof loadCampaignWorkspaceRead>>;
-export type CampaignWorkspaceSectionRead = Awaited<ReturnType<typeof loadCampaignWorkspaceSection>>;
-export type RelationshipIndexRead = Awaited<ReturnType<typeof loadRelationshipIndexRead>>;

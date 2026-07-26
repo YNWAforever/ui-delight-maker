@@ -1,8 +1,4 @@
 import { query, queryOne } from "@/server/db/neon.server";
-import {
-  getJobSheetOperationsRead,
-  type JobSheetOperationsRead,
-} from "@/server/repositories/job-sheets";
 import { listRenewalsRead, type RenewalsReadFilters } from "@/server/repositories/engagements";
 
 export type ReportRange = "7d" | "30d" | "90d";
@@ -41,10 +37,6 @@ type ReportSummaryRow = {
 function numeric(value: number | string | null | undefined) {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-export function loadJobSheetRead(id: string): Promise<JobSheetOperationsRead> {
-  return getJobSheetOperationsRead(id);
 }
 
 export async function loadRenewalsRead(input: RenewalsReadFilters) {

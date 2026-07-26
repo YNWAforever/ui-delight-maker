@@ -12,7 +12,7 @@ import {
   serializeActivityLog,
   serializeAgentRun,
   serializeAgentToolCall,
-} from "@/server-functions/serializers";
+} from "@/lib/serializable";
 
 export type {
   AgentDirectoryRead,

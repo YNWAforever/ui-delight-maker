@@ -53,23 +53,6 @@ export async function loadQuoteCreateBootstrap(input: QuoteCreateBootstrapInput 
   return { pricingTemplates, quoteTemplates, pdfTemplates, leads, clients, products };
 }
 
-export function loadQuoteReferencePage<K extends QuoteReferenceKind>(
-  input: QuoteReferencePageInput<K>,
-): Promise<QuoteReferencePage<K>> {
-  return listQuoteReferencePage(input);
-}
-
-export function loadQuoteDetailRead(id: string) {
-  return getQuoteWorkspaceDetail(id);
-}
-
-export function loadQuoteVersionsSection(
-  id: string,
-  input: { page?: number; limit?: number } = {},
-) {
-  return listQuoteVersionSummariesPage(id, input);
-}
-
 function immutableVersionId(quote: Quote) {
   if (quote.status === "accepted") {
     if (!quote.accepted_version_id) {
@@ -126,6 +109,4 @@ export async function loadQuoteDocumentRead(id: string) {
 }
 
 export type QuoteCreateBootstrapRead = Awaited<ReturnType<typeof loadQuoteCreateBootstrap>>;
-export type QuoteDetailRead = Awaited<ReturnType<typeof loadQuoteDetailRead>>;
-export type QuoteVersionsSectionRead = Awaited<ReturnType<typeof loadQuoteVersionsSection>>;
 export type QuoteDocumentRead = Awaited<ReturnType<typeof loadQuoteDocumentRead>>;

@@ -206,9 +206,9 @@ describe("relationship workspace read models", () => {
   });
 
   it("keeps campaign members deferred while returning attendee summary counts", async () => {
-    const { loadCampaignWorkspaceRead } = await import("../relationship-workspaces");
+    const { getCampaignWithAttendeeSummary } = await import("@/server/repositories/campaigns");
 
-    await expect(loadCampaignWorkspaceRead("campaign-1")).resolves.toEqual({
+    await expect(getCampaignWithAttendeeSummary("campaign-1")).resolves.toEqual({
       campaign,
       attendeeSummary: {
         total: 12,
@@ -227,9 +227,9 @@ describe("relationship workspace read models", () => {
   });
 
   it("loads a bounded deterministic attendee page and compact import history on demand", async () => {
-    const { loadCampaignWorkspaceSection } = await import("../relationship-workspaces");
+    const { listCampaignAttendeeImportSection } = await import("@/server/repositories/campaigns");
 
-    const result = await loadCampaignWorkspaceSection("campaign-1", { page: 1, limit: 500 });
+    const result = await listCampaignAttendeeImportSection("campaign-1", { page: 1, limit: 500 });
 
     expect(result).toEqual({
       members: expect.arrayContaining([expect.objectContaining({ id: "member-1" })]),
@@ -252,9 +252,10 @@ describe("relationship workspace read models", () => {
   });
 
   it("paginates account rows and filters open signals in SQL", async () => {
-    const { loadRelationshipIndexRead } = await import("../relationship-workspaces");
+    const { listRelationshipIndexPage } =
+      await import("@/server/repositories/relationship-signals");
 
-    const result = await loadRelationshipIndexRead({ page: 2, limit: 500, severity: "high" });
+    const result = await listRelationshipIndexPage({ page: 2, limit: 500, severity: "high" });
 
     expect(result).toEqual({
       items: [

@@ -72,7 +72,7 @@ vi.mock("@/server/repositories/agent-runs", () => ({
   updateAgentRunResult: updateAgentRunResultMock,
 }));
 
-vi.mock("@/server-functions/serializers", () => ({
+vi.mock("@/lib/serializable", () => ({
   serializeAgentRun: serializeAgentRunMock,
 }));
 

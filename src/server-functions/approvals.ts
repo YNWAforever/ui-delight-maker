@@ -5,7 +5,7 @@ import {
   decideApproval as decideApprovalInNeon,
   listApprovals,
 } from "@/server/repositories/approvals";
-import { serializeHumanApproval } from "@/server-functions/serializers";
+import { serializeHumanApproval } from "@/lib/serializable";
 import { applyRiskReviewDecision } from "@/server/workflows/decide-risk-review.server";
 
 export const getApprovals = createServerFn({ method: "GET" })

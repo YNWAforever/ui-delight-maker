@@ -19,7 +19,7 @@ import {
   findActiveRun,
   updateAgentRunResult,
 } from "@/server/repositories/agent-runs";
-import { serializeAgentRun } from "@/server-functions/serializers";
+import { serializeAgentRun } from "@/lib/serializable";
 import type { Account } from "@/lib/types";
 
 export const getAccounts = createServerFn({ method: "GET" })

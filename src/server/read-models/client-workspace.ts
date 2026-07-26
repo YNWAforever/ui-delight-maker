@@ -8,7 +8,7 @@ import type {
   RenewalRisk,
 } from "@/lib/types";
 import { queryOne } from "@/server/db/neon.server";
-import { serializeActivityLog, type SerializableActivityLog } from "@/server-functions/serializers";
+import { serializeActivityLog, type SerializableActivityLog } from "@/lib/serializable";
 import { listActivityLogsByClientAndEngagementIds } from "@/server/repositories/activity-logs";
 import { listClientContacts } from "@/server/repositories/client-contacts";
 import { getClient } from "@/server/repositories/clients";

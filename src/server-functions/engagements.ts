@@ -16,7 +16,7 @@ import {
   markEngagementRenewed,
   type RenewalsFilters,
 } from "@/server/repositories/engagements";
-import { serializeAgentRun } from "@/server-functions/serializers";
+import { serializeAgentRun } from "@/lib/serializable";
 import type { Engagement } from "@/lib/types";
 
 export const getEngagementsByClient = createServerFn({ method: "GET" })

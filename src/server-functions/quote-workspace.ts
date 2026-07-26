@@ -6,17 +6,19 @@ import {
 } from "@/server/auth/authorization.server";
 import {
   loadQuoteCreateBootstrap,
-  loadQuoteDetailRead,
   loadQuoteDocumentRead,
-  loadQuoteReferencePage,
-  loadQuoteVersionsSection,
   type QuoteCreateBootstrapInput,
+} from "@/server/read-models/quote-workspace";
+import {
+  getQuoteWorkspaceDetail,
+  listQuoteReferencePage,
   type QuoteReferenceKind,
   type QuoteReferencePage,
   type QuoteReferencePageInput,
-} from "@/server/read-models/quote-workspace";
+} from "@/server/repositories/quotes";
+import { listQuoteVersionSummariesPage } from "@/server/repositories/quote-versions";
 
-export type { QuoteReferenceKind, QuoteReferencePage } from "@/server/read-models/quote-workspace";
+export type { QuoteReferenceKind, QuoteReferencePage } from "@/server/repositories/quotes";
 
 function optionalId(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
@@ -88,7 +90,7 @@ export const getQuoteReferencePage = createServerFn({ method: "GET" })
       { capability: "quotes.view" },
       ...(capability ? [{ capability }] : []),
     ]);
-    return loadQuoteReferencePage(data);
+    return listQuoteReferencePage(data);
   });
 
 async function authorizeQuote(id: string) {
@@ -118,7 +120,7 @@ export const getQuoteDetailRead = createServerFn({ method: "GET" })
   .validator(parseIdInput)
   .handler(async ({ data }) => {
     await authorizeQuote(data.id);
-    const read = await loadQuoteDetailRead(data.id);
+    const read = await getQuoteWorkspaceDetail(data.id);
     await authorizeLinkedQuoteParties(read);
     return read;
   });
@@ -127,7 +129,7 @@ export const getQuoteVersionsSection = createServerFn({ method: "GET" })
   .validator(parseVersionInput)
   .handler(async ({ data }) => {
     await authorizeQuote(data.id);
-    return loadQuoteVersionsSection(data.id, data);
+    return listQuoteVersionSummariesPage(data.id, data);
   });
 
 export const getQuoteDocumentRead = createServerFn({ method: "GET" })

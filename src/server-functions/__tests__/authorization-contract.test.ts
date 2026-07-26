@@ -88,7 +88,7 @@ function isGuarded(body: string, source: string): boolean {
 }
 
 describe("server-function authorization contract", () => {
-  const files = readdirSync(DIR).filter((f) => f.endsWith(".ts") && f !== "serializers.ts");
+  const files = readdirSync(DIR).filter((f) => f.endsWith(".ts"));
 
   it("guards every handler with a capability, or names why it does not", () => {
     const unaccounted: string[] = [];
