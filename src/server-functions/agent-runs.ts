@@ -43,14 +43,6 @@ export function normalizeAgentHistoryInput(input: {
   };
 }
 
-export const getAgentRuns = createServerFn({ method: "GET" })
-  .validator((data: unknown) => (data ?? {}) as { agent?: string; status?: string })
-  .handler(async ({ data }) => {
-    await requireNeonAuthSession();
-    const runs = await listAgentRuns(data);
-    return runs.map(serializeAgentRun);
-  });
-
 export const getAgentDirectoryRead = createServerFn({ method: "GET" }).handler(async () => {
   await requireCapability("agents.view");
   return loadAgentDirectoryRead();
@@ -71,22 +63,3 @@ export const getAiReviewRead = createServerFn({ method: "GET" }).handler(async (
   await requireCapabilityChecks([{ capability: "approvals.view" }, { capability: "agents.view" }]);
   return loadAiReviewRead();
 });
-
-export const getAgentRun = createServerFn({ method: "GET" })
-  .validator((data: unknown) => data as { id: string })
-  .handler(async ({ data }) => {
-    await requireNeonAuthSession();
-    const result = await getAgentRunWithCalls(data.id);
-    return {
-      run: serializeAgentRun(result.run),
-      toolCalls: result.toolCalls.map(serializeAgentToolCall),
-    };
-  });
-
-export const getActivityLogs = createServerFn({ method: "GET" })
-  .validator((data: unknown) => (data ?? {}) as { object_id?: string })
-  .handler(async ({ data }) => {
-    await requireNeonAuthSession();
-    const logs = await listActivityLogs(data);
-    return logs.map(serializeActivityLog);
-  });
