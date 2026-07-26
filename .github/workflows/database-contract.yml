@@ -26,4 +26,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: bunx vitest run src/server/db/__tests__/clientops-schema.integration.test.ts
+      # The whole suite, not just src/server/db/__tests__/. DATABASE_TEST_URL is set above,
+      # so the integration tests that self-skip locally execute here: 887 tests run with it
+      # set versus 852 passed / 35 skipped without. That makes this one command a superset of
+      # the previous step, and picks up any future test without another workflow edit.
+      - run: bun run test

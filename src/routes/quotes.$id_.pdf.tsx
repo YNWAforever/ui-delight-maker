@@ -1,10 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import {
-  QuotePdfPreview,
-  QuotePdfPreviewUnavailable,
-  resolveQuotePdfSource,
-} from "@/components/quotes/quote-pdf-preview";
+import { QuotePdfPreview, QuotePdfPreviewUnavailable } from "@/components/quotes/quote-pdf-preview";
+import { resolveQuotePdfSource } from "@/lib/quote-pdf-source";
 import { Button } from "@/components/ui/button";
 import { getQuoteDocumentRead } from "@/server-functions/quote-workspace";
 

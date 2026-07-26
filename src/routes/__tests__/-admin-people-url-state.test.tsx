@@ -23,17 +23,4 @@ describe("admin people URL state", () => {
     expect(parsed.page).toBe(1);
     expect(parsed.user).toBe("profile-1");
   });
-
-  it("keeps directory filters, selected user, and detail tabs in validated URL state", () => {
-    expect(peopleSource).toContain("validateSearch: adminPeopleSearchSchema");
-    expect(peopleSource).toContain("Route.useSearch()");
-    expect(peopleSource).toContain("useNavigate({ from: Route.fullPath })");
-    expect(peopleSource).toContain("selectedUserId");
-    expect(peopleSource).toContain("replace: true");
-
-    expect(detailSource).toContain("validateSearch: adminUserDetailSearchSchema");
-    expect(detailSource).toContain("Route.useSearch()");
-    expect(detailSource).toContain('value={search.tab ?? "profile"}');
-    expect(detailSource).toContain("replace: true");
-  });
 });

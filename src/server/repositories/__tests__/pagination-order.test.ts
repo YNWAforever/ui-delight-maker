@@ -6,7 +6,10 @@ const repositorySource = (name: string) =>
 
 describe("paginated repository ordering", () => {
   it.each([
-    ["accounts", /listAccountsPage[\s\S]*order by coalesce\(last_activity_at, created_at\) desc, id desc[\s\S]*limit/i],
+    [
+      "accounts",
+      /listAccountsPage[\s\S]*order by coalesce\(last_activity_at, created_at\) desc, id desc[\s\S]*limit/i,
+    ],
     ["clients", /listClientsPage[\s\S]*order by c\.company_name, c\.id desc[\s\S]*limit/i],
     ["leads", /listLeadsPage[\s\S]*order by created_at desc, id desc[\s\S]*limit/i],
     ["campaigns", /listCampaignsPage[\s\S]*order by created_at desc, id desc[\s\S]*limit/i],

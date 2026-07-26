@@ -19,11 +19,13 @@ describe("operational mutation invalidation", () => {
   });
 
   it("targets notification state without unrelated queues", () => {
-    expect(getOperationalMutationKeys({ type: "notification-read", id: "notification-1" })).toEqual([
-      crmQueryKeys.notifications.detail("notification-1"),
-      crmQueryKeys.notifications.lists(),
-      crmQueryKeys.shell(),
-    ]);
+    expect(getOperationalMutationKeys({ type: "notification-read", id: "notification-1" })).toEqual(
+      [
+        crmQueryKeys.notifications.detail("notification-1"),
+        crmQueryKeys.notifications.lists(),
+        crmQueryKeys.shell(),
+      ],
+    );
   });
 
   it("targets every agent history page, list, and AI review after agent runs change", () => {

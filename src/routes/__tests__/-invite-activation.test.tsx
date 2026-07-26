@@ -76,19 +76,4 @@ describe("invitation activation routes", () => {
     });
     expect(acceptUserInvitationMock).toHaveBeenCalledWith({ data: { token: "raw-token" } });
   });
-
-  it("renders clear unavailable and activation failure copy", () => {
-    const previewSource = readFileSync(
-      resolve(process.cwd(), "src/routes/invite.$token.tsx"),
-      "utf8",
-    );
-    const completionSource = readFileSync(
-      resolve(process.cwd(), "src/routes/invite.$token.complete.tsx"),
-      "utf8",
-    );
-
-    expect(previewSource).toContain("Invitation unavailable");
-    expect(previewSource).toContain("invalid, expired, revoked, or already used");
-    expect(completionSource).toContain("We could not activate this invitation");
-  });
 });

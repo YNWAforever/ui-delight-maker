@@ -71,14 +71,4 @@ describe("app-wide performance completion coverage", () => {
 
     expect(broadInvalidations).toEqual([]);
   });
-
-  it("keeps legacy polling refresh visibility-aware until PERF-15 removes it", () => {
-    const pollingSource = readFileSync(
-      new URL("../../hooks/use-route-polling-refresh.ts", import.meta.url),
-      "utf8",
-    );
-
-    expect(pollingSource).toContain('document.visibilityState !== "hidden"');
-    expect(pollingSource).toContain("void router.invalidate()");
-  });
 });

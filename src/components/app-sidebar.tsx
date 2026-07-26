@@ -1,4 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { isSidebarItemActive } from "@/lib/sidebar-active";
 import type { Profile, WorkspaceFavorite } from "@/lib/types";
 import type { AdminNavigationItem } from "@/lib/admin/types";
 import {
@@ -91,14 +92,7 @@ export function AppSidebar({
     select: (s) => s.location.pathname,
   });
 
-  const isActive = (item: SidebarItem) => {
-    if (item.activePath === null) return false;
-
-    const path = (item.activePath ?? item.url).split("?")[0];
-
-    if (path === "/") return currentPath === "/";
-    return currentPath === path || currentPath.startsWith(path + "/");
-  };
+  const isActive = (item: SidebarItem) => isSidebarItemActive(item, currentPath);
 
   // A null label renders the group unlabelled, for single-entry groups where a heading
   // would be redundant chrome above one item.

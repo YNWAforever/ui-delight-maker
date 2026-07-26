@@ -53,7 +53,8 @@ export const Route = createFileRoute("/quotes")({
         queryKey: crmQueryKeys.quotes.list(search),
         queryFn: () => getQuotesPage({ data: search }),
       }),
-    ),  head: () => ({
+    ),
+  head: () => ({
     meta: [
       { title: "Quotes — Fimmick ClientOps" },
       { name: "description", content: "All quotes with status, value, and approval state." },

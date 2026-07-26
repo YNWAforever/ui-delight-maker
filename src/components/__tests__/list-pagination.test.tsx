@@ -27,12 +27,20 @@ describe("ListPagination", () => {
       <ListPagination page={1} limit={50} total={75} onPageChange={vi.fn()} />,
     );
 
-    expect((screen.getByRole("button", { name: "Previous page" }) as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole("button", { name: "Next page" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(
+      (screen.getByRole("button", { name: "Previous page" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect((screen.getByRole("button", { name: "Next page" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
 
     rerender(<ListPagination page={2} limit={50} total={75} onPageChange={vi.fn()} />);
 
-    expect((screen.getByRole("button", { name: "Previous page" }) as HTMLButtonElement).disabled).toBe(false);
-    expect((screen.getByRole("button", { name: "Next page" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: "Previous page" }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+    expect((screen.getByRole("button", { name: "Next page" }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
   });
 });

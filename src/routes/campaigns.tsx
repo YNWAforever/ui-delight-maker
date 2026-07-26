@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { CalendarDays, Plus, Users } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import { z } from "zod";
 import { PageHeader } from "@/components/page-header";
 import { ListPagination } from "@/components/list-pagination";
@@ -138,7 +138,7 @@ function CampaignsIndex() {
                       <StatusBadge value={campaign.status} />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+                    <div className="grid grid-cols-1 gap-3 text-xs text-muted-foreground">
                       <div className="rounded-md border border-border/70 p-3">
                         <div className="flex items-center gap-2">
                           <CalendarDays className="h-4 w-4" />
@@ -146,15 +146,6 @@ function CampaignsIndex() {
                         </div>
                         <p className="mt-2 font-medium text-foreground">
                           {campaign.type.replace(/_/g, " ")}
-                        </p>
-                      </div>
-                      <div className="rounded-md border border-border/70 p-3">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          <span>Channel</span>
-                        </div>
-                        <p className="mt-2 font-medium text-foreground">
-                          {(campaign.channel ?? "unknown").replace(/_/g, " ")}
                         </p>
                       </div>
                     </div>

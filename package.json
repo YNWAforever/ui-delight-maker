@@ -19,6 +19,7 @@
     "test:database-contract": "bunx vitest run src/server/db/__tests__/clientops-schema.integration.test.ts",
     "preview": "vite preview",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "format": "prettier --write ."
   },

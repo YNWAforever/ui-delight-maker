@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveQuotePdfSource } from "@/components/quotes/quote-pdf-preview";
+import { resolveQuotePdfSource } from "@/lib/quote-pdf-source";
 import type { JsonValue, Quote, QuoteVersion } from "@/lib/types";
 
 const liveLineItems = [

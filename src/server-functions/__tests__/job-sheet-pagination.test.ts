@@ -2,8 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const chain = {
-    validator() { return chain; },
-    handler<T extends (...args: never[]) => unknown>(handler: T) { return handler; },
+    validator() {
+      return chain;
+    },
+    handler<T extends (...args: never[]) => unknown>(handler: T) {
+      return handler;
+    },
   };
   return {
     chain,
@@ -14,7 +18,9 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("@tanstack/react-start", () => ({ createServerFn: () => mocks.chain }));
-vi.mock("@/server/auth/authorization.server", () => ({ requireCapability: mocks.requireCapability }));
+vi.mock("@/server/auth/authorization.server", () => ({
+  requireCapability: mocks.requireCapability,
+}));
 vi.mock("@/lib/auth/neon-auth.server", () => ({ requireNeonAuthSession: mocks.requireSession }));
 vi.mock("@/server/repositories/job-sheets", () => ({
   acceptJobSheet: vi.fn(),

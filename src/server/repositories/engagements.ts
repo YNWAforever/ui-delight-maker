@@ -292,12 +292,21 @@ export async function listRenewalsRead(filters: RenewalsReadFilters) {
   const values: unknown[] = [filters.asOf];
   const clauses = ["e.status = 'active'"];
   const windowClause = renewalWindowClause(filters.renewalWindow, "$1::date");
-  if (windowClause) clauses.push(windowClause);
+  // $1 (asOf) is bound for both queries below, but with the renewal window unfiltered
+  // nothing in the items query referenced it, and Postgres cannot infer the type of a
+  // bound parameter no query uses -- it failed with "could not determine data type of
+  // parameter $1", which is what broke /renewals. Keep $1 referenced without changing
+  // which rows match: `is not distinct from` holds even when the value is null.
+  clauses.push(windowClause ?? "$1::date is not distinct from $1::date");
   if (filters.risk) {
     values.push(filters.risk);
     clauses.push(`e.renewal_risk = $${values.length}`);
   }
-  if (filters.productId) {
+  // Hardening only: parseRenewalsInput already maps the "all" sentinel to undefined on
+  // the route path, and RenewalRisk cannot be "all" at all. productId is a plain string
+  // though, so a direct caller of this exported function could still pass the sentinel
+  // into e.product_id, which is uuid -- Postgres rejects that outright.
+  if (filters.productId && filters.productId !== "all") {
     values.push(filters.productId);
     clauses.push(`e.product_id = $${values.length}`);
   }

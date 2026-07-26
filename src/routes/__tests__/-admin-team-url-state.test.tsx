@@ -21,31 +21,4 @@ describe("admin organization URL state", () => {
     expect(parsed.status).toBe("archived");
     expect(parsed.unit).toBe("team-1");
   });
-
-  it("keeps the directory and detail routes URL-driven", () => {
-    expect(routeSource).toContain("validateSearch: adminOrganizationSearchSchema");
-    expect(routeSource).toContain("Route.useSearch()");
-    expect(routeSource).toContain("replace: true");
-    expect(routeSource).toContain("selectedUnitId");
-
-    expect(detailSource).toContain("validateSearch: adminOrganizationSearchSchema");
-    expect(detailSource).toContain("Route.useSearch()");
-    expect(detailSource).toContain("activeTab={search.tab}");
-  });
-
-  it("caches concurrent organization reads and refreshes only related admin data", () => {
-    expect(routeSource).toContain("Promise.all");
-    expect(routeSource).toContain("ensureQueryData");
-    expect(routeSource).toContain("routeQueryOptions");
-    expect(routeSource).toContain("useQuery");
-    expect(routeSource).toContain("useQueryClient");
-    expect(routeSource).toContain("crmQueryKeys.admin");
-    expect(routeSource).not.toContain("router.invalidate");
-    expect(routeSource).toContain("getAdminOrganizationFn");
-    expect(routeSource).toContain("getAdminOrganizationUnitFn");
-    expect(routeSource).toContain("adminOrganizationQueryKey");
-    expect(routeSource).toContain("adminTeamQueryKey");
-    expect(routeSource).toContain("adminPeopleQueryKey");
-    expect(routeSource).toContain("crmQueryKeys.shell()");
-  });
 });

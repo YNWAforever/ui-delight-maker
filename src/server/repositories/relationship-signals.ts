@@ -86,8 +86,12 @@ export async function listRelationshipIndexPage(filters: RelationshipIndexFilter
         select
           a.id, a.name, a.website, a.domain, a.industry, a.region, a.tier,
           a.account_owner, a.lifecycle_stage, a.cs_owner, a.source, a.tags, a.notes,
-          a.relationship_health, a.last_activity_at, a.next_action, a.health_score,
-          a.renewal_date, a.arr, a.created_at, a.updated_at,
+          -- Only columns that exist on accounts. health_score, renewal_date and arr
+          -- were selected here but live on clients/engagements, never on accounts,
+          -- so Postgres rejected the query and broke /relationships. Accounts carry
+          -- relationship_health; renewal and ARR figures belong to engagements.
+          a.relationship_health, a.last_activity_at, a.next_action,
+          a.created_at, a.updated_at,
           count(rs.id) as open_signal_count,
           case min(case rs.severity when 'high' then 1 when 'medium' then 2 else 3 end)
             when 1 then 'high'
