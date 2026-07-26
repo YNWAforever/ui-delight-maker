@@ -4,6 +4,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, FileUp } from "lucide-react";
 import { toast } from "sonner";
 import { EventAttendeeTable } from "@/components/relationship/event-attendee-table";
+import { SummaryRow } from "@/components/summary-row";
 import { StatusBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -382,14 +383,5 @@ function SummaryCard({ label, value, hint }: { label: string; value: ReactNode; 
         {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
       </CardContent>
     </Card>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="flex items-start justify-between gap-3 rounded-md border border-border/70 px-3 py-2">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-right font-medium text-foreground">{value}</span>
-    </div>
   );
 }

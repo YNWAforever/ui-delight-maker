@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/page-header";
 import { AccountTimeline } from "@/components/relationship/account-timeline";
 import { CompanyWorkspaceSectionState } from "@/components/relationship/company-workspace-section-state";
 import { StakeholderMap } from "@/components/relationship/stakeholder-map";
+import { SummaryRow } from "@/components/summary-row";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -698,15 +699,6 @@ function AccountDetailRoute() {
         </Tabs>
       </main>
     </>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-start justify-between gap-3 rounded-md border border-border/70 px-3 py-2">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-right font-medium text-foreground">{value}</span>
-    </div>
   );
 }
 

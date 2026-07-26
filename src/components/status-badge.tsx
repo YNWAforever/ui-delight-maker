@@ -52,7 +52,10 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
+        // whitespace-nowrap because a badge is one token, not a sentence. Without it a
+        // two-word status broke across lines inside its own pill — "Active Client" rendered
+        // as "Active" over "Client" — whenever the row it sits in got tight.
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap capitalize",
         style,
         className,
       )}
