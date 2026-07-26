@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  requireNeonAuthSessionMock,
+  requireCapabilityMock,
   loadCompanyWorkspaceCoreMock,
   loadCompanyWorkspaceSectionMock,
   createServerFnChain,
@@ -21,7 +21,7 @@ const {
   };
 
   return {
-    requireNeonAuthSessionMock: vi.fn(),
+    requireCapabilityMock: vi.fn(),
     loadCompanyWorkspaceCoreMock: vi.fn(),
     loadCompanyWorkspaceSectionMock: vi.fn(),
     createServerFnChain,
@@ -29,8 +29,8 @@ const {
 });
 
 vi.mock("@tanstack/react-start", () => ({ createServerFn: () => createServerFnChain() }));
-vi.mock("@/lib/auth/neon-auth.server", () => ({
-  requireNeonAuthSession: requireNeonAuthSessionMock,
+vi.mock("@/server/auth/authorization.server", () => ({
+  requireCapability: requireCapabilityMock,
 }));
 vi.mock("@/server/company-workspace/loaders", () => ({
   loadCompanyWorkspaceCore: loadCompanyWorkspaceCoreMock,
@@ -40,17 +40,17 @@ vi.mock("@/server/company-workspace/loaders", () => ({
 describe("Company Workspace server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
   });
 
-  it("authenticates before loading the stable core", async () => {
+  it("checks accounts.view on the target account before loading the stable core", async () => {
     loadCompanyWorkspaceCoreMock.mockResolvedValue({ company: { id: "account-1" } });
     const { getCompanyWorkspaceCore } = await import("../company-workspace");
 
     await expect(getCompanyWorkspaceCore({ data: { accountId: "account-1" } })).resolves.toEqual({
       company: { id: "account-1" },
     });
-    expect(requireNeonAuthSessionMock.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(requireCapabilityMock.mock.invocationCallOrder[0]).toBeLessThan(
       loadCompanyWorkspaceCoreMock.mock.invocationCallOrder[0],
     );
     expect(loadCompanyWorkspaceCoreMock).toHaveBeenCalledWith("account-1");
@@ -64,7 +64,7 @@ describe("Company Workspace server functions", () => {
       data: { accountId: "account-1", section: "activity" },
     });
 
-    expect(requireNeonAuthSessionMock).toHaveBeenCalled();
+    expect(requireCapabilityMock).toHaveBeenCalled();
     expect(loadCompanyWorkspaceSectionMock).toHaveBeenCalledWith("account-1", "activity");
   });
 
@@ -74,7 +74,7 @@ describe("Company Workspace server functions", () => {
 
     await expect(invoke()).rejects.toThrow("Company Workspace account ID is required");
 
-    expect(requireNeonAuthSessionMock).not.toHaveBeenCalled();
+    expect(requireCapabilityMock).not.toHaveBeenCalled();
     expect(loadCompanyWorkspaceCoreMock).not.toHaveBeenCalled();
   });
 
