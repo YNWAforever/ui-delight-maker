@@ -163,19 +163,4 @@ describe("ported CRM server functions", () => {
       owner: "signed-in-user",
     });
   });
-
-  it("requires auth before loading the account timeline", async () => {
-    mockGetAccountTimeline.mockResolvedValue([{ id: "entry-1" }]);
-    const { getAccountTimeline } = await import("../activity-logs");
-
-    await expect(
-      getAccountTimeline({ data: { accountId: "account-1", kinds: ["activity"] } }),
-    ).resolves.toEqual([{ id: "entry-1" }]);
-
-    expect(mockRequireNeonAuthSession).toHaveBeenCalledTimes(1);
-    expect(mockGetAccountTimeline).toHaveBeenCalledWith({
-      accountId: "account-1",
-      kinds: ["activity"],
-    });
-  });
 });

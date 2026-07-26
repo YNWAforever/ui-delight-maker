@@ -60,19 +60,6 @@ const ACKNOWLEDGED_UNGUARDED: Record<string, string> = {
       "workspace-preferences.ts::togglePersonalWorkspaceFavorite",
     ].map((key) => [key, "self-scoped by session.user.id; no other subject to authorize"]),
   ),
-  // Session-only reads on a caller-supplied id. These are OUTSTANDING, not safe — listed
-  // so the contract passes today while naming exactly what is still owed.
-  ...Object.fromEntries(
-    [
-      "activity-logs.ts::getActivityLogsForClient",
-      "activity-logs.ts::getAccountTimeline",
-      "agent-runs.ts::getAgentRuns",
-      "agent-runs.ts::getAgentRun",
-      "agent-runs.ts::getActivityLogs",
-      "pipeline.ts::getPipelineData",
-      "search.ts::searchWorkspace",
-    ].map((key) => [key, "OUTSTANDING: session-only on a caller-supplied id"]),
-  ),
 };
 
 /** Retained for the exact-capability assertions below, which look up one handler by name. */
