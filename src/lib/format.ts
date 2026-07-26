@@ -60,9 +60,20 @@ export const formatHKD = (n: number | null | undefined) => formatCurrencyAmount(
 export const formatCompactHKD = (n: number | null | undefined) =>
   `HKD ${COMPACT_COUNT.format(n ?? 0)}`;
 
-export const relativeTime = (iso: string) => {
-  // Deterministic relative against a fixed "now" so SSR matches CSR.
-  const NOW = new Date("2026-05-20T10:00:00Z").getTime();
+/**
+ * Relative time against an explicit `now`.
+ *
+ * `now` is a parameter rather than a call to Date.now() inside, because the server and the
+ * first client render must produce identical markup or React reports a hydration mismatch.
+ * That is why this previously pinned a hard-coded "now" — which kept SSR and CSR in
+ * agreement but froze every timestamp at 2026-05-20, so by mid-2026 the app was telling
+ * users a notification from an hour ago arrived two months in the future.
+ *
+ * Callers rendering this in a component should take `now` from useClientNow(), which is
+ * null until after mount and so keeps the hydration render stable.
+ */
+export const relativeTime = (iso: string, now: number) => {
+  const NOW = now;
   const t = new Date(iso).getTime();
   const diff = Math.round((t - NOW) / 1000);
   const abs = Math.abs(diff);

@@ -45,6 +45,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useClientNow } from "@/hooks/use-client-now";
+import { slaChip } from "@/lib/approval-sla";
 import { cn } from "@/lib/utils";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
@@ -85,23 +87,8 @@ export const Route = createFileRoute("/approvals")({
   component: ApprovalsInbox,
 });
 
-const SLA_HOURS = 4;
-const NOW_MS = new Date("2026-05-20T10:00:00Z").getTime();
-
-function slaChip(createdAt: string) {
-  const elapsed = (NOW_MS - new Date(createdAt).getTime()) / 36e5;
-  const remaining = SLA_HOURS - elapsed;
-  if (remaining <= 0)
-    return { text: "SLA breached", className: "bg-destructive/15 text-destructive" };
-  if (remaining < 1)
-    return {
-      text: `${(remaining * 60).toFixed(0)}m left`,
-      className: "bg-warning/15 text-warning-foreground",
-    };
-  return { text: `${remaining.toFixed(1)}h left`, className: "bg-info/10 text-info" };
-}
-
 function ApprovalsInbox() {
+  const clientNow = useClientNow();
   const loadedApprovals = Route.useLoaderData() as ApprovalRead;
   const queryClient = useQueryClient();
   const approvalsQuery = useQuery({
@@ -419,7 +406,7 @@ function ApprovalsInbox() {
                 )}
                 <ul className="divide-y divide-border">
                   {pending.map((a) => {
-                    const sla = slaChip(a.created_at);
+                    const sla = clientNow === null ? null : slaChip(a.created_at, clientNow);
                     return (
                       <li
                         key={a.id}
@@ -455,14 +442,16 @@ function ApprovalsInbox() {
                             <span className="text-sm font-medium">
                               {a.approval_type?.replace(/_/g, " ") ?? "Approval"}
                             </span>
-                            <span
-                              className={cn(
-                                "rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-                                sla.className,
-                              )}
-                            >
-                              {sla.text}
-                            </span>
+                            {sla ? (
+                              <span
+                                className={cn(
+                                  "rounded-md px-1.5 py-0.5 text-[10px] font-medium",
+                                  sla.className,
+                                )}
+                              >
+                                {sla.text}
+                              </span>
+                            ) : null}
                           </div>
                           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                             {a.context_summary}

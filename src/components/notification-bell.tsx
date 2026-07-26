@@ -14,7 +14,8 @@ import {
 import { useNotifications } from "@/hooks/use-notifications";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { relativeTime } from "@/lib/format";
+import { formatDateTime, relativeTime } from "@/lib/format";
+import { useClientNow } from "@/hooks/use-client-now";
 import type { NotificationRecord } from "@/lib/types";
 
 const typeIcon: Record<string, React.ReactNode> = {
@@ -40,6 +41,7 @@ function notificationLink(n: NotificationRecord): string {
 }
 
 export function NotificationBell() {
+  const clientNow = useClientNow();
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -127,7 +129,9 @@ export function NotificationBell() {
                         {n.title}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {relativeTime(n.created_at)}
+                        {clientNow === null
+                          ? formatDateTime(n.created_at)
+                          : relativeTime(n.created_at, clientNow)}
                       </p>
                     </div>
                     {isUnread && (
