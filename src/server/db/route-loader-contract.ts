@@ -47,6 +47,15 @@ export type RouteLoaderContractEntry = {
    * renewal window unfiltered, so a convenient-but-unrealistic value would have missed it.
    */
   run: () => Promise<unknown>;
+  /**
+   * Ceiling on queries this route's read path may issue against the seeded fixture.
+   * Required, so a new route cannot be registered without a deliberate budget — a compile
+   * error rather than a silent gap.
+   *
+   * A ceiling, not an exact count: adding a legitimate query should not churn this file,
+   * while N+1 multiplies rather than increments and blows straight through.
+   */
+  maxQueries: number;
 };
 
 // Placeholder identity for entries whose read path needs a caller id (e.g. "my profile" or
@@ -101,6 +110,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
         page: 1,
         limit: 50,
       } as Parameters<typeof loadRenewalsRead>[0]),
+    maxQueries: 3,
   },
   {
     route: "relationships",
@@ -108,6 +118,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
       loadRelationshipIndexRead({ page: 1, limit: 50 } as Parameters<
         typeof loadRelationshipIndexRead
       >[0]),
+    maxQueries: 2,
   },
   {
     // getMyAccount() (src/server-functions/account.ts) awaits requireNeonAuthSession(), then
@@ -120,6 +131,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
         listMyDelegations(FAKE_PROFILE_ID),
         listMyAccessRequests(FAKE_PROFILE_ID),
       ]),
+    maxQueries: 3,
   },
   {
     route: "accounts",
@@ -129,6 +141,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
         page: 1,
         limit: 50,
       } as Parameters<typeof getAccountsIndexReadModel>[1]),
+    maxQueries: 6,
   },
   {
     // getCompanyWorkspaceRead() (src/server-functions/company-workspace.ts) awaits
@@ -143,6 +156,8 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // try/catch-wrapped, are guaranteed to surface as a gate failure. Confirmed by spot-check.
     route: "accounts.$id",
     run: () => loadCompanyWorkspaceRead(MISSING_ID, []),
+    // TODO(Task 4): measured budget
+    maxQueries: 99,
   },
   {
     // admin.access defaults to the "requests" tab with requestStatus "pending"
@@ -150,19 +165,23 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // listAccessRequests after requireCapability("access_requests.decide").
     route: "admin.access",
     run: () => listAccessRequests("pending"),
+    maxQueries: 1,
   },
   {
     route: "admin.audit",
     run: () =>
       listAdminAuditLogs({ page: 1, limit: 50 } as Parameters<typeof listAdminAuditLogs>[0]),
+    maxQueries: 2,
   },
   {
     route: "admin.index",
     run: () => getAdminOverview(),
+    maxQueries: 1,
   },
   {
     route: "admin.people",
     run: () => listAdminUsers({ page: 1, limit: 50 } as Parameters<typeof listAdminUsers>[0]),
+    maxQueries: 2,
   },
   {
     // getAdminUserFn() (src/server-functions/admin-users.ts) awaits
@@ -170,6 +189,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // directly — already imported above for the "account" entry's admin-overview read.
     route: "admin.people.$id",
     run: () => getAdminUser(MISSING_ID),
+    maxQueries: 1,
   },
   {
     // admin.teams' loader also calls getAdminUsersFn for the member picker and (conditionally)
@@ -177,6 +197,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // route's primary, always-fetched data and takes no filter arguments.
     route: "admin.teams",
     run: () => listDepartmentsAndTeams(),
+    maxQueries: 3,
   },
   {
     // getAdminOrganizationUnitFn() (src/server-functions/admin-teams.ts) awaits
@@ -188,6 +209,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // entry above, so it is not duplicated here.
     route: "admin.teams.$id",
     run: () => getOrganizationUnit("department", MISSING_ID),
+    maxQueries: 1,
   },
   {
     // getAgentDirectoryRead() (src/server-functions/agent-runs.ts) awaits
@@ -196,6 +218,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // route's loader passes none.
     route: "agents",
     run: () => loadAgentDirectoryRead(),
+    maxQueries: 3,
   },
   {
     // getAgentHistoryPage() (src/server-functions/agent-runs.ts) awaits
@@ -211,6 +234,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
         page: 1,
         limit: 25,
       }),
+    maxQueries: 3,
   },
   {
     // getAiReviewRead() (src/server-functions/agent-runs.ts) awaits requireCapabilityChecks
@@ -219,14 +243,17 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // none.
     route: "ai-review",
     run: () => loadAiReviewRead(),
+    maxQueries: 2,
   },
   {
     route: "approvals",
     run: () => listApprovals({}),
+    maxQueries: 1,
   },
   {
     route: "campaigns",
     run: () => listCampaignsPage({ page: 1, limit: 50 } as Parameters<typeof listCampaignsPage>[0]),
+    maxQueries: 2,
   },
   {
     // getCampaignWorkspaceRead() (src/server-functions/relationship-workspaces.ts) awaits
@@ -234,10 +261,13 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // directly, which is itself a one-line pass-through to getCampaignWithAttendeeSummary.
     route: "campaigns.$id",
     run: () => loadCampaignWorkspaceRead(MISSING_ID),
+    // TODO(Task 4): measured budget
+    maxQueries: 99,
   },
   {
     route: "clients",
     run: () => listClientsPage({ page: 1, limit: 50 } as Parameters<typeof listClientsPage>[0]),
+    maxQueries: 2,
   },
   {
     // getClientWorkspaceRead() (src/server-functions/client-workspace.ts) computes a
@@ -247,10 +277,13 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // skipping them, matching the route's loader ({ clientId: params.id }, no section filter).
     route: "clients.$id",
     run: () => loadClientWorkspaceRead(MISSING_ID),
+    // TODO(Task 4): measured budget
+    maxQueries: 99,
   },
   {
     route: "index",
     run: () => getDashboardReadModel(),
+    maxQueries: 8,
   },
   {
     // getInvitationPreview() (src/server-functions/admin-invitations.ts) has no auth call —
@@ -260,10 +293,13 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // it up by token_hash before checking whether a matching invitation was found.
     route: "invite.$token",
     run: () => getInvitationPreview(MISSING_TOKEN),
+    // TODO(Task 4): measured budget
+    maxQueries: 99,
   },
   {
     route: "job-sheets",
     run: () => listJobSheetsPage({ page: 1, limit: 50 } as Parameters<typeof listJobSheetsPage>[0]),
+    maxQueries: 2,
   },
   {
     // getJobSheetRead() (src/server-functions/operations.ts) awaits
@@ -273,10 +309,13 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // visibility of those fields only — they do not affect the job sheet SQL itself.
     route: "job-sheets.$id",
     run: () => loadJobSheetRead(MISSING_ID),
+    // TODO(Task 4): measured budget
+    maxQueries: 99,
   },
   {
     route: "leads",
     run: () => listLeadsPage({ page: 1, limit: 50 } as Parameters<typeof listLeadsPage>[0]),
+    maxQueries: 2,
   },
   {
     // getLeadWorkspaceRead() (src/server-functions/relationship-workspaces.ts) awaits
@@ -285,6 +324,8 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // existence check), so all three are planned and validated by Postgres on every call.
     route: "leads.$id",
     run: () => loadLeadWorkspaceRead(MISSING_ID),
+    // TODO(Task 4): measured budget
+    maxQueries: 99,
   },
   {
     // getNotifications() (src/server-functions/notifications.ts) runs exactly these two reads
@@ -292,10 +333,12 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     route: "notifications",
     run: () =>
       Promise.all([listNotifications(FAKE_PROFILE_ID), countUnreadNotifications(FAKE_PROFILE_ID)]),
+    maxQueries: 2,
   },
   {
     route: "quotes",
     run: () => listQuotesPage({ page: 1, limit: 50 } as Parameters<typeof listQuotesPage>[0]),
+    maxQueries: 2,
   },
   {
     // getQuoteDetailRead() (src/server-functions/quotes.ts) awaits authorizeQuote(id), then
@@ -304,6 +347,8 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // this read using its result, so it does not affect the quote SQL itself.
     route: "quotes.$id",
     run: () => loadQuoteDetailRead(MISSING_ID),
+    // TODO(Task 4): measured budget
+    maxQueries: 99,
   },
   {
     // getQuoteDocumentRead() (src/server-functions/quotes.ts) calls loadQuoteDocumentRead(id)
@@ -315,6 +360,8 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // additional SQL — the document-version query is only reachable with a real quote row.
     route: "quotes.$id_.pdf",
     run: () => loadQuoteDocumentRead(MISSING_ID),
+    // TODO(Task 4): measured budget
+    maxQueries: 99,
   },
   {
     route: "quotes.new",
@@ -322,18 +369,22 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
       loadQuoteCreateBootstrap({ productId: FAKE_PRODUCT_ID } as Parameters<
         typeof loadQuoteCreateBootstrap
       >[0]),
+    maxQueries: 10,
   },
   {
     route: "reports",
     run: () => loadReportSummary({ range: "30d" } as Parameters<typeof loadReportSummary>[0]),
+    maxQueries: 1,
   },
   {
     route: "settings",
     run: () => listProducts({}),
+    maxQueries: 1,
   },
   {
     route: "tasks",
     run: () => listTasks({}),
+    maxQueries: 1,
   },
 ];
 
