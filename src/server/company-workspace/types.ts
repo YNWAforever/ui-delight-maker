@@ -10,6 +10,7 @@ import type {
   Task,
 } from "@/lib/types";
 import type { AccountTimelineEntry } from "@/lib/relationship/types";
+import type { DatabaseFailureKind } from "@/server/db/postgres-error";
 
 export type CompanyWorkspaceSection =
   | "commercial"
@@ -17,12 +18,12 @@ export type CompanyWorkspaceSection =
   | "activity"
   | "intelligence";
 
-export type CompanyWorkspaceErrorCode =
-  | "company_not_found"
-  | "schema_mismatch"
-  | "query_failed"
-  | "query_timeout"
-  | "access_denied";
+/**
+ * The database-derived codes come from `DatabaseFailureKind` rather than being restated, so
+ * adding a kind there cannot leave this union silently behind. `company_not_found` and
+ * `access_denied` are app-level — the code throws them itself, they are not SQLSTATEs.
+ */
+export type CompanyWorkspaceErrorCode = DatabaseFailureKind | "company_not_found" | "access_denied";
 
 export type CompanyWorkspaceError = {
   code: CompanyWorkspaceErrorCode;

@@ -182,6 +182,50 @@ describe("client workspace read model", () => {
     expect(listQuotesMock).toHaveBeenCalledWith({ client_id: "client-1" });
   });
 
+  it("reports a schema mismatch as permanent, not as something to retry", async () => {
+    // useClientWorkspaceSection retries once whenever error.retryable is true, and the
+    // section panel then keeps offering a retry button. This read model used to hardcode
+    // retryable: true for every failure, so a 42703 — the exact code that took down
+    // /relationships — was retried against SQL that can never succeed.
+    listQuotesMock.mockRejectedValue(
+      Object.assign(new Error("column q.total_value does not exist"), { code: "42703" }),
+    );
+    const { loadClientWorkspaceSection } = await import("../client-workspace");
+
+    const state = await loadClientWorkspaceSection("client-1", "commercial", "request-1");
+
+    expect(state).toEqual({
+      status: "error",
+      error: {
+        code: "schema_mismatch",
+        requestId: "request-1",
+        retryable: false,
+        section: "commercial",
+      },
+    });
+    // The driver message names the failing column; it must not travel to the browser.
+    expect(JSON.stringify(state)).not.toContain("total_value");
+  });
+
+  it("still offers a retry when the connection dropped", async () => {
+    listQuotesMock.mockRejectedValue(
+      Object.assign(new Error("connection terminated"), { code: "ECONNRESET" }),
+    );
+    const { loadClientWorkspaceSection } = await import("../client-workspace");
+
+    await expect(
+      loadClientWorkspaceSection("client-1", "commercial", "request-2"),
+    ).resolves.toEqual({
+      status: "error",
+      error: {
+        code: "query_timeout",
+        requestId: "request-2",
+        retryable: true,
+        section: "commercial",
+      },
+    });
+  });
+
   it("authorizes both server reads before starting repository work", async () => {
     const authorization = deferred<Record<string, boolean>>();
     requireCapabilitySetMock.mockReturnValueOnce(authorization.promise);
