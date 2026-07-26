@@ -71,14 +71,37 @@ describe("route loader contract", () => {
     holder.pool = null;
   });
 
+  /**
+   * Walks a resolved read for `{ status: "error" }` states nested anywhere inside it.
+   * Recursive because they sit at varying depths — `read.overview`, and one per entry of
+   * `read.sections`.
+   */
+  function findErrorStates(value: unknown, path = "read", found: string[] = []): string[] {
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => findErrorStates(item, `${path}[${index}]`, found));
+      return found;
+    }
+    if (value && typeof value === "object") {
+      const record = value as Record<string, unknown>;
+      if (record.status === "error") {
+        found.push(`${path} -> ${JSON.stringify(record.error)}`);
+      }
+      for (const [key, item] of Object.entries(record)) {
+        findErrorStates(item, `${path}.${key}`, found);
+      }
+    }
+    return found;
+  }
+
   for (const entry of ROUTE_LOADER_CONTRACT) {
     it.runIf(hasDatabase)(`${entry.route} executes against the migrated schema`, async () => {
       // An empty result is fine — detail routes legitimately find nothing — so only a
       // Postgres-level failure counts. Both outage bugs were exactly that: 42703
       // (undefined_column) and 42P18 (indeterminate_datatype).
       holder.count = 0;
+      let result: unknown;
       try {
-        await entry.run();
+        result = await entry.run();
       } catch (error) {
         if (isPostgresError(error)) {
           throw new Error(
@@ -87,6 +110,23 @@ describe("route loader contract", () => {
           );
         }
       }
+      // Rejecting is not the only way a read can fail. The Company Workspace overview and
+      // section reads wrap their queries and map Postgres errors — including the
+      // schema-mismatch SQLSTATEs 42P01/42703/42883 — onto a returned
+      // `{ status: "error" }` (src/server/company-workspace/errors.ts), and the Client
+      // Workspace sections do the same with a bare catch. That degradation is deliberate
+      // for a user, but it made those sub-paths invisible to the check above: the read
+      // resolves, so the gate stayed green while the query was broken.
+      //
+      // Against a schema built from the migrations and seeded with real rows, no read has
+      // any business returning an error state. Any that does is a bug, not a user-facing
+      // condition, so surface it here rather than letting it render as a panel in prod.
+      const embedded = findErrorStates(result);
+      expect(
+        embedded,
+        `Route "${entry.route}" resolved successfully but returned ${embedded.length} embedded ` +
+          `error state(s) against a healthy seeded database:\n  ${embedded.join("\n  ")}`,
+      ).toEqual([]);
       // The fixture puts three rows in every driving table, so a per-row query shows up
       // here as a count well above the budget rather than as a passing single query.
       expect(

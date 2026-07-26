@@ -90,6 +90,8 @@ export const FIXTURE = {
   campaignId: "00000000-0000-4000-8000-000000000501",
   quoteId: "00000000-0000-4000-8000-000000000601",
   engagementId: "00000000-0000-4000-8000-000000000701",
+  jobSheetId: "00000000-0000-4000-8000-000000001001",
+  departmentId: "00000000-0000-4000-8000-000000001101",
 } as const;
 // Placeholder invitation token for /invite/$token, whose path param is an opaque token string,
 // not a UUID. Real tokens are 32 random bytes, base64url-encoded (see
@@ -220,7 +222,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // Still MISSING_ID: the gate fixture creates no departments row, so this entry budgets
     // the not-found path, not a real organization-unit read.
     route: "admin.teams.$id",
-    run: () => getOrganizationUnit("department", MISSING_ID),
+    run: () => getOrganizationUnit("department", FIXTURE.departmentId),
     maxQueries: 1,
   },
   {
@@ -326,12 +328,12 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // (a one-line pass-through to getJobSheetOperationsRead). The handler's follow-up
     // requireCapabilitySet calls for the linked quote/client run after this read and gate
     // visibility of those fields only — they do not affect the job sheet SQL itself.
-    // Still MISSING_ID: the gate fixture creates no job_sheets row, because
-    // job_sheets.accepted_quote_version_id is NOT NULL and would require a quote_versions
-    // row first. This entry therefore budgets the not-found path, not the full read.
+    // FIXTURE.jobSheetId resolves to a real row, so this exercises the full read rather
+    // than stopping at the not-found check. It needed a quote_versions row in the fixture
+    // first, because job_sheets.accepted_quote_version_id is NOT NULL.
     route: "job-sheets.$id",
-    run: () => loadJobSheetRead(MISSING_ID),
-    maxQueries: 1,
+    run: () => loadJobSheetRead(FIXTURE.jobSheetId),
+    maxQueries: 2,
   },
   {
     route: "leads",
