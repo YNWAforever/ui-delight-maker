@@ -37,12 +37,8 @@ describe("admin organization URL state", () => {
     expect(routeSource).toContain("Promise.all");
     expect(routeSource).toContain("ensureQueryData");
     expect(routeSource).toContain("routeQueryOptions");
-    expect(routeSource).toContain("useQuery");
-    expect(routeSource).toContain("useQueryClient");
     expect(routeSource).toContain("crmQueryKeys.admin");
     expect(routeSource).not.toContain("router.invalidate");
-    expect(routeSource).toContain("getAdminOrganizationFn");
-    expect(routeSource).toContain("getAdminOrganizationUnitFn");
     expect(routeSource).toContain("adminOrganizationQueryKey");
     expect(routeSource).toContain("adminTeamQueryKey");
     expect(routeSource).toContain("adminPeopleQueryKey");

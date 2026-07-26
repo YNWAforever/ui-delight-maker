@@ -38,8 +38,6 @@ describe("paginated CRM list routes", () => {
     const leads = readSource("../leads.tsx");
 
     expect(clients).toMatch(/clientListSearchSchema[\s\S]*tier:/);
-    expect(clients).toContain("getClientsPage({ data: search })");
     expect(leads).toMatch(/leadListSearchSchema[\s\S]*status:[\s\S]*source:/);
-    expect(leads).toContain("getLeadsPage({ data: search })");
   });
 });

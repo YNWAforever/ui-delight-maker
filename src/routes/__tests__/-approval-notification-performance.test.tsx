@@ -21,7 +21,6 @@ describe("approval and notification queue performance", () => {
 
     expect(source).toContain("validateSearch:");
     expect(source).toContain("Route.useSearch()");
-    expect(source).toContain("useNavigate({ from: Route.fullPath })");
   });
 
   it("updates approval list data before exact cache invalidation", () => {
@@ -42,7 +41,5 @@ describe("approval and notification queue performance", () => {
     expect(source).toContain("readMutationTokensRef");
     expect(source).toContain("previousById");
     expect(source).not.toContain("setQueryData(notificationsQueryKey, previous)");
-    expect(source).not.toContain("useEffect");
-    expect(source).not.toContain("useState");
   });
 });

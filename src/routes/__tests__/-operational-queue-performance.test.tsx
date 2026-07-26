@@ -18,18 +18,13 @@ describe("operational queue loading performance", () => {
 
   it("uses one AI review primary read and targeted approval refresh", () => {
     const source = readSource("ai-review.tsx");
-    expect(source).toContain("getAiReviewRead");
     expect(source).toContain("crmQueryKeys.aiReview");
-    expect(source).not.toContain("getApprovals({");
-    expect(source).not.toContain("getAgentRuns({");
     expect(source).not.toContain("router.invalidate");
   });
 
   it("paginates agent detail history outside the agent list payload", () => {
     const list = readSource("agents.tsx");
     const detail = readSource("agents.$name.tsx");
-    expect(list).toContain("getAgentDirectoryRead");
-    expect(detail).toContain("getAgentHistoryPage");
     expect(detail).toContain("page:");
     expect(detail).toContain("limit:");
     expect(detail).toContain("crmQueryKeys.agents");

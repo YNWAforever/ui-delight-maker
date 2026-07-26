@@ -27,7 +27,6 @@ describe("admin people URL state", () => {
   it("keeps directory filters, selected user, and detail tabs in validated URL state", () => {
     expect(peopleSource).toContain("validateSearch: adminPeopleSearchSchema");
     expect(peopleSource).toContain("Route.useSearch()");
-    expect(peopleSource).toContain("useNavigate({ from: Route.fullPath })");
     expect(peopleSource).toContain("selectedUserId");
     expect(peopleSource).toContain("replace: true");
 

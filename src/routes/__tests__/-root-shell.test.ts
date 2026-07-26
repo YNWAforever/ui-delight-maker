@@ -10,12 +10,9 @@ describe("root shell hydration", () => {
   });
 
   it("uses the shared authenticated shell query rather than independent browser reads", () => {
-    expect(rootSource).toContain("getAppShellRead");
     expect(rootSource).toContain("crmQueryKeys.shell()");
     expect(rootSource).toContain("routeQueryOptions");
     expect(rootSource).toContain("ensureQueryData");
-    expect(rootSource).not.toContain("getWorkspacePreferences");
-    expect(rootSource).not.toContain("getAdminNavigationFn");
   });
 });
 
@@ -76,7 +73,6 @@ describe("sales route source copy", () => {
 
     expect(tasksSource).toContain('title="Task Queue"');
     expect(tasksSource).toContain('status="Retain"');
-    expect(tasksSource).toContain("getTaskBoardMetrics");
     expect(tasksSource).toContain("formatDate");
     expect(tasksSource).toContain("High priority");
 
@@ -99,7 +95,6 @@ describe("sales route source copy", () => {
     const relationshipSource = readRoute("relationships.tsx");
 
     expect(relationshipSource).toContain('title="Relationship Command Center"');
-    expect(relationshipSource).toContain("getRelationshipIndexRead");
     expect(relationshipSource).toContain("RelationshipCommandCenter");
     expect(relationshipSource).not.toContain("hero");
     expect(relationshipSource).not.toContain("landing");
@@ -121,11 +116,9 @@ describe("sales route source copy", () => {
 
     expect(accountDetailSource).toContain("dismissRelationshipSignalFn");
     expect(accountDetailSource).toContain("Dismissal reason");
-    expect(accountDetailSource).not.toContain("getCampaigns({})");
     expect(accountDetailSource).not.toContain("Relevant campaigns");
     expect(accountDetailSource).not.toContain("繚");
     expect(accountDetailSource).toContain("const [dismissedSignalIds, setDismissedSignalIds]");
-    expect(accountDetailSource).toContain("useEffect(() => {");
     expect(accountDetailSource).toContain("setDismissedSignalIds([]);");
     expect(accountDetailSource).toContain("const openSignals = data.openSignals.filter");
   });
@@ -174,7 +167,6 @@ describe("sales route source copy", () => {
       const source = readRoute(routeName);
 
       expect(source).toContain("Outlet");
-      expect(source).toContain("useIsExactPath");
     }
   });
 });

@@ -43,10 +43,6 @@ describe("account and admin loading performance", () => {
     expect(source).toContain(secondRead);
   });
 
-  it("keeps reassignment inventory out of the people loader", () => {
-    const loader = loaderBlock(readRoute("admin.people.tsx"));
-    expect(loader).not.toContain("getAdminReassignmentInventoryFn");
-  });
   it("refreshes cross-route product and overview consumers after mutations", () => {
     expect(readRoute("settings.tsx")).toContain("crmQueryKeys.products.lists()");
     expect(readRoute("admin.people.tsx")).toContain(

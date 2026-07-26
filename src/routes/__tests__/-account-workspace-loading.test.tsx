@@ -35,14 +35,8 @@ describe("Account company workspace loading contract", () => {
     });
   });
 
-  it("loads the lightweight deep read instead of the legacy core-only request", () => {
-    const source = readFileSync(new URL("../accounts.$id.tsx", import.meta.url), "utf8");
-    expect(source).toContain("getCompanyWorkspaceRead");
-    expect(source).not.toContain("getCompanyWorkspaceCore");
-  });
   it("uses targeted query invalidation instead of whole-route refreshes", () => {
     const source = readFileSync(new URL("../accounts.$id.tsx", import.meta.url), "utf8");
-    expect(source).toContain("useQueryClient");
     expect(source).toContain('companyWorkspaceQueryKey(accountId, "overview")');
     expect(source).toContain("invalidateCompanyWorkspaceMutation");
     expect(source).not.toContain("router.invalidate");

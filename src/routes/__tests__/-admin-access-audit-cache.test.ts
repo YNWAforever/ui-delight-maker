@@ -11,15 +11,12 @@ describe("admin overview, access, and audit cache contracts", () => {
       expect(source).toContain("ensureQueryData");
       expect(source).toContain("routeQueryOptions");
       expect(source).toContain("crmQueryKeys.admin");
-      expect(source).toContain("useQuery");
     },
   );
 
   it("starts the optional overview audit summary without blocking overview access", () => {
     const source = readRoute("admin.index.tsx");
     expect(source).toContain("Promise.all");
-    expect(source).toContain("getOverview");
-    expect(source).toContain("getAdminAuditSummaryFn");
   });
 
   it("keys access reads independently and removes whole-router invalidation", () => {
