@@ -104,6 +104,12 @@ export const decideAdminAccessRequestFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => decisionSchema.parse(data))
   .handler(async ({ data }) => {
     const input = decisionSchema.parse(data);
+    // Coarse check before the read. The scoped check below needs request.teamId, so the row
+    // must be loaded first — but without this line an authenticated caller holding no decide
+    // capability could tell an existing access-request id from an absent one by whether they
+    // got CONFLICT. An untargeted check denies only callers who hold the capability in no
+    // scope at all, so it cannot refuse anyone the scoped check would have allowed.
+    await requireCapability("access_requests.decide");
     const request = await getAccessRequest(input.id);
     if (!request) throw new AdminError("CONFLICT", "Access request not found");
     const session = await requireCapability(

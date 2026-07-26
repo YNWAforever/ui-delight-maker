@@ -23,14 +23,24 @@ const DIR = resolve(process.cwd(), "src/server-functions");
  * setLifecycle(data, "suspend", "users.suspend") — resolve one hop, because a check that
  * cannot see indirection produces false positives instead of false negatives.
  *
- * KNOWN LIMIT. Reading source text cannot resolve indirection in general, only the one hop
- * implemented here. The honest version executes each handler with authorization denied and
- * asserts it rejects before touching the database; that needs valid validator input per
- * handler, so it is real work tracked separately. This catches the file-level escape that
- * actually happened, not every possible one.
+ * WHAT THIS DOES NOT CHECK. Reading source text cannot tell whether the guard is awaited,
+ * whether the database is read before it resolves, or whether the denial is caught and a
+ * fallback returned — a grep matches all three. `authorization-behaviour.test.ts` executes the
+ * handlers with authorization denied and asserts on that; it covers every handler except the
+ * 21 listed in its NOT_DRIVEN. This file's remaining job is narrow and worth keeping: it
+ * catches a handler shipped with no guard mentioned at all, including in those 21.
+ */
+/**
+ * A handler's block ends at the next top-level declaration, not at the next createServerFn
+ * export. Terminating on the next export over-captured: any plain helper defined between two
+ * handlers was read as part of the earlier handler's body, so an UNGUARDED handler followed by
+ * a guarded helper passed. acceptUserInvitation did exactly that — it has no capability check,
+ * and the guard inside authorizeStoredInvitation twelve lines below it was being counted as
+ * its own. Prettier keeps top-level declarations at column zero, which is what the lookahead
+ * anchors on; indented code inside a handler body cannot trigger it.
  */
 const HANDLER =
-  /export const ([A-Za-z0-9_]+)\s*=\s*createServerFn[\s\S]*?(?=export const [A-Za-z0-9_]+\s*=\s*createServerFn|$)/g;
+  /export const ([A-Za-z0-9_]+)\s*=\s*createServerFn[\s\S]*?(?=\n(?:export |async function |function |const |type |interface |\/\*\*)|$)/g;
 const CAPABILITY_HELPER = /require(?:Capability|CapabilityChecks|CapabilitySet|AnyCapability)\(/;
 const CALLS = /\b([a-z][A-Za-z0-9_]*)\s*\(/g;
 
@@ -40,6 +50,9 @@ const ACKNOWLEDGED_UNGUARDED: Record<string, string> = {
   "auth.ts::signIn": "establishes a session",
   "auth.ts::signOut": "ends a session",
   "admin-invitations.ts::getInvitationPreview": "must work for a signed-out invitee",
+  "admin-invitations.ts::acceptUserInvitation":
+    "the invitee accepts their own invitation and holds no capability yet; guarded by " +
+    "requireNeonAuthIdentity plus the token",
   "app-shell.ts::getAppShellRead": "fans out to server functions that each guard themselves",
   ...Object.fromEntries(
     [
