@@ -115,6 +115,36 @@ describe("agent catalogue", () => {
     }
   });
 
+  it("has a dispatch env var per agent, read by code and documented in .env.example", () => {
+    // The naming is a convention, not a lookup: N8N_<WORKFLOW_TYPE>_WEBHOOK_URL. Asserting it
+    // catches the gap that existed for relationship_intelligence, whose var the code read but
+    // neither .env.example nor docs/clientops-activation/environment.md listed — so anyone
+    // configuring from the docs set four of five, and the account page's Run intelligence
+    // button returned missing_webhook with nothing to explain why.
+    const example = readFileSync(resolve(process.cwd(), ".env.example"), "utf8");
+    const source = [
+      "src/server-functions/leads.ts",
+      "src/server-functions/quotes.ts",
+      "src/server-functions/accounts.ts",
+      "src/server-functions/engagements.ts",
+      "src/server/workflows/retention-sweep.server.ts",
+    ]
+      .map((file) => readFileSync(resolve(process.cwd(), file), "utf8"))
+      .join("\n");
+
+    const missing: string[] = [];
+    for (const agent of AGENT_DEFINITIONS) {
+      const variable = `N8N_${agent.workflow_type.toUpperCase()}_WEBHOOK_URL`;
+      if (!source.includes(`process.env.${variable}`)) {
+        missing.push(`${variable} — no dispatch path reads it`);
+      }
+      if (!example.includes(variable)) {
+        missing.push(`${variable} — absent from .env.example`);
+      }
+    }
+    expect(missing, `Dispatch configuration gaps:\n  ${missing.join("\n  ")}`).toEqual([]);
+  });
+
   it("keeps slugs unique, since the slug is the route param", () => {
     const slugs = AGENT_DEFINITIONS.map((agent) => agent.name);
     expect(new Set(slugs).size, `Duplicate slug in ${slugs.join(", ")}`).toBe(slugs.length);
