@@ -65,6 +65,23 @@ const FAKE_PRODUCT_ID = "00000000-0000-0000-0000-000000000099";
 // performs still gets planned and executed by Postgres before the route's own "not found"
 // handling takes over.
 const MISSING_ID = "00000000-0000-4000-8000-000000000000";
+
+/**
+ * Ids that resolve to rows created by seedRouteLoaderFixture. Task 4 points the detail
+ * entries at these rather than MISSING_ID: with a missing id every detail route
+ * short-circuits on its "not found" check, so its query budget would measure the
+ * not-found path instead of the path worth budgeting.
+ */
+export const FIXTURE = {
+  profileId: "fixture-user-1",
+  productId: "00000000-0000-4000-8000-000000000101",
+  accountId: "00000000-0000-4000-8000-000000000201",
+  clientId: "00000000-0000-4000-8000-000000000301",
+  leadId: "00000000-0000-4000-8000-000000000401",
+  campaignId: "00000000-0000-4000-8000-000000000501",
+  quoteId: "00000000-0000-4000-8000-000000000601",
+  engagementId: "00000000-0000-4000-8000-000000000701",
+} as const;
 // Placeholder invitation token for /invite/$token, whose path param is an opaque token string,
 // not a UUID. Real tokens are 32 random bytes, base64url-encoded (see
 // `randomBytes(32).toString("base64url")` in src/server/repositories/admin-invitations.ts);
