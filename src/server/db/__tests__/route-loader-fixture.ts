@@ -52,6 +52,26 @@ const STATEMENTS: string[] = [
      ('00000000-0000-4000-8000-000000000603','00000000-0000-4000-8000-000000000303','accepted')
      on conflict do nothing`,
 
+  `insert into quote_versions (id, quote_id, version_number, reason, snapshot) values
+     ('00000000-0000-4000-8000-000000000f01','00000000-0000-4000-8000-000000000601',1,'issued','{}'::jsonb),
+     ('00000000-0000-4000-8000-000000000f02','00000000-0000-4000-8000-000000000602',1,'issued','{}'::jsonb),
+     ('00000000-0000-4000-8000-000000000f03','00000000-0000-4000-8000-000000000603',1,'accepted','{}'::jsonb)
+     on conflict do nothing`,
+
+  // job_sheets.accepted_quote_version_id is NOT NULL, so a job sheet needs a quote_versions
+  // row first. Without these the job-sheets.$id entry could only budget its not-found path.
+  `insert into job_sheets (id, number, quote_id, accepted_quote_version_id, status) values
+     ('00000000-0000-4000-8000-000000001001','JS-FIX-001','00000000-0000-4000-8000-000000000601','00000000-0000-4000-8000-000000000f01','draft'),
+     ('00000000-0000-4000-8000-000000001002','JS-FIX-002','00000000-0000-4000-8000-000000000602','00000000-0000-4000-8000-000000000f02','accounting_review'),
+     ('00000000-0000-4000-8000-000000001003','JS-FIX-003','00000000-0000-4000-8000-000000000603','00000000-0000-4000-8000-000000000f03','accepted')
+     on conflict do nothing`,
+
+  `insert into departments (id, name, status) values
+     ('00000000-0000-4000-8000-000000001101','Fixture Department A','active'),
+     ('00000000-0000-4000-8000-000000001102','Fixture Department B','active'),
+     ('00000000-0000-4000-8000-000000001103','Fixture Department C','archived')
+     on conflict do nothing`,
+
   `insert into engagements (id, client_id, product_id, billing_period, status) values
      ('00000000-0000-4000-8000-000000000701','00000000-0000-4000-8000-000000000301','00000000-0000-4000-8000-000000000101','monthly','active'),
      ('00000000-0000-4000-8000-000000000702','00000000-0000-4000-8000-000000000302','00000000-0000-4000-8000-000000000102','annual','active'),
