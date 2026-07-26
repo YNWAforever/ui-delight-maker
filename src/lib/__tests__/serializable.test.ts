@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { AutomationPlaybook, AutomationRun } from "@/lib/types";
-import { serializeAutomationPlaybook, serializeAutomationRun } from "../serializers";
+import { serializeAutomationPlaybook, serializeAutomationRun } from "@/lib/serializable";
 
-describe("server function serializers", () => {
+describe("serializable json values", () => {
   it("serializes automation playbook and run JSON columns", () => {
     const playbook: AutomationPlaybook = {
       id: "playbook-1",

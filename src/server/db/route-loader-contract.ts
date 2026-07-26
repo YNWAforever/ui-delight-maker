@@ -5,13 +5,14 @@ import { getInvitationPreview } from "@/server/repositories/admin-invitations";
 import { getOrganizationUnit, listDepartmentsAndTeams } from "@/server/repositories/admin-teams";
 import { getAdminOverview, getAdminUser, listAdminUsers } from "@/server/repositories/admin-users";
 import { listApprovals } from "@/server/repositories/approvals";
-import { listCampaignsPage } from "@/server/repositories/campaigns";
+import { getCampaignWithAttendeeSummary, listCampaignsPage } from "@/server/repositories/campaigns";
 import { listClientsPage } from "@/server/repositories/clients";
-import { listJobSheetsPage } from "@/server/repositories/job-sheets";
+import { getJobSheetOperationsRead, listJobSheetsPage } from "@/server/repositories/job-sheets";
 import { listLeadsPage } from "@/server/repositories/leads";
 import { countUnreadNotifications, listNotifications } from "@/server/repositories/notifications";
 import { listProducts } from "@/server/repositories/products";
-import { listQuotesPage } from "@/server/repositories/quotes";
+import { getQuoteWorkspaceDetail, listQuotesPage } from "@/server/repositories/quotes";
+import { listRelationshipIndexPage } from "@/server/repositories/relationship-signals";
 import { listTasks } from "@/server/repositories/tasks";
 import { getAccountsIndexReadModel } from "@/server/read-models/accounts-index";
 import {
@@ -21,21 +22,12 @@ import {
 } from "@/server/read-models/agent-workspaces";
 import { loadClientWorkspaceRead } from "@/server/read-models/client-workspace";
 import { getDashboardReadModel } from "@/server/read-models/dashboard";
-import {
-  loadJobSheetRead,
-  loadRenewalsRead,
-  loadReportSummary,
-} from "@/server/read-models/operations";
+import { loadRenewalsRead, loadReportSummary } from "@/server/read-models/operations";
 import {
   loadQuoteCreateBootstrap,
-  loadQuoteDetailRead,
   loadQuoteDocumentRead,
 } from "@/server/read-models/quote-workspace";
-import {
-  loadCampaignWorkspaceRead,
-  loadLeadWorkspaceRead,
-  loadRelationshipIndexRead,
-} from "@/server/read-models/relationship-workspaces";
+import { loadLeadWorkspaceRead } from "@/server/read-models/relationship-workspaces";
 import { loadCompanyWorkspaceRead } from "@/server/company-workspace/loaders";
 
 export type RouteLoaderContractEntry = {
@@ -117,8 +109,8 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   {
     route: "relationships",
     run: () =>
-      loadRelationshipIndexRead({ page: 1, limit: 50 } as Parameters<
-        typeof loadRelationshipIndexRead
+      listRelationshipIndexPage({ page: 1, limit: 50 } as Parameters<
+        typeof listRelationshipIndexPage
       >[0]),
     maxQueries: 2,
   },
@@ -271,13 +263,13 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     // getCampaignWorkspaceRead() (src/server-functions/relationship-workspaces.ts) awaits
-    // requireCapability("campaigns.view", ...), then calls loadCampaignWorkspaceRead(id)
+    // requireCapability("campaigns.view", ...), then calls getCampaignWithAttendeeSummary(id)
     // directly, which is itself a one-line pass-through to getCampaignWithAttendeeSummary.
     // FIXTURE.campaignId now resolves to a seeded campaigns row; the campaign and
     // attendee-summary reads fire concurrently and unconditionally either way, so the query
     // count is unchanged from MISSING_ID — this only changes which row (if any) is matched.
     route: "campaigns.$id",
-    run: () => loadCampaignWorkspaceRead(FIXTURE.campaignId),
+    run: () => getCampaignWithAttendeeSummary(FIXTURE.campaignId),
     maxQueries: 2,
   },
   {
@@ -324,7 +316,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     // getJobSheetRead() (src/server-functions/operations.ts) awaits
-    // requireCapability("job_sheets.view", ...), then calls loadJobSheetRead(id) directly
+    // requireCapability("job_sheets.view", ...), then calls getJobSheetOperationsRead(id) directly
     // (a one-line pass-through to getJobSheetOperationsRead). The handler's follow-up
     // requireCapabilitySet calls for the linked quote/client run after this read and gate
     // visibility of those fields only — they do not affect the job sheet SQL itself.
@@ -332,7 +324,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // than stopping at the not-found check. It needed a quote_versions row in the fixture
     // first, because job_sheets.accepted_quote_version_id is NOT NULL.
     route: "job-sheets.$id",
-    run: () => loadJobSheetRead(FIXTURE.jobSheetId),
+    run: () => getJobSheetOperationsRead(FIXTURE.jobSheetId),
     maxQueries: 2,
   },
   {
@@ -366,7 +358,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     // getQuoteDetailRead() (src/server-functions/quotes.ts) awaits authorizeQuote(id), then
-    // calls loadQuoteDetailRead(id) directly (a one-line pass-through to
+    // calls getQuoteWorkspaceDetail(id) directly (a one-line pass-through to
     // getQuoteWorkspaceDetail). The handler's authorizeLinkedQuoteParties() call runs after
     // this read using its result, so it does not affect the quote SQL itself.
     // getQuoteWorkspaceDetail is genuinely sequential: it queries the quote row first and
@@ -374,7 +366,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // MISSING_ID measured only 1 query here. FIXTURE.quoteId now resolves to a seeded quotes
     // row with a client_id set (lead_id null), so the client lookup also fires.
     route: "quotes.$id",
-    run: () => loadQuoteDetailRead(FIXTURE.quoteId),
+    run: () => getQuoteWorkspaceDetail(FIXTURE.quoteId),
     maxQueries: 2,
   },
   {

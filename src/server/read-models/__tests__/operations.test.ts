@@ -48,7 +48,7 @@ describe("operations read models", () => {
   });
 
   it("loads one job sheet with portions and compact linked summaries", async () => {
-    const { loadJobSheetRead } = await import("../operations");
+    const { getJobSheetOperationsRead } = await import("@/server/repositories/job-sheets");
     queryOneMock.mockResolvedValueOnce({
       id: "job-1",
       number: "JS-001",
@@ -60,7 +60,7 @@ describe("operations read models", () => {
     });
     queryMock.mockResolvedValueOnce([{ id: "portion-1", job_sheet_id: "job-1" }]);
 
-    const result = await loadJobSheetRead("job-1");
+    const result = await getJobSheetOperationsRead("job-1");
 
     expect(result).toMatchObject({
       jobSheet: { id: "job-1" },
@@ -75,7 +75,7 @@ describe("operations read models", () => {
   });
 
   it("returns the complete portion set beyond one hundred rows", async () => {
-    const { loadJobSheetRead } = await import("../operations");
+    const { getJobSheetOperationsRead } = await import("@/server/repositories/job-sheets");
     queryOneMock.mockResolvedValueOnce({ id: "job-1", quote_id: "quote-1" });
     queryMock.mockResolvedValueOnce(
       Array.from({ length: 101 }, (_, index) => ({
@@ -84,14 +84,14 @@ describe("operations read models", () => {
       })),
     );
 
-    const result = await loadJobSheetRead("job-1");
+    const result = await getJobSheetOperationsRead("job-1");
 
     expect(result.portions).toHaveLength(101);
     expect(sqlText(queryMock.mock.calls[0]?.[0])).not.toContain("limit 100");
   });
   it("throws when the job sheet does not exist", async () => {
-    const { loadJobSheetRead } = await import("../operations");
-    await expect(loadJobSheetRead("missing")).rejects.toThrow("Job sheet not found");
+    const { getJobSheetOperationsRead } = await import("@/server/repositories/job-sheets");
+    await expect(getJobSheetOperationsRead("missing")).rejects.toThrow("Job sheet not found");
     expect(queryMock).not.toHaveBeenCalled();
   });
 

@@ -169,7 +169,7 @@ vi.mock("@/lib/n8n", () => ({
   triggerN8n: vi.fn(),
 }));
 vi.mock("@/lib/workflows/payloads", () => ({ buildRelationshipIntelligencePayload: vi.fn() }));
-vi.mock("@/server-functions/serializers", () => ({ serializeAgentRun: vi.fn() }));
+vi.mock("@/lib/serializable", () => ({ serializeAgentRun: vi.fn() }));
 
 import { updateAccount } from "@/server-functions/accounts";
 import {

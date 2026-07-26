@@ -26,7 +26,7 @@ import {
   updateQuoteLifecycle as updateQuoteLifecycleInNeon,
   updateQuote as updateQuoteInNeon,
 } from "@/server/repositories/quotes";
-import { serializeAgentRun } from "@/server-functions/serializers";
+import { serializeAgentRun } from "@/lib/serializable";
 import type { HumanApproval, JsonValue, PricingTemplate, Quote, QuoteVersion } from "@/lib/types";
 
 type GetQuotesInput = {

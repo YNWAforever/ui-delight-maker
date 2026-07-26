@@ -137,7 +137,7 @@ describe("quote workspace read models", () => {
   });
 
   it("searches and paginates each compact reference kind with a selected row", async () => {
-    const { loadQuoteReferencePage } = await import("../quote-workspace");
+    const { listQuoteReferencePage } = await import("@/server/repositories/quotes");
     queryMock.mockImplementation((sql: unknown) => {
       if (sqlText(sql).includes("from leads")) {
         return Promise.resolve(
@@ -163,7 +163,7 @@ describe("quote workspace read models", () => {
       return Promise.resolve(null);
     });
 
-    const page = await loadQuoteReferencePage({
+    const page = await listQuoteReferencePage({
       kind: "lead",
       search: "needle",
       selectedId: "lead-selected",
@@ -189,9 +189,9 @@ describe("quote workspace read models", () => {
   });
 
   it("loads quote detail with compact linked parties and no versions or templates", async () => {
-    const { loadQuoteDetailRead } = await import("../quote-workspace");
+    const { getQuoteWorkspaceDetail } = await import("@/server/repositories/quotes");
 
-    await expect(loadQuoteDetailRead("quote-1")).resolves.toEqual({
+    await expect(getQuoteWorkspaceDetail("quote-1")).resolves.toEqual({
       quote,
       client: { id: "client-1", company_name: "Acme Client" },
       lead: { id: "lead-1", company_name: "Acme Lead", contact_name: "Ada" },
@@ -206,9 +206,9 @@ describe("quote workspace read models", () => {
   });
 
   it("loads a deterministic quote-scoped version page capped at 25", async () => {
-    const { loadQuoteVersionsSection } = await import("../quote-workspace");
+    const { listQuoteVersionSummariesPage } = await import("@/server/repositories/quote-versions");
 
-    const result = await loadQuoteVersionsSection("quote-1", { page: 2, limit: 200 });
+    const result = await listQuoteVersionSummariesPage("quote-1", { page: 2, limit: 200 });
 
     expect(result).toMatchObject({ total: 1, page: 2, limit: 25 });
     expect(result.items[0]).not.toHaveProperty("snapshot");

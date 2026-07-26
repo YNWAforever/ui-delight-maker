@@ -52,7 +52,7 @@ import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { formatDateTime } from "@/lib/format";
 import { getApprovals, decideApproval } from "@/server-functions/approvals";
-import type { SerializableHumanApproval } from "@/server-functions/serializers";
+import type { SerializableHumanApproval } from "@/lib/serializable";
 import { approveAndIssueQuote, rejectQuote } from "@/server-functions/quotes";
 import type { HumanApproval } from "@/lib/types";
 import { APP_USERS, userById } from "@/lib/users";

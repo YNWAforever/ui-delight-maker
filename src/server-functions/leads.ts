@@ -18,7 +18,7 @@ import {
   updateLead as updateLeadInNeon,
   type LeadPageFilters,
 } from "@/server/repositories/leads";
-import { serializeActivityLog, serializeAgentRun } from "@/server-functions/serializers";
+import { serializeActivityLog, serializeAgentRun } from "@/lib/serializable";
 import type { Engagement, Lead, LeadStatus } from "@/lib/types";
 
 type GetLeadsInput = {

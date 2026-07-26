@@ -29,7 +29,7 @@ import { getTouchpointsByClient } from "@/server-functions/touchpoints";
 import { getTasks } from "@/server-functions/tasks";
 import { getProducts } from "@/server-functions/products";
 import { getClientWorkspaceRead } from "@/server-functions/client-workspace";
-import type { SerializableActivityLog } from "@/server-functions/serializers";
+import type { SerializableActivityLog } from "@/lib/serializable";
 import { USER_RECORD } from "@/lib/users";
 import type { ClientContact, Task, TouchpointRecord } from "@/lib/types";
 

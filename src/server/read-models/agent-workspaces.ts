@@ -1,7 +1,7 @@
 import { AGENT_DEFINITIONS } from "@/lib/agents";
 import type { AgentRun, HumanApproval } from "@/lib/types";
 import { query } from "@/server/db/neon.server";
-import { serializeAgentRun, serializeHumanApproval } from "@/server-functions/serializers";
+import { serializeAgentRun, serializeHumanApproval } from "@/lib/serializable";
 
 const DIRECTORY_RUN_LIMIT = 50;
 const SPARKLINE_HOURS = 14;

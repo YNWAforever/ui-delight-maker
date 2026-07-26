@@ -7,8 +7,9 @@ import type {
   Quote,
   RenewalRisk,
 } from "@/lib/types";
+import { serializeActivityLog, type SerializableActivityLog } from "@/lib/serializable";
 import { queryOne } from "@/server/db/neon.server";
-import { serializeActivityLog, type SerializableActivityLog } from "@/server-functions/serializers";
+import { classifyDatabaseFailure, type DatabaseFailureKind } from "@/server/db/postgres-error";
 import { listActivityLogsByClientAndEngagementIds } from "@/server/repositories/activity-logs";
 import { listClientContacts } from "@/server/repositories/client-contacts";
 import { getClient } from "@/server/repositories/clients";
@@ -40,9 +41,9 @@ export type ClientWorkspaceSectionState<T> =
   | {
       status: "error";
       error: {
-        code: "query_failed";
+        code: DatabaseFailureKind;
         requestId: string;
-        retryable: true;
+        retryable: boolean;
         section: ClientWorkspaceSection;
       };
     };
@@ -200,10 +201,11 @@ export async function loadClientWorkspaceSection<Section extends ClientWorkspace
   try {
     const data = await loadSectionData(clientId, section);
     return { status: isEmptySection(data) ? "empty" : "ready", data };
-  } catch {
-    return {
-      status: "error",
-      error: { code: "query_failed", requestId, retryable: true, section },
-    };
+  } catch (error) {
+    // This used to swallow the error and report `query_failed` / `retryable: true` for every
+    // failure. useClientWorkspaceSection retries whenever `retryable` is true, so a
+    // permanent 42703 was retried and then offered to the user as retryable forever.
+    const { kind, retryable } = classifyDatabaseFailure(error);
+    return { status: "error", error: { code: kind, requestId, retryable, section } };
   }
 }

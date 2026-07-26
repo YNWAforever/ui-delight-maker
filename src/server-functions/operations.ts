@@ -5,7 +5,6 @@ import {
   requireCapabilitySet,
 } from "@/server/auth/authorization.server";
 import {
-  loadJobSheetRead,
   loadRenewalsRead,
   loadReportDataset,
   loadReportSummary,
@@ -13,6 +12,7 @@ import {
   type ReportRange,
 } from "@/server/read-models/operations";
 import type { RenewalWindowFilter, RenewalsReadFilters } from "@/server/repositories/engagements";
+import { getJobSheetOperationsRead } from "@/server/repositories/job-sheets";
 import type { RenewalRisk } from "@/lib/types";
 
 const REPORT_RANGES = new Set<ReportRange>(["7d", "30d", "90d"]);
@@ -82,7 +82,7 @@ export const getJobSheetRead = createServerFn({ method: "GET" })
       resourceType: "job_sheet",
       resourceId: data.id,
     });
-    const read = await loadJobSheetRead(data.id);
+    const read = await getJobSheetOperationsRead(data.id);
 
     const quoteAccess = read.quote
       ? await requireCapabilitySet([], {

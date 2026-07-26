@@ -70,9 +70,9 @@ describe("accounts index read model", () => {
     listWorkspaceViewsMock.mockReturnValue(views.promise);
     listWorkspaceFavoritesMock.mockReturnValue(favorites.promise);
     queryMock.mockReturnValueOnce(clientCounts.promise).mockReturnValueOnce(signalCounts.promise);
-    const { getAccountsIndexRead } = await import("../accounts-index");
+    const { getAccountsIndexReadModel } = await import("../accounts-index");
 
-    const resultPromise = getAccountsIndexRead("profile-1", {
+    const resultPromise = getAccountsIndexReadModel("profile-1", {
       page: 2,
       limit: 25,
       lifecycle_stage: "active_client",
@@ -131,9 +131,9 @@ describe("accounts index read model", () => {
     listAccountsPageMock.mockResolvedValue({ items: [], total: 0, page: 1, limit: 25 });
     listWorkspaceViewsMock.mockResolvedValue([]);
     listWorkspaceFavoritesMock.mockResolvedValue([]);
-    const { getAccountsIndexRead } = await import("../accounts-index");
+    const { getAccountsIndexReadModel } = await import("../accounts-index");
 
-    await expect(getAccountsIndexRead("profile-1", {})).resolves.toEqual({
+    await expect(getAccountsIndexReadModel("profile-1", {})).resolves.toEqual({
       accounts: [],
       accountCounts: {},
       pagination: { total: 0, page: 1, limit: 25 },
@@ -160,9 +160,9 @@ describe("accounts index read model", () => {
     listWorkspaceViewsMock.mockResolvedValue([]);
     listWorkspaceFavoritesMock.mockResolvedValue([]);
     queryMock.mockResolvedValue([]);
-    const { getAccountsIndexRead } = await import("../accounts-index");
+    const { getAccountsIndexReadModel } = await import("../accounts-index");
 
-    const payload = await getAccountsIndexRead("profile-1", { page: 1, limit: 100 });
+    const payload = await getAccountsIndexReadModel("profile-1", { page: 1, limit: 100 });
     const serializedBytes = new TextEncoder().encode(JSON.stringify(payload)).byteLength;
 
     expect(serializedBytes).toBeLessThanOrEqual(102_400);
