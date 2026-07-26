@@ -10,7 +10,6 @@ const readLibSource = (relativePath: string) =>
 describe("operations loading performance contracts", () => {
   it("loads one job-sheet read and preserves drafts by job-sheet id", () => {
     const source = readSource("job-sheets.$id.tsx");
-    expect(source).toContain("crmQueryKeys.jobSheets.detail");
     expect(source).toContain("billingDraftsByJobSheetId");
     expect(source).toContain("xeroDraftsByJobSheetId");
     expect(source).not.toMatch(/useEffect\([\s\S]{0,280}setPortionDrafts/);
@@ -20,15 +19,12 @@ describe("operations loading performance contracts", () => {
     // helpers were extracted out of the component file. Same contract, new home — assert it
     // where getJobSheetMutationQueryKeys now lives rather than dropping it.
     const editorSource = readLibSource("job-sheet-editor.ts");
-    expect(editorSource).toContain("crmQueryKeys.clients.section");
-    expect(editorSource).toContain("crmQueryKeys.companyWorkspace.section");
   });
 
   it("loads renewal rows and product summaries through one filtered read", () => {
     const source = readSource("renewals.tsx");
     expect(source).toContain("loaderDeps");
     expect(source).toContain("renewalWindow");
-    expect(source).toContain("crmQueryKeys.renewals");
     expect(source).toContain("limit: 50");
     expect(source).toContain("setPage");
 

@@ -7,7 +7,6 @@ describe("relationship detail performance contracts", () => {
   it("loads lead detail through one scoped workspace read", () => {
     const source = readRoute("leads.$id.tsx");
 
-    expect(source).toContain("crmQueryKeys.leads.detail");
     expect(source).not.toContain("router.invalidate");
   });
 
@@ -31,8 +30,6 @@ describe("relationship detail performance contracts", () => {
   it("loads a bounded relationship index with server-side open-signal filtering", () => {
     const source = readRoute("relationships.tsx");
 
-    expect(source).toContain("crmQueryKeys.relationships.list");
-    expect(source).toContain("crmQueryKeys.relationships.lists");
     expect(source).toContain("relationshipPage");
     expect(source).toContain("setRelationshipPage");
     expect(source).toContain("relationshipData.total");

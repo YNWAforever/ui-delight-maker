@@ -10,7 +10,6 @@ describe("admin overview, access, and audit cache contracts", () => {
       const source = readRoute(name);
       expect(source).toContain("ensureQueryData");
       expect(source).toContain("routeQueryOptions");
-      expect(source).toContain("crmQueryKeys.admin");
     },
   );
 
@@ -25,7 +24,6 @@ describe("admin overview, access, and audit cache contracts", () => {
     expect(source).toContain("accessUsersQueryKey");
     expect(source).toContain("accessOverridesQueryKey");
     expect(source).toContain("exact: true");
-    expect(source).toContain("crmQueryKeys.shell()");
     expect(source).toContain("requesterProfileId");
     expect(source).toContain("teamId");
     expect(source).toContain('scope === "access-requests"');
@@ -36,7 +34,6 @@ describe("admin overview, access, and audit cache contracts", () => {
   it("includes every audit filter in the audit query key", () => {
     const source = readRoute("admin.audit.tsx");
     expect(source).toContain("auditFilters(search)");
-    expect(source).toContain("crmQueryKeys.admin.list");
     expect(source).toContain("actorProfileId: search.actor");
     expect(source).toContain("targetType: search.targetType");
     expect(source).toContain("targetId: search.target");

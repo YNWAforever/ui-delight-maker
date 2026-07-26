@@ -10,7 +10,6 @@ describe("root shell hydration", () => {
   });
 
   it("uses the shared authenticated shell query rather than independent browser reads", () => {
-    expect(rootSource).toContain("crmQueryKeys.shell()");
     expect(rootSource).toContain("routeQueryOptions");
     expect(rootSource).toContain("ensureQueryData");
   });

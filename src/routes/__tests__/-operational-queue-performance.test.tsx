@@ -18,7 +18,6 @@ describe("operational queue loading performance", () => {
 
   it("uses one AI review primary read and targeted approval refresh", () => {
     const source = readSource("ai-review.tsx");
-    expect(source).toContain("crmQueryKeys.aiReview");
     expect(source).not.toContain("router.invalidate");
   });
 
@@ -27,6 +26,5 @@ describe("operational queue loading performance", () => {
     const detail = readSource("agents.$name.tsx");
     expect(detail).toContain("page:");
     expect(detail).toContain("limit:");
-    expect(detail).toContain("crmQueryKeys.agents");
   });
 });

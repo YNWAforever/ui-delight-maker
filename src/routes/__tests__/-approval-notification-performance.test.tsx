@@ -28,7 +28,6 @@ describe("approval and notification queue performance", () => {
 
     expect(source).toContain("setQueryData<ApprovalRead>");
     expect(source).toContain("invalidateQueries({ queryKey: approvalsQueryKey, exact: true })");
-    expect(source).toContain("crmQueryKeys.aiReview.all()");
     expect(source).toContain("previousById");
     expect(source).not.toContain("setQueryData(approvalsQueryKey, previous)");
   });

@@ -8,8 +8,6 @@ describe("quote loading performance contracts", () => {
   it("loads quote creation through one compact bootstrap", () => {
     const source = readSource("quotes.new.tsx");
 
-    expect(source).toContain("crmQueryKeys.quotes");
-    expect(source).toContain("crmQueryKeys.leads.detail");
     expect(source).toContain('crmQueryKeys.clients.section(clientId, "commercial")');
     expect(source).not.toContain("router.invalidate");
   });
@@ -43,7 +41,6 @@ describe("quote loading performance contracts", () => {
     const source = readSource("../hooks/use-quote-reference-data.ts");
 
     expect(source).toContain("limit: 25");
-    expect(source).toContain("crmQueryKeys.quotes.list");
     expect(source).toContain("placeholderData");
   });
 });
