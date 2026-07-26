@@ -146,18 +146,23 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   {
     // getCompanyWorkspaceRead() (src/server-functions/company-workspace.ts) awaits
     // requireNeonAuthSession(), then calls exactly this with the same arguments the route's
-    // loader passes ({ sections: [] }). Caveat: loadCompanyWorkspaceRead's overview portion
+    // loader passes ({ sections: [] }). FIXTURE.accountId now resolves to a seeded accounts
+    // row (with account_contacts and an open relationship_signals row), so the core reads
+    // (getAccount, listAccountContacts) and the concurrently-fired overview reads
     // (getCompanyWorkspaceOverviewMetrics / listCompanyWorkspaceQuoteTotals /
-    // listRelationshipSignals) is wrapped in its own try/catch that maps Postgres errors —
+    // listRelationshipSignals) all run against a real match instead of a guaranteed miss —
+    // loadCompanyWorkspaceCore and loadCompanyWorkspaceOverview fire concurrently in the same
+    // top-level Promise.all, so in fact all five queries already executed even against
+    // MISSING_ID; repointing changes what they match, not whether they run. Caveat unchanged:
+    // the overview portion is wrapped in its own try/catch that maps Postgres errors —
     // including schema-mismatch SQLSTATEs 42P01/42703/42883 — onto a normal
     // `{ status: "error" }` return value instead of rethrowing (see
     // src/server/company-workspace/errors.ts). A bug isolated to that portion would not fail
-    // this test; only the core reads (getAccount, listAccountContacts), which are not
-    // try/catch-wrapped, are guaranteed to surface as a gate failure. Confirmed by spot-check.
+    // this test; only the core reads, which are not try/catch-wrapped, are guaranteed to
+    // surface as a gate failure. Confirmed by spot-check.
     route: "accounts.$id",
-    run: () => loadCompanyWorkspaceRead(MISSING_ID, []),
-    // TODO(Task 4): measured budget
-    maxQueries: 99,
+    run: () => loadCompanyWorkspaceRead(FIXTURE.accountId, []),
+    maxQueries: 5,
   },
   {
     // admin.access defaults to the "requests" tab with requestStatus "pending"
@@ -187,9 +192,14 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // getAdminUserFn() (src/server-functions/admin-users.ts) awaits
     // requireCapability("users.view", { profileId }), then calls getAdminUser(profileId)
     // directly — already imported above for the "account" entry's admin-overview read.
+    // getAdminUser genuinely short-circuits on a miss (a single `select ... where p.id = $1`
+    // returns no row, so it returns null before running the team-memberships or workload
+    // reads), which is why this was previously budgeted at 1 despite not being a Task-4 TODO.
+    // FIXTURE.profileId now resolves to a seeded profiles row, so the team-memberships query
+    // and getUserWorkload's aggregate query also run — a real, expected increase, not N+1.
     route: "admin.people.$id",
-    run: () => getAdminUser(MISSING_ID),
-    maxQueries: 1,
+    run: () => getAdminUser(FIXTURE.profileId),
+    maxQueries: 3,
   },
   {
     // admin.teams' loader also calls getAdminUsersFn for the member picker and (conditionally)
@@ -207,6 +217,8 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // exercised by this entry. The route's loader also fetches the member-picker user list via
     // getAdminUsersFn -> listAdminUsers, but that SQL is already covered by the admin.people
     // entry above, so it is not duplicated here.
+    // Still MISSING_ID: the gate fixture creates no departments row, so this entry budgets
+    // the not-found path, not a real organization-unit read.
     route: "admin.teams.$id",
     run: () => getOrganizationUnit("department", MISSING_ID),
     maxQueries: 1,
@@ -259,10 +271,12 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // getCampaignWorkspaceRead() (src/server-functions/relationship-workspaces.ts) awaits
     // requireCapability("campaigns.view", ...), then calls loadCampaignWorkspaceRead(id)
     // directly, which is itself a one-line pass-through to getCampaignWithAttendeeSummary.
+    // FIXTURE.campaignId now resolves to a seeded campaigns row; the campaign and
+    // attendee-summary reads fire concurrently and unconditionally either way, so the query
+    // count is unchanged from MISSING_ID — this only changes which row (if any) is matched.
     route: "campaigns.$id",
-    run: () => loadCampaignWorkspaceRead(MISSING_ID),
-    // TODO(Task 4): measured budget
-    maxQueries: 99,
+    run: () => loadCampaignWorkspaceRead(FIXTURE.campaignId),
+    maxQueries: 2,
   },
   {
     route: "clients",
@@ -275,10 +289,12 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // the function's default (every section visible), which exercises every
     // `case when $n::boolean then (select count(*) ...)` branch of the counts query instead of
     // skipping them, matching the route's loader ({ clientId: params.id }, no section filter).
+    // FIXTURE.clientId now resolves to a seeded clients row; getClient and the counts query
+    // fire concurrently and unconditionally either way, so the query count is unchanged from
+    // MISSING_ID — this only changes which row (if any) is matched.
     route: "clients.$id",
-    run: () => loadClientWorkspaceRead(MISSING_ID),
-    // TODO(Task 4): measured budget
-    maxQueries: 99,
+    run: () => loadClientWorkspaceRead(FIXTURE.clientId),
+    maxQueries: 2,
   },
   {
     route: "index",
@@ -291,10 +307,13 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // there is no requireCapability/requireNeonAuthSession to bypass here. Its handler calls
     // the repository's getInvitationPreview(token) directly, which hashes the token and looks
     // it up by token_hash before checking whether a matching invitation was found.
+    // Still MISSING_TOKEN, deliberately: unlike the detail routes above, the not-found path
+    // *is* the path worth budgeting here. A stale or already-used invitation link is the real
+    // way a signed-out visitor reaches this route with a token that hashes to no row — there
+    // is no "found" case to prefer measuring instead.
     route: "invite.$token",
     run: () => getInvitationPreview(MISSING_TOKEN),
-    // TODO(Task 4): measured budget
-    maxQueries: 99,
+    maxQueries: 1,
   },
   {
     route: "job-sheets",
@@ -307,10 +326,12 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // (a one-line pass-through to getJobSheetOperationsRead). The handler's follow-up
     // requireCapabilitySet calls for the linked quote/client run after this read and gate
     // visibility of those fields only — they do not affect the job sheet SQL itself.
+    // Still MISSING_ID: the gate fixture creates no job_sheets row, because
+    // job_sheets.accepted_quote_version_id is NOT NULL and would require a quote_versions
+    // row first. This entry therefore budgets the not-found path, not the full read.
     route: "job-sheets.$id",
     run: () => loadJobSheetRead(MISSING_ID),
-    // TODO(Task 4): measured budget
-    maxQueries: 99,
+    maxQueries: 1,
   },
   {
     route: "leads",
@@ -322,10 +343,11 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // requireCapabilityChecks([...]), then calls loadLeadWorkspaceRead(id) directly, which
     // runs the lead, activity-log, and quote reads concurrently (not gated behind an
     // existence check), so all three are planned and validated by Postgres on every call.
+    // FIXTURE.leadId now resolves to a seeded leads row, so this exercises the same three
+    // reads against real matching data rather than a guaranteed miss.
     route: "leads.$id",
-    run: () => loadLeadWorkspaceRead(MISSING_ID),
-    // TODO(Task 4): measured budget
-    maxQueries: 99,
+    run: () => loadLeadWorkspaceRead(FIXTURE.leadId),
+    maxQueries: 3,
   },
   {
     // getNotifications() (src/server-functions/notifications.ts) runs exactly these two reads
@@ -345,23 +367,27 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // calls loadQuoteDetailRead(id) directly (a one-line pass-through to
     // getQuoteWorkspaceDetail). The handler's authorizeLinkedQuoteParties() call runs after
     // this read using its result, so it does not affect the quote SQL itself.
+    // getQuoteWorkspaceDetail is genuinely sequential: it queries the quote row first and
+    // throws "Quote not found" before ever reaching the client/lead lookups, which is why
+    // MISSING_ID measured only 1 query here. FIXTURE.quoteId now resolves to a seeded quotes
+    // row with a client_id set (lead_id null), so the client lookup also fires.
     route: "quotes.$id",
-    run: () => loadQuoteDetailRead(MISSING_ID),
-    // TODO(Task 4): measured budget
-    maxQueries: 99,
+    run: () => loadQuoteDetailRead(FIXTURE.quoteId),
+    maxQueries: 2,
   },
   {
     // getQuoteDocumentRead() (src/server-functions/quotes.ts) calls loadQuoteDocumentRead(id)
-    // directly, which starts with the same `select ... from quotes where id = $1` that
-    // getQuoteWorkspaceDetail runs for quotes.$id above. On the empty gate database that
-    // lookup misses before loadQuoteDocumentRead ever reaches getQuoteDocumentVersion, so this
-    // entry's marginal coverage over quotes.$id is this route existing as its own
-    // registration (a schema bug in the shared quotes select still fails this route too), not
-    // additional SQL — the document-version query is only reachable with a real quote row.
+    // directly, which starts with the same getQuoteWorkspaceDetail that quotes.$id runs above.
+    // FIXTURE.quoteId now resolves to the same seeded quotes row used there (status "draft"),
+    // so this entry gets the same quote+client reads. loadQuoteDocumentRead then computes
+    // immutableVersionId(quote): for a "draft" quote (not accepted/sent/viewed) that falls
+    // through to `quote.accepted_version_id ?? quote.issued_version_id ?? null`, and the
+    // fixture row sets neither column, so the pointer is null and getQuoteDocumentVersion is
+    // never reached — the document-version query still needs a quote in "sent"/"accepted"
+    // status to be reachable, which this fixture row deliberately is not.
     route: "quotes.$id_.pdf",
-    run: () => loadQuoteDocumentRead(MISSING_ID),
-    // TODO(Task 4): measured budget
-    maxQueries: 99,
+    run: () => loadQuoteDocumentRead(FIXTURE.quoteId),
+    maxQueries: 2,
   },
   {
     route: "quotes.new",
