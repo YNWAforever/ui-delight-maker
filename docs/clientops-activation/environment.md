@@ -10,6 +10,7 @@
 | App staging      | `N8N_DRAFT_REPLY_WEBHOOK_URL`        |         Yes | n8n        | Staging reply draft webhook URL.                                          |
 | App staging      | `N8N_DRAFT_QUOTE_WEBHOOK_URL`        |         Yes | n8n        | Staging quote draft webhook URL.                                          |
 | App staging      | `N8N_SCORE_RENEWAL_RISK_WEBHOOK_URL` |         Yes | n8n        | Staging renewal-risk scoring webhook URL.                                 |
+| App staging      | `N8N_RELATIONSHIP_INTELLIGENCE_WEBHOOK_URL` | Yes | n8n | Staging relationship-intelligence webhook URL. Read by triggerRelationshipIntelligence; omitting it makes the account page's Run intelligence button return missing_webhook. |
 | App staging      | `N8N_WORKFLOW_TOKEN`                 |         Yes | Shared     | Same value configured in n8n env.                                         |
 | n8n staging      | `APP_BASE_URL`                       |         Yes | App/Vercel | Used by context and writeback HTTP nodes.                                 |
 | n8n staging      | `N8N_WORKFLOW_TOKEN`                 |         Yes | Shared     | Sent as `x-workflow-token`.                                               |

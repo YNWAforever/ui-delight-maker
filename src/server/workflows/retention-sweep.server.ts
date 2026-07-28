@@ -1,3 +1,4 @@
+import { agentNameFor } from "@/lib/agents";
 import { query } from "@/server/db/neon.server";
 import { createNotification } from "@/server/repositories/notifications";
 import {
@@ -77,7 +78,7 @@ export async function runRetentionSweep(today: string) {
       const dispatchConfig = getN8nDispatchConfig(process.env.N8N_SCORE_RENEWAL_RISK_WEBHOOK_URL);
       if (!existingRun && dispatchConfig) {
         const { run, created } = await createAgentRun({
-          agent_name: "Renewal Risk Agent",
+          agent_name: agentNameFor("score_renewal_risk"),
           workflow_type: "score_renewal_risk",
           subject_id: engagement.id,
           subject_type: "engagement",

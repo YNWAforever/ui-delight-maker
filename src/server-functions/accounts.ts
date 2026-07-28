@@ -1,3 +1,4 @@
+import { agentNameFor } from "@/lib/agents";
 import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -91,7 +92,7 @@ export const triggerRelationshipIntelligence = createServerFn({ method: "POST" }
     }
 
     const { run, created } = await createAgentRun({
-      agent_name: "Relationship Intelligence Agent",
+      agent_name: agentNameFor("relationship_intelligence"),
       workflow_type: "relationship_intelligence",
       subject_type: "account",
       subject_id: data.accountId,

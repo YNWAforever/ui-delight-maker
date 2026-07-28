@@ -1,3 +1,4 @@
+import { agentNameFor } from "@/lib/agents";
 import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -103,7 +104,7 @@ export const triggerRiskScoreAgent = createServerFn({ method: "POST" })
     }
 
     const { run, created } = await createAgentRun({
-      agent_name: "Renewal Risk Agent",
+      agent_name: agentNameFor("score_renewal_risk"),
       workflow_type: "score_renewal_risk",
       subject_id: data.engagementId,
       subject_type: "engagement",
