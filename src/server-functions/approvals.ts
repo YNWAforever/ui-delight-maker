@@ -28,9 +28,9 @@ export const decideApproval = createServerFn({ method: "POST" })
       resourceId: data.id,
     });
     const session = await requireNeonAuthSession();
-    const approval = await decideApprovalInNeon({ ...data, actorId: session.user.id });
+    const approval = await decideApprovalInNeon({ ...data, actorId: session.profile.id });
 
-    await applyRiskReviewDecision(approval, session.user.id);
+    await applyRiskReviewDecision(approval, session.profile.id);
 
     return serializeHumanApproval(approval);
   });

@@ -36,8 +36,8 @@ export const getWorkspacePreferences = createServerFn({ method: "GET" })
     const session = await requireNeonAuthSession();
     const objectType = data.objectType ?? "account";
     const [views, favorites] = await Promise.all([
-      listWorkspaceViews(session.user.id, objectType),
-      listWorkspaceFavorites(session.user.id),
+      listWorkspaceViews(session.profile.id, objectType),
+      listWorkspaceFavorites(session.profile.id),
     ]);
     return { views, favorites };
   });
@@ -47,7 +47,7 @@ export const savePersonalWorkspaceView = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     rejectCallerProfileId(data);
     const session = await requireNeonAuthSession();
-    return saveWorkspaceView({ ...data, profileId: session.user.id });
+    return saveWorkspaceView({ ...data, profileId: session.profile.id });
   });
 
 export const togglePersonalWorkspaceFavorite = createServerFn({ method: "POST" })
@@ -55,5 +55,5 @@ export const togglePersonalWorkspaceFavorite = createServerFn({ method: "POST" }
   .handler(async ({ data }) => {
     rejectCallerProfileId(data);
     const session = await requireNeonAuthSession();
-    return toggleWorkspaceFavorite({ ...data, profileId: session.user.id });
+    return toggleWorkspaceFavorite({ ...data, profileId: session.profile.id });
   });

@@ -28,7 +28,11 @@ vi.mock("@/server/company-workspace/loaders", () => ({
 describe("Company Workspace deep read server function", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireSession.mockResolvedValue({ user: { id: "user-1" } });
+    requireSession.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
     loadRead.mockResolvedValue({ requestId: "request-1", sections: {} });
   });
 

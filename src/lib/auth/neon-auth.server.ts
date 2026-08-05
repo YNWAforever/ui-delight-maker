@@ -18,6 +18,24 @@ export type AuthIdentity = {
   };
 };
 
+/**
+ * A signed-in caller, carrying both identities this app has for them.
+ *
+ * `user.id` is the Neon Auth identity — upstream, and only meaningful to the auth provider.
+ * `profile.id` is the row in `profiles`, and it is the id every domain column points at:
+ * `created_by`, `assigned_to`, `account_owner`, `logged_by`, `notifications.user_id` and the
+ * rest are all `references profiles(id)`, and `authorization.server.ts` evaluates scope against
+ * `profile.id` too.
+ *
+ * The two are usually equal, because `acceptInvitation` inserts the profile with the auth user's
+ * id. They are not guaranteed to be: `getNeonAuthSession` falls back to matching on email, which
+ * resolves a profile that was pre-provisioned (seeded, bootstrapped, or created before the auth
+ * account) under a different id. On that path every write keyed by `user.id` violated a foreign
+ * key and every notification query matched nothing.
+ *
+ * **Use `profile.id` for anything the application stores or authorizes.** `user.id` is for
+ * talking to Neon Auth.
+ */
 export type AppSession = AuthIdentity & {
   profile: Profile;
 };

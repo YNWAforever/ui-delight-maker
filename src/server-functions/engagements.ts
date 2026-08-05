@@ -67,7 +67,7 @@ export const renewEngagement = createServerFn({ method: "POST" })
       resourceId: data.id,
     });
     const session = await requireNeonAuthSession();
-    return markEngagementRenewed({ id: data.id, actorId: session.user.id, reason: data.reason });
+    return markEngagementRenewed({ id: data.id, actorId: session.profile.id, reason: data.reason });
   });
 
 export const endEngagement = createServerFn({ method: "POST" })
@@ -78,7 +78,7 @@ export const endEngagement = createServerFn({ method: "POST" })
       resourceId: data.id,
     });
     const session = await requireNeonAuthSession();
-    return markEngagementEnded({ id: data.id, actorId: session.user.id, reason: data.reason });
+    return markEngagementEnded({ id: data.id, actorId: session.profile.id, reason: data.reason });
   });
 
 export const triggerRiskScoreAgent = createServerFn({ method: "POST" })
@@ -109,7 +109,7 @@ export const triggerRiskScoreAgent = createServerFn({ method: "POST" })
       subject_id: data.engagementId,
       subject_type: "engagement",
       input_data: { engagement_id: data.engagementId },
-      created_by: session.user.id,
+      created_by: session.profile.id,
     });
 
     if (!created) {

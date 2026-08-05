@@ -27,7 +27,11 @@ vi.mock("@/server/repositories/workspace-search", () => ({
 describe("workspace search server function", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireAnyCapabilityMock.mockResolvedValue({ user: { id: "profile-1" } });
+    requireAnyCapabilityMock.mockResolvedValue({
+      user: { id: "profile-1" },
+      profile: { id: "profile-1", role: "sales", status: "active" },
+      session: {},
+    });
     searchWorkspaceMock.mockResolvedValue([]);
   });
 

@@ -69,8 +69,16 @@ const loadLeadsPage = async () => (await import("../leads")).getLeadsPage;
 describe("paginated account server function", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireCapability.mockResolvedValue({ user: { id: "user-1" } });
-    mocks.requireSession.mockResolvedValue({ user: { id: "user-1" } });
+    mocks.requireCapability.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
+    mocks.requireSession.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
     mocks.listAccountsPage.mockResolvedValue({ items: [], total: 0, page: 2, limit: 25 });
   });
 
@@ -102,8 +110,16 @@ describe("paginated account server function", () => {
 describe("paginated client server function", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireCapability.mockResolvedValue({ user: { id: "user-1" } });
-    mocks.requireSession.mockResolvedValue({ user: { id: "user-1" } });
+    mocks.requireCapability.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
+    mocks.requireSession.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
     mocks.listClientsPage.mockResolvedValue({ items: [], total: 0, page: 2, limit: 25 });
   });
 
@@ -134,8 +150,16 @@ describe("paginated client server function", () => {
 describe("paginated lead server function", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireCapability.mockResolvedValue({ user: { id: "user-1" } });
-    mocks.requireSession.mockResolvedValue({ user: { id: "user-1" } });
+    mocks.requireCapability.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
+    mocks.requireSession.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
     mocks.listLeadsPage.mockResolvedValue({ items: [], total: 0, page: 2, limit: 25 });
   });
 

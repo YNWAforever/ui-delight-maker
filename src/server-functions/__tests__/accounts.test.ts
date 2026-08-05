@@ -80,9 +80,17 @@ describe("accounts server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.N8N_RELATIONSHIP_INTELLIGENCE_WEBHOOK_URL = "https://n8n.example/webhook";
-    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireCapabilityMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
 
-    requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireNeonAuthSessionMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
     findActiveRunMock.mockResolvedValue(null);
     getN8nDispatchConfigMock.mockReturnValue({
       webhookUrl: "https://n8n.example/webhook",

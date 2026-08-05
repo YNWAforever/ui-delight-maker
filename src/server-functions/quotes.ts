@@ -108,7 +108,7 @@ export const createQuote = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireCapability("quotes.create");
     const session = await requireNeonAuthSession();
-    return createQuoteInNeon({ ...data, created_by: session.user.id });
+    return createQuoteInNeon({ ...data, created_by: session.profile.id });
   });
 
 export const updateQuote = createServerFn({ method: "POST" })
@@ -158,7 +158,7 @@ export const triggerQuoteAgent = createServerFn({ method: "POST" })
       workflow_type: "draft_quote",
       subject_id: data.leadId,
       input_data: { lead_id: data.leadId },
-      created_by: session.user.id,
+      created_by: session.profile.id,
     });
 
     if (!created) {
@@ -351,7 +351,7 @@ export const approveQuote = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireCapability("quotes.approve", { resourceType: "quote", resourceId: data.id });
     const session = await requireNeonAuthSession();
-    return approveQuoteForSession(data.id, session.user.id);
+    return approveQuoteForSession(data.id, session.profile.id);
   });
 
 export const rejectQuote = createServerFn({ method: "POST" })
@@ -378,7 +378,7 @@ export const rejectQuote = createServerFn({ method: "POST" })
         id: data.approvalId,
         decision: "rejected",
         notes: data.notes,
-        actorId: session.user.id,
+        actorId: session.profile.id,
       });
     }
 
@@ -391,7 +391,7 @@ export const issueQuoteVersion = createServerFn({ method: "POST" })
     await requireCapability("quotes.issue", { resourceType: "quote", resourceId: data.id });
     const session = await requireNeonAuthSession();
     const quote = await getQuoteFromNeon(data.id);
-    return issueQuoteVersionForSession(quote, session.user.id, data.pdfTemplateId);
+    return issueQuoteVersionForSession(quote, session.profile.id, data.pdfTemplateId);
   });
 
 export const approveAndIssueQuote = createServerFn({ method: "POST" })
@@ -405,16 +405,16 @@ export const approveAndIssueQuote = createServerFn({ method: "POST" })
     const approval = await getApprovalFromNeon(data.approvalId);
     assertQuoteSendApprovalMatchesQuote(approval, data.id);
     assertPendingQuoteSendApproval(approval);
-    const approvedQuote = await approveQuoteForSession(data.id, session.user.id);
+    const approvedQuote = await approveQuoteForSession(data.id, session.profile.id);
     const issued = await issueQuoteVersionForSession(
       approvedQuote,
-      session.user.id,
+      session.profile.id,
       data.pdfTemplateId,
     );
     await decideApprovalInNeon({
       id: data.approvalId,
       decision: "approved",
-      actorId: session.user.id,
+      actorId: session.profile.id,
       ...(data.notes ? { notes: data.notes } : {}),
     });
     return issued;
@@ -437,10 +437,10 @@ export const acceptQuoteAndCreateJobSheet = createServerFn({ method: "POST" })
           snapshot,
           pdf_template_id: null,
           pdf_url: quote.pdf_url,
-          created_by: session.user.id,
+          created_by: session.profile.id,
         })));
     const acceptedAt = quote.accepted_at ?? new Date().toISOString();
-    const acceptedBy = quote.accepted_by ?? session.user.id;
+    const acceptedBy = quote.accepted_by ?? session.profile.id;
     const needsAcceptanceUpdate =
       quote.status !== "accepted" ||
       quote.accepted_at !== acceptedAt ||
@@ -463,7 +463,7 @@ export const acceptQuoteAndCreateJobSheet = createServerFn({ method: "POST" })
       sales_owner: quote.created_by,
       total_amount: quote.total_value ?? 0,
       currency: quote.currency,
-      created_by: session.user.id,
+      created_by: session.profile.id,
     });
 
     return { quote: updated, jobSheet };

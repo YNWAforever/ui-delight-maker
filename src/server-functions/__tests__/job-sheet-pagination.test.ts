@@ -36,7 +36,11 @@ const data = { status: "accounting_review", page: 2, limit: 25 };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.requireSession.mockResolvedValue({ user: { id: "user-1" } });
+  mocks.requireSession.mockResolvedValue({
+    user: { id: "user-1" },
+    profile: { id: "user-1", role: "sales", status: "active" },
+    session: {},
+  });
   mocks.listJobSheetsPage.mockResolvedValue({ items: [], total: 0, page: 2, limit: 25 });
 });
 

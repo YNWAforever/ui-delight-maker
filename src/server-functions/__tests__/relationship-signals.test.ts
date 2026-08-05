@@ -45,9 +45,17 @@ vi.mock("@/server/repositories/relationship-signals", () => ({
 describe("relationship signals server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireCapabilityMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
 
-    requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireNeonAuthSessionMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
   });
 
   it("lists signals after requiring a Neon auth session", async () => {

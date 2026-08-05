@@ -101,9 +101,17 @@ describe("quote server functions", () => {
     createQuoteVersionMock.mockReset();
     createJobSheetFromAcceptedQuoteMock.mockReset();
     decideApprovalMock.mockReset();
-    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireCapabilityMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
 
-    requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireNeonAuthSessionMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
     listQuoteLineItemsMock.mockResolvedValue([
       {
         id: "11111111-1111-4111-8111-111111111111",

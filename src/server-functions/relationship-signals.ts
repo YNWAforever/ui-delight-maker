@@ -47,7 +47,7 @@ export const dismissRelationshipSignalFn = createServerFn({ method: "POST" })
     });
     const session = await requireNeonAuthSession();
     return dismissRelationshipSignal(data.id, {
-      dismissed_by: session.user.id,
+      dismissed_by: session.profile.id,
       dismissal_reason: data.reason,
     });
   });

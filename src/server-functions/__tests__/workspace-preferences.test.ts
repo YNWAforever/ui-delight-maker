@@ -45,7 +45,11 @@ vi.mock("@/server/repositories/workspace-preferences", () => ({
 describe("workspace preference server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "profile-1" } });
+    requireNeonAuthSessionMock.mockResolvedValue({
+      user: { id: "profile-1" },
+      profile: { id: "profile-1", role: "sales", status: "active" },
+      session: {},
+    });
     listWorkspaceViewsMock.mockResolvedValue([]);
     listWorkspaceFavoritesMock.mockResolvedValue([]);
   });

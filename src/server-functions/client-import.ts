@@ -40,5 +40,5 @@ export const commitClientImportFn = createServerFn({ method: "POST" })
     // steps) without trusting whatever rows the client happens to send.
     const context = await loadValidationContext();
     const { valid } = validateImportRows(data.rows, context);
-    return commitClientImport(valid, session.user.id);
+    return commitClientImport(valid, session.profile.id);
   });

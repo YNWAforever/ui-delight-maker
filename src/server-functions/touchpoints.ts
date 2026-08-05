@@ -37,5 +37,5 @@ export const createTouchpoint = createServerFn({ method: "POST" })
       resourceId: data.client_id,
     });
     const session = await requireNeonAuthSession();
-    return createTouchpointInNeon({ ...data, logged_by: session.user.id });
+    return createTouchpointInNeon({ ...data, logged_by: session.profile.id });
   });

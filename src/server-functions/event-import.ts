@@ -56,6 +56,6 @@ export const commitEventImportFn = createServerFn({ method: "POST" })
     return commitEventImport({
       campaignId: data.campaignId,
       rows: validation.valid,
-      owner: session.user.id,
+      owner: session.profile.id,
     });
   });

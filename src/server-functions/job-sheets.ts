@@ -57,7 +57,7 @@ export const acceptJobSheetForAccounting = createServerFn({ method: "POST" })
       resourceId: data.id,
     });
     const session = await requireNeonAuthSession();
-    return acceptJobSheetInRepository(data.id, { accepted_by: session.user.id });
+    return acceptJobSheetInRepository(data.id, { accepted_by: session.profile.id });
   });
 
 export const updatePortionXeroReference = createServerFn({ method: "POST" })

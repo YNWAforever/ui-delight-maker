@@ -87,9 +87,17 @@ vi.mock("@/server/repositories/account-timeline", () => ({
 describe("ported CRM server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireCapabilityMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
 
-    mockRequireNeonAuthSession.mockResolvedValue({ user: { id: "user-1" } });
+    mockRequireNeonAuthSession.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
   });
 
   it("requires auth before listing accounts", async () => {
@@ -145,7 +153,11 @@ describe("ported CRM server functions", () => {
   });
 
   it("uses the authenticated profile as owner when creating campaigns", async () => {
-    mockRequireNeonAuthSession.mockResolvedValueOnce({ user: { id: "signed-in-user" } });
+    mockRequireNeonAuthSession.mockResolvedValueOnce({
+      user: { id: "signed-in-user" },
+      profile: { id: "signed-in-user", role: "sales", status: "active" },
+      session: {},
+    });
     mockCreateCampaign.mockResolvedValue({ id: "campaign-1", owner: "signed-in-user" });
     const { createCampaign } = await import("../campaigns");
 
