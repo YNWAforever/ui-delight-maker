@@ -98,7 +98,12 @@ Still importing it (do not add more):
 
 - `src/server-functions/` — `automation-playbooks`, `customer-success`, `deals`,
   `engagement-events`, `projects`
-- `src/server/auth/authorization.server.ts`
+- `src/server/auth/resource-ownership.ts` — ownership lookups for the eight Supabase-owned
+  resource types. This one is on the **authorization** path, so `SUPABASE_URL` and
+  `SUPABASE_ANON_KEY` are required at runtime: without them `createSupabaseServerClient()`
+  throws and every guarded deal / project / contact / customer-success / automation route
+  answers 500 from inside the capability check rather than degrading. Both are in
+  `.env.example`.
 
 `src/lib/mock-data.ts` (1689 lines) has zero importers, but it is not free-standing: the test
 `src/lib/__tests__/clientops-relationship-schema.test.ts` reads it off disk with `readFileSync`

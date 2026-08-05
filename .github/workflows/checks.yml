@@ -3,6 +3,12 @@ name: Checks
 on:
   pull_request:
 
+# Least privilege: these jobs only ever read the checked-out tree. Without an explicit
+# block the workflow inherits the repository default, which can be read-write — a token
+# a compromised transitive dependency's postinstall could use during `bun install`.
+permissions:
+  contents: read
+
 # Types and lint need no database, so they run as their own workflow rather than as a second
 # job inside "Database contract" — a failure here points at the code, not at the Postgres
 # service, and the two run in parallel.

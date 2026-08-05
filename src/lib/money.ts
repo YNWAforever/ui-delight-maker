@@ -33,3 +33,8 @@ export function sumAmounts<T>(
 ): number {
   return rows.reduce<number>((total, row) => total + toAmount(select(row)), 0);
 }
+
+/** Rounds to two decimal places, the scale every money column in the schema is declared at. */
+export function roundToMoney(value: number | string | null | undefined): number {
+  return Math.round((toAmount(value) + Number.EPSILON) * 100) / 100;
+}

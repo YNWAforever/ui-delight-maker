@@ -501,9 +501,13 @@ export interface Account {
   relationship_health?: number;
   last_activity_at?: string | null;
   next_action?: string | null;
-  health_score?: number;
-  renewal_date?: string | null;
-  arr?: number | null;
+  /*
+   * `health_score`, `renewal_date` and `arr` used to be declared here too. No column on
+   * `accounts` backs any of them in neon/migrations/ and no query selects them, so they were
+   * always `undefined` at runtime while the type promised a number — which is how the company
+   * workspace came to render "Account ARR: HKD 0" for every company. Those figures live on the
+   * account's clients; read them from there.
+   */
   created_at: string;
   updated_at: string;
 }

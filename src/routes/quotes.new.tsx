@@ -30,7 +30,13 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { formatHKD } from "@/lib/format";
-import { createQuote, type CreateQuoteInput } from "@/server-functions/quotes";
+import { roundToMoney } from "@/lib/money";
+import { calculateQuoteTotal } from "@/lib/quote-to-cash";
+import {
+  createQuote,
+  requestQuoteApproval,
+  type CreateQuoteInput,
+} from "@/server-functions/quotes";
 import { getQuoteCreateBootstrap } from "@/server-functions/quote-workspace";
 import { useQuoteReferenceData } from "@/hooks/use-quote-reference-data";
 import { crmQueryKeys } from "@/lib/query-keys";
@@ -118,7 +124,28 @@ function QuoteBuilder() {
   });
 
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unit_price, 0), [items]);
-  const total = Math.round(subtotal * (1 - discount / 100));
+
+  /**
+   * The discount is applied to the line items themselves, not just to the headline total.
+   *
+   * `total_value` used to be `subtotal * (1 - discount/100)` while `line_items` were saved at
+   * full price, so the quote contradicted itself the moment it was persisted: /quotes/$id
+   * showed the discounted figure in the header and the undiscounted one in the line-item
+   * footer, and the next save from that page recomputed `total_value` from the items and
+   * silently dropped the discount. Deriving the total from the discounted items with the same
+   * helper the detail page uses makes the two agree by construction.
+   */
+  const pricedItems = useMemo(
+    () =>
+      discount === 0
+        ? items
+        : items.map((item) => ({
+            ...item,
+            unit_price: roundToMoney(item.unit_price * (1 - discount / 100)),
+          })),
+    [items, discount],
+  );
+  const total = useMemo(() => calculateQuoteTotal(pricedItems), [pricedItems]);
   const lead = leads.find((l) => l.id === leadId);
   const client = clients.find((c) => c.id === clientId);
   const activeQuoteTemplate = quoteTemplates.find((item) => item.id === quoteTemplateId) ?? null;
@@ -220,7 +247,7 @@ function QuoteBuilder() {
       assumptions: documentDraft.assumptions,
       payment_terms: documentDraft.payment_terms,
       document_sections: documentDraft.document_sections,
-      line_items: items.map(({ id: _id, ...rest }) => ({
+      line_items: pricedItems.map(({ id: _id, ...rest }) => ({
         id: _id,
         ...rest,
       })),
@@ -228,8 +255,29 @@ function QuoteBuilder() {
     } satisfies CreateQuoteInput;
 
     const quote = await createQuote({ data: payload });
+
+    /**
+     * The button says "Submit for approval", so actually request one. This used to create a
+     * draft and then toast "Quote submitted for approval" — no `human_approvals` row was
+     * written and the quote never appeared in /approvals, so the deal stalled until somebody
+     * opened the quote and noticed. If the approval request fails the quote still exists, so
+     * say what happened rather than losing the work.
+     */
+    let approvalRequested = true;
+    try {
+      await requestQuoteApproval({ data: { id: quote.id } });
+    } catch (error) {
+      approvalRequested = false;
+      toast.error(
+        error instanceof Error
+          ? `Quote saved as a draft, but requesting approval failed: ${error.message}`
+          : "Quote saved as a draft, but requesting approval failed.",
+      );
+    }
+
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: crmQueryKeys.quotes.lists() }),
+      queryClient.invalidateQueries({ queryKey: crmQueryKeys.approvals.all() }),
       leadId
         ? queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.detail(leadId) })
         : Promise.resolve(),
@@ -239,7 +287,7 @@ function QuoteBuilder() {
           })
         : Promise.resolve(),
     ]);
-    toast.success("Quote submitted for approval.");
+    if (approvalRequested) toast.success("Quote submitted for approval.");
     navigate({ to: "/quotes/$id", params: { id: quote.id } });
   };
 

@@ -10,24 +10,36 @@ export type CreateQuoteVersionInput = {
   created_by?: string | null;
 };
 
+/**
+ * Appends the next version of a quote.
+ *
+ * The version number is allocated under a row lock on the parent quote rather than by a bare
+ * `max() + 1` subselect. At READ COMMITTED two concurrent version-creating requests for the
+ * same quote — a user issuing while another accepts, or a double-submitted form — both read the
+ * same max, both compute the same number, and the second loses to the
+ * `unique (quote_id, version_number)` index with a raw duplicate-key error. Serialising on
+ * `quotes` (the row every version already references) turns that race into a short wait.
+ */
 export async function createQuoteVersion(
   input: CreateQuoteVersionInput,
   db?: Queryable,
 ): Promise<QuoteVersion> {
   const version = await queryOne<QuoteVersion>(
     `
+      with locked_quote as (
+        select id from quotes where id = $1 for update
+      )
       insert into quote_versions
         (quote_id, version_number, reason, snapshot, pdf_template_id, pdf_url, created_by)
-      values
-        (
-          $1,
-          (select coalesce(max(version_number), 0) + 1 from quote_versions where quote_id = $1),
-          $2,
-          $3::jsonb,
-          $4,
-          $5,
-          $6
-        )
+      select
+        locked_quote.id,
+        (select coalesce(max(version_number), 0) + 1 from quote_versions where quote_id = $1),
+        $2,
+        $3::jsonb,
+        $4,
+        $5,
+        $6
+      from locked_quote
       returning *
     `,
     [

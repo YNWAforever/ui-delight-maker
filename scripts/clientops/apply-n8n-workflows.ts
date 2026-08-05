@@ -9,10 +9,23 @@ type N8nWorkflow = {
   settings?: Record<string, unknown>;
 };
 
+/**
+ * Every workflow definition in n8n/workflows/, kept in step with the dispatch webhooks the app
+ * actually calls (see N8N_*_WEBHOOK_URL in .env.example).
+ *
+ * This listed three of the five. An operator running the documented command got three success
+ * lines and exit 0 while `clientops-score-renewal-risk` and
+ * `clientops-relationship-intelligence` were never created — so the renewal-risk and
+ * relationship-intelligence buttons pointed at webhooks that did not exist, with nothing in the
+ * output to say so.
+ */
 const WORKFLOW_FILES = [
   "clientops-qualify-lead.json",
   "clientops-draft-reply.json",
   "clientops-draft-quote.json",
+  "clientops-score-renewal-risk.json",
+  "clientops-relationship-intelligence.json",
+  "clientops-retention-sweep.json",
 ];
 
 function requiredEnv(name: string) {

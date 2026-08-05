@@ -180,6 +180,21 @@ function ApprovalsInbox() {
     ]);
   };
 
+  /**
+   * Fires a decision and surfaces a failure.
+   *
+   * `updateApprovalDecision` applies the change optimistically and rolls it back when the
+   * mutation rejects, then rethrows. Every call site was a bare `onClick={() => decide(...)}`,
+   * so that rethrow landed on a floating promise: the row flipped, flipped back, and the
+   * reviewer was told nothing — a missing capability or a transient Neon error looked exactly
+   * like a UI glitch.
+   */
+  const runDecision = (work: () => Promise<void>) => {
+    void work().catch((error: unknown) => {
+      toast.error(error instanceof Error ? error.message : "Could not record that decision");
+    });
+  };
+
   const decide = async (id: string, status: "approved" | "rejected" | "escalated", msg: string) => {
     const notes = reason || undefined;
     await updateApprovalDecision([id], status, notes, () =>
@@ -352,7 +367,7 @@ function ApprovalsInbox() {
                   title: `Approve ${bulk.size} request${bulk.size > 1 ? "s" : ""}?`,
                   description: "Agents will proceed immediately with the proposed action.",
                   label: "Approve all",
-                  action: bulkApprove,
+                  action: () => runDecision(bulkApprove),
                 })
               }
             >
@@ -542,7 +557,9 @@ function ApprovalsInbox() {
                                         "The approval will stay visible as a changes-requested item with your reviewer notes.",
                                       label: "Request changes",
                                       action: () =>
-                                        decide(selected.id, "escalated", "Changes requested"),
+                                        runDecision(() =>
+                                          decide(selected.id, "escalated", "Changes requested"),
+                                        ),
                                     })
                                   }
                                 >
@@ -551,11 +568,16 @@ function ApprovalsInbox() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => rejectSelectedApproval(selected)}
+                                  onClick={() =>
+                                    runDecision(() => rejectSelectedApproval(selected))
+                                  }
                                 >
                                   <XCircle className="mr-2 h-4 w-4" /> Reject
                                 </Button>
-                                <Button size="sm" onClick={() => approveQuoteSendAsIs(selected)}>
+                                <Button
+                                  size="sm"
+                                  onClick={() => runDecision(() => approveQuoteSendAsIs(selected))}
+                                >
                                   <CheckCircle2 className="mr-2 h-4 w-4" /> Approve as-is
                                 </Button>
                               </>
@@ -574,7 +596,9 @@ function ApprovalsInbox() {
                                     "The approval will stay visible as a changes-requested item with your reviewer notes.",
                                   label: "Request changes",
                                   action: () =>
-                                    decide(selected.id, "escalated", "Changes requested"),
+                                    runDecision(() =>
+                                      decide(selected.id, "escalated", "Changes requested"),
+                                    ),
                                 })
                               }
                             >
@@ -583,14 +607,20 @@ function ApprovalsInbox() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => decide(selected.id, "rejected", "Approval rejected")}
+                              onClick={() =>
+                                runDecision(() =>
+                                  decide(selected.id, "rejected", "Approval rejected"),
+                                )
+                              }
                             >
                               <XCircle className="mr-2 h-4 w-4" /> Reject
                             </Button>
                             <Button
                               size="sm"
                               onClick={() =>
-                                decide(selected.id, "approved", "Approved — agent will proceed")
+                                runDecision(() =>
+                                  decide(selected.id, "approved", "Approved — agent will proceed"),
+                                )
                               }
                             >
                               <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
@@ -705,7 +735,7 @@ function ApprovalsInbox() {
             <Button variant="outline" onClick={() => setRejectOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={bulkReject}>
+            <Button variant="destructive" onClick={() => runDecision(bulkReject)}>
               Reject all
             </Button>
           </DialogFooter>

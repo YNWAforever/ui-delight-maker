@@ -30,6 +30,7 @@ import {
 import { getCompanyWorkspaceSectionEnablement } from "@/lib/company-workspace/section-enablement";
 import { retainCompanyWorkspaceSectionData } from "@/lib/company-workspace/section-state";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
+import { sumAmounts } from "@/lib/money";
 import {
   COMPANY_WORKSPACE_STALE_TIME_MS,
   useCompanyWorkspaceSection,
@@ -595,8 +596,15 @@ function AccountDetailRoute() {
                           />
                           <SummaryRow
                             label="Account ARR"
+                            /*
+                             * Summed from the account's clients, which is where ARR is stored.
+                             * This read `account.arr`, an optional field on the Account type
+                             * that no column backs — `accounts` has no arr column in any
+                             * migration — so it was always undefined and every company in the
+                             * workspace reported "HKD 0" regardless of its actual revenue.
+                             */
                             value={formatCurrencyAmount(
-                              account.arr ?? null,
+                              sumAmounts(commercialData.clients, (client) => client.arr),
                               commercialData.quotes[0]?.currency ?? "HKD",
                             )}
                           />

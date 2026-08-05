@@ -47,7 +47,9 @@ export function toCompanyWorkspaceSummary(
     id: input.account.id,
     displayName: input.account.name,
     lifecycleLabel: lifecycleLabels[input.account.lifecycle_stage],
-    relationshipHealth: input.account.relationship_health ?? input.account.health_score ?? 0,
+    // `accounts.relationship_health` is `not null default 50`; the removed `health_score`
+    // fallback named a column that exists on clients, not accounts, and never resolved.
+    relationshipHealth: input.account.relationship_health ?? 0,
     lastActivityAt: input.account.last_activity_at ?? null,
     nextAction: input.account.next_action ?? null,
     primaryContactId: input.contacts.find((contact) => contact.is_primary)?.id ?? null,

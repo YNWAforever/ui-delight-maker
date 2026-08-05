@@ -1,4 +1,5 @@
 import { formatHKD } from "@/lib/format";
+import { roundToMoney } from "@/lib/money";
 import type {
   JobSheetBillingType,
   JobSheetPortionStatus,
@@ -42,10 +43,6 @@ const LOCKED_COMMERCIAL_FIELDS = new Set([
   "billing_type",
   "source_quote_line_item_ids",
 ]);
-
-function roundToMoney(value: number): number {
-  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
-}
 
 export function calculateQuoteLineTotal(item: Pick<QuoteLineItem, "qty" | "unit_price">): number {
   return roundToMoney((Number(item.qty) || 0) * (Number(item.unit_price) || 0));
