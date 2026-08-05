@@ -32,18 +32,6 @@ export type JobSheetAcceptanceCheck = {
   reasons: string[];
 };
 
-const LOCKED_COMMERCIAL_FIELDS = new Set([
-  "accepted_scope_summary",
-  "po_number",
-  "client_order_number",
-  "total_amount",
-  "currency",
-  "target_invoice_date",
-  "amount",
-  "billing_type",
-  "source_quote_line_item_ids",
-]);
-
 export function calculateQuoteLineTotal(item: Pick<QuoteLineItem, "qty" | "unit_price">): number {
   return roundToMoney((Number(item.qty) || 0) * (Number(item.unit_price) || 0));
 }
@@ -112,6 +100,11 @@ export function canAcceptJobSheet(input: {
   };
 }
 
-export function isLockedJobSheetCommercialField(field: string): boolean {
-  return LOCKED_COMMERCIAL_FIELDS.has(field);
-}
+/*
+ * `isLockedJobSheetCommercialField` and its LOCKED_COMMERCIAL_FIELDS set used to live here.
+ * Nothing in the application ever called either — only their own test did, and it asserted the
+ * set's membership against the literal it was built from — so they read as an enforced rule
+ * while enforcing nothing. The rule is real and now lives where it can be applied: job sheets
+ * are frozen once accepted or locked (`replaceJobSheetPortions`), and a portion already entered
+ * in Xero keeps its amount, currency, invoice date and billing type through the UPDATE itself.
+ */

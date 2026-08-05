@@ -5,7 +5,6 @@ import {
   calculateQuoteTotal,
   canAcceptJobSheet,
   getPortionReconciliation,
-  isLockedJobSheetCommercialField,
 } from "../quote-to-cash";
 import type { QuoteLineItemRecord } from "../types";
 
@@ -173,25 +172,5 @@ describe("canAcceptJobSheet", () => {
       ok: false,
       reasons: ["PO number or client order number is required before acceptance."],
     });
-  });
-});
-
-describe("isLockedJobSheetCommercialField", () => {
-  it("locks the intended commercial fields and leaves non-commercial fields editable", () => {
-    [
-      "accepted_scope_summary",
-      "po_number",
-      "client_order_number",
-      "total_amount",
-      "currency",
-      "target_invoice_date",
-      "amount",
-      "billing_type",
-      "source_quote_line_item_ids",
-    ].forEach((field) => {
-      expect(isLockedJobSheetCommercialField(field)).toBe(true);
-    });
-
-    expect(isLockedJobSheetCommercialField("accounting_notes")).toBe(false);
   });
 });
