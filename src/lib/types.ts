@@ -399,6 +399,15 @@ export interface Task {
 export interface AgentRun {
   id: string;
   agent_name: string;
+  /**
+   * Which workflow produced the run, and what it ran against. Both are `not null` in
+   * `agent_runs` and are returned by every `select *` in the repository, but they were absent
+   * from this interface — which is why the writeback that does correlate a callback to its
+   * subject had to re-cast the row inline to reach them.
+   */
+  workflow_type: string;
+  subject_type: string;
+  subject_id: string;
   trigger_type: string | null;
   input_data: unknown;
   output_data: unknown;
@@ -409,7 +418,9 @@ export interface AgentRun {
   model_used: string;
   confidence_score: number | null;
   human_review_required: boolean;
+  created_by: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface AgentToolCall {

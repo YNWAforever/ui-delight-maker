@@ -32,6 +32,7 @@ import { routeQueryOptions } from "@/lib/route-query";
 import { getQuotesPage } from "@/server-functions/quotes";
 import { USER_RECORD } from "@/lib/users";
 import type { Quote } from "@/lib/types";
+import { sumAmounts } from "@/lib/money";
 
 const userById = (id: string | null | undefined) =>
   id && USER_RECORD[id] ? { name: USER_RECORD[id] } : undefined;
@@ -99,18 +100,23 @@ function QuotesIndex() {
     });
   }, [rows, tab, query]);
 
-  const totals = useMemo(
-    () => ({
-      pipeline: rows
-        .filter((q) => ["pending_approval", "sent", "viewed"].includes(q.status))
-        .reduce((s, q) => s + (q.total_value ?? 0), 0),
-      won: rows
-        .filter((q) => q.status === "accepted")
-        .reduce((s, q) => s + (q.total_value ?? 0), 0),
-      draft: rows.filter((q) => q.status === "draft").reduce((s, q) => s + (q.total_value ?? 0), 0),
-    }),
-    [rows],
-  );
+  const totals = useMemo(() => {
+    const valueOf = (quote: Quote) => quote.total_value;
+    return {
+      pipeline: sumAmounts(
+        rows.filter((q) => ["pending_approval", "sent", "viewed"].includes(q.status)),
+        valueOf,
+      ),
+      won: sumAmounts(
+        rows.filter((q) => q.status === "accepted"),
+        valueOf,
+      ),
+      draft: sumAmounts(
+        rows.filter((q) => q.status === "draft"),
+        valueOf,
+      ),
+    };
+  }, [rows]);
 
   // Keep local-only duplicate / archive until a server fn is available
   const duplicate = (id: string) => {

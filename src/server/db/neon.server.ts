@@ -1,10 +1,35 @@
-import { Pool } from "@neondatabase/serverless";
+import { Pool, types as pgTypes } from "@neondatabase/serverless";
 
 export type Queryable = {
   query<T = unknown>(text: string, values?: readonly unknown[]): Promise<{ rows: T[] }>;
 };
 
 let pool: Pool | null = null;
+
+/** SQLSTATE-adjacent constant: the OID Postgres uses for `numeric`/`decimal`. */
+const NUMERIC_OID = 1700;
+
+/**
+ * Postgres hands `numeric` to the driver as a string, and neither node-postgres nor the Neon
+ * driver parses it by default — they preserve the text so arbitrary-precision values survive.
+ *
+ * Every `numeric` column in `neon/migrations/` is money at `numeric(12,2)` or `numeric(10,2)`,
+ * so the largest representable value is 9_999_999_999.99 — three orders of magnitude inside
+ * `Number.MAX_SAFE_INTEGER` once scaled by 100. There is no precision to lose here, and the
+ * string default costs correctness instead: `src/lib/types.ts` declares these columns
+ * `number`, so `sum + quote.total_value` concatenated rather than added and the money tiles on
+ * the dashboard, /quotes and /clients rendered "HK$NaN" as soon as two rows were in scope.
+ *
+ * Only 1700 is overridden. `count(*)` is int8 (OID 20) and stays a string on purpose: those
+ * call sites already cast with `::int` or coerce through `parseCount`, and widening bigint
+ * silently would be the precision loss this comment says is not happening.
+ */
+const NUMERIC_TYPE_PARSER = {
+  getTypeParser: ((oid: number, format?: "text" | "binary") =>
+    oid === NUMERIC_OID
+      ? Number
+      : pgTypes.getTypeParser(oid, format)) as typeof pgTypes.getTypeParser,
+};
 
 function normalizeDbValue(value: unknown): unknown {
   if (value instanceof Date) {
@@ -56,7 +81,7 @@ function getPool() {
   }
 
   if (!pool) {
-    pool = new Pool({ connectionString: getDatabaseUrl() });
+    pool = new Pool({ connectionString: getDatabaseUrl(), types: NUMERIC_TYPE_PARSER });
   }
 
   return pool;

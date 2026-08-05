@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { AdminError } from "@/lib/admin/errors";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { capabilitySchema, nonEmptyReasonSchema } from "@/lib/admin/schemas";
+import { accessRequestSchema, nonEmptyReasonSchema } from "@/lib/admin/schemas";
 import { createAccessRequest, createWorkDelegation } from "@/server/repositories/admin-access";
 import {
   cancelMyDelegation as cancelMyDelegationRecord,
@@ -86,25 +86,9 @@ const delegationSchema = z
 const cancelDelegationSchema = z.object({ id: z.string().trim().min(1) }).strict();
 const revokeSessionsSchema = z.object({}).strict();
 
-const accessRequestSchema = z
-  .object({
-    requestType: z.enum(["capability", "team"]),
-    capability: capabilitySchema.optional(),
-    teamId: z.string().trim().min(1).optional(),
-    reason: nonEmptyReasonSchema,
-  })
-  .strict()
-  .superRefine((value, context) => {
-    const validCapability = value.requestType === "capability" && value.capability && !value.teamId;
-    const validTeam = value.requestType === "team" && value.teamId && !value.capability;
-    if (!validCapability && !validTeam) {
-      context.addIssue({
-        code: "custom",
-        message: "Request must target exactly one capability or team",
-        path: [value.requestType === "team" ? "teamId" : "capability"],
-      });
-    }
-  });
+// Deliberately the shared schema rather than a local copy: this endpoint and the admin one
+// write the same table, and a second definition is how `permissions.override` stayed
+// requestable here after being blocked there.
 
 export const getMyAccount = createServerFn({ method: "GET" }).handler(async () => {
   const session = await requireNeonAuthSession();

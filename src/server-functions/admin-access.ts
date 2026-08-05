@@ -7,9 +7,12 @@ import {
   delegationSchema,
   nonEmptyReasonSchema,
   permissionOverrideSchema,
+  NON_REQUESTABLE_CAPABILITIES,
 } from "@/lib/admin/schemas";
+import type { Capability } from "@/lib/admin/types";
 import { requireCapability } from "@/server/auth/authorization.server";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
+import { getProfileRole } from "@/server/repositories/admin-users";
 import {
   cancelWorkDelegation,
   createAccessRequest,
@@ -100,6 +103,22 @@ export const createAdminAccessRequestFn = createServerFn({ method: "POST" })
     return createAccessRequest(input, session.profile.id);
   });
 
+/**
+ * Approving a capability request writes an unscoped `allow` override, and the policy consults
+ * overrides before ROLE_GRANTS — so the decision is a grant, and it has to be held to the same
+ * bar as one. Without this the decider could hand out capabilities they do not hold themselves.
+ */
+async function assertDeciderCanGrant(capability: Capability) {
+  try {
+    await requireCapability(capability);
+  } catch {
+    throw new AdminError(
+      "FORBIDDEN",
+      `You cannot approve ${capability} because you do not hold it yourself`,
+    );
+  }
+}
+
 export const decideAdminAccessRequestFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => decisionSchema.parse(data))
   .handler(async ({ data }) => {
@@ -113,6 +132,23 @@ export const decideAdminAccessRequestFn = createServerFn({ method: "POST" })
     if (session.profile.role === "manager" && request.requestType === "capability") {
       throw new AdminError("FORBIDDEN", "Managers can only decide team access requests");
     }
+    // Segregation of duties: the requester is never the decider, in either direction. Without
+    // this an admin could request a capability and approve it in the next call.
+    if (request.requesterProfileId === session.profile.id) {
+      throw new AdminError("FORBIDDEN", "You cannot decide your own access request");
+    }
+    if (input.decision === "approved" && request.requestType === "capability") {
+      if (!request.capability) {
+        throw new AdminError("VALIDATION_FAILED", "Capability request has no capability");
+      }
+      if (NON_REQUESTABLE_CAPABILITIES.includes(request.capability)) {
+        throw new AdminError(
+          "FORBIDDEN",
+          `${request.capability} cannot be granted through an access request`,
+        );
+      }
+      await assertDeciderCanGrant(request.capability);
+    }
     return decideAccessRequest(input, actorId(session));
   });
 
@@ -122,6 +158,7 @@ export const createAdminWorkDelegationFn = createServerFn({ method: "POST" })
     const input = delegationSchema.parse(data);
     const session = await requireCapability("users.manage", {
       profileId: input.delegatorProfileId,
+      role: await getProfileRole(input.delegatorProfileId),
     });
     return createWorkDelegation(input, actorId(session));
   });

@@ -1,5 +1,7 @@
 // src/server/repositories/notifications.ts
 import { query, queryOne, type Queryable } from "@/server/db/neon.server";
+import { ROLE_GRANTS } from "@/lib/admin/policy";
+import { USER_ROLES } from "@/lib/admin/types";
 import type { NotificationRecord, NotificationType } from "@/lib/types";
 
 type CreateNotificationInput = {
@@ -64,9 +66,24 @@ export async function markAllNotificationsRead(userId: string) {
   ]);
 }
 
+/**
+ * Who gets told an approval is waiting.
+ *
+ * Derived from `ROLE_GRANTS` rather than hardcoded: this list said `('admin','manager')`, which
+ * was the whole role set before migration 007 added `super_admin` and renamed `cs` to
+ * `client_success`. The effect was that the one role holding every capability never received a
+ * single approval notification. Reading the roles that actually hold `approvals.decide` means
+ * the next role change updates this automatically instead of silently skipping someone.
+ *
+ * Suspended and deactivated profiles are excluded — notifying an account that cannot sign in
+ * only buries the ones that can.
+ */
 export async function listApproverProfileIds() {
+  const approverRoles = USER_ROLES.filter((role) => ROLE_GRANTS[role].has("approvals.decide"));
+
   const rows = await query<{ id: string }>(
-    "select id from profiles where role in ('admin', 'manager')",
+    "select id from profiles where status = 'active' and role = any($1::text[])",
+    [approverRoles],
   );
   return rows.map((r) => r.id);
 }

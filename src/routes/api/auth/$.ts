@@ -85,16 +85,34 @@ async function getProxyRequestBody(request: Request, path: string) {
     const payload = JSON.parse(new TextDecoder().decode(body)) as Record<string, unknown>;
     if (typeof payload.redirectTo !== "string") return body;
 
-    try {
-      new URL(payload.redirectTo);
-      return body;
-    } catch {
-      const appOrigin = new URL(request.url).origin;
-      const resolved = new URL(payload.redirectTo, `${appOrigin}/`);
-      if (resolved.origin !== appOrigin) return body;
+    const appOrigin = new URL(request.url).origin;
 
-      return JSON.stringify({ ...payload, redirectTo: resolved.toString() });
+    /**
+     * Resolve against the app origin unconditionally, which normalises all three shapes at
+     * once: absolute (`https://evil.com/x`), protocol-relative (`//evil.com/x`) and relative
+     * (`/reset`). The previous version only resolved the ones `new URL()` rejected, so an
+     * absolute URL was forwarded untouched — and, worse, the protocol-relative case computed
+     * `resolved.origin !== appOrigin` correctly and then returned the original body anyway,
+     * forwarding exactly the input it had just identified as off-origin.
+     *
+     * A password-reset `redirectTo` ends up in the mail sent to the account holder, so an
+     * off-origin value hands the reset continuation to whoever chose it. Strip it rather than
+     * 400 — the reset itself is still legitimate, only the continuation target is not.
+     */
+    let resolved: URL;
+    try {
+      resolved = new URL(payload.redirectTo, `${appOrigin}/`);
+    } catch {
+      const { redirectTo: _dropped, ...rest } = payload;
+      return JSON.stringify(rest);
     }
+
+    if (resolved.origin !== appOrigin) {
+      const { redirectTo: _dropped, ...rest } = payload;
+      return JSON.stringify(rest);
+    }
+
+    return JSON.stringify({ ...payload, redirectTo: resolved.toString() });
   } catch {
     return body;
   }

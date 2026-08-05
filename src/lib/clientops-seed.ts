@@ -30,6 +30,20 @@ export function isFullDemoSeedMode(mode: ClientOpsSeedMode) {
   return mode === "staging-demo" || mode === "local-demo-reset";
 }
 
+/**
+ * Whether a deploy should seed, and with what.
+ *
+ * This used to default `CLIENTOPS_ALLOW_STAGING_SEED`, `CLIENTOPS_SEED_MODE` and
+ * `CLIENTOPS_SEED_TARGET` when they were unset — which meant one variable,
+ * `CLIENTOPS_SEED_ON_DEPLOY=1`, silently supplied the other two guards that `assertSeedAllowed`
+ * then checked. Three switches that read like independent safety interlocks were really one,
+ * and the only thing left between a deploy and the production database was
+ * `databaseUrlLooksProductionLike` — a substring test that a stock Neon host
+ * (`ep-tiny-frost-a1b2c3d4.aws.neon.tech`) does not trip.
+ *
+ * Now every guard has to be set by a human. Missing ones skip the seed with a reason rather
+ * than failing the build, because a deploy that cannot seed is not a broken deploy.
+ */
 export function getDeploySeedDecision(env: SeedEnv): DeploySeedDecision {
   if (env.CLIENTOPS_SEED_ON_DEPLOY !== "1") {
     return {
@@ -38,12 +52,42 @@ export function getDeploySeedDecision(env: SeedEnv): DeploySeedDecision {
     };
   }
 
+  // Vercel sets VERCEL_ENV itself, so this cannot be misconfigured away by copying env vars
+  // between environments — which is exactly how a staging-only switch reaches production.
+  if (env.VERCEL_ENV === "production") {
+    return {
+      shouldSeed: false,
+      reason: "refusing to seed a Vercel production deployment",
+    };
+  }
+
+  if (env.CLIENTOPS_ALLOW_STAGING_SEED !== "1") {
+    return {
+      shouldSeed: false,
+      reason: "CLIENTOPS_ALLOW_STAGING_SEED must be set to 1 explicitly to seed on deploy",
+    };
+  }
+
+  if (!env.CLIENTOPS_SEED_TARGET) {
+    return {
+      shouldSeed: false,
+      reason: "CLIENTOPS_SEED_TARGET must be set explicitly to seed on deploy",
+    };
+  }
+
+  if (!env.CLIENTOPS_SEED_MODE) {
+    return {
+      shouldSeed: false,
+      reason: "CLIENTOPS_SEED_MODE must be set explicitly to seed on deploy",
+    };
+  }
+
   return {
     shouldSeed: true,
     env: {
-      CLIENTOPS_ALLOW_STAGING_SEED: env.CLIENTOPS_ALLOW_STAGING_SEED ?? "1",
-      CLIENTOPS_SEED_MODE: env.CLIENTOPS_SEED_MODE ?? "staging-demo",
-      CLIENTOPS_SEED_TARGET: env.CLIENTOPS_SEED_TARGET ?? "staging",
+      CLIENTOPS_ALLOW_STAGING_SEED: env.CLIENTOPS_ALLOW_STAGING_SEED,
+      CLIENTOPS_SEED_MODE: env.CLIENTOPS_SEED_MODE,
+      CLIENTOPS_SEED_TARGET: env.CLIENTOPS_SEED_TARGET,
       ...(env.CLIENTOPS_SEED_TODAY ? { CLIENTOPS_SEED_TODAY: env.CLIENTOPS_SEED_TODAY } : {}),
     },
   };

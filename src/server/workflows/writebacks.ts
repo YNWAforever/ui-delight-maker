@@ -16,18 +16,47 @@ import { assertLeadExists, updateLead } from "@/server/repositories/leads";
 import { createQuote } from "@/server/repositories/quotes";
 import { upsertRelationshipSignals } from "@/server/repositories/relationship-signals";
 
+/**
+ * Whether the agent run a callback names is actually the run for the record it wants to write.
+ *
+ * n8n supplies the run id and the subject id as two independent fields, so nothing but this
+ * check stops a mis-wired workflow from writing one lead's qualification onto another lead, or
+ * a quote draft onto an unrelated engagement. `getAgentRunForUpdate` already selects the whole
+ * row, so `subject_type`/`subject_id` are in hand at no extra cost.
+ */
+function assertAgentRunSubject(
+  agentRun: { subject_type?: unknown; subject_id?: unknown },
+  expectedType: string,
+  expectedId: string,
+) {
+  if (agentRun.subject_type !== expectedType || agentRun.subject_id !== expectedId) {
+    throw new Error(`Agent run does not belong to this ${expectedType.replace(/_/g, " ")}`);
+  }
+}
+
+/**
+ * Whether a qualification needs a human before it counts.
+ *
+ * `qualification_data` is model output relayed by n8n, so a field inside it may only ever
+ * *raise* the review bar, never lower it. Treating it as authoritative let a model that
+ * emitted `human_review_required: false` skip the review that the confidence threshold exists
+ * to force.
+ */
 function getHumanReviewRequired(qualificationData: unknown, confidenceScore: number) {
+  const requiredByConfidence = confidenceScore < 0.7;
+
   if (
     qualificationData &&
     typeof qualificationData === "object" &&
     "human_review_required" in qualificationData
   ) {
-    return Boolean(
-      (qualificationData as { human_review_required?: unknown }).human_review_required,
+    return (
+      requiredByConfidence ||
+      Boolean((qualificationData as { human_review_required?: unknown }).human_review_required)
     );
   }
 
-  return confidenceScore < 0.7;
+  return requiredByConfidence;
 }
 
 function getExistingApprovalId(outputData: unknown) {
@@ -57,6 +86,18 @@ function getExistingQuoteDraftResult(outputData: unknown) {
 
 export async function writeQualificationResult(payload: QualificationWritebackPayload) {
   await transaction(async (db) => {
+    const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
+    if (!agentRun) {
+      throw new Error("Agent run not found");
+    }
+    assertAgentRunSubject(agentRun, "lead", payload.lead_id);
+
+    // Every other writeback short-circuits on an already-settled run. Without it a redelivered
+    // callback replays the model's scoring over whatever a rep has since edited by hand.
+    if (agentRun.status === "completed") {
+      return;
+    }
+
     await updateLead(
       payload.lead_id,
       {
@@ -110,6 +151,7 @@ export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload)
     if (!agentRun) {
       throw new Error("Agent run not found");
     }
+    assertAgentRunSubject(agentRun, "lead", payload.lead_id);
 
     if (agentRun.status === "waiting_approval" || agentRun.status === "completed") {
       const approvalId = getExistingApprovalId(agentRun.output_data);
@@ -173,6 +215,7 @@ export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWrite
     if (!agentRun) {
       throw new Error("Agent run not found");
     }
+    assertAgentRunSubject(agentRun, "engagement", payload.engagement_id);
 
     if (agentRun.status === "waiting_approval") {
       const approvalId = getExistingApprovalId(agentRun.output_data);
@@ -279,6 +322,7 @@ export async function writeQuoteDraftResult(payload: QuoteDraftWritebackPayload)
     if (!agentRun) {
       throw new Error("Agent run not found");
     }
+    assertAgentRunSubject(agentRun, "lead", payload.lead_id);
 
     if (agentRun.status === "waiting_approval" || agentRun.status === "completed") {
       const existingResult = getExistingQuoteDraftResult(agentRun.output_data);
@@ -355,18 +399,11 @@ export async function writeRelationshipIntelligenceResult(
   payload: RelationshipIntelligenceWritebackPayload,
 ) {
   return transaction(async (db) => {
-    const agentRun = (await getAgentRunForUpdate(payload.agent_run_id, db)) as
-      | ({ subject_type?: unknown; subject_id?: unknown; status: string; output_data: unknown } & {
-          id: string;
-        })
-      | null;
+    const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
     if (!agentRun) {
       throw new Error("Agent run not found");
     }
-
-    if (agentRun.subject_type !== "account" || agentRun.subject_id !== payload.account_id) {
-      throw new Error("Agent run does not belong to this account");
-    }
+    assertAgentRunSubject(agentRun, "account", payload.account_id);
 
     if (agentRun.status === "completed") {
       return { applied: true as const };

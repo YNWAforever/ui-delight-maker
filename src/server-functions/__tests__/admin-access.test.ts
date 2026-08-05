@@ -49,6 +49,9 @@ vi.mock("@/server/auth/authorization.server", () => ({
 vi.mock("@/lib/auth/neon-auth.server", () => ({
   requireNeonAuthSession: requireNeonAuthSessionMock,
 }));
+vi.mock("@/server/repositories/admin-users", () => ({
+  getProfileRole: vi.fn(async () => "sales"),
+}));
 vi.mock("@/server/repositories/admin-access", () => ({
   listActiveOverrides: listActiveOverridesMock,
   listPermissionOverrideHistory: listPermissionOverrideHistoryMock,
@@ -213,7 +216,12 @@ describe("admin access server functions", () => {
         reason: "Annual leave coverage",
       },
     });
-    expect(requireCapabilityMock).toHaveBeenCalledWith("users.manage", { profileId: "admin-1" });
+    // The target carries the delegator's current role: the policy denies a manager checking
+    // users.manage against a role-less target, and needs the role to apply `protected_role`.
+    expect(requireCapabilityMock).toHaveBeenCalledWith("users.manage", {
+      profileId: "admin-1",
+      role: "sales",
+    });
     expect(createWorkDelegationMock).toHaveBeenCalledWith(
       expect.objectContaining({ delegateProfileId: "profile-2" }),
       "admin-1",

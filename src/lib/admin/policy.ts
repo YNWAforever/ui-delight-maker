@@ -170,6 +170,21 @@ function managerCanTarget(actor: ActorAccessContext, target: AuthorizationTarget
         actor.directReportIds.includes(target.ownerProfileId),
     );
   }
+
+  /**
+   * A named resource whose owner did not resolve is out of scope, not in it.
+   *
+   * `resolveOwnerProfileId` returns null for an unowned row, a missing row, and a type that
+   * carries no ownership, and the caller then leaves `ownerProfileId` off the target entirely.
+   * That used to be indistinguishable from "no ownership dimension was supplied", so an
+   * unassigned lead or an unowned account fell through with an empty `checks` array and every
+   * manager in the org could edit it — the opposite of what resource-ownership.ts documents.
+   *
+   * The empty-`checks` pass is still correct and necessary for target-less calls: list and
+   * dashboard reads pass no target at all, and a manager is meant to see those.
+   */
+  if (target.resourceId && !target.ownerProfileId) return false;
+
   return checks.length === 0 || checks.every(Boolean);
 }
 

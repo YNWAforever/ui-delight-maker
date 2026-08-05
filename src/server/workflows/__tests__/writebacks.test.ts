@@ -88,6 +88,14 @@ describe("workflow writebacks", () => {
   });
 
   it("wraps qualification writebacks in one transaction client", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-1",
+      status: "running",
+      output_data: null,
+      subject_type: "lead",
+      subject_id: "lead-1",
+    });
+
     await writeQualificationResult({
       lead_id: "lead-1",
       agent_run_id: "run-1",
@@ -128,6 +136,14 @@ describe("workflow writebacks", () => {
   });
 
   it("creates reply approvals atomically and returns the approval id", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-2",
+      status: "running",
+      output_data: null,
+      subject_type: "lead",
+      subject_id: "lead-2",
+    });
+
     mocks.createApprovalMock.mockResolvedValue({ id: "approval-1" });
 
     await expect(
@@ -166,6 +182,8 @@ describe("workflow writebacks", () => {
       id: "run-2",
       status: "waiting_approval",
       output_data: { approval_id: "approval-1" },
+      subject_type: "lead",
+      subject_id: "lead-2",
     });
 
     await expect(
@@ -184,6 +202,14 @@ describe("workflow writebacks", () => {
   });
 
   it("skips quote approvals when send approval is not requested", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-3",
+      status: "running",
+      output_data: null,
+      subject_type: "lead",
+      subject_id: "lead-3",
+    });
+
     mocks.createQuoteMock.mockResolvedValue({ id: "quote-1" });
 
     await expect(
@@ -241,6 +267,8 @@ describe("workflow writebacks", () => {
       id: "run-3",
       status: "completed",
       output_data: { quote_id: "quote-1", approval_id: "approval-2" },
+      subject_type: "lead",
+      subject_id: "lead-3",
     });
 
     await expect(
@@ -418,5 +446,177 @@ describe("workflow writebacks", () => {
     expect(mocks.upsertRelationshipSignalsMock).not.toHaveBeenCalled();
     expect(mocks.updateAgentRunResultMock).not.toHaveBeenCalled();
     expect(mocks.createActivityLogMock).not.toHaveBeenCalled();
+  });
+
+  // n8n supplies the run id and the subject id as two independent fields. Only the
+  // relationship-intelligence writeback used to check that they agree, so a mis-wired workflow
+  // could write one lead's qualification onto another lead's record.
+  it("rejects a qualification writeback whose run belongs to a different lead", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-1",
+      status: "running",
+      output_data: null,
+      subject_type: "lead",
+      subject_id: "lead-999",
+    });
+
+    await expect(
+      writeQualificationResult({
+        lead_id: "lead-1",
+        agent_run_id: "run-1",
+        qualification_data: { fit: "high" },
+        lead_score: 82,
+        output_summary: "Strong fit",
+        confidence_score: 0.9,
+      }),
+    ).rejects.toThrow("Agent run does not belong to this lead");
+
+    expect(mocks.updateLeadMock).not.toHaveBeenCalled();
+    expect(mocks.updateAgentRunResultMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a reply draft writeback whose run belongs to a different lead", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-2",
+      status: "running",
+      output_data: null,
+      subject_type: "lead",
+      subject_id: "lead-999",
+    });
+
+    await expect(
+      writeReplyDraftResult({
+        lead_id: "lead-2",
+        agent_run_id: "run-2",
+        draft_message: "Here is a draft reply",
+        context_summary: "Review before sending",
+        confidence_score: 0.61,
+      }),
+    ).rejects.toThrow("Agent run does not belong to this lead");
+
+    expect(mocks.createApprovalMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a quote draft writeback whose run belongs to a different lead", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-3",
+      status: "running",
+      output_data: null,
+      subject_type: "lead",
+      subject_id: "lead-999",
+    });
+
+    await expect(
+      writeQuoteDraftResult({
+        lead_id: "lead-3",
+        agent_run_id: "run-3",
+        quote: { currency: "HKD", total_value: 20000, line_items: [] },
+        create_send_approval: false,
+        confidence_score: 0.73,
+      }),
+    ).rejects.toThrow("Agent run does not belong to this lead");
+
+    expect(mocks.createQuoteMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a renewal risk writeback whose run belongs to a different engagement", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-4",
+      status: "running",
+      output_data: null,
+      subject_type: "engagement",
+      subject_id: "engagement-999",
+    });
+
+    await expect(
+      writeScoreRenewalRiskResult({
+        engagement_id: "engagement-4",
+        agent_run_id: "run-4",
+        health_score: 42,
+        renewal_risk: "high",
+        risk_reasoning: "Usage collapsed",
+        suggested_next_action: "Escalate to CS lead",
+        confidence: 0.8,
+        output_summary: "High risk",
+      }),
+    ).rejects.toThrow("Agent run does not belong to this engagement");
+
+    expect(mocks.applyEngagementScoreMock).not.toHaveBeenCalled();
+    expect(mocks.createApprovalMock).not.toHaveBeenCalled();
+  });
+
+  it("replays a completed qualification writeback without touching the lead", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-1",
+      status: "completed",
+      output_data: { fit: "high" },
+      subject_type: "lead",
+      subject_id: "lead-1",
+    });
+
+    await writeQualificationResult({
+      lead_id: "lead-1",
+      agent_run_id: "run-1",
+      qualification_data: { fit: "low" },
+      lead_score: 10,
+      output_summary: "Replayed",
+      confidence_score: 0.2,
+    });
+
+    expect(mocks.updateLeadMock).not.toHaveBeenCalled();
+    expect(mocks.updateAgentRunResultMock).not.toHaveBeenCalled();
+    expect(mocks.createActivityLogMock).not.toHaveBeenCalled();
+  });
+
+  // `qualification_data` is model output relayed by n8n, so it may raise the review bar but
+  // never lower it below what the confidence threshold already demands.
+  it("keeps human review required when the model asks to skip it below the confidence floor", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-1",
+      status: "running",
+      output_data: null,
+      subject_type: "lead",
+      subject_id: "lead-1",
+    });
+
+    await writeQualificationResult({
+      lead_id: "lead-1",
+      agent_run_id: "run-1",
+      qualification_data: { human_review_required: false },
+      lead_score: 40,
+      output_summary: "Model says no review needed",
+      confidence_score: 0.2,
+    });
+
+    expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({ human_review_required: true }),
+      mocks.fakeDb,
+    );
+  });
+
+  it("still lets the model raise the review bar above the confidence floor", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-1",
+      status: "running",
+      output_data: null,
+      subject_type: "lead",
+      subject_id: "lead-1",
+    });
+
+    await writeQualificationResult({
+      lead_id: "lead-1",
+      agent_run_id: "run-1",
+      qualification_data: { human_review_required: true },
+      lead_score: 95,
+      output_summary: "Confident but wants a look",
+      confidence_score: 0.99,
+    });
+
+    expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({ human_review_required: true }),
+      mocks.fakeDb,
+    );
   });
 });

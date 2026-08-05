@@ -101,6 +101,9 @@ const approval = (overrides: Partial<HumanApproval>): HumanApproval => ({
 const agentRun = (overrides: Partial<AgentRun>): AgentRun => ({
   id: "run-1",
   agent_name: "Qualification Agent",
+  workflow_type: "qualify_lead",
+  subject_type: "lead",
+  subject_id: "lead-1",
   trigger_type: "manual",
   input_data: { lead_id: "lead-1" },
   output_data: null,
@@ -111,7 +114,9 @@ const agentRun = (overrides: Partial<AgentRun>): AgentRun => ({
   model_used: "anthropic/claude-sonnet-4-6",
   confidence_score: 0.68,
   human_review_required: true,
+  created_by: "user-1",
   created_at: "2026-06-28T02:00:00Z",
+  updated_at: "2026-06-28T02:00:00Z",
   ...overrides,
 });
 

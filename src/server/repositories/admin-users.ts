@@ -550,10 +550,25 @@ export function createAdminUsersRepository(dependencies: Dependencies = {}) {
     };
   }
 
+  /**
+   * Just the role, for building an authorization target.
+   *
+   * `requireCapability` needs the target's current role before it can decide (see
+   * `profileTarget` in server-functions/admin-users.ts), and that runs on every user-management
+   * call — so it reads one column rather than the joined detail row `getAdminUser` assembles.
+   */
+  async function getProfileRole(profileId: string): Promise<UserRole | undefined> {
+    const rows = (await query("select role from profiles where id = $1", [profileId])) as Array<{
+      role: UserRole;
+    }>;
+    return rows[0]?.role;
+  }
+
   return {
     listAdminUsers,
     getAdminOverview,
     getAdminUser,
+    getProfileRole,
     updateAdminProfile,
     changeUserRole,
     setUserStatus,
@@ -567,6 +582,7 @@ const repository = createAdminUsersRepository();
 export const listAdminUsers = repository.listAdminUsers;
 export const getAdminOverview = repository.getAdminOverview;
 export const getAdminUser = repository.getAdminUser;
+export const getProfileRole = repository.getProfileRole;
 export const updateAdminProfile = repository.updateAdminProfile;
 export const changeUserRole = repository.changeUserRole;
 export const setUserStatus = repository.setUserStatus;
