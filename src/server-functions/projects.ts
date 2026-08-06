@@ -1,124 +1,44 @@
-import { requireCapability } from "@/server/auth/authorization.server";
 // src/server-functions/projects.ts
 import { createServerFn } from "@tanstack/react-start";
-import { createSupabaseServerClient } from "@/legacy-supabase/server";
+import { requireCapability } from "@/server/auth/authorization.server";
 import { buildProjectFromWonDeal } from "@/lib/lifecycle-utils";
-import type { Deal, Project } from "@/lib/types";
-
-type GetProjectsInput = {
-  status?: string;
-  owner?: string;
-  account_id?: string;
-  contact_id?: string;
-  deal_id?: string;
-};
-
-type CreateProjectInput = Pick<Project, "name"> &
-  Partial<
-    Pick<
-      Project,
-      | "account_id"
-      | "contact_id"
-      | "deal_id"
-      | "quote_id"
-      | "status"
-      | "start_date"
-      | "target_end_date"
-      | "owner"
-      | "value"
-      | "currency"
-    >
-  >;
+import {
+  createProject as createProjectInRepository,
+  getDealForProject,
+  getProjectWorkspace,
+  listProjects,
+  updateProject as updateProjectInRepository,
+  type CreateProjectInput,
+  type ProjectFilters,
+} from "@/server/repositories/projects";
+import type { Project } from "@/lib/types";
 
 export const getProjects = createServerFn({ method: "GET" })
-  .validator((data: unknown) => (data ?? {}) as GetProjectsInput)
+  .validator((data: unknown) => (data ?? {}) as ProjectFilters)
   .handler(async ({ data }) => {
     await requireCapability("engagements.view");
-    const supabase = createSupabaseServerClient();
-    let query = supabase.from("projects").select("*").order("created_at", { ascending: false });
-
-    if (data.status) query = query.eq("status", data.status);
-    if (data.owner) query = query.eq("owner", data.owner);
-    if (data.account_id) query = query.eq("account_id", data.account_id);
-    if (data.contact_id) query = query.eq("contact_id", data.contact_id);
-    if (data.deal_id) query = query.eq("deal_id", data.deal_id);
-
-    const { data: projects, error } = await query;
-    if (error) throw new Error(error.message);
-    return projects as Project[];
+    return listProjects(data);
   });
 
 export const getProject = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
     await requireCapability("engagements.view", { resourceType: "project", resourceId: data.id });
-    const supabase = createSupabaseServerClient();
-    const [projectResult, eventsResult, tasksResult, csResult] = await Promise.all([
-      supabase.from("projects").select("*").eq("id", data.id).single(),
-      supabase
-        .from("engagement_events")
-        .select("*")
-        .eq("project_id", data.id)
-        .order("occurred_at", { ascending: false })
-        .limit(50),
-      supabase.from("tasks").select("*").eq("project_id", data.id),
-      supabase
-        .from("customer_success_profiles")
-        .select("*")
-        .eq("project_id", data.id)
-        .maybeSingle(),
-    ]);
-
-    if (projectResult.error) throw new Error(projectResult.error.message);
-    if (eventsResult.error) throw new Error(eventsResult.error.message);
-    if (tasksResult.error) throw new Error(tasksResult.error.message);
-    if (csResult.error) throw new Error(csResult.error.message);
-
-    return {
-      project: projectResult.data as Project,
-      engagementEvents: eventsResult.data ?? [],
-      tasks: tasksResult.data ?? [],
-      customerSuccessProfile: csResult.data ?? null,
-    };
+    return getProjectWorkspace(data.id);
   });
 
 export const createProject = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateProjectInput)
   .handler(async ({ data }) => {
     await requireCapability("engagements.create");
-    const supabase = createSupabaseServerClient();
-    const { data: project, error } = await supabase.from("projects").insert(data).select().single();
-    if (error) throw new Error(error.message);
-    return project as Project;
+    return createProjectInRepository(data);
   });
 
 export const updateProject = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: Partial<Project> })
   .handler(async ({ data }) => {
     await requireCapability("engagements.update", { resourceType: "project", resourceId: data.id });
-    const supabase = createSupabaseServerClient();
-    const { data: project, error } = await supabase
-      .from("projects")
-      .update({
-        ...(data.updates.account_id !== undefined && { account_id: data.updates.account_id }),
-        ...(data.updates.contact_id !== undefined && { contact_id: data.updates.contact_id }),
-        ...(data.updates.deal_id !== undefined && { deal_id: data.updates.deal_id }),
-        ...(data.updates.quote_id !== undefined && { quote_id: data.updates.quote_id }),
-        ...(data.updates.name !== undefined && { name: data.updates.name }),
-        ...(data.updates.status !== undefined && { status: data.updates.status }),
-        ...(data.updates.start_date !== undefined && { start_date: data.updates.start_date }),
-        ...(data.updates.target_end_date !== undefined && {
-          target_end_date: data.updates.target_end_date,
-        }),
-        ...(data.updates.owner !== undefined && { owner: data.updates.owner }),
-        ...(data.updates.value !== undefined && { value: data.updates.value }),
-        ...(data.updates.currency !== undefined && { currency: data.updates.currency }),
-      })
-      .eq("id", data.id)
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    return project as Project;
+    return updateProjectInRepository(data.id, data.updates);
   });
 
 export const createProjectFromWonDeal = createServerFn({ method: "POST" })
@@ -128,25 +48,13 @@ export const createProjectFromWonDeal = createServerFn({ method: "POST" })
       resourceType: "deal",
       resourceId: data.dealId,
     });
-    const supabase = createSupabaseServerClient();
-    const { data: deal, error: dealError } = await supabase
-      .from("deals")
-      .select("*")
-      .eq("id", data.dealId)
-      .single();
-    if (dealError) throw new Error(dealError.message);
-
-    const projectDraft = buildProjectFromWonDeal(deal as Deal);
+    // Read, decide, write — the decision stays here because it is a rule about the deal, not a
+    // way of fetching one. `buildProjectFromWonDeal` returns null for any deal that is not won,
+    // and that has to be a refusal rather than an empty insert.
+    const projectDraft = buildProjectFromWonDeal(await getDealForProject(data.dealId));
     if (!projectDraft) {
       throw new Error("A project can only be created from a won deal.");
     }
 
-    const { data: project, error: projectError } = await supabase
-      .from("projects")
-      .insert(projectDraft)
-      .select()
-      .single();
-    if (projectError) throw new Error(projectError.message);
-
-    return project as Project;
+    return createProjectInRepository(projectDraft);
   });
