@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { parseEventAttendeeCsv, validateEventImportRows } from "../event-import";
+import {
+  parseEventAttendeeCsv,
+  resolveMatchedAccountIds,
+  validateEventImportRows,
+} from "../event-import";
 
 describe("event import", () => {
   it("parses attendee csv rows", () => {
@@ -148,5 +152,64 @@ describe("event import", () => {
       { index: 0, reason: "Ambiguous account match requires manual review." },
     ]);
     expect(result.valid).toEqual([]);
+  });
+});
+
+/**
+ * The loader uses this to fetch contacts for the matched accounts only, instead of reading every
+ * active contact in the tenant. It has to agree with what the validation pass then does, so the
+ * two run the same matcher over the same candidates.
+ */
+describe("resolveMatchedAccountIds", () => {
+  const row = (company_name: string) => ({
+    company_name,
+    contact_name: "Ada Wong",
+    email: "",
+    phone: "",
+    attendee_status: "attended",
+    interests: [],
+    notes: "",
+  });
+
+  const accounts = [
+    { id: "account-1", name: "Fimmick Limited" },
+    { id: "account-2", name: "Apex CRM" },
+    { id: "account-3", name: "Unrelated Holdings" },
+  ];
+
+  it("returns the accounts the rows matched, without duplicates", () => {
+    expect(
+      resolveMatchedAccountIds({
+        rows: [row("Fimmick"), row("fimmick ltd"), row("Apex CRM")],
+        accounts,
+      }),
+    ).toEqual(["account-1", "account-2"]);
+  });
+
+  it("omits accounts for rows that match nothing", () => {
+    expect(resolveMatchedAccountIds({ rows: [row("Brand New Company")], accounts })).toEqual([]);
+  });
+
+  it("omits ambiguous matches, which validation rejects rather than resolves", () => {
+    const ambiguous = [
+      { id: "account-1", name: "Fimmick" },
+      { id: "account-2", name: "Fimmick Ltd" },
+    ];
+
+    expect(
+      resolveMatchedAccountIds({ rows: [row("Fimmick Limited")], accounts: ambiguous }),
+    ).toEqual([]);
+  });
+
+  it("agrees with the account ids validation goes on to use", () => {
+    const rows = [row("Fimmick"), row("Apex CRM"), row("Brand New Company")];
+    const resolved = resolveMatchedAccountIds({ rows, accounts });
+    const validated = validateEventImportRows({ rows, accounts, accountContacts: [] })
+      .valid.map((valid) =>
+        valid.account_match.kind === "matched" ? valid.account_match.accountId : null,
+      )
+      .filter((id): id is string => id !== null);
+
+    expect(resolved).toEqual([...new Set(validated)]);
   });
 });

@@ -2,18 +2,30 @@ import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { validateEventImportRows, type EventImportRow } from "@/lib/relationship/event-import";
+import {
+  resolveMatchedAccountIds,
+  validateEventImportRows,
+  type EventImportRow,
+} from "@/lib/relationship/event-import";
 import {
   commitEventImport,
   listEventImportAccountCandidates,
   listEventImportAccountContacts,
 } from "@/server/repositories/event-import";
 
-async function loadEventImportValidationContext() {
-  const [accounts, accountContacts] = await Promise.all([
-    listEventImportAccountCandidates(),
-    listEventImportAccountContacts(),
-  ]);
+/**
+ * Loads only what these rows can actually match against.
+ *
+ * Two phases rather than one parallel pair: the contact read is narrowed to the accounts the
+ * rows matched, which is exact and turns the larger of the two reads from tenant-sized into
+ * file-sized. The account read is narrowed by a superset prefilter — see
+ * `listEventImportAccountCandidates`.
+ */
+async function loadEventImportValidationContext(rows: EventImportRow[]) {
+  const accounts = await listEventImportAccountCandidates(rows.map((row) => row.company_name));
+  const accountContacts = await listEventImportAccountContacts(
+    resolveMatchedAccountIds({ rows, accounts }),
+  );
   return { accounts, accountContacts };
 }
 
@@ -26,7 +38,7 @@ export const validateEventImportRowsFn = createServerFn({ method: "POST" })
     await requireNeonAuthSession();
     return validateEventImportRows({
       rows: data.rows,
-      ...(await loadEventImportValidationContext()),
+      ...(await loadEventImportValidationContext(data.rows)),
     });
   });
 
@@ -46,7 +58,7 @@ export const commitEventImportFn = createServerFn({ method: "POST" })
     const session = await requireNeonAuthSession();
     const validation = validateEventImportRows({
       rows: data.rows,
-      ...(await loadEventImportValidationContext()),
+      ...(await loadEventImportValidationContext(data.rows)),
     });
 
     if (validation.errors.length > 0) {
