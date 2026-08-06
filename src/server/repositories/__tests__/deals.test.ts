@@ -89,10 +89,16 @@ describe("deals repository", () => {
       });
     });
 
-    it("surfaces the Supabase message as a plain Error", async () => {
+    it("keeps the driver's message off the error and on its cause", async () => {
+      // PostgREST names the table and column it failed on. That belongs in a server log, not in
+      // a response body — the same split `resource-ownership.ts` makes.
       stubSupabase({ deals: { error: { message: "permission denied for table deals" } } });
 
-      await expect(listDeals()).rejects.toThrow("permission denied for table deals");
+      await expect(listDeals()).rejects.toThrow("Could not load deals");
+      await expect(listDeals()).rejects.not.toThrow("permission denied");
+      await listDeals().catch((error: Error) => {
+        expect((error.cause as Error).message).toBe("permission denied for table deals");
+      });
     });
   });
 
@@ -123,7 +129,7 @@ describe("deals repository", () => {
         tasks: { data: [] },
       });
 
-      await expect(getDealWorkspace("deal-1")).rejects.toThrow("deal read failed");
+      await expect(getDealWorkspace("deal-1")).rejects.toThrow("Could not load this deal");
       expect(started).toHaveLength(4);
     });
 
@@ -137,7 +143,9 @@ describe("deals repository", () => {
         tasks: { error: { message: "tasks failed" } },
       });
 
-      await expect(getDealWorkspace("deal-1")).rejects.toThrow("events failed");
+      await expect(getDealWorkspace("deal-1")).rejects.toThrow(
+        "Could not load this deal's engagement events",
+      );
     });
 
     it("caps the event history and returns empty arrays rather than null", async () => {
@@ -224,6 +232,28 @@ describe("deals repository", () => {
         name: "Renewal",
       });
       expect(callFor(calls, "deals").payload).toEqual({ name: "Renewal" });
+    });
+
+    it("drops fields outside the allowlist, as the update path already did", async () => {
+      // The validator is a bare cast, so the insert used to forward whatever arrived over the
+      // wire — including columns a caller has no business setting.
+      const { calls } = stubSupabase({ deals: { data: { id: "deal-1" } } });
+
+      await createDeal({
+        name: "Renewal",
+        id: "chosen-by-the-caller",
+        created_at: "1999-01-01T00:00:00.000Z",
+        is_admin: true,
+      } as never);
+
+      expect(callFor(calls, "deals").payload).toEqual({ name: "Renewal" });
+    });
+
+    it("keeps the driver's message off a failed create", async () => {
+      stubSupabase({ deals: { error: { message: 'null value in column "name" violates...' } } });
+
+      await expect(createDeal({ name: "Renewal" })).rejects.toThrow("Could not create this deal");
+      await expect(createDeal({ name: "Renewal" })).rejects.not.toThrow("violates");
     });
   });
 });

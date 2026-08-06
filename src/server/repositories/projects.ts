@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import type { CustomerSuccessProfile, Deal, EngagementEvent, Project, Task } from "@/lib/types";
+import { pickColumns, supabaseOperationFailed } from "./supabase-writes";
 
 /**
  * Projects, and the workspace read around a single project.
@@ -8,10 +9,24 @@ import type { CustomerSuccessProfile, Deal, EngagementEvent, Project, Task } fro
  * `./deals.ts`, which this follows. Data access only: the "is this deal won" rule stays in the
  * caller, because it is a decision about the data rather than a way of fetching it.
  *
- * Two inherited asymmetries are deliberate. `listProjects` casts without `?? []` while the
- * workspace read coalesces its arrays; and `createProject` inserts the caller's object whole
- * while `updateProject` writes a fixed column list. Both are preserved rather than tidied.
+ * `listProjects` casts without `?? []` while the workspace read coalesces its arrays — inherited,
+ * and preserved rather than tidied. Both writes share `PROJECT_WRITE_COLUMNS`; the insert used to
+ * pass the caller's object through untouched. See `./supabase-writes.ts`.
  */
+
+const PROJECT_WRITE_COLUMNS = [
+  "account_id",
+  "contact_id",
+  "deal_id",
+  "quote_id",
+  "name",
+  "status",
+  "start_date",
+  "target_end_date",
+  "owner",
+  "value",
+  "currency",
+] as const;
 
 export type ProjectFilters = {
   status?: string;
@@ -56,7 +71,7 @@ export async function listProjects(filters: ProjectFilters = {}): Promise<Projec
   if (filters.deal_id) query = query.eq("deal_id", filters.deal_id);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("load projects", error);
   return data as Project[];
 }
 
@@ -81,10 +96,16 @@ export async function getProjectWorkspace(id: string): Promise<ProjectWorkspace>
     supabase.from("customer_success_profiles").select("*").eq("project_id", id).maybeSingle(),
   ]);
 
-  if (projectResult.error) throw new Error(projectResult.error.message);
-  if (eventsResult.error) throw new Error(eventsResult.error.message);
-  if (tasksResult.error) throw new Error(tasksResult.error.message);
-  if (csResult.error) throw new Error(csResult.error.message);
+  if (projectResult.error) throw supabaseOperationFailed("load this project", projectResult.error);
+  if (eventsResult.error) {
+    throw supabaseOperationFailed("load this project's engagement events", eventsResult.error);
+  }
+  if (tasksResult.error) {
+    throw supabaseOperationFailed("load this project's tasks", tasksResult.error);
+  }
+  if (csResult.error) {
+    throw supabaseOperationFailed("load this project's customer success profile", csResult.error);
+  }
 
   return {
     project: projectResult.data as Project,
@@ -96,8 +117,12 @@ export async function getProjectWorkspace(id: string): Promise<ProjectWorkspace>
 
 export async function createProject(input: CreateProjectInput): Promise<Project> {
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase.from("projects").insert(input).select().single();
-  if (error) throw new Error(error.message);
+  const { data, error } = await supabase
+    .from("projects")
+    .insert(pickColumns(input, PROJECT_WRITE_COLUMNS))
+    .select()
+    .single();
+  if (error) throw supabaseOperationFailed("create this project", error);
   return data as Project;
 }
 
@@ -106,23 +131,11 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("projects")
-    .update({
-      ...(updates.account_id !== undefined && { account_id: updates.account_id }),
-      ...(updates.contact_id !== undefined && { contact_id: updates.contact_id }),
-      ...(updates.deal_id !== undefined && { deal_id: updates.deal_id }),
-      ...(updates.quote_id !== undefined && { quote_id: updates.quote_id }),
-      ...(updates.name !== undefined && { name: updates.name }),
-      ...(updates.status !== undefined && { status: updates.status }),
-      ...(updates.start_date !== undefined && { start_date: updates.start_date }),
-      ...(updates.target_end_date !== undefined && { target_end_date: updates.target_end_date }),
-      ...(updates.owner !== undefined && { owner: updates.owner }),
-      ...(updates.value !== undefined && { value: updates.value }),
-      ...(updates.currency !== undefined && { currency: updates.currency }),
-    })
+    .update(pickColumns(updates, PROJECT_WRITE_COLUMNS))
     .eq("id", id)
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("update this project", error);
   return data as Project;
 }
 
@@ -135,6 +148,6 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
 export async function getDealForProject(dealId: string): Promise<Deal> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase.from("deals").select("*").eq("id", dealId).single();
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("load the deal for this project", error);
   return data as Deal;
 }

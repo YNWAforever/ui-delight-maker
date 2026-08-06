@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import type { ChannelIdentity, EngagementEvent } from "@/lib/types";
+import { pickColumns, supabaseOperationFailed } from "./supabase-writes";
 
 /**
  * Engagement events and the channel identities they arrive through.
@@ -7,11 +8,50 @@ import type { ChannelIdentity, EngagementEvent } from "@/lib/types";
  * Supabase-backed for now — see "Migration In Progress" in CLAUDE.md and the note at the top of
  * `./deals.ts`, which this follows.
  *
- * Two inherited behaviours here are easy to "fix" while moving them, and must not be. Recording
- * an event touches `campaign_members.last_event_at` afterwards *without checking the result*, so
- * a failed touch is invisible and the event is still returned. And the channel-identity upsert is
- * a read-then-branch rather than a database upsert, so it stays one function on one client.
+ * Two inherited behaviours here are easy to "fix" and must not be. Recording an event touches
+ * `campaign_members.last_event_at` afterwards *without checking the result*, so a failed touch is
+ * invisible and the event is still returned. And the channel-identity upsert is a read-then-branch
+ * rather than a database upsert, so it stays one function on one client.
+ *
+ * The writes do now go through column allowlists, which they did not before. See
+ * `./supabase-writes.ts`.
  */
+
+const EVENT_CREATE_COLUMNS = [
+  "channel",
+  "event_type",
+  "contact_id",
+  "account_id",
+  "campaign_id",
+  "campaign_member_id",
+  "deal_id",
+  "project_id",
+  "direction",
+  "subject",
+  "body_preview",
+  "occurred_at",
+  "created_by",
+  "created_by_agent",
+  "metadata",
+] as const;
+const IDENTITY_CREATE_COLUMNS = [
+  "channel",
+  "contact_id",
+  "account_id",
+  "external_id",
+  "handle",
+  "is_primary",
+  "last_seen_at",
+  "metadata",
+] as const;
+const IDENTITY_UPDATE_COLUMNS = [
+  "contact_id",
+  "account_id",
+  "handle",
+  "is_primary",
+  "last_seen_at",
+  "metadata",
+] as const;
 
 export type EngagementEventFilters = {
   contact_id?: string;
@@ -75,7 +115,7 @@ export async function listEngagementEvents(
   if (filters.channel) query = query.eq("channel", filters.channel);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("load engagement events", error);
   return data as EngagementEvent[];
 }
 
@@ -93,10 +133,10 @@ export async function createEngagementEvent(
   const supabase = createSupabaseServerClient();
   const { data: event, error } = await supabase
     .from("engagement_events")
-    .insert(input)
+    .insert(pickColumns(input, EVENT_CREATE_COLUMNS))
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("record this engagement event", error);
 
   if (event.campaign_member_id) {
     await supabase
@@ -130,32 +170,27 @@ export async function upsertChannelIdentity(
       .eq("channel", input.channel)
       .eq("external_id", input.external_id)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw supabaseOperationFailed("look up this channel identity", error);
 
     if (existing) {
       const { data: identity, error: updateError } = await supabase
         .from("channel_identities")
-        .update({
-          ...(input.contact_id !== undefined && { contact_id: input.contact_id }),
-          ...(input.account_id !== undefined && { account_id: input.account_id }),
-          ...(input.handle !== undefined && { handle: input.handle }),
-          ...(input.is_primary !== undefined && { is_primary: input.is_primary }),
-          ...(input.last_seen_at !== undefined && { last_seen_at: input.last_seen_at }),
-          ...(input.metadata !== undefined && { metadata: input.metadata }),
-        })
+        .update(pickColumns(input, IDENTITY_UPDATE_COLUMNS))
         .eq("id", existing.id)
         .select()
         .single();
-      if (updateError) throw new Error(updateError.message);
+      if (updateError) {
+        throw supabaseOperationFailed("update this channel identity", updateError);
+      }
       return identity as ChannelIdentity;
     }
   }
 
   const { data: identity, error } = await supabase
     .from("channel_identities")
-    .insert(input)
+    .insert(pickColumns(input, IDENTITY_CREATE_COLUMNS))
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("create this channel identity", error);
   return identity as ChannelIdentity;
 }

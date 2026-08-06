@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import type { CustomerSuccessProfile, Project, SuccessTouchpoint, Task } from "@/lib/types";
+import { pickColumns, supabaseOperationFailed } from "./supabase-writes";
 
 /**
  * Customer-success profiles and the touchpoints against them.
@@ -8,15 +9,51 @@ import type { CustomerSuccessProfile, Project, SuccessTouchpoint, Task } from "@
  * `./deals.ts`, which this follows. Named for the domain rather than the table because
  * `./touchpoints.ts` already exists and is the Neon `touchpoints` table, a different thing.
  *
- * Three inherited behaviours survive the move deliberately:
+ * Two inherited behaviours survive deliberately:
  *
- * - The upsert spreads the caller's object while the update writes a fixed column list. The two
- *   are not consistent and are not made consistent here.
- * - `listCustomerSuccessProfiles` casts without `?? []`; the dashboard read coalesces. Both
- *   preserved.
+ * - `listCustomerSuccessProfiles` casts without `?? []`; the dashboard read coalesces.
  * - Stamping `last_touch_at` after a touchpoint is written does not check its error, so a failed
  *   stamp leaves the touchpoint recorded and the profile stale, silently.
+ *
+ * The upsert used to spread the caller's object where the update wrote a column list; both go
+ * through an allowlist now. See `./supabase-writes.ts`.
  */
+
+const PROFILE_UPSERT_COLUMNS = [
+  "account_id",
+  "primary_contact_id",
+  "project_id",
+  "cs_owner",
+  "health_score",
+  "onboarding_status",
+  "renewal_date",
+  "renewal_risk",
+  "next_best_action",
+  "expansion_signal",
+  "last_touch_at",
+] as const;
+const PROFILE_UPDATE_COLUMNS = [
+  "primary_contact_id",
+  "project_id",
+  "cs_owner",
+  "health_score",
+  "onboarding_status",
+  "renewal_date",
+  "renewal_risk",
+  "next_best_action",
+  "expansion_signal",
+  "last_touch_at",
+] as const;
+const TOUCHPOINT_CREATE_COLUMNS = [
+  "account_id",
+  "contact_id",
+  "project_id",
+  "touchpoint_type",
+  "sentiment",
+  "notes",
+  "occurred_at",
+  "created_by",
+] as const;
 
 export type CustomerSuccessProfileFilters = {
   cs_owner?: string;
@@ -91,7 +128,7 @@ export async function listCustomerSuccessProfiles(
   if (filters.renewal_before) query = query.lte("renewal_date", filters.renewal_before);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("load customer success profiles", error);
   return data as CustomerSuccessProfile[];
 }
 
@@ -102,7 +139,7 @@ export async function listCustomerSuccessProfilesForDashboard(): Promise<Custome
     .from("customer_success_profiles")
     .select("*")
     .order("renewal_date", { ascending: true });
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("load the customer success dashboard", error);
   return (data ?? []) as CustomerSuccessProfile[];
 }
 
@@ -141,10 +178,18 @@ export async function getCustomerSuccessAccountWorkspace(
       .order("created_at", { ascending: false }),
   ]);
 
-  if (profileResult.error) throw new Error(profileResult.error.message);
-  if (touchpointsResult.error) throw new Error(touchpointsResult.error.message);
-  if (projectsResult.error) throw new Error(projectsResult.error.message);
-  if (tasksResult.error) throw new Error(tasksResult.error.message);
+  if (profileResult.error) {
+    throw supabaseOperationFailed("load this account's success profile", profileResult.error);
+  }
+  if (touchpointsResult.error) {
+    throw supabaseOperationFailed("load this account's touchpoints", touchpointsResult.error);
+  }
+  if (projectsResult.error) {
+    throw supabaseOperationFailed("load this account's projects", projectsResult.error);
+  }
+  if (tasksResult.error) {
+    throw supabaseOperationFailed("load this account's tasks", tasksResult.error);
+  }
 
   return {
     profile: profileResult.data as CustomerSuccessProfile | null,
@@ -157,9 +202,9 @@ export async function getCustomerSuccessAccountWorkspace(
 /**
  * Creates or replaces an account's profile.
  *
- * Unlike {@link updateCustomerSuccessProfile} this spreads the caller's object rather than
- * writing a column list, so any key the unvalidated input carries reaches PostgREST. Inherited,
- * and left alone: a seam is the wrong place to change what a write is allowed to touch.
+ * `account_id` is in the allowlist here and not in the update's, because it is the conflict
+ * target: an upsert has to carry it to know which row it is replacing, and an update must not be
+ * able to move a profile to a different account.
  */
 export async function upsertCustomerSuccessProfile(
   input: UpsertCustomerSuccessProfileInput & {
@@ -170,10 +215,10 @@ export async function upsertCustomerSuccessProfile(
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("customer_success_profiles")
-    .upsert(input, { onConflict: "account_id" })
+    .upsert(pickColumns(input, PROFILE_UPSERT_COLUMNS), { onConflict: "account_id" })
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("save this customer success profile", error);
   return data as CustomerSuccessProfile;
 }
 
@@ -190,7 +235,7 @@ export async function getCustomerSuccessRiskInputs(id: string): Promise<Customer
     .select("health_score, renewal_date")
     .eq("id", id)
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("load this profile's renewal inputs", error);
   return data as CustomerSuccessRiskInputs;
 }
 
@@ -210,30 +255,14 @@ export async function updateCustomerSuccessProfile(
   const { data, error } = await supabase
     .from("customer_success_profiles")
     .update({
-      ...(updates.primary_contact_id !== undefined && {
-        primary_contact_id: updates.primary_contact_id,
-      }),
-      ...(updates.project_id !== undefined && { project_id: updates.project_id }),
-      ...(updates.cs_owner !== undefined && { cs_owner: updates.cs_owner }),
-      ...(updates.health_score !== undefined && { health_score: updates.health_score }),
-      ...(updates.onboarding_status !== undefined && {
-        onboarding_status: updates.onboarding_status,
-      }),
-      ...(updates.renewal_date !== undefined && { renewal_date: updates.renewal_date }),
-      ...(updates.renewal_risk !== undefined && { renewal_risk: updates.renewal_risk }),
-      ...(updates.next_best_action !== undefined && {
-        next_best_action: updates.next_best_action,
-      }),
-      ...(updates.expansion_signal !== undefined && {
-        expansion_signal: updates.expansion_signal,
-      }),
-      ...(updates.last_touch_at !== undefined && { last_touch_at: updates.last_touch_at }),
+      ...pickColumns(updates, PROFILE_UPDATE_COLUMNS),
+      // Last, so a recomputed risk still beats an explicit one sent alongside a health change.
       ...(riskOverride && riskOverride),
     })
     .eq("id", id)
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("update this customer success profile", error);
   return data as CustomerSuccessProfile;
 }
 
@@ -250,10 +279,10 @@ export async function createSuccessTouchpoint(
   const supabase = createSupabaseServerClient();
   const { data: touchpoint, error } = await supabase
     .from("success_touchpoints")
-    .insert(input)
+    .insert(pickColumns(input, TOUCHPOINT_CREATE_COLUMNS))
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("record this touchpoint", error);
 
   await supabase
     .from("customer_success_profiles")

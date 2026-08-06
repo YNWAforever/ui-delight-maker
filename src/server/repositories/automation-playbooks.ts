@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import type { AutomationPlaybook, AutomationRun } from "@/lib/types";
+import { pickColumns, supabaseOperationFailed } from "./supabase-writes";
 
 /**
  * Automation playbooks and their runs.
@@ -13,6 +14,34 @@ import type { AutomationPlaybook, AutomationRun } from "@/lib/types";
  * folding a second refactor into it would make the diff impossible to review as behaviour-
  * preserving, which is the only property that matters here.
  */
+
+const PLAYBOOK_CREATE_COLUMNS = [
+  "name",
+  "trigger_type",
+  "description",
+  "status",
+  "steps",
+  "created_by",
+] as const;
+const PLAYBOOK_UPDATE_COLUMNS = ["name", "description", "trigger_type", "status", "steps"] as const;
+const RUN_CREATE_COLUMNS = [
+  "playbook_id",
+  "contact_id",
+  "account_id",
+  "deal_id",
+  "project_id",
+  "trigger_event_id",
+  "status",
+  "context_data",
+  "started_at",
+] as const;
+const RUN_UPDATE_COLUMNS = [
+  "status",
+  "output_data",
+  "error_message",
+  "started_at",
+  "finished_at",
+] as const;
 
 export type AutomationPlaybookFilters = {
   status?: string;
@@ -55,7 +84,7 @@ export async function listAutomationPlaybooks(
   if (filters.trigger_type) query = query.eq("trigger_type", filters.trigger_type);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("load automation playbooks", error);
   return (data ?? []) as AutomationPlaybook[];
 }
 
@@ -78,8 +107,12 @@ export async function getAutomationPlaybookDetail(id: string): Promise<Automatio
       .limit(100),
   ]);
 
-  if (playbookResult.error) throw new Error(playbookResult.error.message);
-  if (runsResult.error) throw new Error(runsResult.error.message);
+  if (playbookResult.error) {
+    throw supabaseOperationFailed("load this automation playbook", playbookResult.error);
+  }
+  if (runsResult.error) {
+    throw supabaseOperationFailed("load this playbook's runs", runsResult.error);
+  }
 
   return {
     playbook: playbookResult.data as AutomationPlaybook,
@@ -93,10 +126,10 @@ export async function createAutomationPlaybook(
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("automation_playbooks")
-    .insert(input)
+    .insert(pickColumns(input, PLAYBOOK_CREATE_COLUMNS))
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("create this automation playbook", error);
   return data as AutomationPlaybook;
 }
 
@@ -108,24 +141,22 @@ export async function updateAutomationPlaybook(
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("automation_playbooks")
-    .update({
-      ...(updates.name !== undefined && { name: updates.name }),
-      ...(updates.description !== undefined && { description: updates.description }),
-      ...(updates.trigger_type !== undefined && { trigger_type: updates.trigger_type }),
-      ...(updates.status !== undefined && { status: updates.status }),
-      ...(updates.steps !== undefined && { steps: updates.steps }),
-    })
+    .update(pickColumns(updates, PLAYBOOK_UPDATE_COLUMNS))
     .eq("id", id)
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("update this automation playbook", error);
   return data as AutomationPlaybook;
 }
 
 export async function createAutomationRun(input: CreateAutomationRunInput): Promise<AutomationRun> {
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase.from("automation_runs").insert(input).select().single();
-  if (error) throw new Error(error.message);
+  const { data, error } = await supabase
+    .from("automation_runs")
+    .insert(pickColumns(input, RUN_CREATE_COLUMNS))
+    .select()
+    .single();
+  if (error) throw supabaseOperationFailed("start this automation run", error);
   return data as AutomationRun;
 }
 
@@ -136,16 +167,10 @@ export async function updateAutomationRun(
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("automation_runs")
-    .update({
-      ...(updates.status !== undefined && { status: updates.status }),
-      ...(updates.output_data !== undefined && { output_data: updates.output_data }),
-      ...(updates.error_message !== undefined && { error_message: updates.error_message }),
-      ...(updates.started_at !== undefined && { started_at: updates.started_at }),
-      ...(updates.finished_at !== undefined && { finished_at: updates.finished_at }),
-    })
+    .update(pickColumns(updates, RUN_UPDATE_COLUMNS))
     .eq("id", id)
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("update this automation run", error);
   return data as AutomationRun;
 }

@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import type { Deal, EngagementEvent, Project, Task } from "@/lib/types";
+import { pickColumns, supabaseOperationFailed } from "./supabase-writes";
 
 /**
  * Deals, and the workspace read around a single deal.
@@ -10,13 +11,30 @@ import type { Deal, EngagementEvent, Project, Task } from "@/lib/types";
  * moving `deals` onto Neon becomes a change to the function bodies here instead of a rewrite of
  * every handler. It is the same seam this repo already put around ownership resolution.
  *
- * Everything below is a faithful move of what those handlers did inline. That includes the parts
- * that look incidental and are not: the workspace read issues its four queries concurrently and
- * only checks their errors afterwards, so all four run even when the first fails; the update
- * carries an explicit column allowlist rather than spreading the caller's object; and failures
- * surface as `new Error(error.message)`, not a typed error. A seam that changed any of those
- * would be a behaviour change wearing a refactor's clothes.
+ * The reads are a faithful move of what those handlers did inline, including the parts that look
+ * incidental and are not: the workspace read issues its four queries concurrently and only checks
+ * their errors afterwards, so all four run even when the first fails.
+ *
+ * The writes are not quite a move. Both now go through the same `DEAL_WRITE_COLUMNS` allowlist —
+ * the update always had one, the insert did not — and failures no longer carry the driver's
+ * message to the caller. See `./supabase-writes.ts` for why both changed.
  */
+
+const DEAL_WRITE_COLUMNS = [
+  "account_id",
+  "contact_id",
+  "lead_id",
+  "quote_id",
+  "source_campaign_id",
+  "name",
+  "stage",
+  "status",
+  "probability",
+  "value",
+  "currency",
+  "expected_close_date",
+  "owner",
+] as const;
 
 export type DealFilters = {
   status?: string;
@@ -72,7 +90,7 @@ export async function listDeals(filters: DealFilters = {}): Promise<Deal[]> {
   }
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("load deals", error);
   return data as Deal[];
 }
 
@@ -97,10 +115,14 @@ export async function getDealWorkspace(id: string): Promise<DealWorkspace> {
     supabase.from("tasks").select("*").eq("deal_id", id),
   ]);
 
-  if (dealResult.error) throw new Error(dealResult.error.message);
-  if (eventsResult.error) throw new Error(eventsResult.error.message);
-  if (projectsResult.error) throw new Error(projectsResult.error.message);
-  if (tasksResult.error) throw new Error(tasksResult.error.message);
+  if (dealResult.error) throw supabaseOperationFailed("load this deal", dealResult.error);
+  if (eventsResult.error) {
+    throw supabaseOperationFailed("load this deal's engagement events", eventsResult.error);
+  }
+  if (projectsResult.error) {
+    throw supabaseOperationFailed("load this deal's projects", projectsResult.error);
+  }
+  if (tasksResult.error) throw supabaseOperationFailed("load this deal's tasks", tasksResult.error);
 
   return {
     deal: dealResult.data,
@@ -112,8 +134,12 @@ export async function getDealWorkspace(id: string): Promise<DealWorkspace> {
 
 export async function createDeal(input: CreateDealInput): Promise<Deal> {
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase.from("deals").insert(input).select().single();
-  if (error) throw new Error(error.message);
+  const { data, error } = await supabase
+    .from("deals")
+    .insert(pickColumns(input, DEAL_WRITE_COLUMNS))
+    .select()
+    .single();
+  if (error) throw supabaseOperationFailed("create this deal", error);
   return data as Deal;
 }
 
@@ -129,29 +155,11 @@ export async function updateDeal(id: string, updates: Partial<Deal>): Promise<De
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("deals")
-    .update({
-      ...(updates.account_id !== undefined && { account_id: updates.account_id }),
-      ...(updates.contact_id !== undefined && { contact_id: updates.contact_id }),
-      ...(updates.lead_id !== undefined && { lead_id: updates.lead_id }),
-      ...(updates.quote_id !== undefined && { quote_id: updates.quote_id }),
-      ...(updates.source_campaign_id !== undefined && {
-        source_campaign_id: updates.source_campaign_id,
-      }),
-      ...(updates.name !== undefined && { name: updates.name }),
-      ...(updates.stage !== undefined && { stage: updates.stage }),
-      ...(updates.status !== undefined && { status: updates.status }),
-      ...(updates.probability !== undefined && { probability: updates.probability }),
-      ...(updates.value !== undefined && { value: updates.value }),
-      ...(updates.currency !== undefined && { currency: updates.currency }),
-      ...(updates.expected_close_date !== undefined && {
-        expected_close_date: updates.expected_close_date,
-      }),
-      ...(updates.owner !== undefined && { owner: updates.owner }),
-    })
+    .update(pickColumns(updates, DEAL_WRITE_COLUMNS))
     .eq("id", id)
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("update this deal", error);
   return data as Deal;
 }
 
@@ -164,6 +172,6 @@ export async function listOpenDeals(filters: ForecastDealFilters = {}): Promise<
   if (filters.close_before) query = query.lte("expected_close_date", filters.close_before);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw supabaseOperationFailed("load open deals", error);
   return (data ?? []) as Deal[];
 }
