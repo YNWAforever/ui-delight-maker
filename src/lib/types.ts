@@ -399,6 +399,15 @@ export interface Task {
 export interface AgentRun {
   id: string;
   agent_name: string;
+  /**
+   * Which workflow produced the run, and what it ran against. Both are `not null` in
+   * `agent_runs` and are returned by every `select *` in the repository, but they were absent
+   * from this interface — which is why the writeback that does correlate a callback to its
+   * subject had to re-cast the row inline to reach them.
+   */
+  workflow_type: string;
+  subject_type: string;
+  subject_id: string;
   trigger_type: string | null;
   input_data: unknown;
   output_data: unknown;
@@ -409,7 +418,9 @@ export interface AgentRun {
   model_used: string;
   confidence_score: number | null;
   human_review_required: boolean;
+  created_by: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface AgentToolCall {
@@ -490,9 +501,13 @@ export interface Account {
   relationship_health?: number;
   last_activity_at?: string | null;
   next_action?: string | null;
-  health_score?: number;
-  renewal_date?: string | null;
-  arr?: number | null;
+  /*
+   * `health_score`, `renewal_date` and `arr` used to be declared here too. No column on
+   * `accounts` backs any of them in neon/migrations/ and no query selects them, so they were
+   * always `undefined` at runtime while the type promised a number — which is how the company
+   * workspace came to render "Account ARR: HKD 0" for every company. Those figures live on the
+   * account's clients; read them from there.
+   */
   created_at: string;
   updated_at: string;
 }

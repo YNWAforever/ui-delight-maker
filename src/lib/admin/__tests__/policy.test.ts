@@ -37,6 +37,63 @@ describe("evaluateAuthorization", () => {
     );
   });
 
+  /**
+   * `resolveOwnerProfileId` returns null for an unowned row, a missing row, and a type with no
+   * ownership, and the caller then omits `ownerProfileId` from the target. That used to be
+   * indistinguishable from "no ownership dimension supplied", so a manager targeting an
+   * unassigned lead or an unowned account hit the empty-checks pass and was allowed — every
+   * manager in the org could edit all of them.
+   */
+  it("puts a named resource with no resolved owner outside a manager's scope", () => {
+    const manager = actor("manager", {
+      profileId: "manager-1",
+      directReportIds: ["sales-1"],
+    });
+
+    expect(
+      evaluateAuthorization({
+        actor: manager,
+        capability: "leads.update",
+        target: { resourceType: "lead", resourceId: "lead-unassigned" },
+      }),
+    ).toEqual({ allowed: false, reason: "outside_scope" });
+  });
+
+  it("still admits a named resource owned by the manager or a direct report", () => {
+    const manager = actor("manager", {
+      profileId: "manager-1",
+      directReportIds: ["sales-1"],
+    });
+
+    for (const ownerProfileId of ["manager-1", "sales-1"]) {
+      expect(
+        evaluateAuthorization({
+          actor: manager,
+          capability: "leads.update",
+          target: { resourceType: "lead", resourceId: "lead-1", ownerProfileId },
+        }).allowed,
+      ).toBe(true);
+    }
+
+    expect(
+      evaluateAuthorization({
+        actor: manager,
+        capability: "leads.update",
+        target: { resourceType: "lead", resourceId: "lead-1", ownerProfileId: "sales-other" },
+      }),
+    ).toEqual({ allowed: false, reason: "outside_scope" });
+  });
+
+  it("keeps target-less reads in scope for a manager", () => {
+    // The empty-checks pass is still correct and load-bearing: list and dashboard loaders pass
+    // no target at all, and narrowing that would take the whole admin surface away.
+    const manager = actor("manager", { profileId: "manager-1" });
+
+    expect(
+      evaluateAuthorization({ actor: manager, capability: "leads.view", target: {} }).allowed,
+    ).toBe(true);
+  });
+
   it("limits managers to managed departments, teams, and direct reports", () => {
     const manager = actor("manager", {
       profileId: "manager-1",

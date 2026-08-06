@@ -114,7 +114,7 @@ export const moveLeadStage = createServerFn({ method: "POST" })
       id: data.id,
       status: data.status,
       reason: data.reason,
-      actorId: session.user.id,
+      actorId: session.profile.id,
     });
   });
 
@@ -134,7 +134,7 @@ export const convertWonLead = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireCapability("leads.convert", { resourceType: "lead", resourceId: data.leadId });
     const session = await requireNeonAuthSession();
-    return convertWonLeadToEngagement({ ...data, actorId: session.user.id });
+    return convertWonLeadToEngagement({ ...data, actorId: session.profile.id });
   });
 
 export const triggerLeadAgent = createServerFn({ method: "POST" })
@@ -164,7 +164,7 @@ export const triggerLeadAgent = createServerFn({ method: "POST" })
       workflow_type: "qualify_lead",
       subject_id: data.leadId,
       input_data: { lead_id: data.leadId },
-      created_by: session.user.id,
+      created_by: session.profile.id,
     });
 
     if (!created) {
@@ -221,7 +221,7 @@ export const triggerLeadReplyDraft = createServerFn({ method: "POST" })
       workflow_type: "draft_reply",
       subject_id: data.leadId,
       input_data: { lead_id: data.leadId },
-      created_by: session.user.id,
+      created_by: session.profile.id,
     });
 
     if (!created) {

@@ -23,6 +23,11 @@ describe("Company Workspace optimized fixture measurements", () => {
     COMPANY_WORKSPACE_PERFORMANCE_FIXTURES.highActivity,
   ])("reduces representative initial payload bytes for $name", (fixture) => {
     const { baseline, optimized } = measureCompanyWorkspaceComparison(fixture);
+
+    // This case had its assertion removed at some point and sat green ever since, which is
+    // exactly the regression it exists to catch: eagerly embedding rows in the overview
+    // response re-inflates the initial payload without failing anything.
+    expect(optimized.responseBytes).toBeLessThan(baseline.responseBytes);
   });
   it("keeps commercial engagement loading bounded when that tab is opened", () => {
     const { optimizedCommercial } = measureCompanyWorkspaceComparison(

@@ -48,9 +48,17 @@ vi.mock("@/server/repositories/event-import", () => ({
 describe("event import server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireCapabilityMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
 
-    requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireNeonAuthSessionMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
   });
 
   it("revalidates raw rows on commit and returns errors without writing invalid data", async () => {

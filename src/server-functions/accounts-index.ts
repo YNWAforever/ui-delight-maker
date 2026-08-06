@@ -7,7 +7,7 @@ export const getAccountsIndex = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as AccountPageFilters)
   .handler(async ({ data }) => {
     const session = await requireCapability("accounts.view");
-    return getAccountsIndexReadModel(session.user.id, data);
+    return getAccountsIndexReadModel(session.profile.id, data);
   });
 
 export const getAccountsIndexRead = getAccountsIndex;

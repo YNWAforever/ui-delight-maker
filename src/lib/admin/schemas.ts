@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CAPABILITIES, PROFILE_STATUSES, USER_ROLES } from "./types";
+import { CAPABILITIES, PROFILE_STATUSES, USER_ROLES, type Capability } from "./types";
 
 export const userRoleSchema = z.enum(USER_ROLES);
 export const profileStatusSchema = z.enum(PROFILE_STATUSES);
@@ -85,6 +85,18 @@ export const permissionOverrideSchema = z.object({
   expiresAt: z.iso.datetime().optional(),
 });
 
+/**
+ * Capabilities nobody may request through the self-service access-request flow.
+ *
+ * `permissions.override` is the capability that mints every other capability, and the role
+ * model withholds it from `admin` on purpose (see ROLE_GRANTS in ./policy). An approved
+ * access request writes an unscoped `allow` override, and the policy consults overrides
+ * before ROLE_GRANTS — so letting this one through the request flow would hand any admin a
+ * permanent route around that exclusion. It stays a super-admin-only, deliberate grant made
+ * through `createAdminPermissionOverrideFn`.
+ */
+export const NON_REQUESTABLE_CAPABILITIES: readonly Capability[] = ["permissions.override"];
+
 export const accessRequestSchema = z
   .object({
     requestType: z.enum(["capability", "team"]),
@@ -92,6 +104,7 @@ export const accessRequestSchema = z
     teamId: z.uuid().optional(),
     reason: nonEmptyReasonSchema,
   })
+  .strict()
   .superRefine((value, context) => {
     const validCapability = value.requestType === "capability" && value.capability && !value.teamId;
     const validTeam = value.requestType === "team" && value.teamId && !value.capability;
@@ -100,6 +113,14 @@ export const accessRequestSchema = z
         code: "custom",
         message: "Request must target exactly one capability or team",
         path: [value.requestType === "team" ? "teamId" : "capability"],
+      });
+      return;
+    }
+    if (value.capability && NON_REQUESTABLE_CAPABILITIES.includes(value.capability)) {
+      context.addIssue({
+        code: "custom",
+        message: `${value.capability} cannot be requested; it must be granted directly by a Super Admin`,
+        path: ["capability"],
       });
     }
   });

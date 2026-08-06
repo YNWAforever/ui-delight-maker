@@ -1,4 +1,5 @@
 import { formatDate } from "./format";
+import { sumAmounts } from "./money";
 import type { AgentRun, Client, HumanApproval, Lead, Quote, Task } from "./types";
 
 export type RevenueActionKind =
@@ -162,22 +163,26 @@ export function buildRevenueActions(input: RevenueDeskInput): RevenueAction[] {
 }
 
 export function getQuoteDeskMetrics(quotes: Quote[]) {
+  const valueOf = (quote: Quote) => quote.total_value;
   return {
-    activeValue: quotes
-      .filter((quote) => ["pending_approval", "sent", "viewed"].includes(quote.status))
-      .reduce((sum, quote) => sum + (quote.total_value ?? 0), 0),
-    acceptedValue: quotes
-      .filter((quote) => quote.status === "accepted")
-      .reduce((sum, quote) => sum + (quote.total_value ?? 0), 0),
-    draftValue: quotes
-      .filter((quote) => quote.status === "draft")
-      .reduce((sum, quote) => sum + (quote.total_value ?? 0), 0),
+    activeValue: sumAmounts(
+      quotes.filter((quote) => ["pending_approval", "sent", "viewed"].includes(quote.status)),
+      valueOf,
+    ),
+    acceptedValue: sumAmounts(
+      quotes.filter((quote) => quote.status === "accepted"),
+      valueOf,
+    ),
+    draftValue: sumAmounts(
+      quotes.filter((quote) => quote.status === "draft"),
+      valueOf,
+    ),
     pendingApproval: quotes.filter((quote) => quote.status === "pending_approval").length,
   };
 }
 
 export function getClientPortfolioMetrics(clients: Client[], today: string) {
-  const totalArr = clients.reduce((sum, client) => sum + (client.arr ?? 0), 0);
+  const totalArr = sumAmounts(clients, (client) => client.arr);
   const averageHealth =
     clients.length === 0
       ? 0

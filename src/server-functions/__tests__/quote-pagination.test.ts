@@ -74,8 +74,16 @@ const pageData = {
 describe("paginated quote server function", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireCapability.mockResolvedValue({ user: { id: "user-1" } });
-    mocks.requireSession.mockResolvedValue({ user: { id: "user-1" } });
+    mocks.requireCapability.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
+    mocks.requireSession.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
     mocks.listQuotesPage.mockResolvedValue({ items: [], total: 0, page: 2, limit: 25 });
   });
 

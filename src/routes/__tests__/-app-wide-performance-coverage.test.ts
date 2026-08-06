@@ -62,11 +62,25 @@ describe("app-wide performance completion coverage", () => {
   });
 
   it("keeps user-facing mutation refreshes scoped to query families", () => {
+    // A whole-router invalidate refetches every mounted loader, so mutations are expected to
+    // pass a filter. Comments and string literals are stripped first: this scans source text,
+    // and without that a route merely *describing* the anti-pattern in a comment failed the
+    // check while an actual call inside a template string slipped past.
+    const stripCommentsAndStrings = (source: string) =>
+      source
+        .replace(/\/\*[\s\S]*?\*\//g, " ")
+        .replace(/\/\/[^\n]*/g, " ")
+        .replace(/`(?:\\.|[^`\\])*`/g, "``")
+        .replace(/"(?:\\.|[^"\\])*"/g, '""')
+        .replace(/'(?:\\.|[^'\\])*'/g, "''");
+
     const routesDirectory = new URL("..", import.meta.url);
     const broadInvalidations = readdirSync(routesDirectory)
       .filter((file) => file.endsWith(".tsx") && file !== "__root.tsx")
       .filter((file) =>
-        readFileSync(new URL(file, routesDirectory), "utf8").includes("router.invalidate()"),
+        /router\s*\.\s*invalidate\s*\(\s*\)/.test(
+          stripCommentsAndStrings(readFileSync(new URL(file, routesDirectory), "utf8")),
+        ),
       );
 
     expect(broadInvalidations).toEqual([]);

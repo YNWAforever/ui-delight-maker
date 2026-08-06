@@ -12,6 +12,7 @@ import {
   changeUserRole,
   getAdminOverview,
   getAdminUser,
+  getProfileRole,
   listAdminUsers,
   setSessionInvalidBefore,
   setUserStatus,
@@ -156,11 +157,26 @@ export const getAdminUserFn = createServerFn({ method: "GET" })
     return getAdminUser(input.profileId);
   });
 
+/**
+ * Builds the authorization target for an action against another user's profile.
+ *
+ * The target's *current* role is load-bearing, not decoration. `evaluateAuthorization` denies a
+ * manager checking `users.manage` against a target that has a profileId but no role
+ * (`invalid_target`), and separately refuses any manager acting on an `admin` or `super_admin`
+ * target (`protected_role`). Every call site here used to pass the profileId alone, so the
+ * first rule fired every time and the manager half of user management was unreachable — the
+ * manager branch of `assertCanAssignRole` was dead code, and the user saw a misleading "you do
+ * not have this capability".
+ */
+async function profileTarget(profileId: string) {
+  return { profileId, role: await getProfileRole(profileId) };
+}
+
 export const updateAdminUserFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => profileUpdateSchema.parse(data))
   .handler(async ({ data }) => {
     const input = profileUpdateSchema.parse(data);
-    const session = await requireCapability("users.manage", { profileId: input.profileId });
+    const session = await requireCapability("users.manage", await profileTarget(input.profileId));
     return updateAdminProfile(input.profileId, input.changes, idOf(session));
   });
 
@@ -168,7 +184,9 @@ export const changeAdminUserRoleFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => roleChangeSchema.parse(data))
   .handler(async ({ data }) => {
     const input = roleChangeSchema.parse(data);
-    const session = await requireCapability("users.manage", { profileId: input.profileId });
+    // The target carries the role the user has NOW, so `protected_role` can stop a manager
+    // re-roling an existing admin; `assertCanAssignRole` separately vets the role they want.
+    const session = await requireCapability("users.manage", await profileTarget(input.profileId));
     assertCanAssignRole(session.profile.role, input.role);
     return changeUserRole(input.profileId, input.role, input.reason, idOf(session));
   });
@@ -179,7 +197,7 @@ async function setLifecycle(
   capability: "users.suspend" | "users.manage",
 ) {
   const input = lifecycleSchema.parse(data);
-  const session = await requireCapability(capability, { profileId: input.profileId });
+  const session = await requireCapability(capability, await profileTarget(input.profileId));
   return setUserStatus(input.profileId, action, input.reason, idOf(session));
 }
 

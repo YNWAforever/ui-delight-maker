@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Mail, Phone, Star, ArrowLeft } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -463,12 +463,22 @@ function ClientContactsPanel({
   clientId: string;
   initialContacts: ClientContact[];
 }) {
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState(initialContacts);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [title, setTitle] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+
+  // The panel keeps a local copy for immediate feedback, but the section query is the source of
+  // truth on remount. Without this invalidation a contact added here vanished the moment you
+  // switched tabs and came back inside the stale time — the panel re-seeded from a cache that
+  // still held the pre-write list — and the "Contacts (n)" tab count never moved.
+  const refreshContacts = () =>
+    queryClient.invalidateQueries({
+      queryKey: crmQueryKeys.clients.section(clientId, "contacts"),
+    });
 
   const create = async () => {
     const created = await createClientContact({
@@ -481,11 +491,13 @@ function ClientContactsPanel({
     setEmail("");
     setPhone("");
     toast.success(`Added contact ${created.name}`);
+    await refreshContacts();
   };
 
   const remove = async (id: string) => {
     await deleteClientContact({ data: { id } });
     setRows((prev) => prev.filter((c) => c.id !== id));
+    await refreshContacts();
   };
 
   return (

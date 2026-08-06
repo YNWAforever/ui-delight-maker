@@ -300,6 +300,73 @@ describe("job sheets repository", () => {
     );
   });
 
+  /**
+   * A portion entered in Xero has its commercial terms settled outside this system, so an edit
+   * before the job sheet is accepted must not silently rewrite them. Removal was already blocked
+   * outright and `status` was already preserved — amount, currency, invoice date and billing type
+   * were not, so an invoice raised for 40,000 could be re-labelled 4,000 here and the two systems
+   * would disagree with nothing to show for it.
+   */
+  it("preserves the commercial fields of a portion already entered in Xero", async () => {
+    const db = { query: vi.fn() };
+    mockQueryOne.mockResolvedValueOnce({
+      id: "job-1",
+      status: "accounting_review",
+      locked_at: null,
+      total_amount: 120000,
+      currency: "HKD",
+      po_number: null,
+      client_order_number: null,
+    });
+    mockQuery.mockResolvedValueOnce([
+      {
+        id: "portion-1",
+        job_sheet_id: "job-1",
+        amount: 40000,
+        currency: "HKD",
+        status: "entered_in_xero",
+        xero_invoice_number: "INV-001",
+        source_quote_line_item_ids: [],
+        sort_order: 0,
+      },
+    ]);
+    mockQueryOne.mockResolvedValueOnce({ id: "portion-1", job_sheet_id: "job-1" });
+    const { replaceJobSheetPortions } = await import("../job-sheets");
+
+    await replaceJobSheetPortions(
+      "job-1",
+      [
+        {
+          id: "portion-1",
+          name: "Strategy (renamed)",
+          source_quote_line_item_ids: [],
+          description: "Planning",
+          amount: 4000,
+          currency: "USD",
+          target_invoice_date: "2027-01-31",
+          billing_type: "final",
+          status: "planned",
+          sort_order: 0,
+        },
+      ],
+      db,
+    );
+
+    const [sql] = mockQueryOne.mock.calls.find(([text]) =>
+      String(text).includes("update job_sheet_portions"),
+    )!;
+    const normalized = String(sql).replace(/\s+/g, " ");
+
+    for (const column of ["amount", "currency", "target_invoice_date", "billing_type", "status"]) {
+      expect(normalized, `${column} must be preserved for a portion entered in Xero`).toMatch(
+        new RegExp(`${column} = case when status = 'entered_in_xero' then`),
+      );
+    }
+    // Presentation fields stay editable — the lock is on money, not on labels.
+    expect(normalized).toMatch(/set name = \$1/);
+    expect(normalized).toMatch(/description = \$3/);
+  });
+
   it.each([
     ["accepted", { status: "accepted", locked_at: null }],
     ["locked", { status: "accounting_review", locked_at: "2026-07-09T12:00:00.000Z" }],

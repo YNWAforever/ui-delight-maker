@@ -116,6 +116,32 @@ export async function decideApproval(input: {
     const approval = approvalResult.rows[0];
     if (!approval) throw new Error("Approval not found");
 
+    /**
+     * A decided approval releases the agent run that is waiting on it.
+     *
+     * Runs are parked in `waiting_approval` while a human decides, and `agent_runs_active_idx`
+     * (001_clientops_runtime.sql) is a partial unique index over exactly
+     * ('running','waiting_approval') for (subject_type, subject_id, workflow_type). A run left
+     * parked after its approval is decided therefore blocks every future run of that workflow
+     * for that subject — permanently, and for rejections just as much as approvals. This is
+     * done here rather than in a per-approval-type handler so that quote_send, message_send
+     * and cs_risk_review all release, not just the one that had a handler.
+     *
+     * `escalated` is not a decision yet, so it keeps the hold. The status predicate keeps this
+     * idempotent and stops it overwriting a run that already finished on its own.
+     */
+    if (approval.agent_run_id && input.decision !== "escalated") {
+      await client.query(
+        `
+          update agent_runs
+          set status = 'completed',
+              human_review_required = false
+          where id = $1 and status = 'waiting_approval'
+        `,
+        [approval.agent_run_id],
+      );
+    }
+
     await client.query(
       `
         insert into activity_logs

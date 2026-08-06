@@ -103,4 +103,36 @@ describe("Neon auth proxy", () => {
     });
     expect(headers.get("Origin")).toBe("https://auth.example.com");
   });
+
+  /**
+   * A password-reset redirectTo ends up in the mail sent to the account holder, so an
+   * off-origin value hands the reset continuation to whoever supplied it. The proxy used to
+   * compute that a protocol-relative target was off-origin and then forward it unchanged, and
+   * absolute URLs skipped the check entirely.
+   */
+  it.each([
+    ["protocol-relative", "//evil.com/steal"],
+    ["absolute", "https://evil.com/steal"],
+    ["absolute on a lookalike host", "https://clientops.example.com.evil.com/steal"],
+    ["backslash-prefixed", "\\\\evil.com/steal"],
+  ])("strips an off-origin password-reset redirect (%s)", async (_label, redirectTo) => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = new Request("https://clientops.example.com/api/auth/request-password-reset", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "ada@fimmick.com", redirectTo }),
+    });
+
+    await proxyNeonAuthRequest({ request, params: { _splat: "request-password-reset" } });
+
+    const [, init] = fetchMock.mock.calls[0];
+    const forwardedBody = JSON.parse(
+      new TextDecoder().decode(await new Response(init?.body).arrayBuffer()),
+    );
+
+    expect(forwardedBody).toEqual({ email: "ada@fimmick.com" });
+    expect(JSON.stringify(forwardedBody)).not.toContain("evil.com");
+  });
 });

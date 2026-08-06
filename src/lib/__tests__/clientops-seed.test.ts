@@ -118,30 +118,62 @@ describe("getDeploySeedDecision", () => {
     });
   });
 
-  it("uses non-destructive staging demo defaults when deploy seeding is enabled", () => {
+  // The point of these three: CLIENTOPS_SEED_ON_DEPLOY must not be able to satisfy the guards
+  // that assertSeedAllowed goes on to check. It used to default all three of them, so one
+  // variable turned the whole interlock on and the only thing left protecting production was a
+  // substring test against DATABASE_URL.
+  it("does not seed when only CLIENTOPS_SEED_ON_DEPLOY is set", () => {
     expect(getDeploySeedDecision({ CLIENTOPS_SEED_ON_DEPLOY: "1" })).toEqual({
-      shouldSeed: true,
-      env: {
-        CLIENTOPS_ALLOW_STAGING_SEED: "1",
-        CLIENTOPS_SEED_MODE: "staging-demo",
-        CLIENTOPS_SEED_TARGET: "staging",
-      },
+      shouldSeed: false,
+      reason: "CLIENTOPS_ALLOW_STAGING_SEED must be set to 1 explicitly to seed on deploy",
     });
   });
 
-  it("preserves explicit deploy seed env overrides", () => {
+  it.each([
+    [
+      { CLIENTOPS_ALLOW_STAGING_SEED: "1" },
+      "CLIENTOPS_SEED_TARGET must be set explicitly to seed on deploy",
+    ],
+    [
+      { CLIENTOPS_ALLOW_STAGING_SEED: "1", CLIENTOPS_SEED_TARGET: "staging" },
+      "CLIENTOPS_SEED_MODE must be set explicitly to seed on deploy",
+    ],
+  ])("requires every guard to be set explicitly (%o)", (env, reason) => {
+    expect(getDeploySeedDecision({ CLIENTOPS_SEED_ON_DEPLOY: "1", ...env })).toEqual({
+      shouldSeed: false,
+      reason,
+    });
+  });
+
+  it("refuses to seed a Vercel production deployment even when every guard is set", () => {
     expect(
       getDeploySeedDecision({
         CLIENTOPS_SEED_ON_DEPLOY: "1",
-        CLIENTOPS_ALLOW_STAGING_SEED: "0",
+        CLIENTOPS_ALLOW_STAGING_SEED: "1",
+        CLIENTOPS_SEED_MODE: "staging-demo",
+        CLIENTOPS_SEED_TARGET: "staging",
+        VERCEL_ENV: "production",
+      }),
+    ).toEqual({
+      shouldSeed: false,
+      reason: "refusing to seed a Vercel production deployment",
+    });
+  });
+
+  it("passes through the operator's explicit deploy seed settings", () => {
+    expect(
+      getDeploySeedDecision({
+        CLIENTOPS_SEED_ON_DEPLOY: "1",
+        CLIENTOPS_ALLOW_STAGING_SEED: "1",
         CLIENTOPS_SEED_MODE: "staging-smoke",
         CLIENTOPS_SEED_TARGET: "staging",
         CLIENTOPS_SEED_TODAY: "2026-07-05",
+        VERCEL_ENV: "preview",
       }),
     ).toEqual({
       shouldSeed: true,
       env: {
-        CLIENTOPS_ALLOW_STAGING_SEED: "0",
+        CLIENTOPS_ALLOW_STAGING_SEED: "1",
         CLIENTOPS_SEED_MODE: "staging-smoke",
         CLIENTOPS_SEED_TARGET: "staging",
         CLIENTOPS_SEED_TODAY: "2026-07-05",

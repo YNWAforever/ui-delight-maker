@@ -19,7 +19,11 @@ describe("root shell auth cache boundaries", () => {
 
   it("fetches user B after the prior shell cache is removed", async () => {
     const queryClient = new QueryClient();
-    const readUserA = vi.fn().mockResolvedValue({ user: { id: "user-a" } });
+    const readUserA = vi.fn().mockResolvedValue({
+      user: { id: "user-a" },
+      profile: { id: "user-a", role: "sales", status: "active" },
+      session: {},
+    });
 
     await queryClient.ensureQueryData(
       routeQueryOptions({ queryKey: crmQueryKeys.shell(), queryFn: readUserA }),
@@ -28,19 +32,31 @@ describe("root shell auth cache boundaries", () => {
     queryClient.clear();
     expect(queryClient.getQueryData(crmQueryKeys.account.detail("me"))).toBeUndefined();
 
-    const readUserB = vi.fn().mockResolvedValue({ user: { id: "user-b" } });
+    const readUserB = vi.fn().mockResolvedValue({
+      user: { id: "user-b" },
+      profile: { id: "user-b", role: "sales", status: "active" },
+      session: {},
+    });
     await expect(
       queryClient.ensureQueryData(
         routeQueryOptions({ queryKey: crmQueryKeys.shell(), queryFn: readUserB }),
       ),
-    ).resolves.toEqual({ user: { id: "user-b" } });
+    ).resolves.toEqual({
+      user: { id: "user-b" },
+      profile: { id: "user-b", role: "sales", status: "active" },
+      session: {},
+    });
     expect(readUserA).toHaveBeenCalledOnce();
     expect(readUserB).toHaveBeenCalledOnce();
   });
 
   it("reuses fresh shell data for ordinary same-user navigation", async () => {
     const queryClient = new QueryClient();
-    const readShell = vi.fn().mockResolvedValue({ user: { id: "user-a" } });
+    const readShell = vi.fn().mockResolvedValue({
+      user: { id: "user-a" },
+      profile: { id: "user-a", role: "sales", status: "active" },
+      session: {},
+    });
     const options = routeQueryOptions({ queryKey: crmQueryKeys.shell(), queryFn: readShell });
 
     await queryClient.ensureQueryData(options);

@@ -327,15 +327,33 @@ export async function replaceJobSheetPortions(
     for (const { portion, current } of matched) {
       if (current) {
         const row = await queryOne<JobSheetPortion>(
+          /*
+           * Once a portion is entered in Xero its commercial terms are settled outside this
+           * system, so they stop being editable here — the same rule the `removed.some(hasXeroData)`
+           * guard above applies to deletion, and the same rule `status` already had. Previously
+           * only `status` was protected, so an invoice raised in Xero for 40,000 could be quietly
+           * re-labelled 4,000 in ClientOps and the two systems would disagree with nothing to
+           * show for it. Name, description and sort order stay editable: they are presentation,
+           * not money.
+           */
           `
             update job_sheet_portions
             set name = $1,
-                source_quote_line_item_ids = $2::uuid[],
+                source_quote_line_item_ids = case
+                  when status = 'entered_in_xero' then source_quote_line_item_ids
+                  else $2::uuid[]
+                end,
                 description = $3,
-                amount = $4,
-                currency = $5,
-                target_invoice_date = $6,
-                billing_type = $7,
+                amount = case when status = 'entered_in_xero' then amount else $4 end,
+                currency = case when status = 'entered_in_xero' then currency else $5 end,
+                target_invoice_date = case
+                  when status = 'entered_in_xero' then target_invoice_date
+                  else $6
+                end,
+                billing_type = case
+                  when status = 'entered_in_xero' then billing_type
+                  else $7
+                end,
                 status = case when status = 'entered_in_xero' then status else $8 end,
                 sort_order = $9
             where id = $10 and job_sheet_id = $11

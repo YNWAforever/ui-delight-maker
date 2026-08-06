@@ -40,7 +40,11 @@ vi.mock("@/server/company-workspace/loaders", () => ({
 describe("Company Workspace server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireCapabilityMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
   });
 
   it("checks accounts.view on the target account before loading the stable core", async () => {

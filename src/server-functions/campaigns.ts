@@ -44,7 +44,7 @@ export const createCampaign = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireCapability("campaigns.manage");
     const session = await requireNeonAuthSession();
-    return createCampaignInNeon({ ...data, owner: session.user.id });
+    return createCampaignInNeon({ ...data, owner: session.profile.id });
   });
 
 export const updateCampaign = createServerFn({ method: "POST" })
@@ -76,6 +76,6 @@ export const createCampaignFollowUpTasksFn = createServerFn({ method: "POST" })
     const session = await requireNeonAuthSession();
     return createCampaignFollowUpTasks({
       campaignId: data.campaignId,
-      actorId: session.user.id,
+      actorId: session.profile.id,
     });
   });

@@ -1,6 +1,7 @@
 import type { QueryKey } from "@tanstack/react-query";
 
 import { formatCurrencyAmount } from "@/lib/format";
+import { toAmount } from "@/lib/money";
 import { crmQueryKeys } from "@/lib/query-keys";
 import type { NewJobSheetPortion } from "@/lib/quote-to-cash";
 import type {
@@ -345,7 +346,7 @@ export function formatAcceptedValueSummary(rows: AcceptedValueSummaryRow[]): str
   for (const row of rows) {
     if (row.status !== "accepted") continue;
     const currency = row.currency || "HKD";
-    totals.set(currency, (totals.get(currency) ?? 0) + row.total_amount);
+    totals.set(currency, (totals.get(currency) ?? 0) + toAmount(row.total_amount));
   }
 
   if (totals.size === 0) {

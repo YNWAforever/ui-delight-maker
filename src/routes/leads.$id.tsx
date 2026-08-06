@@ -38,6 +38,7 @@ import type { Lead, LeadStatus } from "@/lib/types";
 import { triggerLeadAgent, updateLead } from "@/server-functions/leads";
 import { triggerQuoteAgent } from "@/server-functions/quotes";
 import { crmQueryKeys } from "@/lib/query-keys";
+import { normalizeQualificationData } from "@/lib/workflows/qualification";
 import { getLeadWorkspaceRead } from "@/server-functions/relationship-workspaces";
 
 // Local types for UI-only state that is not yet persisted server-side.
@@ -118,6 +119,17 @@ function LeadDetail() {
     refetchIntervalInBackground: false,
   });
   const { lead, activityLogs, quotes: relatedQuotes } = workspaceQuery.data;
+  /**
+   * The qualification, coerced to the shape this page renders.
+   *
+   * `qualification_data` holds free-form agent output. The writeback normalizes on the way in
+   * now, but rows written before that still carry whatever the model returned — and the
+   * Insights tab reads `.service_interest.map(...)`, so one malformed qualification threw
+   * during render and took the whole lead page down instead of degrading a single panel.
+   */
+  const insights = lead.qualification_data
+    ? normalizeQualificationData(lead.qualification_data)
+    : null;
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
@@ -462,40 +474,34 @@ function LeadDetail() {
                 </TabsContent>
 
                 <TabsContent value="insights" className="mt-4">
-                  {lead.qualification_data ? (
+                  {insights ? (
                     <div className="space-y-4 p-4">
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-muted-foreground">Urgency</span>
-                          <p className="font-medium">
-                            {lead.qualification_data.urgency_score} / 10
-                          </p>
+                          <p className="font-medium">{insights.urgency_score} / 10</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Fit</span>
-                          <p className="font-medium">{lead.qualification_data.fit_score} / 10</p>
+                          <p className="font-medium">{insights.fit_score} / 10</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Budget</span>
-                          <p className="font-medium">{lead.qualification_data.budget_range}</p>
+                          <p className="font-medium">{insights.budget_range}</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Confidence</span>
-                          <p className="font-medium">
-                            {(lead.qualification_data.confidence * 100).toFixed(0)}%
-                          </p>
+                          <p className="font-medium">{(insights.confidence * 100).toFixed(0)}%</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Score</span>
-                          <p className="font-medium">
-                            {lead.qualification_data.qualification_score} / 100
-                          </p>
+                          <p className="font-medium">{insights.qualification_score} / 100</p>
                         </div>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Services of interest</p>
                         <div className="mt-1 flex flex-wrap gap-1">
-                          {lead.qualification_data.service_interest.map((s: string) => (
+                          {insights.service_interest.map((s: string) => (
                             <span
                               key={s}
                               className="rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary"
@@ -505,17 +511,17 @@ function LeadDetail() {
                           ))}
                         </div>
                       </div>
-                      {lead.qualification_data.reason && (
+                      {insights.reason && (
                         <div>
                           <p className="text-sm text-muted-foreground">Reason</p>
-                          <p className="text-sm">{lead.qualification_data.reason}</p>
+                          <p className="text-sm">{insights.reason}</p>
                         </div>
                       )}
                       <div>
                         <p className="text-sm text-muted-foreground">Recommended action</p>
-                        <p className="text-sm font-medium">{lead.qualification_data.next_action}</p>
+                        <p className="text-sm font-medium">{insights.next_action}</p>
                       </div>
-                      {lead.qualification_data.human_review_required && (
+                      {insights.human_review_required && (
                         <p className="text-xs bg-amber-500/15 text-amber-700 px-2 py-1 rounded">
                           Human review required — confidence below threshold
                         </p>

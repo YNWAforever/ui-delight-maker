@@ -1,4 +1,4 @@
-import { normalizeAccountName } from "@/lib/relationship/matching";
+import { accountNamePrefilterToken, normalizeAccountName } from "@/lib/relationship/matching";
 import type { EventImportValidRow } from "@/lib/relationship/event-import";
 import { query, transaction } from "@/server/db/neon.server";
 import { createAccountContact } from "@/server/repositories/account-contacts";
@@ -17,17 +17,56 @@ export type EventImportCommitResult = {
   createdMembers: number;
 };
 
-export async function listEventImportAccountCandidates() {
+/**
+ * Account candidates that could match the company names in an import file.
+ *
+ * Both of these reads used to be unfiltered — every account and every active contact, on every
+ * validation call and again on commit — so the work scaled with the size of the tenant rather
+ * than the size of the file.
+ *
+ * The matcher itself stays in `findAccountMatch`: reimplementing `normalizeAccountName` in SQL
+ * would put two normalizers in play, and any disagreement between them would silently change
+ * which company a row deduplicates against. Instead SQL applies a *superset* prefilter — an
+ * account is a candidate when its squashed name contains the longest token of some imported
+ * name — and the exact comparison, including the >1 ambiguity rule, still runs over the
+ * narrowed set. See `accountNamePrefilterToken` for why that cannot drop a real match.
+ *
+ * `order by name, id` is kept: `findAccountMatch` counts matches rather than taking the first,
+ * so order does not decide the outcome, but a stable order keeps the ambiguity list it reports
+ * reproducible between runs.
+ */
+export async function listEventImportAccountCandidates(companyNames: readonly string[]) {
+  const tokens = [
+    ...new Set(
+      companyNames.map((name) => accountNamePrefilterToken(name)).filter((token) => token !== null),
+    ),
+  ];
+
+  if (tokens.length === 0) return [];
+
   return query<Array<{ id: string; name: string; domain: string | null }>[number]>(
     `
       select id, name, domain
       from accounts
-      order by name
+      where lower(regexp_replace(name, '[^A-Za-z0-9]+', '', 'g')) like any (
+        select '%' || token || '%' from unnest($1::text[]) as token
+      )
+      order by name, id
     `,
+    [tokens],
   );
 }
 
-export async function listEventImportAccountContacts() {
+/**
+ * Active contacts of the accounts an import actually matched.
+ *
+ * `findContactMatch` only ever looks at contacts whose `account_id` is one of the matched
+ * accounts, so filtering by those ids is exact — it cannot change any outcome — and it replaces
+ * a read of every active contact in the tenant with one proportional to the file.
+ */
+export async function listEventImportAccountContacts(accountIds: readonly string[]) {
+  if (accountIds.length === 0) return [];
+
   return query<
     Array<{ id: string; account_id: string; name: string; email: string | null }>[number]
   >(
@@ -35,8 +74,10 @@ export async function listEventImportAccountContacts() {
       select id, account_id, name, email
       from account_contacts
       where active = true
-      order by account_id, name
+        and account_id = any($1::uuid[])
+      order by account_id, name, id
     `,
+    [[...accountIds]],
   );
 }
 

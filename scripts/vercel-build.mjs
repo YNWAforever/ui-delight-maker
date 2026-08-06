@@ -124,35 +124,21 @@ try {
 
 module.exports = async (req, res) => {
 
-  // Module-load failure — return a diagnostic JSON error
+  // Module-load failure. The detail goes to the platform log, never to the client: an
+  // error from this bundle quotes SQL, file paths and env-derived values, and src/server/db/
+  // postgres-error.ts exists precisely to keep that class of text out of a browser.
   if (!server || importErr) {
     const err = importErr || new Error('server module returned null');
+    console.error('[handler] module_load failed:', err.stack || err.message);
     res.statusCode = 500;
     res.setHeader('content-type', 'application/json');
-    res.end(JSON.stringify({ phase: 'module_load', error: err.message, stack: err.stack }, null, 2));
+    res.end(JSON.stringify({ error: 'Internal Server Error' }));
     return;
   }
 
   // Build absolute URL from Node.js IncomingMessage
   const host = req.headers['host'] || 'localhost';
   const url = new URL(req.url, 'https://' + host);
-
-  // Lightweight debug probe (no SSR needed)
-  if (url.pathname === '/_debug') {
-    res.statusCode = 200;
-    res.setHeader('content-type', 'application/json');
-    res.end(JSON.stringify({
-      ok: true,
-      requestUrl: req.url,
-      absoluteUrl: url.href,
-      env: {
-        SUPABASE_URL: process.env.SUPABASE_URL || '(missing)',
-        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 'set' : '(missing)',
-        NODE_ENV: process.env.NODE_ENV,
-      },
-    }, null, 2));
-    return;
-  }
 
   // ── Convert IncomingMessage → Web Fetch Request ──────────────────────────
   const headers = new Headers();
@@ -188,7 +174,7 @@ module.exports = async (req, res) => {
     console.error('[handler] SSR error:', err.stack || err.message);
     res.statusCode = 500;
     res.setHeader('content-type', 'application/json');
-    res.end(JSON.stringify({ phase: 'request', error: err.message, stack: err.stack }, null, 2));
+    res.end(JSON.stringify({ error: 'Internal Server Error' }));
     return;
   }
 

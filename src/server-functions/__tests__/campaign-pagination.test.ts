@@ -39,7 +39,11 @@ const data = { status: "active", type: "event", owner: "user-1", page: 2, limit:
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.requireSession.mockResolvedValue({ user: { id: "user-1" } });
+  mocks.requireSession.mockResolvedValue({
+    user: { id: "user-1" },
+    profile: { id: "user-1", role: "sales", status: "active" },
+    session: {},
+  });
   mocks.listCampaignsPage.mockResolvedValue({ items: [], total: 0, page: 2, limit: 25 });
 });
 

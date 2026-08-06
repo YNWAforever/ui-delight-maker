@@ -54,9 +54,17 @@ vi.mock("@/server/repositories/job-sheets", () => ({
 describe("job sheet server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireCapabilityMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
 
-    requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "acct-1" } });
+    requireNeonAuthSessionMock.mockResolvedValue({
+      user: { id: "acct-1" },
+      profile: { id: "acct-1", role: "sales", status: "active" },
+      session: {},
+    });
     getJobSheetRepositoryMock.mockResolvedValue({ jobSheet: { id: "job-1" }, portions: [] });
     listJobSheetsMock.mockResolvedValue([]);
     replaceJobSheetPortionsMock.mockResolvedValue([]);

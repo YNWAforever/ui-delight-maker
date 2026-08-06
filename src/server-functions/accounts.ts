@@ -97,7 +97,7 @@ export const triggerRelationshipIntelligence = createServerFn({ method: "POST" }
       subject_type: "account",
       subject_id: data.accountId,
       input_data: { account_id: data.accountId },
-      created_by: session.user.id,
+      created_by: session.profile.id,
     });
 
     if (!created) {

@@ -39,19 +39,22 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
       "neon/migrations/006_unified_crm_workspace_foundation.sql",
       "neon/migrations/007_admin_team_user_management.sql",
+      "neon/migrations/008_read_path_indexes.sql",
     ]);
   });
 
-  it("runs the quote-to-cash migration after relationship schema hardening", () => {
-    expect(CLIENTOPS_MIGRATION_PATHS).toEqual([
-      "neon/migrations/001_clientops_runtime.sql",
-      "neon/migrations/002_retention_client_360.sql",
-      "neon/migrations/003_client_relationship_360.sql",
-      "neon/migrations/004_clientops_schema_hardening.sql",
-      "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
-      "neon/migrations/006_unified_crm_workspace_foundation.sql",
-      "neon/migrations/007_admin_team_user_management.sql",
-    ]);
+  it("keeps every migration in ascending numeric order", () => {
+    // This is the property the list has to hold as it grows — a later migration may only add
+    // to what an earlier one created. Asserting the order rather than re-listing the files
+    // means adding a migration does not need this test edited to keep passing.
+    const numbers = CLIENTOPS_MIGRATION_PATHS.map((path) => {
+      const match = /migrations\/(\d+)_/.exec(path);
+      expect(match, `${path} is not numbered`).not.toBeNull();
+      return Number(match![1]);
+    });
+
+    expect(numbers).toEqual([...numbers].sort((a, b) => a - b));
+    expect(new Set(numbers).size).toBe(numbers.length);
   });
 
   it("verifies CRM link columns that older existing tables may miss", () => {
@@ -279,139 +282,87 @@ describe("runClientOpsMigrations", () => {
 });
 
 describe("applyClientOpsSchemaMigrations", () => {
+  // Derived from CLIENTOPS_MIGRATION_PATHS rather than a hand-written list of "-- 001" strings:
+  // the counts here are an implementation detail of how many migrations exist, and hardcoding
+  // them meant every new migration broke four unrelated assertions.
+  const migrationCount = CLIENTOPS_MIGRATION_PATHS.length;
+  const migrationSqls = CLIENTOPS_MIGRATION_PATHS.map((_, index) => `-- ${index + 1}`);
+  const okRows = () => ({ rows: [] });
+
+  function dbApplying(...verificationResults: Array<{ rows: unknown[] }>) {
+    const query = vi.fn();
+    for (let index = 0; index < migrationCount; index += 1) query.mockResolvedValueOnce(okRows());
+    for (const result of verificationResults) query.mockResolvedValueOnce(result);
+    return { query };
+  }
+
+  const allTables = () => ({
+    rows: CLIENTOPS_REQUIRED_TABLES.map((table_name) => ({ table_name })),
+  });
+  const allColumns = () => ({
+    rows: CLIENTOPS_REQUIRED_COLUMNS.map((column) => {
+      const [table_name, column_name] = column.split(".");
+      return { table_name, column_name };
+    }),
+  });
+
   it("fails before touching the database when a migration SQL batch is incomplete", async () => {
-    const db = {
-      query: vi.fn(),
-    };
+    const db = { query: vi.fn() };
 
     await expect(
-      applyClientOpsSchemaMigrations({
-        db,
-        migrationSqls: ["-- 001", "-- 002", "-- 003", "-- 004", "-- 005", "-- 006"],
-      }),
-    ).rejects.toThrow("ClientOps schema migration expected 7 SQL files, received 6");
+      applyClientOpsSchemaMigrations({ db, migrationSqls: migrationSqls.slice(0, -1) }),
+    ).rejects.toThrow(
+      `ClientOps schema migration expected ${migrationCount} SQL files, received ${migrationCount - 1}`,
+    );
 
     expect(db.query).not.toHaveBeenCalled();
   });
 
   it("applies all migration SQL in order and verifies required tables and columns", async () => {
-    const db = {
-      query: vi
-        .fn()
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({
-          rows: CLIENTOPS_REQUIRED_TABLES.map((table_name) => ({ table_name })),
-        })
-        .mockResolvedValueOnce({
-          rows: CLIENTOPS_REQUIRED_COLUMNS.map((column) => {
-            const [table_name, column_name] = column.split(".");
-            return { table_name, column_name };
-          }),
-        }),
-    };
+    const db = dbApplying(allTables(), allColumns());
 
-    await applyClientOpsSchemaMigrations({
-      db,
-      migrationSqls: ["-- 001", "-- 002", "-- 003", "-- 004", "-- 005", "-- 006", "-- 007"],
+    await applyClientOpsSchemaMigrations({ db, migrationSqls });
+
+    migrationSqls.forEach((sql, index) => {
+      expect(db.query).toHaveBeenNthCalledWith(index + 1, sql);
     });
-
-    expect(db.query).toHaveBeenNthCalledWith(1, "-- 001");
-    expect(db.query).toHaveBeenNthCalledWith(2, "-- 002");
-    expect(db.query).toHaveBeenNthCalledWith(3, "-- 003");
-    expect(db.query).toHaveBeenNthCalledWith(4, "-- 004");
-    expect(db.query).toHaveBeenNthCalledWith(5, "-- 005");
-    expect(db.query).toHaveBeenNthCalledWith(6, "-- 006");
-    expect(db.query).toHaveBeenNthCalledWith(7, "-- 007");
     expect(db.query).toHaveBeenNthCalledWith(
-      8,
+      migrationCount + 1,
       expect.stringContaining("information_schema.tables"),
       [CLIENTOPS_REQUIRED_TABLES],
     );
     expect(db.query).toHaveBeenNthCalledWith(
-      9,
+      migrationCount + 2,
       expect.stringContaining("information_schema.columns"),
       [CLIENTOPS_REQUIRED_COLUMNS],
     );
   });
 
   it("fails loudly when any required table is missing", async () => {
-    const db = {
-      query: vi
-        .fn()
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({
-          rows: CLIENTOPS_REQUIRED_TABLES.filter((table) => table !== "campaigns").map(
-            (table_name) => ({ table_name }),
-          ),
-        }),
-    };
+    const db = dbApplying({
+      rows: CLIENTOPS_REQUIRED_TABLES.filter((table) => table !== "campaigns").map(
+        (table_name) => ({ table_name }),
+      ),
+    });
 
-    await expect(
-      applyClientOpsSchemaMigrations({
-        db,
-        migrationSqls: [
-          "select 1;",
-          "select 2;",
-          "select 3;",
-          "select 4;",
-          "select 5;",
-          "select 6;",
-          "select 7;",
-        ],
-      }),
-    ).rejects.toThrow("ClientOps schema migration missing required tables: campaigns");
+    await expect(applyClientOpsSchemaMigrations({ db, migrationSqls })).rejects.toThrow(
+      "ClientOps schema migration missing required tables: campaigns",
+    );
   });
 
   it("fails loudly when any required column is missing", async () => {
-    const db = {
-      query: vi
-        .fn()
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({
-          rows: CLIENTOPS_REQUIRED_TABLES.map((table_name) => ({ table_name })),
-        })
-        .mockResolvedValueOnce({
-          rows: CLIENTOPS_REQUIRED_COLUMNS.filter((column) => column !== "tasks.account_id").map(
-            (column) => {
-              const [table_name, column_name] = column.split(".");
-              return { table_name, column_name };
-            },
-          ),
-        }),
-    };
+    const db = dbApplying(allTables(), {
+      rows: CLIENTOPS_REQUIRED_COLUMNS.filter((column) => column !== "tasks.account_id").map(
+        (column) => {
+          const [table_name, column_name] = column.split(".");
+          return { table_name, column_name };
+        },
+      ),
+    });
 
-    await expect(
-      applyClientOpsSchemaMigrations({
-        db,
-        migrationSqls: [
-          "select 1;",
-          "select 2;",
-          "select 3;",
-          "select 4;",
-          "select 5;",
-          "select 6;",
-          "select 7;",
-        ],
-      }),
-    ).rejects.toThrow("ClientOps schema migration missing required columns: tasks.account_id");
+    await expect(applyClientOpsSchemaMigrations({ db, migrationSqls })).rejects.toThrow(
+      "ClientOps schema migration missing required columns: tasks.account_id",
+    );
   });
 });
 

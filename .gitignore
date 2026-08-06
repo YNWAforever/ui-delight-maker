@@ -20,6 +20,13 @@ dist-ssr
 *.local
 
 # Environment variables
+# `.env` is listed explicitly: Bun and Vite both load it by default, so it is the file a
+# developer following either project's convention will put a real DATABASE_URL into, and
+# `.env*.local` does not match it.
+.env
+.env.*
+!.env.example
+!.env.local.example
 .env.local
 .env*.local
 

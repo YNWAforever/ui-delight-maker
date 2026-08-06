@@ -18,6 +18,7 @@ import { query } from "@/server/db/neon.server";
  * drifts from the schema fails a test rather than an authorization check in production.
  */
 type SupabaseOwnedResourceType =
+  | "supabase_account"
   | "automation_playbook"
   | "automation_run"
   | "customer_success_profile"
@@ -63,6 +64,18 @@ export const NEON_OWNED_RESOURCE_TYPES = Object.keys(
 ) as NeonOwnedResourceType[];
 
 const SUPABASE_OWNED_RESOURCE_TYPES = new Set<string>([
+  /**
+   * Accounts as they exist in the *Supabase* project.
+   *
+   * `account` below resolves against Neon's `accounts`, which is right for every Neon-backed
+   * caller. The quarantined Supabase modules hold ids from the other database — the two carry
+   * different id spaces for the same entity, which is precisely what the Phase 0 measurement
+   * exists to quantify — so resolving one against the other found no row and reported the
+   * resource as unowned. That read as "in scope" for a manager while the policy treated an
+   * absent owner as no constraint, and as "outside scope" once it stopped doing so. Neither is
+   * an answer about the account; this type asks the database that actually holds it.
+   */
+  "supabase_account",
   "automation_playbook",
   "automation_run",
   "customer_success_profile",
@@ -108,6 +121,10 @@ async function supabaseOwnerProfileId(
   resourceId: string,
 ): Promise<string | null> {
   const supabase = createSupabaseServerClient();
+
+  if (resourceType === "supabase_account") {
+    return await supabaseAccountOwner(supabase, resourceId);
+  }
 
   if (resourceType === "automation_playbook") {
     const { data, error } = await supabase

@@ -83,6 +83,7 @@ const { state, mocks, createServerFnChain } = vi.hoisted(() => {
       listAdminUsers: vi.fn(),
       getAdminOverview: vi.fn(),
       getAdminUser: vi.fn(),
+      getProfileRole: vi.fn(),
       updateAdminProfile: vi.fn(),
       changeUserRole: vi.fn(),
       setUserStatus: vi.fn(),
@@ -141,6 +142,7 @@ vi.mock("@/server/repositories/admin-users", () => ({
   listAdminUsers: mocks.listAdminUsers,
   getAdminOverview: mocks.getAdminOverview,
   getAdminUser: mocks.getAdminUser,
+  getProfileRole: mocks.getProfileRole,
   updateAdminProfile: mocks.updateAdminProfile,
   changeUserRole: mocks.changeUserRole,
   setUserStatus: mocks.setUserStatus,
@@ -216,6 +218,9 @@ beforeEach(() => {
 
   vi.clearAllMocks();
   mocks.requireAnyCapability.mockResolvedValue(actorSession());
+  mocks.getProfileRole.mockImplementation(
+    async (profileId: string) => state.profiles.get(profileId)?.role,
+  );
   mocks.requireCapability.mockImplementation(
     async (
       capability: string,

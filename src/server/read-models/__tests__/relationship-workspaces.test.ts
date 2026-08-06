@@ -73,7 +73,11 @@ describe("relationship workspace read models", () => {
     requireCapabilityMock.mockResolvedValue(undefined);
     requireCapabilityChecksMock.mockResolvedValue(undefined);
     requireCapabilitySetMock.mockResolvedValue({});
-    requireNeonAuthSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireNeonAuthSessionMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
 
     queryOneMock.mockImplementation((sql: unknown) => {
       const text = sqlText(sql);

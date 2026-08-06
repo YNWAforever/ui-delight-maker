@@ -169,7 +169,14 @@ describe("accounts index read model", () => {
   });
 
   it("authorizes once before reading the account page and uses the authenticated profile", async () => {
-    const authorization = deferred<{ user: { id: string } }>();
+    // Shaped like the real AppSession: `profile.id` is the actor id the read model scopes by,
+    // and `user.id` is the upstream Neon Auth identity. Modelling only `user` here is what let
+    // the two drift apart unnoticed.
+    const authorization = deferred<{
+      user: { id: string };
+      profile: { id: string; role: string; status: string };
+      session: Record<string, never>;
+    }>();
     requireCapabilityMock.mockReturnValueOnce(authorization.promise);
     listAccountsPageMock.mockResolvedValue({ items: [], total: 0, page: 1, limit: 25 });
     listWorkspaceViewsMock.mockResolvedValue([]);
@@ -182,7 +189,11 @@ describe("accounts index read model", () => {
     expect(requireCapabilityMock).toHaveBeenCalledWith("accounts.view");
     expect(listAccountsPageMock).not.toHaveBeenCalled();
 
-    authorization.resolve({ user: { id: "profile-7" } });
+    authorization.resolve({
+      user: { id: "profile-7" },
+      profile: { id: "profile-7", role: "sales", status: "active" },
+      session: {},
+    });
 
     await expect(resultPromise).resolves.toMatchObject({ accounts: [], accountCounts: {} });
     expect(requireCapabilityMock).toHaveBeenCalledTimes(1);

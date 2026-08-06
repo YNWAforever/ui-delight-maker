@@ -52,8 +52,16 @@ const immutableSnapshot = { id: "quote-1", number: "Q-001", line_items: [] };
 describe("quote workspace read models", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireCapabilityChecksMock.mockResolvedValue({ user: { id: "user-1" } });
-    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireCapabilityChecksMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
+    requireCapabilityMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
 
     queryOneMock.mockImplementation((sql: unknown, values?: unknown[]) => {
       const text = sqlText(sql);

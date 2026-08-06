@@ -6,6 +6,7 @@ const {
   listAdminUsersMock,
   getAdminOverviewMock,
   getAdminUserMock,
+  getProfileRoleMock,
   updateAdminProfileMock,
   changeUserRoleMock,
   getReassignmentInventoryMock,
@@ -29,6 +30,7 @@ const {
     listAdminUsersMock: vi.fn(),
     getAdminOverviewMock: vi.fn(),
     getAdminUserMock: vi.fn(),
+    getProfileRoleMock: vi.fn(),
     updateAdminProfileMock: vi.fn(),
     changeUserRoleMock: vi.fn(),
     getReassignmentInventoryMock: vi.fn(),
@@ -52,6 +54,7 @@ vi.mock("@/server/repositories/admin-users", () => ({
   listAdminUsers: listAdminUsersMock,
   getAdminOverview: getAdminOverviewMock,
   getAdminUser: getAdminUserMock,
+  getProfileRole: getProfileRoleMock,
   updateAdminProfile: updateAdminProfileMock,
   changeUserRole: changeUserRoleMock,
   setUserStatus: setUserStatusMock,
@@ -98,6 +101,7 @@ describe("admin user server functions", () => {
     listAdminUsersMock.mockResolvedValue({ items: [], total: 0, page: 1, limit: 50 });
     getAdminOverviewMock.mockResolvedValue({ activeUsers: 3 });
     getAdminUserMock.mockResolvedValue({ id: "profile-1" });
+    getProfileRoleMock.mockResolvedValue("sales");
     updateAdminProfileMock.mockResolvedValue({ id: "profile-1" });
     changeUserRoleMock.mockResolvedValue({ id: "profile-1", role: "sales" });
     getReassignmentInventoryMock.mockResolvedValue({
@@ -145,6 +149,7 @@ describe("admin user server functions", () => {
 
     expect(requireCapabilityMock).toHaveBeenCalledWith("users.manage", {
       profileId: "profile-1",
+      role: "sales",
     });
     expect(updateAdminProfileMock).toHaveBeenCalledWith(
       "profile-1",
@@ -179,6 +184,7 @@ describe("admin user server functions", () => {
     await suspendAdminUserFn({ data: { profileId: "profile-1", reason: "Security leave" } });
     expect(requireCapabilityMock).toHaveBeenCalledWith("users.suspend", {
       profileId: "profile-1",
+      role: "sales",
     });
     expect(setUserStatusMock).toHaveBeenCalledWith(
       "profile-1",
@@ -190,6 +196,7 @@ describe("admin user server functions", () => {
     await reactivateAdminUserFn({ data: { profileId: "profile-1", reason: "Return to work" } });
     expect(requireCapabilityMock).toHaveBeenCalledWith("users.manage", {
       profileId: "profile-1",
+      role: "sales",
     });
     expect(setUserStatusMock).toHaveBeenCalledWith(
       "profile-1",

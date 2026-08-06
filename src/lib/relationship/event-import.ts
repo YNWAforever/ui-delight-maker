@@ -146,6 +146,27 @@ export function parseEventAttendeeCsv(csv: string): EventImportRow[] {
   });
 }
 
+/**
+ * The accounts these rows match, so a caller can fetch just those accounts' contacts.
+ *
+ * Contact matching only ever considers contacts of a matched account, so this lets the loader
+ * read contacts proportional to the file instead of every active contact in the tenant. It runs
+ * the same `findAccountMatch` the validation pass will run, over the same candidates — matching
+ * is pure, so doing it twice costs a little CPU and cannot disagree with itself.
+ */
+export function resolveMatchedAccountIds(
+  input: Pick<EventImportValidationInput, "rows" | "accounts">,
+): string[] {
+  const matched = new Set<string>();
+
+  for (const row of input.rows) {
+    const match = findAccountMatch({ companyName: row.company_name, accounts: input.accounts });
+    if (match.kind === "matched") matched.add(match.accountId);
+  }
+
+  return [...matched];
+}
+
 export function validateEventImportRows(
   input: EventImportValidationInput,
 ): EventImportValidationResult {

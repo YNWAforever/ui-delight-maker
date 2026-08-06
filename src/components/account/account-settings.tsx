@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
+import { formatDateTime } from "@/lib/format";
 import type { Profile } from "@/lib/types";
 import type { AccessRequest, WorkDelegation } from "@/server/repositories/admin-access";
 import type { UserWorkloadSummary } from "@/server/repositories/admin-users";
@@ -67,10 +68,13 @@ const tabs: Array<{ id: AccountTab; label: string }> = [
   { id: "access", label: "Access" },
 ];
 
-function formatDate(value: string | null | undefined) {
+// Deliberately the shared formatter, not `toLocaleString()`. src/lib/format.ts pins en-GB and
+// UTC so the server and the first client render produce identical markup; a locale-and-zone
+// dependent string here rendered "05/08/2026, 23:30" on the server and "8/6/2026, 7:30:00 AM"
+// in an Asia/Hong_Kong browser — a hydration mismatch, and a different date for the same row.
+function formatDelegationDate(value: string | null | undefined) {
   if (!value) return "Not set";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+  return Number.isNaN(new Date(value).getTime()) ? value : formatDateTime(value);
 }
 
 export function AccountSettings({
@@ -489,7 +493,8 @@ export function AccountSettings({
                         {delegation.delegatorProfileId} to {delegation.delegateProfileId}
                       </p>
                       <p className="text-muted-foreground">
-                        {formatDate(delegation.startsAt)} to {formatDate(delegation.endsAt)}
+                        {formatDelegationDate(delegation.startsAt)} to{" "}
+                        {formatDelegationDate(delegation.endsAt)}
                       </p>
                     </div>
                     {delegation.delegatorProfileId === profile.id &&

@@ -15,6 +15,7 @@ import { formatCompactHKD } from "@/lib/format";
 import { getBusinessDateKey } from "@/lib/business-date";
 import { filterPipelineLeads, getPipelineSummary } from "@/lib/pipeline";
 import { buildRevenueActions } from "@/lib/sales-workspace";
+import { sumAmounts } from "@/lib/money";
 import {
   pipelineFiltersFromSearch,
   pipelineSearchFromFilters,
@@ -104,9 +105,10 @@ function PipelineCommandCenter() {
     today,
   });
 
-  const quoteValue = quotes
-    .filter((quote) => ["pending_approval", "sent", "viewed"].includes(quote.status))
-    .reduce((sum, quote) => sum + (quote.total_value ?? 0), 0);
+  const quoteValue = sumAmounts(
+    quotes.filter((quote) => ["pending_approval", "sent", "viewed"].includes(quote.status)),
+    (quote) => quote.total_value,
+  );
 
   const confirmMove = async () => {
     if (!moveDialog) return;

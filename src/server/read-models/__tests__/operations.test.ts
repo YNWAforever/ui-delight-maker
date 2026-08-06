@@ -42,8 +42,16 @@ describe("operations read models", () => {
     vi.clearAllMocks();
     queryMock.mockResolvedValue([]);
     queryOneMock.mockResolvedValue(null);
-    requireCapabilityChecksMock.mockResolvedValue({ user: { id: "user-1" } });
-    requireCapabilityMock.mockResolvedValue({ user: { id: "user-1" } });
+    requireCapabilityChecksMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
+    requireCapabilityMock.mockResolvedValue({
+      user: { id: "user-1" },
+      profile: { id: "user-1", role: "sales", status: "active" },
+      session: {},
+    });
     requireCapabilitySetMock.mockResolvedValue({ "quotes.view": true, "accounts.view": true });
   });
 

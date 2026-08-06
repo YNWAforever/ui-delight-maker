@@ -36,10 +36,34 @@ export async function getAccountTimelineData(accountId: string): Promise<Account
       [accountId],
     ),
     query<ActivityLog>(
+      /*
+       * Two indexed branches unioned, rather than one `where a = $1 or b = $1`.
+       *
+       * activity_logs is append-only and unbounded. An OR across a plain column and a JSONB
+       * expression cannot be served by a single index, so the previous form seq-scanned the
+       * whole table on every account page load. Splitting it lets each branch use its own index
+       * (see 008_read_path_indexes.sql) and take its own `limit` before the merge — the outer
+       * limit then trims the combined set. `union` (not `union all`) drops the duplicate when a
+       * row matches both branches, which the OR form also did.
+       */
       `
-          select *
-          from activity_logs
-          where object_id = $1 or (diff_data->>'account_id') = $1::text
+          select * from (
+            (
+              select *
+              from activity_logs
+              where object_id = $1
+              order by created_at desc
+              limit 100
+            )
+            union
+            (
+              select *
+              from activity_logs
+              where (diff_data->>'account_id') = $1::text
+              order by created_at desc
+              limit 100
+            )
+          ) as account_activity
           order by created_at desc
           limit 100
         `,

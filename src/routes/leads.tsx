@@ -51,6 +51,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useIsExactPath } from "@/lib/routing-utils";
 import type { Lead } from "@/lib/types";
 import { crmQueryKeys } from "@/lib/query-keys";
+import { normalizeQualificationData } from "@/lib/workflows/qualification";
 import { routeQueryOptions } from "@/lib/route-query";
 import { getLeadsPage, createLead, updateLead } from "@/server-functions/leads";
 
@@ -128,6 +129,35 @@ function LeadsPage() {
   const [sort, setSort] = useState<"recent" | "score">("recent");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [newOpen, setNewOpen] = useState(false);
+
+  /**
+   * Runs a write against every selected lead, then refreshes from the server.
+   *
+   * "Mark qualified" and "Mark lost" used to set local component state and toast success
+   * without calling anything — the rows reverted on the next router refresh and the
+   * database was never touched. Everything bulk now goes through one path that actually
+   * writes, reports a failure instead of swallowing it, and only clears the selection when the
+   * write succeeded, so a failed batch can be retried.
+   */
+  const applyToSelected = async (
+    write: (id: string) => Promise<unknown>,
+    describe: (count: number) => string,
+  ) => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+
+    try {
+      await Promise.all(ids.map(write));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Bulk update failed");
+      return;
+    }
+
+    setSelected(new Set());
+    toast.success(describe(ids.length));
+    await queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.lists() });
+    await router.invalidate({ filter: (match) => match.routeId === "/leads" });
+  };
 
   const handleCreateLead = async (formData: {
     company_name: string;
@@ -333,25 +363,18 @@ function LeadsPage() {
         {selected.size > 0 && (
           <LeadsBulkBar
             count={selected.size}
-            onAssign={async (uid) => {
-              await Promise.all(
-                Array.from(selected).map((id) =>
-                  updateLead({ data: { id, updates: { assigned_to: uid } } }),
-                ),
-              );
-              setSelected(new Set());
-              await queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.lists() });
-              await router.invalidate({ filter: (match) => match.routeId === "/leads" });
-            }}
-            onMarkStatus={(s) => {
-              setRows((prev) => prev.map((l) => (selected.has(l.id) ? { ...l, status: s } : l)));
-              toast.success(`Marked ${selected.size} lead${selected.size > 1 ? "s" : ""} as ${s}`);
-              setSelected(new Set());
-            }}
-            onConvert={() => {
-              toast.success(`Created ${selected.size} draft quote${selected.size > 1 ? "s" : ""}`);
-              setSelected(new Set());
-            }}
+            onAssign={(uid) =>
+              applyToSelected(
+                (id) => updateLead({ data: { id, updates: { assigned_to: uid } } }),
+                (count) => `Reassigned ${count} lead${count > 1 ? "s" : ""}`,
+              )
+            }
+            onMarkStatus={(status) =>
+              applyToSelected(
+                (id) => updateLead({ data: { id, updates: { status } } }),
+                (count) => `Marked ${count} lead${count > 1 ? "s" : ""} as ${status}`,
+              )
+            }
             onClear={() => setSelected(new Set())}
           />
         )}
@@ -430,7 +453,9 @@ function LeadsPage() {
                       {lead.qualification_data ? (
                         <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">
                           <Sparkles className="h-3 w-3" />
-                          {lead.qualification_data.next_action}
+                          {/* Through the same normalizer the detail page uses, so a legacy row
+                              cannot show one next action here and another there. */}
+                          {normalizeQualificationData(lead.qualification_data).next_action}
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground">
@@ -611,13 +636,11 @@ function LeadsBulkBar({
   count,
   onAssign,
   onMarkStatus,
-  onConvert,
   onClear,
 }: {
   count: number;
-  onAssign: (uid: string) => void;
-  onMarkStatus: (s: Lead["status"]) => void;
-  onConvert: () => void;
+  onAssign: (uid: string) => Promise<void>;
+  onMarkStatus: (s: Lead["status"]) => Promise<void>;
   onClear: () => void;
 }) {
   const [assignOpen, setAssignOpen] = useState(false);
@@ -625,7 +648,7 @@ function LeadsBulkBar({
   const [confirm, setConfirm] = useState<null | {
     title: string;
     description: string;
-    action: () => void;
+    action: () => Promise<void>;
     label: string;
   }>(null);
 
@@ -663,20 +686,6 @@ function LeadsBulkBar({
       >
         Mark lost
       </Button>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() =>
-          setConfirm({
-            title: `Create ${count} draft quote${count > 1 ? "s" : ""}?`,
-            description: "Each selected lead becomes a new draft quote, ready to edit.",
-            label: "Create drafts",
-            action: onConvert,
-          })
-        }
-      >
-        Convert to quote
-      </Button>
       <Button size="sm" variant="ghost" className="ml-auto" onClick={onClear}>
         Clear
       </Button>
@@ -710,7 +719,7 @@ function LeadsBulkBar({
             </Button>
             <Button
               onClick={() => {
-                onAssign(assignee);
+                void onAssign(assignee);
                 setAssignOpen(false);
               }}
             >
@@ -730,7 +739,7 @@ function LeadsBulkBar({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                confirm?.action();
+                void confirm?.action();
                 setConfirm(null);
               }}
             >
