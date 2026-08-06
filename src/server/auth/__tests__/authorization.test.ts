@@ -223,6 +223,74 @@ describe("admin authorization orchestration", () => {
     expect(select).toHaveBeenCalledWith("account_id, owner");
     expect(select).toHaveBeenCalledWith("account_owner");
   });
+  /**
+   * The quarantined Supabase modules hold account ids from the other database, and the two
+   * carry different id spaces for the same entity. Resolving one against the other found no row
+   * and reported the account as unowned — which read as "in scope" while an absent owner meant
+   * no constraint, and as "outside scope" once that stopped being true. Neither was an answer
+   * about the account.
+   */
+  describe("account ownership resolves from the database that holds the account", () => {
+    function supabaseAccountOwnedBy(owner: string | null) {
+      const maybeSingle = vi.fn().mockResolvedValue({
+        data: owner === null ? null : { account_owner: owner },
+        error: null,
+      });
+      const eq = vi.fn(() => ({ maybeSingle }));
+      const select = vi.fn(() => ({ eq }));
+      const from = vi.fn(() => ({ select }));
+      mocks.createSupabaseServerClient.mockReturnValue({ from });
+      return { from, select };
+    }
+
+    it("reads a supabase_account from Supabase, never from Neon", async () => {
+      installDatabaseRows({ reports: ["report-1"] });
+      const { from } = supabaseAccountOwnedBy("report-1");
+
+      await expect(
+        requireCapability("engagements.update", {
+          resourceType: "supabase_account",
+          resourceId: "supabase-account-1",
+        }),
+      ).resolves.toMatchObject({ profile: { id: "actor-1" } });
+
+      expect(from).toHaveBeenCalledWith("accounts");
+      // The Neon accounts table is never consulted for this id.
+      const neonAccountReads = mocks.query.mock.calls.filter(([sql]) =>
+        String(sql).includes("from accounts"),
+      );
+      expect(neonAccountReads).toHaveLength(0);
+    });
+
+    it("denies a supabase_account owned outside the manager's reports", async () => {
+      installDatabaseRows({ reports: ["report-1"] });
+      supabaseAccountOwnedBy("someone-else");
+
+      await expect(
+        requireCapability("engagements.update", {
+          resourceType: "supabase_account",
+          resourceId: "supabase-account-1",
+        }),
+      ).rejects.toMatchObject({ code: "OUTSIDE_SCOPE" });
+    });
+
+    it("keeps reading a plain account from Neon", async () => {
+      installDatabaseRows({
+        reports: ["report-1"],
+        resourceOwners: { "neon-account-1": "report-1" },
+      });
+
+      await expect(
+        requireCapability("accounts.update", {
+          resourceType: "account",
+          resourceId: "neon-account-1",
+        }),
+      ).resolves.toMatchObject({ profile: { id: "actor-1" } });
+
+      expect(mocks.createSupabaseServerClient).not.toHaveBeenCalled();
+    });
+  });
+
   it("maps outside-scope and capability denials to stable AdminErrors", async () => {
     installDatabaseRows({ departments: ["department-managed"] });
     await expect(

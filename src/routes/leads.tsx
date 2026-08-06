@@ -51,6 +51,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useIsExactPath } from "@/lib/routing-utils";
 import type { Lead } from "@/lib/types";
 import { crmQueryKeys } from "@/lib/query-keys";
+import { normalizeQualificationData } from "@/lib/workflows/qualification";
 import { routeQueryOptions } from "@/lib/route-query";
 import { getLeadsPage, createLead, updateLead } from "@/server-functions/leads";
 
@@ -452,7 +453,9 @@ function LeadsPage() {
                       {lead.qualification_data ? (
                         <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">
                           <Sparkles className="h-3 w-3" />
-                          {lead.qualification_data.next_action}
+                          {/* Through the same normalizer the detail page uses, so a legacy row
+                              cannot show one next action here and another there. */}
+                          {normalizeQualificationData(lead.qualification_data).next_action}
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground">

@@ -119,7 +119,7 @@ export const createAutomationRun = createServerFn({ method: "POST" })
       data.playbook_id
         ? { resourceType: "automation_playbook", resourceId: data.playbook_id }
         : data.account_id
-          ? { resourceType: "account", resourceId: data.account_id }
+          ? { resourceType: "supabase_account", resourceId: data.account_id }
           : {},
     );
     const supabase = createSupabaseServerClient();

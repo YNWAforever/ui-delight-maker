@@ -54,7 +54,7 @@ export const getEngagementEvents = createServerFn({ method: "GET" })
     await requireCapability(
       "engagements.view",
       data.account_id
-        ? { resourceType: "account", resourceId: data.account_id }
+        ? { resourceType: "supabase_account", resourceId: data.account_id }
         : data.contact_id
           ? { resourceType: "contact", resourceId: data.contact_id }
           : {},
@@ -84,7 +84,7 @@ export const createEngagementEvent = createServerFn({ method: "POST" })
     await requireCapability(
       "engagements.create",
       data.account_id
-        ? { resourceType: "account", resourceId: data.account_id }
+        ? { resourceType: "supabase_account", resourceId: data.account_id }
         : data.contact_id
           ? { resourceType: "contact", resourceId: data.contact_id }
           : {},
@@ -113,7 +113,7 @@ export const upsertChannelIdentity = createServerFn({ method: "POST" })
     await requireCapability(
       "engagements.update",
       data.account_id
-        ? { resourceType: "account", resourceId: data.account_id }
+        ? { resourceType: "supabase_account", resourceId: data.account_id }
         : data.contact_id
           ? { resourceType: "contact", resourceId: data.contact_id }
           : {},

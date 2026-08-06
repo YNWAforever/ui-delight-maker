@@ -1,4 +1,3 @@
-import type { QualificationData } from "@/lib/types";
 import type {
   QualificationWritebackPayload,
   RelationshipIntelligenceWritebackPayload,
@@ -6,6 +5,7 @@ import type {
   ReplyDraftWritebackPayload,
   ScoreRenewalRiskWritebackPayload,
 } from "@/lib/workflows/types";
+import { normalizeQualificationData } from "@/lib/workflows/qualification";
 import { transaction } from "@/server/db/neon.server";
 import { createActivityLog } from "@/server/repositories/activity-logs";
 import { getAgentRunForUpdate, updateAgentRunResult } from "@/server/repositories/agent-runs";
@@ -98,11 +98,16 @@ export async function writeQualificationResult(payload: QualificationWritebackPa
       return;
     }
 
+    // Normalized before it is stored, not cast. The agent returns free-form model output, and
+    // every reader of this column — the lead Insights tab most of all — assumes the declared
+    // shape is actually there.
+    const qualificationData = normalizeQualificationData(payload.qualification_data);
+
     await updateLead(
       payload.lead_id,
       {
         lead_score: payload.lead_score,
-        qualification_data: payload.qualification_data as QualificationData,
+        qualification_data: qualificationData,
       },
       db,
     );
@@ -111,13 +116,10 @@ export async function writeQualificationResult(payload: QualificationWritebackPa
       payload.agent_run_id,
       {
         status: "completed",
-        output_data: payload.qualification_data,
+        output_data: qualificationData,
         output_summary: payload.output_summary,
         confidence_score: payload.confidence_score,
-        human_review_required: getHumanReviewRequired(
-          payload.qualification_data,
-          payload.confidence_score,
-        ),
+        human_review_required: getHumanReviewRequired(qualificationData, payload.confidence_score),
         duration_ms: payload.duration_ms ?? null,
         tokens_used: payload.tokens_used ?? null,
         model_used: payload.model_used ?? null,
@@ -135,7 +137,7 @@ export async function writeQualificationResult(payload: QualificationWritebackPa
         object_id: payload.lead_id,
         diff_data: {
           lead_score: payload.lead_score,
-          qualification_data: payload.qualification_data,
+          qualification_data: qualificationData,
         },
       },
       db,

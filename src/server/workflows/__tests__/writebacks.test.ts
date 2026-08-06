@@ -451,6 +451,45 @@ describe("workflow writebacks", () => {
   // n8n supplies the run id and the subject id as two independent fields. Only the
   // relationship-intelligence writeback used to check that they agree, so a mis-wired workflow
   // could write one lead's qualification onto another lead's record.
+  // The workflow relays whatever the model returned, so what lands in the column has to be
+  // coerced here rather than trusted — the lead Insights tab reads `.service_interest.map(...)`
+  // off it directly.
+  it("stores a renderable qualification even when the model returned an unrelated object", async () => {
+    mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      id: "run-1",
+      status: "running",
+      output_data: null,
+      subject_type: "lead",
+      subject_id: "lead-1",
+    });
+
+    await writeQualificationResult({
+      lead_id: "lead-1",
+      agent_run_id: "run-1",
+      qualification_data: { notes: "looks good" },
+      lead_score: 60,
+      output_summary: "Model went off-script",
+      confidence_score: 0.9,
+    });
+
+    const [, updates] = mocks.updateLeadMock.mock.calls[0]!;
+    expect(updates.qualification_data).toMatchObject({
+      service_interest: [],
+      budget_range: "unknown",
+      next_action: "Request more info",
+      human_review_required: true,
+    });
+    expect(Number.isFinite(updates.qualification_data.confidence)).toBe(true);
+
+    // The agent run records the same normalized object, not the raw payload, so the two cannot
+    // disagree about what the agent decided.
+    expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({ output_data: updates.qualification_data }),
+      mocks.fakeDb,
+    );
+  });
+
   it("rejects a qualification writeback whose run belongs to a different lead", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
       id: "run-1",

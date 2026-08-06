@@ -67,7 +67,7 @@ export const getCustomerSuccessProfile = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { accountId: string })
   .handler(async ({ data }) => {
     await requireCapability("engagements.view", {
-      resourceType: "account",
+      resourceType: "supabase_account",
       resourceId: data.accountId,
     });
     const supabase = createSupabaseServerClient();
@@ -112,7 +112,7 @@ export const upsertCustomerSuccessProfile = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as UpsertCustomerSuccessProfileInput)
   .handler(async ({ data }) => {
     await requireCapability("engagements.update", {
-      resourceType: "account",
+      resourceType: "supabase_account",
       resourceId: data.account_id,
     });
     const supabase = createSupabaseServerClient();
@@ -201,7 +201,7 @@ export const createSuccessTouchpoint = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateSuccessTouchpointInput)
   .handler(async ({ data }) => {
     await requireCapability("engagements.create", {
-      resourceType: "account",
+      resourceType: "supabase_account",
       resourceId: data.account_id,
     });
     const supabase = createSupabaseServerClient();
