@@ -22,10 +22,7 @@ class CompanyWorkspaceSectionQueryError extends Error {
   }
 }
 
-export function companyWorkspaceSectionOptions(
-  accountId: string,
-  section: WorkspaceSection,
-) {
+export function companyWorkspaceSectionOptions(accountId: string, section: WorkspaceSection) {
   return {
     queryKey: companyWorkspaceKeys.section(accountId, section),
     queryFn: async () => {

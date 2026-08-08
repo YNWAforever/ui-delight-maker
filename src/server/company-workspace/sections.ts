@@ -41,16 +41,8 @@ function createSectionMeta(correlationId: string, startedAt: number): WorkspaceS
   };
 }
 
-function logSectionReadFailure(
-  correlationId: string,
-  section: WorkspaceSection,
-  cause: unknown,
-) {
-  console.error(
-    "[company-workspace] section read failed",
-    { correlationId, section },
-    cause,
-  );
+function logSectionReadFailure(correlationId: string, section: WorkspaceSection, cause: unknown) {
+  console.error("[company-workspace] section read failed", { correlationId, section }, cause);
 }
 
 async function loadSettledProjection<Values extends readonly unknown[], Projection>(

@@ -7,7 +7,7 @@ const { loadCompanyWorkspaceMock, createServerFnChain } = vi.hoisted(() => {
       validate = validator;
       return createServerFnChain;
     },
-    handler<T>(handler: ({ data }: { data: any }) => T) {
+    handler<T>(handler: ({ data }: { data: unknown }) => T) {
       return async ({ data }: { data: unknown }) => handler({ data: validate(data) });
     },
   };
@@ -64,7 +64,7 @@ describe("company workspace server functions", () => {
     expect(loadCompanyWorkspaceMock).not.toHaveBeenCalled();
   });
 
-  it.each([null, "fresh", "stale-while-revalidate"]) (
+  it.each([null, "fresh", "stale-while-revalidate"])(
     "rejects invalid freshness values before entering the read model",
     async (freshness) => {
       const { getCompanyWorkspace } = await import("../company-workspace");
@@ -89,28 +89,14 @@ describe("company workspace server functions", () => {
     await getCompanyWorkspace({
       data: {
         accountId: " account-1 ",
-        sections: [
-          "core",
-          "overview",
-          "stakeholders",
-          "activity",
-          "commercial",
-          "deliveryFinance",
-        ],
+        sections: ["core", "overview", "stakeholders", "activity", "commercial", "deliveryFinance"],
         freshness: "network-only",
       },
     });
 
     expect(loadCompanyWorkspaceMock).toHaveBeenCalledWith({
       accountId: "account-1",
-      sections: [
-        "core",
-        "overview",
-        "stakeholders",
-        "activity",
-        "commercial",
-        "deliveryFinance",
-      ],
+      sections: ["core", "overview", "stakeholders", "activity", "commercial", "deliveryFinance"],
       freshness: "network-only",
     });
   });

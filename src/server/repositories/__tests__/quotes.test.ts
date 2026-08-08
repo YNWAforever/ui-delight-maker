@@ -27,10 +27,7 @@ describe("quotes repository line items", () => {
     await expect(listQuoteSummaries("account-1")).resolves.toEqual([
       { id: "quote-1", number: "Q-1", total_value: 1000 },
     ]);
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("from quotes"),
-      ["account-1"],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("from quotes"), ["account-1"]);
     expect(mockQuery.mock.calls[0][0]).not.toContain("select *");
   });
 

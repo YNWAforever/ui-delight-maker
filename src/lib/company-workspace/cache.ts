@@ -1,8 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type {
-  CompanyWorkspaceResponse,
-  WorkspaceSection,
-} from "@/lib/company-workspace/types";
+import type { CompanyWorkspaceResponse, WorkspaceSection } from "@/lib/company-workspace/types";
 import { companyWorkspaceKeys } from "./query-keys";
 
 export function getDisplayedOpenSignalCount({

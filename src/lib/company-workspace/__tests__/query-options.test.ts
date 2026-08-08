@@ -80,9 +80,9 @@ describe("company workspace query options", () => {
     expect(queryClient.getQueryData(companyWorkspaceKeys.section("account-1", "core"))).toEqual(
       response.sections.core,
     );
-    expect(
-      queryClient.getQueryData(companyWorkspaceKeys.section("account-1", "overview")),
-    ).toEqual(response.sections.overview);
+    expect(queryClient.getQueryData(companyWorkspaceKeys.section("account-1", "overview"))).toEqual(
+      response.sections.overview,
+    );
   });
 
   it("retains a ready overview and exposes a correlated error when a refetch returns a section error", async () => {

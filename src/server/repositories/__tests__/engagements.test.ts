@@ -38,10 +38,7 @@ describe("engagements repository", () => {
     const { getAccountEngagementSummary } = await import("../engagements");
 
     await expect(getAccountEngagementSummary("account-1")).resolves.toEqual({ activeCount: 3 });
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("count(*)"),
-      ["account-1"],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("count(*)"), ["account-1"]);
     expect(mockQuery.mock.calls[0][0]).toContain("where c.account_id = $1");
   });
 });

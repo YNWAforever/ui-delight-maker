@@ -60,7 +60,9 @@ describe("account company workspace route source", () => {
   it("keeps Tasks quote references and commercial empty summaries independent", () => {
     const source = readRoute();
 
-    expect(source).toContain("const deliveryQuoteSummaries = deliveryFinance?.quoteSummaries ?? []");
+    expect(source).toContain(
+      "const deliveryQuoteSummaries = deliveryFinance?.quoteSummaries ?? []",
+    );
     expect(source).toContain("new Map(deliveryQuoteSummaries.map((quote) => [quote.id, quote]))");
     expect(source).not.toContain("new Map(quotes.map((quote) => [quote.id, quote]))");
     expect(source).toMatch(

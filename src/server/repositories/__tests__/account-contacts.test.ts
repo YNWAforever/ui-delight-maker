@@ -31,10 +31,7 @@ describe("account contacts repository", () => {
     const { countAccountContacts } = await import("../account-contacts");
 
     await expect(countAccountContacts("account-1")).resolves.toBe(2);
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("count(*)"),
-      ["account-1"],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("count(*)"), ["account-1"]);
   });
 
   it("creates contacts with relationship defaults", async () => {

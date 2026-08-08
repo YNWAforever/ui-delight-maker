@@ -41,7 +41,10 @@ function parseCompanyWorkspaceRequest(data: unknown): CompanyWorkspaceRequest {
     throw new Error(INVALID_REQUEST_MESSAGE);
   }
 
-  if (freshness !== undefined && (typeof freshness !== "string" || !isWorkspaceFreshness(freshness))) {
+  if (
+    freshness !== undefined &&
+    (typeof freshness !== "string" || !isWorkspaceFreshness(freshness))
+  ) {
     throw new Error(INVALID_REQUEST_MESSAGE);
   }
 
