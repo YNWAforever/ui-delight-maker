@@ -25,6 +25,20 @@ describe("company workspace read model", () => {
     expect(sources.listTasks).not.toHaveBeenCalled();
   });
 
+  it("marks a completed overview empty when it has no records or counts", async () => {
+    const model = createCompanyWorkspaceReadModel({
+      sources: createFakeSources(),
+      authorize: allowTestUser,
+    });
+
+    const result = await model.loadCompanyWorkspace({
+      accountId: "account-1",
+      sections: ["overview"],
+    });
+
+    expect(result.sections.overview?.status).toBe("empty");
+  });
+
   it("reads engagements once regardless of linked-client count", async () => {
     const sources = createFakeSources({
       listClients: vi
@@ -44,6 +58,7 @@ describe("company workspace read model", () => {
 
   it("keeps successful sections when activity fails", async () => {
     const sources = createFakeSources({
+      listClients: vi.fn().mockResolvedValue([{ id: "client-1" }]),
       getAccountTimeline: vi.fn().mockRejectedValue(new Error("timeline unavailable")),
     });
     const model = createCompanyWorkspaceReadModel({

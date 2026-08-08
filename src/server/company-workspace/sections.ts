@@ -13,6 +13,7 @@ import {
   createDeliveryFinanceProjection,
   createOverviewProjection,
   createStakeholdersProjection,
+  isOverviewProjectionEmpty,
 } from "./projections";
 import type { CompanyWorkspaceSources } from "./types";
 
@@ -93,7 +94,7 @@ function loadOverviewSection(input: RequestedSectionInput) {
         activeEngagementCount: engagementSummary.activeCount,
         quoteSummaries,
       }),
-    () => false,
+    isOverviewProjectionEmpty,
   );
 }
 

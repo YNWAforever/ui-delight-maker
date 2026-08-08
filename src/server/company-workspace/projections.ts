@@ -15,6 +15,16 @@ export function createOverviewProjection(input: OverviewProjection): OverviewPro
   return input;
 }
 
+export function isOverviewProjectionEmpty(projection: OverviewProjection) {
+  return (
+    projection.linkedClients.length === 0 &&
+    projection.openSignals.length === 0 &&
+    projection.openSignalCount === 0 &&
+    projection.activeEngagementCount === 0 &&
+    projection.quoteSummaries.length === 0
+  );
+}
+
 export function createStakeholdersProjection(
   input: StakeholdersProjection,
 ): StakeholdersProjection {
