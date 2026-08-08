@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -19,90 +20,136 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { seedCompanyWorkspaceCache } from "@/lib/company-workspace/cache";
+import { companyWorkspaceSectionOptions } from "@/lib/company-workspace/query-options";
+import type {
+  ActivityProjection,
+  CommercialProjection,
+  DeliveryFinanceProjection,
+  StakeholdersProjection,
+  WorkspaceSectionResult,
+} from "@/lib/company-workspace/types";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
 import { userById } from "@/lib/users";
 import type { RelationshipSignal } from "@/lib/types";
-import { getAccount, triggerRelationshipIntelligence } from "@/server-functions/accounts";
-import { getAccountTimeline } from "@/server-functions/activity-logs";
-import { getClients } from "@/server-functions/clients";
-import { getAccountContacts } from "@/server-functions/contacts";
-import { getEngagementsByClient } from "@/server-functions/engagements";
-import { getJobSheets } from "@/server-functions/job-sheets";
-import { getQuotes } from "@/server-functions/quotes";
-import {
-  dismissRelationshipSignalFn,
-  getRelationshipSignals,
-} from "@/server-functions/relationship-signals";
-import { getTasks } from "@/server-functions/tasks";
+import { triggerRelationshipIntelligence } from "@/server-functions/accounts";
+import { getCompanyWorkspace } from "@/server-functions/company-workspace";
+import { dismissRelationshipSignalFn } from "@/server-functions/relationship-signals";
 
 export const Route = createFileRoute("/accounts/$id")({
-  loader: async ({ params }) => {
-    const [account, contacts, timeline, signals, linkedClients, tasks, quotes, jobSheets] =
-      await Promise.all([
-        getAccount({ data: { id: params.id } }),
-        getAccountContacts({ data: { accountId: params.id } }),
-        getAccountTimeline({ data: { accountId: params.id } }),
-        getRelationshipSignals({ data: { account_id: params.id, openOnly: true } }),
-        getClients({ data: { account_id: params.id } }),
-        getTasks({ data: { account_id: params.id } }),
-        getQuotes({ data: { account_id: params.id } }),
-        getJobSheets({ data: { account_id: params.id } }),
-      ]);
+  loader: async ({ params, context }) => {
+    const response = await getCompanyWorkspace({
+      data: {
+        accountId: params.id,
+        sections: ["overview"],
+        freshness: "default",
+      },
+    });
 
-    const engagementGroups = await Promise.all(
-      linkedClients.map((client) => getEngagementsByClient({ data: { clientId: client.id } })),
-    );
+    seedCompanyWorkspaceCache(context.queryClient, params.id, response);
+    return response;
+  },
+  head: ({ loaderData }) => {
+    const core = loaderData?.sections.core;
 
     return {
-      account,
-      contacts,
-      timeline,
-      signals,
-      linkedClients,
-      engagements: engagementGroups.flat(),
-      tasks,
-      quotes,
-      jobSheets,
+      meta: [
+        {
+          title: `${core?.status === "ready" ? core.data.account.name : "Account"} - Fimmick ClientOps`,
+        },
+      ],
     };
   },
-  head: ({ loaderData }) => ({
-    meta: [{ title: `${loaderData?.account.name ?? "Account"} - Fimmick ClientOps` }],
-  }),
   component: AccountDetailRoute,
 });
 
+type WorkspaceTab = "overview" | "stakeholders" | "timeline" | "events" | "tasks";
+
 function AccountDetailRoute() {
-  const {
-    account,
-    contacts,
-    timeline,
-    signals,
-    linkedClients,
-    engagements,
-    tasks,
-    quotes,
-    jobSheets,
-  } = Route.useLoaderData();
+  const loaderData = Route.useLoaderData();
+  const core = loaderData.sections.core?.status === "ready" ? loaderData.sections.core.data : null;
+  const overview =
+    loaderData.sections.overview?.status === "ready" ? loaderData.sections.overview.data : null;
+  const account = core?.account;
+  const linkedClients = overview?.linkedClients ?? [];
+  const signals = overview?.openSignals;
+  const overviewQuotes = overview?.quoteSummaries ?? [];
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("overview");
+  const stakeholdersQuery = useQuery({
+    ...companyWorkspaceSectionOptions(loaderData.accountId, "stakeholders"),
+    enabled: activeTab === "stakeholders",
+  });
+  const activityQuery = useQuery({
+    ...companyWorkspaceSectionOptions(loaderData.accountId, "activity"),
+    enabled: activeTab === "timeline" || activeTab === "events",
+  });
+  const commercialQuery = useQuery({
+    ...companyWorkspaceSectionOptions(loaderData.accountId, "commercial"),
+    enabled: activeTab === "tasks",
+  });
+  const deliveryFinanceQuery = useQuery({
+    ...companyWorkspaceSectionOptions(loaderData.accountId, "deliveryFinance"),
+    enabled: activeTab === "tasks",
+  });
   const [dismissedSignalIds, setDismissedSignalIds] = useState<string[]>([]);
   const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
   const [pendingSignalIds, setPendingSignalIds] = useState<string[]>([]);
   const [isTriggeringRelationshipIntelligence, setIsTriggeringRelationshipIntelligence] =
     useState(false);
-  const openSignals = signals.filter((signal) => !dismissedSignalIds.includes(signal.id));
-  const owner = account.account_owner ? userById(account.account_owner) : undefined;
-  const csOwner = account.cs_owner ? userById(account.cs_owner) : undefined;
-  const openTasks = tasks.filter((task) => task.status !== "done");
-  const activeEngagements = engagements.filter((engagement) => engagement.status === "active");
-  const campaignTimelineEntries = timeline.filter((entry) => entry.kind === "campaign");
-  const quoteById = new Map(quotes.map((quote) => [quote.id, quote]));
+  const openSignals = (signals ?? []).filter((signal) => !dismissedSignalIds.includes(signal.id));
+  const stakeholdersSection = stakeholdersQuery.data as
+    | WorkspaceSectionResult<StakeholdersProjection>
+    | undefined;
+  const stakeholders =
+    stakeholdersSection?.status === "ready" ? stakeholdersSection.data.contacts : [];
+  const activitySection = activityQuery.data as
+    | WorkspaceSectionResult<ActivityProjection>
+    | undefined;
+  const activity = activitySection?.status === "ready" ? activitySection.data.timeline : [];
+  const commercialSection = commercialQuery.data as
+    | WorkspaceSectionResult<CommercialProjection>
+    | undefined;
+  const commercial =
+    commercialSection?.status === "ready" || commercialSection?.status === "empty"
+      ? commercialSection.data
+      : null;
+  const deliveryFinanceSection = deliveryFinanceQuery.data as
+    | WorkspaceSectionResult<DeliveryFinanceProjection>
+    | undefined;
+  const deliveryFinance =
+    deliveryFinanceSection?.status === "ready" || deliveryFinanceSection?.status === "empty"
+      ? deliveryFinanceSection.data
+      : null;
 
   useEffect(() => {
     setDismissedSignalIds([]);
     setActiveDismissId(null);
     setDismissReasons({});
     setPendingSignalIds([]);
-  }, [account.id, signals]);
+  }, [account?.id, signals]);
+
+  if (!account) {
+    return (
+      <main className="px-6 py-6">
+        <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+          Account details are unavailable. Try opening this account again.
+        </div>
+      </main>
+    );
+  }
+
+  const owner = account.account_owner ? userById(account.account_owner) : undefined;
+  const csOwner = account.cs_owner ? userById(account.cs_owner) : undefined;
+  const tasks = deliveryFinance?.tasks ?? [];
+  const quotes = commercial?.quotes ?? [];
+  const jobSheets = deliveryFinance?.jobSheets ?? [];
+  const openTasks = tasks.filter((task) => task.status !== "done");
+  const activeEngagements = (commercial?.engagements ?? []).filter(
+    (engagement) => engagement.status === "active",
+  );
+  const campaignTimelineEntries = activity.filter((entry) => entry.kind === "campaign");
+  const quoteById = new Map(quotes.map((quote) => [quote.id, quote]));
 
   const startDismiss = (signal: RelationshipSignal) => {
     setActiveDismissId(signal.id);
@@ -185,7 +232,7 @@ function AccountDetailRoute() {
   const summaryItems = [
     {
       label: "Stakeholders",
-      value: contacts.length,
+      value: core.peopleCount,
       hint: "coverage map",
       icon: Users,
     },
@@ -198,15 +245,15 @@ function AccountDetailRoute() {
     {
       label: "Linked clients",
       value: linkedClients.length,
-      hint: `${activeEngagements.length} active engagements`,
+      hint: `${overview?.activeEngagementCount ?? 0} active engagements`,
       icon: CalendarClock,
     },
     {
       label: "Quotes",
-      value: quotes.length,
+      value: overviewQuotes.length,
       hint: formatCurrencyAmount(
-        quotes.reduce((sum, quote) => sum + (quote.total_value ?? 0), 0),
-        quotes[0]?.currency ?? "HKD",
+        overviewQuotes.reduce((sum, quote) => sum + (quote.total_value ?? 0), 0),
+        overviewQuotes[0]?.currency ?? "HKD",
       ),
       icon: FileText,
     },
@@ -264,7 +311,7 @@ function AccountDetailRoute() {
           })}
         </div>
 
-        <Tabs defaultValue="overview">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as WorkspaceTab)}>
           <div className="max-w-full overflow-x-auto pb-1">
             <TabsList className="w-max">
               <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -366,20 +413,20 @@ function AccountDetailRoute() {
                     </p>
                   ) : (
                     <ul className="space-y-2">
-                      {linkedClients.map((client) => (
+                      {linkedClients.map((linkedClient) => (
                         <li
-                          key={client.id}
+                          key={linkedClient.id}
                           className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm"
                         >
                           <div className="min-w-0">
-                            <p className="truncate font-medium">{client.company_name}</p>
+                            <p className="truncate font-medium">{linkedClient.company_name}</p>
                             <p className="text-xs text-muted-foreground">
-                              Health {client.health_score} | Renewal{" "}
-                              {formatDate(client.renewal_date)}
+                              Health {linkedClient.health_score} | Renewal{" "}
+                              {formatDate(linkedClient.renewal_date)}
                             </p>
                           </div>
                           <Button variant="outline" size="sm" asChild>
-                            <Link to="/clients/$id" params={{ id: client.id }}>
+                            <Link to="/clients/$id" params={{ id: linkedClient.id }}>
                               Open
                             </Link>
                           </Button>
@@ -393,11 +440,33 @@ function AccountDetailRoute() {
           </TabsContent>
 
           <TabsContent value="stakeholders">
-            <StakeholderMap contacts={contacts} />
+            {stakeholdersSection?.status === "ready" ? (
+              <StakeholderMap contacts={stakeholders} />
+            ) : stakeholdersSection?.status === "empty" ? (
+              <DeferredSectionMessage message="No stakeholders are mapped to this account yet." />
+            ) : stakeholdersSection?.status === "error" || stakeholdersQuery.isError ? (
+              <DeferredSectionMessage
+                message="Stakeholders could not be loaded."
+                onRetry={() => void stakeholdersQuery.refetch()}
+              />
+            ) : (
+              <DeferredSectionMessage message="Loading stakeholders..." />
+            )}
           </TabsContent>
 
           <TabsContent value="timeline">
-            <AccountTimeline entries={timeline} />
+            {activitySection?.status === "ready" ? (
+              <AccountTimeline entries={activity} />
+            ) : activitySection?.status === "empty" ? (
+              <DeferredSectionMessage message="No timeline activity has been recorded for this account yet." />
+            ) : activitySection?.status === "error" || activityQuery.isError ? (
+              <DeferredSectionMessage
+                message="Timeline activity could not be loaded."
+                onRetry={() => void activityQuery.refetch()}
+              />
+            ) : (
+              <DeferredSectionMessage message="Loading timeline activity..." />
+            )}
           </TabsContent>
 
           <TabsContent value="events">
@@ -406,7 +475,16 @@ function AccountDetailRoute() {
                 <CardTitle className="text-base">Campaign follow-up</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {campaignTimelineEntries.length === 0 ? (
+                {activitySection?.status === "empty" ? (
+                  <DeferredSectionMessage message="No attendee imports or campaign follow-up entries for this account yet." />
+                ) : activitySection?.status === "error" || activityQuery.isError ? (
+                  <DeferredSectionMessage
+                    message="Campaign follow-up could not be loaded."
+                    onRetry={() => void activityQuery.refetch()}
+                  />
+                ) : activitySection?.status !== "ready" ? (
+                  <DeferredSectionMessage message="Loading campaign follow-up..." />
+                ) : campaignTimelineEntries.length === 0 ? (
                   <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
                     No attendee imports or campaign follow-up entries for this account yet.
                   </div>
@@ -443,13 +521,22 @@ function AccountDetailRoute() {
                 <CardTitle className="text-base">Open tasks</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {openTasks.length === 0 ? (
+                {deliveryFinanceSection?.status === "error" || deliveryFinanceQuery.isError ? (
+                  <DeferredSectionMessage
+                    message="Task and delivery data could not be loaded."
+                    onRetry={() => void deliveryFinanceQuery.refetch()}
+                  />
+                ) : deliveryFinanceSection?.status === "empty" ? (
+                  <DeferredSectionMessage message="No task or delivery data is available for this account yet." />
+                ) : deliveryFinanceSection?.status !== "ready" ? (
+                  <DeferredSectionMessage message="Loading tasks and delivery data..." />
+                ) : openTasks.length === 0 ? (
                   <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
                     No open account tasks right now.
                   </div>
                 ) : (
                   <ul className="space-y-2">
-                    {openTasks
+                    {[...openTasks]
                       .sort((a, b) => (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"))
                       .map((task) => (
                         <li key={task.id} className="rounded-md border border-border p-3 text-sm">
@@ -483,30 +570,49 @@ function AccountDetailRoute() {
                 <CardTitle className="text-base">Quotes & revenue</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <SummaryRow label="Total quotes" value={String(quotes.length)} />
-                <SummaryRow label="Active engagements" value={String(activeEngagements.length)} />
-                <SummaryRow
-                  label="Account ARR"
-                  value={formatCurrencyAmount(account.arr ?? null, quotes[0]?.currency ?? "HKD")}
-                />
-                {quotes.length === 0 ? (
-                  <p className="text-muted-foreground">No quotes linked to this account yet.</p>
+                {commercialSection?.status === "error" || commercialQuery.isError ? (
+                  <DeferredSectionMessage
+                    message="Commercial data could not be loaded."
+                    onRetry={() => void commercialQuery.refetch()}
+                  />
+                ) : commercialSection?.status === "empty" ? (
+                  <DeferredSectionMessage message="No commercial data is available for this account yet." />
+                ) : commercialSection?.status !== "ready" ? (
+                  <DeferredSectionMessage message="Loading commercial data..." />
                 ) : (
-                  <ul className="space-y-2">
-                    {quotes.slice(0, 5).map((quote) => (
-                      <li key={quote.id} className="rounded-md border border-border p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-medium">{quote.number ?? "Draft quote"}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatCurrencyAmount(quote.total_value, quote.currency)}
-                            </p>
-                          </div>
-                          <StatusBadge value={quote.status} />
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  <>
+                    <SummaryRow label="Total quotes" value={String(quotes.length)} />
+                    <SummaryRow
+                      label="Active engagements"
+                      value={String(activeEngagements.length)}
+                    />
+                    <SummaryRow
+                      label="Account ARR"
+                      value={formatCurrencyAmount(
+                        account.arr ?? null,
+                        quotes[0]?.currency ?? "HKD",
+                      )}
+                    />
+                    {quotes.length === 0 ? (
+                      <p className="text-muted-foreground">No quotes linked to this account yet.</p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {quotes.slice(0, 5).map((quote) => (
+                          <li key={quote.id} className="rounded-md border border-border p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="font-medium">{quote.number ?? "Draft quote"}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {formatCurrencyAmount(quote.total_value, quote.currency)}
+                                </p>
+                              </div>
+                              <StatusBadge value={quote.status} />
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
                 )}
                 <div className="space-y-2 border-t border-border/70 pt-3">
                   <div className="flex items-center justify-between gap-3">
@@ -515,7 +621,16 @@ function AccountDetailRoute() {
                       {jobSheets.length} job sheet{jobSheets.length === 1 ? "" : "s"}
                     </span>
                   </div>
-                  {jobSheets.length === 0 ? (
+                  {deliveryFinanceSection?.status === "error" || deliveryFinanceQuery.isError ? (
+                    <DeferredSectionMessage
+                      message="Accounting handoff data could not be loaded."
+                      onRetry={() => void deliveryFinanceQuery.refetch()}
+                    />
+                  ) : deliveryFinanceSection?.status === "empty" ? (
+                    <DeferredSectionMessage message="No accounting handoff data is available for this account yet." />
+                  ) : deliveryFinanceSection?.status !== "ready" ? (
+                    <DeferredSectionMessage message="Loading accounting handoff data..." />
+                  ) : jobSheets.length === 0 ? (
                     <p className="text-muted-foreground">
                       No accepted quote job sheets for this account yet.
                     </p>
@@ -554,6 +669,19 @@ function AccountDetailRoute() {
         </Tabs>
       </main>
     </>
+  );
+}
+
+function DeferredSectionMessage({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+      <span>{message}</span>
+      {onRetry ? (
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          Retry
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
