@@ -62,6 +62,14 @@ export async function listAccountContacts(accountId: string) {
   );
 }
 
+export async function countAccountContacts(accountId: string) {
+  const rows = await query<{ count: number | string }>(
+    "select count(*)::int as count from account_contacts where account_id = $1",
+    [accountId],
+  );
+  return Number(rows[0]?.count ?? 0);
+}
+
 export async function createAccountContact(input: CreateAccountContactInput, db?: Queryable) {
   const contact = await queryOne<AccountContact>(
     `

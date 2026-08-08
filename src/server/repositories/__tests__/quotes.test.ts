@@ -20,6 +20,20 @@ describe("quotes repository line items", () => {
     mockTransaction.mockImplementation(async (work) => work({ query: vi.fn() }));
   });
 
+  it("returns quote summary fields without document payloads", async () => {
+    mockQuery.mockResolvedValue([{ id: "quote-1", number: "Q-1", total_value: 1000 }]);
+    const { listQuoteSummaries } = await import("../quotes");
+
+    await expect(listQuoteSummaries("account-1")).resolves.toEqual([
+      { id: "quote-1", number: "Q-1", total_value: 1000 },
+    ]);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("from quotes"),
+      ["account-1"],
+    );
+    expect(mockQuery.mock.calls[0][0]).not.toContain("select *");
+  });
+
   it("normalizes quote line items on create and returns UUID-backed rows", async () => {
     const normalizedLineItem = {
       id: "11111111-1111-4111-8111-111111111111",

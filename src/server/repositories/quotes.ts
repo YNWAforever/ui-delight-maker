@@ -1,5 +1,6 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
 import type { PricingTemplate, Quote, QuoteLineItem, QuoteLineItemRecord } from "@/lib/types";
+import type { QuoteSummary } from "@/lib/company-workspace/types";
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
 
 type QuoteFilters = {
@@ -107,6 +108,18 @@ export async function listQuotes(filters: QuoteFilters = {}) {
       order by created_at desc
     `,
     where.values,
+  );
+}
+
+export async function listQuoteSummaries(accountId: string): Promise<QuoteSummary[]> {
+  return query<QuoteSummary>(
+    `
+      select id, number, status, total_value, currency, created_at
+      from quotes
+      where account_id = $1
+      order by created_at desc
+    `,
+    [accountId],
   );
 }
 

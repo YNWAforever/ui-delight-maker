@@ -19,6 +19,34 @@ export async function listEngagementsByClient(clientId: string) {
   );
 }
 
+export async function listEngagementsByAccount(accountId: string) {
+  return query<Engagement>(
+    `
+      select e.*
+      from engagements e
+      join clients c on c.id = e.client_id
+      where c.account_id = $1
+      order by e.start_date desc
+    `,
+    [accountId],
+  );
+}
+
+export async function getAccountEngagementSummary(accountId: string) {
+  const rows = await query<{ active_count: number | string }>(
+    `
+      select count(*)::int as active_count
+      from engagements e
+      join clients c on c.id = e.client_id
+      where c.account_id = $1
+        and e.status = 'active'
+    `,
+    [accountId],
+  );
+
+  return { activeCount: Number(rows[0]?.active_count ?? 0) };
+}
+
 export async function getEngagement(id: string, db?: Queryable) {
   const engagement = await queryOne<Engagement>(
     "select * from engagements where id = $1",

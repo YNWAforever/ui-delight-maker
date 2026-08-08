@@ -32,6 +32,26 @@ describe("relationship signals repository", () => {
     expect(mockQuery.mock.calls[0][0]).toContain("dismissed_at is null");
   });
 
+  it("returns the limited open-signal projection and total count", async () => {
+    mockQuery.mockResolvedValue([
+      { id: "signal-1", total_count: 6, severity: "high" },
+      { id: "signal-2", total_count: 6, severity: "medium" },
+    ]);
+    const { listOpenRelationshipSignalSummary } = await import("../relationship-signals");
+
+    await expect(listOpenRelationshipSignalSummary("account-1", 5)).resolves.toEqual({
+      signals: [
+        { id: "signal-1", severity: "high" },
+        { id: "signal-2", severity: "medium" },
+      ],
+      count: 6,
+    });
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("count(*) over()"), [
+      "account-1",
+      5,
+    ]);
+  });
+
   it("upserts relationship signals with explanation fields intact", async () => {
     mockQueryOne
       .mockResolvedValueOnce({ id: "signal-1" })

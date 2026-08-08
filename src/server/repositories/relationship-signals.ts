@@ -31,6 +31,25 @@ export async function listRelationshipSignals(filters: RelationshipSignalFilters
   );
 }
 
+export async function listOpenRelationshipSignalSummary(accountId: string, limit: number) {
+  const rows = await query<RelationshipSignal & { total_count: number | string }>(
+    `
+      select relationship_signals.*, count(*) over()::int as total_count
+      from relationship_signals
+      where account_id = $1 and dismissed_at is null
+      order by case severity when 'high' then 1 when 'medium' then 2 else 3 end,
+               created_at desc
+      limit $2
+    `,
+    [accountId, limit],
+  );
+  const signals = rows.map(({ total_count: _totalCount, ...signal }) => signal);
+  return {
+    signals,
+    count: Number(rows[0]?.total_count ?? 0),
+  };
+}
+
 export async function upsertRelationshipSignals(
   accountId: string,
   drafts: RelationshipSignalDraft[],

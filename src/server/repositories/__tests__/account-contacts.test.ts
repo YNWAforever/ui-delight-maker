@@ -26,6 +26,17 @@ describe("account contacts repository", () => {
     ]);
   });
 
+  it("counts account contacts without loading contact rows", async () => {
+    mockQuery.mockResolvedValue([{ count: 2 }]);
+    const { countAccountContacts } = await import("../account-contacts");
+
+    await expect(countAccountContacts("account-1")).resolves.toBe(2);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("count(*)"),
+      ["account-1"],
+    );
+  });
+
   it("creates contacts with relationship defaults", async () => {
     mockQueryOne.mockResolvedValue({ id: "contact-1" });
     const { createAccountContact } = await import("../account-contacts");
