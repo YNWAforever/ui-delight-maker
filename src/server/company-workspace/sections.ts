@@ -2,6 +2,7 @@ import type { Account } from "@/lib/types";
 import type {
   CompanyWorkspaceRequest,
   CompanyWorkspaceResponse,
+  CoreProjection,
   WorkspaceSection,
   WorkspaceSectionMeta,
   WorkspaceSectionResult,
@@ -27,6 +28,10 @@ type RequestedSectionInput = LoadRequestedSectionsInput & {
   correlationId: string;
 };
 
+const SAFE_SECTION_ERROR_MESSAGE =
+  "This workspace section is temporarily unavailable. Please try again.";
+const SAFE_CONTACT_COUNT_WARNING_MESSAGE = "Stakeholder count is temporarily unavailable.";
+
 function createSectionMeta(correlationId: string, startedAt: number): WorkspaceSectionMeta {
   return {
     correlationId,
@@ -36,12 +41,21 @@ function createSectionMeta(correlationId: string, startedAt: number): WorkspaceS
   };
 }
 
-function messageFor(error: unknown) {
-  return error instanceof Error ? error.message : "Unable to load company workspace section";
+function logSectionReadFailure(
+  correlationId: string,
+  section: WorkspaceSection,
+  cause: unknown,
+) {
+  console.error(
+    "[company-workspace] section read failed",
+    { correlationId, section },
+    cause,
+  );
 }
 
 async function loadSettledProjection<Values extends readonly unknown[], Projection>(
   correlationId: string,
+  section: WorkspaceSection,
   reads: { [Key in keyof Values]: Promise<Values[Key]> },
   createProjection: (...values: Values) => Projection,
   isEmpty: (projection: Projection) => boolean,
@@ -54,9 +68,10 @@ async function loadSettledProjection<Values extends readonly unknown[], Projecti
   const meta = createSectionMeta(correlationId, startedAt);
 
   if (rejected) {
+    logSectionReadFailure(correlationId, section, rejected.reason);
     return {
       status: "error",
-      error: { code: "SECTION_READ_FAILED", message: messageFor(rejected.reason) },
+      error: { code: "SECTION_READ_FAILED", message: SAFE_SECTION_ERROR_MESSAGE },
       meta,
     };
   }
@@ -68,18 +83,40 @@ async function loadSettledProjection<Values extends readonly unknown[], Projecti
   return isEmpty(data) ? { status: "empty", data, meta } : { status: "ready", data, meta };
 }
 
-function loadCoreSection(input: RequestedSectionInput) {
-  return loadSettledProjection(
-    input.correlationId,
-    [input.sources.countAccountContacts(input.request.accountId)],
-    (peopleCount) => createCoreProjection({ account: input.account, peopleCount }),
-    () => false,
-  );
+async function loadCoreSection(
+  input: RequestedSectionInput,
+): Promise<WorkspaceSectionResult<CoreProjection>> {
+  const startedAt = Date.now();
+
+  try {
+    const peopleCount = await input.sources.countAccountContacts(input.request.accountId);
+    return {
+      status: "ready",
+      data: createCoreProjection({ account: input.account, peopleCount }),
+      meta: createSectionMeta(input.correlationId, startedAt),
+    };
+  } catch (cause) {
+    logSectionReadFailure(input.correlationId, "core", cause);
+    return {
+      status: "ready",
+      data: createCoreProjection({ account: input.account, peopleCount: 0 }),
+      meta: {
+        ...createSectionMeta(input.correlationId, startedAt),
+        warnings: [
+          {
+            code: "CONTACT_COUNT_READ_FAILED",
+            message: SAFE_CONTACT_COUNT_WARNING_MESSAGE,
+          },
+        ],
+      },
+    };
+  }
 }
 
 function loadOverviewSection(input: RequestedSectionInput) {
   return loadSettledProjection(
     input.correlationId,
+    "overview",
     [
       input.sources.listClients(input.request.accountId),
       input.sources.listOpenRelationshipSignalSummary(input.request.accountId, 5),
@@ -101,6 +138,7 @@ function loadOverviewSection(input: RequestedSectionInput) {
 function loadStakeholdersSection(input: RequestedSectionInput) {
   return loadSettledProjection(
     input.correlationId,
+    "stakeholders",
     [input.sources.listAccountContacts(input.request.accountId)],
     (contacts) => createStakeholdersProjection({ contacts }),
     (projection) => projection.contacts.length === 0,
@@ -110,6 +148,7 @@ function loadStakeholdersSection(input: RequestedSectionInput) {
 function loadActivitySection(input: RequestedSectionInput) {
   return loadSettledProjection(
     input.correlationId,
+    "activity",
     [input.sources.getAccountTimeline(input.request.accountId)],
     (timeline) => createActivityProjection({ timeline }),
     (projection) => projection.timeline.length === 0,
@@ -119,6 +158,7 @@ function loadActivitySection(input: RequestedSectionInput) {
 function loadCommercialSection(input: RequestedSectionInput) {
   return loadSettledProjection(
     input.correlationId,
+    "commercial",
     [
       input.sources.listEngagementsByAccount(input.request.accountId),
       input.sources.listQuotes(input.request.accountId),
@@ -131,6 +171,7 @@ function loadCommercialSection(input: RequestedSectionInput) {
 function loadDeliveryFinanceSection(input: RequestedSectionInput) {
   return loadSettledProjection(
     input.correlationId,
+    "deliveryFinance",
     [
       input.sources.listTasks(input.request.accountId),
       input.sources.listJobSheets(input.request.accountId),

@@ -25,4 +25,28 @@ describe("relationship command center dismiss interaction", () => {
     expect(signalCardSource).toContain("Confirm dismiss");
     expect(signalCardSource).toContain("Cancel");
   });
+
+  it("invalidates the exact account overview only after a successful dismissal", () => {
+    expect(commandCenterSource).toContain("useQueryClient");
+    expect(commandCenterSource).toContain("invalidateCompanyWorkspaceSections");
+    expect(commandCenterSource).toContain("sectionsForCompanyWorkspaceMutation");
+    expect(commandCenterSource).toContain("const queryClient = useQueryClient()");
+    expect(commandCenterSource).toContain("if (signal.account_id)");
+    expect(commandCenterSource).toContain(
+      'sectionsForCompanyWorkspaceMutation("signal-dismissed")',
+    );
+
+    const mutationIndex = commandCenterSource.indexOf("await dismissRelationshipSignalFn");
+    const accountGuardIndex = commandCenterSource.indexOf("if (signal.account_id)", mutationIndex);
+    const invalidationIndex = commandCenterSource.indexOf(
+      "await invalidateCompanyWorkspaceSections",
+      mutationIndex,
+    );
+    const failureIndex = commandCenterSource.indexOf("} catch", mutationIndex);
+
+    expect(mutationIndex).toBeGreaterThan(-1);
+    expect(accountGuardIndex).toBeGreaterThan(mutationIndex);
+    expect(invalidationIndex).toBeGreaterThan(accountGuardIndex);
+    expect(failureIndex).toBeGreaterThan(invalidationIndex);
+  });
 });

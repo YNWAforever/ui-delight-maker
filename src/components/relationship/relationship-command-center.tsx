@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { RelationshipSignalCard } from "@/components/relationship/relationship-signal-card";
+import {
+  invalidateCompanyWorkspaceSections,
+  sectionsForCompanyWorkspaceMutation,
+} from "@/lib/company-workspace/invalidation";
 import type { Account, RelationshipSignal } from "@/lib/types";
 import { dismissRelationshipSignalFn } from "@/server-functions/relationship-signals";
 
@@ -11,6 +16,7 @@ export function RelationshipCommandCenter({
   accounts: Account[];
   signals: RelationshipSignal[];
 }) {
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState(signals);
   const [activeDismissId, setActiveDismissId] = useState<string | null>(null);
   const [dismissReasons, setDismissReasons] = useState<Record<string, string>>({});
@@ -60,6 +66,13 @@ export function RelationshipCommandCenter({
       await dismissRelationshipSignalFn({
         data: { id: signal.id, reason: reason.trim() },
       });
+      if (signal.account_id) {
+        await invalidateCompanyWorkspaceSections(
+          queryClient,
+          signal.account_id,
+          sectionsForCompanyWorkspaceMutation("signal-dismissed"),
+        );
+      }
       setOptimisticDismissedIds((prev) => [...prev, signal.id]);
       setRows((prev) => prev.filter((row) => row.id !== signal.id));
       setActiveDismissId((current) => (current === signal.id ? null : current));

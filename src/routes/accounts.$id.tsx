@@ -20,7 +20,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { seedCompanyWorkspaceCache } from "@/lib/company-workspace/cache";
+import {
+  getDisplayedOpenSignalCount,
+  seedCompanyWorkspaceCache,
+} from "@/lib/company-workspace/cache";
 import {
   invalidateCompanyWorkspaceSections,
   sectionsForCompanyWorkspaceMutation,
@@ -87,6 +90,9 @@ function AccountDetailRoute() {
     | WorkspaceSectionResult<OverviewProjection>
     | undefined;
   const core = coreSection?.status === "ready" ? coreSection.data : null;
+  const hasUsableOverview =
+    overviewSection?.status === "ready" || overviewSection?.status === "empty";
+  const hasOverviewError = overviewSection?.status === "error" || overviewQuery.isError;
   const overview =
     overviewSection?.status === "ready" || overviewSection?.status === "empty"
       ? overviewSection.data
@@ -119,6 +125,11 @@ function AccountDetailRoute() {
   const [isTriggeringRelationshipIntelligence, setIsTriggeringRelationshipIntelligence] =
     useState(false);
   const openSignals = (signals ?? []).filter((signal) => !dismissedSignalIds.includes(signal.id));
+  const displayedOpenSignalCount = getDisplayedOpenSignalCount({
+    totalCount: overview?.openSignalCount ?? 0,
+    visibleSignalIds: (signals ?? []).map((signal) => signal.id),
+    dismissedSignalIds,
+  });
   const stakeholdersSection = stakeholdersQuery.data as
     | WorkspaceSectionResult<StakeholdersProjection>
     | undefined;
@@ -160,7 +171,7 @@ function AccountDetailRoute() {
     );
   }
 
-  if (overviewSection?.status === "error" || overviewQuery.isError) {
+  if (!hasUsableOverview && hasOverviewError) {
     return (
       <>
         <PageHeader
@@ -190,12 +201,16 @@ function AccountDetailRoute() {
   const tasks = deliveryFinance?.tasks ?? [];
   const quotes = commercial?.quotes ?? [];
   const jobSheets = deliveryFinance?.jobSheets ?? [];
+  const deliveryQuoteSummaries = deliveryFinance?.quoteSummaries ?? [];
   const openTasks = tasks.filter((task) => task.status !== "done");
   const activeEngagements = (commercial?.engagements ?? []).filter(
     (engagement) => engagement.status === "active",
   );
   const campaignTimelineEntries = activity.filter((entry) => entry.kind === "campaign");
-  const quoteById = new Map(quotes.map((quote) => [quote.id, quote]));
+  const quoteById = new Map(deliveryQuoteSummaries.map((quote) => [quote.id, quote]));
+  const isPeopleCountUnavailable =
+    coreSection?.status === "ready" &&
+    coreSection.meta.warnings?.some((warning) => warning.code === "CONTACT_COUNT_READ_FAILED");
 
   const startDismiss = (signal: RelationshipSignal) => {
     setActiveDismissId(signal.id);
@@ -283,13 +298,13 @@ function AccountDetailRoute() {
   const summaryItems = [
     {
       label: "Stakeholders",
-      value: core.peopleCount,
-      hint: "coverage map",
+      value: isPeopleCountUnavailable ? "—" : core.peopleCount,
+      hint: isPeopleCountUnavailable ? "count unavailable" : "coverage map",
       icon: Users,
     },
     {
       label: "Open signals",
-      value: openSignals.length,
+      value: displayedOpenSignalCount,
       hint: "needs action",
       icon: BriefcaseBusiness,
     },
@@ -344,6 +359,13 @@ function AccountDetailRoute() {
       />
 
       <main className="space-y-4 px-6 py-6">
+        {hasOverviewError ? (
+          <DeferredSectionMessage
+            message="Showing saved account overview data. The latest refresh failed."
+            onRetry={() => void overviewQuery.refetch()}
+          />
+        ) : null}
+
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {summaryItems.map((item) => {
             const Icon = item.icon;
@@ -412,7 +434,7 @@ function AccountDetailRoute() {
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-sm font-semibold">Open signals</h3>
                     <span className="text-xs text-muted-foreground">
-                      {openSignals.length} active
+                      {displayedOpenSignalCount} active
                     </span>
                   </div>
                   {openSignals.length === 0 ? (
@@ -626,9 +648,8 @@ function AccountDetailRoute() {
                     message="Commercial data could not be loaded."
                     onRetry={() => void commercialQuery.refetch()}
                   />
-                ) : commercialSection?.status === "empty" ? (
-                  <DeferredSectionMessage message="No commercial data is available for this account yet." />
-                ) : commercialSection?.status !== "ready" ? (
+                ) : commercialSection?.status !== "ready" &&
+                  commercialSection?.status !== "empty" ? (
                   <DeferredSectionMessage message="Loading commercial data..." />
                 ) : (
                   <>

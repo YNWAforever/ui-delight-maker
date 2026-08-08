@@ -1,8 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCompanyWorkspaceReadModel } from "../read-model";
 import { allowTestUser, createFakeSources } from "./fixtures";
 
 describe("company workspace read model", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("loads only core and overview when those are requested", async () => {
     const sources = createFakeSources({
       listClients: vi.fn().mockResolvedValue([{ id: "client-1" }]),
@@ -74,6 +82,76 @@ describe("company workspace read model", () => {
     expect(result.sections.overview?.status).toBe("ready");
     expect(result.sections.activity?.status).toBe("error");
     expect(result.meta.correlationId).toEqual(expect.any(String));
+  });
+
+  it("keeps account identity ready when the optional contact count fails", async () => {
+    const internalError = new Error(
+      'NeonDbError: relation "account_contacts_private" does not exist',
+    );
+    const sources = createFakeSources({
+      countAccountContacts: vi.fn().mockRejectedValue(internalError),
+    });
+    const model = createCompanyWorkspaceReadModel({ sources, authorize: allowTestUser });
+
+    const result = await model.loadCompanyWorkspace({
+      accountId: "account-1",
+      sections: ["overview"],
+    });
+
+    expect(result.sections.core).toMatchObject({
+      status: "ready",
+      data: {
+        account: { id: "account-1", name: "Acme" },
+        peopleCount: 0,
+      },
+      meta: {
+        correlationId: result.meta.correlationId,
+        warnings: [
+          {
+            code: "CONTACT_COUNT_READ_FAILED",
+            message: "Stakeholder count is temporarily unavailable.",
+          },
+        ],
+      },
+    });
+    expect(console.error).toHaveBeenCalledWith(
+      "[company-workspace] section read failed",
+      { correlationId: result.meta.correlationId, section: "core" },
+      internalError,
+    );
+  });
+
+  it("returns a stable safe section error and logs the raw cause with correlation metadata", async () => {
+    const internalMessage =
+      'NeonDbError: select * from internal_customer_notes where tenant_key = "secret"';
+    const internalError = new Error(internalMessage);
+    const sources = createFakeSources({
+      getAccountTimeline: vi.fn().mockRejectedValue(internalError),
+    });
+    const model = createCompanyWorkspaceReadModel({ sources, authorize: allowTestUser });
+
+    const result = await model.loadCompanyWorkspace({
+      accountId: "account-1",
+      sections: ["activity"],
+    });
+
+    expect(result.sections.activity).toMatchObject({
+      status: "error",
+      error: {
+        code: "SECTION_READ_FAILED",
+        message: "This workspace section is temporarily unavailable. Please try again.",
+      },
+      meta: {
+        correlationId: result.meta.correlationId,
+        durationMs: expect.any(Number),
+      },
+    });
+    expect(JSON.stringify(result.sections.activity)).not.toContain(internalMessage);
+    expect(console.error).toHaveBeenCalledWith(
+      "[company-workspace] section read failed",
+      { correlationId: result.meta.correlationId, section: "activity" },
+      internalError,
+    );
   });
 
   it("throws for account identity failure", async () => {

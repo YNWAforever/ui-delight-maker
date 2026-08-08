@@ -19,14 +19,22 @@ export const workspaceSections = [
   "deliveryFinance",
 ] as const;
 
+export const workspaceFreshnessValues = ["default", "network-only"] as const;
+
 export type WorkspaceSection = (typeof workspaceSections)[number];
-export type WorkspaceFreshness = "default" | "network-only";
+export type WorkspaceFreshness = (typeof workspaceFreshnessValues)[number];
+
+export type WorkspaceSectionWarning = {
+  code: "CONTACT_COUNT_READ_FAILED";
+  message: string;
+};
 
 export type WorkspaceSectionMeta = {
   correlationId: string;
   fetchedAt: string;
   durationMs: number;
   source: "network" | "cache";
+  warnings?: readonly WorkspaceSectionWarning[];
 };
 
 export type WorkspaceSectionError = {

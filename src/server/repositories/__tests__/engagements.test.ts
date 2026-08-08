@@ -30,6 +30,7 @@ describe("engagements repository", () => {
       expect.stringContaining("join clients c on c.id = e.client_id"),
       ["account-1"],
     );
+    expect(mockQuery.mock.calls[0][0]).toContain("where c.account_id = $1");
   });
 
   it("reads the active engagement count without loading engagement records", async () => {
@@ -41,5 +42,6 @@ describe("engagements repository", () => {
       expect.stringContaining("count(*)"),
       ["account-1"],
     );
+    expect(mockQuery.mock.calls[0][0]).toContain("where c.account_id = $1");
   });
 });
