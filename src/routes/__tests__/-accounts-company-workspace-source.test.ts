@@ -22,4 +22,21 @@ describe("account company workspace route source", () => {
     expect(source).toContain('enabled: activeTab === "timeline" || activeTab === "events"');
     expect(source).toContain('enabled: activeTab === "tasks"');
   });
+
+  it("observes seeded core and overview sections through query options", () => {
+    const source = readRoute();
+
+    expect(source).toContain('companyWorkspaceSectionOptions(loaderData.accountId, "core")');
+    expect(source).toContain('companyWorkspaceSectionOptions(loaderData.accountId, "overview")');
+    expect(source).toContain("coreQuery.data ?? loaderData.sections.core");
+    expect(source).toContain("overviewQuery.data ?? loaderData.sections.overview");
+  });
+
+  it("keeps overview errors recoverable instead of rendering empty defaults", () => {
+    const source = readRoute();
+
+    expect(source).toContain('overviewSection?.status === "error" || overviewQuery.isError');
+    expect(source).toContain("onRetry={() => void overviewQuery.refetch()}");
+    expect(source).toContain('overviewSection?.status === "empty"');
+  });
 });

@@ -25,7 +25,9 @@ import { companyWorkspaceSectionOptions } from "@/lib/company-workspace/query-op
 import type {
   ActivityProjection,
   CommercialProjection,
+  CoreProjection,
   DeliveryFinanceProjection,
+  OverviewProjection,
   StakeholdersProjection,
   WorkspaceSectionResult,
 } from "@/lib/company-workspace/types";
@@ -67,9 +69,23 @@ type WorkspaceTab = "overview" | "stakeholders" | "timeline" | "events" | "tasks
 
 function AccountDetailRoute() {
   const loaderData = Route.useLoaderData();
-  const core = loaderData.sections.core?.status === "ready" ? loaderData.sections.core.data : null;
+  const coreQuery = useQuery({
+    ...companyWorkspaceSectionOptions(loaderData.accountId, "core"),
+  });
+  const overviewQuery = useQuery({
+    ...companyWorkspaceSectionOptions(loaderData.accountId, "overview"),
+  });
+  const coreSection = (coreQuery.data ?? loaderData.sections.core) as
+    | WorkspaceSectionResult<CoreProjection>
+    | undefined;
+  const overviewSection = (overviewQuery.data ?? loaderData.sections.overview) as
+    | WorkspaceSectionResult<OverviewProjection>
+    | undefined;
+  const core = coreSection?.status === "ready" ? coreSection.data : null;
   const overview =
-    loaderData.sections.overview?.status === "ready" ? loaderData.sections.overview.data : null;
+    overviewSection?.status === "ready" || overviewSection?.status === "empty"
+      ? overviewSection.data
+      : null;
   const account = core?.account;
   const linkedClients = overview?.linkedClients ?? [];
   const signals = overview?.openSignals;
@@ -136,6 +152,31 @@ function AccountDetailRoute() {
           Account details are unavailable. Try opening this account again.
         </div>
       </main>
+    );
+  }
+
+  if (overviewSection?.status === "error" || overviewQuery.isError) {
+    return (
+      <>
+        <PageHeader
+          title={account.name}
+          description={`${account.lifecycle_stage.replace(/_/g, " ")} account relationship`}
+          actions={
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/accounts">
+                <ArrowLeft className="h-4 w-4" />
+                Accounts
+              </Link>
+            </Button>
+          }
+        />
+        <main className="px-6 py-6">
+          <DeferredSectionMessage
+            message="Account overview could not be loaded."
+            onRetry={() => void overviewQuery.refetch()}
+          />
+        </main>
+      </>
     );
   }
 
