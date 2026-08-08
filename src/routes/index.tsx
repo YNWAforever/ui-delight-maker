@@ -1,9 +1,14 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowUpRight, Clock, Flame, Plus, ShieldCheck, Target } from "lucide-react";
 import { toast } from "sonner";
 
 import { LeadPreviewPanel } from "@/components/pipeline/lead-preview-panel";
+import {
+  invalidateCompanyWorkspaceSections,
+  sectionsForCompanyWorkspaceMutation,
+} from "@/lib/company-workspace/invalidation";
 import { PipelineBoard } from "@/components/pipeline/pipeline-board";
 import { PipelineToolbar } from "@/components/pipeline/pipeline-toolbar";
 import { StageMoveDialog } from "@/components/pipeline/stage-move-dialog";
@@ -52,6 +57,7 @@ function PipelineCommandCenter() {
     Route.useLoaderData();
   const router = useRouter();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [filters, setFilters] = useState<PipelineFilters>({
     search: "",
     source: "all",
@@ -189,7 +195,7 @@ function PipelineCommandCenter() {
   };
 
   const createFollowUpTask = async (lead: Lead) => {
-    await createTask({
+    const task = await createTask({
       data: {
         lead_id: lead.id,
         title: `Follow up with ${lead.company_name}`,
@@ -197,6 +203,13 @@ function PipelineCommandCenter() {
         due_date: TODAY,
       },
     });
+    if (task.account_id) {
+      await invalidateCompanyWorkspaceSections(
+        queryClient,
+        task.account_id,
+        sectionsForCompanyWorkspaceMutation("task-changed"),
+      );
+    }
     toast.success("Follow-up task created");
     router.invalidate();
   };

@@ -1,9 +1,14 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet, useRouter } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
+import {
+  invalidateCompanyWorkspaceSections,
+  sectionsForCompanyWorkspaceMutation,
+} from "@/lib/company-workspace/invalidation";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -70,6 +75,7 @@ function ClientsPage() {
 function ClientsIndex() {
   const loaderClients = Route.useLoaderData();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState<ClientRow[]>(loaderClients);
   const [tier, setTier] = useState("all");
   const [riskFilter, setRiskFilter] = useState<"all" | RenewalRisk>("all");
@@ -116,6 +122,13 @@ function ClientsIndex() {
               <NewClientDialog
                 onCreate={async (c) => {
                   const created = await createClient({ data: c });
+                  if (created.account_id) {
+                    await invalidateCompanyWorkspaceSections(
+                      queryClient,
+                      created.account_id,
+                      sectionsForCompanyWorkspaceMutation("client-changed"),
+                    );
+                  }
                   setRows((prev) => [{ ...created, renewal_risk: "low" }, ...prev]);
                   setNewOpen(false);
                   router.invalidate();

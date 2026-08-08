@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -21,6 +21,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { seedCompanyWorkspaceCache } from "@/lib/company-workspace/cache";
+import {
+  invalidateCompanyWorkspaceSections,
+  sectionsForCompanyWorkspaceMutation,
+} from "@/lib/company-workspace/invalidation";
 import { companyWorkspaceSectionOptions } from "@/lib/company-workspace/query-options";
 import type {
   ActivityProjection,
@@ -69,6 +73,7 @@ type WorkspaceTab = "overview" | "stakeholders" | "timeline" | "events" | "tasks
 
 function AccountDetailRoute() {
   const loaderData = Route.useLoaderData();
+  const queryClient = useQueryClient();
   const coreQuery = useQuery({
     ...companyWorkspaceSectionOptions(loaderData.accountId, "core"),
   });
@@ -226,6 +231,11 @@ function AccountDetailRoute() {
       await dismissRelationshipSignalFn({
         data: { id: signal.id, reason: reason.trim() },
       });
+      await invalidateCompanyWorkspaceSections(
+        queryClient,
+        account.id,
+        sectionsForCompanyWorkspaceMutation("signal-dismissed"),
+      );
       setDismissedSignalIds((prev) => [...prev, signal.id]);
       setActiveDismissId((current) => (current === signal.id ? null : current));
       setDismissReasons((prev) => {

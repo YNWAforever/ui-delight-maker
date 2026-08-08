@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, Plus, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { PageHeader } from "@/components/page-header";
+import {
+  invalidateCompanyWorkspaceSections,
+  sectionsForCompanyWorkspaceMutation,
+} from "@/lib/company-workspace/invalidation";
 import {
   QuoteDocumentEditor,
   type QuoteDocumentDraft,
@@ -90,6 +95,7 @@ function QuoteBuilder() {
     Route.useLoaderData();
   const navigate = useNavigate();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const initialQuoteTemplate = quoteTemplates[0];
 
   const [step, setStep] = useState(1);
@@ -219,6 +225,15 @@ function QuoteBuilder() {
     } satisfies CreateQuoteInput;
 
     const quote = await createQuote({ data: payload });
+    const accountId =
+      quote.account_id ?? (mode === "client" ? client?.account_id : lead?.account_id);
+    if (accountId) {
+      await invalidateCompanyWorkspaceSections(
+        queryClient,
+        accountId,
+        sectionsForCompanyWorkspaceMutation("quote-changed"),
+      );
+    }
     router.invalidate();
     toast.success("Quote submitted for approval.");
     navigate({ to: "/quotes/$id", params: { id: quote.id } });

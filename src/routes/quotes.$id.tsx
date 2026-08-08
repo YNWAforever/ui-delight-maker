@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 import {
@@ -14,6 +15,10 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
+import {
+  invalidateCompanyWorkspaceSections,
+  sectionsForCompanyWorkspaceMutation,
+} from "@/lib/company-workspace/invalidation";
 import {
   QuotePdfPreview,
   QuotePdfPreviewUnavailable,
@@ -129,6 +134,7 @@ function QuoteDetail() {
   const { edit, approvalId } = Route.useSearch();
   const isEditMode = edit === true || quote.status === "draft";
   const router = useRouter();
+  const queryClient = useQueryClient();
   const creator = userById(quote.created_by ?? "");
   const approver = quote.approved_by ? userById(quote.approved_by) : null;
   const initialComments = quoteComments.filter((c) => c.quote_id === quote.id);
@@ -158,6 +164,14 @@ function QuoteDetail() {
   const clientName =
     client?.company_name ?? lead?.company_name ?? quote.client_id ?? quote.lead_id ?? "Client";
   const currentPreviewVersionId = resolvedPdfSource.sourceVersion?.id ?? null;
+  const invalidateQuote = async (mutation: "quote-changed" | "quote-accepted") => {
+    if (!quote.account_id) return;
+    await invalidateCompanyWorkspaceSections(
+      queryClient,
+      quote.account_id,
+      sectionsForCompanyWorkspaceMutation(mutation),
+    );
+  };
 
   const updateItemQty = (idx: number, qty: number) => {
     setEditItems((prev) =>
@@ -184,6 +198,7 @@ function QuoteDetail() {
     await updateQuote({
       data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } },
     });
+    await invalidateQuote("quote-changed");
   };
 
   const approveAndIssueReviewedQuote = async () => {
@@ -193,6 +208,7 @@ function QuoteDetail() {
 
     await saveEditableQuoteFields();
     const result = await approveAndIssueQuote({ data: { id: quote.id, approvalId } });
+    await invalidateQuote("quote-changed");
     setStatus(result.quote.status);
     toast.success("Quote approved and issued");
     navigate({ to: "/approvals" });
@@ -221,6 +237,7 @@ function QuoteDetail() {
         // Plain draft edit: save + request approval (moves to pending_approval + triggers n8n)
         await saveEditableQuoteFields();
         await requestQuoteApproval({ data: { id: quote.id } });
+        await invalidateQuote("quote-changed");
         setStatus("pending_approval");
         toast.success("Quote submitted for approval");
         router.invalidate();
@@ -236,6 +253,7 @@ function QuoteDetail() {
 
   const handleRequestApproval = async () => {
     await requestQuoteApproval({ data: { id: quote.id } });
+    await invalidateQuote("quote-changed");
     setStatus("pending_approval");
     router.invalidate();
     toast.success("Submitted for approval");
@@ -245,6 +263,7 @@ function QuoteDetail() {
     try {
       setSaving(true);
       const result = await rejectQuote({ data: { id: quote.id, approvalId } });
+      await invalidateQuote("quote-changed");
       setStatus(result.status);
       toast.success("Quote rejected");
       if (approvalId) {
@@ -268,6 +287,7 @@ function QuoteDetail() {
       }
 
       const result = await approveQuote({ data: { id: quote.id } });
+      await invalidateQuote("quote-changed");
       setStatus(result.status);
       router.invalidate();
       toast.success("Quote approved");
@@ -282,6 +302,7 @@ function QuoteDetail() {
     try {
       setSaving(true);
       const result = await issueQuoteVersion({ data: { id: quote.id } });
+      await invalidateQuote("quote-changed");
       setStatus(result.quote.status);
       router.invalidate();
       toast.success("Quote issued and PDF version created");
@@ -296,6 +317,7 @@ function QuoteDetail() {
     try {
       setSaving(true);
       const result = await acceptQuoteAndCreateJobSheet({ data: { id: quote.id } });
+      await invalidateQuote("quote-accepted");
       setStatus(result.quote.status);
       router.invalidate();
       toast.success(`Quote accepted. Job sheet ${result.jobSheet.number} is ready for accounting.`);

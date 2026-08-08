@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -12,6 +13,10 @@ import {
 import { toast } from "sonner";
 
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
+import {
+  invalidateCompanyWorkspaceSections,
+  sectionsForCompanyWorkspaceMutation,
+} from "@/lib/company-workspace/invalidation";
 import { StatusBadge } from "@/components/status-badge";
 import {
   AlertDialog,
@@ -87,6 +92,7 @@ function ApprovalsInbox() {
   const allApprovals = Route.useLoaderData();
   const router = useRouter();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   useRoutePollingRefresh();
 
   const [typeFilter, setTypeFilter] = useState("all");
@@ -124,13 +130,20 @@ function ApprovalsInbox() {
       const quoteId = getQuoteId(approval);
       if (!quoteId) throw new Error("Quote approval is missing quote context");
 
-      await approveAndIssueQuote({
+      const result = await approveAndIssueQuote({
         data: {
           id: quoteId,
           approvalId: approval.id,
           ...(notes ? { notes } : {}),
         },
       });
+      if (result.quote.account_id) {
+        await invalidateCompanyWorkspaceSections(
+          queryClient,
+          result.quote.account_id,
+          sectionsForCompanyWorkspaceMutation("quote-changed"),
+        );
+      }
       return;
     }
 
@@ -149,13 +162,20 @@ function ApprovalsInbox() {
       const quoteId = getQuoteId(approval);
       if (!quoteId) throw new Error("Quote approval is missing quote context");
 
-      await rejectQuote({
+      const result = await rejectQuote({
         data: {
           id: quoteId,
           approvalId: approval.id,
           ...(notes ? { notes } : {}),
         },
       });
+      if (result.account_id) {
+        await invalidateCompanyWorkspaceSections(
+          queryClient,
+          result.account_id,
+          sectionsForCompanyWorkspaceMutation("quote-changed"),
+        );
+      }
       return;
     }
 

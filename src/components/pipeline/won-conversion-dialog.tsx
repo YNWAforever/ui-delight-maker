@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -20,6 +21,10 @@ import {
 } from "@/components/ui/select";
 import { convertWonLead } from "@/server-functions/leads";
 import { addMonthsToDateString } from "@/lib/engagement-utils";
+import {
+  invalidateCompanyWorkspaceSections,
+  sectionsForCompanyWorkspaceMutation,
+} from "@/lib/company-workspace/invalidation";
 import type { Engagement, Lead, Product, Quote } from "@/lib/types";
 
 const DEFAULT_TERM_MONTHS = 12;
@@ -40,6 +45,7 @@ export function WonConversionDialog({
   onDone,
 }: WonConversionDialogProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [value, setValue] = useState(matchingQuote?.total_value ?? 0);
   const [billingPeriod, setBillingPeriod] = useState<Engagement["billing_period"]>("monthly");
@@ -73,6 +79,14 @@ export function WonConversionDialog({
         quoteId: matchingQuote?.id,
       },
     });
+    const accountId = matchingQuote?.account_id ?? lead.account_id;
+    if (accountId) {
+      await invalidateCompanyWorkspaceSections(
+        queryClient,
+        accountId,
+        sectionsForCompanyWorkspaceMutation("engagement-changed"),
+      );
+    }
     toast.success(`${lead.company_name} is now a client engagement`);
     onDone();
     navigate({ to: "/clients/$id", params: { id: result.clientId } });

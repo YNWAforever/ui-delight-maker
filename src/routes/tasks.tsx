@@ -1,9 +1,14 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Bot, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
+import {
+  invalidateCompanyWorkspaceSections,
+  sectionsForCompanyWorkspaceMutation,
+} from "@/lib/company-workspace/invalidation";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -64,6 +69,7 @@ const isTaskOverdue = (task: Task) => {
 function TasksBoard() {
   const loaderTasks = Route.useLoaderData();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState<Task[]>(loaderTasks);
   const [priority, setPriority] = useState("all");
   const [assignee, setAssignee] = useState("all");
@@ -81,8 +87,16 @@ function TasksBoard() {
   const metrics = getTaskBoardMetrics(rows, TODAY);
 
   const move = async (id: string, status: TaskStatus) => {
+    const task = rows.find((row) => row.id === id);
     setRows((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
     await updateTask({ data: { id, updates: { status } } });
+    if (task?.account_id) {
+      await invalidateCompanyWorkspaceSections(
+        queryClient,
+        task.account_id,
+        sectionsForCompanyWorkspaceMutation("task-changed"),
+      );
+    }
     router.invalidate();
   };
 
@@ -96,6 +110,13 @@ function TasksBoard() {
           <NewTaskDialog
             onCreate={async (t) => {
               const created = await createTask({ data: t });
+              if (created.account_id) {
+                await invalidateCompanyWorkspaceSections(
+                  queryClient,
+                  created.account_id,
+                  sectionsForCompanyWorkspaceMutation("task-changed"),
+                );
+              }
               setRows((prev) => [created, ...prev]);
               router.invalidate();
               toast.success("Task created");
