@@ -1,4 +1,4 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account } from "@/lib/types";
 import type { CompanyWorkspaceResponse } from "@/lib/company-workspace/types";
@@ -83,5 +83,56 @@ describe("company workspace query options", () => {
     expect(
       queryClient.getQueryData(companyWorkspaceKeys.section("account-1", "overview")),
     ).toEqual(response.sections.overview);
+  });
+
+  it("retains a ready overview and exposes a correlated error when a refetch returns a section error", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const response = createWorkspaceResponseWithCoreAndOverview();
+    const readyOverview = {
+      ...response.sections.overview!,
+      status: "ready" as const,
+    };
+    response.sections.overview = readyOverview;
+    seedCompanyWorkspaceCache(queryClient, "account-1", response);
+    getCompanyWorkspaceMock.mockResolvedValue({
+      sections: {
+        overview: {
+          status: "error",
+          error: {
+            code: "SECTION_READ_FAILED",
+            message: "This workspace section is temporarily unavailable. Please try again.",
+          },
+          meta: {
+            correlationId: "corr-refetch-failure",
+            fetchedAt: "2026-08-08T00:00:01.000Z",
+            durationMs: 1,
+            source: "network",
+          },
+        },
+      },
+    });
+    const options = companyWorkspaceSectionOptions("account-1", "overview");
+    const observer = new QueryObserver(queryClient, options);
+    const unsubscribe = observer.subscribe(() => {});
+
+    try {
+      await expect(observer.refetch({ throwOnError: true })).rejects.toMatchObject({
+        message: "This workspace section is temporarily unavailable. Please try again.",
+        correlationId: "corr-refetch-failure",
+      });
+
+      const result = observer.getCurrentResult();
+      expect(result.data).toEqual(readyOverview);
+      expect(result.isError).toBe(true);
+
+      await expect(observer.refetch({ throwOnError: true })).rejects.toMatchObject({
+        correlationId: "corr-refetch-failure",
+      });
+      expect(getCompanyWorkspaceMock).toHaveBeenCalledTimes(2);
+    } finally {
+      unsubscribe();
+    }
   });
 });
