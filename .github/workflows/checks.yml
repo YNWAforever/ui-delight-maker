@@ -22,3 +22,20 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
       - run: bun run lint
+
+  # CLAUDE.md lists `bun run build` in the pre-merge gate, but nothing enforced it: a change
+  # that typechecks and passes tests could still break bundling, SSR-only imports or route tree
+  # generation. The route performance budgets had the same problem — they only ran by hand, so a
+  # budget that silently measured nothing went unnoticed. Both run here on every pull request.
+  bundles:
+    name: Build and performance budgets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      # Not `bun run build`: that script also migrates, verifies and seeds a database through
+      # the Neon driver, which needs a real Neon endpoint. The bundle output is what these
+      # budgets measure, so call Vite directly and keep this job database-free.
+      - run: bunx vite build
+      - run: bun run performance:verify

@@ -32,4 +32,13 @@ describe("ClientOps database build commands", () => {
     const workflow = await readFile(".github/workflows/database-contract.yml", "utf8");
     expect(workflow).toContain("image: pgvector/pgvector:pg17");
   });
+
+  it("enforces the build and the route performance budgets on every pull request", async () => {
+    // Without this job the budgets only ever ran by hand, which is how a bundle check that
+    // measured nothing stayed green. `bun run build` cannot stand in for it here — its
+    // migrate/verify/seed steps need a reachable Neon endpoint.
+    const workflow = await readFile(".github/workflows/checks.yml", "utf8");
+    expect(workflow).toContain("bunx vite build");
+    expect(workflow).toContain("bun run performance:verify");
+  });
 });
