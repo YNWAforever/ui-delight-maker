@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { assertRouteChunkBudgets, readRouteChunkMeasurements } from "../check-route-bundles";
+import {
+  assertRouteChunkBudgets,
+  readRouteChunkMeasurements,
+  selectClientManifest,
+} from "../check-route-bundles";
 
 const temporaryDirectories: string[] = [];
 
@@ -93,5 +97,35 @@ describe("route bundle budgets", () => {
     const measurements = readRouteChunkMeasurements(createManifestFixture());
 
     expect(() => assertRouteChunkBudgets(measurements.routes)).toThrow(/reports.*300000.*256000/i);
+  });
+});
+
+describe("client manifest selection", () => {
+  it("prefers the client manifest regardless of discovery order", () => {
+    // The SSR manifest attributes no exclusively-owned chunks, so measuring it would report
+    // 0 bytes for every route and let any oversized route through.
+    const server = "dist/server/.vite/manifest.json";
+    const client = "dist/client/.vite/manifest.json";
+
+    expect(selectClientManifest([server, client])).toBe(client);
+    expect(selectClientManifest([client, server])).toBe(client);
+  });
+
+  it("recognises the vercel preset's static client output", () => {
+    expect(
+      selectClientManifest([
+        ".output/server/.vite/manifest.json",
+        ".output/static/.vite/manifest.json",
+      ]),
+    ).toBe(".output/static/.vite/manifest.json");
+  });
+
+  it("refuses to fall back to an SSR-only manifest set", () => {
+    expect(selectClientManifest(["dist/server/.vite/manifest.json"])).toBeNull();
+    expect(selectClientManifest([])).toBeNull();
+  });
+
+  it("accepts a single unlabelled manifest as the client build", () => {
+    expect(selectClientManifest(["dist/.vite/manifest.json"])).toBe("dist/.vite/manifest.json");
   });
 });

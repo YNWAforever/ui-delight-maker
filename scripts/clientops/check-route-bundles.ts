@@ -165,17 +165,52 @@ export function assertRouteChunkBudgets(measurements: RouteChunkMeasurement[]) {
   );
 }
 
+const CLIENT_OUTPUT_SEGMENTS = ["client", "static", "public"] as const;
+const SERVER_OUTPUT_SEGMENTS = ["server", "ssr"] as const;
+
+function hasPathSegment(path: string, segments: readonly string[]) {
+  return path
+    .replaceAll("\\", "/")
+    .split("/")
+    .some((segment) => segments.includes(segment));
+}
+
+/**
+ * A route chunk budget describes what a browser downloads, so the client manifest is the only
+ * valid input. The build also emits an SSR manifest that lists the same routes but attributes
+ * no exclusively-owned chunks to any of them, so measuring it reports 0 bytes per route and
+ * every budget assertion passes vacuously. Directory iteration order is not alphabetical, so
+ * taking the first manifest found picked between the two at random.
+ */
+export function selectClientManifest(manifestPaths: readonly string[]) {
+  const candidates = [...manifestPaths].sort();
+  return (
+    candidates.find((path) => hasPathSegment(path, CLIENT_OUTPUT_SEGMENTS)) ??
+    candidates.find((path) => !hasPathSegment(path, SERVER_OUTPUT_SEGMENTS)) ??
+    null
+  );
+}
+
 function findBuiltManifest() {
   const explicitPath = process.argv[2];
   if (explicitPath) return resolve(explicitPath);
 
   for (const outputRoot of [".output", "dist"]) {
     if (!existsSync(outputRoot)) continue;
-    const manifest = readdirSync(outputRoot, { recursive: true, withFileTypes: true }).find(
-      (entry) =>
-        entry.isFile() && entry.name === "manifest.json" && entry.parentPath.endsWith(".vite"),
-    );
-    if (manifest) return join(manifest.parentPath, manifest.name);
+    const manifests = readdirSync(outputRoot, { recursive: true, withFileTypes: true })
+      .filter(
+        (entry) =>
+          entry.isFile() && entry.name === "manifest.json" && entry.parentPath.endsWith(".vite"),
+      )
+      .map((entry) => join(entry.parentPath, entry.name));
+    const clientManifest = selectClientManifest(manifests);
+    if (clientManifest) return resolve(clientManifest);
+    if (manifests.length > 0) {
+      throw new Error(
+        `Only SSR Vite manifests were found under ${outputRoot} (${[...manifests].sort().join(", ")}). ` +
+          "Route chunk budgets need the client manifest — pass its path as the first argument.",
+      );
+    }
   }
   throw new Error("No Vite client manifest found under .output or dist. Run the Vite build first.");
 }
