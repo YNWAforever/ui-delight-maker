@@ -18,8 +18,10 @@ type LifecycleUser = {
   status: ProfileStatus;
 };
 
+export type UserLifecycleAction = "suspend" | "reactivate" | "deactivate";
+
 export type UserLifecycleSubmit = {
-  action: "suspend" | "deactivate";
+  action: UserLifecycleAction;
   profileId: string;
   reason: string;
   reviewedInventory: DeactivateUserWithReassignmentInput["reviewedInventory"];
@@ -29,23 +31,56 @@ export type UserLifecycleSubmit = {
 type UserLifecycleDialogProps = {
   open: boolean;
   user: LifecycleUser;
-  initialAction?: "suspend" | "deactivate";
+  initialAction?: UserLifecycleAction;
   inventory?: ReassignmentInventory;
   successors?: readonly LifecycleSuccessorOption[];
   onOpenChange: (open: boolean) => void;
   onSubmit: (input: UserLifecycleSubmit) => Promise<unknown> | unknown;
 };
 
+// Suspending an already-suspended member is a no-op, and reactivating anyone else is
+// meaningless, so the pair on offer follows the member's current status. Deactivate is always
+// available because it is reachable from every non-deactivated status.
+function actionsForStatus(status: ProfileStatus): UserLifecycleAction[] {
+  return status === "suspended" ? ["reactivate", "deactivate"] : ["suspend", "deactivate"];
+}
+
+const ACTION_LABELS: Record<UserLifecycleAction, string> = {
+  suspend: "Suspend",
+  reactivate: "Restore",
+  deactivate: "Deactivate",
+};
+
+const ACTION_DESCRIPTIONS: Record<UserLifecycleAction, string> = {
+  suspend:
+    "Suspension immediately removes app access and invalidates active sessions. The profile and ownership history remain.",
+  reactivate:
+    "Restoring returns app access and clears the suspension record. Existing sessions stay invalidated, so this member signs in again. Team memberships were never ended by the suspension and need no action.",
+  deactivate:
+    "Deactivation is permanent operationally. Review and reassign every open ownership bucket before continuing.",
+};
+
+const SUBMIT_LABELS: Record<UserLifecycleAction, string> = {
+  suspend: "Suspend user",
+  reactivate: "Restore access",
+  deactivate: "Deactivate user",
+};
+
 export function UserLifecycleDialog({
   open,
   user,
-  initialAction = "suspend",
+  initialAction,
   inventory,
   successors = [],
   onOpenChange,
   onSubmit,
 }: UserLifecycleDialogProps) {
-  const [action, setAction] = useState<"suspend" | "deactivate">(initialAction);
+  const availableActions = actionsForStatus(user.status);
+  // A caller asking for "suspend" on an already-suspended member would otherwise select an
+  // action the toggle never renders, leaving the dialog stuck on an invisible selection.
+  const resolvedInitialAction =
+    initialAction && availableActions.includes(initialAction) ? initialAction : availableActions[0];
+  const [action, setAction] = useState<UserLifecycleAction>(resolvedInitialAction);
   const [reason, setReason] = useState("");
   const [selected, setSelected] = useState<Partial<Record<ReassignmentBucketKey, string>>>({});
   const [error, setError] = useState<string | null>(null);
@@ -53,12 +88,12 @@ export function UserLifecycleDialog({
 
   useEffect(() => {
     if (open) {
-      setAction(initialAction);
+      setAction(resolvedInitialAction);
       setReason("");
       setSelected({});
       setError(null);
     }
-  }, [initialAction, open, user.id]);
+  }, [resolvedInitialAction, open, user.id]);
 
   if (!open) return null;
 
@@ -67,7 +102,9 @@ export function UserLifecycleDialog({
     action === "deactivate" &&
     Boolean(inventory) &&
     openBuckets.every((bucket) => Boolean(selected[bucket.key]?.trim()));
-  const canSubmit = action === "suspend" || (Boolean(inventory) && hasAllSuccessors);
+  // Only deactivation reassigns work. Gating the other actions on the inventory would make
+  // reactivate permanently unsubmittable, because nothing is ever loaded for it.
+  const canSubmit = action !== "deactivate" || (Boolean(inventory) && hasAllSuccessors);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -138,47 +175,34 @@ export function UserLifecycleDialog({
 
         <form onSubmit={submit} className="space-y-4 px-5 py-5">
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              aria-pressed={action === "suspend"}
-              onClick={() => {
-                setAction("suspend");
-                setError(null);
-              }}
-              className={
-                "min-h-9 rounded-md border px-3 py-2 text-sm font-medium " +
-                (action === "suspend"
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border hover:bg-accent")
-              }
-            >
-              Suspend
-            </button>
-            <button
-              type="button"
-              aria-pressed={action === "deactivate"}
-              onClick={() => {
-                setAction("deactivate");
-                setError(null);
-              }}
-              className={
-                "min-h-9 rounded-md border px-3 py-2 text-sm font-medium " +
-                (action === "deactivate"
-                  ? "border-destructive bg-destructive/10 text-destructive"
-                  : "border-border hover:bg-accent")
-              }
-            >
-              Deactivate
-            </button>
+            {availableActions.map((candidate) => (
+              <button
+                key={candidate}
+                type="button"
+                aria-pressed={action === candidate}
+                onClick={() => {
+                  setAction(candidate);
+                  setError(null);
+                }}
+                className={
+                  "min-h-9 rounded-md border px-3 py-2 text-sm font-medium " +
+                  (action === candidate
+                    ? candidate === "deactivate"
+                      ? "border-destructive bg-destructive/10 text-destructive"
+                      : "border-primary bg-primary/10 text-primary"
+                    : "border-border hover:bg-accent")
+                }
+              >
+                {ACTION_LABELS[candidate]}
+              </button>
+            ))}
           </div>
 
           <div
             className="rounded-md border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground"
             role="status"
           >
-            {action === "suspend"
-              ? "Suspension immediately removes app access and invalidates active sessions. The profile and ownership history remain."
-              : "Deactivation is permanent operationally. Review and reassign every open ownership bucket before continuing."}
+            {ACTION_DESCRIPTIONS[action]}
           </div>
 
           {action === "deactivate" ? (
@@ -230,13 +254,14 @@ export function UserLifecycleDialog({
             <button
               type="submit"
               disabled={!canSubmit || submitting}
-              className="min-h-9 rounded-md bg-destructive px-3 py-2 text-sm font-medium text-destructive-foreground disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={
+                "min-h-9 rounded-md px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                (action === "reactivate"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-destructive text-destructive-foreground")
+              }
             >
-              {submitting
-                ? "Updating..."
-                : action === "suspend"
-                  ? "Suspend user"
-                  : "Deactivate user"}
+              {submitting ? "Updating..." : SUBMIT_LABELS[action]}
             </button>
           </div>
         </form>

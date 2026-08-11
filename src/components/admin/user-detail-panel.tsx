@@ -7,6 +7,9 @@ type UserDetailPanelProps = {
   loading?: boolean;
   onRoleChange?: () => void;
   onLifecycle?: () => void;
+  onEditProfile?: () => void;
+  onRevokeSessions?: () => void;
+  onDelegateWork?: () => void;
   fullHref?: string;
 };
 
@@ -15,6 +18,9 @@ export function UserDetailPanel({
   loading = false,
   onRoleChange,
   onLifecycle,
+  onEditProfile,
+  onRevokeSessions,
+  onDelegateWork,
   fullHref,
 }: UserDetailPanelProps) {
   if (loading)
@@ -76,7 +82,24 @@ export function UserDetailPanel({
             </span>
           </div>
         </div>
+        {user.sessionInvalidBefore ? (
+          <div>
+            <p className="text-xs text-muted-foreground">Sessions invalidated</p>
+            <p className="mt-1 text-sm text-foreground">
+              {formatDateTime(user.sessionInvalidBefore)}
+            </p>
+          </div>
+        ) : null}
         <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+          {onEditProfile ? (
+            <button
+              type="button"
+              onClick={onEditProfile}
+              className="min-h-9 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Edit profile
+            </button>
+          ) : null}
           {onRoleChange ? (
             <button
               type="button"
@@ -86,13 +109,36 @@ export function UserDetailPanel({
               Change role
             </button>
           ) : null}
+          {onDelegateWork ? (
+            <button
+              type="button"
+              onClick={onDelegateWork}
+              className="min-h-9 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Delegate work
+            </button>
+          ) : null}
+          {onRevokeSessions ? (
+            <button
+              type="button"
+              onClick={onRevokeSessions}
+              className="min-h-9 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Force sign-out
+            </button>
+          ) : null}
           {onLifecycle && user.status !== "deactivated" ? (
             <button
               type="button"
               onClick={onLifecycle}
-              className="min-h-9 rounded-md border border-destructive/50 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={
+                "min-h-9 rounded-md border px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                (user.status === "suspended"
+                  ? "border-border hover:bg-accent"
+                  : "border-destructive/50 text-destructive hover:bg-destructive/10")
+              }
             >
-              Manage lifecycle
+              {user.status === "suspended" ? "Restore access" : "Manage lifecycle"}
             </button>
           ) : null}
           {fullHref ? (

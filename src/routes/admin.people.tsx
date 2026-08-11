@@ -12,8 +12,31 @@ import {
   type UserLifecycleSubmit,
 } from "@/components/admin/user-lifecycle-dialog";
 import { UserRoleDialog } from "@/components/admin/user-role-dialog";
+import {
+  UserProfileDialog,
+  type ProfileChanges,
+  type ProfileDialogDepartment,
+} from "@/components/admin/user-profile-dialog";
+import {
+  WorkDelegationDialog,
+  type DelegationCandidate,
+  type WorkDelegationSubmit,
+} from "@/components/admin/work-delegation-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { LifecycleSuccessorOption } from "@/components/admin/work-reassignment-table";
 import type { ReassignmentInventory } from "@/server/admin/reassignment.server";
+import type { AdminUserDetail } from "@/server/repositories/admin-users";
+import { getAdminOrganizationFn } from "@/server-functions/admin-teams";
+import { createAdminWorkDelegationFn } from "@/server-functions/admin-access";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import {
@@ -22,7 +45,10 @@ import {
   getAdminReassignmentInventoryFn,
   getAdminUserFn,
   getAdminUsersFn,
+  reactivateAdminUserFn,
+  revokeAdminUserSessionsFn,
   suspendAdminUserFn,
+  updateAdminUserFn,
 } from "@/server-functions/admin-users";
 import { inviteUsers } from "@/server-functions/admin-invitations";
 
@@ -118,6 +144,12 @@ function AdminPeopleRoute() {
   const [lifecycleInventory, setLifecycleInventory] = useState<ReassignmentInventory>();
   const [lifecycleSuccessors, setLifecycleSuccessors] = useState<LifecycleSuccessorOption[]>([]);
   const [lifecycleLoading, setLifecycleLoading] = useState(false);
+  const optionsRequest = useRef(0);
+  const [profileUser, setProfileUser] = useState<AdminUserDetail | null>(null);
+  const [delegationUser, setDelegationUser] = useState<AdminUserDetail | null>(null);
+  const [revokeUser, setRevokeUser] = useState<AdminUserDetail | null>(null);
+  const [departmentOptions, setDepartmentOptions] = useState<ProfileDialogDepartment[]>([]);
+  const [memberOptions, setMemberOptions] = useState<DelegationCandidate[]>([]);
 
   const updateSearch = (next: AdminPeopleSearch) => navigate({ search: () => next, replace: true });
   const canInvite = ["super_admin", "admin", "manager"].includes(profile?.role ?? "");
@@ -193,6 +225,11 @@ function AdminPeopleRoute() {
         data: { profileId: input.profileId, reason: input.reason },
       });
       toast.success("User suspended");
+    } else if (input.action === "reactivate") {
+      await reactivateAdminUserFn({
+        data: { profileId: input.profileId, reason: input.reason },
+      });
+      toast.success("Access restored");
     } else {
       await deactivateAdminUserWithReassignmentFn({
         data: {
@@ -206,6 +243,85 @@ function AdminPeopleRoute() {
     }
     closeLifecycle(false);
     await refreshPeople(input.profileId);
+  };
+
+  // Both the profile and delegation dialogs need the active-member list, and the profile dialog
+  // also needs departments. Shares openLifecycle's request-sequence guard so a slow response for
+  // one member cannot land after the admin has moved to another.
+  const loadMemberOptions = async (user: AdminUserDetail, withDepartments: boolean) => {
+    const requestNumber = ++optionsRequest.current;
+    setDepartmentOptions([]);
+    setMemberOptions([]);
+    try {
+      const [members, organization] = await Promise.all([
+        getAdminUsersFn({ data: { status: "active", page: 1, limit: 100 } }),
+        withDepartments ? getAdminOrganizationFn() : Promise.resolve(null),
+      ]);
+      if (requestNumber !== optionsRequest.current) return;
+      setMemberOptions(members.items);
+      if (organization) {
+        // An archived department the member already sits in must stay selectable, or saving any
+        // other field would silently clear their department.
+        setDepartmentOptions(
+          organization.departments.filter(
+            (department) =>
+              department.status === "active" || department.id === user.primaryDepartmentId,
+          ),
+        );
+      }
+    } catch (error) {
+      if (requestNumber !== optionsRequest.current) return;
+      toast.error(
+        error instanceof AdminError || error instanceof Error
+          ? error.message
+          : "Could not load department and manager options.",
+      );
+    }
+  };
+
+  const openProfile = async () => {
+    if (!selectedUser) return;
+    setProfileUser(selectedUser);
+    await loadMemberOptions(selectedUser, true);
+  };
+
+  const openDelegation = async () => {
+    if (!selectedUser) return;
+    setDelegationUser(selectedUser);
+    await loadMemberOptions(selectedUser, false);
+  };
+
+  const submitProfile = async (changes: ProfileChanges) => {
+    if (!profileUser) return;
+    await updateAdminUserFn({ data: { profileId: profileUser.id, changes } });
+    toast.success("Profile updated");
+    setProfileUser(null);
+    // Name and department feed the app shell's identity block, so refresh it too.
+    await refreshPeople(profileUser.id, true);
+  };
+
+  const submitDelegation = async (input: WorkDelegationSubmit) => {
+    await createAdminWorkDelegationFn({ data: input });
+    toast.success("Delegation created");
+    setDelegationUser(null);
+    await refreshPeople(input.delegatorProfileId);
+  };
+
+  const confirmRevokeSessions = async () => {
+    if (!revokeUser) return;
+    const profileId = revokeUser.id;
+    setRevokeUser(null);
+    try {
+      await revokeAdminUserSessionsFn({ data: { profileId } });
+      toast.success("Sessions revoked");
+      await refreshPeople(profileId);
+    } catch (error) {
+      toast.error(
+        error instanceof AdminError || error instanceof Error
+          ? error.message
+          : "Could not revoke this user's sessions.",
+      );
+    }
   };
 
   if (forbidden) {
@@ -236,6 +352,17 @@ function AdminPeopleRoute() {
             user={selectedUser}
             fullHref={selectedUser ? "/admin/people/" + selectedUser.id : undefined}
             onRoleChange={selectedUser ? () => setRoleUser(selectedUser) : undefined}
+            onEditProfile={canManageLifecycle && selectedUser ? openProfile : undefined}
+            onDelegateWork={
+              canManageLifecycle && selectedUser && selectedUser.status === "active"
+                ? openDelegation
+                : undefined
+            }
+            onRevokeSessions={
+              canManageLifecycle && selectedUser && selectedUser.status !== "deactivated"
+                ? () => setRevokeUser(selectedUser)
+                : undefined
+            }
             onLifecycle={
               canManageLifecycle && selectedUser && selectedUser.status !== "deactivated"
                 ? openLifecycle
@@ -282,6 +409,56 @@ function AdminPeopleRoute() {
           onSubmit={submitLifecycle}
         />
       ) : null}
+
+      {profileUser ? (
+        <UserProfileDialog
+          open
+          user={profileUser}
+          departments={departmentOptions}
+          managers={memberOptions}
+          onOpenChange={(open) => {
+            if (!open) {
+              optionsRequest.current += 1;
+              setProfileUser(null);
+            }
+          }}
+          onSubmit={submitProfile}
+        />
+      ) : null}
+
+      {delegationUser ? (
+        <WorkDelegationDialog
+          open
+          user={delegationUser}
+          candidates={memberOptions}
+          onOpenChange={(open) => {
+            if (!open) {
+              optionsRequest.current += 1;
+              setDelegationUser(null);
+            }
+          }}
+          onSubmit={submitDelegation}
+        />
+      ) : null}
+
+      <AlertDialog open={revokeUser !== null} onOpenChange={(open) => !open && setRevokeUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Force sign-out</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(revokeUser?.name || revokeUser?.email || "This user") +
+                " will be signed out of every device immediately and must sign in again. Their" +
+                " access, role and ownership are unchanged."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmRevokeSessions()}>
+              Revoke sessions
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

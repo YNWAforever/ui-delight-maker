@@ -91,6 +91,87 @@ describe("UserLifecycleDialog", () => {
     );
   });
 
+  it("offers restore instead of suspend for a suspended member", () => {
+    render(
+      <UserLifecycleDialog
+        open
+        user={{ ...user, status: "suspended" }}
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Restore" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Restore access" })).toBeTruthy();
+    // Suspending an already-suspended member is a no-op and must not be offered.
+    expect(screen.queryByRole("button", { name: "Suspend" })).toBeNull();
+  });
+
+  it("does not offer restore for an active member", () => {
+    render(<UserLifecycleDialog open user={user} onOpenChange={vi.fn()} onSubmit={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Suspend" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Restore" })).toBeNull();
+  });
+
+  it("restores a suspended member without loading a reassignment inventory", async () => {
+    const submit = vi.fn().mockResolvedValue(undefined);
+    const actor = userEvent.setup();
+
+    // No `inventory` prop at all: reactivation reassigns nothing, so gating it on the inventory
+    // would leave the only exit from `suspended` permanently disabled.
+    render(
+      <UserLifecycleDialog
+        open
+        user={{ ...user, status: "suspended" }}
+        onOpenChange={vi.fn()}
+        onSubmit={submit}
+      />,
+    );
+
+    const submitButton = screen.getByRole("button", { name: "Restore access" });
+    expect(submitButton.hasAttribute("disabled")).toBe(false);
+
+    await actor.type(screen.getByLabelText("Reason"), "Returned from leave");
+    await actor.click(submitButton);
+
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "reactivate", profileId: "target" }),
+    );
+  });
+
+  it("tells the admin that restoring does not resume existing sessions", () => {
+    render(
+      <UserLifecycleDialog
+        open
+        user={{ ...user, status: "suspended" }}
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("status").textContent).toContain("signs in again");
+  });
+
+  it("still requires a reason before restoring", async () => {
+    const submit = vi.fn();
+    const actor = userEvent.setup();
+
+    render(
+      <UserLifecycleDialog
+        open
+        user={{ ...user, status: "suspended" }}
+        onOpenChange={vi.fn()}
+        onSubmit={submit}
+      />,
+    );
+
+    await actor.click(screen.getByRole("button", { name: "Restore access" }));
+
+    expect(screen.getByRole("alert").textContent).toContain("Enter a reason");
+    expect(submit).not.toHaveBeenCalled();
+  });
+
   it("keeps a final-Super-Admin error visible without closing", async () => {
     const submit = vi
       .fn()
