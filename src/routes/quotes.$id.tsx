@@ -26,6 +26,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { quoteDetailSearchSchema } from "@/lib/admin-ux-search";
 import { useQuoteReferenceData } from "@/hooks/use-quote-reference-data";
+import {
+  invalidateLinkedCompanyWorkspaceMutation,
+  type CompanyWorkspaceMutation,
+} from "@/lib/company-workspace/invalidation";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
@@ -131,16 +135,35 @@ const quoteMutationQueryKeys = {
   ],
 } as const;
 
+/**
+ * Every quote mutation also ages the company workspace the quote belongs to: its overview
+ * totals, its commercial quote list, and its activity timeline, which reads the quotes table
+ * directly. Acceptance additionally creates a job sheet, which is why it is the one mutation
+ * that also reaches delivery and finance.
+ */
+const quoteMutationWorkspaceEffects = {
+  save: "change_quote",
+  approval: "change_quote",
+  approval_issue: "change_quote",
+  issue: "change_quote",
+  accept: "accept_quote",
+} as const satisfies Record<keyof typeof quoteMutationQueryKeys, CompanyWorkspaceMutation>;
+
 async function invalidateQuoteMutation(
   queryClient: ReturnType<typeof useQueryClient>,
-  quoteId: string,
+  quote: { id: string; account_id: string | null },
   mutation: keyof typeof quoteMutationQueryKeys,
 ) {
-  await Promise.all(
-    quoteMutationQueryKeys[mutation](quoteId).map((queryKey) =>
+  await Promise.all([
+    ...quoteMutationQueryKeys[mutation](quote.id).map((queryKey) =>
       queryClient.invalidateQueries({ queryKey }),
     ),
-  );
+    invalidateLinkedCompanyWorkspaceMutation(
+      queryClient,
+      quote.account_id,
+      quoteMutationWorkspaceEffects[mutation],
+    ),
+  ]);
 }
 
 function QuoteDetail() {
@@ -260,7 +283,7 @@ function QuoteDetail() {
     await saveEditableQuoteFields();
     const result = await approveAndIssueQuote({ data: { id: quote.id, approvalId } });
     setStatus(result.quote.status);
-    await invalidateQuoteMutation(queryClient, quote.id, "approval_issue");
+    await invalidateQuoteMutation(queryClient, quote, "approval_issue");
     toast.success("Quote approved and issued");
     navigate({ to: "/approvals" });
   };
@@ -270,7 +293,7 @@ function QuoteDetail() {
     try {
       await saveEditableQuoteFields();
       toast.success("Draft saved");
-      await invalidateQuoteMutation(queryClient, quote.id, "save");
+      await invalidateQuoteMutation(queryClient, quote, "save");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -290,7 +313,7 @@ function QuoteDetail() {
         await requestQuoteApproval({ data: { id: quote.id } });
         setStatus("pending_approval");
         toast.success("Quote submitted for approval");
-        await invalidateQuoteMutation(queryClient, quote.id, "approval");
+        await invalidateQuoteMutation(queryClient, quote, "approval");
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Submit failed");
@@ -304,7 +327,7 @@ function QuoteDetail() {
   const handleRequestApproval = async () => {
     await requestQuoteApproval({ data: { id: quote.id } });
     setStatus("pending_approval");
-    await invalidateQuoteMutation(queryClient, quote.id, "approval");
+    await invalidateQuoteMutation(queryClient, quote, "approval");
     toast.success("Submitted for approval");
   };
 
@@ -314,7 +337,7 @@ function QuoteDetail() {
       const result = await rejectQuote({ data: { id: quote.id, approvalId } });
       setStatus(result.status);
       toast.success("Quote rejected");
-      await invalidateQuoteMutation(queryClient, quote.id, "approval");
+      await invalidateQuoteMutation(queryClient, quote, "approval");
       if (approvalId) {
         navigate({ to: "/approvals" });
       }
@@ -335,7 +358,7 @@ function QuoteDetail() {
 
       const result = await approveQuote({ data: { id: quote.id } });
       setStatus(result.status);
-      await invalidateQuoteMutation(queryClient, quote.id, "approval");
+      await invalidateQuoteMutation(queryClient, quote, "approval");
       toast.success("Quote approved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Approval failed");
@@ -349,7 +372,7 @@ function QuoteDetail() {
       setSaving(true);
       const result = await issueQuoteVersion({ data: { id: quote.id } });
       setStatus(result.quote.status);
-      await invalidateQuoteMutation(queryClient, quote.id, "issue");
+      await invalidateQuoteMutation(queryClient, quote, "issue");
       toast.success("Quote issued and PDF version created");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Issue failed");
@@ -364,7 +387,7 @@ function QuoteDetail() {
       const result = await acceptQuoteAndCreateJobSheet({ data: { id: quote.id } });
       setStatus(result.quote.status);
       await Promise.all([
-        invalidateQuoteMutation(queryClient, quote.id, "accept"),
+        invalidateQuoteMutation(queryClient, quote, "accept"),
         quote.client_id
           ? queryClient.invalidateQueries({
               queryKey: crmQueryKeys.clients.section(quote.client_id, "commercial"),
