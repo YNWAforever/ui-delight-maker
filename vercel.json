@@ -1,3 +1,3 @@
 {
-  "buildCommand": "bun run build && node scripts/vercel-build.mjs"
+  "buildCommand": "bun run typecheck && bun run lint && bun run test && bun run test:database-contract && bun run build && node scripts/vercel-build.mjs"
 }
