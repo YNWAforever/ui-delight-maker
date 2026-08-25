@@ -2,14 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
-import {
-  ArrowLeft,
-  Bot,
-  ChevronDown,
-  ChevronRight,
-  LockKeyhole,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowLeft, Bot, ChevronDown, ChevronRight, LockKeyhole, ShieldCheck } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
