@@ -63,7 +63,7 @@ const retainItems = [
 ];
 
 const operateItems = [
-  { title: "Agents", url: "/agents", icon: Bot },
+  { title: "AI Ops", url: "/agents", icon: Bot },
   { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
@@ -89,7 +89,7 @@ export function AppSidebar({
   adminNavigation = [],
 }: AppSidebarProps) {
   const currentPath = useRouterState({
-    select: (s) => s.location.pathname,
+    select: (state) => state.location.pathname,
   });
 
   const isActive = (item: SidebarItem) => isSidebarItemActive(item, currentPath);
@@ -125,7 +125,7 @@ export function AppSidebar({
           </div>
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold">Fimmick ClientOps</span>
-            <span className="text-[11px] text-muted-foreground">Revenue operations desk</span>
+            <span className="text-[11px] text-muted-foreground">Total CRM + AI operations</span>
           </div>
         </div>
       </SidebarHeader>
