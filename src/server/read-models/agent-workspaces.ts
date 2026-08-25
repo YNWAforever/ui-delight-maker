@@ -250,8 +250,7 @@ export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
     operations: {
       ...operations,
       success_rate: successRate(operations.completed_24h, operations.failed_24h),
-      needs_attention:
-        operations.failed_24h + operations.waiting_approval + operations.stuck_runs,
+      needs_attention: operations.failed_24h + operations.waiting_approval + operations.stuck_runs,
       avg_confidence: weightedConfidence(aggregateRows),
     },
     agents: AGENT_DEFINITIONS.map((agent) => {
