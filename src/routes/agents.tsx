@@ -155,8 +155,8 @@ function AiOpsControlTower() {
               AI workforce
             </h2>
             <p className="text-xs text-muted-foreground">
-              Read-only runtime status. Governance changes are not represented as active until
-              they are persisted and enforced server-side.
+              Read-only runtime status. Governance changes are not represented as active until they
+              are persisted and enforced server-side.
             </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -446,7 +446,9 @@ function AiOpsControlTower() {
   );
 }
 
-function attentionReasonLabel(reason: AgentDirectoryRead["attentionRuns"][number]["attention_reason"]) {
+function attentionReasonLabel(
+  reason: AgentDirectoryRead["attentionRuns"][number]["attention_reason"],
+) {
   switch (reason) {
     case "waiting_approval":
       return "Waiting approval";
