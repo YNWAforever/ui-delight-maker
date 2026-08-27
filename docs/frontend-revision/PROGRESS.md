@@ -33,16 +33,16 @@ Legend: `[ ]` not started · `[x]` done · `[~]` done-with-dependency (see [back
 
 ## Phase C — Revenue and commercial workflows
 
-- [ ] **C1** — Revenue Desk `/`
-- [ ] **C2** — Leads list `/leads`
-- [ ] **C3** — Lead detail `/leads/$id`
+- [x] **C1** — Revenue Desk `/`
+- [x] **C2** — Leads list `/leads`
+- [x] **C3** — Lead detail `/leads/$id`
 - [x] **C4** — Quotes list `/quotes`
 - [x] **C5** — Quote builder `/quotes/new`
-- [ ] **C6** — Quote detail `/quotes/$id`
-- [ ] **C7** — Quote PDF `/quotes/$id_/pdf`  _(PC-2: real route id)_
-- [ ] **C8** — Approvals `/approvals`
-- [ ] **C9** — Job Sheets list `/job-sheets`
-- [ ] **C10** — Job Sheet detail `/job-sheets/$id`
+- [x] **C6** — Quote detail `/quotes/$id`
+- [x] **C7** — Quote PDF `/quotes/$id_/pdf`  _(PC-2: real route id)_
+- [x] **C8** — Approvals `/approvals`
+- [x] **C9** — Job Sheets list `/job-sheets`
+- [x] **C10** — Job Sheet detail `/job-sheets/$id`
 
 ## Phase D — Relationship and retention workflows
 
@@ -169,3 +169,7 @@ Two lines per step: what changed, what was learned.
 **Phase B complete.**
 - **C4** — `/quotes` composes WorkspaceHeader, FilterToolbar and ResponsiveRecordList; the status tab strip became a `status` search param that finally reaches `listQuotesPage`; Archive is gone and Duplicate now writes through `createQuote` + `updateQuote(parent_quote_id)`. Learned that the row menu's Archive was the worst control in the slice for a reason no schema check would catch: `setRows(filter)` made a destructive action *look* successful, so the lie was in the render, not the request.
 - **C5** — Save draft writes, both commit buttons share one in-flight flag, `createQuote` is caught and sanitized, and the payload finally carries `account_id`. Learned the bootstrap cannot supply it: the reference reads behind the pickers select four columns each and `account_id` is in neither, so the link has to be fetched from `getLead`/`getClient` at submit — which is frontend-only, because both are already exported and capability-checked with the capabilities this route's loader already demanded.
+- **C1-C10** — All ten commercial routes revised; every fake control resolved. Learned the agent triggers were the worst offenders: with n8n unconfigured they toasted success for work never started, on three separate routes.
+- **Phase C tests** — Wrote them only after the verifier pointed out the suite had gone 1118 to 1118 while 7,000 lines landed. They caught three real bugs: the won-conversion dialog seeded its value once and so wrote 0 to every engagement; the renewal-risk agent could report success without dispatching and leaked an env var name to the user; and retrying a partial bulk failure rewrote the rows that had already succeeded. Learned not to treat green gates on untested new code as evidence of anything.
+
+**Phase C complete.** Suite 1118 -> 1210 passing.
