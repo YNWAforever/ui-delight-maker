@@ -42,12 +42,23 @@ export const COMPANY_SORT_KEYS = [
 
 export type CompanySortKey = (typeof COMPANY_SORT_KEYS)[number];
 
+/**
+ * Account 360's six sections (Instruction §9.5).
+ *
+ * The stored values are deliberately the historical ones — `timeline` is the Activity
+ * section, `events` is Commercial, `tasks` is Delivery & Finance. Renaming them would
+ * break every bookmark and every link already in circulation for no user-visible gain,
+ * since what a reader sees is the tab label, not the search param. `signals` is new: the
+ * Signals section had no tab at all, which is why the `intelligence` workspace section had
+ * no consumer on this page.
+ */
 export const ACCOUNT_DETAIL_TABS = [
   "overview",
   "stakeholders",
-  "timeline",
   "events",
   "tasks",
+  "timeline",
+  "signals",
 ] as const;
 
 /**
@@ -122,8 +133,11 @@ export function pipelineSearchFromFilters(
 
 export const companiesSearchSchema = z
   .object({
+    /** Company-name search. Reaches `listAccountsPage`'s `query`, so it spans the tenant. */
+    q: optionalSearchString,
     lifecycle: z.enum(ACCOUNT_LIFECYCLE_STAGES).optional().catch(undefined),
     sort: z.enum(COMPANY_SORT_KEYS).optional().catch(undefined),
+    /** Which account's preview panel is open. A UI-only param — never a loader dep. */
     account: optionalSearchString,
     page: z.coerce.number().int().min(1).default(1).catch(1),
     limit: z.coerce.number().int().min(1).max(100).default(50).catch(50),

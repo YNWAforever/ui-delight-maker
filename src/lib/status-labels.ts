@@ -51,7 +51,8 @@ export type StatusDomain =
   | "approvals"
   | "agentRuns"
   | "agents"
-  | "priority";
+  | "priority"
+  | "campaigns";
 
 /**
  * Fields are readonly because a lookup hands back the map's own entry rather than a copy.
@@ -147,6 +148,51 @@ const PRIORITY_STATUS: Record<string, StatusPresentation> = {
   low: { label: "Low", tone: "neutral" },
 };
 
+/**
+ * The campaign surface's vocabulary, covering four stored columns in one domain.
+ *
+ * `campaigns.status`, `campaign_members.attendee_status`, `.follow_up_status` and
+ * `.conversion_outcome` share this map because their raw values do not collide — the one
+ * value two of them do share, `completed`, means the same thing in both and therefore
+ * renders the same label and tone. Splitting them into four domains would put four names
+ * in `StatusDomain` for one screen and would still not stop a collision, because nothing
+ * checks across domains.
+ *
+ * Deliberately **not** merged into `FLAT_STATUS`. `draft`, `active`, `completed` and
+ * `in_progress` already resolve there through quotes, agents, agent runs and tasks with
+ * identical wording, so merging would add only `planned`, `archived` and the attendee
+ * vocabulary while changing `KNOWN_STATUS_VALUES` — the enumerated contract two test
+ * suites assert against. Campaign screens pass `domain="campaigns"`; a domainless caller
+ * keeps exactly the answer it got before this entry existed.
+ *
+ * `unknown` is an attendee status a CSV can actually contain, so it renders "Not recorded"
+ * rather than borrowing `UNKNOWN_STATUS_LABEL`, which means "no value at all".
+ */
+const CAMPAIGN_STATUS: Record<string, StatusPresentation> = {
+  // campaigns.status
+  draft: { label: "Draft", tone: "neutral" },
+  planned: { label: "Planned", tone: "info" },
+  active: { label: "Active", tone: "success" },
+  completed: { label: "Completed", tone: "success", icon: CheckCircle2 },
+  archived: { label: "Archived", tone: "neutral" },
+  // campaign_members.attendee_status
+  attended: { label: "Attended", tone: "info" },
+  met: { label: "Met in person", tone: "info" },
+  high_intent: { label: "High intent", tone: "success" },
+  unknown: { label: "Not recorded", tone: "neutral" },
+  // campaign_members.follow_up_status
+  not_started: { label: "Not started", tone: "warning" },
+  task_created: { label: "Task created", tone: "info" },
+  in_progress: { label: "In progress", tone: "warning" },
+  dismissed: { label: "Dismissed", tone: "neutral" },
+  // campaign_members.conversion_outcome
+  none: { label: "No outcome yet", tone: "neutral" },
+  lead: { label: "Lead created", tone: "info" },
+  quote: { label: "Quote raised", tone: "info" },
+  engagement: { label: "Engagement created", tone: "success", icon: CheckCircle2 },
+  client_activity: { label: "Client activity", tone: "success" },
+};
+
 const DOMAIN_STATUS: Record<StatusDomain, Record<string, StatusPresentation>> = {
   leads: LEAD_STATUS,
   quotes: QUOTE_STATUS,
@@ -155,6 +201,7 @@ const DOMAIN_STATUS: Record<StatusDomain, Record<string, StatusPresentation>> = 
   agentRuns: AGENT_RUN_STATUS,
   agents: AGENT_STATUS,
   priority: PRIORITY_STATUS,
+  campaigns: CAMPAIGN_STATUS,
 };
 
 /**

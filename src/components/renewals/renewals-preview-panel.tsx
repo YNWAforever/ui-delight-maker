@@ -67,9 +67,19 @@ async function invalidateRenewalMutation(
 export function RenewalsPreviewPanel({
   engagement,
   onClose,
+  onChanged,
 }: {
   engagement: RenewalRow | null;
   onClose: () => void;
+  /**
+   * Called after every write this panel makes that changed something on the server.
+   *
+   * The query-key invalidation above is not enough on its own for a host that renders from
+   * a router loader snapshot: marking an entry stale cannot push data into `useLoaderData`.
+   * `/renewals` passes a handler that invalidates its own query *and* re-runs its loader,
+   * scoped by `routeId`. Optional, so a host that subscribes to the keys above needs nothing.
+   */
+  onChanged?: () => void | Promise<void>;
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -107,6 +117,7 @@ export function RenewalsPreviewPanel({
         toast.success("Renewal risk scoring started.");
       }
       await invalidateRenewalMutation(queryClient, "score", engagement.id, engagement.client_id);
+      await onChanged?.();
       setScoreStatus("idle");
     } catch {
       toast.error("Renewal risk scoring failed to start.");
@@ -178,14 +189,15 @@ export function RenewalsPreviewPanel({
               <TouchpointLoggerLoader
                 clientId={engagement.client_id}
                 engagementId={engagement.id}
-                onLogged={() =>
-                  invalidateRenewalMutation(
+                onLogged={async () => {
+                  await invalidateRenewalMutation(
                     queryClient,
                     "touchpoint",
                     engagement.id,
                     engagement.client_id,
-                  )
-                }
+                  );
+                  await onChanged?.();
+                }}
               />
               <Button
                 variant="outline"
@@ -226,15 +238,16 @@ export function RenewalsPreviewPanel({
             engagementId={engagement.id}
             action={dialogAction}
             onClose={() => setDialogAction(null)}
-            onDone={() => {
+            onDone={async () => {
               const mutation = dialogAction === "end" ? "end" : "renew";
               setDialogAction(null);
-              void invalidateRenewalMutation(
+              await invalidateRenewalMutation(
                 queryClient,
                 mutation,
                 engagement.id,
                 engagement.client_id,
               );
+              await onChanged?.();
               onClose();
             }}
           />

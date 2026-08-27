@@ -116,12 +116,50 @@ export async function getCampaignWithMembers(id: string) {
   return { campaign, members };
 }
 
+/**
+ * How two attendee rows are judged to be the same person.
+ *
+ * One expression, used by both reads below, so the campaign-wide duplicate *count* on the
+ * workspace summary and the per-row "possible duplicate" marker on the attendee page can
+ * never disagree about what a duplicate is. It deliberately mirrors the key
+ * `validateEventImportRows` already uses to reject a duplicate inside a single file
+ * (`src/lib/relationship/event-import.ts`): email when there is one, otherwise contact
+ * name plus company name, all lower-cased and trimmed.
+ *
+ * It resolves to NULL for a row carrying none of the three, and every caller treats NULL
+ * as "not comparable" rather than as a group — without that, every anonymous row would be
+ * flagged as a duplicate of every other anonymous row.
+ *
+ * This is detection, not prevention. `commitEventImport` still inserts unconditionally
+ * (IF-D2-21 — it needs a database constraint, which is a migration), so the point of
+ * these columns is that a re-imported roster is *visible* instead of silently doubling.
+ */
+const ATTENDEE_DEDUPE_KEY_SQL = `
+  coalesce(
+    nullif(lower(btrim(coalesce(raw_email, ''))), ''),
+    nullif(
+      lower(btrim(coalesce(raw_contact_name, ''))) || '|' ||
+      lower(btrim(coalesce(raw_company_name, ''))),
+      '|'
+    )
+  )
+`;
+
+/** NULL keys count as one, so an unidentifiable row is never called a duplicate. */
+const ATTENDEE_DUPLICATE_COUNT_SQL = `
+  case when dedupe_key is null then 1 else count(*) over (partition by dedupe_key) end
+`;
+
 export type CampaignAttendeeSummary = {
   total: number;
   attended: number;
   highIntent: number;
   openFollowUp: number;
   converted: number;
+  /** Attendees with no `account_id`. Surfaced as "Unmatched", never hidden. */
+  unmatchedAccounts: number;
+  /** Attendees sharing a dedupe key with at least one other attendee in this campaign. */
+  possibleDuplicates: number;
   latestImportAt: string | null;
 };
 
@@ -131,6 +169,8 @@ type CampaignAttendeeSummaryRow = {
   high_intent_count: number | string;
   open_follow_up_count: number | string;
   converted_count: number | string;
+  unmatched_account_count: number | string;
+  possible_duplicate_count: number | string;
   latest_import_at: string | null;
 };
 
@@ -151,6 +191,8 @@ export async function getCampaignWithAttendeeSummary(id: string) {
       [id],
     ),
     queryOne<CampaignAttendeeSummaryRow>(
+      // Still one query, one pass. The two nested selects only add the dedupe key and its
+      // group size as columns; the aggregate above them is the same aggregate as before.
       `
         select
           count(*) as attendee_count,
@@ -158,9 +200,29 @@ export async function getCampaignWithAttendeeSummary(id: string) {
           count(*) filter (where attendee_status = 'high_intent') as high_intent_count,
           count(*) filter (where follow_up_status in ('not_started', 'task_created', 'in_progress')) as open_follow_up_count,
           count(*) filter (where conversion_outcome is not null and conversion_outcome <> 'none') as converted_count,
+          count(*) filter (where account_id is null) as unmatched_account_count,
+          count(*) filter (where duplicate_count > 1) as possible_duplicate_count,
           max(created_at) as latest_import_at
-        from campaign_members
-        where campaign_id = $1
+        from (
+          select
+            attendee_status,
+            follow_up_status,
+            conversion_outcome,
+            account_id,
+            created_at,
+            ${ATTENDEE_DUPLICATE_COUNT_SQL} as duplicate_count
+          from (
+            select
+              attendee_status,
+              follow_up_status,
+              conversion_outcome,
+              account_id,
+              created_at,
+              ${ATTENDEE_DEDUPE_KEY_SQL} as dedupe_key
+            from campaign_members
+            where campaign_id = $1
+          ) keyed
+        ) counted
       `,
       [id],
     ),
@@ -175,18 +237,29 @@ export async function getCampaignWithAttendeeSummary(id: string) {
       highIntent: Number(summary?.high_intent_count ?? 0),
       openFollowUp: Number(summary?.open_follow_up_count ?? 0),
       converted: Number(summary?.converted_count ?? 0),
+      unmatchedAccounts: Number(summary?.unmatched_account_count ?? 0),
+      possibleDuplicates: Number(summary?.possible_duplicate_count ?? 0),
       latestImportAt: summary?.latest_import_at ?? null,
     } satisfies CampaignAttendeeSummary,
   };
 }
 
 export type CampaignImportHistoryEntry = {
+  /** The day bucket the rows are grouped into. Not an event time. */
   importedAt: string;
+  /**
+   * The newest `created_at` inside that bucket — an instant that actually happened.
+   *
+   * `importedAt` is `date_trunc('day', …)`, so rendering it as a timestamp would stamp
+   * every entry midnight and claim a precision the grouping threw away.
+   */
+  lastImportedAt: string | null;
   attendeeCount: number;
 };
 
 type CampaignImportHistoryRow = {
   imported_at: string;
+  last_imported_at: string | null;
   attendee_count: number | string;
 };
 
@@ -203,7 +276,19 @@ export type CampaignAttendeeRow = Pick<
   | "interests"
   | "follow_up_status"
   | "conversion_outcome"
->;
+  | "created_at"
+> & {
+  /**
+   * How many attendees in **this whole campaign** share this row's dedupe key — not how
+   * many share it on this page. The window runs before the LIMIT, so a duplicate whose
+   * twin sits on page 4 is still marked on page 1, which is the entire point: a
+   * page-scoped check would hide exactly the duplicates a re-import creates.
+   *
+   * Optional on the type because a caller that only projects the listed columns (a test
+   * fixture, a future narrower read) must not be forced to invent one.
+   */
+  duplicate_count?: number | string | null;
+};
 
 export type CampaignAttendeePageFilters = PaginationInput;
 
@@ -215,11 +300,21 @@ export async function listCampaignAttendeeImportSection(
   const importHistoryLimit = 12;
   const [members, count, history] = await Promise.all([
     query<CampaignAttendeeRow>(
+      // `duplicate_count` is a window over every member of the campaign, evaluated before
+      // the LIMIT below, so the marker is campaign-wide even though the rows are a page.
       `
         select id, contact_id, account_id, raw_company_name, raw_contact_name, raw_email,
-               raw_phone, attendee_status, interests, follow_up_status, conversion_outcome
-        from campaign_members
-        where campaign_id = $1
+               raw_phone, attendee_status, interests, follow_up_status, conversion_outcome,
+               created_at,
+               ${ATTENDEE_DUPLICATE_COUNT_SQL} as duplicate_count
+        from (
+          select id, contact_id, account_id, raw_company_name, raw_contact_name, raw_email,
+                 raw_phone, attendee_status, interests, follow_up_status, conversion_outcome,
+                 created_at,
+                 ${ATTENDEE_DEDUPE_KEY_SQL} as dedupe_key
+          from campaign_members
+          where campaign_id = $1
+        ) keyed
         order by created_at desc, id desc
         limit $2 offset $3
       `,
@@ -231,7 +326,9 @@ export async function listCampaignAttendeeImportSection(
     ),
     query<CampaignImportHistoryRow>(
       `
-        select date_trunc('day', created_at) as imported_at, count(*) as attendee_count
+        select date_trunc('day', created_at) as imported_at,
+               max(created_at) as last_imported_at,
+               count(*) as attendee_count
         from campaign_members
         where campaign_id = $1
         group by date_trunc('day', created_at)
@@ -249,6 +346,7 @@ export async function listCampaignAttendeeImportSection(
     limit,
     importHistory: history.map((entry) => ({
       importedAt: entry.imported_at,
+      lastImportedAt: entry.last_imported_at ?? null,
       attendeeCount: Number(entry.attendee_count),
     })),
   };

@@ -46,8 +46,8 @@ Legend: `[ ]` not started · `[x]` done · `[~]` done-with-dependency (see [back
 
 ## Phase D — Relationship and retention workflows
 
-- [ ] **D1** — Accounts list `/accounts`
-- [ ] **D2** — Account 360 `/accounts/$id` (XL)
+- [x] **D1** — Accounts list `/accounts`
+- [x] **D2** — Account 360 `/accounts/$id` (XL)
 - [ ] **D3** — Active Clients list `/clients`
 - [ ] **D3b** — Client import `/clients/import`  _(PC-1: route omitted by the plan)_
 - [ ] **D4** — Client detail `/clients/$id`

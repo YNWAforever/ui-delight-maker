@@ -15,17 +15,28 @@ vi.mock("@tanstack/react-router", () => ({
     options,
     fullPath: "/tasks",
     useLoaderData: vi.fn(),
-    useSearch: () => ({ priority: "all", assignee: "all" }),
+    useSearch: () => ({ view: "board", priority: "all", assignee: "all" }),
   }),
   useNavigate: () => navigateMock,
+  useRouter: () => ({ invalidate: vi.fn() }),
 }));
 vi.mock("sonner", () => ({
   toast: { error: toastErrorMock, success: vi.fn(), message: vi.fn() },
 }));
 vi.mock("@/components/sales", () => ({
-  CommandHeader: () => null,
+  // The board is what these tests are about, so every surrounding surface is stubbed —
+  // except WorkspaceHeader, which must keep rendering its primary action so the create
+  // dialog stays reachable from the tests that need it.
+  WorkspaceHeader: ({ primaryAction }: { primaryAction?: ReactNode }) => <div>{primaryAction}</div>,
+  SectionHeader: ({ action }: { action?: ReactNode }) => <div>{action}</div>,
   MetricStrip: () => null,
-  WorkSurfaceEmpty: () => null,
+  FilterToolbar: () => null,
+  FilteredEmptyState: () => null,
+  EmptyWorkspaceState: () => null,
+  ErrorState: () => null,
+  StaleDataIndicator: () => null,
+  ResponsiveRecordList: () => null,
+  RowActionsMenu: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 vi.mock("@/components/status-badge", () => ({ StatusBadge: () => null }));
 vi.mock("@/components/ui/card", () => ({
@@ -41,11 +52,13 @@ vi.mock("@/components/ui/select", () => ({
   SelectValue: () => null,
 }));
 vi.mock("@/lib/business-date", () => ({ getBusinessDateKey: () => "2026-07-14" }));
-vi.mock("@/lib/format", () => ({ formatDate: (value: string | null) => value ?? "" }));
-vi.mock("@/lib/sales-workspace", () => ({
-  getTaskBoardMetrics: () => ({ open: 1, overdue: 0, dueToday: 0, aiCreated: 0 }),
+vi.mock("@/lib/format", () => ({
+  formatDate: (value: string | null) => value ?? "",
+  formatCount: (value: number) => String(value),
 }));
-vi.mock("@/lib/users", () => ({ APP_USERS: [], userById: () => undefined }));
+vi.mock("@/lib/sales-workspace", () => ({
+  getTaskBoardMetrics: () => ({ open: 1, overdue: 0, dueToday: 0, highPriority: 0 }),
+}));
 vi.mock("@/server-functions/tasks", () => ({
   getTasks: vi.fn(),
   createTask: createTaskMock,
