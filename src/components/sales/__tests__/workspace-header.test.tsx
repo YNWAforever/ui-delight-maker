@@ -78,16 +78,22 @@ describe("WorkspaceHeader", () => {
   it("drops falsy actions instead of rendering empty slots", () => {
     // Callers gate actions on capability, so `cond && <Button/>` is the normal shape.
     // A false must not consume one of the two secondary slots.
-    render(
-      <WorkspaceHeader
-        context="Operate"
-        title="Reports"
-        secondaryActions={[false && <button key="x">Hidden</button>, <button key="y">Shown</button>]}
-      />,
-    );
+    const renderForActor = (canExport: boolean) =>
+      render(
+        <WorkspaceHeader
+          context="Operate"
+          title="Reports"
+          secondaryActions={[
+            canExport && <button key="x">Export</button>,
+            <button key="y">Refresh</button>,
+          ]}
+        />,
+      );
+
+    renderForActor(false);
 
     expect(screen.getAllByRole("button")).toHaveLength(1);
-    expect(screen.getByRole("button").textContent).toBe("Shown");
+    expect(screen.getByRole("button").textContent).toBe("Refresh");
   });
 
   it("offers a labelled way back from a detail page", () => {
