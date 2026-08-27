@@ -70,13 +70,13 @@ Legend: `[ ]` not started · `[x]` done · `[~]` done-with-dependency (see [back
 
 ## Phase F — Responsive, accessibility, performance and QA
 
-- [ ] **F1** — Responsive pass
-- [ ] **F2** — Keyboard and accessibility pass
-- [ ] **F3** — Links, actions, console and network verification
-- [ ] **F4** — Performance and bundle review
-- [ ] **F5** — Full repository gates
-- [ ] **F6** — Draft pull request and Vercel preview
-- [ ] **F7** — Final report to the human
+- [~] **F1** — Responsive pass  _(gated: no credentials; checklist in qa-responsive.md)_
+- [~] **F2** — Keyboard and accessibility pass  _(gated; checklist in qa-accessibility.md)_
+- [~] **F3** — Links, actions, console and network verification  _(static half done and clean; browser half gated)_
+- [x] **F4** — Performance and bundle review
+- [x] **F5** — Full repository gates  _(build itself gated on DATABASE_URL, as at baseline)_
+- [~] **F6** — Draft PR open: https://github.com/YNWAforever/ui-delight-maker/pull/54  _(Vercel preview gated)_
+- [x] **F7** — Final report to the human
 
 ---
 
@@ -178,3 +178,7 @@ Two lines per step: what changed, what was learned.
 - **Policy integrity** — Verified by hand, not by report: git diff of src/lib/admin, src/server/admin and src/server/auth against baseline is EMPTY, and requireCapability across non-test server functions is 213 both before and after. Learned to check the file set before trusting a count — my first comparison said 366 to 213 because one side included test files.
 
 **Phase E complete.** Suite 1323 -> 1565 passing.
+- **F3/F4/F5** — Gates green: 1565 passing, 0 failed, lint and tsc clean, zero route-discovery warnings, still exactly two chunks over 500 kB. Learned to check the file set before trusting a count: my first capability comparison read 366 to 213 purely because one side included test files. The real figure is 213 to 213.
+- **F6/F7** — Draft PR #54 opened against main. Never marked ready for review, never merged, production untouched.
+
+**All phases complete**, with F1, F2, the browser half of F3, and the Vercel preview recorded as environment-gated rather than skipped or claimed.
