@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatDate } from "@/lib/format";
 import { getBusinessDateKey } from "@/lib/business-date";
 import { getTaskBoardMetrics } from "@/lib/sales-workspace";
+import { invalidateLinkedCompanyWorkspaceMutation } from "@/lib/company-workspace/invalidation";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { cn } from "@/lib/utils";
@@ -128,7 +129,8 @@ function TasksBoard() {
 
   const move = async (id: string, status: TaskStatus) => {
     if (pendingTaskIdsRef.current.has(id)) return;
-    const previousStatus = rows.find((task) => task.id === id)?.status;
+    const movedTask = rows.find((task) => task.id === id);
+    const previousStatus = movedTask?.status;
     if (!previousStatus || previousStatus === status) return;
 
     markPending(id);
@@ -156,6 +158,7 @@ function TasksBoard() {
           exact: true,
         }),
         queryClient.invalidateQueries({ queryKey: crmQueryKeys.tasks.lists() }),
+        invalidateLinkedCompanyWorkspaceMutation(queryClient, movedTask?.account_id, "change_task"),
       ]);
     } catch {
       toast.error("Task saved, but the board could not refresh.");
@@ -175,6 +178,10 @@ function TasksBoard() {
                 created,
                 ...(current ?? []),
               ]);
+              // No company-workspace invalidation here on purpose: this dialog collects no
+              // account, client or lead, so a task it creates is never linked to a company and
+              // cannot appear in any workspace. The move handler above does need it, because
+              // campaign follow-ups do create account-linked tasks.
               await queryClient.invalidateQueries({ queryKey: crmQueryKeys.tasks.lists() });
               toast.success("Task created");
             }}
