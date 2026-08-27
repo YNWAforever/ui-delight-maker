@@ -90,7 +90,7 @@ function AgentsMonitor() {
   return (
     <>
       <PageHeader
-        title="Agent Monitor"
+        title="AI Ops"
         description="Operational logs and run health. Use AI Review for human decisions."
         actions={
           <div className="flex flex-wrap gap-2">

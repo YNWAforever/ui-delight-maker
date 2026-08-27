@@ -42,17 +42,22 @@ import {
 
 const todayItems = [{ title: "Revenue Desk", url: "/", icon: LayoutDashboard }];
 
+// Groups follow the lifecycle a relationship actually moves through — acquire, convert,
+// deliver, retain — rather than the order these pages happened to be built in. Campaigns
+// sat under Convert though it feeds the top of the funnel, and Job Sheets sat there too
+// though it is post-acceptance delivery work; both were misfiled against the lifecycle.
 const acquireItems = [
   { title: "Leads", url: "/leads", icon: Inbox },
+  { title: "Campaigns", url: "/campaigns", icon: CalendarDays },
   { title: "AI Review", url: "/ai-review", icon: Sparkles },
 ];
 
 const convertItems = [
   { title: "Quotes", url: "/quotes", icon: FileText },
-  { title: "Job Sheets", url: "/job-sheets", icon: ClipboardList },
   { title: "Approvals", url: "/approvals", icon: ShieldCheck },
-  { title: "Campaigns", url: "/campaigns", icon: CalendarDays },
 ];
+
+const deliverItems = [{ title: "Job Sheets", url: "/job-sheets", icon: ClipboardList }];
 
 const retainItems = [
   { title: "Accounts", url: "/accounts", icon: Building2 },
@@ -63,7 +68,9 @@ const retainItems = [
 ];
 
 const operateItems = [
-  { title: "Agents", url: "/agents", icon: Bot },
+  // "AI Ops" not "Agents": the page is a control tower over runs, failures and approvals,
+  // not a directory of agents. The route id stays /agents — this is a label change only.
+  { title: "AI Ops", url: "/agents", icon: Bot },
   { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
@@ -125,7 +132,7 @@ export function AppSidebar({
           </div>
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold">Fimmick ClientOps</span>
-            <span className="text-[11px] text-muted-foreground">Revenue operations desk</span>
+            <span className="text-[11px] text-muted-foreground">Total CRM + AI Operations</span>
           </div>
         </div>
       </SidebarHeader>
@@ -144,7 +151,8 @@ export function AppSidebar({
           : null}
         {renderGroup("Acquire", acquireItems)}
         {renderGroup("Convert", convertItems)}
-        {renderGroup("Retain", retainItems)}
+        {renderGroup("Deliver", deliverItems)}
+        {renderGroup("Retain & Grow", retainItems)}
         {renderGroup("Operate", operateItems)}
         {adminNavigation.length > 0 ? (
           <>

@@ -135,7 +135,7 @@ function AiReviewPage() {
                   description="Qualification reviews, quote sends, and message approvals will appear here."
                   action={
                     <Button size="sm" variant="outline" asChild>
-                      <Link to="/agents">Open Agent Monitor</Link>
+                      <Link to="/agents">Open AI Ops</Link>
                     </Button>
                   }
                 />
