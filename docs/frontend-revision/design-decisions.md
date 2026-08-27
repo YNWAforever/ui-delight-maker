@@ -118,7 +118,7 @@ Per §7.4 and plan §2.10: prefer dividers, subtle backgrounds and spacing over 
 
 `src/lib/status-labels.ts` is created in B7 and becomes the single source, with `StatusBadge` consuming it (PC-10) so the label map and the style map cannot drift.
 
-The existing `STATUS_STYLES` in `status-badge.tsx` is a **flat** `Record<string, string>` of 32 keys with no domain parameter, which means cross-domain collisions are possible today (`active`/`paused` are shared by agents and lifecycle; `pending` and `pending_approval` are different domains' near-synonyms). The new map is domain-aware — `getStatusLabel(domain, rawStatus)` — and **must preserve the rendered result for all 32 existing keys**, verified by a test that enumerates them.
+The existing `STATUS_STYLES` in `status-badge.tsx` is a **flat** `Record<string, string>` of 29 keys with no domain parameter, which means cross-domain collisions are possible today (`active`/`paused` are shared by agents and lifecycle; `pending` and `pending_approval` are different domains' near-synonyms). The new map is domain-aware — `getStatusLabel(domain, rawStatus)` — and **must preserve the rendered result for all 29 existing keys**, verified by a test that enumerates them.
 
 Raw values found in the repository, mapped to the canonical vocabulary of plan §2.5:
 

@@ -26,7 +26,7 @@ Per PROGRESS.md PC-5, shared components live in **`src/components/sales/`** behi
 | `MetricStrip` | **extend** | already exists in the barrel with a `SalesMetric` type (PC-6) |
 | `EmptyWorkspaceState` | **extend** | `empty-state.tsx` and `sales/work-surface-empty.tsx` both exist |
 | `RecordSummaryPanel` | **promote** | `sales/context-panel.tsx` is the page-local ancestor |
-| `LifecycleBadge`, `AiRunStatus` | **extend** `status-badge.tsx` | `STATUS_STYLES` already holds 30 keys across 6 domains (PC-10) |
+| `LifecycleBadge`, `AiRunStatus` | **extend** `status-badge.tsx` | `STATUS_STYLES` already holds 29 keys across 6 domains (PC-10) |
 | `DataTableShell`, `ResponsiveRecordList`, `AttentionQueue`, `FilterToolbar`, `ActivityTimeline`, `StickyActionBar`, `OwnerDisplay`, `RelationshipHealthDisplay`, `EvidenceList`, `LoadingSkeleton`, `FilteredEmptyState`, `ErrorState` | **create** | no equivalent found |
 
 ## Global styling facts that change Phase B

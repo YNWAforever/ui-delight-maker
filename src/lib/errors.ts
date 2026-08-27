@@ -58,6 +58,22 @@ const TECHNICAL_MARKERS = [
   "undefined is not",
   "stack",
   "node_modules",
+  // Postgres server messages that name no table and quote no SQL, and so slipped every
+  // shape check above. They are short, lower-case and read like English, which is exactly
+  // why they got through — and two of them leak real secrets: `password authentication
+  // failed for user "clientops_rw"` prints the database role, and `permission denied for
+  // table accounts` prints a table name. The rest ("sorry, too many clients already")
+  // describe our capacity problem to someone who can do nothing about it.
+  "connection",
+  "too many clients",
+  "authentication failed",
+  "permission denied",
+  "invalid input syntax",
+  "canceling statement",
+  "statement timeout",
+  "deadlock detected",
+  "server closed",
+  "pg_",
 ];
 
 /**

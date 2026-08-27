@@ -1,8 +1,19 @@
 import type { ReactNode } from "react";
-import { Inbox, type LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
+import { EmptyWorkspaceState } from "@/components/sales/states";
+
+/**
+ * Superseded by `EmptyWorkspaceState`, and now a thin alias for it.
+ *
+ * This and `sales/work-surface-empty.tsx` were the same empty state drawn twice, differing
+ * only in padding and in whether the action was given its own margin — which is how two
+ * pages that show "nothing here yet" came to look like two different products. Both now
+ * render one component. The two remaining call sites (`pipeline-board`, `report-charts`)
+ * keep this import until they move; nothing new should use it.
+ */
 export function EmptyState({
-  icon: Icon = Inbox,
+  icon,
   title,
   description,
   action,
@@ -13,15 +24,6 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-dashed border-border bg-muted/20 p-10 text-center">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-muted-foreground">
-        <Icon className="h-5 w-5" />
-      </div>
-      <div>
-        <p className="text-sm font-medium">{title}</p>
-        {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
-      </div>
-      {action}
-    </div>
+    <EmptyWorkspaceState icon={icon} title={title} description={description} action={action} />
   );
 }

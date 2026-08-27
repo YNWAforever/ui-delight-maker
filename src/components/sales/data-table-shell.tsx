@@ -69,7 +69,13 @@ export type DataTableShellProps<T> = {
   className?: string;
 };
 
-const PRIORITY_CLASS: Record<ColumnPriority, string> = {
+/**
+ * Exported because `LoadingSkeleton` has to reserve exactly the columns this table will
+ * end up showing at every breakpoint. A second copy of these classes in the skeleton
+ * would drift the first time a priority changes, and the symptom would be a column
+ * appearing or vanishing on load — the layout shift the skeleton exists to prevent.
+ */
+export const COLUMN_PRIORITY_CLASS: Record<ColumnPriority, string> = {
   primary: "",
   secondary: "hidden md:table-cell",
   tertiary: "hidden lg:table-cell",
@@ -214,7 +220,7 @@ export function DataTableShell<T>({
                 }
                 className={cn(
                   "px-3 py-2.5 text-xs",
-                  PRIORITY_CLASS[column.priority],
+                  COLUMN_PRIORITY_CLASS[column.priority],
                   column.numeric && "text-right",
                   column.sticky && stickyClass,
                 )}
@@ -291,7 +297,7 @@ export function DataTableShell<T>({
                     key={column.id}
                     className={cn(
                       "px-3 py-2.5",
-                      PRIORITY_CLASS[column.priority],
+                      COLUMN_PRIORITY_CLASS[column.priority],
                       column.numeric && "text-right",
                       column.sticky && stickyClass,
                     )}

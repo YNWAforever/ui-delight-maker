@@ -1,8 +1,18 @@
 import type { ReactNode } from "react";
-import { Inbox, type LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
+import { EmptyWorkspaceState } from "./states";
+
+/**
+ * Superseded by `EmptyWorkspaceState`, and now a thin alias for it.
+ *
+ * Eleven routes call this, so the name and prop shape stay exactly as they were rather
+ * than being migrated in this phase — but the markup is no longer a second copy. New call
+ * sites should import `EmptyWorkspaceState` directly; this export is removed once the
+ * eleven have moved.
+ */
 export function WorkSurfaceEmpty({
-  icon: Icon = Inbox,
+  icon,
   title,
   description,
   action,
@@ -13,13 +23,6 @@ export function WorkSurfaceEmpty({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-[160px] flex-col items-center justify-center rounded-md border border-dashed border-border bg-muted/20 p-8 text-center">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-muted-foreground">
-        <Icon className="h-5 w-5" />
-      </div>
-      <p className="mt-3 text-sm font-medium">{title}</p>
-      <p className="mt-1 max-w-sm text-xs text-muted-foreground">{description}</p>
-      {action && <div className="mt-4">{action}</div>}
-    </div>
+    <EmptyWorkspaceState icon={icon} title={title} description={description} action={action} />
   );
 }

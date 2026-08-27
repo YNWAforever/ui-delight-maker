@@ -221,7 +221,7 @@ Full detail in [`repo-map/06-libraries.md`](./repo-map/06-libraries.md).
 | `src/lib/csv.ts` | **absent** | E4 — create |
 | invalidation helper | **two partial ones exist** | §2.3 — consolidate, don't add a third |
 
-**Status labels.** No central label map exists, but a central *style* map does: `src/components/status-badge.tsx` holds `STATUS_STYLES` with 30 keys across 6 domains and derives its label by `replace(/_/g, " ")` plus CSS `capitalize`. That same fallback is duplicated at ~29 sites in 20 files, including server repositories. B7 must make `status-labels.ts` the source that `StatusBadge` consumes, or the two will drift.
+**Status labels.** No central label map exists, but a central *style* map does: `src/components/status-badge.tsx` holds `STATUS_STYLES` with 29 keys across 6 domains and derives its label by `replace(/_/g, " ")` plus CSS `capitalize`. That same fallback is duplicated at ~29 sites in 20 files, including server repositories. B7 must make `status-labels.ts` the source that `StatusBadge` consumes, or the two will drift.
 
 **Errors.** No sanitizer at any layer. `error-capture.ts` (a global error recorder) and `error-page.ts` (a static 500 page) are not substitutes. `src/server/db/postgres-error.ts` classifies driver failures server-side but nothing consumes it for UI messaging. Raw `error.message` reaches users at 22 call sites, including two rendered directly into the page body (`leads.$id.tsx`, and the root `errorComponent` in `__root.tsx`). B5's `toSafeErrorMessage` is genuinely needed.
 

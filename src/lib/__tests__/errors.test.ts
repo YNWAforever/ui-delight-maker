@@ -21,6 +21,18 @@ const UNSAFE_MESSAGES = [
   "at loadAccountWorkspace (C:\\Users\\dev\\ui-delight-maker\\src\\server\\read-models\\accounts.ts:88:11)",
   "Error: fetch failed\n    at node:internal/deps/undici/undici:12345:11",
   "Cannot find module '/var/task/node_modules/pg/lib/index.js'",
+  // Postgres server messages that name no table and quote no SQL. They are short and read
+  // like English, so every shape check passes them; only the marker list stops them. Two
+  // leak a secret outright — the database role, and a table name.
+  'password authentication failed for user "clientops_rw"',
+  "permission denied for table accounts",
+  "Connection terminated unexpectedly",
+  "terminating connection due to administrator command",
+  "SSL connection has been closed unexpectedly",
+  "sorry, too many clients already",
+  "canceling statement due to statement timeout",
+  'invalid input syntax for type uuid: "abc"',
+  "deadlock detected",
 ];
 
 /** Messages a person wrote deliberately for another person. These must survive. */
