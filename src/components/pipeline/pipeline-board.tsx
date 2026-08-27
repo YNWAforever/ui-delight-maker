@@ -12,13 +12,22 @@ interface PipelineBoardProps {
   selectedLeadId: string | null;
   onSelectLead: (lead: Lead) => void;
   onMoveLead: (lead: Lead, status: LeadStatus) => void;
+  /** The lead whose stage write is in flight. Its select is frozen until the write settles. */
+  pendingMoveLeadId?: string | null;
 }
 
+/**
+ * Every value `leads.status` can hold, so the select always has an option matching the
+ * lead it is rendered for. `approved` used to be missing, which meant an approved lead's
+ * select fell back to displaying the first entry ("Move to New") — the control reported a
+ * stage the record was not in.
+ */
 const MOVE_OPTIONS: Array<{ label: string; status: LeadStatus }> = [
   { label: "New", status: "new" },
   { label: "Qualified", status: "qualified" },
-  { label: "Quoted", status: "quoted" },
   { label: "Follow-up", status: "replied" },
+  { label: "Quoted", status: "quoted" },
+  { label: "Approved", status: "approved" },
   { label: "Won", status: "won" },
   { label: "Lost", status: "lost" },
 ];
@@ -32,6 +41,7 @@ export function PipelineBoard({
   selectedLeadId,
   onSelectLead,
   onMoveLead,
+  pendingMoveLeadId = null,
 }: PipelineBoardProps) {
   const grouped = groupLeadsByPipelineStage(leads);
 
@@ -80,8 +90,9 @@ export function PipelineBoard({
                     <select
                       id={`move-${lead.id}`}
                       value={lead.status}
+                      disabled={pendingMoveLeadId === lead.id}
                       onChange={(event) => onMoveLead(lead, event.target.value as LeadStatus)}
-                      className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-muted-foreground hover:text-foreground"
+                      className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {MOVE_OPTIONS.map((option) => (
                         <option key={option.status} value={option.status}>

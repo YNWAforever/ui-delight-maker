@@ -19,6 +19,16 @@ type WorkspaceViewSwitcherProps = {
   activeConfig: WorkspaceViewConfig;
   views: Array<Pick<WorkspaceView, "id" | "name" | "config">>;
   onSelect?: (config: WorkspaceViewConfig, viewId: string) => void;
+  /**
+   * Called after `savePersonalWorkspaceView` resolves.
+   *
+   * The saved views arrive with the route loader, and this component holds no query client,
+   * so a view saved here did not appear in its own dropdown until a hard reload. The route
+   * owns the refresh — and the success feedback, which there was none of either.
+   */
+  onSaved?: (name: string) => void | Promise<void>;
+  /** Called when the reader picks "Current filters" — clears any applied saved view. */
+  onClearView?: () => void;
 };
 
 export function WorkspaceViewSwitcher({
@@ -26,6 +36,8 @@ export function WorkspaceViewSwitcher({
   activeConfig,
   views,
   onSelect,
+  onSaved,
+  onClearView,
 }: WorkspaceViewSwitcherProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
@@ -33,6 +45,15 @@ export function WorkspaceViewSwitcher({
   const [error, setError] = useState<string | null>(null);
 
   const saveView = async () => {
+    /*
+      The in-flight lock has to live here, not only on the button's `disabled`.
+      "Save personal view" is disabled while `saving`, but Enter in the name field calls
+      this directly and bypasses it — so holding Enter wrote a second
+      `savePersonalWorkspaceView` row with the same name, and `/accounts` now toasts
+      "Saved the view …" once per write.
+    */
+    if (saving) return;
+
     const normalizedName = name.trim();
     if (!normalizedName) {
       setError("Enter a view name.");
@@ -47,6 +68,7 @@ export function WorkspaceViewSwitcher({
       });
       setName("");
       setDialogOpen(false);
+      await onSaved?.(normalizedName);
     } catch {
       setError("The view could not be saved. Try again.");
     } finally {
@@ -62,7 +84,16 @@ export function WorkspaceViewSwitcher({
           id="workspace-view"
           defaultValue=""
           className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+          /*
+            "Current filters" used to be inert: `onSelect` fired only when a view matched,
+            so once a saved view was applied there was no way back to unfiltered from this
+            control. The empty value now clears the applied view.
+          */
           onChange={(event) => {
+            if (event.target.value === "") {
+              onClearView?.();
+              return;
+            }
             const view = views.find((candidate) => candidate.id === event.target.value);
             if (view) onSelect?.(view.config, view.id);
           }}

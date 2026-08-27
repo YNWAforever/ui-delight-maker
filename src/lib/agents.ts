@@ -143,3 +143,18 @@ export function agentNameFor(workflowType: AgentWorkflowType): string {
   if (!agent) throw new Error(`No agent definition for workflow type "${workflowType}"`);
   return agent.display_name;
 }
+
+/**
+ * How long a run may sit in `running` before it reads as stuck.
+ *
+ * `agent_runs.status` has four values (`neon/migrations/001_clientops_runtime.sql:111`) and
+ * none of them is "stuck" — a dispatch that never calls back simply stays `running` forever.
+ * "Stuck" is therefore a *derived* state, exactly like `Stuck`, `At risk` and `Overdue` in
+ * `src/lib/status-labels.ts`, and it is defined here so the SQL that counts stuck runs and
+ * the UI that lists them cannot disagree about the threshold.
+ *
+ * Sixty minutes: every workflow in `n8n/workflows/` is a single model call plus a writeback,
+ * so an hour is well past any legitimate completion and short enough that a wedged run is
+ * noticed the same working day.
+ */
+export const AGENT_RUN_STUCK_MINUTES = 60;

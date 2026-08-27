@@ -22,7 +22,39 @@ export type AccountFilters = {
   query?: string;
 };
 
-export type AccountPageFilters = AccountFilters & PaginationInput;
+/**
+ * The orderings `/accounts` offers, as `column:direction`.
+ *
+ * They are keys into a fixed map rather than interpolated column names: nothing a caller
+ * sends ever reaches the SQL text, so an unknown key falls back to the default ordering
+ * instead of becoming an injection surface or a syntax error.
+ *
+ * Sorting had to move here because it was being done in the route with `Array.prototype
+ * .sort` over the current page, so "Name A-Z" on a multi-page tenant sorted at most 100
+ * accounts and presented the result as the whole workspace. Every clause ends with
+ * `id desc` for the same reason `listAccountsPage` already did: without a unique tie-break
+ * a `limit/offset` page boundary can repeat or skip a row.
+ */
+export const ACCOUNT_ORDER_BY = {
+  "last_activity_at:desc": "coalesce(last_activity_at, created_at) desc, id desc",
+  "name:asc": "name asc, id desc",
+  "relationship_health:asc": "relationship_health asc, id desc",
+  "relationship_health:desc": "relationship_health desc, id desc",
+} as const;
+
+export type AccountSortKey = keyof typeof ACCOUNT_ORDER_BY;
+
+export const DEFAULT_ACCOUNT_SORT: AccountSortKey = "last_activity_at:desc";
+
+export function accountOrderBy(sort: string | undefined): string {
+  return ACCOUNT_ORDER_BY[sort as AccountSortKey] ?? ACCOUNT_ORDER_BY[DEFAULT_ACCOUNT_SORT];
+}
+
+export type AccountPageFilters = AccountFilters &
+  PaginationInput & {
+    /** One of `ACCOUNT_ORDER_BY`'s keys. Anything else uses the default ordering. */
+    sort?: string;
+  };
 
 export type CreateAccountInput = Pick<Account, "name"> &
   Partial<
@@ -109,7 +141,7 @@ export async function listAccountsPage(
         select *
         from accounts
         ${where.sql}${querySearch}
-        order by coalesce(last_activity_at, created_at) desc, id desc
+        order by ${accountOrderBy(filters.sort)}
         limit $${filterValues.length + 1} offset $${filterValues.length + 2}
       `,
       [...filterValues, limit, offset],

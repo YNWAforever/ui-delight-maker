@@ -48,6 +48,19 @@ export const formatTime = (value: string | Date | null | undefined) => {
 export const formatPercent = (value: number | null | undefined) =>
   value == null ? "—" : `${Math.round(value * 100)}%`;
 
+const PERCENT_POINTS = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+
+/**
+ * A number that is *already* in percentage points, e.g. 12.5 -> "12.5%".
+ *
+ * Distinct from `formatPercent`, which takes a 0-1 ratio and multiplies. Report and agent
+ * reads return rates the database already rounded to one decimal (`round(100.0 * … , 1)`),
+ * and pushing those through `formatPercent` would either multiply them by a hundred again
+ * or throw the decimal away.
+ */
+export const formatPercentPoints = (value: number | null | undefined) =>
+  value == null ? "—" : `${PERCENT_POINTS.format(value)}%`;
+
 export const formatCount = (value: number | null | undefined) => COUNT.format(value ?? 0);
 
 export const formatCurrencyAmount = (

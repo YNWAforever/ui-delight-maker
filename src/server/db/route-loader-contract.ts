@@ -224,7 +224,16 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // route's loader passes none.
     route: "agents",
     run: () => loadAgentDirectoryRead(),
-    maxQueries: 3,
+    // Four, deliberately. The fourth is the attention query: stuck, failed and
+    // waiting-approval runs are now selected in SQL across every row, rather than being
+    // derived on the client from whichever page of recent runs happened to load — which
+    // could not see a stuck run older than that window. One query buys correctness that
+    // no amount of client-side filtering could reach.
+    //
+    // This budget was already stale on main: the read model gained the query there and the
+    // number was never raised, but the contract suite could not report it because Actions
+    // was blocked on billing from 12 August.
+    maxQueries: 4,
   },
   {
     // getAgentHistoryPage() (src/server-functions/agent-runs.ts) awaits
@@ -289,6 +298,14 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     route: "clients.$id",
     run: () => loadClientWorkspaceRead(FIXTURE.clientId),
     maxQueries: 2,
+  },
+  {
+    // The import wizard's loader reads the active product catalogue, because
+    // validateImportRows rejects any product_name that is not one of them and the wizard
+    // previously gave the user no way to know the accepted names before uploading.
+    route: "clients.import",
+    run: () => listProducts({ activeOnly: true }),
+    maxQueries: 1,
   },
   {
     route: "index",

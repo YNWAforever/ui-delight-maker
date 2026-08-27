@@ -45,3 +45,9 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Frontend revision workspace
+# Screenshots are shared through the PR, not the repository.
+docs/frontend-revision/screenshots/
+# Baseline gate transcripts are evidence and must be tracked despite the global *.log rule.
+!docs/frontend-revision/baseline/*.log

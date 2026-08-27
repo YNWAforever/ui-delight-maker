@@ -1,24 +1,16 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import {
-  ArrowLeft,
-  Bot,
-  Download,
-  File as FileIcon,
-  FileText,
-  Mail,
-  MessageSquare,
-  Phone,
-  RefreshCw,
-  Send,
-  Sparkles,
-  Upload,
-  User,
-} from "lucide-react";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { Bot, FileText, Mail, Phone, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
-import { PageHeader } from "@/components/page-header";
+import {
+  ActivityTimeline,
+  ErrorState,
+  SectionHeader,
+  WorkspaceHeader,
+  type ActivityEvent,
+} from "@/components/sales";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,32 +24,15 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { leadDetailSearchSchema } from "@/lib/admin-ux-search";
-import { Textarea } from "@/components/ui/textarea";
-import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
-import type { Lead, LeadStatus } from "@/lib/types";
+import { describeTriggerFailure, toSafeErrorMessage } from "@/lib/errors";
+import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
+import { getStatusLabel } from "@/lib/status-labels";
+import type { LeadStatus } from "@/lib/types";
 import { triggerLeadAgent, updateLead } from "@/server-functions/leads";
 import { triggerQuoteAgent } from "@/server-functions/quotes";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { normalizeQualificationData } from "@/lib/workflows/qualification";
 import { getLeadWorkspaceRead } from "@/server-functions/relationship-workspaces";
-
-// Local types for UI-only state that is not yet persisted server-side.
-type LeadComment = {
-  id: string;
-  lead_id: string;
-  author: string;
-  body: string;
-  created_at: string;
-};
-type LeadFile = {
-  id: string;
-  lead_id: string;
-  name: string;
-  size: string;
-  kind: string;
-  uploaded_at: string;
-  uploaded_by: string;
-};
 
 export const Route = createFileRoute("/leads/$id")({
   validateSearch: leadDetailSearchSchema,
@@ -71,13 +46,14 @@ export const Route = createFileRoute("/leads/$id")({
       },
     ],
   }),
-  errorComponent: ({ error }) => (
-    <div className="p-8 text-sm text-muted-foreground">{error.message}</div>
-  ),
+  errorComponent: ({ error, reset }) => <LeadWorkspaceError error={error} reset={reset} />,
   notFoundComponent: () => (
-    <div className="p-8">
-      <h1 className="text-xl font-semibold">Lead not found</h1>
-      <Link to="/leads" className="mt-2 inline-block text-sm text-primary hover:underline">
+    <div className="px-4 py-10 md:px-6">
+      <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">Lead not found</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        It may have been merged, converted or deleted.
+      </p>
+      <Link to="/leads" className="mt-3 inline-block text-sm text-primary hover:underline">
         ← Back to leads
       </Link>
     </div>
@@ -85,12 +61,59 @@ export const Route = createFileRoute("/leads/$id")({
   component: LeadDetail,
 });
 
+/**
+ * The loader calls `getLeadWorkspaceRead` directly, so anything the capability check or the
+ * Neon driver throws lands here. It used to render `{error.message}` into the page body —
+ * a validator's "ID is required" and a Postgres error quoting the failing SQL looked the
+ * same, and both reached the user verbatim. The raw text now goes to the console only.
+ */
+function LeadWorkspaceError({ error, reset }: { error: unknown; reset: () => void }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    console.error("Lead workspace failed to load", error);
+  }, [error]);
+
+  return (
+    <div className="space-y-4 px-4 py-10 md:px-6">
+      <ErrorState
+        kind="server"
+        error={error}
+        title="This lead did not load"
+        onRetry={() => {
+          reset();
+          // Scoped, never bare: a whole-router invalidate refetches every mounted loader.
+          void router.invalidate({ filter: (match) => match.routeId === "/leads/$id" });
+        }}
+      />
+      <p className="text-center text-xs text-muted-foreground">
+        <Link to="/leads" className="text-primary hover:underline">
+          ← Back to all leads
+        </Link>
+      </p>
+    </div>
+  );
+}
+
 const STATUSES: LeadStatus[] = ["new", "qualified", "replied", "quoted", "approved", "won", "lost"];
 
+/**
+ * Every mutation on this page names the keys it invalidates.
+ *
+ * `agent_run` and `quote_agent_run` are new: both AI triggers used to invalidate nothing at
+ * all, so the only thing that eventually showed the queued run was the 12s poll. The page
+ * renders `workspaceQuery.data` rather than loader data, so `invalidateQueries` on these
+ * narrow keys really does repaint it — no `router.invalidate` is needed here.
+ */
 const leadMutationQueryKeys = {
   status_change: (leadId: string) => [
     crmQueryKeys.leads.detail(leadId),
     crmQueryKeys.leads.lists(),
+  ],
+  agent_run: (leadId: string) => [crmQueryKeys.leads.detail(leadId)],
+  quote_agent_run: (leadId: string) => [
+    crmQueryKeys.leads.detail(leadId),
+    crmQueryKeys.quotes.lists(),
   ],
 } as const;
 
@@ -134,116 +157,129 @@ function LeadDetail() {
   const navigate = useNavigate({ from: Route.fullPath });
 
   const [status, setStatus] = useState<LeadStatus>(lead.status);
-
   useEffect(() => setStatus(lead.status), [lead.status]);
-  const [notes, setNotes] = useState<
-    { id: string; lead_id: string; author: string; body: string; created_at: string }[]
-  >([]);
-  const [composer, setComposer] = useState("");
-  const [comments, setComments] = useState<LeadComment[]>([]);
-  const [commentDraft, setCommentDraft] = useState("");
-  const [files, setFiles] = useState<LeadFile[]>([]);
+
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [agentPending, setAgentPending] = useState<"qualify" | "quote" | null>(null);
 
   const handleGenerateQuote = async () => {
-    await triggerQuoteAgent({ data: { leadId: lead.id } });
-    toast.success("Quote agent triggered — quote will appear shortly");
-  };
-
-  const handleStatusChange = async (nextStatus: LeadStatus) => {
-    setStatus(nextStatus);
-    await updateLead({ data: { id: lead.id, updates: { status: nextStatus } } });
-    toast.success(`Status updated to ${nextStatus.replace(/_/g, " ")}`);
-    await invalidateLeadMutation(queryClient, lead.id, "status_change");
+    if (agentPending) return;
+    setAgentPending("quote");
+    try {
+      const result = await triggerQuoteAgent({ data: { leadId: lead.id } });
+      if (result.reason === "already_running") {
+        toast.message("A quote draft is already running for this lead.");
+        return;
+      }
+      // The server returns `{ triggered: false, reason: "missing_webhook" }` rather than
+      // throwing when N8N_DRAFT_QUOTE_WEBHOOK_URL is unset. This used to toast success
+      // regardless, promising a quote that could never arrive.
+      const failure = describeTriggerFailure(result);
+      if (failure) {
+        toast.error(failure);
+        return;
+      }
+      toast.success("Quote agent queued — the draft will appear under Quotes");
+      await invalidateLeadMutation(queryClient, lead.id, "quote_agent_run");
+    } catch (error) {
+      toast.error(toSafeErrorMessage(error));
+    } finally {
+      setAgentPending(null);
+    }
   };
 
   const handleQualifyLead = async () => {
-    await triggerLeadAgent({ data: { leadId: lead.id } });
-    toast.success("Qualification agent queued");
+    if (agentPending) return;
+    setAgentPending("qualify");
+    try {
+      const result = await triggerLeadAgent({ data: { leadId: lead.id } });
+      if (result.reason === "already_running") {
+        toast.message("Qualification is already running for this lead.");
+        return;
+      }
+      const failure = describeTriggerFailure(result);
+      if (failure) {
+        toast.error(failure);
+        return;
+      }
+      toast.success("Qualification agent queued");
+      await invalidateLeadMutation(queryClient, lead.id, "agent_run");
+    } catch (error) {
+      toast.error(toSafeErrorMessage(error));
+    } finally {
+      setAgentPending(null);
+    }
   };
 
-  const addNote = () => {
-    if (!composer.trim()) return;
-    setNotes((prev) => [
-      {
-        id: `LN-${Math.random().toString(36).slice(2, 7)}`,
-        lead_id: lead.id,
-        author: "Ada Wong",
-        body: composer.trim(),
-        created_at: new Date("2026-05-20T10:00:00Z").toISOString(),
-      },
-      ...prev,
-    ]);
-    setComposer("");
-    toast.success("Note added");
+  const handleStatusChange = async (nextStatus: LeadStatus) => {
+    if (statusSaving || nextStatus === status) return;
+    const previousStatus = status;
+
+    // Optimistic, but now with the matching rollback. Without it a rejected write left the
+    // Select showing a status the database never took until the 12s poll happened to correct it.
+    setStatus(nextStatus);
+    setStatusSaving(true);
+    try {
+      await updateLead({ data: { id: lead.id, updates: { status: nextStatus } } });
+      toast.success(`Status updated to ${getStatusLabel("leads", nextStatus).label}`);
+      await invalidateLeadMutation(queryClient, lead.id, "status_change");
+    } catch (error) {
+      setStatus(previousStatus);
+      toast.error(toSafeErrorMessage(error));
+    } finally {
+      setStatusSaving(false);
+    }
   };
 
-  const addComment = () => {
-    if (!commentDraft.trim()) return;
-    setComments((prev) => [
-      ...prev,
-      {
-        id: `LC-${Math.random().toString(36).slice(2, 7)}`,
-        lead_id: lead.id,
-        author: "Ada Wong",
-        body: commentDraft.trim(),
-        created_at: new Date("2026-05-20T10:00:00Z").toISOString(),
-      },
-    ]);
-    setCommentDraft("");
-    toast.success("Comment posted");
-  };
-
-  const uploadMockFile = () => {
-    const stamp = Math.floor(Math.random() * 900 + 100);
-    const f: LeadFile = {
-      id: `LF-${Math.random().toString(36).slice(2, 7)}`,
-      lead_id: lead.id,
-      name: `Attachment_${stamp}.pdf`,
-      size: `${(Math.random() * 2 + 0.1).toFixed(1)} MB`,
-      kind: "pdf",
-      uploaded_at: new Date("2026-05-20T10:00:00Z").toISOString(),
-      uploaded_by: "Ada Wong",
-    };
-    setFiles((prev) => [f, ...prev]);
-    toast.success(`Uploaded ${f.name}`);
-  };
-
-  const removeFile = (id: string) => {
-    setFiles((prev) => prev.filter((f) => f.id !== id));
-    toast.message("File removed");
-  };
+  const timelineEvents: ActivityEvent[] = activityLogs.map((log) => ({
+    id: log.id,
+    at: log.created_at,
+    kind: log.action,
+    title: log.action.replace(/_/g, " "),
+    actor: log.actor_name
+      ? { name: log.actor_name, isAgent: log.actor_type === "agent" }
+      : undefined,
+  }));
 
   return (
     <>
-      <PageHeader
+      <WorkspaceHeader
+        context="Acquire"
         title={lead.company_name}
         description={`${lead.id} · created ${formatDateTime(lead.created_at)}`}
-        actions={
-          <>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/leads">
-                <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" /> All leads
-              </Link>
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => void workspaceQuery.refetch()}>
-              <RefreshCw aria-hidden="true" className="mr-2 h-4 w-4" /> Refresh
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleQualifyLead}>
-              <Sparkles aria-hidden="true" className="mr-2 h-4 w-4" /> Qualify
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleGenerateQuote}>
-              <Sparkles aria-hidden="true" className="mr-2 h-4 w-4" /> Generate Quote
-            </Button>
-            <Button size="sm" asChild>
-              <Link to="/quotes/new" search={{ leadId: lead.id }}>
-                <FileText aria-hidden="true" className="mr-2 h-4 w-4" /> New quote
-              </Link>
-            </Button>
-          </>
+        backHref={{ to: "/leads", label: "All leads" }}
+        status={
+          workspaceQuery.isError ? (
+            <span className="text-xs text-warning-foreground">
+              Live updates paused. Showing the last data that loaded.
+            </span>
+          ) : undefined
+        }
+        secondaryActions={[
+          <Button
+            key="refresh"
+            variant="outline"
+            size="sm"
+            disabled={workspaceQuery.isFetching}
+            onClick={() => void workspaceQuery.refetch()}
+          >
+            <RefreshCw
+              aria-hidden="true"
+              className={`mr-2 h-4 w-4 ${workspaceQuery.isFetching ? "animate-spin" : ""}`}
+            />
+            {workspaceQuery.isFetching ? "Refreshing…" : "Refresh"}
+          </Button>,
+        ]}
+        primaryAction={
+          <Button size="sm" asChild>
+            <Link to="/quotes/new" search={{ leadId: lead.id }}>
+              <FileText aria-hidden="true" className="mr-2 h-4 w-4" /> New quote
+            </Link>
+          </Button>
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 px-4 py-6 md:px-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardContent className="p-5">
@@ -260,12 +296,18 @@ function LeadDetail() {
                 }
               >
                 <div className="max-w-full overflow-x-auto pb-1">
+                  {/*
+                    Files and Comments are gone. Both were entirely client-side: uploads
+                    invented a filename, a size and a `Math.random()` id, the "download"
+                    button was a toast with no fetch behind it, and comments were an array
+                    seeded empty on every load with a hardcoded 2026-05-20 timestamp. There
+                    is no attachments table in any migration and no lead-scoped note write,
+                    so neither tab could ever have persisted anything.
+                  */}
                   <TabsList className="w-max">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="activity">Activity</TabsTrigger>
                     <TabsTrigger value="quotes">Quotes ({relatedQuotes.length})</TabsTrigger>
-                    <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
-                    <TabsTrigger value="comments">Comments ({comments.length})</TabsTrigger>
                     <TabsTrigger value="insights">AI insights</TabsTrigger>
                   </TabsList>
                 </div>
@@ -283,74 +325,19 @@ function LeadDetail() {
                   <Separator />
 
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Notes
-                    </p>
-                    <div className="mt-2 flex gap-2">
-                      <Textarea
-                        aria-label="Add lead note"
-                        name="lead-note"
-                        placeholder="Add a note…"
-                        value={composer}
-                        onChange={(e) => setComposer(e.target.value)}
-                        className="min-h-[60px] flex-1"
-                      />
-                      <Button size="sm" aria-label="Send lead note" onClick={addNote}>
-                        <Send aria-hidden="true" className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                    <ul className="mt-3 space-y-3">
-                      {notes.map((n) => (
-                        <li
-                          key={n.id}
-                          className="rounded-md border border-border bg-muted/30 p-3 text-sm"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium">{n.author}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {formatDateTime(n.created_at)}
-                            </span>
-                          </div>
-                          <p className="mt-1 leading-snug">{n.body}</p>
-                        </li>
-                      ))}
-                      {notes.length === 0 && (
-                        <p className="text-xs text-muted-foreground">No notes yet.</p>
-                      )}
-                    </ul>
+                    <SectionHeader
+                      title="Notes"
+                      description="Lead notes are not stored yet, so there is nowhere to write one. Agent and user actions are recorded on the Activity tab."
+                    />
                   </div>
                 </TabsContent>
 
-                <TabsContent value="activity" className="mt-4 space-y-3">
-                  {activityLogs.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No activity yet.</p>
-                  )}
-                  {activityLogs.map((a) => (
-                    <div key={a.id} className="flex items-start gap-2">
-                      <div
-                        className={`mt-0.5 flex h-6 w-6 items-center justify-center rounded-full ${
-                          a.actor_type === "agent"
-                            ? "bg-primary/10 text-primary"
-                            : "bg-accent text-accent-foreground"
-                        }`}
-                      >
-                        {a.actor_type === "agent" ? (
-                          <Bot className="h-3 w-3" />
-                        ) : (
-                          <User className="h-3 w-3" />
-                        )}
-                      </div>
-                      <div className="flex-1 text-sm">
-                        <p>
-                          <span className="font-medium">{a.actor_name}</span>{" "}
-                          <span className="text-muted-foreground">{a.action}</span>
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDateTime(a.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                <TabsContent value="activity" className="mt-4">
+                  <ActivityTimeline
+                    events={timelineEvents}
+                    groupByDay
+                    emptyMessage="No activity recorded for this lead yet."
+                  />
                 </TabsContent>
 
                 <TabsContent value="quotes" className="mt-4">
@@ -369,7 +356,7 @@ function LeadDetail() {
                               {q.number}
                             </Link>
                             <p className="text-xs text-muted-foreground">
-                              {q.lineItemCount} items · valid until {q.valid_until}
+                              {q.lineItemCount} items · valid until {formatDate(q.valid_until)}
                             </p>
                           </div>
                           <div className="flex items-center gap-3">
@@ -384,106 +371,17 @@ function LeadDetail() {
                   )}
                 </TabsContent>
 
-                <TabsContent value="files" className="mt-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted-foreground">
-                      Discovery decks, RFPs, signed proposals, and email threads.
-                    </p>
-                    <Button size="sm" variant="outline" onClick={uploadMockFile}>
-                      <Upload aria-hidden="true" className="mr-2 h-3.5 w-3.5" /> Upload
-                    </Button>
-                  </div>
-                  {files.length === 0 ? (
-                    <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                      No files yet. Drop discovery decks, RFPs, and emails here.
-                    </div>
-                  ) : (
-                    <ul className="divide-y divide-border rounded-md border border-border">
-                      {files.map((f) => (
-                        <li key={f.id} className="flex items-center gap-3 px-3 py-2.5 text-sm">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                            <FileIcon aria-hidden="true" className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium">{f.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {f.size} · <span className="uppercase">{f.kind}</span> ·{" "}
-                              {f.uploaded_by} · {formatDateTime(f.uploaded_at)}
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            aria-label={`Download ${f.name}`}
-                            onClick={() => toast.message(`Downloading ${f.name}…`)}
-                          >
-                            <Download aria-hidden="true" className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-muted-foreground hover:text-destructive"
-                            onClick={() => removeFile(f.id)}
-                          >
-                            Remove
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="comments" className="mt-4 space-y-3">
-                  <ul className="space-y-3">
-                    {comments.map((c) => (
-                      <li
-                        key={c.id}
-                        className="rounded-md border border-border bg-muted/30 p-3 text-sm"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
-                            <MessageSquare className="h-3 w-3" />
-                          </div>
-                          <span className="font-medium">{c.author}</span>
-                          <span className="ml-auto text-xs text-muted-foreground">
-                            {formatDateTime(c.created_at)}
-                          </span>
-                        </div>
-                        <p className="mt-2 leading-snug">{c.body}</p>
-                      </li>
-                    ))}
-                    {comments.length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        No comments yet. Start the conversation below.
-                      </p>
-                    )}
-                  </ul>
-                  <div className="flex gap-2">
-                    <Textarea
-                      aria-label="Reply to lead thread"
-                      name="lead-thread-reply"
-                      placeholder="Reply to the thread…"
-                      value={commentDraft}
-                      onChange={(e) => setCommentDraft(e.target.value)}
-                      className="min-h-[60px] flex-1"
-                    />
-                    <Button size="sm" aria-label="Send lead reply" onClick={addComment}>
-                      <Send aria-hidden="true" className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </TabsContent>
-
                 <TabsContent value="insights" className="mt-4">
                   {insights ? (
                     <div className="space-y-4 p-4">
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-muted-foreground">Urgency</span>
-                          <p className="font-medium">{insights.urgency_score} / 10</p>
+                          <p className="font-medium tabular-nums">{insights.urgency_score} / 10</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Fit</span>
-                          <p className="font-medium">{insights.fit_score} / 10</p>
+                          <p className="font-medium tabular-nums">{insights.fit_score} / 10</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Budget</span>
@@ -491,11 +389,15 @@ function LeadDetail() {
                         </div>
                         <div>
                           <span className="text-muted-foreground">Confidence</span>
-                          <p className="font-medium">{(insights.confidence * 100).toFixed(0)}%</p>
+                          <p className="font-medium tabular-nums">
+                            {(insights.confidence * 100).toFixed(0)}%
+                          </p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Score</span>
-                          <p className="font-medium">{insights.qualification_score} / 100</p>
+                          <p className="font-medium tabular-nums">
+                            {insights.qualification_score} / 100
+                          </p>
                         </div>
                       </div>
                       <div>
@@ -522,7 +424,7 @@ function LeadDetail() {
                         <p className="text-sm font-medium">{insights.next_action}</p>
                       </div>
                       {insights.human_review_required && (
-                        <p className="text-xs bg-amber-500/15 text-amber-700 px-2 py-1 rounded">
+                        <p className="rounded-md bg-warning/15 px-2 py-1 text-xs text-warning-foreground">
                           Human review required — confidence below threshold
                         </p>
                       )}
@@ -553,6 +455,7 @@ function LeadDetail() {
                 <p className="text-xs text-muted-foreground">Status</p>
                 <Select
                   value={status}
+                  disabled={statusSaving}
                   onValueChange={(v) => void handleStatusChange(v as LeadStatus)}
                 >
                   <SelectTrigger className="mt-1 h-9" aria-label="Lead status">
@@ -560,12 +463,15 @@ function LeadDetail() {
                   </SelectTrigger>
                   <SelectContent>
                     {STATUSES.map((s) => (
-                      <SelectItem key={s} value={s} className="capitalize">
-                        {s}
+                      <SelectItem key={s} value={s}>
+                        {getStatusLabel("leads", s).label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {statusSaving && (
+                  <p className="mt-1 text-xs text-muted-foreground">Saving status…</p>
+                )}
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Score</span>
@@ -591,6 +497,44 @@ function LeadDetail() {
                 <p className="text-xs text-muted-foreground">Owner</p>
                 <p className="mt-1">{lead.assigned_to ?? "Unassigned"}</p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/*
+            The two agent triggers live here rather than in the header: WorkspaceHeader
+            allows one primary and two secondary actions, and "New quote" (a form) sitting
+            next to "Generate Quote" (an agent) was two near-identical labels for two very
+            different things.
+          */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Agent actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start"
+                disabled={agentPending !== null}
+                onClick={() => void handleQualifyLead()}
+              >
+                <Sparkles aria-hidden="true" className="mr-2 h-4 w-4" />
+                {agentPending === "qualify" ? "Queuing…" : "Qualify this lead"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start"
+                disabled={agentPending !== null}
+                onClick={() => void handleGenerateQuote()}
+              >
+                <Bot aria-hidden="true" className="mr-2 h-4 w-4" />
+                {agentPending === "quote" ? "Queuing…" : "Draft a quote with the agent"}
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Both hand the lead to an n8n workflow. You will be told if the workflow is not
+                connected.
+              </p>
             </CardContent>
           </Card>
         </div>

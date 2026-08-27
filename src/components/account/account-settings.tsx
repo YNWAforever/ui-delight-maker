@@ -1,5 +1,10 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
+import { toSafeErrorMessage } from "@/lib/errors";
 import { formatDateTime } from "@/lib/format";
+import { ACCOUNT_SETTINGS_TABS } from "@/lib/admin-ux-search";
+import { NON_REQUESTABLE_CAPABILITIES } from "@/lib/admin/schemas";
+import { CAPABILITIES } from "@/lib/admin/types";
+import type { Capability } from "@/lib/admin/types";
 import type { Profile } from "@/lib/types";
 import type { AccessRequest, WorkDelegation } from "@/server/repositories/admin-access";
 import type { UserWorkloadSummary } from "@/server/repositories/admin-users";
@@ -47,9 +52,15 @@ export type AccountAccessRequestInput = {
   reason: string;
 };
 
+export type AccountTab = (typeof ACCOUNT_SETTINGS_TABS)[number];
+
 type AccountSettingsProps = {
   account: AccountViewData;
-  securityContent?: ReactNode;
+  /** URL-owned. The component never holds tab state of its own (IF-E2-50). */
+  tab: AccountTab;
+  onTabChange: (tab: AccountTab) => void;
+  /** True for the one visit that follows invitation acceptance (IF-E2-43). */
+  welcome?: boolean;
   onUpdateProfile: (input: AccountProfileInput) => Promise<unknown> | unknown;
   onUpdateAvailability: (input: AccountAvailabilityInput) => Promise<unknown> | unknown;
   onRevokeSessions: () => Promise<unknown> | unknown;
@@ -58,15 +69,29 @@ type AccountSettingsProps = {
   onCreateAccessRequest: (input: AccountAccessRequestInput) => Promise<unknown> | unknown;
 };
 
-type AccountTab = "profile" | "security" | "workload" | "availability" | "access";
+const TAB_LABELS: Record<AccountTab, string> = {
+  profile: "Profile",
+  security: "Security",
+  workload: "Workload",
+  availability: "Availability",
+  access: "Access",
+};
 
-const tabs: Array<{ id: AccountTab; label: string }> = [
-  { id: "profile", label: "Profile" },
-  { id: "security", label: "Security" },
-  { id: "workload", label: "Workload" },
-  { id: "availability", label: "Availability" },
-  { id: "access", label: "Access" },
-];
+/**
+ * The capabilities a person may ask for.
+ *
+ * The field used to be a free-text `<input>` seeded `"accounts.update"` (IF-E2-44). The
+ * server validates against `z.enum(CAPABILITIES)`, so a typo cost a round trip and came back
+ * as a ZodError string. `permissions.override` is excluded here for the same reason
+ * `accessRequestSchema` rejects it: it is the capability that mints every other capability
+ * and has to be granted deliberately by a super admin, never requested.
+ */
+const REQUESTABLE_CAPABILITIES: readonly Capability[] = CAPABILITIES.filter(
+  (capability) => !NON_REQUESTABLE_CAPABILITIES.includes(capability),
+);
+
+/** The shape `accessRequestSchema` requires of `teamId`, checked before the round trip. */
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Deliberately the shared formatter, not `toLocaleString()`. src/lib/format.ts pins en-GB and
 // UTC so the server and the first client render produce identical markup; a locale-and-zone
@@ -77,9 +102,56 @@ function formatDelegationDate(value: string | null | undefined) {
   return Number.isNaN(new Date(value).getTime()) ? value : formatDateTime(value);
 }
 
+/**
+ * The explicit save state each group on this page reports.
+ *
+ * Not one of the six writes had an in-progress state (IF-E2-48): double-clicking "Submit
+ * access request" wrote two rows, and double-clicking "Create delegation" wrote two
+ * overlapping delegations. Each also produced two *contradictory* signals on failure - a
+ * sanitized toast from the route plus a fixed local sentence that said something different.
+ * A single state per group fixes both: it is what disables the button, and it is what the
+ * reader is told, in the same words the toast used.
+ */
+type SaveState =
+  | { kind: "idle" }
+  | { kind: "saving" }
+  | { kind: "saved"; at: string }
+  | { kind: "invalid"; message: string }
+  | { kind: "error"; message: string };
+
+function stateMessage(state: SaveState): string | null {
+  switch (state.kind) {
+    case "idle":
+      return null;
+    case "saving":
+      return "Saving...";
+    case "saved":
+      return `Saved ${formatDateTime(state.at)}`;
+    default:
+      return state.message;
+  }
+}
+
+function SaveStateLine({ state, className }: { state: SaveState; className?: string }) {
+  const message = stateMessage(state);
+  if (message === null) return null;
+
+  const failed = state.kind === "error" || state.kind === "invalid";
+  return (
+    <p
+      role={failed ? "alert" : "status"}
+      className={`text-sm ${failed ? "text-destructive" : "text-muted-foreground"} ${className ?? ""}`}
+    >
+      {message}
+    </p>
+  );
+}
+
 export function AccountSettings({
   account,
-  securityContent,
+  tab,
+  onTabChange,
+  welcome = false,
   onUpdateProfile,
   onUpdateAvailability,
   onRevokeSessions,
@@ -88,27 +160,35 @@ export function AccountSettings({
   onCreateAccessRequest,
 }: AccountSettingsProps) {
   const { profile } = account;
-  const [tab, setTab] = useState<AccountTab>("profile");
   const [name, setName] = useState(profile.name ?? "");
   const [jobTitle, setJobTitle] = useState(profile.job_title ?? "");
   const [phone, setPhone] = useState(profile.phone ?? "");
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? "");
-  const [profileMessage, setProfileMessage] = useState<string | null>(null);
-  const [securityMessage, setSecurityMessage] = useState<string | null>(null);
+  const [profileState, setProfileState] = useState<SaveState>({ kind: "idle" });
+  const [securityState, setSecurityState] = useState<SaveState>({ kind: "idle" });
   const [availabilityStatus, setAvailabilityStatus] = useState(profile.availability_status);
   const [leaveStarts, setLeaveStarts] = useState(profile.leave_starts_at?.slice(0, 16) ?? "");
   const [leaveEnds, setLeaveEnds] = useState(profile.leave_ends_at?.slice(0, 16) ?? "");
-  const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null);
+  const [availabilityState, setAvailabilityState] = useState<SaveState>({ kind: "idle" });
   const [delegateProfileId, setDelegateProfileId] = useState("");
   const [delegationStarts, setDelegationStarts] = useState("");
   const [delegationEnds, setDelegationEnds] = useState("");
   const [delegationReason, setDelegationReason] = useState("");
-  const [delegationMessage, setDelegationMessage] = useState<string | null>(null);
+  const [delegationState, setDelegationState] = useState<SaveState>({ kind: "idle" });
   const [requestType, setRequestType] = useState<"capability" | "team">("capability");
-  const [capability, setCapability] = useState("accounts.update");
+  const [capability, setCapability] = useState<Capability>("accounts.update");
   const [teamId, setTeamId] = useState("");
   const [requestReason, setRequestReason] = useState("");
-  const [accessMessage, setAccessMessage] = useState<string | null>(null);
+  const [accessState, setAccessState] = useState<SaveState>({ kind: "idle" });
+
+  /**
+   * One lock for the whole page, not one per button.
+   *
+   * These writes are not independent - a delegation cancel and a delegation create touch the
+   * same rows, and profile and availability both invalidate the same account query. Letting
+   * two run at once means the second one's refetch decides what the reader sees.
+   */
+  const [busy, setBusy] = useState<string | null>(null);
 
   const workloadEntries = useMemo(
     () =>
@@ -123,149 +203,162 @@ export function AccountSettings({
     [account.workload],
   );
 
-  async function revokeSessions() {
+  /**
+   * Runs one write with the page locked, and reports the same sentence the toast used.
+   *
+   * The route already sanitizes and toasts; the value it rethrows is sanitized again here so
+   * the inline line and the toast cannot say different things about the same failure.
+   */
+  async function run(
+    action: string,
+    setState: (state: SaveState) => void,
+    work: () => Promise<unknown> | unknown,
+  ) {
+    if (busy !== null) return;
+    setBusy(action);
+    setState({ kind: "saving" });
     try {
-      await onRevokeSessions();
-      setSecurityMessage("Older app sessions revoked");
-    } catch {
-      setSecurityMessage("Could not revoke app sessions");
+      await work();
+      setState({ kind: "saved", at: new Date().toISOString() });
+    } catch (error) {
+      setState({ kind: "error", message: toSafeErrorMessage(error) });
+    } finally {
+      setBusy(null);
     }
   }
 
-  async function cancelDelegation(id: string) {
-    try {
-      await onCancelDelegation(id);
-      setDelegationMessage("Delegation cancelled");
-    } catch {
-      setDelegationMessage("Could not cancel delegation");
-    }
-  }
-  async function saveProfile() {
-    try {
-      await onUpdateProfile({
+  const disabled = (action: string) => busy !== null && busy !== action;
+  const label = (action: string, idle: string, running: string) =>
+    busy === action ? running : idle;
+
+  const revokeSessions = () => run("revoke-sessions", setSecurityState, () => onRevokeSessions());
+
+  const cancelDelegation = (id: string) =>
+    run(`cancel-delegation-${id}`, setDelegationState, () => onCancelDelegation(id));
+
+  const saveProfile = () =>
+    run("profile", setProfileState, () =>
+      onUpdateProfile({
         name: name.trim() || null,
         job_title: jobTitle.trim() || null,
         phone: phone.trim() || null,
         avatar_url: avatarUrl.trim() || null,
         locale: profile.locale,
         timezone: profile.timezone,
-      });
-      setProfileMessage("Profile updated");
-    } catch {
-      setProfileMessage("Could not update profile");
-    }
-  }
+      }),
+    );
 
-  async function saveAvailability() {
+  const saveAvailability = () => {
     if (leaveStarts && leaveEnds && new Date(leaveEnds) <= new Date(leaveStarts)) {
-      setAvailabilityMessage("Leave end must be after leave start");
+      setAvailabilityState({ kind: "invalid", message: "Leave end must be after leave start" });
       return;
     }
-    setAvailabilityMessage(null);
-    try {
-      await onUpdateAvailability({
+    return run("availability", setAvailabilityState, () =>
+      onUpdateAvailability({
         availability_status: availabilityStatus,
         leave_starts_at: leaveStarts ? new Date(leaveStarts).toISOString() : null,
         leave_ends_at: leaveEnds ? new Date(leaveEnds).toISOString() : null,
-      });
-      setAvailabilityMessage("Availability updated");
-    } catch {
-      setAvailabilityMessage("Could not update availability");
-    }
-  }
+      }),
+    );
+  };
 
-  async function saveDelegation() {
+  const saveDelegation = () => {
     if (
-      !delegateProfileId ||
+      !delegateProfileId.trim() ||
       !delegationStarts ||
       !delegationEnds ||
       delegationReason.trim().length < 8
     ) {
-      setDelegationMessage("Delegate, dates, and a meaningful reason are required");
+      setDelegationState({
+        kind: "invalid",
+        message: "Delegate, dates, and a reason of at least eight characters are required",
+      });
       return;
     }
     if (new Date(delegationEnds) <= new Date(delegationStarts)) {
-      setDelegationMessage("Delegation end must be after start");
+      setDelegationState({ kind: "invalid", message: "Delegation end must be after start" });
       return;
     }
-    setDelegationMessage(null);
-    try {
+    return run("delegation", setDelegationState, async () => {
       await onCreateDelegation({
-        delegateProfileId,
+        delegateProfileId: delegateProfileId.trim(),
         startsAt: new Date(delegationStarts).toISOString(),
         endsAt: new Date(delegationEnds).toISOString(),
         reason: delegationReason.trim(),
       });
-      setDelegationMessage("Delegation created");
       setDelegationReason("");
-    } catch {
-      setDelegationMessage("Could not create delegation");
-    }
-  }
+    });
+  };
 
-  async function saveAccessRequest() {
+  const saveAccessRequest = () => {
     if (requestReason.trim().length < 8) {
-      setAccessMessage("A meaningful reason is required");
+      setAccessState({
+        kind: "invalid",
+        message: "A reason of at least eight characters is required",
+      });
       return;
     }
-    if (requestType === "team" && !teamId.trim()) {
-      setAccessMessage("Team ID is required");
+    // Checked here rather than paying a round trip for the ZodError: `accessRequestSchema`
+    // requires `z.uuid()` (IF-E2-45), and the id is not discoverable from this page.
+    if (requestType === "team" && !UUID_SHAPE.test(teamId.trim())) {
+      setAccessState({
+        kind: "invalid",
+        message: "Team ID must be the team's identifier, in the 8-4-4-4-12 format",
+      });
       return;
     }
-    setAccessMessage(null);
-    try {
+    return run("access-request", setAccessState, async () => {
       await onCreateAccessRequest({
         requestType,
         capability: requestType === "capability" ? capability : undefined,
         teamId: requestType === "team" ? teamId.trim() : undefined,
         reason: requestReason.trim(),
       });
-      setAccessMessage("Access request submitted");
       setRequestReason("");
-    } catch {
-      setAccessMessage("Could not submit access request");
-    }
-  }
+    });
+  };
 
   return (
     <div className="space-y-5">
-      <div className="border-b border-border px-4 pt-4">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            Personal account
-          </p>
-          <h1 className="mt-1 text-xl font-semibold text-foreground">Account settings</h1>
-          <p className="mt-1 pb-4 text-sm text-muted-foreground">
-            Manage your profile, availability, security, workload, and access requests.
-          </p>
-        </div>
-        <div
-          className="flex gap-1 overflow-x-auto"
-          role="tablist"
-          aria-label="Account settings tabs"
-        >
-          {tabs.map((item) => (
+      {/* WorkspaceHeader owns this page's only h1; every heading below it is an h2. */}
+      <div className="border-b border-border">
+        <div className="flex gap-1 overflow-x-auto" role="tablist" aria-label="Account settings">
+          {ACCOUNT_SETTINGS_TABS.map((item) => (
             <button
-              key={item.id}
+              key={item}
               type="button"
               role="tab"
-              aria-selected={tab === item.id}
-              onClick={() => setTab(item.id)}
+              aria-selected={tab === item}
+              onClick={() => onTabChange(item)}
               className={
                 "min-h-10 shrink-0 border-b-2 px-3 py-2 text-sm font-medium " +
-                (tab === item.id
+                (tab === item
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground")
               }
             >
-              {item.label}
+              {TAB_LABELS[item]}
             </button>
           ))}
         </div>
       </div>
 
       {tab === "profile" ? (
-        <section aria-label="Profile settings" className="space-y-5 px-4">
+        <section aria-label="Profile settings" className="space-y-5">
+          {welcome ? (
+            <div
+              role="note"
+              className="rounded-md border border-primary/30 bg-primary/5 p-4 text-sm"
+            >
+              <p className="font-medium text-foreground">Your account is active.</p>
+              <p className="mt-1 text-muted-foreground">
+                Check your name and contact details below, then set your availability so the team
+                knows when you are reachable. Your role, department and teams are set by your
+                organization.
+              </p>
+            </div>
+          ) : null}
+
           <div className="grid gap-3 border-b border-border pb-5 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <dt className="text-xs text-muted-foreground">Role</dt>
@@ -292,7 +385,7 @@ export function AccountSettings({
           </div>
 
           <div>
-            <h2 className="text-base font-semibold text-foreground">Editable profile</h2>
+            <h2 className="text-base font-medium text-foreground lg:text-lg">Editable profile</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Role, department, manager, status, and teams are controlled by your organization.
             </p>
@@ -339,19 +432,16 @@ export function AccountSettings({
             <button
               type="button"
               onClick={() => void saveProfile()}
-              className="min-h-9 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+              disabled={disabled("profile") || busy === "profile"}
+              className="min-h-9 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
             >
-              Save profile
+              {label("profile", "Save profile", "Saving...")}
             </button>
-            {profileMessage ? (
-              <p role="status" className="text-sm text-muted-foreground">
-                {profileMessage}
-              </p>
-            ) : null}
+            <SaveStateLine state={profileState} />
           </div>
 
           <div className="border-t border-border pt-5">
-            <h2 className="text-base font-semibold text-foreground">Teams</h2>
+            <h2 className="text-base font-medium text-foreground lg:text-lg">Teams</h2>
             <div className="mt-3 divide-y divide-border rounded-md border border-border">
               {(account.teams ?? []).length === 0 ? (
                 <p className="px-3 py-4 text-sm text-muted-foreground">No active teams.</p>
@@ -372,9 +462,9 @@ export function AccountSettings({
       ) : null}
 
       {tab === "security" ? (
-        <section aria-label="Security settings" className="space-y-4 px-4">
+        <section aria-label="Security settings" className="space-y-4">
           <div className="rounded-md border border-border px-4 py-4">
-            <h2 className="text-base font-semibold text-foreground">Password</h2>
+            <h2 className="text-base font-medium text-foreground lg:text-lg">Password</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Reset your Neon Auth password from the supported sign-in route.
             </p>
@@ -386,7 +476,7 @@ export function AccountSettings({
             </a>
           </div>
           <div className="rounded-md border border-border px-4 py-4">
-            <h2 className="text-base font-semibold text-foreground">App sessions</h2>
+            <h2 className="text-base font-medium text-foreground lg:text-lg">App sessions</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Invalidate older Fimmick app sessions while keeping this session available until
               refresh.
@@ -394,38 +484,39 @@ export function AccountSettings({
             <button
               type="button"
               onClick={() => void revokeSessions()}
-              className="mt-3 min-h-9 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-accent"
+              disabled={disabled("revoke-sessions") || busy === "revoke-sessions"}
+              className="mt-3 min-h-9 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-60"
             >
-              Revoke app sessions
+              {label("revoke-sessions", "Revoke app sessions", "Revoking...")}
             </button>
-            {securityMessage ? (
-              <p role="status" className="mt-2 text-sm text-muted-foreground">
-                {securityMessage}
-              </p>
-            ) : null}
+            <SaveStateLine state={securityState} className="mt-2" />
           </div>
-          {securityContent ? (
-            <div aria-label="Neon Auth security controls" className="border-t border-border pt-4">
-              {securityContent}
-            </div>
-          ) : null}
+          {/*
+            The `securityContent` slot is gone (IF-E2-49). It was a declared prop rendering a
+            section titled "Neon Auth security controls" that no caller ever filled, so MFA,
+            device management and password change had a designed placeholder and no occupant.
+            A slot nobody supplies is a promise the page cannot keep; what Neon Auth does
+            offer today is the reset link above.
+          */}
         </section>
       ) : null}
 
       {tab === "workload" ? (
-        <section aria-label="Personal workload" className="space-y-5 px-4">
+        <section aria-label="Personal workload" className="space-y-5">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {workloadEntries.map(([label, value]) => (
-              <div key={label} className="rounded-md border border-border px-4 py-4">
-                <p className="text-sm text-muted-foreground">{label}</p>
-                <p className="mt-1 text-2xl font-semibold text-foreground">{value}</p>
+            {workloadEntries.map(([entryLabel, value]) => (
+              <div key={entryLabel} className="rounded-md border border-border px-4 py-4">
+                <p className="text-sm text-muted-foreground">{entryLabel}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{value}</p>
               </div>
             ))}
           </div>
           <div className="border-t border-border pt-5">
-            <h2 className="text-base font-semibold text-foreground">Delegated coverage</h2>
+            <h2 className="text-base font-medium text-foreground lg:text-lg">Delegated coverage</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Delegate your active workload for a bounded time window.
+              Delegate your active workload for a bounded time window. The delegate is identified by
+              their profile id - ask them or an administrator for it, because this page cannot list
+              other people.
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <label className="block">
@@ -470,15 +561,12 @@ export function AccountSettings({
             <button
               type="button"
               onClick={() => void saveDelegation()}
-              className="mt-3 min-h-9 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+              disabled={disabled("delegation") || busy === "delegation"}
+              className="mt-3 min-h-9 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
             >
-              Create delegation
+              {label("delegation", "Create delegation", "Creating...")}
             </button>
-            {delegationMessage ? (
-              <p role="status" className="mt-2 text-sm text-muted-foreground">
-                {delegationMessage}
-              </p>
-            ) : null}
+            <SaveStateLine state={delegationState} className="mt-2" />
             <div className="mt-4 divide-y divide-border rounded-md border border-border">
               {(account.delegations ?? []).length === 0 ? (
                 <p className="px-3 py-4 text-sm text-muted-foreground">No current delegations.</p>
@@ -502,9 +590,17 @@ export function AccountSettings({
                       <button
                         type="button"
                         onClick={() => void cancelDelegation(delegation.id)}
-                        className="min-h-9 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
+                        disabled={
+                          disabled(`cancel-delegation-${delegation.id}`) ||
+                          busy === `cancel-delegation-${delegation.id}`
+                        }
+                        className="min-h-9 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent disabled:opacity-60"
                       >
-                        Cancel delegation
+                        {label(
+                          `cancel-delegation-${delegation.id}`,
+                          "Cancel delegation",
+                          "Cancelling...",
+                        )}
                       </button>
                     ) : null}
                   </div>
@@ -516,9 +612,9 @@ export function AccountSettings({
       ) : null}
 
       {tab === "availability" ? (
-        <section aria-label="Availability settings" className="space-y-4 px-4">
+        <section aria-label="Availability settings" className="space-y-4">
           <div>
-            <h2 className="text-base font-semibold text-foreground">Availability</h2>
+            <h2 className="text-base font-medium text-foreground lg:text-lg">Availability</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Keep your current capacity and leave window visible to the team.
             </p>
@@ -560,27 +656,27 @@ export function AccountSettings({
               />
             </label>
           </div>
-          <button
-            type="button"
-            onClick={() => void saveAvailability()}
-            className="min-h-9 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-          >
-            Save availability
-          </button>
-          {availabilityMessage ? (
-            <p role="status" className="text-sm text-muted-foreground">
-              {availabilityMessage}
-            </p>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void saveAvailability()}
+              disabled={disabled("availability") || busy === "availability"}
+              className="min-h-9 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+            >
+              {label("availability", "Save availability", "Saving...")}
+            </button>
+            <SaveStateLine state={availabilityState} />
+          </div>
         </section>
       ) : null}
 
       {tab === "access" ? (
-        <section aria-label="Access settings" className="space-y-5 px-4">
+        <section aria-label="Access settings" className="space-y-5">
           <div>
-            <h2 className="text-base font-semibold text-foreground">Request access</h2>
+            <h2 className="text-base font-medium text-foreground lg:text-lg">Request access</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Ask for a capability or team membership with a clear business reason.
+              Ask for a capability or team membership with a clear business reason. An administrator
+              decides; nothing here grants anything by itself.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -599,12 +695,18 @@ export function AccountSettings({
             {requestType === "capability" ? (
               <label className="block">
                 <span className="text-sm font-medium text-foreground">Capability</span>
-                <input
+                <select
                   aria-label="Capability"
                   value={capability}
-                  onChange={(event) => setCapability(event.target.value)}
+                  onChange={(event) => setCapability(event.target.value as Capability)}
                   className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                />
+                >
+                  {REQUESTABLE_CAPABILITIES.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </label>
             ) : (
               <label className="block">
@@ -615,6 +717,10 @@ export function AccountSettings({
                   onChange={(event) => setTeamId(event.target.value)}
                   className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                 />
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  Ask an administrator for the team&apos;s id. The teams listed on your Profile tab
+                  are the ones you already belong to.
+                </span>
               </label>
             )}
           </div>
@@ -628,20 +734,19 @@ export function AccountSettings({
               className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
           </label>
-          <button
-            type="button"
-            onClick={() => void saveAccessRequest()}
-            className="min-h-9 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-          >
-            Submit access request
-          </button>
-          {accessMessage ? (
-            <p role="status" className="text-sm text-muted-foreground">
-              {accessMessage}
-            </p>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void saveAccessRequest()}
+              disabled={disabled("access-request") || busy === "access-request"}
+              className="min-h-9 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+            >
+              {label("access-request", "Submit access request", "Submitting...")}
+            </button>
+            <SaveStateLine state={accessState} />
+          </div>
           <div className="border-t border-border pt-5">
-            <h2 className="text-base font-semibold text-foreground">Request history</h2>
+            <h2 className="text-base font-medium text-foreground lg:text-lg">Request history</h2>
             {(account.accessRequests ?? []).length === 0 ? (
               <p className="mt-3 text-sm text-muted-foreground">No access requests yet.</p>
             ) : (

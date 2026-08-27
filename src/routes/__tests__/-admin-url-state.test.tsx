@@ -13,6 +13,8 @@ const captures = vi.hoisted(() => ({
   viewSwitcher: null as Record<string, unknown> | null,
   preview: null as Record<string, unknown> | null,
   accountRows: [] as string[],
+  filterToolbar: null as Record<string, unknown> | null,
+  recordList: null as Record<string, unknown> | null,
   tabs: null as Record<string, unknown> | null,
 }));
 
@@ -22,6 +24,7 @@ vi.mock("@tanstack/react-router", () => ({
     fullPath: path,
     useLoaderData: vi.fn(),
     useSearch: vi.fn(),
+    useRouteContext: vi.fn(() => ({})),
   }),
   Link: ({ children }: { children?: ReactNode }) => <a href="#">{children}</a>,
   notFound: vi.fn(),
@@ -60,8 +63,32 @@ vi.mock("@/components/pipeline/lead-preview-panel", () => ({
 vi.mock("@/components/pipeline/stage-move-dialog", () => ({ StageMoveDialog: () => null }));
 vi.mock("@/components/pipeline/won-conversion-dialog", () => ({ WonConversionDialog: () => null }));
 vi.mock("@/components/sales", () => ({
+  ActivityTimeline: () => null,
+  AttentionQueue: () => null,
   CommandHeader: () => null,
+  EmptyWorkspaceState: () => null,
+  ErrorState: () => null,
+  FilteredEmptyState: () => null,
+  // FilterToolbar and ResponsiveRecordList render nothing, exactly as before, but record
+  // the props they were handed: /accounts drives its URL state through them now, and the
+  // handlers are what the URL-state assertions below exercise.
+  FilterToolbar: (props: Record<string, unknown>) => {
+    captures.filterToolbar = props;
+    return null;
+  },
+  LifecycleBadge: () => null,
+  LoadingSkeleton: () => null,
   MetricStrip: () => null,
+  ResponsiveRecordList: (props: Record<string, unknown>) => {
+    captures.recordList = props;
+    captures.accountRows = (props.rows as Array<{ id: string }>).map((row) => row.id);
+    return null;
+  },
+  SectionHeader: ({ action }: { action?: ReactNode }) => <div>{action}</div>,
+  StaleDataIndicator: () => null,
+  StatusBadge: () => null,
+  StickyActionBar: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  WorkspaceHeader: () => null,
   WorkSurfaceEmpty: () => null,
 }));
 vi.mock("@/components/ui/button", () => ({
@@ -101,8 +128,10 @@ vi.mock("@/lib/format", () => ({
   formatCompactHKD: (value: number) => String(value),
   formatCount: (value: number) => String(value),
   formatDate: (value: string) => value,
+  formatTime: (value: string) => value,
   formatCurrencyAmount: (value: number) => String(value),
   formatDateTime: (value: string) => value,
+  relativeTime: (value: string) => value,
 }));
 vi.mock("@/lib/pipeline", () => ({
   filterPipelineLeads: ({ leads }: { leads: unknown[] }) => leads,
@@ -118,6 +147,7 @@ vi.mock("@/server-functions/leads", () => ({
   moveLeadStage: vi.fn(),
   triggerLeadAgent: vi.fn(),
   triggerLeadReplyDraft: vi.fn(),
+  updateLead: vi.fn(),
 }));
 vi.mock("@/server-functions/pipeline", () => ({ getPipelineData: vi.fn() }));
 vi.mock("@/server-functions/products", () => ({
@@ -159,7 +189,14 @@ vi.mock("@/server-functions/clients", () => ({
   getClients: vi.fn(),
   getClientsPage: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, limit: 100 }),
 }));
-vi.mock("@/server-functions/relationship-signals", () => ({ getRelationshipSignals: vi.fn() }));
+vi.mock("@/server-functions/relationship-signals", () => ({
+  getRelationshipSignals: vi.fn(),
+  dismissRelationshipSignalFn: vi.fn(),
+}));
+vi.mock("@/server-functions/contacts", () => ({
+  createAccountContact: vi.fn(),
+  updateAccountContact: vi.fn(),
+}));
 vi.mock("@/server-functions/workspace-preferences", () => ({
   getWorkspacePreferences: vi.fn(),
   togglePersonalWorkspaceFavorite: vi.fn(),
@@ -201,6 +238,8 @@ beforeEach(() => {
   captures.viewSwitcher = null;
   captures.preview = null;
   captures.accountRows = [];
+  captures.filterToolbar = null;
+  captures.recordList = null;
   captures.tabs = null;
   vi.mocked(Route.useLoaderData).mockReturnValue({
     leads,
@@ -210,6 +249,12 @@ beforeEach(() => {
     agentRuns: [],
     activityLogs: [],
     products: [],
+    pipelineTotals: {
+      openLeads: 2,
+      activeQuoteValue: 0,
+      openTasks: 0,
+      pendingApprovals: 0,
+    },
   } as never);
   vi.mocked(Route.useSearch).mockReturnValue(search as never);
 });
@@ -288,8 +333,8 @@ describe("Companies URL state", () => {
   beforeEach(() => {
     vi.mocked(AccountsRoute.useLoaderData).mockReturnValue({
       accounts,
-      clients: [],
-      signals: [],
+      accountCounts: {},
+      pagination: { page: 1, limit: 50, total: 3 },
       preferences: { favorites: [], views: [] },
     } as never);
     vi.mocked(AccountsRoute.useSearch).mockReturnValue({
@@ -298,27 +343,44 @@ describe("Companies URL state", () => {
       account: "account-2",
       unrelated: "keep",
     } as never);
-    vi.mocked(getCompanyWorkspaceCore).mockResolvedValue({
-      company: accounts[1],
-      contacts: [],
-    } as never);
   });
 
-  it("restores lifecycle, sort, and preview while preserving history semantics", async () => {
+  it("keeps the preview selection out of the read the list depends on", () => {
+    // `account` only says which side panel is open. While it was a loader dep every
+    // preview click minted a new accounts.list cache entry and refetched the whole index.
+    const loaderDeps = AccountsRoute.options.loaderDeps as unknown as (args: {
+      search: Record<string, unknown>;
+    }) => { search: Record<string, unknown> };
+
+    const deps = loaderDeps({
+      search: { q: "north", lifecycle: "active_client", sort: "name:asc", account: "account-2" },
+    });
+
+    expect(deps.search).not.toHaveProperty("account");
+    expect(deps.search).toMatchObject({
+      q: "north",
+      lifecycle: "active_client",
+      sort: "name:asc",
+    });
+  });
+
+  it("restores lifecycle and sort from the URL and writes both back with page reset", () => {
     const Component = AccountsRoute.options.component as ComponentType;
     render(<Component />);
 
-    expect((screen.getByLabelText("Lifecycle") as HTMLSelectElement).value).toBe("active_client");
-    expect((screen.getByLabelText("Sort") as HTMLSelectElement).value).toBe("name:asc");
-    expect(captures.accountRows.slice(0, 2)).toEqual(["account-3", "account-2"]);
-    await waitFor(() =>
-      expect(getCompanyWorkspaceCore).toHaveBeenCalledWith({ data: { accountId: "account-2" } }),
-    );
+    const filters = captures.filterToolbar?.filters as Array<{
+      id: string;
+      value: string;
+      onChange: (value: string) => void;
+    }>;
+    const sort = captures.filterToolbar?.sort as {
+      value: string;
+      onChange: (value: string) => void;
+    };
+    expect(filters[0].value).toBe("active_client");
+    expect(sort.value).toBe("name:asc");
 
-    act(() => {
-      (screen.getByLabelText("Lifecycle") as HTMLSelectElement).value = "prospect";
-      screen.getByLabelText("Lifecycle").dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    act(() => filters[0].onChange("prospect"));
     const lifecycleNavigation = navigateMock.mock.calls.at(-1)?.[0];
     expect(lifecycleNavigation.replace).toBe(true);
     expect(lifecycleNavigation.search(AccountsRoute.useSearch())).toEqual({
@@ -329,26 +391,46 @@ describe("Companies URL state", () => {
       unrelated: "keep",
     });
 
-    act(() => {
-      screen.getByRole("button", { name: "Preview Northstar Media" }).click();
+    // Sorting is a server read now, so changing it has to return to page 1 — page 4 of a
+    // "Name A-Z" ordering is not page 4 of "Recent activity".
+    act(() => sort.onChange("relationship_health:asc"));
+    const sortNavigation = navigateMock.mock.calls.at(-1)?.[0];
+    expect(sortNavigation.replace).toBe(true);
+    expect(sortNavigation.search(AccountsRoute.useSearch())).toEqual({
+      lifecycle: "active_client",
+      page: 1,
+      sort: "relationship_health:asc",
+      account: "account-2",
+      unrelated: "keep",
     });
+  });
+
+  it("renders rows in the order the server returned, without re-sorting the page", () => {
+    const Component = AccountsRoute.options.component as ComponentType;
+    render(<Component />);
+
+    // The old page sorted `accounts` locally, so "Name A-Z" ordered at most one page and
+    // presented the result as the whole workspace.
+    expect(captures.accountRows).toEqual(["account-1", "account-2", "account-3"]);
+    const rowHref = captures.recordList?.rowHref as (row: { id: string }) => string;
+    expect(rowHref(accounts[1])).toBe("/accounts/account-2");
+  });
+
+  it("opens the preview from a row action with push semantics", () => {
+    const Component = AccountsRoute.options.component as ComponentType;
+    render(<Component />);
+
+    const rowActions = captures.recordList?.rowActions as (row: unknown) => {
+      props: { onSelect: (event: { preventDefault: () => void }) => void };
+    };
+    act(() => rowActions(accounts[2]).props.onSelect({ preventDefault: () => {} }));
+
     const selectionNavigation = navigateMock.mock.calls.at(-1)?.[0];
     expect(selectionNavigation.replace).toBeUndefined();
     expect(selectionNavigation.search(AccountsRoute.useSearch())).toEqual({
       lifecycle: "active_client",
       sort: "name:asc",
-      account: "account-2",
-      unrelated: "keep",
-    });
-
-    act(() => {
-      (captures.preview?.onOpenChange as (open: boolean) => void)(false);
-    });
-    const closeNavigation = navigateMock.mock.calls.at(-1)?.[0];
-    expect(closeNavigation.replace).toBeUndefined();
-    expect(closeNavigation.search(AccountsRoute.useSearch())).toEqual({
-      lifecycle: "active_client",
-      sort: "name:asc",
+      account: "account-3",
       unrelated: "keep",
     });
   });
@@ -375,12 +457,31 @@ describe("Companies URL state", () => {
       "name",
       "next_action",
     ]);
-    expect(new Set(captures.accountRows.slice(-1))).toEqual(new Set(["account-2"]));
     const savedNavigation = navigateMock.mock.calls.at(-1)?.[0];
     expect(savedNavigation.replace).toBe(true);
     expect(savedNavigation.search(AccountsRoute.useSearch())).toEqual({
       lifecycle: "at_risk",
+      page: 1,
       sort: "relationship_health:desc",
+      account: "account-2",
+      unrelated: "keep",
+    });
+  });
+
+  it("clears every server-backed filter when the saved view is reset to current filters", () => {
+    // "Current filters" used to be inert: once a saved view was applied there was no way
+    // back to unfiltered from that control.
+    const Component = AccountsRoute.options.component as ComponentType;
+    render(<Component />);
+
+    act(() => {
+      (captures.viewSwitcher?.onClearView as () => void)();
+    });
+
+    const clearNavigation = navigateMock.mock.calls.at(-1)?.[0];
+    expect(clearNavigation.replace).toBe(true);
+    expect(clearNavigation.search(AccountsRoute.useSearch())).toEqual({
+      page: 1,
       account: "account-2",
       unrelated: "keep",
     });
@@ -545,10 +646,18 @@ describe("Admin detail tab runtime navigation", () => {
       name: "agent",
       route: AgentDetailRoute,
       loader: {
+        // The whole catalogue shape, because the Governance tab reads `workflow_type` and
+        // `capabilities` off it. "memory" and "config" are no longer tabs (M-1, IF-E1-07..12),
+        // so the restore/clear pair is exercised against Governance.
         agent: {
+          id: "qualify-lead",
+          name: "qualify-lead",
           display_name: "Lead Agent",
+          workflow_type: "qualify_lead",
           description: "Qualifies leads",
           status: "active",
+          capabilities: ["ICP scoring"],
+          role: "qualification",
           human_approval: false,
           model: "test-model",
         },
@@ -560,15 +669,18 @@ describe("Admin detail tab runtime navigation", () => {
           summary: { runs_24h: 0, avg_confidence: null },
         },
       },
-      currentTab: "memory",
+      currentTab: "governance",
       defaultTab: "runs",
     },
     {
       name: "settings",
       route: SettingsRoute,
       loader: [],
-      currentTab: "team",
-      defaultTab: "profile",
+      // Five of the seven settings tabs were removed as unpersisted surfaces (IF-E1-16..26),
+      // so the pair exercised here is what is left: Products is the default and AI agents is
+      // the one that has to survive a reload in the URL.
+      currentTab: "agents",
+      defaultTab: "products",
     },
   ] as const;
 

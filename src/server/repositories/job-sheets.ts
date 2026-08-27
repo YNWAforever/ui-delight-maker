@@ -434,6 +434,7 @@ export async function acceptJobSheet(id: string, input: AcceptJobSheetInput): Pr
       requirePoNumber: false,
       poNumber: jobSheet.po_number,
       clientOrderNumber: jobSheet.client_order_number,
+      currency: jobSheet.currency,
     });
 
     if (!acceptance.ok) {

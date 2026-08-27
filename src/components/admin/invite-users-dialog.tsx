@@ -1,7 +1,10 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { invitationInputSchema } from "@/lib/admin/schemas";
 import type { UserRole } from "@/lib/admin/types";
+import { toSafeErrorMessage } from "@/lib/errors";
+import { describeDelivery } from "@/lib/invitation-delivery";
+import { getUserRoleLabel } from "@/lib/status-labels";
 
 type InviteInput = {
   email: string;
@@ -48,10 +51,20 @@ export function InviteUsersDialog({
   const [submitting, setSubmitting] = useState(false);
   const [resultMessage, setResultMessage] = useState<string | null>(null);
 
+  // Hidden rather than unmounted, so without this the previous batch's error, success line
+  // and selected teams are still on screen the next time the dialog opens.
+  useEffect(() => {
+    if (!open) return;
+    setError(null);
+    setResultMessage(null);
+  }, [open]);
+
   if (!open) return null;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting) return;
+
     const emails = parseEmails(emailText);
     if (
       emails.length === 0 ||
@@ -61,40 +74,40 @@ export function InviteUsersDialog({
       return;
     }
 
-    const invitations = emails.map((email) =>
-      invitationInputSchema.parse({
+    /**
+     * Validation with `safeParse`, and inside the guarded path.
+     *
+     * The pre-check above only tests for an `@` that is not the last character, so
+     * `"@fimmick.com"` passes it and then `z.email()` rejects. The `.parse` used to sit
+     * *outside* the `try`, so that `ZodError` escaped this handler entirely: `setError`
+     * never ran, `setSubmitting` never ran, and the user saw nothing at all while the
+     * button stayed live. Naming the address that failed is the part that lets them fix it.
+     */
+    const invitations: InviteInput[] = [];
+    for (const email of emails) {
+      const parsed = invitationInputSchema.safeParse({
         email,
         role,
         primaryDepartmentId: departmentId || undefined,
         managerProfileId: managerProfileId || undefined,
         initialTeamIds: teamIds,
-      }),
-    );
+      });
+      if (!parsed.success) {
+        setError(`${email} is not a valid invitation. Check the address and the optional fields.`);
+        return;
+      }
+      invitations.push(parsed.data);
+    }
+
     setError(null);
+    setResultMessage(null);
     setSubmitting(true);
     try {
       const result = await onSubmit(invitations);
-      const results = Array.isArray(result) ? result : [];
-      const missingWebhook = results.filter(
-        (entry) =>
-          typeof entry === "object" &&
-          entry !== null &&
-          "delivery" in entry &&
-          typeof entry.delivery === "object" &&
-          entry.delivery !== null &&
-          "status" in entry.delivery &&
-          entry.delivery.status === "missing_webhook",
-      ).length;
-      setResultMessage(
-        missingWebhook > 0
-          ? "Invitations saved, but email delivery is not configured."
-          : "Invitations sent successfully.",
-      );
+      setResultMessage(describeDelivery(result, invitations.length));
       setEmailText("");
     } catch (submissionError) {
-      setError(
-        submissionError instanceof Error ? submissionError.message : "Could not send invitations.",
-      );
+      setError(toSafeErrorMessage(submissionError));
     } finally {
       setSubmitting(false);
     }
@@ -248,7 +261,7 @@ export function InviteUsersDialog({
           <div className="rounded-md border border-border bg-muted/20 px-3 py-3 text-sm">
             <p className="font-medium text-foreground">Effective access preview</p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              The invitee starts with the {role.replace("_", " ")} role, optional organization
+              The invitee starts with the {getUserRoleLabel(role)} role, optional organization
               scope, and any selected teams.
             </p>
           </div>
@@ -259,7 +272,7 @@ export function InviteUsersDialog({
             </p>
           ) : null}
           {resultMessage ? (
-            <p role="status" className="text-sm text-emerald-700">
+            <p role="status" className="text-sm text-muted-foreground">
               {resultMessage}
             </p>
           ) : null}

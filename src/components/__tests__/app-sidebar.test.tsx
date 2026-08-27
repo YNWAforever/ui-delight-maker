@@ -66,6 +66,53 @@ describe("AppSidebar", () => {
     );
   });
 
+  it("files every workspace under the lifecycle stage it belongs to", () => {
+    render(
+      <SidebarProvider>
+        <AppSidebar profile={null} onSignOut={vi.fn()} favorites={[]} />
+      </SidebarProvider>,
+    );
+
+    // Groups are the user's mental model of the lifecycle, so membership is a product
+    // decision, not styling. Campaigns and Job Sheets were both filed under Convert:
+    // Campaigns feeds the top of the funnel and Job Sheets is post-acceptance delivery,
+    // so neither belonged there. Assert the group each item sits in, not just that the
+    // link exists — a link can be present and still be in the wrong place.
+    const groupOf = (linkName: string) => {
+      const link = screen.getByRole("link", { name: linkName });
+      const group = link.closest("[data-sidebar='group']");
+      return group?.querySelector("[data-sidebar='group-label']")?.textContent ?? null;
+    };
+
+    expect(groupOf("Leads")).toBe("Acquire");
+    expect(groupOf("Campaigns")).toBe("Acquire");
+    expect(groupOf("AI Review")).toBe("Acquire");
+
+    expect(groupOf("Quotes")).toBe("Convert");
+    expect(groupOf("Approvals")).toBe("Convert");
+
+    expect(groupOf("Job Sheets")).toBe("Deliver");
+
+    expect(groupOf("Accounts")).toBe("Retain & Grow");
+    expect(groupOf("Tasks")).toBe("Retain & Grow");
+
+    expect(groupOf("Reports")).toBe("Operate");
+    expect(groupOf("Settings")).toBe("Operate");
+  });
+
+  it("labels the agent control tower AI Ops while keeping the /agents route", () => {
+    render(
+      <SidebarProvider>
+        <AppSidebar profile={null} onSignOut={vi.fn()} favorites={[]} />
+      </SidebarProvider>,
+    );
+
+    // The page is a control tower over runs, failures and approvals, not a directory of
+    // agents. Renaming the label must not drag the route id along with it.
+    expect(screen.getByRole("link", { name: "AI Ops" }).getAttribute("href")).toBe("/agents");
+    expect(screen.queryByRole("link", { name: "Agents" })).not.toBeTruthy();
+  });
+
   it("hides Admin navigation without capability and collapses it to one entry", () => {
     const { rerender } = render(
       <SidebarProvider>

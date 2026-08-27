@@ -66,19 +66,73 @@ describe("PeopleDirectory", () => {
         selectedUserId="profile-1"
         onSearchChange={vi.fn()}
         onSelectUser={onSelectUser}
-        canInvite
-        onInvite={vi.fn()}
       />,
     );
 
-    const row = screen.getByRole("row", { name: /Ada Wong/ });
-    expect(screen.getByRole("heading", { name: "People" })).toBeTruthy();
-    expect(row.getAttribute("aria-selected")).toBe("true");
+    // The page title is the route's WorkspaceHeader now, so this component owns no heading
+    // and no Invite control: the invite action is capability-gated in the header instead.
+    expect(screen.queryByRole("heading", { name: "People" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Invite users" })).toBeNull();
 
-    fireEvent.click(row);
-    fireEvent.keyDown(row, { key: "Enter" });
-    expect(onSelectUser).toHaveBeenCalledTimes(2);
-    expect(screen.getByRole("button", { name: "Invite users" })).toBeTruthy();
+    // Selection is a real button in the identity cell rather than a click handler on the
+    // row, so it is reachable by keyboard without announcing the whole row as one control.
+    // ResponsiveRecordList keeps the table and the card list both in the DOM and hides one
+    // with a media query, so the same row is present twice; either copy selects.
+    fireEvent.click(screen.getAllByRole("button", { name: /Ada Wong/ })[0]);
+    expect(onSelectUser).toHaveBeenCalledWith("profile-1");
+  });
+
+  it("offers no activity filter, because nothing forwards one to the query", () => {
+    render(
+      <PeopleDirectory
+        data={data}
+        search={search}
+        onSearchChange={vi.fn()}
+        onSelectUser={vi.fn()}
+      />,
+    );
+
+    // `toUserFilters` never forwarded `activity` and `AdminUserFilters` has no such field,
+    // so the select produced an identical query key and React Query served the same rows.
+    expect(screen.queryByLabelText("Filter by activity")).toBeNull();
+  });
+
+  it("only offers department and team filters when it has real options", () => {
+    const onSearchChange = vi.fn();
+    const { rerender } = render(
+      <PeopleDirectory
+        data={data}
+        search={search}
+        onSearchChange={onSearchChange}
+        onSelectUser={vi.fn()}
+      />,
+    );
+    expect(screen.queryByLabelText("Filter by department")).toBeNull();
+
+    rerender(
+      <PeopleDirectory
+        data={data}
+        search={search}
+        onSearchChange={onSearchChange}
+        onSelectUser={vi.fn()}
+        departments={[{ id: "dept-1", name: "Sales" }]}
+        teams={[{ id: "team-1", name: "Growth" }]}
+      />,
+    );
+
+    // Both of these *are* forwarded to `listAdminUsers`; the props to feed them were declared
+    // on this component and never destructured, so a working filter had no way to be used.
+    fireEvent.change(screen.getByLabelText("Filter by department"), {
+      target: { value: "dept-1" },
+    });
+    expect(onSearchChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ department: "dept-1", page: 1 }),
+    );
+
+    fireEvent.change(screen.getByLabelText("Filter by team"), { target: { value: "team-1" } });
+    expect(onSearchChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ team: "team-1", page: 1 }),
+    );
   });
 
   it("debounces search input and preserves URL filter fields", () => {
@@ -123,6 +177,6 @@ describe("PeopleDirectory", () => {
         onSelectUser={vi.fn()}
       />,
     );
-    expect(screen.getByText("No people match these filters.")).toBeTruthy();
+    expect(screen.getByText("No people yet")).toBeTruthy();
   });
 });

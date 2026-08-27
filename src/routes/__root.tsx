@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { signOut } from "@/server-functions/auth";
 import { getAppShellRead } from "@/server-functions/app-shell";
 import { isPublicAuthPath } from "@/lib/auth/auth-routes";
+import { toSafeErrorMessage } from "@/lib/errors";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import type { RouterContext } from "@/router";
@@ -50,6 +51,20 @@ function NotFoundComponent() {
   );
 }
 
+/**
+ * The last-resort boundary, and the one that catches the most.
+ *
+ * Most of the thirty-five routes define no `errorComponent` of their own, so anything they
+ * throw lands here — including whatever the Neon driver threw. This used to render
+ * `{error.message}` verbatim, which is why six route files carry a comment naming that leak
+ * as the reason they added a local boundary. The leak was real: a driver failure quotes the
+ * failing SQL, and `password authentication failed for user "clientops_rw"` prints the
+ * database role to whoever is looking at the screen.
+ *
+ * `toSafeErrorMessage` passes through a sentence a person wrote and replaces everything else
+ * with a generic, actionable one. The full value still reaches `console.error` above, where
+ * it belongs.
+ */
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
@@ -57,7 +72,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight">Something went wrong</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{toSafeErrorMessage(error)}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -176,16 +191,30 @@ function RootComponent() {
           <div className="flex min-w-0 flex-1 flex-col">
             <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
               <SidebarTrigger />
-              <div className="hidden max-w-md flex-1 md:block">
+              {/* Search earns more room as the viewport allows: it is the fastest path to
+                  any record, and a 448px cap wastes a 1440px header. */}
+              <div className="hidden max-w-md flex-1 md:block lg:max-w-xl">
                 <GlobalSearch />
               </div>
-              <div className="ml-auto flex items-center gap-2">
+              {/* The shared icon size is h-9 (36px). This raises the header's own icon
+                  buttons to the 40px touch target the shell asks for, at the call site,
+                  because src/components/ui/ primitives must not be edited to suit one
+                  surface. */}
+              <div className="ml-auto flex items-center gap-2 [&_button[aria-label]]:h-10 [&_button[aria-label]]:w-10">
                 <div className="md:hidden">
                   <GlobalSearch iconOnly />
                 </div>
                 <ThemeToggle />
                 <NotificationBell />
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-xs font-medium text-primary">
+                {/* Presentational: the sidebar footer is what names the signed-in user and
+                    owns sign-out. Without a name this is two unexplained letters to a
+                    screen reader, so it is hidden from the accessibility tree rather than
+                    announced raw. */}
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-xs font-medium text-primary"
+                  title={profile?.name ?? undefined}
+                  aria-hidden="true"
+                >
                   {profile?.name?.slice(0, 2).toUpperCase() ?? "??"}
                 </div>
               </div>

@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toSafeErrorMessage } from "@/lib/errors";
 import { createTouchpoint } from "@/server-functions/touchpoints";
 import { isAiNoteTidyAvailable, tidyTouchpointNote } from "@/server-functions/ai-note-tidy";
 import type {
@@ -45,7 +46,7 @@ interface TouchpointLoggerProps {
   contacts: ClientContact[];
   defaultEngagementId?: string | null;
   trigger: React.ReactNode;
-  onLogged?: () => void;
+  onLogged?: () => void | Promise<void>;
 }
 
 export function TouchpointLogger({
@@ -64,6 +65,7 @@ export function TouchpointLogger({
   const [notes, setNotes] = useState("");
   const [aiAvailable, setAiAvailable] = useState(false);
   const [tidying, setTidying] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     isAiNoteTidyAvailable().then((r) => setAiAvailable(r.available));
@@ -82,25 +84,46 @@ export function TouchpointLogger({
     }
   };
 
+  /**
+   * "Save touchpoint" carried no `disabled` and `save()` had no `try`/`catch`, so two
+   * clicks before the first `createTouchpoint` resolved wrote two touchpoint rows, and a
+   * rejection was an unhandled promise rejection with the dialog still open and nothing
+   * said. The "Tidy with AI" button one element above already had both guards.
+   */
   const save = async () => {
-    await createTouchpoint({
-      data: {
-        client_id: clientId,
-        engagement_id: engagementId === "none" ? null : engagementId,
-        contact_id: contactId === "none" ? null : contactId,
-        type,
-        sentiment,
-        notes: notes.trim() || null,
-      },
-    });
-    toast.success("Touchpoint logged");
-    setNotes("");
-    setOpen(false);
-    onLogged?.();
+    if (saving) return;
+    setSaving(true);
+    try {
+      await createTouchpoint({
+        data: {
+          client_id: clientId,
+          engagement_id: engagementId === "none" ? null : engagementId,
+          contact_id: contactId === "none" ? null : contactId,
+          type,
+          sentiment,
+          notes: notes.trim() || null,
+        },
+      });
+      toast.success("Touchpoint logged");
+      setNotes("");
+      setOpen(false);
+      await onLogged?.();
+    } catch (error) {
+      // Dialog stays open so the note survives and the retry is one click.
+      toast.error(toSafeErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (saving) return;
+        setOpen(next);
+      }}
+    >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -208,7 +231,9 @@ export function TouchpointLogger({
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={save}>Save touchpoint</Button>
+          <Button disabled={saving} onClick={() => void save()}>
+            {saving ? "Saving…" : "Save touchpoint"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

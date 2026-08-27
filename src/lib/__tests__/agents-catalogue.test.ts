@@ -87,16 +87,22 @@ describe("agent catalogue", () => {
     const walk = (dir: string) => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
         const path = resolve(dir, entry.name);
+        // `resolve` emits backslashes on Windows, so every path comparison below is made
+        // against a slash-normalised copy. Without it the mock-data exclusion never fired
+        // off a Windows checkout and this gate sat permanently red for a fixture file.
+        const posixPath = path.replaceAll("\\", "/");
         if (entry.isDirectory()) {
           if (entry.name !== "__tests__") walk(path);
           continue;
         }
         if (!entry.name.endsWith(".ts")) continue;
         // mock-data.ts is fixture text for stories and is not a dispatch path.
-        if (path.endsWith("src/lib/mock-data.ts")) continue;
+        if (posixPath.endsWith("src/lib/mock-data.ts")) continue;
         const source = readFileSync(path, "utf8");
         for (const [match] of source.matchAll(/agent_name:\s*"[^"]+"/g)) {
-          offenders.push(`${path.replace(process.cwd() + "/", "")}: ${match}`);
+          offenders.push(
+            `${posixPath.replace(process.cwd().replaceAll("\\", "/") + "/", "")}: ${match}`,
+          );
         }
       }
     };

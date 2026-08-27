@@ -13,6 +13,7 @@ import { triggerRiskScoreAgent } from "@/server-functions/engagements";
 import { getClientContacts } from "@/server-functions/client-contacts";
 import { getEngagementsByClient } from "@/server-functions/engagements";
 import { annualizeValue } from "@/lib/engagement-utils";
+import { describeTriggerFailure } from "@/lib/errors";
 import { formatCompactHKD, formatDate } from "@/lib/format";
 import { crmQueryKeys } from "@/lib/query-keys";
 import type { Engagement } from "@/lib/types";
@@ -66,9 +67,19 @@ async function invalidateRenewalMutation(
 export function RenewalsPreviewPanel({
   engagement,
   onClose,
+  onChanged,
 }: {
   engagement: RenewalRow | null;
   onClose: () => void;
+  /**
+   * Called after every write this panel makes that changed something on the server.
+   *
+   * The query-key invalidation above is not enough on its own for a host that renders from
+   * a router loader snapshot: marking an entry stale cannot push data into `useLoaderData`.
+   * `/renewals` passes a handler that invalidates its own query *and* re-runs its loader,
+   * scoped by `routeId`. Optional, so a host that subscribes to the keys above needs nothing.
+   */
+  onChanged?: () => void | Promise<void>;
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -89,14 +100,24 @@ export function RenewalsPreviewPanel({
       const result = await triggerRiskScoreAgent({ data: { engagementId: engagement.id } });
       if (result.reason === "already_running") {
         toast.message("A risk score is already running for this engagement.");
-      } else if (result.reason === "missing_webhook") {
-        toast.error("N8N_SCORE_RENEWAL_RISK_WEBHOOK_URL isn't configured.");
-        setScoreStatus("idle");
-        return;
       } else {
+        /*
+          Branching on the two reason strings this panel happened to know meant every other
+          `triggered: false` fell through to the success toast — the panel would claim the
+          Renewal Risk Agent was working while nothing had been dispatched. The old
+          missing-webhook copy also read the env var name out to the user;
+          `describeTriggerFailure` owns that wording for all six trigger call sites.
+        */
+        const failure = describeTriggerFailure(result);
+        if (failure) {
+          toast.error(failure);
+          setScoreStatus("idle");
+          return;
+        }
         toast.success("Renewal risk scoring started.");
       }
       await invalidateRenewalMutation(queryClient, "score", engagement.id, engagement.client_id);
+      await onChanged?.();
       setScoreStatus("idle");
     } catch {
       toast.error("Renewal risk scoring failed to start.");
@@ -168,14 +189,15 @@ export function RenewalsPreviewPanel({
               <TouchpointLoggerLoader
                 clientId={engagement.client_id}
                 engagementId={engagement.id}
-                onLogged={() =>
-                  invalidateRenewalMutation(
+                onLogged={async () => {
+                  await invalidateRenewalMutation(
                     queryClient,
                     "touchpoint",
                     engagement.id,
                     engagement.client_id,
-                  )
-                }
+                  );
+                  await onChanged?.();
+                }}
               />
               <Button
                 variant="outline"
@@ -216,15 +238,16 @@ export function RenewalsPreviewPanel({
             engagementId={engagement.id}
             action={dialogAction}
             onClose={() => setDialogAction(null)}
-            onDone={() => {
+            onDone={async () => {
               const mutation = dialogAction === "end" ? "end" : "renew";
               setDialogAction(null);
-              void invalidateRenewalMutation(
+              await invalidateRenewalMutation(
                 queryClient,
                 mutation,
                 engagement.id,
                 engagement.client_id,
               );
+              await onChanged?.();
               onClose();
             }}
           />

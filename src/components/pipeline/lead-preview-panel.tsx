@@ -24,8 +24,11 @@ interface LeadPreviewPanelProps {
   onQualify: (lead: Lead) => void;
   onDraftReply: (lead: Lead) => void;
   onDraftQuote: (lead: Lead) => void;
-  onSummarize: (lead: Lead) => void;
   onCreateTask: (lead: Lead) => void;
+  /** Lead whose AI dispatch is in flight, so a second dispatch cannot be fired. */
+  pendingAiLeadId?: string | null;
+  /** Lead whose follow-up task write is in flight. Every click creates another task. */
+  pendingTaskLeadId?: string | null;
 }
 
 export function LeadPreviewPanel({
@@ -38,8 +41,9 @@ export function LeadPreviewPanel({
   onQualify,
   onDraftReply,
   onDraftQuote,
-  onSummarize,
   onCreateTask,
+  pendingAiLeadId = null,
+  pendingTaskLeadId = null,
 }: LeadPreviewPanelProps) {
   if (!lead) {
     return (
@@ -54,6 +58,7 @@ export function LeadPreviewPanel({
   const quote = getLeadQuoteSummary(lead, quotes);
   const nextAction = getLeadNextAction(lead, tasks);
   const logs = activityLogs.filter((log) => log.object_id === lead.id).slice(0, 5);
+  const taskPending = pendingTaskLeadId === lead.id;
 
   return (
     <aside className="space-y-4">
@@ -116,9 +121,14 @@ export function LeadPreviewPanel({
                 <ArrowUpRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-            <Button size="sm" variant="outline" onClick={() => onCreateTask(lead)}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={taskPending}
+              onClick={() => onCreateTask(lead)}
+            >
               <Plus className="mr-2 h-4 w-4" />
-              Task
+              {taskPending ? "Creating…" : "Task"}
             </Button>
           </div>
         </CardContent>
@@ -128,10 +138,10 @@ export function LeadPreviewPanel({
         lead={lead}
         approvals={approvals}
         agentRuns={agentRuns}
+        pending={pendingAiLeadId === lead.id}
         onQualify={() => onQualify(lead)}
         onDraftReply={() => onDraftReply(lead)}
         onDraftQuote={() => onDraftQuote(lead)}
-        onSummarize={() => onSummarize(lead)}
       />
 
       <Card className="rounded-md">

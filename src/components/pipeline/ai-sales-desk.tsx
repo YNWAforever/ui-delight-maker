@@ -1,28 +1,36 @@
-import { Bot, FileText, RefreshCw, Send, Sparkles } from "lucide-react";
+import { Bot, FileText, Send, Sparkles } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getLeadAiState, getLeadPendingApprovals } from "@/lib/pipeline";
 import type { AgentRun, HumanApproval, Lead } from "@/lib/types";
 
+/**
+ * "Summarize" used to be the fourth button here. It is gone rather than disabled: a
+ * timeline summary has no server path at any layer — no `summar*` export in
+ * `src/server-functions/`, no workflow JSON, no webhook env var — and the panel already
+ * renders the real timeline two cards below, so nothing is lost by removing it. A control
+ * that can never do anything is not a "coming soon", it is a dead end that costs a click.
+ */
 interface AiSalesDeskProps {
   lead: Lead;
   approvals: HumanApproval[];
   agentRuns: AgentRun[];
+  /** True while any AI dispatch for this lead is in flight. Blocks a second dispatch. */
+  pending?: boolean;
   onQualify: () => void;
   onDraftReply: () => void;
   onDraftQuote: () => void;
-  onSummarize: () => void;
 }
 
 export function AiSalesDesk({
   lead,
   approvals,
   agentRuns,
+  pending = false,
   onQualify,
   onDraftReply,
   onDraftQuote,
-  onSummarize,
 }: AiSalesDeskProps) {
   const aiState = getLeadAiState(lead, approvals, agentRuns);
   const pendingApprovals = getLeadPendingApprovals(lead, approvals);
@@ -48,21 +56,29 @@ export function AiSalesDesk({
           </div>
         )}
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <Button type="button" variant="outline" size="sm" onClick={onQualify}>
+          <Button type="button" variant="outline" size="sm" disabled={pending} onClick={onQualify}>
             <Sparkles className="mr-2 h-4 w-4" />
             Qualify
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={onDraftReply}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={onDraftReply}
+          >
             <Send className="mr-2 h-4 w-4" />
             Draft reply
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={onDraftQuote}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={onDraftQuote}
+          >
             <FileText className="mr-2 h-4 w-4" />
             Draft quote
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={onSummarize}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Summarize
           </Button>
         </div>
       </CardContent>

@@ -29,13 +29,21 @@ export function AdminShell({ navigation, children }: AdminShellProps) {
   return (
     <div className="flex min-h-full min-w-0 flex-col md:flex-row">
       <aside className="border-b border-border bg-muted/20 md:w-56 md:shrink-0 md:border-b-0 md:border-r">
+        {/*
+          Deliberately not a heading. Every admin page now opens with a `WorkspaceHeader`
+          whose title is the page's single h1, and this rail sits *before* it in the
+          document — so an `h1` here gave every admin screen two, and an `h2` here would
+          have put a subheading above the heading it belongs under. The rail is labelled
+          for assistive technology by the `aria-label` on its `nav`, which is what a
+          landmark needs; the text below is the visible name of that landmark.
+        */}
         <div className="px-4 py-5">
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
             Control plane
           </p>
-          <h1 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+          <p className="mt-1 text-lg font-semibold tracking-tight text-foreground">
             Admin workspace
-          </h1>
+          </p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
             People, teams, access, and audit.
           </p>

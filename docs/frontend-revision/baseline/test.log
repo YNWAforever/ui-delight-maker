@@ -1,0 +1,75 @@
+### bun run test
+$ vitest run
+
+ RUN  v4.1.9 C:/Users/laich/Documents/FIMMICK ClientOps/ui-delight-maker
+
+ ❯ src/lib/__tests__/agents-catalogue.test.ts (6 tests | 1 failed) 42ms
+     × keeps the runs-table join key in one place 29ms
+ ❯ src/routes/__tests__/-list-route-performance.test.tsx (9 tests | 1 failed) 8141ms
+     × 'dashboard' loads through a crmQueryKeys-backed cache entry 5130ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/lib/__tests__/agents-catalogue.test.ts > agent catalogue > keeps the runs-table join key in one place
+AssertionError: Hardcoded agent_name. Use agentNameFor(workflowType) so the catalogue and the runs table cannot drift:
+  C:\Users\laich\Documents\FIMMICK ClientOps\ui-delight-maker\src\lib\mock-data.ts: agent_name: "Quotation Agent"
+  C:\Users\laich\Documents\FIMMICK ClientOps\ui-delight-maker\src\lib\mock-data.ts: agent_name: "Approval Agent"
+  C:\Users\laich\Documents\FIMMICK ClientOps\ui-delight-maker\src\lib\mock-data.ts: agent_name: "Sales Reply Agent"
+  C:\Users\laich\Documents\FIMMICK ClientOps\ui-delight-maker\src\lib\mock-data.ts: agent_name: "Quotation Agent"
+  C:\Users\laich\Documents\FIMMICK ClientOps\ui-delight-maker\src\lib\mock-data.ts: agent_name: "Quotation Agent"
+  C:\Users\laich\Documents\FIMMICK ClientOps\ui-delight-maker\src\lib\mock-data.ts: agent_name: "Qualification Agent"
+  C:\Users\laich\Documents\FIMMICK ClientOps\ui-delight-maker\src\lib\mock-data.ts: agent_name: "Sales Reply Agent"
+  C:\Users\laich\Documents\FIMMICK ClientOps\ui-delight-maker\src\lib\mock-data.ts: agent_name: "Lead Intake Agent"
+  C:\Users\laich\Documents\FIMMICK ClientOps\ui-delight-maker\src\lib\mock-data.ts: agent_name: "Orchestrator Agent"
+  C:\Users\laich\Documents\FIMMICK ClientOps\ui-delight-maker\src\lib\mock-data.ts: agent_name: "Client Success Agent"
+  C:\Users\laich\Documents\FIMMICK ClientOps\ui-delight-maker\src\lib\mock-data.ts: agent_name: "Reporting Agent": expected [ …(11) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "C:\\Users\\laich\\Documents\\FIMMICK ClientOps\\ui-delight-maker\\src\\lib\\mock-data.ts: agent_name: \"Quotation Agent\"",
++   "C:\\Users\\laich\\Documents\\FIMMICK ClientOps\\ui-delight-maker\\src\\lib\\mock-data.ts: agent_name: \"Approval Agent\"",
++   "C:\\Users\\laich\\Documents\\FIMMICK ClientOps\\ui-delight-maker\\src\\lib\\mock-data.ts: agent_name: \"Sales Reply Agent\"",
++   "C:\\Users\\laich\\Documents\\FIMMICK ClientOps\\ui-delight-maker\\src\\lib\\mock-data.ts: agent_name: \"Quotation Agent\"",
++   "C:\\Users\\laich\\Documents\\FIMMICK ClientOps\\ui-delight-maker\\src\\lib\\mock-data.ts: agent_name: \"Quotation Agent\"",
++   "C:\\Users\\laich\\Documents\\FIMMICK ClientOps\\ui-delight-maker\\src\\lib\\mock-data.ts: agent_name: \"Qualification Agent\"",
++   "C:\\Users\\laich\\Documents\\FIMMICK ClientOps\\ui-delight-maker\\src\\lib\\mock-data.ts: agent_name: \"Sales Reply Agent\"",
++   "C:\\Users\\laich\\Documents\\FIMMICK ClientOps\\ui-delight-maker\\src\\lib\\mock-data.ts: agent_name: \"Lead Intake Agent\"",
++   "C:\\Users\\laich\\Documents\\FIMMICK ClientOps\\ui-delight-maker\\src\\lib\\mock-data.ts: agent_name: \"Orchestrator Agent\"",
++   "C:\\Users\\laich\\Documents\\FIMMICK ClientOps\\ui-delight-maker\\src\\lib\\mock-data.ts: agent_name: \"Client Success Agent\"",
++   "C:\\Users\\laich\\Documents\\FIMMICK ClientOps\\ui-delight-maker\\src\\lib\\mock-data.ts: agent_name: \"Reporting Agent\"",
++ ]
+
+ ❯ src/lib/__tests__/agents-catalogue.test.ts:109:7
+    107|       `Hardcoded agent_name. Use agentNameFor(workflowType) so the cat…
+    108|         `table cannot drift:\n  ${offenders.join("\n  ")}`,
+    109|     ).toEqual([]);
+       |       ^
+    110|   });
+    111|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/routes/__tests__/-list-route-performance.test.tsx > primary CRM list route query cache contracts > 'dashboard' loads through a crmQueryKeys-backed cache entry
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/routes/__tests__/-list-route-performance.test.tsx:80:21
+     78|    * cases that could never fail, and which a hand-built array-literal…
+     79|    */
+     80|   it.each(listRoutes)("$name loads through a crmQueryKeys-backed cache…
+       |                     ^
+     81|     const requestedKeys: unknown[] = [];
+     82|     const queryClient = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 163 passed | 4 skipped (169)
+      Tests  2 failed | 913 passed | 53 skipped (968)
+   Start at  10:14:22
+   Duration  81.39s (transform 153.53s, setup 0ms, import 294.06s, tests 65.43s, environment 198.75s)
+
+error: script "test" exited with code 1
+TEST_EXIT=1

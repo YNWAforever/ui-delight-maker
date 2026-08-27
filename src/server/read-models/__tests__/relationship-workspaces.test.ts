@@ -90,6 +90,8 @@ describe("relationship workspace read models", () => {
           high_intent_count: "3",
           open_follow_up_count: "5",
           converted_count: "2",
+          unmatched_account_count: "4",
+          possible_duplicate_count: "2",
           latest_import_at: "2026-07-19T10:00:00.000Z",
         });
       }
@@ -131,7 +133,13 @@ describe("relationship workspace read models", () => {
         ]);
       }
       if (text.includes("from campaign_members") && text.includes("date_trunc")) {
-        return Promise.resolve([{ imported_at: "2026-07-19T00:00:00.000Z", attendee_count: "2" }]);
+        return Promise.resolve([
+          {
+            imported_at: "2026-07-19T00:00:00.000Z",
+            last_imported_at: "2026-07-19T16:20:00.000Z",
+            attendee_count: "2",
+          },
+        ]);
       }
       if (text.includes("from campaign_members")) {
         return Promise.resolve([
@@ -220,6 +228,8 @@ describe("relationship workspace read models", () => {
         highIntent: 3,
         openFollowUp: 5,
         converted: 2,
+        unmatchedAccounts: 4,
+        possibleDuplicates: 2,
         latestImportAt: "2026-07-19T10:00:00.000Z",
       },
     });
@@ -240,7 +250,13 @@ describe("relationship workspace read models", () => {
       total: 2,
       page: 1,
       limit: 100,
-      importHistory: [{ importedAt: "2026-07-19T00:00:00.000Z", attendeeCount: 2 }],
+      importHistory: [
+        {
+          importedAt: "2026-07-19T00:00:00.000Z",
+          lastImportedAt: "2026-07-19T16:20:00.000Z",
+          attendeeCount: 2,
+        },
+      ],
     });
     const memberCall = queryMock.mock.calls.find(
       ([sql]) =>
@@ -316,10 +332,12 @@ describe("relationship workspace read models", () => {
     });
 
     await getRelationshipIndexRead({ data: { page: 1, limit: 50 } });
-    expect(requireCapabilitySetMock).toHaveBeenLastCalledWith([
-      "accounts.view",
-      "engagements.view",
-    ]);
+    // `engagements.update` rides along as *optional* so the index can tell the page whether
+    // its Dismiss control can work. Both view capabilities stay required and still throw.
+    expect(requireCapabilitySetMock).toHaveBeenLastCalledWith(
+      ["accounts.view", "engagements.view"],
+      { optional: ["engagements.update"] },
+    );
     expect(requireNeonAuthSessionMock).not.toHaveBeenCalled();
   });
 });

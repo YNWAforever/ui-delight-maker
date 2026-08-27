@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Download, Plus, Sparkles, X } from "lucide-react";
+import { Plus, Sparkles, Upload } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 
@@ -15,12 +15,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
+import {
+  EmptyWorkspaceState,
+  FilterToolbar,
+  FilteredEmptyState,
+  MetricStrip,
+  ResponsiveRecordList,
+  SectionHeader,
+  WorkspaceHeader,
+  type ColumnDef,
+} from "@/components/sales";
 import { ListPagination } from "@/components/list-pagination";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -39,16 +47,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { toSafeErrorMessage } from "@/lib/errors";
+import { formatCount } from "@/lib/format";
 import { useIsExactPath } from "@/lib/routing-utils";
+import { getStatusLabel } from "@/lib/status-labels";
 import type { Lead } from "@/lib/types";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { normalizeQualificationData } from "@/lib/workflows/qualification";
@@ -86,6 +89,19 @@ export const Route = createFileRoute("/leads")({
 
 const STATUSES = ["new", "qualified", "replied", "quoted", "approved", "won", "lost"];
 const SOURCES = ["website", "whatsapp", "email", "linkedin", "csv", "event"];
+
+/** Source is not a lifecycle status, so it does not belong in `status-labels.ts`. */
+const sourceLabel = (source: string) => source.charAt(0).toUpperCase() + source.slice(1);
+
+const CSV_IMPORT_REASON_ID = "lead-csv-import-unavailable";
+/**
+ * Import CSV used to `toast.message("CSV import is mocked in this prototype.")`. There is
+ * no lead-import server function anywhere — `src/server-functions/` has `client-import.ts`
+ * and `event-import.ts` and nothing else — so the control is disabled with the reason
+ * rather than left live. It stays visible because the capability is planned and its
+ * absence is the thing a user needs told.
+ */
+const CSV_IMPORT_REASON = "Lead CSV import is not built yet. Nothing will be uploaded.";
 
 function LeadsRoute() {
   const isIndexRoute = useIsExactPath("/leads");
@@ -125,38 +141,59 @@ function LeadsPage() {
   const [query, setQuery] = useState("");
   const status = search.status ?? "all";
   const source = search.source ?? "all";
-  const [owner, setOwner] = useState("all");
   const [sort, setSort] = useState<"recent" | "score">("recent");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [newOpen, setNewOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   /**
    * Runs a write against every selected lead, then refreshes from the server.
    *
-   * "Mark qualified" and "Mark lost" used to set local component state and toast success
-   * without calling anything — the rows reverted on the next router refresh and the
-   * database was never touched. Everything bulk now goes through one path that actually
-   * writes, reports a failure instead of swallowing it, and only clears the selection when the
-   * write succeeded, so a failed batch can be retried.
+   * `Promise.all` used to reject as a whole and return *before* the invalidation, so writes
+   * that had already landed stayed invisible and the table went on showing pre-write state
+   * next to an error toast. `allSettled` plus an unconditional refresh means the table is
+   * always what the database says afterwards; the failed ids stay selected so the batch can
+   * be retried against exactly them.
+   *
+   * Returns whether every write succeeded, so a caller's dialog knows to stay open.
    */
   const applyToSelected = async (
     write: (id: string) => Promise<unknown>,
     describe: (count: number) => string,
-  ) => {
+  ): Promise<boolean> => {
     const ids = Array.from(selected);
-    if (ids.length === 0) return;
+    if (ids.length === 0 || bulkBusy) return false;
 
+    setBulkBusy(true);
     try {
-      await Promise.all(ids.map(write));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Bulk update failed");
-      return;
-    }
+      const results = await Promise.allSettled(ids.map(write));
+      const failedIds = ids.filter((_, index) => results[index].status === "rejected");
+      const succeeded = ids.length - failedIds.length;
 
-    setSelected(new Set());
-    toast.success(describe(ids.length));
-    await queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.lists() });
-    await router.invalidate({ filter: (match) => match.routeId === "/leads" });
+      await queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.lists() });
+      await router.invalidate({ filter: (match) => match.routeId === "/leads" });
+
+      if (failedIds.length === 0) {
+        setSelected(new Set());
+        toast.success(describe(ids.length));
+        return true;
+      }
+
+      const firstRejection = results.find(
+        (result): result is PromiseRejectedResult => result.status === "rejected",
+      );
+      setSelected(new Set(failedIds));
+      toast.error(
+        succeeded === 0
+          ? `No leads were updated. ${toSafeErrorMessage(firstRejection?.reason)}`
+          : `${describe(succeeded)}. ${formatCount(failedIds.length)} of ${formatCount(
+              ids.length,
+            )} failed — ${toSafeErrorMessage(firstRejection?.reason)}`,
+      );
+      return false;
+    } finally {
+      setBulkBusy(false);
+    }
   };
 
   const handleCreateLead = async (formData: {
@@ -177,7 +214,6 @@ function LeadsPage() {
     const out = rows.filter((l) => {
       if (status !== "all" && l.status !== status) return false;
       if (source !== "all" && l.source !== source) return false;
-      if (owner !== "all" && l.assigned_to !== owner) return false;
       if (
         query &&
         !`${l.company_name} ${l.contact_name} ${l.contact_email}`
@@ -190,306 +226,263 @@ function LeadsPage() {
     return sort === "score"
       ? [...out].sort((a, b) => b.lead_score - a.lead_score)
       : [...out].sort((a, b) => b.created_at.localeCompare(a.created_at));
-  }, [rows, query, status, source, owner, sort]);
+  }, [rows, query, status, source, sort]);
 
-  const toggle = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
   const clearFilters = () => {
     setQuery("");
     setStatus("all");
     setSource("all");
-    setOwner("all");
+    setSort("recent");
   };
-  const activeChips = [
-    status !== "all" && { key: "status", label: status, clear: () => setStatus("all") },
-    source !== "all" && { key: "source", label: source, clear: () => setSource("all") },
-    owner !== "all" && {
-      key: "owner",
-      label: owner,
-      clear: () => setOwner("all"),
+  const hasActiveFilters = query.trim() !== "" || status !== "all" || source !== "all";
+  const filterSummary = [
+    status !== "all" ? `Status: ${getStatusLabel("leads", status).label}` : null,
+    source !== "all" ? `Source: ${sourceLabel(source)}` : null,
+    query.trim() !== "" ? `Search: ${query.trim()}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const columns: ColumnDef<Lead>[] = [
+    {
+      id: "company",
+      header: "Company",
+      priority: "primary",
+      sticky: true,
+      width: "16rem",
+      cell: (lead) => (
+        <div className="min-w-0">
+          <span className="font-medium">{lead.company_name}</span>
+          <span className="block truncate text-xs text-muted-foreground">{lead.id}</span>
+        </div>
+      ),
     },
-  ].filter(Boolean) as { key: string; label: string; clear: () => void }[];
-  const hasActiveFilters =
-    query.trim() !== "" || status !== "all" || source !== "all" || owner !== "all";
+    {
+      id: "contact",
+      header: "Contact",
+      priority: "secondary",
+      cell: (lead) => (
+        <div className="min-w-0">
+          <span className="block truncate">{lead.contact_name ?? "—"}</span>
+          <span className="block truncate text-xs text-muted-foreground">
+            {lead.contact_email ?? "—"}
+          </span>
+        </div>
+      ),
+    },
+    {
+      id: "source",
+      header: "Source",
+      priority: "tertiary",
+      cell: (lead) => (
+        <span className="text-xs text-muted-foreground">
+          {lead.source ? sourceLabel(lead.source) : "—"}
+        </span>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      priority: "primary",
+      cell: (lead) => <StatusBadge value={lead.status} />,
+    },
+    {
+      id: "score",
+      header: "Score",
+      priority: "primary",
+      numeric: true,
+      cell: (lead) => lead.lead_score,
+    },
+    {
+      id: "owner",
+      header: "Owner",
+      priority: "tertiary",
+      cell: (lead) => <span className="text-sm">{lead.assigned_to ?? "Unassigned"}</span>,
+    },
+    {
+      id: "suggestion",
+      header: "Agent suggestion",
+      priority: "tertiary",
+      cell: (lead) =>
+        lead.qualification_data ? (
+          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">
+            <Sparkles className="h-3 w-3" aria-hidden="true" />
+            {/* Through the same normalizer the detail page uses, so a legacy row cannot
+                show one next action here and another there. */}
+            {normalizeQualificationData(lead.qualification_data).next_action}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">awaiting qualification</span>
+        ),
+    },
+  ];
 
   return (
     <>
-      <CommandHeader
+      <WorkspaceHeader
+        context="Acquire"
         title="Lead Inbox"
-        status="Acquire"
-        description={`${filtered.length} of ${rows.length} leads ready for triage, assignment, or follow-up.`}
-        actions={
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => toast.message("CSV import is mocked in this prototype.")}
-            >
-              <Download className="mr-2 h-4 w-4" /> Import CSV
-            </Button>
-            <NewLeadDialog open={newOpen} onOpenChange={setNewOpen} onCreate={handleCreateLead} />
-          </>
+        description={`${formatCount(leadPage.total)} leads. Status and source filter the whole pipeline; search and sort narrow only the ${formatCount(rows.length)} rows on this page.`}
+        primaryAction={
+          <NewLeadDialog open={newOpen} onOpenChange={setNewOpen} onCreate={handleCreateLead} />
         }
+        secondaryActions={[
+          <span key="import-csv" className="inline-flex items-center" title={CSV_IMPORT_REASON}>
+            <Button variant="outline" size="sm" disabled aria-describedby={CSV_IMPORT_REASON_ID}>
+              <Upload className="mr-2 h-4 w-4" aria-hidden="true" /> Import CSV
+            </Button>
+            <span id={CSV_IMPORT_REASON_ID} className="sr-only">
+              {CSV_IMPORT_REASON}
+            </span>
+          </span>,
+        ]}
       />
 
-      <div className="space-y-4 px-6 py-6">
-        <ListPagination
-          page={leadPage.page}
-          limit={leadPage.limit}
-          total={leadPage.total}
-          onPageChange={(page) =>
-            navigate({ search: (current) => ({ ...current, page }), replace: true })
-          }
-        />
+      <div className="space-y-6 px-4 py-6 md:px-6">
         <MetricStrip
           metrics={[
             {
               label: "Hot leads",
               value: rows.filter((lead) => lead.lead_score >= 75).length,
-              hint: "score 75+",
+              hint: "score 75+ on this page",
             },
             {
               label: "Unassigned",
               value: rows.filter((lead) => !lead.assigned_to).length,
-              hint: "needs owner",
+              hint: "needs owner, on this page",
             },
             {
               label: "Qualified",
               value: rows.filter((lead) => lead.status === "qualified").length,
-              hint: "ready to convert",
+              hint: "ready to convert, on this page",
             },
           ]}
           columns={3}
         />
 
-        <Card className="p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              aria-label="Search leads"
-              name="lead-search"
-              autoComplete="off"
-              placeholder="Search company, contact, email…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="h-9 min-w-[220px] flex-1"
-            />
-            <Select
-              value={status}
-              onValueChange={(value) =>
-                navigate({
-                  search: (current) => ({
-                    ...current,
-                    page: 1,
-                    status: value === "all" ? undefined : value,
-                  }),
-                  replace: true,
-                })
-              }
-            >
-              <SelectTrigger className="h-9 w-[150px]" aria-label="Filter by status">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                {STATUSES.map((s) => (
-                  <SelectItem key={s} value={s} className="capitalize">
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={source} onValueChange={(value) => setSource(value)}>
-              <SelectTrigger className="h-9 w-[150px]" aria-label="Filter by source">
-                <SelectValue placeholder="Source" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All sources</SelectItem>
-                {SOURCES.map((s) => (
-                  <SelectItem key={s} value={s} className="capitalize">
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={owner} onValueChange={setOwner}>
-              <SelectTrigger className="h-9 w-[150px]" aria-label="Filter by owner">
-                <SelectValue placeholder="Owner" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All owners</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={sort} onValueChange={(v) => setSort(v as "recent" | "score")}>
-              <SelectTrigger className="h-9 w-[150px]" aria-label="Sort leads">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="recent">Most recent</SelectItem>
-                <SelectItem value="score">Highest score</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {activeChips.length > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              {activeChips.map((c) => (
-                <button
-                  key={c.key}
-                  onClick={c.clear}
-                  className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs capitalize text-secondary-foreground hover:bg-secondary/70"
-                >
-                  {c.key}: {c.label}
-                  <X className="h-3 w-3" />
-                </button>
-              ))}
-              <button
-                onClick={clearFilters}
-                className="text-xs text-muted-foreground hover:underline"
-              >
-                Clear all
-              </button>
-            </div>
-          )}
-        </Card>
-
-        {selected.size > 0 && (
-          <LeadsBulkBar
-            count={selected.size}
-            onAssign={(uid) =>
-              applyToSelected(
-                (id) => updateLead({ data: { id, updates: { assigned_to: uid } } }),
-                (count) => `Reassigned ${count} lead${count > 1 ? "s" : ""}`,
-              )
-            }
-            onMarkStatus={(status) =>
-              applyToSelected(
-                (id) => updateLead({ data: { id, updates: { status } } }),
-                (count) => `Marked ${count} lead${count > 1 ? "s" : ""} as ${status}`,
-              )
-            }
-            onClear={() => setSelected(new Set())}
+        <section className="space-y-3">
+          <SectionHeader
+            title="Leads"
+            description="Open a lead to see its qualification, activity and quotes."
           />
-        )}
 
-        <Card className="overflow-x-auto">
-          <Table className="min-w-[980px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-8">
-                  <Checkbox
-                    aria-label="Select all visible leads"
-                    checked={selected.size === filtered.length && filtered.length > 0}
-                    onCheckedChange={(v) =>
-                      setSelected(v ? new Set(filtered.map((l) => l.id)) : new Set())
-                    }
-                  />
-                </TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Score</TableHead>
-                <TableHead>Owner</TableHead>
-                <TableHead>Agent suggestion</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((lead) => {
-                return (
-                  <TableRow
-                    key={lead.id}
-                    tabIndex={0}
-                    className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                    onClick={() => router.navigate({ to: "/leads/$id", params: { id: lead.id } })}
-                    onKeyDown={(e) => {
-                      if (e.target !== e.currentTarget) return;
-                      if (e.key !== "Enter" && e.key !== " ") return;
-                      if (e.key === " ") e.preventDefault();
-                      router.navigate({ to: "/leads/$id", params: { id: lead.id } });
-                    }}
-                  >
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        aria-label={`Select ${lead.company_name}`}
-                        checked={selected.has(lead.id)}
-                        onCheckedChange={() => toggle(lead.id)}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium" onClick={(e) => e.stopPropagation()}>
-                      <Link
-                        to="/leads/$id"
-                        params={{ id: lead.id }}
-                        className="hover:text-primary hover:underline"
-                      >
-                        {lead.company_name}
-                      </Link>
-                      <div className="text-xs text-muted-foreground">{lead.id}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">{lead.contact_name}</div>
-                      <div className="text-xs text-muted-foreground">{lead.contact_email}</div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs capitalize text-muted-foreground">
-                        {lead.source}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge value={lead.status} />
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{lead.lead_score}</TableCell>
-                    <TableCell>
-                      <span className="text-sm">{lead.assigned_to ?? "—"}</span>
-                    </TableCell>
-                    <TableCell>
-                      {lead.qualification_data ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">
-                          <Sparkles className="h-3 w-3" />
-                          {/* Through the same normalizer the detail page uses, so a legacy row
-                              cannot show one next action here and another there. */}
-                          {normalizeQualificationData(lead.qualification_data).next_action}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          awaiting qualification
-                        </span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              {filtered.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="p-4">
-                    <WorkSurfaceEmpty
-                      title="No leads match this view"
-                      description="Clear filters or add a new lead to keep the sales queue moving."
-                      action={
-                        rows.length === 0 || !hasActiveFilters ? (
-                          <Button size="sm" variant="outline" onClick={() => setNewOpen(true)}>
-                            <Plus className="mr-2 h-4 w-4" /> New lead
-                          </Button>
-                        ) : (
-                          <Button size="sm" variant="outline" onClick={clearFilters}>
-                            Clear filters
-                          </Button>
-                        )
-                      }
-                    />
-                  </TableCell>
-                </TableRow>
+          <Card className="p-3">
+            <FilterToolbar
+              search={{
+                value: query,
+                onChange: setQuery,
+                placeholder: "Search this page by company, contact or email",
+              }}
+              filters={[
+                {
+                  id: "status",
+                  label: "Status",
+                  value: status,
+                  onChange: setStatus,
+                  options: [
+                    { value: "all", label: "All statuses" },
+                    ...STATUSES.map((value) => ({
+                      value,
+                      label: getStatusLabel("leads", value).label,
+                    })),
+                  ],
+                },
+                {
+                  id: "source",
+                  label: "Source",
+                  value: source,
+                  onChange: setSource,
+                  options: [
+                    { value: "all", label: "All sources" },
+                    ...SOURCES.map((value) => ({ value, label: sourceLabel(value) })),
+                  ],
+                },
+              ]}
+              sort={{
+                value: sort,
+                onChange: (value) => setSort(value as "recent" | "score"),
+                options: [
+                  { value: "recent", label: "Most recent" },
+                  { value: "score", label: "Highest score" },
+                ],
+              }}
+              onClear={clearFilters}
+              resultCount={filtered.length}
+            />
+          </Card>
+
+          {selected.size > 0 && (
+            <LeadsBulkBar
+              count={selected.size}
+              busy={bulkBusy}
+              onAssign={(uid) =>
+                applyToSelected(
+                  (id) => updateLead({ data: { id, updates: { assigned_to: uid } } }),
+                  (count) => `Reassigned ${formatCount(count)} lead${count > 1 ? "s" : ""}`,
+                )
+              }
+              onMarkStatus={(nextStatus) =>
+                applyToSelected(
+                  (id) => updateLead({ data: { id, updates: { status: nextStatus } } }),
+                  (count) =>
+                    `Marked ${formatCount(count)} lead${count > 1 ? "s" : ""} as ${
+                      getStatusLabel("leads", nextStatus).label
+                    }`,
+                )
+              }
+              onClear={() => setSelected(new Set())}
+            />
+          )}
+
+          {filtered.length === 0 ? (
+            hasActiveFilters ? (
+              <FilteredEmptyState onClear={clearFilters} filterSummary={filterSummary} />
+            ) : (
+              <EmptyWorkspaceState
+                title="No leads yet"
+                description="Leads arrive from the website, campaigns and inbound email. Add one to keep the sales queue moving."
+                action={
+                  <Button size="sm" variant="outline" onClick={() => setNewOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" aria-hidden="true" /> New lead
+                  </Button>
+                }
+              />
+            )
+          ) : (
+            <ResponsiveRecordList
+              caption="Leads"
+              columns={columns}
+              rows={filtered}
+              rowKey={(lead) => lead.id}
+              rowHref={(lead) => `/leads/${lead.id}`}
+              selection={{ selected, onChange: setSelected }}
+              renderCard={(lead) => (
+                <div className="space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-medium">{lead.company_name}</span>
+                    <StatusBadge value={lead.status} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {lead.contact_name ?? "No contact"} · {lead.contact_email ?? "no email"}
+                  </p>
+                  <p className="text-xs tabular-nums text-muted-foreground">
+                    Score {lead.lead_score} ·{" "}
+                    {lead.source ? sourceLabel(lead.source) : "Unknown source"}
+                  </p>
+                </div>
               )}
-            </TableBody>
-          </Table>
-        </Card>
+            />
+          )}
+
+          <ListPagination
+            page={leadPage.page}
+            limit={leadPage.limit}
+            total={leadPage.total}
+            onPageChange={(page) =>
+              navigate({ search: (current) => ({ ...current, page }), replace: true })
+            }
+          />
+        </section>
       </div>
     </>
   );
@@ -515,30 +508,51 @@ function NewLeadDialog({
   const [email, setEmail] = useState("");
   const [enquiry, setEnquiry] = useState("");
   const [source, setSource] = useState("website");
+  /**
+   * `submit` was passed straight to `onClick`, so a rejected `createLead` was an unhandled
+   * rejection: no toast, dialog still open, fields still full, and a second click created a
+   * second lead. The flag closes both holes.
+   */
+  const [submitting, setSubmitting] = useState(false);
 
   const submit = async () => {
-    if (!company || !contact) {
+    if (submitting) return;
+    if (!company.trim() || !contact.trim()) {
       toast.error("Company and contact name are required.");
       return;
     }
-    await onCreate({
-      company_name: company,
-      contact_name: contact,
-      contact_email: email || undefined,
-      source: source as Lead["source"],
-      enquiry_text: enquiry || undefined,
-    });
-    setCompany("");
-    setContact("");
-    setEmail("");
-    setEnquiry("");
+
+    setSubmitting(true);
+    try {
+      await onCreate({
+        company_name: company.trim(),
+        contact_name: contact.trim(),
+        contact_email: email.trim() || undefined,
+        source: source as Lead["source"],
+        enquiry_text: enquiry.trim() || undefined,
+      });
+      setCompany("");
+      setContact("");
+      setEmail("");
+      setEnquiry("");
+    } catch (error) {
+      toast.error(toSafeErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (submitting) return;
+        onOpenChange(next);
+      }}
+    >
       <DialogTrigger asChild>
         <Button size="sm">
-          <Plus className="mr-2 h-4 w-4" /> New lead
+          <Plus className="mr-2 h-4 w-4" aria-hidden="true" /> New lead
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -600,8 +614,8 @@ function NewLeadDialog({
               </SelectTrigger>
               <SelectContent>
                 {SOURCES.map((s) => (
-                  <SelectItem key={s} value={s} className="capitalize">
-                    {s}
+                  <SelectItem key={s} value={s}>
+                    {sourceLabel(s)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -622,10 +636,12 @@ function NewLeadDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" disabled={submitting} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={submit}>Create lead</Button>
+          <Button disabled={submitting} onClick={() => void submit()}>
+            {submitting ? "Creating…" : "Create lead"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -634,39 +650,81 @@ function NewLeadDialog({
 
 function LeadsBulkBar({
   count,
+  busy,
   onAssign,
   onMarkStatus,
   onClear,
 }: {
   count: number;
-  onAssign: (uid: string) => Promise<void>;
-  onMarkStatus: (s: Lead["status"]) => Promise<void>;
+  busy: boolean;
+  onAssign: (uid: string) => Promise<boolean>;
+  onMarkStatus: (s: Lead["status"]) => Promise<boolean>;
   onClear: () => void;
 }) {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignee, setAssignee] = useState("");
+  /**
+   * The pending confirmation holds the *status* to write, not a closure that writes it,
+   * and its title is derived rather than stored.
+   *
+   * It used to hold `action: () => onMarkStatus("qualified")` plus a title built from the
+   * count, both captured when the dialog opened. The dialog deliberately stays open after a
+   * partial failure so the batch can be retried — but the stored closure had captured the
+   * selection as it was *before* the failure, so the retry rewrote the leads that had
+   * already succeeded instead of the ones that had not, and the stored title went on asking
+   * about a number of leads the button would no longer touch.
+   */
   const [confirm, setConfirm] = useState<null | {
-    title: string;
     description: string;
-    action: () => Promise<void>;
+    status: Lead["status"];
     label: string;
   }>(null);
 
+  const confirmTitle = confirm
+    ? `Mark ${formatCount(count)} lead${count > 1 ? "s" : ""} as ${getStatusLabel(
+        "leads",
+        confirm.status,
+      ).label.toLowerCase()}?`
+    : "";
+
+  const runAssign = async () => {
+    const owner = assignee.trim();
+    // `assigned_to` is `text references profiles(id)`, so an empty string is an FK
+    // violation, not a "clear the owner". The write is not attempted without a value.
+    if (owner === "") {
+      toast.error("Enter the owner's user ID before assigning.");
+      return;
+    }
+    // Awaited before the dialog closes: it used to `void` the promise and close
+    // immediately, so the failure toast arrived over a dialog that had already gone.
+    const ok = await onAssign(owner);
+    if (!ok) return;
+    setAssignee("");
+    setAssignOpen(false);
+  };
+
+  const runConfirm = async () => {
+    if (!confirm) return;
+    const ok = await onMarkStatus(confirm.status);
+    if (!ok) return;
+    setConfirm(null);
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
-      <span className="font-medium">{count} selected</span>
-      <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>
+      <span className="font-medium">{formatCount(count)} selected</span>
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => setAssignOpen(true)}>
         Assign owner
       </Button>
       <Button
         size="sm"
         variant="outline"
+        disabled={busy}
         onClick={() =>
           setConfirm({
-            title: `Mark ${count} lead${count > 1 ? "s" : ""} as qualified?`,
             description: "This updates the status for every selected lead.",
             label: "Mark qualified",
-            action: () => onMarkStatus("qualified"),
+            status: "qualified",
           })
         }
       >
@@ -675,32 +733,42 @@ function LeadsBulkBar({
       <Button
         size="sm"
         variant="outline"
+        disabled={busy}
         onClick={() =>
           setConfirm({
-            title: `Mark ${count} lead${count > 1 ? "s" : ""} as lost?`,
             description: "Lost leads stay in history but won't appear in active pipelines.",
             label: "Mark lost",
-            action: () => onMarkStatus("lost"),
+            status: "lost",
           })
         }
       >
         Mark lost
       </Button>
-      <Button size="sm" variant="ghost" className="ml-auto" onClick={onClear}>
+      {busy && <span className="text-xs text-muted-foreground">Updating…</span>}
+      <Button size="sm" variant="ghost" className="ml-auto" disabled={busy} onClick={onClear}>
         Clear
       </Button>
 
-      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+      <Dialog
+        open={assignOpen}
+        onOpenChange={(open) => {
+          if (busy) return;
+          setAssignOpen(open);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Assign {count} lead{count > 1 ? "s" : ""}
+              Assign {formatCount(count)} lead{count > 1 ? "s" : ""}
             </DialogTitle>
-            <DialogDescription>Pick a new owner. Reassignment is logged.</DialogDescription>
+            <DialogDescription>
+              Owners are identified by their user ID. There is no owner picker yet, so the ID has to
+              be pasted; reassignment is logged.
+            </DialogDescription>
           </DialogHeader>
           <div>
             <Label htmlFor="owner-uuid" className="text-xs">
-              Owner UUID
+              Owner user ID
             </Label>
             <Input
               id="owner-uuid"
@@ -708,42 +776,46 @@ function LeadsBulkBar({
               autoComplete="off"
               spellCheck={false}
               className="mt-1"
-              placeholder="Paste user UUID…"
+              placeholder="Paste the owner's user ID…"
               value={assignee}
               onChange={(e) => setAssignee(e.target.value)}
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignOpen(false)}>
+            <Button variant="outline" disabled={busy} onClick={() => setAssignOpen(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={() => {
-                void onAssign(assignee);
-                setAssignOpen(false);
-              }}
-            >
-              Assign
+            <Button disabled={busy || assignee.trim() === ""} onClick={() => void runAssign()}>
+              {busy ? "Assigning…" : "Assign"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirm !== null} onOpenChange={(o) => !o && setConfirm(null)}>
+      <AlertDialog
+        open={confirm !== null}
+        onOpenChange={(open) => {
+          if (busy) return;
+          if (!open) setConfirm(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{confirm?.title}</AlertDialogTitle>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>{confirm?.description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            {/* preventDefault, then close only once the batch settles — otherwise a failed
+                batch closes the dialog and the error toast has no context. */}
             <AlertDialogAction
-              onClick={() => {
-                void confirm?.action();
-                setConfirm(null);
+              disabled={busy}
+              onClick={(event) => {
+                event.preventDefault();
+                void runConfirm();
               }}
             >
-              {confirm?.label}
+              {busy ? "Updating…" : confirm?.label}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
