@@ -71,7 +71,11 @@ Re-run evidence:
 - Alone, default timeout, full file: **9 passed** in 2.85s.
 - Alone, `--testTimeout=30000`: **9 passed**.
 
-The suite's own timings show why: `transform 153.53s, import 294.06s, environment 198.75s` against `tests 65.43s` — this machine spends far more time transforming and importing than executing, so a 5s per-test budget is marginal under parallel load. No product defect is implied. F5 must not report this as a new failure if it recurs, and must not claim it as fixed if it happens to pass.
+The suite's own timings show why: `transform 153.53s, import 294.06s, environment 198.75s` against `tests 65.43s` — this machine spends far more time transforming and importing than executing, so a 5s per-test budget is marginal under parallel load. No product defect is implied.
+
+> **Correction, added after the fact.** The observation above is accurate but the diagnosis was incomplete, and "machine-speed flake" let it sit unfixed longer than it should have. The real cause is specific: each `it.each` case did `await import("../<route>")`, pulling a whole route's component tree, so **whichever case ran first paid the entire one-time transform cost inside its own 5s budget**. The budget was measuring module loading rather than the loader under test — which is why the failing case moved around with scheduling, and why later cases passed on warm modules. The frontend revision then made it worse, because `index.tsx` and `accounts.tsx` both grew to pull the shared components barrel.
+>
+> Fixed by loading the modules once in a `beforeAll` with a declared 120s hook timeout, leaving the cases on the **default** 5s timeout so a genuinely hanging loader still trips it. The file alone now runs in 1.78s at default settings. The lesson worth keeping: "flaky on a slow machine" is a description, not a diagnosis, and treating it as one deferred a real fix.
 
 ---
 

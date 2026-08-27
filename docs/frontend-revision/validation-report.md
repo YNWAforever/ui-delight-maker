@@ -84,7 +84,7 @@ Pre-existing (53 at baseline; the extra one arrived with Phase D). `test:databas
 | ID | Baseline | Now |
 |---|---|---|
 | **BF-1** `agents-catalogue.test.ts` | failed on Windows | **fixed.** A path-separator bug in the test's own fixture exemption: `resolve()` returns backslashes on Windows, so an `endsWith("src/lib/mock-data.ts")` comparison never matched. Green on CI all along. Fixed deliberately and against A2's do-not-fix rule, because a permanently red suite would let a real regression hide behind a known failure across the remaining 40 steps — reasoning recorded in its own commit. |
-| **BF-2** `-list-route-performance.test.tsx` | 5s timeout flake under load | **passes.** Not claimed as fixed — it always passed in isolation, and nothing was done to it. |
+| **BF-2** `-list-route-performance.test.tsx` | 5s timeout flake under load | **fixed, and the baseline diagnosis was wrong.** It was not a slow machine: each case dynamically imported a whole route module, so whichever ran first paid the entire one-time transform cost inside a 5s per-test budget. The budget was measuring module loading, not the loader under test — which is why the failing cases moved around with scheduling. The imports now happen once in a `beforeAll` with a declared 120s hook timeout, and the cases keep the **default** 5s timeout, so a loader that genuinely hangs still trips it. The file alone now runs in 1.78s. |
 
 ---
 
