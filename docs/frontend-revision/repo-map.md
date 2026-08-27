@@ -44,23 +44,37 @@ This is the single most consequential correction for Phases C–E. The plan's §
 
 Decision to record in A6 and A7: keep the repository's imperative pattern and give it the guarantees the Instruction actually requires (§12.3: in-progress state, success feedback, failure feedback, correct invalidation, no duplicate submission) through a small shared helper that wraps the existing `await serverFn(...)` shape — rather than importing a different state-management idiom. Optimistic updates stay out of scope except where a rollback path already exists, because §2.3 permits them only with tested rollback and there is nothing to build on.
 
-### VF-3 — Nine authenticated routes bypass the query cache, so `invalidateQueries` cannot refresh them
+### VF-3 — Whether `invalidateQueries` can refresh a route depends on the component, not the loader
 
-35 route files declare a `loader`. 25 of them go through `queryClient.ensureQueryData`. The rest call the server function directly, so their loader data never enters the React Query cache:
+> **This entry was corrected during A4.** My first version claimed the discriminator was `ensureQueryData` vs. a direct loader call, and named nine routes. That was wrong, and the adversarial crosscheck caught it. The corrected analysis below is what later steps must use.
 
-`accounts.$id` · `campaigns.$id` · `clients.$id` · `job-sheets.$id` · `leads.$id` · `quotes.$id` · `quotes.$id_/pdf` · `quotes.new` · `relationships`
+A TanStack Router loader is **not** a React Query observer. `invalidateQueries` repaints a page only if the **component** subscribes to the invalidated key with `useQuery`. How the loader fetched the data is irrelevant: a route can put data in the cache via `ensureQueryData` and still be unrefreshable, and a route can bypass the cache in its loader and still refresh fine because the component re-reads through `useQuery` with `initialData`.
 
-(plus the two public `invite/*` routes, which are out of scope).
+Classifying all 35 authenticated routes by how the component actually reads:
 
-For these nine, **`queryClient.invalidateQueries()` is a no-op and `router.invalidate()` is mandatory.** The plan's §2.3 rule — "Never call `router.invalidate()` … for a small mutation" — is therefore wrong for exactly the routes that carry the most mutations, including Account 360 (`accounts.$id`, the plan's XL step D2), Quote detail, Job Sheet detail, Lead detail and Client detail.
+| Class | Count | Routes | Can `invalidateQueries` repaint? |
+|---|---|---|---|
+| Subscribes via `useQuery` | 23 | incl. `accounts.$id`, `clients.$id`, `leads.$id`, `quotes.$id`, `job-sheets.$id`, `campaigns.$id`, `relationships`, all 8 `admin.*`, `agents`, `agents.$name`, `ai-review`, `approvals`, `reports`, `settings`, `tasks`, `account` | **yes** |
+| `useLoaderData` only, but calls `useRouter` | 4 | `index`, `leads`, `accounts`, `clients` | no — and they correctly use scoped `router.invalidate({filter})` |
+| **`useLoaderData` only, no `useRouter`** | 6 | **`campaigns`, `job-sheets`, `quotes`, `renewals`**, plus `quotes.new` and `quotes.$id_/pdf` | **no — and they have no working alternative** |
+| No data hook | 3 | `admin` (layout), `clients.import`, `notifications` | n/a |
 
-The correct rule for this repository, to be encoded in the shared invalidation helper:
+The six in the third class are the real hazard. Two of them are actively broken today:
 
-- Data loaded via `ensureQueryData` → invalidate the narrowest `crmQueryKeys` entries.
-- Data loaded directly in a loader → `router.invalidate({ filter: (match) => match.routeId === "<id>" })`, scoped to the affected route, never bare.
-- A mutation that affects both → do both.
+- **`/renewals`** — loads through `ensureQueryData`, renders `Route.useLoaderData()` at line 92, and the file contains neither `useQuery` nor `useRouter`. Its child components (`renewals-preview-panel`, `mark-renewed-ended-dialog`, `touchpoint-logger`) refresh through `invalidateQueries` alone, so **the board cannot repaint** after a renewal, an ending, a risk-score run or a touchpoint.
+- **`/campaigns`** — same shape, and `createCampaign` invalidates nothing at all. Because `ensureQueryData` serves the cached page for `CRM_STALE_TIME_MS` (30 s), a newly created campaign can be missing from the index for up to 30 seconds.
 
-The repo already uses the scoped form in `leads.tsx`, `accounts.tsx`, `clients.tsx` and `index.tsx`. Only `use-route-polling-refresh.ts` and `__root.tsx` call bare `router.invalidate()`.
+`quotes.new` and `quotes.$id_/pdf` are benign: the first navigates away after its write, the second is read-only.
+
+**The rule to encode in the shared invalidation helper:**
+
+- Component subscribes with `useQuery` → invalidate the narrowest `crmQueryKeys` entries.
+- Component reads `useLoaderData` only → `router.invalidate({ filter: (match) => match.routeId === "<id>" })`, scoped, never bare.
+- A mutation that affects both kinds of surface → do both.
+
+The plan's §2.3 rule ("never call `router.invalidate()` for a small mutation") is therefore too absolute: for the third class it is the *only* mechanism that works. The repo already uses the scoped form correctly in `index`, `leads`, `accounts` and `clients`. Only `use-route-polling-refresh.ts` and `__root.tsx` call bare `router.invalidate()`.
+
+One further trap, specific to `crmQueryKeys`: the filterless `section(id, section)` key is a strict **prefix** of the filtered form, so invalidating it does match an active paged section query. Several existing call sites rely on this, and it is correct — but it means an "exact: true" invalidation of the filterless key would silently miss.
 
 ### VF-4 — Two competing page-header components already exist, with a clean split and zero overlap
 
