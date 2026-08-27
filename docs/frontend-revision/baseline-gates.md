@@ -29,13 +29,38 @@ Per execution plan A2 Exit, these are recorded and **not fixed here**. Neither i
 
 ### BF-1 — `src/lib/__tests__/agents-catalogue.test.ts` > "keeps the runs-table join key in one place"
 
-**Deterministic.** Fails in isolation as well as in the full suite (re-run confirmed: 1 failed / 5 passed).
+**Deterministic on Windows. Passes on CI. This is a test portability bug, not a product defect.**
 
-The test scans the source tree for hard-coded `agent_name` values and requires `agentNameFor(workflowType)` instead, so that the agent catalogue and the runs table cannot drift. It reports 11 offenders, **all of them in `src/lib/mock-data.ts`**:
+Fails in isolation as well as in the full suite (re-run confirmed: 1 failed / 5 passed). It reports 11 offenders, **all of them in `src/lib/mock-data.ts`**:
 
 > Quotation Agent x3, Approval Agent, Sales Reply Agent x2, Qualification Agent, Lead Intake Agent, Orchestrator Agent, Client Success Agent, Reporting Agent
 
-Significance for this revision: `src/lib/mock-data.ts` is both the cause of the only genuine red gate **and** a candidate integrity finding (Instruction §16, "sample data"). A4 must determine every importer of that module. If the revision removes or rewires `mock-data.ts`, this gate may turn green as a side effect — that outcome must be reported as a side effect, not claimed as a fix of an unrelated bug.
+**Root cause.** The test walks `src/` looking for literal `agent_name:` values, and deliberately exempts the fixture module:
+
+```ts
+const path = resolve(dir, entry.name);
+// mock-data.ts is fixture text for stories and is not a dispatch path.
+if (path.endsWith("src/lib/mock-data.ts")) continue;
+```
+
+`resolve()` returns platform-native separators. On this machine it yields
+`C:\Users\...\src\lib\mock-data.ts`, so `endsWith("src/lib/mock-data.ts")` — written with forward slashes — is `false`, the exemption never fires, and the fixture's literals are reported as offenders. Verified directly:
+
+```
+resolve() gives : C:\Users\...\ui-delight-maker\src\lib\mock-data.ts
+endsWith("src/lib/mock-data.ts") -> false
+```
+
+The same separator mismatch explains why the failure message prints full absolute paths: its `path.replace(process.cwd() + "/", "")` also fails to match.
+
+**Why CI is green.** `src/lib/mock-data.ts` is the *only* file in `src/` containing a literal `agent_name:` outside `__tests__` (verified by grep). On a POSIX runner the exemption fires, `offenders` is empty, and the test passes. Both workflows in `.github/workflows/` run `runs-on: ubuntu-latest`.
+
+**Consequences for this revision:**
+
+- The agent catalogue and the runs table are **not** actually drifting. No product fix is implied, and none is in scope.
+- `bun run test` will stay red on this machine for the life of the branch. Per-step verification therefore runs the affected test files individually, and F5 reports this failure as pre-existing and platform-specific.
+- `src/lib/mock-data.ts` is still worth A4's attention on separate grounds (Instruction §16, "sample data") — but on the evidence so far it has **no production importer**: it is referenced only from comments in `src/lib/types.ts` and from two test files. That is an A4 determination, not a gate failure.
+- Making the skip separator-safe would be a one-line change to a test unrelated to the frontend revision. Per plan A2 Exit it is **not** done here; it is raised for the human as an optional cleanup, since it does not block the revision.
 
 ### BF-2 — `src/routes/__tests__/-list-route-performance.test.tsx` > "'dashboard' loads through a crmQueryKeys-backed cache entry"
 
