@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, X } from "lucide-react";
 import { ROLE_GRANTS } from "@/lib/admin/policy";
 import type { UserRole } from "@/lib/admin/types";
+import { toSafeErrorMessage } from "@/lib/errors";
+import { getUserRoleLabel } from "@/lib/status-labels";
 
 type UserRoleDialogProps = {
   open: boolean;
@@ -22,6 +24,23 @@ export function UserRoleDialog({
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  /**
+   * Reset on open, because this dialog is hidden rather than unmounted.
+   *
+   * `if (!open) return null` runs *after* the hooks, so the component stays mounted and
+   * `useState(currentRole)` only ever ran once. Open it for one person, pick "Admin",
+   * cancel, open it for someone else: the select still read "Admin" while the header said
+   * the new person's real role, and the reason typed for the first person was pre-filled
+   * and would have been written to the audit log against the second. The three sibling
+   * dialogs — lifecycle, organization unit, permission override — all already do this.
+   */
+  useEffect(() => {
+    if (!open) return;
+    setRole(currentRole);
+    setReason("");
+    setError(null);
+  }, [open, currentRole, userName]);
 
   if (!open) return null;
 
@@ -45,9 +64,9 @@ export function UserRoleDialog({
       await onSubmit(role, reason.trim());
       onOpenChange(false);
     } catch (submissionError) {
-      setError(
-        submissionError instanceof Error ? submissionError.message : "Could not change role.",
-      );
+      // `changeAdminUserRoleFn` reaches `requireCapability`, which runs raw SQL. Its thrown
+      // text can quote the failing query, so it is filtered before a person reads it.
+      setError(toSafeErrorMessage(submissionError));
     } finally {
       setSubmitting(false);
     }
@@ -67,7 +86,7 @@ export function UserRoleDialog({
               Change role
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              {userName} · current role: {currentRole.replace("_", " ")}
+              {userName} · current role: {getUserRoleLabel(currentRole)}
             </p>
           </div>
           <button

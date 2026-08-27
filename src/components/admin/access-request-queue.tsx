@@ -1,4 +1,9 @@
-﻿import { useState } from "react";
+import { useState } from "react";
+
+import { EmptyWorkspaceState, SectionHeader, StatusBadge } from "@/components/sales";
+import { Button } from "@/components/ui/button";
+import { toSafeErrorMessage } from "@/lib/errors";
+import { formatDateTime } from "@/lib/format";
 import type { UserRole } from "@/lib/admin/types";
 import type { AccessRequest } from "@/server/repositories/admin-access";
 
@@ -14,6 +19,10 @@ export type AccessRequestDecision = {
 type AccessRequestQueueProps = {
   requests: readonly AccessRequest[];
   actorRole: UserRole;
+  /** The signed-in profile, so the segregation-of-duties rule can be shown, not just enforced. */
+  actorProfileId?: string | null;
+  /** True when the current list is filtered to something other than the pending queue. */
+  filtered?: boolean;
   onDecide: (input: AccessRequestDecision) => Promise<unknown> | unknown;
 };
 
@@ -23,7 +32,42 @@ function requestTarget(request: AccessRequest) {
     : (request.teamId ?? "Team request");
 }
 
-export function AccessRequestQueue({ requests, actorRole, onDecide }: AccessRequestQueueProps) {
+/**
+ * Why a decision control is unavailable, in the words of the rule that makes it so.
+ *
+ * Each branch mirrors a check in `decideAdminAccessRequestFn` and none of them replaces it —
+ * the server decides again, and this only stops the reader filling in a mandatory reason for
+ * a decision that was never going to be accepted.
+ *
+ * Note the manager branch covers **both** decisions, not just approval. The server refuses a
+ * manager any decision on a capability request ("Managers can only decide team access
+ * requests"), so leaving Reject enabled — as the screen did — offered a second control that
+ * could only ever produce an error.
+ */
+function undecidableReason(
+  request: AccessRequest,
+  actorRole: UserRole,
+  actorProfileId: string | null | undefined,
+): string | null {
+  if (request.status !== "pending") {
+    return "This request has already been decided.";
+  }
+  if (actorProfileId && request.requesterProfileId === actorProfileId) {
+    return "You raised this request, so someone else has to decide it.";
+  }
+  if (actorRole === "manager" && request.requestType === "capability") {
+    return "Managers decide team access requests. A capability request needs an Admin or Super Admin.";
+  }
+  return null;
+}
+
+export function AccessRequestQueue({
+  requests,
+  actorRole,
+  actorProfileId,
+  filtered = false,
+  onDecide,
+}: AccessRequestQueueProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
   const [reasons, setReasons] = useState<Record<string, string>>({});
@@ -34,8 +78,15 @@ export function AccessRequestQueue({ requests, actorRole, onDecide }: AccessRequ
 
   if (requests.length === 0) {
     return (
-      <section aria-label="Access requests" className="px-4 py-8 text-sm text-muted-foreground">
-        No access requests are waiting for review.
+      <section aria-label="Access requests" className="px-4 py-6 md:px-6">
+        <EmptyWorkspaceState
+          title={filtered ? "No requests in this state" : "No access requests waiting"}
+          description={
+            filtered
+              ? "Change the state filter above to see requests that have already been decided."
+              : "Requests raised from a person's own account settings appear here for a decision."
+          }
+        />
       </section>
     );
   }
@@ -51,6 +102,7 @@ export function AccessRequestQueue({ requests, actorRole, onDecide }: AccessRequ
   }
 
   async function submit(request: AccessRequest) {
+    if (submittingId) return;
     const reason = reasons[request.id]?.trim() ?? "";
     if (reason.length < 8) {
       setError("Decision reason is required");
@@ -77,38 +129,34 @@ export function AccessRequestQueue({ requests, actorRole, onDecide }: AccessRequ
       });
       setExpandedId(null);
     } catch (submissionError) {
-      setError(
-        submissionError instanceof Error
-          ? submissionError.message
-          : "Could not decide this access request.",
-      );
+      // `decideAdminAccessRequestFn` reaches `requireCapability`, which runs raw SQL.
+      setError(toSafeErrorMessage(submissionError));
     } finally {
       setSubmittingId(null);
     }
   }
 
   return (
-    <section aria-label="Access requests" className="space-y-3 px-4 py-5">
-      <div>
-        <h2 className="text-base font-semibold text-foreground">Access request queue</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Review the requested scope, reason, and duration before deciding.
-        </p>
-      </div>
+    <section aria-label="Access requests" className="space-y-4 px-4 py-6 md:px-6">
+      <SectionHeader
+        title="Access request queue"
+        description="Review the requested scope, reason and duration before deciding. An approval writes an explicit allow override."
+      />
       <div className="space-y-3">
         {requests.map((request) => {
           const isCapabilityRequest = request.requestType === "capability";
-          const managerCannotApprove = actorRole === "manager" && isCapabilityRequest;
+          const blocked = undecidableReason(request, actorRole, actorProfileId);
           const decision = decisions[request.id];
+          const busy = submittingId === request.id;
           return (
             <article key={request.id} className="rounded-md border border-border px-4 py-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     {isCapabilityRequest ? "Capability request" : "Team membership request"}
                   </p>
-                  <h3 className="mt-1 break-words text-sm font-semibold text-foreground">
-                    {request.id}
+                  <h3 className="mt-1 break-words text-sm font-medium text-foreground">
+                    {requestTarget(request)}
                   </h3>
                   <dl className="mt-2 grid gap-x-5 gap-y-1 text-sm sm:grid-cols-2">
                     <div>
@@ -116,46 +164,61 @@ export function AccessRequestQueue({ requests, actorRole, onDecide }: AccessRequ
                       <dd className="break-all text-foreground">{request.requesterProfileId}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-muted-foreground">Requested access</dt>
-                      <dd className="break-all text-foreground">{requestTarget(request)}</dd>
+                      <dt className="text-xs text-muted-foreground">Raised</dt>
+                      <dd className="text-foreground">{formatDateTime(request.createdAt)}</dd>
                     </div>
                   </dl>
                   <p className="mt-3 text-sm text-muted-foreground">{request.reason}</p>
+                  {request.status !== "pending" && request.decidedAt ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Decided {formatDateTime(request.decidedAt)}
+                      {request.decisionReason ? ` · ${request.decisionReason}` : ""}
+                    </p>
+                  ) : null}
                 </div>
-                <span className="rounded-md border border-amber-500/40 px-2 py-1 text-xs font-medium text-amber-700">
-                  Pending
-                </span>
+                {/*
+                  The record's real status. This was a hardcoded amber "Pending" pill on
+                  every row, so an approved or cancelled request — which the state filter can
+                  now actually show — still read as waiting on a decision.
+                */}
+                <StatusBadge domain="accessRequests" value={request.status} />
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                {managerCannotApprove ? (
-                  <button
+              {blocked ? (
+                <p className="mt-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                  {blocked}
+                </p>
+              ) : (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button
                     type="button"
-                    disabled
-                    className="min-h-9 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    Capability approval unavailable
-                  </button>
-                ) : (
-                  <button
-                    type="button"
+                    size="sm"
+                    disabled={busy}
                     onClick={() => beginDecision(request, "approved")}
-                    className="min-h-9 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {isCapabilityRequest ? "Approve capability access" : "Approve team access"}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => beginDecision(request, "rejected")}
-                  className="min-h-9 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  Reject {request.id}
-                </button>
-              </div>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => beginDecision(request, "rejected")}
+                  >
+                    Reject {request.id}
+                  </Button>
+                </div>
+              )}
 
-              {expandedId === request.id ? (
+              {expandedId === request.id && !blocked ? (
                 <div className="mt-4 grid gap-3 border-t border-border pt-4">
+                  <p className="text-sm text-muted-foreground">
+                    {decision === "approved"
+                      ? isCapabilityRequest
+                        ? "Approving writes an explicit allow override for this capability, which the policy engine consults before the role baseline. It is recorded in the audit log."
+                        : "Approving adds this person to the team, which widens what they can see and own. It is recorded in the audit log."
+                      : "Rejecting closes the request. The requester can raise a new one."}
+                  </p>
                   <label className="block">
                     <span className="text-sm font-medium text-foreground">
                       Decision reason for {request.id}
@@ -213,14 +276,17 @@ export function AccessRequestQueue({ requests, actorRole, onDecide }: AccessRequ
                       {error}
                     </p>
                   ) : null}
-                  <button
+                  <Button
                     type="button"
-                    disabled={submittingId === request.id}
+                    size="sm"
+                    className="w-fit"
+                    disabled={busy}
                     onClick={() => void submit(request)}
-                    className="min-h-9 w-fit rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
                   >
-                    {decision === "approved" ? "Approve" : "Reject"} {request.id}
-                  </button>
+                    {busy
+                      ? "Recording…"
+                      : `${decision === "approved" ? "Approve" : "Reject"} ${request.id}`}
+                  </Button>
                 </div>
               ) : null}
             </article>

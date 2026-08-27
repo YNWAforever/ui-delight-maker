@@ -1,4 +1,4 @@
-import { AGENT_DEFINITIONS } from "@/lib/agents";
+import { AGENT_DEFINITIONS, AGENT_RUN_STUCK_MINUTES } from "@/lib/agents";
 import type { AgentRun, HumanApproval } from "@/lib/types";
 import { query } from "@/server/db/neon.server";
 import { serializeAgentRun, serializeHumanApproval } from "@/lib/serializable";
@@ -9,7 +9,13 @@ const SPARKLINE_HOURS = 14;
 type AgentAggregateRow = {
   agent_name: string;
   runs_24h: number | string;
+  completed_24h: number | string;
+  failed_24h: number | string;
   avg_confidence: number | string | null;
+  waiting_approval: number | string;
+  running: number | string;
+  stuck: number | string;
+  last_run_at: string | Date | null;
 };
 
 type AgentHourlyRow = {
@@ -34,14 +40,51 @@ export type AgentRunSummary = Pick<
   | "created_at"
 >;
 
+/**
+ * The counters one agent contributes to the directory.
+ *
+ * Two different windows on purpose, and the UI has to label them as such. `runs_24h`,
+ * `completed_24h` and `failed_24h` describe the last twenty-four hours, because a success
+ * rate over all time tells an operator nothing about today. `waiting_approval`, `running`
+ * and `stuck` are *current state* and are therefore unbounded: a run that has been wedged
+ * for three days is exactly the one worth showing, and a 24-hour window would hide it.
+ *
+ * There is no `success_rate` field. A rate needs a denominator decision — runs still in
+ * flight are neither successes nor failures — and making that decision in SQL would bury it
+ * where no reader of the page can check it. The two counts travel instead, and
+ * `agentSuccessRate` in the route derives the rate from them, returning null rather than
+ * 0% when nothing has settled yet.
+ */
+export type AgentDirectoryCounters = {
+  runs_24h: number;
+  completed_24h: number;
+  failed_24h: number;
+  avg_confidence: number | null;
+  waiting_approval: number;
+  running: number;
+  stuck: number;
+};
+
 export type AgentDirectoryRead = {
   agents: Array<
-    (typeof AGENT_DEFINITIONS)[number] & {
-      runs_24h: number;
-      avg_confidence: number | null;
-      sparkline: number[];
-    }
+    (typeof AGENT_DEFINITIONS)[number] &
+      AgentDirectoryCounters & {
+        sparkline: number[];
+        /** ISO timestamp of this agent's most recent run, or null if it has never run. */
+        last_run_at: string | null;
+      }
   >;
+  /**
+   * Workspace totals, summed over **every** `agent_name` in `agent_runs` — including names
+   * that are not in `AGENT_DEFINITIONS`.
+   *
+   * The per-agent list can only show catalogued agents, so summing the cards would quietly
+   * under-report the moment a workflow writes a name the catalogue has since renamed. That
+   * drift has happened in this codebase before (see the header comment on AGENT_DEFINITIONS),
+   * and a KPI strip that disagrees with the database is the defect this whole revision is
+   * about. Costs no extra query: it is a fold over the same aggregate rows.
+   */
+  totals: Omit<AgentDirectoryCounters, "avg_confidence"> & { avg_confidence: number | null };
   recentRuns: AgentRunSummary[];
 };
 
@@ -52,19 +95,57 @@ export type AgentHistoryPageInput = {
   limit: number;
 };
 
-export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
-  const [aggregateRows, hourlyRows, recentRuns] = await Promise.all([
-    query<AgentAggregateRow>(`
+/**
+ * One aggregate pass over `agent_runs`, not four.
+ *
+ * The 24-hour `where` clause this replaces was not saving a scan: `agent_runs` carries no
+ * index on `created_at` (`neon/migrations/001_clientops_runtime.sql:197-199` indexes the
+ * subject and the active-run pair, nothing else), so the filtered form was already a
+ * sequential scan. Dropping it to `filter (...)` clauses buys current-state counts, a true
+ * `max(created_at)`, and stuck detection for the same single pass — where a separate query
+ * per fact would have been three more scans, and the route's query budget is three.
+ *
+ * The status literals are the four `agent_runs_status_check` allows. `ready_for_review`
+ * appears in the status-label map for other sources and is deliberately absent here: the
+ * check constraint cannot produce it, so counting it would be counting nothing.
+ */
+const AGENT_AGGREGATE_SQL = `
       select
         agent_name,
         count(*) filter (where created_at >= now() - interval '24 hours')::int as runs_24h,
+        count(*) filter (
+          where created_at >= now() - interval '24 hours' and status = 'completed'
+        )::int as completed_24h,
+        count(*) filter (
+          where created_at >= now() - interval '24 hours' and status = 'failed'
+        )::int as failed_24h,
         avg(confidence_score) filter (
           where created_at >= now() - interval '24 hours' and confidence_score is not null
-        ) as avg_confidence
+        ) as avg_confidence,
+        count(*) filter (where status = 'waiting_approval')::int as waiting_approval,
+        count(*) filter (where status = 'running')::int as running,
+        count(*) filter (
+          where status = 'running' and created_at < now() - (interval '1 minute' * $1::int)
+        )::int as stuck,
+        max(created_at) as last_run_at
       from agent_runs
-      where created_at >= now() - interval '24 hours'
       group by agent_name
-    `),
+`;
+
+function toCount(value: number | string | null | undefined): number {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toIsoOrNull(value: string | Date | null | undefined): string | null {
+  if (value == null) return null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
+  const [aggregateRows, hourlyRows, recentRuns] = await Promise.all([
+    query<AgentAggregateRow>(AGENT_AGGREGATE_SQL, [AGENT_RUN_STUCK_MINUTES]),
     query<AgentHourlyRow>(`
       select
         agent_name,
@@ -97,16 +178,53 @@ export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
     sparklines.set(row.agent_name, sparkline);
   }
 
+  // Confidence is a mean, so the workspace figure has to be re-weighted by run count
+  // rather than averaged across agents: five agents with one run each and one agent with
+  // two hundred are not equal votes on "how confident was the AI today".
+  let confidenceWeight = 0;
+  let confidenceSum = 0;
+  const totals = {
+    runs_24h: 0,
+    completed_24h: 0,
+    failed_24h: 0,
+    waiting_approval: 0,
+    running: 0,
+    stuck: 0,
+  };
+  for (const row of aggregateRows) {
+    const runs24h = toCount(row.runs_24h);
+    totals.runs_24h += runs24h;
+    totals.completed_24h += toCount(row.completed_24h);
+    totals.failed_24h += toCount(row.failed_24h);
+    totals.waiting_approval += toCount(row.waiting_approval);
+    totals.running += toCount(row.running);
+    totals.stuck += toCount(row.stuck);
+    if (row.avg_confidence != null && runs24h > 0) {
+      confidenceSum += Number(row.avg_confidence) * runs24h;
+      confidenceWeight += runs24h;
+    }
+  }
+
   return {
     agents: AGENT_DEFINITIONS.map((agent) => {
       const aggregate = aggregates.get(agent.display_name);
       return {
         ...agent,
-        runs_24h: Number(aggregate?.runs_24h ?? 0),
+        runs_24h: toCount(aggregate?.runs_24h),
+        completed_24h: toCount(aggregate?.completed_24h),
+        failed_24h: toCount(aggregate?.failed_24h),
         avg_confidence: aggregate?.avg_confidence == null ? null : Number(aggregate.avg_confidence),
+        waiting_approval: toCount(aggregate?.waiting_approval),
+        running: toCount(aggregate?.running),
+        stuck: toCount(aggregate?.stuck),
+        last_run_at: toIsoOrNull(aggregate?.last_run_at),
         sparkline: sparklines.get(agent.display_name) ?? Array(SPARKLINE_HOURS).fill(0),
       };
     }),
+    totals: {
+      ...totals,
+      avg_confidence: confidenceWeight === 0 ? null : confidenceSum / confidenceWeight,
+    },
     recentRuns,
   } satisfies AgentDirectoryRead;
 }

@@ -1,4 +1,3 @@
-import { BarChart3 } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -14,9 +13,27 @@ import {
   YAxis,
 } from "recharts";
 
-import { EmptyState } from "@/components/empty-state";
+import {
+  formatReportCell,
+  reportValueFields,
+  type ReportChartDatum,
+  type ReportId,
+} from "@/lib/reports";
 
-type ReportId = "revenue" | "pipeline" | "conversion" | "agents" | "tasks";
+/**
+ * The drawing half of a report. Everything else — title, subtitle, text summary, gap note,
+ * data table — is rendered by the route, outside this chunk.
+ *
+ * That split is deliberate. Recharts is bundled into `vendor-charts` and loaded lazily, so
+ * anything inside this file is unavailable until that chunk arrives. The parts a reader needs
+ * in order to *understand the same data without seeing it* must therefore live outside it, or
+ * the accessible summary would itself depend on the chart library loading.
+ *
+ * The chart is `aria-hidden`. Recharts renders an SVG of unlabelled paths and tick text that
+ * a screen reader announces as a stream of numbers in visual order; the route's `figcaption`
+ * says the same thing in a sentence. Hiding one and providing the other is the honest pairing
+ * (Instruction §13).
+ */
 
 const tooltipStyle = {
   backgroundColor: "var(--color-popover)",
@@ -25,21 +42,20 @@ const tooltipStyle = {
   fontSize: 12,
 };
 
-export function ReportChart({ report, data }: { report: ReportId; data: unknown[] }) {
-  if (data.length === 0) {
-    return (
-      <div className="flex h-64 flex-col justify-center">
-        <EmptyState
-          icon={BarChart3}
-          title="No data yet"
-          description="This chart will populate once activity is recorded."
-        />
-      </div>
-    );
-  }
+/**
+ * Series colours.
+ *
+ * `--color-success` appears only where "more is better" is the literal meaning of the series
+ * — leads won, tasks completed. Everything else takes `--color-primary`, because tinting a
+ * neutral measurement green or amber tells a colour-blind reader nothing and tells everyone
+ * else something untrue (Instruction §13, §14).
+ */
+const PRIMARY = "var(--color-primary)";
+const SUCCESS = "var(--color-success)";
 
+export function ReportChart({ report, data }: { report: ReportId; data: ReportChartDatum[] }) {
   return (
-    <div className="h-64">
+    <div className="h-64" aria-hidden="true">
       <ResponsiveContainer width="100%" height="100%">
         {renderChart(report, data)}
       </ResponsiveContainer>
@@ -47,21 +63,43 @@ export function ReportChart({ report, data }: { report: ReportId; data: unknown[
   );
 }
 
-function renderChart(report: ReportId, data: unknown[]) {
+function makeTooltipFormatter(report: ReportId) {
+  const byKey = new Map(reportValueFields(report).map((field) => [field.key, field]));
+
+  return (value: unknown, name: unknown): [string, string] => {
+    const field = typeof name === "string" ? byKey.get(name) : undefined;
+    if (!field) return [value == null ? "—" : String(value), typeof name === "string" ? name : ""];
+    return [formatReportCell(field, value), field.header];
+  };
+}
+
+function makeValueTickFormatter(report: ReportId) {
+  const [primary] = reportValueFields(report);
+  return (value: unknown) => (primary ? formatReportCell(primary, value, { compact: true }) : "");
+}
+
+function renderChart(report: ReportId, data: ReportChartDatum[]) {
+  const formatTooltip = makeTooltipFormatter(report);
+  const formatValueTick = makeValueTickFormatter(report);
+
   if (report === "revenue") {
     return (
       <AreaChart data={data}>
         <Grid />
-        <CategoryAxis dataKey="week" />
-        <ValueAxis />
-        <Tooltip contentStyle={tooltipStyle} />
+        <CategoryAxis />
+        <ValueAxis tickFormatter={formatValueTick} />
+        <Tooltip contentStyle={tooltipStyle} formatter={formatTooltip} />
         <Area
-          type="monotone"
+          type="linear"
           dataKey="revenue"
-          stroke="var(--color-primary)"
-          fill="var(--color-primary)"
+          stroke={PRIMARY}
+          fill={PRIMARY}
           fillOpacity={0.15}
           strokeWidth={2}
+          // A week the dataset has no row for is `null`, and it stays a hole: no line is
+          // drawn across it and no value is invented for it.
+          connectNulls={false}
+          dot={{ r: 2 }}
         />
       </AreaChart>
     );
@@ -71,50 +109,40 @@ function renderChart(report: ReportId, data: unknown[]) {
     return (
       <LineChart data={data}>
         <Grid />
-        <CategoryAxis dataKey="week" />
-        <ValueAxis />
-        <Tooltip contentStyle={tooltipStyle} />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <CategoryAxis />
+        <ValueAxis tickFormatter={formatValueTick} />
+        <Tooltip contentStyle={tooltipStyle} formatter={formatTooltip} />
+        <Legend wrapperStyle={{ fontSize: 12 }} formatter={legendLabel(report)} />
         <Line
-          type="monotone"
+          type="linear"
           dataKey="leads"
-          stroke="var(--color-primary)"
+          stroke={PRIMARY}
           strokeWidth={2}
-          dot={false}
+          connectNulls={false}
+          dot={{ r: 2 }}
         />
         <Line
-          type="monotone"
+          type="linear"
           dataKey="won"
-          stroke="var(--color-success)"
+          stroke={SUCCESS}
           strokeWidth={2}
-          dot={false}
+          connectNulls={false}
+          dot={{ r: 2 }}
         />
       </LineChart>
     );
   }
 
-  if (report === "agents") {
+  if (report === "tasks") {
     return (
-      <BarChart data={data} layout="vertical">
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-        <XAxis
-          type="number"
-          stroke="var(--color-muted-foreground)"
-          fontSize={12}
-          tickLine={false}
-          axisLine={false}
-        />
-        <YAxis
-          dataKey="name"
-          type="category"
-          width={100}
-          stroke="var(--color-muted-foreground)"
-          fontSize={11}
-          tickLine={false}
-          axisLine={false}
-        />
-        <Tooltip contentStyle={tooltipStyle} />
-        <Bar dataKey="runs" fill="var(--color-primary)" radius={[0, 6, 6, 0]} />
+      <BarChart data={data}>
+        <Grid />
+        <CategoryAxis />
+        <ValueAxis tickFormatter={formatValueTick} />
+        <Tooltip contentStyle={tooltipStyle} formatter={formatTooltip} />
+        <Legend wrapperStyle={{ fontSize: 12 }} formatter={legendLabel(report)} />
+        <Bar dataKey="created" fill={PRIMARY} radius={[6, 6, 0, 0]} />
+        <Bar dataKey="completed" fill={SUCCESS} radius={[6, 6, 0, 0]} />
       </BarChart>
     );
   }
@@ -122,40 +150,53 @@ function renderChart(report: ReportId, data: unknown[]) {
   return (
     <BarChart data={data}>
       <Grid />
-      <CategoryAxis dataKey={report === "pipeline" ? "stage" : "day"} />
-      <ValueAxis />
-      <Tooltip contentStyle={tooltipStyle} />
-      {report === "tasks" ? <Legend wrapperStyle={{ fontSize: 12 }} /> : null}
-      <Bar
-        dataKey={report === "pipeline" ? "count" : "created"}
-        fill={report === "pipeline" ? "var(--color-primary)" : "var(--color-info)"}
-        radius={[6, 6, 0, 0]}
-      />
-      {report === "tasks" ? (
-        <Bar dataKey="completed" fill="var(--color-success)" radius={[6, 6, 0, 0]} />
-      ) : null}
+      <CategoryAxis />
+      <ValueAxis tickFormatter={formatValueTick} />
+      <Tooltip contentStyle={tooltipStyle} formatter={formatTooltip} />
+      <Bar dataKey="count" fill={PRIMARY} radius={[6, 6, 0, 0]} />
     </BarChart>
   );
+}
+
+function legendLabel(report: ReportId) {
+  const byKey = new Map(reportValueFields(report).map((field) => [field.key, field.header]));
+  return (value: unknown) =>
+    (typeof value === "string" ? byKey.get(value) : undefined) ??
+    (typeof value === "string" ? value : "");
 }
 
 function Grid() {
   return <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />;
 }
 
-function CategoryAxis({ dataKey }: { dataKey: string }) {
+/**
+ * The category axis always reads `label`, which `buildReportSeries` has already formatted
+ * through `src/lib/format.ts` — including for the gap points, so a hole still carries the
+ * date it is a hole for.
+ */
+function CategoryAxis() {
   return (
     <XAxis
-      dataKey={dataKey}
+      dataKey="label"
       stroke="var(--color-muted-foreground)"
       fontSize={12}
       tickLine={false}
       axisLine={false}
+      interval="preserveStartEnd"
+      minTickGap={16}
     />
   );
 }
 
-function ValueAxis() {
+function ValueAxis({ tickFormatter }: { tickFormatter: (value: unknown) => string }) {
   return (
-    <YAxis stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+    <YAxis
+      stroke="var(--color-muted-foreground)"
+      fontSize={12}
+      tickLine={false}
+      axisLine={false}
+      width={72}
+      tickFormatter={tickFormatter}
+    />
   );
 }

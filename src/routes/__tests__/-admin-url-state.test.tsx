@@ -646,10 +646,18 @@ describe("Admin detail tab runtime navigation", () => {
       name: "agent",
       route: AgentDetailRoute,
       loader: {
+        // The whole catalogue shape, because the Governance tab reads `workflow_type` and
+        // `capabilities` off it. "memory" and "config" are no longer tabs (M-1, IF-E1-07..12),
+        // so the restore/clear pair is exercised against Governance.
         agent: {
+          id: "qualify-lead",
+          name: "qualify-lead",
           display_name: "Lead Agent",
+          workflow_type: "qualify_lead",
           description: "Qualifies leads",
           status: "active",
+          capabilities: ["ICP scoring"],
+          role: "qualification",
           human_approval: false,
           model: "test-model",
         },
@@ -661,15 +669,18 @@ describe("Admin detail tab runtime navigation", () => {
           summary: { runs_24h: 0, avg_confidence: null },
         },
       },
-      currentTab: "memory",
+      currentTab: "governance",
       defaultTab: "runs",
     },
     {
       name: "settings",
       route: SettingsRoute,
       loader: [],
-      currentTab: "team",
-      defaultTab: "profile",
+      // Five of the seven settings tabs were removed as unpersisted surfaces (IF-E1-16..26),
+      // so the pair exercised here is what is left: Products is the default and AI agents is
+      // the one that has to survive a reload in the URL.
+      currentTab: "agents",
+      defaultTab: "products",
     },
   ] as const;
 

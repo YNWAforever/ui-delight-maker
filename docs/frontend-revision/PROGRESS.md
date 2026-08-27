@@ -48,25 +48,25 @@ Legend: `[ ]` not started · `[x]` done · `[~]` done-with-dependency (see [back
 
 - [x] **D1** — Accounts list `/accounts`
 - [x] **D2** — Account 360 `/accounts/$id` (XL)
-- [ ] **D3** — Active Clients list `/clients`
-- [ ] **D3b** — Client import `/clients/import`  _(PC-1: route omitted by the plan)_
-- [ ] **D4** — Client detail `/clients/$id`
-- [ ] **D5** — Relationships `/relationships`
-- [ ] **D6** — Renewals `/renewals`
-- [ ] **D7** — Tasks `/tasks`
-- [ ] **D8** — Campaigns list `/campaigns`
-- [ ] **D9** — Campaign detail `/campaigns/$id`
+- [x] **D3** — Active Clients list `/clients`
+- [x] **D3b** — Client import `/clients/import`  _(PC-1: route omitted by the plan)_
+- [x] **D4** — Client detail `/clients/$id`
+- [x] **D5** — Relationships `/relationships`
+- [x] **D6** — Renewals `/renewals`
+- [x] **D7** — Tasks `/tasks`
+- [x] **D8** — Campaigns list `/campaigns`
+- [x] **D9** — Campaign detail `/campaigns/$id`
 
 ## Phase E — AI and operating workspaces
 
-- [ ] **E1** — AI Review `/ai-review`
-- [ ] **E2** — AI Ops Control Tower `/agents`
-- [ ] **E3** — Agent detail `/agents/$name`
-- [ ] **E4** — Reports `/reports`
-- [ ] **E5** — Settings `/settings`
-- [ ] **E6** — Admin alignment `/admin/*` (8 routes incl. `/admin/`)  _(PC-1)_
-- [ ] **E7** — Account settings `/account`  _(PC-1: route omitted by the plan)_
-- [ ] **E8** — Notifications `/notifications`  _(PC-1: route omitted by the plan)_
+- [x] **E1** — AI Review `/ai-review`
+- [x] **E2** — AI Ops Control Tower `/agents`
+- [x] **E3** — Agent detail `/agents/$name`
+- [x] **E4** — Reports `/reports`
+- [x] **E5** — Settings `/settings`
+- [x] **E6** — Admin alignment `/admin/*` (8 routes incl. `/admin/`)  _(PC-1)_
+- [x] **E7** — Account settings `/account`  _(PC-1: route omitted by the plan)_
+- [x] **E8** — Notifications `/notifications`  _(PC-1: route omitted by the plan)_
 
 ## Phase F — Responsive, accessibility, performance and QA
 
@@ -173,3 +173,8 @@ Two lines per step: what changed, what was learned.
 - **Phase C tests** — Wrote them only after the verifier pointed out the suite had gone 1118 to 1118 while 7,000 lines landed. They caught three real bugs: the won-conversion dialog seeded its value once and so wrote 0 to every engagement; the renewal-risk agent could report success without dispatching and leaked an env var name to the user; and retrying a partial bulk failure rewrote the rows that had already succeeded. Learned not to treat green gates on untested new code as evidence of anything.
 
 **Phase C complete.** Suite 1118 -> 1210 passing.
+- **D1-D9** — Ten relationship routes revised. /renewals and /campaigns could not repaint after a successful write; both fixed with scoped router.invalidate. Learned the accounts preview had been showing hardcoded zeros for leads, quotes and tasks on every company — the kind of lie that survives because it looks like data.
+- **E1-E8** — Fourteen AI, operating and admin routes. Every ungoverned control is gone: the enable/pause switches, auto-execute toggle and both sliders changed React state only, and the agent detail page rendered its Status row FROM that state, so a fake switch visibly changed the status the page reported. Reports now has a real client-side CSV export with RFC 4180 quoting instead of a toast claiming a queue.
+- **Policy integrity** — Verified by hand, not by report: git diff of src/lib/admin, src/server/admin and src/server/auth against baseline is EMPTY, and requireCapability across non-test server functions is 213 both before and after. Learned to check the file set before trusting a count — my first comparison said 366 to 213 because one side included test files.
+
+**Phase E complete.** Suite 1323 -> 1565 passing.

@@ -83,16 +83,18 @@ export const CLIENT_DETAIL_TABS = [
 // (IF-C2-19..22): there is no comment table and no attachment storage in the schema.
 // The schema catches an obsolete tab value, so old links land on Line items.
 export const QUOTE_DETAIL_TABS = ["items", "versions", "preview"] as const;
-export const AGENT_DETAIL_TABS = ["runs", "memory", "config"] as const;
-export const SETTINGS_TABS = [
-  "profile",
-  "team",
-  "pricing",
-  "products",
-  "agents",
-  "notifications",
-  "apikeys",
-] as const;
+// "memory" was a URL-addressable destination whose entire body said memory is not
+// persisted, and "config" held five controls that wrote nothing but React state (M-1,
+// IF-E1-07..12). What survives is the run history and a read-only Governance tab, so the
+// schema now catches both obsolete values and old links land on Runs.
+export const AGENT_DETAIL_TABS = ["runs", "governance"] as const;
+// Five of the seven tabs were surfaces with no persistence behind them and are gone
+// (IF-E1-16..26): Profile was a fake second copy of /account, Team duplicated /admin/people
+// against a hardcoded roster, Pricing presented approval thresholds nothing reads, the
+// notification checkboxes were uncontrolled with no preference store anywhere, and API keys
+// minted Math.random() in the browser. The schema catches the obsolete values, so an old
+// link such as ?tab=team lands on Products rather than on a blank tab strip.
+export const SETTINGS_TABS = ["products", "agents"] as const;
 
 const optionalSearchString = z.string().trim().min(1).optional().catch(undefined);
 
@@ -198,4 +200,24 @@ export const agentDetailSearchSchema = z
 
 export const settingsSearchSchema = z
   .object({ tab: z.enum(SETTINGS_TABS).optional().catch(undefined) })
+  .passthrough();
+
+// /account's five tabs lived in component `useState` (IF-E2-50), so they were not
+// deep-linkable and were lost on reload - while every other tabbed route in the product
+// persists tab state to the URL. `welcome` is the contract `invite.$token.complete` already
+// states with `redirect({href:"/account?welcome=1"})` and that the destination never parsed
+// (IF-E2-43).
+export const ACCOUNT_SETTINGS_TABS = [
+  "profile",
+  "security",
+  "workload",
+  "availability",
+  "access",
+] as const;
+
+export const accountSettingsSearchSchema = z
+  .object({
+    tab: z.enum(ACCOUNT_SETTINGS_TABS).optional().catch(undefined),
+    welcome: z.coerce.boolean().optional().catch(undefined),
+  })
   .passthrough();

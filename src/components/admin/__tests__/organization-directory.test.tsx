@@ -81,11 +81,29 @@ describe("OrganizationDirectory", () => {
         onSearchChange={vi.fn()}
         onSelectUnit={vi.fn()}
         onCreate={onCreate}
+        canManageTeam
       />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Create organization unit" }));
     expect(onCreate).toHaveBeenCalledWith("team");
     expect(screen.getByText("No working teams match these filters.")).toBeTruthy();
+  });
+
+  it("does not offer a create control to a role without the capability", () => {
+    render(
+      <OrganizationDirectory
+        data={data}
+        search={search}
+        selectedUnitId={undefined}
+        onSearchChange={vi.fn()}
+        onSelectUnit={vi.fn()}
+        onCreate={vi.fn()}
+      />,
+    );
+
+    // `departments.manage` is Super Admin and Admin only; a read_only actor reaches this
+    // screen through `teams.view` and used to be offered a button that toasted a refusal.
+    expect(screen.queryByRole("button", { name: "Create organization unit" })).toBeNull();
   });
 });

@@ -42,7 +42,11 @@ describe("AdminShell", () => {
       </AdminShell>,
     );
 
-    expect(screen.getByRole("heading", { name: "Admin workspace" })).toBeTruthy();
+    // The rail names itself in text but must expose no heading: it renders before the
+    // page's WorkspaceHeader, so a heading here would either duplicate the page's h1 or
+    // place a subheading above it. See the note in admin-shell.tsx.
+    expect(screen.getByText("Admin workspace")).toBeTruthy();
+    expect(screen.queryAllByRole("heading")).toEqual([]);
     expect(screen.getByRole("link", { name: "People" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "Teams" }).getAttribute("aria-current")).toBeNull();
     expect(screen.getByText("People workspace")).toBeTruthy();

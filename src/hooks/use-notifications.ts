@@ -131,5 +131,9 @@ export function useNotifications() {
     markAsRead,
     markAllRead,
     refresh,
+    // Freshness, so a consumer can render StaleDataIndicator instead of implying the list
+    // is live. Additive: every existing caller keeps working unchanged.
+    isFetching: query.isFetching,
+    dataUpdatedAt: query.dataUpdatedAt,
   };
 }

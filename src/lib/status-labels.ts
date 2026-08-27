@@ -52,7 +52,11 @@ export type StatusDomain =
   | "agentRuns"
   | "agents"
   | "priority"
-  | "campaigns";
+  | "campaigns"
+  | "adminProfiles"
+  | "organizationUnits"
+  | "accessRequests"
+  | "auditSeverity";
 
 /**
  * Fields are readonly because a lookup hands back the map's own entry rather than a copy.
@@ -140,6 +144,11 @@ const AGENT_RUN_STATUS: Record<string, StatusPresentation> = {
 const AGENT_STATUS: Record<string, StatusPresentation> = {
   active: { label: "Active", tone: "success" },
   paused: { label: "Paused", tone: "neutral" },
+  // `AgentDefinition.status` is `"active" | "inactive"`, and `Product.active` renders the
+  // same pair, so `inactive` is a value this vocabulary genuinely holds. Without it both
+  // fell through to the raw-value path and rendered a lower-case "inactive" beside a
+  // capitalised "Active". No other domain owns the word, so the merged lookup is unaffected.
+  inactive: { label: "Inactive", tone: "neutral" },
 };
 
 const PRIORITY_STATUS: Record<string, StatusPresentation> = {
@@ -193,6 +202,85 @@ const CAMPAIGN_STATUS: Record<string, StatusPresentation> = {
   client_activity: { label: "Client activity", tone: "success" },
 };
 
+/**
+ * The four administration vocabularies, and why they are domains rather than route strings.
+ *
+ * Admin is the one workspace where the same English word means four different things —
+ * `active` is a live person, a live team and a live agent; `pending` is an access request
+ * and an approval. Every one of these was previously spelled inline in a route or a
+ * component (`{user.status}` under a `capitalize` class, a hardcoded amber "Pending" pill),
+ * so the wording could not be reviewed in one place and two screens could disagree about
+ * what a suspended user is called.
+ *
+ * None of the four is merged into `FLAT_STATUS`, for the same reason `CAMPAIGN_STATUS` is
+ * not: `active`, `pending`, `approved` and `rejected` already resolve there with identical
+ * wording, and merging would change `KNOWN_STATUS_VALUES`, the enumerated contract two test
+ * suites assert against. Admin surfaces pass their `domain`; a domainless caller keeps
+ * exactly the answer it had before these existed.
+ */
+const ADMIN_PROFILE_STATUS: Record<string, StatusPresentation> = {
+  invited: { label: "Invited", tone: "info" },
+  active: { label: "Active", tone: "success" },
+  // A suspension is reversible and a deactivation is not, so they must not share a tone.
+  suspended: { label: "Suspended", tone: "warning", icon: PauseCircle },
+  deactivated: { label: "Deactivated", tone: "neutral" },
+};
+
+const ORGANIZATION_UNIT_STATUS: Record<string, StatusPresentation> = {
+  active: { label: "Active", tone: "success" },
+  archived: { label: "Archived", tone: "neutral" },
+};
+
+/**
+ * `pending` renders "Waiting approval" here too, matching the approvals queue exactly. An
+ * access request waiting on a decision and a quote send waiting on a decision are the same
+ * state to a reader, and §7.5 forbids two labels for one state.
+ */
+const ACCESS_REQUEST_STATUS: Record<string, StatusPresentation> = {
+  pending: { label: "Waiting approval", tone: "warning", icon: ClipboardCheck },
+  approved: { label: "Approved", tone: "success", icon: CheckCircle2 },
+  rejected: { label: "Rejected", tone: "destructive", icon: XCircle },
+  cancelled: { label: "Cancelled", tone: "neutral" },
+};
+
+const AUDIT_SEVERITY_STATUS: Record<string, StatusPresentation> = {
+  info: { label: "Info", tone: "neutral" },
+  warning: { label: "Warning", tone: "warning" },
+  critical: { label: "Critical", tone: "destructive", icon: ShieldAlert },
+};
+
+/**
+ * Role names as a person says them.
+ *
+ * The admin screens used to render `role.replace("_", " ")` under a `capitalize` class,
+ * which produces "Client Success" by accident and "Read Only" by accident, and would
+ * produce "Super admin" the day someone removed the class. Roles are a closed set defined
+ * by `USER_ROLES`, so their wording belongs in a map, not in a string transform.
+ *
+ * Keyed loosely rather than on `UserRole` so this module stays free of the admin policy
+ * types — an unknown role falls back to its own text rather than throwing on a screen
+ * whose whole job is to show who has which role.
+ */
+const USER_ROLE_LABEL: Record<string, string> = {
+  super_admin: "Super Admin",
+  admin: "Admin",
+  manager: "Manager",
+  sales: "Sales",
+  client_success: "Client Success",
+  accounting: "Accounting",
+  read_only: "Read Only",
+};
+
+/** Every role this map names. Exported so a test can prove `USER_ROLES` is fully covered. */
+export const KNOWN_USER_ROLES = Object.keys(USER_ROLE_LABEL);
+
+/** The display name for a stored `profiles.role`. Never throws, never invents. */
+export function getUserRoleLabel(raw: string | null | undefined): string {
+  const key = raw?.trim() ?? "";
+  if (key === "") return UNKNOWN_STATUS_LABEL;
+  return Object.hasOwn(USER_ROLE_LABEL, key) ? USER_ROLE_LABEL[key] : humanizeStatusKey(key);
+}
+
 const DOMAIN_STATUS: Record<StatusDomain, Record<string, StatusPresentation>> = {
   leads: LEAD_STATUS,
   quotes: QUOTE_STATUS,
@@ -202,6 +290,10 @@ const DOMAIN_STATUS: Record<StatusDomain, Record<string, StatusPresentation>> = 
   agents: AGENT_STATUS,
   priority: PRIORITY_STATUS,
   campaigns: CAMPAIGN_STATUS,
+  adminProfiles: ADMIN_PROFILE_STATUS,
+  organizationUnits: ORGANIZATION_UNIT_STATUS,
+  accessRequests: ACCESS_REQUEST_STATUS,
+  auditSeverity: AUDIT_SEVERITY_STATUS,
 };
 
 /**

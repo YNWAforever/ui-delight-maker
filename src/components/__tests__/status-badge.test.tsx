@@ -82,6 +82,10 @@ const EXPECTATIONS: Expectation[] = [
   // agents
   { domain: "agents", value: "active", text: "Active" },
   { domain: "agents", value: "paused", text: "Paused" },
+  // `AgentDefinition.status` is "active" | "inactive", and `Product.active` renders the same
+  // pair on /settings. Before this entry existed both fell through to the raw-value path, so
+  // a deactivated product read "inactive" beside an "Active" one.
+  { domain: "agents", value: "inactive", text: "Inactive" },
   // priority
   { domain: "priority", value: "high", text: "High" },
   { domain: "priority", value: "medium", text: "Medium" },
