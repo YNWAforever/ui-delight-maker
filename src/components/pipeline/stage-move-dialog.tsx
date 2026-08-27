@@ -16,6 +16,8 @@ interface StageMoveDialogProps {
   lead: Lead | null;
   nextStatus: LeadStatus | null;
   reason: string;
+  /** True while the stage write is in flight. Freezes the form and the confirm button. */
+  submitting?: boolean;
   onReasonChange: (value: string) => void;
   onCancel: () => void;
   onConfirm: () => void;
@@ -25,6 +27,7 @@ export function StageMoveDialog({
   lead,
   nextStatus,
   reason,
+  submitting = false,
   onReasonChange,
   onCancel,
   onConfirm,
@@ -32,7 +35,14 @@ export function StageMoveDialog({
   const open = lead != null && nextStatus != null;
 
   return (
-    <AlertDialog open={open} onOpenChange={(nextOpen) => !nextOpen && onCancel()}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        // A dismissal mid-write would leave the user with no idea whether the move landed.
+        if (submitting) return;
+        if (!nextOpen) onCancel();
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Confirm stage change</AlertDialogTitle>
@@ -47,14 +57,29 @@ export function StageMoveDialog({
             id="stage-reason"
             name="stage-reason"
             value={reason}
+            disabled={submitting}
             onChange={(event) => onReasonChange(event.target.value)}
             placeholder="Client accepted proposal, budget mismatch, no response after follow-up…"
           />
         </div>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} disabled={!reason.trim()}>
-            Confirm move
+          <AlertDialogCancel disabled={submitting} onClick={onCancel}>
+            Cancel
+          </AlertDialogCancel>
+          {/*
+            `preventDefault` is load-bearing. Radix closes an AlertDialogAction's dialog on
+            click, so without it the panel vanished while the write was still in flight and a
+            failed move looked exactly like a successful one — dialog gone, board unchanged,
+            no message. The caller closes the dialog itself, and only after the write settles.
+          */}
+          <AlertDialogAction
+            onClick={(event) => {
+              event.preventDefault();
+              onConfirm();
+            }}
+            disabled={submitting || !reason.trim()}
+          >
+            {submitting ? "Moving…" : "Confirm move"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

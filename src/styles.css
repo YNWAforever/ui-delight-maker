@@ -177,3 +177,75 @@
     }
   }
 }
+
+/* --------------------------------------------------------------------------------------
+ * Print
+ *
+ * IF-C2-32: this file previously contained zero print rules, so /quotes/$id_/pdf printed
+ * the sidebar and the sticky app header around the quote — the route only hid its own
+ * button row. Rather than special-casing that one path, a page opts in by marking its
+ * printable region with `data-print-document`; anything else in the app still prints as it
+ * looks on screen.
+ * ----------------------------------------------------------------------------------- */
+@media print {
+  /* A4 is the paper this product's quotes are issued on. @page cannot be conditioned on
+     page content, so this is the app-wide print sheet. */
+  @page {
+    size: A4;
+    margin: 16mm 14mm;
+  }
+
+  body:has([data-print-document]) {
+    background: #fff;
+    /* base sets overflow-x: hidden, which clips rather than reflows on paper. */
+    overflow: visible;
+  }
+
+  /* Everything that is neither the print document, nor inside it, nor an ancestor of it —
+     the navigation rail, the sticky header, the toaster, the skip link. */
+  body:has([data-print-document])
+    *:not([data-print-document]):not([data-print-document] *):not(:has([data-print-document])) {
+    display: none !important;
+  }
+
+  body:has([data-print-document]) [data-print-document] {
+    display: block;
+    position: static;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    background: #fff;
+    color: #000;
+  }
+
+  /* A line item, a totals row or a terms paragraph split across two sheets is the defect
+     that makes a printed quote unusable at the point it is signed. */
+  [data-print-document] tr,
+  [data-print-document] tfoot,
+  [data-print-document] section,
+  [data-print-document] header {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Column headers repeat when a long line-item table runs onto a second sheet. */
+  [data-print-document] thead {
+    display: table-header-group;
+  }
+
+  /* A heading stranded at the foot of a sheet reads as a missing section. */
+  [data-print-document] h1,
+  [data-print-document] h2 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Totals and payment terms are the two things a reader checks on paper. */
+  [data-print-document] tfoot td,
+  [data-print-document] table + div {
+    font-size: 12pt;
+  }
+}

@@ -9,12 +9,12 @@ import {
   type SetStateAction,
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Check, Plus, Send, Trash2 } from "lucide-react";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { ArrowLeft, ArrowRight, Check, Info, Plus, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { PageHeader } from "@/components/page-header";
+import { ErrorState, StickyActionBar, WorkspaceHeader } from "@/components/sales";
 import { normalizeQuoteDocumentSections, type QuoteDocumentDraft } from "@/lib/quote-document";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,10 +28,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { ROLE_GRANTS } from "@/lib/admin/policy";
 import { cn } from "@/lib/utils";
-import { formatHKD } from "@/lib/format";
+import { toSafeErrorMessage } from "@/lib/errors";
+import { formatDate, formatHKD } from "@/lib/format";
 import { roundToMoney } from "@/lib/money";
-import { calculateQuoteTotal } from "@/lib/quote-to-cash";
+import { calculateQuoteTotal, defaultQuoteValidUntil } from "@/lib/quote-to-cash";
+import { getClient } from "@/server-functions/clients";
+import { getLead } from "@/server-functions/leads";
 import {
   createQuote,
   requestQuoteApproval,
@@ -40,7 +44,6 @@ import {
 import { getQuoteCreateBootstrap } from "@/server-functions/quote-workspace";
 import { useQuoteReferenceData } from "@/hooks/use-quote-reference-data";
 import { crmQueryKeys } from "@/lib/query-keys";
-import { APP_USERS } from "@/lib/users";
 
 const QuoteDocumentTools = lazy(() =>
   import("@/components/quotes/quote-document-tools").then((module) => ({
@@ -61,15 +64,51 @@ export const Route = createFileRoute("/quotes/new")({
     clientId: search.clientId,
     productId: search.productId,
   }),
-  loader: ({ deps }) => getQuoteCreateBootstrap({ data: deps }),
+  /**
+   * The default validity date is computed here, not in the component.
+   *
+   * The loader runs once per navigation — on the server for the first paint, on the client
+   * afterwards — and its result is serialised into the page, so server and client render
+   * the same date. Calling `defaultQuoteValidUntil()` during render would read two
+   * different clocks and produce a hydration mismatch on the one field the user is about
+   * to edit.
+   */
+  loader: async ({ deps }) => ({
+    bootstrap: await getQuoteCreateBootstrap({ data: deps }),
+    defaultValidUntil: defaultQuoteValidUntil(),
+  }),
   head: () => ({
     meta: [
       { title: "New quote — Fimmick ClientOps" },
       { name: "description", content: "Build a draft quote with templates and pricing rules." },
     ],
   }),
+  errorComponent: QuoteBuilderErrorBoundary,
   component: QuoteBuilder,
 });
+
+/**
+ * The builder's own failure surface, so a loader failure stops reaching the root boundary,
+ * which renders `error.message` into the page body verbatim. Every string `ErrorState`
+ * paints goes through `toSafeErrorMessage` first.
+ */
+function QuoteBuilderErrorBoundary({ error, reset }: { error: Error; reset: () => void }) {
+  const router = useRouter();
+
+  return (
+    <div className="px-4 py-10 md:px-6">
+      <ErrorState
+        kind="server"
+        error={error}
+        title="The quote builder did not load"
+        onRetry={() => {
+          reset();
+          void router.invalidate({ filter: (match) => match.routeId === "/quotes/new" });
+        }}
+      />
+    </div>
+  );
+}
 
 type LineItem = {
   id: string;
@@ -78,6 +117,9 @@ type LineItem = {
   qty: number;
   unit_price: number;
 };
+
+/** Which write is in flight. Non-null disables every commit control on the page. */
+type PendingWrite = "draft" | "submit" | null;
 
 const STEPS = [
   { id: 1, label: "Client" },
@@ -93,7 +135,8 @@ function QuoteBuilder() {
     clientId: initialClientId,
     productId: initialProductId,
   } = Route.useSearch();
-  const bootstrap = Route.useLoaderData();
+  const { bootstrap, defaultValidUntil } = Route.useLoaderData();
+  const { profile } = Route.useRouteContext();
   const templates = bootstrap.pricingTemplates;
   const quoteTemplates = bootstrap.quoteTemplates;
   const pdfTemplates = bootstrap.pdfTemplates;
@@ -111,10 +154,10 @@ function QuoteBuilder() {
 
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<"lead" | "client">(initialClientId ? "client" : "lead");
-  const [approver, setApprover] = useState(APP_USERS[1]?.id ?? APP_USERS[0]?.id ?? "");
-  const [validUntil, setValidUntil] = useState("2026-06-30");
+  const [validUntil, setValidUntil] = useState(defaultValidUntil);
   const [discount, setDiscount] = useState(0);
   const [items, setItems] = useState<LineItem[]>([]);
+  const [pending, setPending] = useState<PendingWrite>(null);
   const [quoteTemplateId, setQuoteTemplateId] = useState(initialQuoteTemplate?.id ?? "");
   const [documentDraft, setDocumentDraft] = useState<QuoteDocumentDraft>({
     cover_text: initialQuoteTemplate?.default_cover_text ?? "",
@@ -122,6 +165,19 @@ function QuoteBuilder() {
     payment_terms: initialQuoteTemplate?.default_payment_terms ?? "",
     document_sections: initialQuoteTemplate?.default_scope_sections ?? [],
   });
+
+  /**
+   * Whether this actor's *role* normally includes creating quotes.
+   *
+   * Deliberately an advisory rather than a gate. `quotes.create` is granted to manager,
+   * sales, admin and super_admin, so client_success, accounting and read_only used to fill
+   * in the entire five-step wizard and only discover the refusal at Submit. But a role
+   * grant is not the whole answer: `permission_overrides` can allow an individual a
+   * capability their role denies, and that table is not readable from the client — so
+   * disabling the button here would lock out someone who has been given an exception. The
+   * honest control is one that states the rule and still lets the server decide.
+   */
+  const roleGrantsQuoteCreate = profile ? ROLE_GRANTS[profile.role].has("quotes.create") : true;
 
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unit_price, 0), [items]);
 
@@ -224,7 +280,54 @@ function QuoteBuilder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialProductId, products, templates]);
 
-  const submit = async () => {
+  /**
+   * The account this quote belongs to, resolved from the chosen lead or client.
+   *
+   * `quotes.account_id` is canonical: it is FK-constrained, indexed, and every Account 360
+   * read joins on it. The builder simply never sent it, so every quote created through the
+   * product persisted `account_id = NULL` and was invisible to the account it plainly
+   * belonged to.
+   *
+   * It has to be fetched rather than read off the picker, because the reference reads
+   * behind the pickers select only `id, company_name, contact_name, status` for a lead and
+   * `id, company_name, industry, tier` for a client — no `account_id` in either. `getLead`
+   * and `getClient` do return it, and both are already capability-checked with the same
+   * capabilities this route's loader required to open.
+   *
+   * A failure here is logged and treated as "no account", which is exactly the state every
+   * quote has today. It is never guessed at, and never matched by company name.
+   */
+  const resolveAccountId = async (): Promise<string | null> => {
+    try {
+      if (mode === "client" && clientId) {
+        const record = await getClient({ data: { id: clientId } });
+        return record.account_id ?? null;
+      }
+      if (mode === "lead" && leadId) {
+        const record = await getLead({ data: { id: leadId } });
+        return record.lead.account_id ?? null;
+      }
+    } catch (error) {
+      console.error("Could not resolve the account link for this quote", error);
+    }
+    return null;
+  };
+
+  /**
+   * The one write path, shared by "Save draft" and "Submit for approval".
+   *
+   * Three defects are closed here at once. "Save draft" used to be
+   * `onClick={() => toast.message("Draft saved")}` — nothing was written, and a user who
+   * chose it over Submit lost the whole builder state on the next navigation; the
+   * repository hard-codes `status 'draft'` on insert, so a draft is the submit path minus
+   * the approval call. `createQuote` had no `try`/`catch`, so a capability denial or a
+   * constraint violation rejected unhandled and the button simply appeared to do nothing.
+   * And neither button carried a disabled state or an in-flight flag, so a second click
+   * persisted a second quote and a second approval row — duplicating a financial document.
+   */
+  const persistQuote = async (action: "draft" | "submit") => {
+    if (pending) return;
+
     if (items.length === 0) {
       toast.error("Add at least one line item.");
       return;
@@ -237,64 +340,94 @@ function QuoteBuilder() {
       toast.error("Select a client.");
       return;
     }
-    const payload = {
-      lead_id: mode === "lead" ? leadId || null : null,
-      client_id: mode === "client" ? clientId || null : null,
-      currency: "HKD",
-      valid_until: validUntil,
-      quote_template_id: quoteTemplateId || null,
-      cover_text: documentDraft.cover_text,
-      assumptions: documentDraft.assumptions,
-      payment_terms: documentDraft.payment_terms,
-      document_sections: documentDraft.document_sections,
-      line_items: pricedItems.map(({ id: _id, ...rest }) => ({
-        id: _id,
-        ...rest,
-      })),
-      total_value: total,
-    } satisfies CreateQuoteInput;
 
-    const quote = await createQuote({ data: payload });
+    setPending(action);
 
-    /**
-     * The button says "Submit for approval", so actually request one. This used to create a
-     * draft and then toast "Quote submitted for approval" — no `human_approvals` row was
-     * written and the quote never appeared in /approvals, so the deal stalled until somebody
-     * opened the quote and noticed. If the approval request fails the quote still exists, so
-     * say what happened rather than losing the work.
-     */
-    let approvalRequested = true;
     try {
-      await requestQuoteApproval({ data: { id: quote.id } });
-    } catch (error) {
-      approvalRequested = false;
-      toast.error(
-        error instanceof Error
-          ? `Quote saved as a draft, but requesting approval failed: ${error.message}`
-          : "Quote saved as a draft, but requesting approval failed.",
-      );
-    }
+      const accountId = await resolveAccountId();
+      const linkedLeadId = mode === "lead" ? leadId || null : null;
+      const linkedClientId = mode === "client" ? clientId || null : null;
 
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: crmQueryKeys.quotes.lists() }),
-      queryClient.invalidateQueries({ queryKey: crmQueryKeys.approvals.all() }),
-      leadId
-        ? queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.detail(leadId) })
-        : Promise.resolve(),
-      clientId
-        ? queryClient.invalidateQueries({
-            queryKey: crmQueryKeys.clients.section(clientId, "commercial"),
-          })
-        : Promise.resolve(),
-    ]);
-    if (approvalRequested) toast.success("Quote submitted for approval.");
-    navigate({ to: "/quotes/$id", params: { id: quote.id } });
+      const payload = {
+        lead_id: linkedLeadId,
+        client_id: linkedClientId,
+        account_id: accountId,
+        currency: "HKD",
+        valid_until: validUntil,
+        quote_template_id: quoteTemplateId || null,
+        cover_text: documentDraft.cover_text,
+        assumptions: documentDraft.assumptions,
+        payment_terms: documentDraft.payment_terms,
+        document_sections: documentDraft.document_sections,
+        line_items: pricedItems.map(({ id: _id, ...rest }) => ({
+          id: _id,
+          ...rest,
+        })),
+        total_value: total,
+      } satisfies CreateQuoteInput;
+
+      const quote = await createQuote({ data: payload });
+
+      /**
+       * The button says "Submit for approval", so actually request one. This used to create a
+       * draft and then toast "Quote submitted for approval" — no `human_approvals` row was
+       * written and the quote never appeared in /approvals, so the deal stalled until somebody
+       * opened the quote and noticed. If the approval request fails the quote still exists, so
+       * say what happened rather than losing the work.
+       */
+      let approvalFailure: string | null = null;
+      if (action === "submit") {
+        try {
+          await requestQuoteApproval({ data: { id: quote.id } });
+        } catch (error) {
+          approvalFailure = toSafeErrorMessage(error);
+        }
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: crmQueryKeys.quotes.lists() }),
+        action === "submit"
+          ? queryClient.invalidateQueries({ queryKey: crmQueryKeys.approvals.all() })
+          : Promise.resolve(),
+        linkedLeadId
+          ? queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.detail(linkedLeadId) })
+          : Promise.resolve(),
+        linkedClientId
+          ? queryClient.invalidateQueries({
+              queryKey: crmQueryKeys.clients.section(linkedClientId, "commercial"),
+            })
+          : Promise.resolve(),
+        // Now that the quote carries an account, the account's workspace is genuinely out
+        // of date the moment it is written.
+        accountId
+          ? queryClient.invalidateQueries({
+              queryKey: crmQueryKeys.companyWorkspace.detail(accountId),
+            })
+          : Promise.resolve(),
+      ]);
+
+      if (action === "draft") {
+        toast.success("Draft saved.");
+      } else if (approvalFailure) {
+        toast.error(`Quote saved as a draft, but requesting approval failed: ${approvalFailure}`);
+      } else {
+        toast.success("Quote submitted for approval.");
+      }
+
+      await navigate({ to: "/quotes/$id", params: { id: quote.id } });
+    } catch (error) {
+      toast.error(toSafeErrorMessage(error));
+    } finally {
+      setPending(null);
+    }
   };
 
   return (
     <>
-      <PageHeader
+      <WorkspaceHeader
+        context="Convert"
         title="New quote"
+        backHref={{ to: "/quotes", label: "All quotes" }}
         description={
           mode === "client"
             ? client
@@ -304,17 +437,26 @@ function QuoteBuilder() {
               ? `For ${lead.company_name}`
               : "Draft a quote using approved templates."
         }
-        actions={
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/quotes">
-              <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" /> All quotes
-            </Link>
-          </Button>
-        }
       />
 
-      <div className="grid grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 px-4 py-6 md:px-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {!roleGrantsQuoteCreate && (
+            <div
+              role="note"
+              className="flex items-start gap-3 rounded-md border border-warning/30 bg-warning/10 p-4 text-sm"
+            >
+              <Info
+                aria-hidden="true"
+                className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground"
+              />
+              <p className="text-warning-foreground">
+                Creating quotes is not part of your role. You can build one here, but saving it will
+                be refused unless you have been granted an exception.
+              </p>
+            </div>
+          )}
+
           <Card className="p-4">
             <div className="max-w-full overflow-x-auto">
               <ol className="flex min-w-max items-center gap-2">
@@ -417,9 +559,15 @@ function QuoteBuilder() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        {/* The option used to read `{company_name} ({id})` — a raw UUID in a
+                            dropdown, which disambiguates nothing a person can read. The
+                            contact name is what actually tells two same-named leads apart,
+                            and the search box above still matches on id. */}
                         {leads.map((l) => (
                           <SelectItem key={l.id} value={l.id}>
-                            {l.company_name} ({l.id})
+                            {l.contact_name
+                              ? `${l.company_name} · ${l.contact_name}`
+                              : l.company_name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -552,7 +700,7 @@ function QuoteBuilder() {
                     />
                     {discount > 10 && (
                       <p className="mt-1 text-xs text-warning-foreground">
-                        Discount &gt;10% requires manager approval.
+                        Over the 10% guideline — expect the approver to ask why.
                       </p>
                     )}
                   </div>
@@ -579,23 +727,6 @@ function QuoteBuilder() {
                     value={validUntil}
                     onChange={(e) => setValidUntil(e.target.value)}
                   />
-                </div>
-                <div>
-                  <Label htmlFor="quote-approver" className="text-xs">
-                    Approver
-                  </Label>
-                  <Select value={approver} onValueChange={setApprover}>
-                    <SelectTrigger id="quote-approver" className="mt-1.5">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {APP_USERS.filter((u) => ["manager", "admin"].includes(u.role)).map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.name} · {u.role}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
                 <div className="sm:col-span-2">
                   <Label htmlFor="quote-template" className="text-xs">
@@ -642,23 +773,14 @@ function QuoteBuilder() {
               <CardContent className="space-y-4 text-sm">
                 <div className="grid grid-cols-2 gap-3">
                   <KV
-                    label="Client"
+                    label={mode === "client" ? "Client" : "Lead"}
                     value={
                       mode === "client"
                         ? (client?.company_name ?? "—")
                         : (lead?.company_name ?? "—")
                     }
                   />
-                  {mode === "client" ? (
-                    <KV label="Client ID" value={clientId} />
-                  ) : (
-                    <KV label="Lead ID" value={leadId} />
-                  )}
-                  <KV label="Valid until" value={validUntil} />
-                  <KV
-                    label="Approver"
-                    value={APP_USERS.find((u) => u.id === approver)?.name ?? "—"}
-                  />
+                  <KV label="Valid until" value={formatDate(validUntil)} />
                   <KV label="Quote template" value={activeQuoteTemplate?.name ?? "—"} />
                   <KV label="PDF template" value={activePdfTemplateName} />
                   <KV label="Items" value={String(items.length)} />
@@ -721,30 +843,51 @@ function QuoteBuilder() {
             </Card>
           )}
 
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={step === 1}
-              onClick={() => setStep((s) => s - 1)}
-            >
-              <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" /> Back
-            </Button>
+          {/* On a phone the builder is far taller than the viewport, so the commit row and
+              the running total follow the user down rather than sitting a scroll away at
+              the end of the document. From md up it returns to normal flow. */}
+          <StickyActionBar>
+            {/* Back keeps the left edge it had before the bar existed; the total joins it
+                only below md, where the Summary card has scrolled far out of view. */}
+            <div className="mr-auto flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={step === 1 || pending !== null}
+                onClick={() => setStep((s) => s - 1)}
+              >
+                <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <span className="text-sm md:hidden">
+                <span className="text-muted-foreground">Total </span>
+                <span className="font-semibold tabular-nums">{formatHKD(total)}</span>
+              </span>
+            </div>
             {step < STEPS.length ? (
               <Button size="sm" onClick={() => setStep((s) => s + 1)}>
                 Continue <ArrowRight aria-hidden="true" className="ml-2 h-4 w-4" />
               </Button>
             ) : (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => toast.message("Draft saved")}>
-                  Save draft
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pending !== null}
+                  onClick={() => void persistQuote("draft")}
+                >
+                  {pending === "draft" ? "Saving…" : "Save draft"}
                 </Button>
-                <Button size="sm" onClick={submit}>
-                  <Send aria-hidden="true" className="mr-2 h-4 w-4" /> Submit for approval
+                <Button
+                  size="sm"
+                  disabled={pending !== null}
+                  onClick={() => void persistQuote("submit")}
+                >
+                  <Send aria-hidden="true" className="mr-2 h-4 w-4" />
+                  {pending === "submit" ? "Submitting…" : "Submit for approval"}
                 </Button>
-              </div>
+              </>
             )}
-          </div>
+          </StickyActionBar>
         </div>
 
         <div className="space-y-6">
@@ -774,7 +917,7 @@ function QuoteBuilder() {
               </div>
               {total > 400000 && (
                 <p className="text-xs text-warning-foreground">
-                  Above HKD 400K — director approval required.
+                  Above the HKD 400K guideline for director sign-off.
                 </p>
               )}
             </CardContent>
@@ -782,12 +925,24 @@ function QuoteBuilder() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Pricing rules</CardTitle>
+              <CardTitle className="text-base">Pricing guidance</CardTitle>
             </CardHeader>
+            {/*
+              This card used to promise routing the system does not do:
+              "Discounts >10% require manager approval" and ">HKD 400K requires director
+              approval". `requestQuoteApproval` only flips the status to `pending_approval`;
+              it never sees the discount and never branches on the total, so both quotes go
+              to the same queue and nothing is escalated. The copy now says what is true —
+              these are thresholds people apply, not rules the product enforces.
+            */}
             <CardContent className="space-y-2 text-xs text-muted-foreground">
-              <p>• Discounts &gt; 10% require manager approval.</p>
-              <p>• Quote value &gt; HKD 400K requires director approval.</p>
-              <p>• Custom scope must reference a template or pricing rule.</p>
+              <p>• Discounts above 10% are expected to be justified to the approver.</p>
+              <p>• Quotes above HKD 400K are expected to reach a director.</p>
+              <p>• Custom scope should reference a template or pricing rule.</p>
+              <p className="pt-1 text-muted-foreground">
+                Guidance only — every submitted quote goes to the same approvals queue, and routing
+                is not automated.
+              </p>
             </CardContent>
           </Card>
         </div>

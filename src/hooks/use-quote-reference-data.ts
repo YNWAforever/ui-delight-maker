@@ -29,7 +29,8 @@ export function useQuoteReferenceData<T>(
     limit: 25,
   };
   const query = useQuery({
-    queryKey: crmQueryKeys.quotes.list({ resource: "quote-reference", ...filters }),
+    // Its own namespace rather than a filtered `quotes.list`: see crmQueryKeys.quoteReferences.
+    queryKey: crmQueryKeys.quoteReferences.list(filters),
     queryFn: async () => (await getQuoteReferencePage({ data: filters })) as ReferencePage<T>,
     initialData: page === 1 && !deferredSearch ? initialData : undefined,
     placeholderData: (previousData) => previousData,

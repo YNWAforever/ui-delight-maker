@@ -125,7 +125,66 @@ export function buildPreviewPortions(input: {
   });
 }
 
-export type JobSheetPortionSavePayload = NewJobSheetPortion & { id: string };
+export type JobSheetPortionSavePayload = NewJobSheetPortion;
+
+/**
+ * Marks a draft row that has never been saved.
+ *
+ * `replaceJobSheetPortions` distinguishes an insert from an update by the presence of `id`:
+ * a payload carrying an id it does not recognise is rejected with "Billing portion ID does
+ * not belong to this job sheet". So a row added in the editor gets a client-only id for
+ * React keys and draft bookkeeping, and that id is stripped out of the save payload.
+ */
+export const NEW_PORTION_DRAFT_PREFIX = "new-portion:";
+
+let newPortionDraftCounter = 0;
+
+export function isNewPortionDraft(id: string): boolean {
+  return id.startsWith(NEW_PORTION_DRAFT_PREFIX);
+}
+
+export function createPortionDraft(input: { currency: string; sortOrder: number }): PortionDraft {
+  newPortionDraftCounter += 1;
+  return {
+    id: `${NEW_PORTION_DRAFT_PREFIX}${newPortionDraftCounter}`,
+    name: "",
+    description: "",
+    amount: "0",
+    currency: input.currency,
+    target_invoice_date: "",
+    billing_type: "progress",
+    status: "planned",
+    sort_order: input.sortOrder,
+    source_quote_line_item_ids: [],
+  };
+}
+
+/**
+ * Why a portion cannot be removed, or null when it can be.
+ *
+ * `replaceJobSheetPortions` refuses to drop a portion that carries any Xero data, and the
+ * error it throws for that is a 500 the reviewer only sees after clicking Save. Checking it
+ * here means the control is disabled with its reason instead.
+ */
+export function getPortionRemovalBlockedReason(
+  portion: Pick<
+    JobSheetPortion,
+    "status" | "xero_invoice_number" | "xero_invoice_reference" | "xero_invoice_date" | "xero_notes"
+  >,
+): string | null {
+  const hasXeroData =
+    portion.status === "entered_in_xero" ||
+    Boolean(
+      portion.xero_invoice_number ||
+      portion.xero_invoice_reference ||
+      portion.xero_invoice_date ||
+      portion.xero_notes,
+    );
+
+  return hasXeroData
+    ? "This portion has Xero details saved against it and cannot be removed."
+    : null;
+}
 
 export function buildPortionSavePayload(
   drafts: PortionDraft[],
@@ -134,7 +193,7 @@ export function buildPortionSavePayload(
   const originalsById = new Map(originals.map((portion) => [portion.id, portion]));
 
   return drafts.map((draft, index) => ({
-    id: draft.id,
+    ...(isNewPortionDraft(draft.id) ? {} : { id: draft.id }),
     name: draft.name.trim(),
     source_quote_line_item_ids: draft.source_quote_line_item_ids,
     description: draft.description.trim(),
@@ -357,4 +416,62 @@ export function formatAcceptedValueSummary(rows: AcceptedValueSummaryRow[]): str
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([currency, amount]) => formatCurrencyAmount(amount, currency))
     .join(" / ");
+}
+
+/**
+ * Job-sheet status labels.
+ *
+ * They live here rather than inside `JobSheetStatusBadge` because the queue's status filter
+ * needs the same words as the badge, and a second copy in the route file is how a filter
+ * option and the badge beside it end up disagreeing. `src/lib/status-labels.ts` owns the
+ * seven decided domains and job sheets is not one of them; adding an eighth there would
+ * change `KNOWN_STATUS_VALUES`, which a test enumerates.
+ */
+export const JOB_SHEET_STATUS_LABELS: Record<JobSheetStatus, string> = {
+  draft: "Draft",
+  accounting_review: "Accounting review",
+  accepted: "Accepted",
+  change_required: "Change required",
+  cancelled: "Cancelled",
+};
+
+export const JOB_SHEET_STATUS_VALUES = Object.keys(JOB_SHEET_STATUS_LABELS) as JobSheetStatus[];
+
+export function getJobSheetStatusLabel(status: string | null | undefined): string {
+  if (!status) return "Unknown";
+  const labels: Record<string, string | undefined> = JOB_SHEET_STATUS_LABELS;
+  return labels[status] ?? status.replace(/_/g, " ");
+}
+
+/**
+ * How far through invoicing a job sheet is, as a sentence.
+ *
+ * Deliberately a sentence and not a bar. "2 of 3 portions invoiced" says which two and how
+ * many are left; a 66%-filled bar says neither, and on a two-portion sheet a half-filled bar
+ * is indistinguishable from a rounding artefact. `entered_in_xero` is the only status that
+ * means an invoice exists — `cancelled` portions are counted out of the denominator, since a
+ * cancelled portion is never going to be invoiced.
+ */
+export function describeBillingProgress(portions: Array<Pick<JobSheetPortion, "status">>): string {
+  const billable = portions.filter((portion) => portion.status !== "cancelled");
+  if (billable.length === 0) return "No billable portions planned yet";
+
+  const invoiced = billable.filter((portion) => portion.status === "entered_in_xero").length;
+  const cancelled = portions.length - billable.length;
+  const cancelledSuffix = cancelled > 0 ? `, ${cancelled} cancelled` : "";
+
+  return `${invoiced} of ${billable.length} portion${billable.length === 1 ? "" : "s"} invoiced in Xero${cancelledSuffix}`;
+}
+
+/** Portion status labels. Same reasoning as `JOB_SHEET_STATUS_LABELS` above. */
+export const JOB_SHEET_PORTION_STATUS_LABELS: Record<JobSheetPortionStatus, string> = {
+  planned: "Planned",
+  entered_in_xero: "Entered in Xero",
+  cancelled: "Cancelled",
+};
+
+export function getJobSheetPortionStatusLabel(status: string | null | undefined): string {
+  if (!status) return "Unknown";
+  const labels: Record<string, string | undefined> = JOB_SHEET_PORTION_STATUS_LABELS;
+  return labels[status] ?? status.replace(/_/g, " ");
 }

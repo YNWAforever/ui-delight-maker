@@ -50,14 +50,13 @@ export const ACCOUNT_DETAIL_TABS = [
   "tasks",
 ] as const;
 
-export const LEAD_DETAIL_TABS = [
-  "overview",
-  "activity",
-  "quotes",
-  "files",
-  "comments",
-  "insights",
-] as const;
+/**
+ * `files` and `comments` were removed with the tabs themselves — both were fabricated
+ * client-side state with no table behind them. Dropping them here matters: the schema
+ * `.catch(undefined)`s an unrecognised tab, so a bookmarked `?tab=files` now lands on
+ * Overview instead of selecting a tab that no longer renders anything.
+ */
+export const LEAD_DETAIL_TABS = ["overview", "activity", "quotes", "insights"] as const;
 
 export const CLIENT_DETAIL_TABS = [
   "overview",
@@ -69,7 +68,10 @@ export const CLIENT_DETAIL_TABS = [
   "timeline",
 ] as const;
 
-export const QUOTE_DETAIL_TABS = ["items", "comments", "files", "versions", "preview"] as const;
+// "comments" and "files" were removed with the two fabricated tabs they addressed
+// (IF-C2-19..22): there is no comment table and no attachment storage in the schema.
+// The schema catches an obsolete tab value, so old links land on Line items.
+export const QUOTE_DETAIL_TABS = ["items", "versions", "preview"] as const;
 export const AGENT_DETAIL_TABS = ["runs", "memory", "config"] as const;
 export const SETTINGS_TABS = [
   "profile",

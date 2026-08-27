@@ -10,6 +10,13 @@ import type {
   Task,
 } from "@/lib/types";
 
+/**
+ * The board and the preview panel, side by side.
+ *
+ * The three `pending*LeadId` props are the in-flight channel for the writes this pair
+ * fires. They are ids rather than booleans because both surfaces show many leads at once,
+ * and a single boolean would grey out every row's control while one lead was being moved.
+ */
 type DashboardInsightsProps = {
   leads: Lead[];
   tasks: Task[];
@@ -23,8 +30,10 @@ type DashboardInsightsProps = {
   onQualify: (lead: Lead) => void;
   onDraftReply: (lead: Lead) => void;
   onDraftQuote: (lead: Lead) => void;
-  onSummarize: (lead: Lead) => void;
   onCreateTask: (lead: Lead) => void;
+  pendingMoveLeadId?: string | null;
+  pendingAiLeadId?: string | null;
+  pendingTaskLeadId?: string | null;
 };
 
 export function DashboardInsights({
@@ -40,8 +49,10 @@ export function DashboardInsights({
   onQualify,
   onDraftReply,
   onDraftQuote,
-  onSummarize,
   onCreateTask,
+  pendingMoveLeadId = null,
+  pendingAiLeadId = null,
+  pendingTaskLeadId = null,
 }: DashboardInsightsProps) {
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -55,6 +66,7 @@ export function DashboardInsights({
           selectedLeadId={selectedLead?.id ?? null}
           onSelectLead={onSelectLead}
           onMoveLead={onMoveLead}
+          pendingMoveLeadId={pendingMoveLeadId}
         />
       </div>
       <LeadPreviewPanel
@@ -67,8 +79,9 @@ export function DashboardInsights({
         onQualify={onQualify}
         onDraftReply={onDraftReply}
         onDraftQuote={onDraftQuote}
-        onSummarize={onSummarize}
         onCreateTask={onCreateTask}
+        pendingAiLeadId={pendingAiLeadId}
+        pendingTaskLeadId={pendingTaskLeadId}
       />
     </div>
   );

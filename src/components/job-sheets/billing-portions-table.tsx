@@ -1,12 +1,6 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { DataTableShell, type ColumnDef } from "@/components/sales";
 import { formatCurrencyAmount, formatDate } from "@/lib/format";
+import { describeBillingProgress, getJobSheetPortionStatusLabel } from "@/lib/job-sheet-editor";
 import { getPortionReconciliation } from "@/lib/quote-to-cash";
 import type { JobSheetPortion } from "@/lib/types";
 
@@ -22,12 +16,70 @@ const formatLabel = (value: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 
+/**
+ * The one table in this product where `allowHorizontalScroll` is the right answer.
+ *
+ * Everywhere else a column that does not fit is a column to prune. Here the six columns are
+ * a single reconciliation statement — amount only means something read against its billing
+ * type, target date and Xero reference — so dropping the right-hand half on a phone would
+ * leave a row that cannot be checked. The identity column is `sticky`, so the portion name
+ * stays visible while the money moves.
+ */
 export function BillingPortionsTable({
   totalAmount,
   currency,
   portions,
 }: BillingPortionsTableProps) {
   const reconciliation = getPortionReconciliation(totalAmount, portions);
+
+  const columns: ColumnDef<JobSheetPortion>[] = [
+    {
+      id: "portion",
+      header: "Portion",
+      priority: "primary",
+      sticky: true,
+      width: "14rem",
+      cell: (portion) => (
+        <>
+          <div className="font-medium">{portion.name}</div>
+          <div className="text-xs text-muted-foreground">
+            {portion.description?.trim() || "No billing note"}
+          </div>
+        </>
+      ),
+    },
+    {
+      id: "billing_type",
+      header: "Billing type",
+      priority: "primary",
+      cell: (portion) => formatLabel(portion.billing_type),
+    },
+    {
+      id: "target_invoice_date",
+      header: "Target invoice date",
+      priority: "primary",
+      cell: (portion) => formatDate(portion.target_invoice_date),
+    },
+    {
+      id: "status",
+      header: "Status",
+      priority: "primary",
+      cell: (portion) => getJobSheetPortionStatusLabel(portion.status),
+    },
+    {
+      id: "xero",
+      header: "Xero reference",
+      priority: "primary",
+      cell: (portion) => portion.xero_invoice_reference?.trim() || "Not entered in Xero",
+    },
+    {
+      id: "amount",
+      header: "Amount",
+      priority: "primary",
+      numeric: true,
+      cell: (portion) => formatCurrencyAmount(portion.amount, portion.currency),
+    },
+  ];
 
   return (
     <div className="space-y-3">
@@ -46,49 +98,25 @@ export function BillingPortionsTable({
         </div>
         <p
           className={`mt-2 text-sm ${
-            reconciliation.reconciled ? "text-emerald-600" : "text-destructive"
+            reconciliation.reconciled ? "text-success" : "text-destructive"
           }`}
         >
           {reconciliation.reconciled
             ? "Billing plan reconciles with the accepted quote total."
             : `Reconciliation delta: ${formatCurrencyAmount(reconciliation.delta, currency)}`}
         </p>
+        {/* Progress as a sentence, never a bar: "2 of 3" says which two are left to raise. */}
+        <p className="mt-1 text-xs text-muted-foreground">{describeBillingProgress(portions)}</p>
       </div>
 
-      <div className="overflow-x-auto rounded-md border border-border">
-        <Table className="min-w-[760px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Portion</TableHead>
-              <TableHead>Billing type</TableHead>
-              <TableHead>Target invoice date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Xero reference</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {portions.map((portion) => (
-              <TableRow key={portion.id}>
-                <TableCell>
-                  <div className="font-medium">{portion.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {portion.description?.trim() || "No billing note"}
-                  </div>
-                </TableCell>
-                <TableCell>{formatLabel(portion.billing_type)}</TableCell>
-                <TableCell>{formatDate(portion.target_invoice_date)}</TableCell>
-                <TableCell>{formatLabel(portion.status)}</TableCell>
-                <TableCell>
-                  {portion.xero_invoice_reference?.trim() || "Not entered in Xero"}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatCurrencyAmount(portion.amount, portion.currency)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="rounded-md border border-border">
+        <DataTableShell
+          columns={columns}
+          rows={portions}
+          rowKey={(portion) => portion.id}
+          caption="Billing portions for this job sheet"
+          allowHorizontalScroll
+        />
       </div>
     </div>
   );

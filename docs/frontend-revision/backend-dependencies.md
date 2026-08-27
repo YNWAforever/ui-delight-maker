@@ -97,6 +97,50 @@ One entry per gap that stops the frontend telling the truth. Template per execut
 
 ---
 
+### BD-9: The quotes list read returns rows, not a searchable or summable result set
+
+- **Affected routes:** `/quotes`
+- **What is missing:** three things on `listQuotesPage` (`src/server/repositories/quotes.ts:129`): a text-search filter, a join to `leads.company_name` / `clients.company_name`, and aggregates over the whole filtered set rather than the page.
+- **Why the UI cannot be truthful without it:** the search box can only ever narrow the fifty rows the loader returned, so it cannot find a quote on page three; the list can show *that* a quote belongs to a lead or a client but not *which company*; and the value tiles can only sum the loaded page. `status` needed none of this — it was already a filter on the repository and now reaches it — which is what makes the remaining three genuinely server-side.
+- **UI state implemented meanwhile:** the search box is labelled "Filter this page by quote number" and matches the number only; the fabricated Lead and Created-by columns are replaced by a "Linked record" link and a real `created_at`; the money tiles carry the hint "this page" and are grouped per currency instead of being stamped HKD. Nothing claims a workspace-wide number it does not have.
+- **Proposed backend change:** additive filters plus two left joins on the existing list query, and a sibling aggregate read grouped by `currency`. No migration.
+- **Integrity finding IDs:** IF-C2-04, IF-C2-05, IF-C2-06, IF-C2-07
+
+---
+
+### BD-10: Approval requests carry no assignee and no routing rule
+
+- **Affected routes:** `/quotes/new`, `/quotes/$id`
+- **What is missing:** `requestQuoteApproval` (`src/server-functions/quotes.ts:123`) accepts `{ id }` and only flips the status to `pending_approval`. It never sees the discount or the total, and it never writes `human_approvals.assigned_to` — a column that already exists (`neon/migrations/001:138`).
+- **Why the UI cannot be truthful without it:** the builder offered an Approver Select whose value was silently discarded, and a Pricing-rules card promising that discounts over 10% go to a manager and quotes over HKD 400K go to a director. Both quotes go to the same queue.
+- **UI state implemented meanwhile:** the Approver Select is removed rather than left as a control that writes nothing, and the pricing card is restated as guidance with an explicit line saying routing is not automated.
+- **Proposed backend change:** accept an optional assignee on `requestQuoteApproval` and persist it; separately, decide whether threshold routing is a product rule worth encoding. No migration for the assignee.
+- **Integrity finding IDs:** IF-C2-13, IF-C2-16
+
+---
+
+### BD-11: A lead-linked quote is unopenable by a role that may see quotes but not leads
+
+- **Affected routes:** `/quotes` (every row link), `/quotes/$id`, `/quotes/$id_/pdf`
+- **What is missing:** graceful degradation in `authorizeLinkedQuoteParties` (`src/server-functions/quote-workspace.ts:100-117`). It requires `leads.view` whenever `quote.lead_id` is set, and `accounting` holds `quotes.view` without `leads.view` (`src/lib/admin/policy.ts:122-135`), so every lead-linked row on a list that role is allowed to see throws into an error boundary.
+- **Why the UI cannot be truthful without it:** the list is allowed to show the row, and the row's own link is a dead end.
+- **UI state implemented meanwhile:** **none, deliberately.** The two frontend options both do harm. Omitting the lead block client-side is not available — that is a server-side capability change, and this branch may not weaken one. Hiding lead-linked rows from roles whose *baseline* lacks `leads.view` would hide real data from anyone holding a `permission_overrides` allow for it, which the client cannot see. The row link is therefore left intact and the route-level `errorComponent` now renders a sanitized `ErrorState` instead of the root boundary's raw `error.message`.
+- **Proposed backend change:** make the linked-party check degrade — omit the lead block from the read for an actor without `leads.view` — rather than throwing. That is a deliberate authorization decision and needs the owner's sign-off, per plan §0.6.
+- **Integrity finding IDs:** IF-C2-09
+
+---
+
+### BD-12: The client cannot know what the signed-in user is actually allowed to do
+
+- **Affected routes:** every route that would like to gate a control — surfaced here by `/quotes` and `/quotes/new`
+- **What is missing:** an effective-capability set on the app-shell read. `AppShellRead` (`src/server/app-shell/loaders.ts:5`) carries `profile.role`, and `ROLE_GRANTS` is importable client-side, but `permission_overrides` is read only inside `loadAuthorizationContext` on the server. So the client knows the role baseline and nothing about individual grants or denials.
+- **Why the UI cannot be truthful without it:** `quotes.create` is granted to manager, sales, admin and super_admin, so `client_success`, `accounting` and `read_only` could fill in the whole five-step builder and only learn at Submit. But disabling the control from `ROLE_GRANTS` alone would lock out a user who has been granted an exception, which is a worse failure than the one it fixes.
+- **UI state implemented meanwhile:** an advisory, not a gate. `/quotes/new` states plainly that creating quotes is not part of the reader's role and that saving will be refused unless they hold an exception; every control stays enabled and the server remains the only thing that decides.
+- **Proposed backend change:** return the actor's resolved capability set from `getAppShellRead`, computed by the same `evaluateAuthorization` the server already runs, so UI gating and server enforcement cannot disagree. No migration.
+- **Integrity finding IDs:** IF-C2-08
+
+---
+
 ## Demoted candidates — filed as backend work, but not
 
 Each of these looked like a dependency and is not. Recording them stops a future reader re-filing them.

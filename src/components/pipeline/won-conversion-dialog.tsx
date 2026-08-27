@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { convertWonLead } from "@/server-functions/leads";
 import { addMonthsToDateString } from "@/lib/engagement-utils";
+import { toSafeErrorMessage } from "@/lib/errors";
 import type { Engagement, Lead, Product, Quote } from "@/lib/types";
 
 const DEFAULT_TERM_MONTHS = 12;
@@ -46,6 +47,12 @@ export function WonConversionDialog({
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [renewalDate, setRenewalDate] = useState("");
   const [renewalDateTouched, setRenewalDateTouched] = useState(false);
+  /**
+   * `convertWonLead` creates a client *and* an engagement, so a second click is an
+   * expensive duplicate rather than a wasted request. The flag is set before the await and
+   * cleared only on failure: on success the dialog unmounts through `onDone`.
+   */
+  const [submitting, setSubmitting] = useState(false);
 
   // Auto-fill the renewal date from start_date + the selected product's
   // default_term_months (falling back to 12 months), matching the same
@@ -61,25 +68,38 @@ export function WonConversionDialog({
   }, [productId, startDate, products, renewalDateTouched]);
 
   const confirm = async () => {
-    if (!lead) return;
-    const result = await convertWonLead({
-      data: {
-        leadId: lead.id,
-        productId,
-        value,
-        billingPeriod,
-        startDate,
-        renewalDate: renewalDate || undefined,
-        quoteId: matchingQuote?.id,
-      },
-    });
-    toast.success(`${lead.company_name} is now a client engagement`);
-    onDone();
-    navigate({ to: "/clients/$id", params: { id: result.clientId } });
+    if (!lead || submitting) return;
+    setSubmitting(true);
+    try {
+      const result = await convertWonLead({
+        data: {
+          leadId: lead.id,
+          productId,
+          value,
+          billingPeriod,
+          startDate,
+          renewalDate: renewalDate || undefined,
+          quoteId: matchingQuote?.id,
+        },
+      });
+      toast.success(`${lead.company_name} is now a client engagement`);
+      onDone();
+      navigate({ to: "/clients/$id", params: { id: result.clientId } });
+    } catch (error) {
+      // The dialog stays open with the entered values so the conversion can be retried.
+      setSubmitting(false);
+      toast.error(toSafeErrorMessage(error));
+    }
   };
 
   return (
-    <Dialog open={lead !== null} onOpenChange={(open) => !open && onClose()}>
+    <Dialog
+      open={lead !== null}
+      onOpenChange={(open) => {
+        if (submitting) return;
+        if (!open) onClose();
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Set up the client engagement</DialogTitle>
@@ -166,8 +186,8 @@ export function WonConversionDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={confirm} disabled={!productId}>
-            Create engagement
+          <Button onClick={() => void confirm()} disabled={!productId || submitting}>
+            {submitting ? "Creating…" : "Create engagement"}
           </Button>
         </DialogFooter>
       </DialogContent>

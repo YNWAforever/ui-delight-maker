@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Bot,
   CheckCircle2,
+  ClipboardCheck,
   FileText,
   RefreshCw,
   UserPlus,
@@ -13,8 +14,22 @@ import {
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { CommandHeader, MetricStrip, WorkSurfaceEmpty } from "@/components/sales";
-import { StatusBadge } from "@/components/status-badge";
+import {
+  EmptyWorkspaceState,
+  ErrorState,
+  FilterToolbar,
+  FilteredEmptyState,
+  MetricStrip,
+  RecordSummaryPanel,
+  ResponsiveRecordList,
+  SectionHeader,
+  StaleDataIndicator,
+  StatusBadge,
+  WorkspaceHeader,
+  type ColumnDef,
+  type FilterOption,
+  type RecordSummarySection,
+} from "@/components/sales";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +42,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -36,17 +50,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useClientNow } from "@/hooks/use-client-now";
 import { slaChip } from "@/lib/approval-sla";
+import { toSafeErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
@@ -54,20 +61,80 @@ import { formatDateTime } from "@/lib/format";
 import { getApprovals, decideApproval } from "@/server-functions/approvals";
 import type { SerializableHumanApproval } from "@/lib/serializable";
 import { approveAndIssueQuote, rejectQuote } from "@/server-functions/quotes";
-import type { HumanApproval } from "@/lib/types";
-import { APP_USERS, userById } from "@/lib/users";
+import type { ApprovalType } from "@/lib/types";
 
-type ApprovalStatus = "pending" | "approved" | "rejected" | "escalated";
 type ApprovalRead = SerializableHumanApproval[];
+type Approval = SerializableHumanApproval;
+type ApprovalDecision = "approved" | "rejected" | "escalated";
 
-const approvalDecisionLabel = (status: ApprovalStatus) =>
-  status === "escalated" ? "changes requested" : status;
+/**
+ * Type labels, keyed by the seven values `human_approvals.approval_type` can actually hold.
+ *
+ * The filter this replaces offered `scope_change`, which exists only in `src/lib/mock-data.ts`
+ * and in no migration — picking it emptied the queue and read as "nothing to approve".
+ * Keying on `ApprovalType` makes a new approval type a compile error here rather than a
+ * silently unlabelled row.
+ */
+const APPROVAL_TYPE_LABELS: Record<ApprovalType, string> = {
+  quote_send: "Quote send",
+  message_send: "Message send",
+  discount: "Discount",
+  qualification_review: "Qualification review",
+  campaign_send: "Campaign send",
+  forecast_review: "Forecast review",
+  cs_risk_review: "Risk review",
+};
+
+const APPROVAL_TYPE_FILTER_VALUES = [
+  "all",
+  "quote_send",
+  "message_send",
+  "discount",
+  "qualification_review",
+  "campaign_send",
+  "forecast_review",
+  "cs_risk_review",
+] as const;
+
+type ApprovalTypeFilter = (typeof APPROVAL_TYPE_FILTER_VALUES)[number];
+
+function isApprovalTypeFilter(value: string): value is ApprovalTypeFilter {
+  return (APPROVAL_TYPE_FILTER_VALUES as readonly string[]).includes(value);
+}
+
+function approvalTypeLabel(type: string | null | undefined): string {
+  if (!type) return "Approval";
+  const labels: Record<string, string | undefined> = APPROVAL_TYPE_LABELS;
+  return labels[type] ?? type.replace(/_/g, " ");
+}
 
 const approvalSearchSchema = z.object({
-  type: z.string().default("all").catch("all"),
+  type: z.enum(APPROVAL_TYPE_FILTER_VALUES).default("all").catch("all"),
 });
 
 const approvalsQueryKey = crmQueryKeys.approvals.list({});
+
+/** How many decided approvals the history list shows. `listApprovals` returns every one. */
+const DECIDED_HISTORY_LIMIT = 10;
+
+/**
+ * Whether this approval can still be decided from this screen.
+ *
+ * `escalated` is not terminal — `decideApproval` re-decides it — but a quote-send approval
+ * cannot be: `assertPendingQuoteSendApproval` (src/server-functions/quotes.ts) rejects
+ * anything that is not `pending`, so an approve or reject button on an escalated quote send
+ * is a control that can only ever produce an error. Its return path is the quote itself.
+ */
+function isDecidable(approval: Approval): boolean {
+  if (approval.status === "pending") return true;
+  return approval.status === "escalated" && approval.approval_type !== "quote_send";
+}
+
+function getQuoteId(approval: Approval): string | null {
+  if (approval.approval_type !== "quote_send") return null;
+  const data = approval.context_data as { quote_id?: string } | null;
+  return data?.quote_id ?? null;
+}
 
 export const Route = createFileRoute("/approvals")({
   validateSearch: approvalSearchSchema,
@@ -84,8 +151,30 @@ export const Route = createFileRoute("/approvals")({
       { name: "description", content: "Pending agent actions awaiting human approval." },
     ],
   }),
+  errorComponent: ApprovalsErrorState,
   component: ApprovalsInbox,
 });
+
+/**
+ * Loader failures used to fall through to the root boundary, which renders `{error.message}`
+ * into the page body — a Neon driver string printed as page content.
+ */
+function ApprovalsErrorState({ error }: { error: unknown }) {
+  const router = useRouter();
+
+  return (
+    <div className="px-4 py-6 md:px-6">
+      <ErrorState
+        kind="server"
+        error={error}
+        title="Approvals did not load"
+        onRetry={() => {
+          void router.invalidate({ filter: (match) => match.routeId === "/approvals" });
+        }}
+      />
+    </div>
+  );
+}
 
 function ApprovalsInbox() {
   const clientNow = useClientNow();
@@ -102,71 +191,175 @@ function ApprovalsInbox() {
   const allApprovals = approvalsQuery.data;
   const { type: typeFilter } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const setTypeFilter = (type: string) =>
+  const setTypeFilter = (value: string) => {
+    // FilterToolbar hands back a plain string; the search schema only accepts the eight
+    // real values, so anything else falls back rather than writing an unparseable URL.
+    const type: ApprovalTypeFilter = isApprovalTypeFilter(value) ? value : "all";
     navigate({ search: (current) => ({ ...current, type }), replace: true });
+  };
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [bulk, setBulk] = useState<Set<string>>(new Set());
+  const [decidingIds, setDecidingIds] = useState<ReadonlySet<string>>(() => new Set<string>());
+  const [refreshing, setRefreshing] = useState(false);
   const approvalMutationTokensRef = useRef(new Map<string, symbol>());
+
+  /** Workspace-wide counts. Never the type-filtered subset — the strip reads as a total. */
+  const totals = useMemo(() => {
+    let pending = 0;
+    let escalated = 0;
+    let quoteSends = 0;
+    let decided = 0;
+    for (const approval of allApprovals) {
+      if (approval.status === "pending") {
+        pending += 1;
+        if (approval.approval_type === "quote_send") quoteSends += 1;
+      } else if (approval.status === "escalated") {
+        escalated += 1;
+      } else {
+        decided += 1;
+      }
+    }
+    return { pending, escalated, quoteSends, decided };
+  }, [allApprovals]);
 
   const pending = useMemo(
     () =>
-      allApprovals
-        .filter((a) => a.status === "pending")
-        .filter((a) => typeFilter === "all" || a.approval_type === typeFilter),
+      allApprovals.filter(
+        (approval) =>
+          approval.status === "pending" &&
+          (typeFilter === "all" || approval.approval_type === typeFilter),
+      ),
     [allApprovals, typeFilter],
   );
-  const decided = allApprovals.filter((a) => a.status !== "pending");
-  const pendingCount = pending.length;
-  const pendingQuoteSends = pending.filter((a) => a.approval_type === "quote_send").length;
-  const selected = pending.find((a) => a.id === selectedId) ?? pending[0];
+  const escalated = useMemo(
+    () =>
+      allApprovals.filter(
+        (approval) =>
+          approval.status === "escalated" &&
+          (typeFilter === "all" || approval.approval_type === typeFilter),
+      ),
+    [allApprovals, typeFilter],
+  );
+  const decided = useMemo(
+    () =>
+      allApprovals.filter(
+        (approval) =>
+          (approval.status === "approved" || approval.status === "rejected") &&
+          (typeFilter === "all" || approval.approval_type === typeFilter),
+      ),
+    [allApprovals, typeFilter],
+  );
 
-  const updateApprovalDecision = async (
-    ids: string[],
-    status: "approved" | "rejected" | "escalated",
+  /**
+   * Resolved from the whole list, not from `pending`.
+   *
+   * That is what keeps a just-decided approval on screen carrying its new status, instead of
+   * vanishing the instant the optimistic write lands — which read as "did that work?".
+   */
+  const selected =
+    allApprovals.find((approval) => approval.id === selectedId) ?? pending[0] ?? null;
+  const nextPendingId = pending.find((approval) => approval.id !== selected?.id)?.id ?? null;
+
+  /**
+   * Selecting is separate from opening the sheet on purpose.
+   *
+   * ResponsiveRecordList keeps both surfaces in the DOM and hides one with a media query, so
+   * a single handler that opened the panel would spring a focus trap and a scroll lock on a
+   * desktop reader who only clicked a table row. The table selects; the card, which is the
+   * only surface visible below `lg`, also opens the panel.
+   */
+  const selectApproval = (id: string) => {
+    setSelectedId(id);
+    setReason("");
+  };
+  const openApprovalPanel = (id: string) => {
+    selectApproval(id);
+    setDetailOpen(true);
+  };
+
+  const isBusy = decidingIds.size > 0;
+
+  const markDeciding = (ids: string[], deciding: boolean) => {
+    setDecidingIds((current) => {
+      const next = new Set(current);
+      for (const id of ids) {
+        if (deciding) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  };
+
+  type DecisionTarget = { id: string; run: () => Promise<unknown> };
+  type DecisionOutcome = { succeeded: string[]; failed: Array<{ id: string; error: unknown }> };
+
+  /**
+   * Applies one or many decisions optimistically and settles them independently.
+   *
+   * The previous version ran `Promise.all` and rolled **every** optimistic row back on the
+   * first rejection, then rethrew before invalidating — so a bulk approve where four of five
+   * writes committed re-rendered all five as pending and refetched nothing for twelve
+   * seconds. Here each target settles on its own, only the failures roll back, and the
+   * invalidation runs on both paths.
+   */
+  const applyDecisions = async (
+    targets: DecisionTarget[],
+    status: ApprovalDecision,
     notes: string | undefined,
-    mutation: () => Promise<unknown>,
-  ) => {
+  ): Promise<DecisionOutcome> => {
+    const ids = targets.map((target) => target.id);
+    markDeciding(ids, true);
     await queryClient.cancelQueries({ queryKey: approvalsQueryKey, exact: true });
+
     const previousById = new Map(
       (queryClient.getQueryData<ApprovalRead>(approvalsQueryKey) ?? [])
         .filter((approval) => ids.includes(approval.id))
         .map((approval) => [approval.id, approval] as const),
     );
     const decidedAt = new Date().toISOString();
-    const selectedIds = new Set(ids);
+    const targetIds = new Set(ids);
     const mutationToken = Symbol("approval-decision");
     ids.forEach((id) => approvalMutationTokensRef.current.set(id, mutationToken));
+
     queryClient.setQueryData<ApprovalRead>(approvalsQueryKey, (current) =>
       current?.map((approval) =>
-        selectedIds.has(approval.id)
+        targetIds.has(approval.id)
           ? {
               ...approval,
               status,
-              reviewer_notes: notes ?? approval.reviewer_notes,
+              // `decideApproval` writes `reviewer_notes = $3` unconditionally, so deciding
+              // without a note clears whatever was stored. Showing the old note preserved was
+              // an optimistic row that contradicted the write it stood in for.
+              reviewer_notes: notes ?? null,
               decided_at: decidedAt,
             }
           : approval,
       ),
     );
 
-    try {
-      await mutation();
-    } catch (error) {
+    const settled = await Promise.allSettled(targets.map((target) => target.run()));
+    const succeeded: string[] = [];
+    const failed: Array<{ id: string; error: unknown }> = [];
+    settled.forEach((result, index) => {
+      const id = ids[index];
+      if (result.status === "fulfilled") succeeded.push(id);
+      else failed.push({ id, error: result.reason });
+    });
+
+    if (failed.length > 0) {
+      const failedIds = new Set(failed.map((entry) => entry.id));
       queryClient.setQueryData<ApprovalRead>(approvalsQueryKey, (current) =>
         current?.map((approval) => {
           const previous = previousById.get(approval.id);
-          return previous && approvalMutationTokensRef.current.get(approval.id) === mutationToken
+          return previous &&
+            failedIds.has(approval.id) &&
+            approvalMutationTokensRef.current.get(approval.id) === mutationToken
             ? previous
             : approval;
         }),
       );
-      ids.forEach((id) => {
-        if (approvalMutationTokensRef.current.get(id) === mutationToken) {
-          approvalMutationTokensRef.current.delete(id);
-        }
-      });
-      throw error;
     }
 
     ids.forEach((id) => {
@@ -174,53 +367,40 @@ function ApprovalsInbox() {
         approvalMutationTokensRef.current.delete(id);
       }
     });
+    markDeciding(ids, false);
+
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true }),
       queryClient.invalidateQueries({ queryKey: crmQueryKeys.aiReview.all() }),
     ]);
+
+    return { succeeded, failed };
   };
 
-  /**
-   * Fires a decision and surfaces a failure.
-   *
-   * `updateApprovalDecision` applies the change optimistically and rolls it back when the
-   * mutation rejects, then rethrows. Every call site was a bare `onClick={() => decide(...)}`,
-   * so that rethrow landed on a floating promise: the row flipped, flipped back, and the
-   * reviewer was told nothing — a missing capability or a transient Neon error looked exactly
-   * like a UI glitch.
-   */
-  const runDecision = (work: () => Promise<void>) => {
-    void work().catch((error: unknown) => {
-      toast.error(error instanceof Error ? error.message : "Could not record that decision");
-    });
-  };
+  const reportOutcome = (outcome: DecisionOutcome, successMessage: string) => {
+    if (outcome.failed.length === 0) {
+      toast.success(successMessage);
+      return;
+    }
 
-  const decide = async (id: string, status: "approved" | "rejected" | "escalated", msg: string) => {
-    const notes = reason || undefined;
-    await updateApprovalDecision([id], status, notes, () =>
-      decideApproval({ data: { id, decision: status, notes } }),
+    const message = toSafeErrorMessage(outcome.failed[0].error);
+    if (outcome.succeeded.length === 0) {
+      toast.error(message);
+      return;
+    }
+
+    toast.error(
+      `${outcome.succeeded.length} recorded, ${outcome.failed.length} could not be: ${message}`,
     );
-    toast.success(msg);
-    setReason("");
   };
 
-  const getQuoteId = (approval: HumanApproval): string | null => {
-    if (approval.approval_type !== "quote_send") return null;
-    const data = approval.context_data as { quote_id?: string } | null;
-    return data?.quote_id ?? null;
-  };
-
-  const approveApproval = async (approval: HumanApproval, notes?: string) => {
+  const approveApproval = async (approval: Approval, notes?: string) => {
     if (approval.approval_type === "quote_send") {
       const quoteId = getQuoteId(approval);
       if (!quoteId) throw new Error("Quote approval is missing quote context");
 
       await approveAndIssueQuote({
-        data: {
-          id: quoteId,
-          approvalId: approval.id,
-          ...(notes ? { notes } : {}),
-        },
+        data: { id: quoteId, approvalId: approval.id, ...(notes ? { notes } : {}) },
       });
       return;
     }
@@ -228,26 +408,13 @@ function ApprovalsInbox() {
     await decideApproval({ data: { id: approval.id, decision: "approved", notes } });
   };
 
-  const approveQuoteSendAsIs = async (approval: HumanApproval) => {
-    const notes = reason || undefined;
-    await updateApprovalDecision([approval.id], "approved", notes, () =>
-      approveApproval(approval, notes),
-    );
-    toast.success("Quote approved and issued");
-    setReason("");
-  };
-
-  const rejectApproval = async (approval: HumanApproval, notes?: string) => {
+  const rejectApproval = async (approval: Approval, notes?: string) => {
     if (approval.approval_type === "quote_send") {
       const quoteId = getQuoteId(approval);
       if (!quoteId) throw new Error("Quote approval is missing quote context");
 
       await rejectQuote({
-        data: {
-          id: quoteId,
-          approvalId: approval.id,
-          ...(notes ? { notes } : {}),
-        },
+        data: { id: quoteId, approvalId: approval.id, ...(notes ? { notes } : {}) },
       });
       return;
     }
@@ -255,152 +422,407 @@ function ApprovalsInbox() {
     await decideApproval({ data: { id: approval.id, decision: "rejected", notes } });
   };
 
-  const rejectSelectedApproval = async (approval: HumanApproval) => {
-    const notes = reason || undefined;
-    await updateApprovalDecision([approval.id], "rejected", notes, () =>
-      rejectApproval(approval, notes),
+  const decideOne = async (approval: Approval, decision: ApprovalDecision) => {
+    const notes = reason.trim() || undefined;
+    const run =
+      decision === "approved"
+        ? () => approveApproval(approval, notes)
+        : decision === "rejected"
+          ? () => rejectApproval(approval, notes)
+          : () => decideApproval({ data: { id: approval.id, decision, notes } });
+
+    const outcome = await applyDecisions([{ id: approval.id, run }], decision, notes);
+    reportOutcome(
+      outcome,
+      decision === "approved"
+        ? approval.approval_type === "quote_send"
+          ? "Quote approved and issued"
+          : "Approved — the agent will proceed"
+        : decision === "rejected"
+          ? "Approval rejected"
+          : "Changes requested",
     );
-    toast.success("Approval rejected");
-    setReason("");
+    if (outcome.failed.length === 0) setReason("");
+  };
+
+  const runDecision = (work: () => Promise<void>) => {
+    void work().catch((error: unknown) => {
+      toast.error(toSafeErrorMessage(error));
+    });
   };
 
   const [confirm, setConfirm] = useState<null | {
     title: string;
     description: string;
     label: string;
-    destructive?: boolean;
     action: () => void;
   }>(null);
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assignee, setAssignee] = useState(APP_USERS[1].id);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
+  const selectedForBulk = () =>
+    allApprovals.filter((approval) => bulk.has(approval.id) && approval.status === "pending");
+
   const bulkApprove = async () => {
-    const n = bulk.size;
-    const selectedApprovals = allApprovals.filter((approval) => bulk.has(approval.id));
-    await updateApprovalDecision([...bulk], "approved", undefined, () =>
-      Promise.all(selectedApprovals.map((approval) => approveApproval(approval))),
+    const targets = selectedForBulk().map((approval) => ({
+      id: approval.id,
+      run: () => approveApproval(approval),
+    }));
+    if (targets.length === 0) return;
+
+    const outcome = await applyDecisions(targets, "approved", undefined);
+    reportOutcome(
+      outcome,
+      `Approved ${outcome.succeeded.length} request${outcome.succeeded.length === 1 ? "" : "s"}`,
     );
-    toast.success(`Approved ${n} request${n > 1 ? "s" : ""}`);
     setBulk(new Set());
   };
 
   const bulkReject = async () => {
-    const n = bulk.size;
-    const selectedApprovals = allApprovals.filter((approval) => bulk.has(approval.id));
-    const notes = rejectReason || undefined;
-    await updateApprovalDecision([...bulk], "rejected", notes, () =>
-      Promise.all(selectedApprovals.map((approval) => rejectApproval(approval, notes))),
-    );
-    toast.success(
-      `Rejected ${n} request${n > 1 ? "s" : ""}${rejectReason ? ` — "${rejectReason}"` : ""}`,
+    const notes = rejectReason.trim() || undefined;
+    const targets = selectedForBulk().map((approval) => ({
+      id: approval.id,
+      run: () => rejectApproval(approval, notes),
+    }));
+    if (targets.length === 0) return;
+
+    const outcome = await applyDecisions(targets, "rejected", notes);
+    reportOutcome(
+      outcome,
+      `Rejected ${outcome.succeeded.length} request${outcome.succeeded.length === 1 ? "" : "s"}`,
     );
     setBulk(new Set());
     setRejectReason("");
     setRejectOpen(false);
   };
-  const bulkAssign = () => {
-    const n = bulk.size;
-    // assignment not yet backed by server function — show toast only
-    toast.success(`Assigned ${n} request${n > 1 ? "s" : ""} to ${userById(assignee)?.name}`);
-    setBulk(new Set());
-    setAssignOpen(false);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      await queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true });
+    } catch (error) {
+      toast.error(toSafeErrorMessage(error, "stale"));
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  const allVisibleSelected = pending.length > 0 && pending.every((a) => bulk.has(a.id));
-  const toggleAll = (v: boolean) => setBulk(v ? new Set(pending.map((a) => a.id)) : new Set());
+  const refreshBusy = refreshing || approvalsQuery.isFetching;
 
-  return (
-    <>
-      <CommandHeader
-        title="Approval Desk"
-        status="Convert"
-        description={`${pendingCount} pending approvals across quote sends, agent decisions, and escalation requests.`}
-        actions={
+  const typeOptions: FilterOption[] = useMemo(() => {
+    const present = new Set<string>();
+    for (const approval of allApprovals) {
+      if (approval.approval_type) present.add(approval.approval_type);
+    }
+    // The active filter stays listed even when nothing matches it, otherwise the Select
+    // renders blank against a URL the reader can still see.
+    if (typeFilter !== "all") present.add(typeFilter);
+    return [
+      { value: "all", label: "All types" },
+      ...[...present]
+        .sort((left, right) => approvalTypeLabel(left).localeCompare(approvalTypeLabel(right)))
+        .map((value) => ({ value, label: approvalTypeLabel(value) })),
+    ];
+  }, [allApprovals, typeFilter]);
+
+  const queueColumns: ColumnDef<Approval>[] = [
+    {
+      id: "request",
+      header: "Request",
+      priority: "primary",
+      cell: (approval) => (
+        <button
+          type="button"
+          onClick={() => selectApproval(approval.id)}
+          aria-current={selected?.id === approval.id ? "true" : undefined}
+          className="block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="font-medium text-foreground">
+            {approvalTypeLabel(approval.approval_type)}
+          </span>
+          <span className="mt-0.5 block line-clamp-2 text-xs text-muted-foreground">
+            {approval.context_summary ?? "No summary provided"}
+          </span>
+        </button>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      priority: "primary",
+      cell: (approval) => <StatusBadge domain="approvals" value={approval.status} />,
+    },
+    {
+      id: "waiting",
+      header: "Waiting",
+      priority: "secondary",
+      cell: (approval) => {
+        const sla = clientNow === null ? null : slaChip(approval.created_at, clientNow);
+        return sla ? (
+          <span className={cn("rounded-md px-1.5 py-0.5 text-xs font-medium", sla.className)}>
+            {sla.text}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {formatDateTime(approval.created_at)}
+          </span>
+        );
+      },
+    },
+    {
+      id: "raised",
+      header: "Raised",
+      priority: "tertiary",
+      cell: (approval) => (
+        <span className="text-xs text-muted-foreground">{formatDateTime(approval.created_at)}</span>
+      ),
+    },
+  ];
+
+  const renderQueueCard = (approval: Approval) => {
+    const sla = clientNow === null ? null : slaChip(approval.created_at, clientNow);
+    return (
+      <button
+        type="button"
+        onClick={() => openApprovalPanel(approval.id)}
+        className="block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="font-medium">{approvalTypeLabel(approval.approval_type)}</span>
+          <StatusBadge domain="approvals" value={approval.status} />
+          {sla && (
+            <span className={cn("rounded-md px-1.5 py-0.5 text-xs font-medium", sla.className)}>
+              {sla.text}
+            </span>
+          )}
+        </span>
+        <span className="mt-1 block line-clamp-2 text-xs text-muted-foreground">
+          {approval.context_summary ?? "No summary provided"}
+        </span>
+        <span className="mt-1 block text-xs text-muted-foreground">
+          Raised {formatDateTime(approval.created_at)}
+        </span>
+      </button>
+    );
+  };
+
+  const decidedNote = (approval: Approval): string | null => {
+    if (approval.status === "escalated" && approval.approval_type === "quote_send") {
+      return "Changes were requested on this quote send. It cannot be approved from here — open the quote, revise it, and request approval again.";
+    }
+    if (approval.status === "approved" || approval.status === "rejected") {
+      return `Decided ${formatDateTime(approval.decided_at)}. This decision cannot be undone from ClientOps.`;
+    }
+    return null;
+  };
+
+  const decisionActions = (approval: Approval) => {
+    const quoteId = getQuoteId(approval);
+
+    if (!isDecidable(approval)) {
+      return (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {quoteId && (
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/quotes/$id" params={{ id: quoteId }} search={{ edit: true }}>
+                <FileText className="mr-2 h-4 w-4" /> Open quote
+              </Link>
+            </Button>
+          )}
+          {nextPendingId && (
+            <Button size="sm" onClick={() => selectApproval(nextPendingId)}>
+              <ClipboardCheck className="mr-2 h-4 w-4" /> Review next pending
+            </Button>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {quoteId && (
+          <Button variant="outline" size="sm" asChild>
+            <Link
+              to="/quotes/$id"
+              params={{ id: quoteId }}
+              search={{ edit: true, approvalId: approval.id }}
+            >
+              <FileText className="mr-2 h-4 w-4" /> Review & edit
+            </Link>
+          </Button>
+        )}
+        {approval.status === "pending" && (
           <Button
             size="sm"
             variant="outline"
+            disabled={isBusy}
             onClick={() =>
-              queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true })
+              setConfirm({
+                title: "Request changes on this approval?",
+                description:
+                  "The request is marked Needs attention with your reviewer notes, and the agent run stays parked until a new approval is raised from the record itself.",
+                label: "Request changes",
+                action: () => runDecision(() => decideOne(approval, "escalated")),
+              })
             }
           >
-            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+            <AlertTriangle className="mr-2 h-4 w-4" /> Request changes
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={isBusy}
+          onClick={() =>
+            setConfirm({
+              title:
+                approval.approval_type === "quote_send"
+                  ? "Reject this quote send?"
+                  : "Reject this request?",
+              description:
+                approval.approval_type === "quote_send"
+                  ? "The quote is marked rejected and this approval closes. There is no reopen action — the quote has to be revised and submitted for approval again."
+                  : "The agent stops and this approval closes. There is no undo.",
+              label: "Reject",
+              action: () => runDecision(() => decideOne(approval, "rejected")),
+            })
+          }
+        >
+          <XCircle className="mr-2 h-4 w-4" /> Reject
+        </Button>
+        <Button
+          size="sm"
+          disabled={isBusy}
+          onClick={() =>
+            setConfirm({
+              title:
+                approval.approval_type === "quote_send"
+                  ? "Approve and issue this quote?"
+                  : "Approve this request?",
+              description:
+                approval.approval_type === "quote_send"
+                  ? "Approving issues a quote version immediately and closes this approval. There is no un-issue action — a change after this needs a new revision."
+                  : "The agent proceeds immediately with the proposed action. There is no undo.",
+              label: approval.approval_type === "quote_send" ? "Approve and issue" : "Approve",
+              action: () => runDecision(() => decideOne(approval, "approved")),
+            })
+          }
+        >
+          <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
+        </Button>
+      </div>
+    );
+  };
+
+  const detailSections = (approval: Approval, surface: "inline" | "panel") => {
+    const sections: RecordSummarySection[] = [
+      {
+        id: "summary",
+        title: "What the agent proposes",
+        content: <p className="text-sm">{approval.context_summary ?? "No summary provided"}</p>,
+      },
+      {
+        id: "payload",
+        title: "Payload",
+        content: (
+          <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+            {approval.context_data
+              ? JSON.stringify(approval.context_data, null, 2)
+              : "No payload data"}
+          </pre>
+        ),
+      },
+      {
+        id: "notes",
+        title: "Reviewer notes",
+        content: isDecidable(approval) ? (
+          <Textarea
+            aria-label="Reviewer notes or decision reason"
+            name={`decision-reason-${surface}`}
+            placeholder="Reviewer notes / reason for decision"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            disabled={isBusy}
+            className="h-20 text-sm"
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {approval.reviewer_notes?.trim() || "No reviewer notes were recorded."}
+          </p>
+        ),
+      },
+    ];
+    return sections;
+  };
+
+  const hasAnyApproval = allApprovals.length > 0;
+  const queueHiddenByFilter = typeFilter !== "all" && totals.pending + totals.escalated > 0;
+
+  return (
+    <>
+      <WorkspaceHeader
+        context="Convert"
+        title="Approval Desk"
+        description={`${totals.pending} waiting on a human decision, ${totals.escalated} with changes requested.`}
+        status={
+          clientNow === null ? undefined : (
+            <StaleDataIndicator
+              updatedAt={new Date(approvalsQuery.dataUpdatedAt).toISOString()}
+              isRefetching={approvalsQuery.isFetching}
+            />
+          )
+        }
+        primaryAction={
+          <Button size="sm" variant="outline" onClick={() => void refresh()} disabled={refreshBusy}>
+            <RefreshCw className={cn("mr-2 h-4 w-4", refreshBusy && "animate-spin")} />
+            {refreshBusy ? "Refreshing…" : "Refresh"}
           </Button>
         }
       />
 
-      <div className="space-y-4 px-6 py-6">
+      <div className="space-y-6 px-4 py-6 md:px-6">
         <MetricStrip
           metrics={[
-            { label: "Pending", value: pendingCount, hint: "awaiting human decision" },
-            { label: "Quote sends", value: pendingQuoteSends, hint: "pending quote approvals" },
-            { label: "Decided", value: decided.length, hint: "approved, rejected, or changed" },
+            {
+              id: "pending",
+              label: "Waiting approval",
+              value: totals.pending,
+              hint: "across every type",
+              tone: totals.pending > 0 ? "warning" : "neutral",
+            },
+            {
+              id: "escalated",
+              label: "Needs attention",
+              value: totals.escalated,
+              hint: "changes requested",
+              tone: totals.escalated > 0 ? "destructive" : "neutral",
+            },
+            {
+              id: "quote-sends",
+              label: "Quote sends",
+              value: totals.quoteSends,
+              hint: "waiting, issued on approval",
+            },
+            {
+              id: "decided",
+              label: "Decided",
+              value: totals.decided,
+              hint: "approved or rejected",
+            },
           ]}
-          columns={3}
+          columns={4}
         />
 
-        <Card className="p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-9 w-[180px]" aria-label="Filter approvals by type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                <SelectItem value="quote_send">Quote send</SelectItem>
-                <SelectItem value="message_send">Message send</SelectItem>
-                <SelectItem value="discount">Discount</SelectItem>
-                <SelectItem value="scope_change">Scope change</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </Card>
-
-        {bulk.size > 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
-            <span className="font-medium">{bulk.size} selected</span>
-            <Button
-              size="sm"
-              onClick={() =>
-                setConfirm({
-                  title: `Approve ${bulk.size} request${bulk.size > 1 ? "s" : ""}?`,
-                  description: "Agents will proceed immediately with the proposed action.",
-                  label: "Approve all",
-                  action: () => runDecision(bulkApprove),
-                })
-              }
-            >
-              <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setRejectOpen(true)}>
-              <XCircle className="mr-2 h-4 w-4" /> Reject
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>
-              <UserPlus className="mr-2 h-4 w-4" /> Assign reviewer
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="ml-auto"
-              onClick={() => setBulk(new Set())}
-            >
-              Clear
-            </Button>
-          </div>
-        )}
-
-        {allApprovals.length === 0 ? (
-          <WorkSurfaceEmpty
+        {!hasAnyApproval ? (
+          <EmptyWorkspaceState
             title="No approvals yet"
-            description="Agent approval requests will appear here when quote sends, discounts, or qualification decisions need review."
+            description="Agent approval requests appear here when quote sends, discounts or qualification decisions need a human."
             action={
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() =>
-                  queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true })
-                }
+                onClick={() => void refresh()}
+                disabled={refreshBusy}
               >
                 <RefreshCw className="mr-2 h-4 w-4" /> Refresh
               </Button>
@@ -408,310 +830,234 @@ function ApprovalsInbox() {
           />
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              <Card className="lg:col-span-2">
-                {pending.length > 0 && (
-                  <div className="flex items-center gap-2 border-b border-border px-4 py-2 text-xs text-muted-foreground">
-                    <Checkbox
-                      checked={allVisibleSelected}
-                      onCheckedChange={(v) => toggleAll(!!v)}
-                    />
-                    <span>Select all visible ({pending.length})</span>
-                  </div>
-                )}
-                <ul className="divide-y divide-border">
-                  {pending.map((a) => {
-                    const sla = clientNow === null ? null : slaChip(a.created_at, clientNow);
-                    return (
-                      <li
-                        key={a.id}
-                        role="button"
-                        tabIndex={0}
-                        className={cn(
-                          "flex cursor-pointer items-start gap-2 p-4 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-                          selected?.id === a.id && "bg-muted/50",
-                        )}
-                        onClick={() => setSelectedId(a.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            if (e.key === " ") e.preventDefault();
-                            setSelectedId(a.id);
-                          }
-                        }}
-                      >
-                        <Checkbox
-                          checked={bulk.has(a.id)}
-                          onCheckedChange={(v) => {
-                            const next = new Set(bulk);
-                            if (v) {
-                              next.add(a.id);
-                            } else {
-                              next.delete(a.id);
-                            }
-                            setBulk(next);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-medium">
-                              {a.approval_type?.replace(/_/g, " ") ?? "Approval"}
-                            </span>
-                            {sla ? (
-                              <span
-                                className={cn(
-                                  "rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-                                  sla.className,
-                                )}
-                              >
-                                {sla.text}
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                            {a.context_summary}
-                          </p>
-                          <p className="mt-1 text-[10px] capitalize text-muted-foreground">
-                            {a.approval_type?.replace(/_/g, " ") ?? "—"}
-                          </p>
-                        </div>
-                      </li>
-                    );
-                  })}
-                  {pending.length === 0 && (
-                    <li className="p-4">
-                      <WorkSurfaceEmpty
-                        title="No pending approvals"
+            <FilterToolbar
+              filters={[
+                {
+                  id: "type",
+                  label: "Approval type",
+                  options: typeOptions,
+                  value: typeFilter,
+                  onChange: setTypeFilter,
+                },
+              ]}
+              onClear={() => setTypeFilter("all")}
+              resultCount={pending.length + escalated.length}
+            />
+
+            {bulk.size > 0 && (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+                <span className="font-medium">{bulk.size} selected</span>
+                <Button
+                  size="sm"
+                  disabled={isBusy}
+                  onClick={() =>
+                    setConfirm({
+                      title: `Approve ${bulk.size} request${bulk.size > 1 ? "s" : ""}?`,
+                      description:
+                        "Each agent proceeds immediately, and every quote send in the selection is issued. There is no undo.",
+                      label: "Approve all",
+                      action: () => runDecision(bulkApprove),
+                    })
+                  }
+                >
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isBusy}
+                  onClick={() => setRejectOpen(true)}
+                >
+                  <XCircle className="mr-2 h-4 w-4" /> Reject
+                </Button>
+                {/*
+                  `human_approvals.assigned_to` exists and is indexed, but no server function
+                  writes it — src/server-functions/approvals.ts exports only `getApprovals` and
+                  `decideApproval`. The control that stood here toasted a success for a write
+                  that never happened, against a hardcoded roster of five fixture users. It
+                  stays visible and disabled with its reason rather than silently disappearing,
+                  because the column and the ownership hook behind it are real.
+                */}
+                <span className="inline-flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" disabled>
+                    <UserPlus className="mr-2 h-4 w-4" /> Assign reviewer
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Not available yet — approvals are decided by whoever opens them.
+                  </span>
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="ml-auto"
+                  onClick={() => setBulk(new Set())}
+                >
+                  Clear selection
+                </Button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+              <div className="space-y-6 lg:col-span-2">
+                <div className="space-y-3">
+                  <SectionHeader
+                    title="Waiting approval"
+                    description="Select a request to read its payload and decide."
+                  />
+                  {pending.length === 0 ? (
+                    queueHiddenByFilter ? (
+                      <FilteredEmptyState
+                        onClear={() => setTypeFilter("all")}
+                        filterSummary={`Type: ${approvalTypeLabel(typeFilter)}`}
+                      />
+                    ) : (
+                      <EmptyWorkspaceState
+                        icon={CheckCircle2}
+                        title="Nothing waiting"
                         description="New quote sends and agent decisions will appear here."
                       />
-                    </li>
+                    )
+                  ) : (
+                    <ResponsiveRecordList
+                      columns={queueColumns}
+                      rows={pending}
+                      rowKey={(approval) => approval.id}
+                      renderCard={renderQueueCard}
+                      breakpoint="lg"
+                      caption="Approvals waiting on a human decision"
+                      selectedRowKey={selected?.id}
+                      selection={{ selected: bulk, onChange: setBulk }}
+                    />
                   )}
-                </ul>
-              </Card>
+                </div>
 
-              <div className="lg:col-span-3">
+                {escalated.length > 0 && (
+                  <div className="space-y-3">
+                    <SectionHeader
+                      title="Needs attention"
+                      description="Changes were requested. They stay here until they are decided or re-raised."
+                    />
+                    <ResponsiveRecordList
+                      columns={queueColumns}
+                      rows={escalated}
+                      rowKey={(approval) => approval.id}
+                      renderCard={renderQueueCard}
+                      breakpoint="lg"
+                      caption="Approvals with changes requested"
+                      selectedRowKey={selected?.id}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Below lg the same record opens in RecordSummaryPanel — see the Sheet below. */}
+              <div className="hidden lg:col-span-3 lg:block">
                 {selected ? (
                   <Card>
-                    <CardContent className="p-5">
+                    <CardContent className="space-y-4 p-5">
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
                           <Bot className="h-4 w-4" />
                         </div>
                         <span className="text-sm font-semibold">
-                          {selected.approval_type?.replace(/_/g, " ") ?? "Approval"}
+                          {approvalTypeLabel(selected.approval_type)}
                         </span>
-                        <span className="rounded-md bg-secondary px-2 py-0.5 text-xs capitalize text-secondary-foreground">
-                          {selected.approval_type?.replace(/_/g, " ") ?? "—"}
-                        </span>
-                        <StatusBadge
-                          value={selected.status}
-                          label={approvalDecisionLabel(selected.status as ApprovalStatus)}
-                        />
+                        <StatusBadge domain="approvals" value={selected.status} />
                         <span className="ml-auto text-xs text-muted-foreground">
                           {formatDateTime(selected.created_at)}
                         </span>
                       </div>
-                      <p className="mt-3 text-sm">{selected.context_summary}</p>
-                      <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
-                        {selected.context_data
-                          ? JSON.stringify(selected.context_data, null, 2)
-                          : "No payload data"}
-                      </pre>
-                      <Textarea
-                        aria-label="Reviewer notes or decision reason"
-                        name="decision-reason"
-                        placeholder="Reviewer notes / reason for decision"
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        className="mt-3 h-20 text-sm"
-                      />
-                      <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-                        {selected.approval_type === "quote_send" &&
-                          selected.status === "pending" &&
-                          (() => {
-                            const quoteId = getQuoteId(selected);
-                            return (
-                              <>
-                                {quoteId && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                      navigate({
-                                        to: "/quotes/$id",
-                                        params: { id: quoteId },
-                                        search: { edit: true, approvalId: selected.id },
-                                      })
-                                    }
-                                  >
-                                    <FileText className="mr-2 h-4 w-4" /> Review & Edit
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    setConfirm({
-                                      title: "Request changes?",
-                                      description:
-                                        "The approval will stay visible as a changes-requested item with your reviewer notes.",
-                                      label: "Request changes",
-                                      action: () =>
-                                        runDecision(() =>
-                                          decide(selected.id, "escalated", "Changes requested"),
-                                        ),
-                                    })
-                                  }
-                                >
-                                  <AlertTriangle className="mr-2 h-4 w-4" /> Request changes
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    runDecision(() => rejectSelectedApproval(selected))
-                                  }
-                                >
-                                  <XCircle className="mr-2 h-4 w-4" /> Reject
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => runDecision(() => approveQuoteSendAsIs(selected))}
-                                >
-                                  <CheckCircle2 className="mr-2 h-4 w-4" /> Approve as-is
-                                </Button>
-                              </>
-                            );
-                          })()}
-
-                        {selected.approval_type !== "quote_send" && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                setConfirm({
-                                  title: "Request changes?",
-                                  description:
-                                    "The approval will stay visible as a changes-requested item with your reviewer notes.",
-                                  label: "Request changes",
-                                  action: () =>
-                                    runDecision(() =>
-                                      decide(selected.id, "escalated", "Changes requested"),
-                                    ),
-                                })
-                              }
-                            >
-                              <AlertTriangle className="mr-2 h-4 w-4" /> Request changes
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                runDecision(() =>
-                                  decide(selected.id, "rejected", "Approval rejected"),
-                                )
-                              }
-                            >
-                              <XCircle className="mr-2 h-4 w-4" /> Reject
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                runDecision(() =>
-                                  decide(selected.id, "approved", "Approved — agent will proceed"),
-                                )
-                              }
-                            >
-                              <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
-                            </Button>
-                          </>
-                        )}
-                      </div>
+                      {decidedNote(selected) && (
+                        <p className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                          {decidedNote(selected)}
+                        </p>
+                      )}
+                      {detailSections(selected, "inline").map((section) => (
+                        <div key={section.id}>
+                          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            {section.title}
+                          </h3>
+                          <div className="mt-2">{section.content}</div>
+                        </div>
+                      ))}
+                      {decisionActions(selected)}
                     </CardContent>
                   </Card>
                 ) : (
-                  <Card>
-                    <CardContent className="p-4">
-                      <WorkSurfaceEmpty
-                        title="Select an approval"
-                        description="Choose a pending request on the left to review its payload and decision actions."
-                      />
-                    </CardContent>
-                  </Card>
+                  <EmptyWorkspaceState
+                    title="Select an approval"
+                    description="Choose a request on the left to review its payload and decision actions."
+                  />
                 )}
               </div>
             </div>
 
-            <div>
-              <h2 className="mb-3 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Recently decided
-              </h2>
+            <section className="space-y-3">
+              <SectionHeader
+                title="Recently decided"
+                description={
+                  decided.length > DECIDED_HISTORY_LIMIT
+                    ? `Last ${DECIDED_HISTORY_LIMIT} of ${decided.length} decided requests.`
+                    : `${decided.length} decided request${decided.length === 1 ? "" : "s"}.`
+                }
+              />
               <Card>
                 {decided.length === 0 ? (
                   <div className="p-4">
-                    <WorkSurfaceEmpty
+                    <EmptyWorkspaceState
                       title="No decided approvals"
-                      description="Approved, rejected, and changes-requested items will appear here."
+                      description="Approved and rejected requests appear here."
                     />
                   </div>
                 ) : (
                   <ul className="divide-y divide-border">
-                    {decided.map((a) => (
-                      <li key={a.id} className="flex items-center gap-3 p-4 text-sm">
-                        <Bot className="h-4 w-4 text-muted-foreground" />
+                    {decided.slice(0, DECIDED_HISTORY_LIMIT).map((approval) => (
+                      <li
+                        key={approval.id}
+                        className="flex flex-wrap items-center gap-3 p-4 text-sm"
+                      >
+                        <Bot className="h-4 w-4 shrink-0 text-muted-foreground" />
                         <span className="font-medium">
-                          {a.approval_type?.replace(/_/g, " ") ?? "Approval"}
+                          {approvalTypeLabel(approval.approval_type)}
                         </span>
-                        <span className="truncate text-muted-foreground">{a.context_summary}</span>
-                        <StatusBadge
-                          value={a.status}
-                          label={approvalDecisionLabel(a.status as ApprovalStatus)}
-                          className="ml-auto"
-                        />
+                        <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                          {approval.context_summary ?? "No summary provided"}
+                        </span>
+                        <StatusBadge domain="approvals" value={approval.status} />
                       </li>
                     ))}
                   </ul>
                 )}
               </Card>
-            </div>
+            </section>
           </>
         )}
       </div>
 
-      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Assign {bulk.size} request{bulk.size > 1 ? "s" : ""}
-            </DialogTitle>
-            <DialogDescription>Route these approvals to a specific reviewer.</DialogDescription>
-          </DialogHeader>
-          <div>
-            <Label htmlFor="bulk-reviewer" className="text-xs">
-              Reviewer
-            </Label>
-            <Select value={assignee} onValueChange={setAssignee}>
-              <SelectTrigger id="bulk-reviewer" className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {APP_USERS.filter((u) => u.role === "admin" || u.role === "manager").map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.name} · <span className="capitalize text-muted-foreground">{u.role}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={bulkAssign}>Assign</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {selected && (
+        <RecordSummaryPanel
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          title={approvalTypeLabel(selected.approval_type)}
+          subtitle={`Raised ${formatDateTime(selected.created_at)}`}
+          sections={[
+            {
+              id: "status",
+              title: "Status",
+              content: (
+                <div className="space-y-2">
+                  <StatusBadge domain="approvals" value={selected.status} />
+                  {decidedNote(selected) && (
+                    <p className="text-xs text-muted-foreground">{decidedNote(selected)}</p>
+                  )}
+                </div>
+              ),
+            },
+            ...detailSections(selected, "panel"),
+          ]}
+          primaryAction={decisionActions(selected)}
+        />
+      )}
 
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
         <DialogContent>
@@ -720,7 +1066,8 @@ function ApprovalsInbox() {
               Reject {bulk.size} request{bulk.size > 1 ? "s" : ""}?
             </DialogTitle>
             <DialogDescription>
-              Agents will be notified and will not proceed. A reason is recommended.
+              Each agent stops and every selected approval closes. Quote sends in the selection are
+              marked rejected on the quote itself. There is no undo.
             </DialogDescription>
           </DialogHeader>
           <Textarea
@@ -728,21 +1075,21 @@ function ApprovalsInbox() {
             name="reject-reason"
             placeholder="Reason for rejection (optional)"
             value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
+            onChange={(event) => setRejectReason(event.target.value)}
             className="h-24 text-sm"
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectOpen(false)}>
+            <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={isBusy}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => runDecision(bulkReject)}>
-              Reject all
+            <Button variant="destructive" onClick={() => runDecision(bulkReject)} disabled={isBusy}>
+              {isBusy ? "Rejecting…" : "Reject all"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirm !== null} onOpenChange={(o) => !o && setConfirm(null)}>
+      <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{confirm?.title}</AlertDialogTitle>

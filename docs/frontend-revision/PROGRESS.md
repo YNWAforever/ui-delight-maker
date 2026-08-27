@@ -36,8 +36,8 @@ Legend: `[ ]` not started · `[x]` done · `[~]` done-with-dependency (see [back
 - [ ] **C1** — Revenue Desk `/`
 - [ ] **C2** — Leads list `/leads`
 - [ ] **C3** — Lead detail `/leads/$id`
-- [ ] **C4** — Quotes list `/quotes`
-- [ ] **C5** — Quote builder `/quotes/new`
+- [x] **C4** — Quotes list `/quotes`
+- [x] **C5** — Quote builder `/quotes/new`
 - [ ] **C6** — Quote detail `/quotes/$id`
 - [ ] **C7** — Quote PDF `/quotes/$id_/pdf`  _(PC-2: real route id)_
 - [ ] **C8** — Approvals `/approvals`
@@ -167,3 +167,5 @@ Two lines per step: what changed, what was learned.
 - **BF-1** — Fixed the Windows path-separator bug in the agent_name gate, overriding A2's do-not-fix rule on purpose. A permanently red `bun run test` would let a real regression hide behind a known failure for the remaining 40 steps. **The full suite is now green: 1118 passed, 0 failed, 53 skipped.**
 
 **Phase B complete.**
+- **C4** — `/quotes` composes WorkspaceHeader, FilterToolbar and ResponsiveRecordList; the status tab strip became a `status` search param that finally reaches `listQuotesPage`; Archive is gone and Duplicate now writes through `createQuote` + `updateQuote(parent_quote_id)`. Learned that the row menu's Archive was the worst control in the slice for a reason no schema check would catch: `setRows(filter)` made a destructive action *look* successful, so the lie was in the render, not the request.
+- **C5** — Save draft writes, both commit buttons share one in-flight flag, `createQuote` is caught and sanitized, and the payload finally carries `account_id`. Learned the bootstrap cannot supply it: the reference reads behind the pickers select four columns each and `account_id` is in neither, so the link has to be fetched from `getLead`/`getClient` at submit — which is frontend-only, because both are already exported and capability-checked with the capabilities this route's loader already demanded.

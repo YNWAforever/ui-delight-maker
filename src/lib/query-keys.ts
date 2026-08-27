@@ -55,6 +55,17 @@ export const crmQueryKeys = {
   products: createRouteQueryKeys("products"),
   projects: createRouteQueryKeys("projects"),
   quotes: createRouteQueryKeys("quotes"),
+  /**
+   * Lead, client, product and pricing-template pickers inside the quote surfaces.
+   *
+   * Its own namespace, not a filtered `quotes.list`. Under the old key every
+   * `invalidateQueries({ queryKey: crmQueryKeys.quotes.lists() })` — one per quote save,
+   * approval request, issue and accept — also invalidated the whole reference catalogue,
+   * so saving a quote refetched the open service-catalogue sheet underneath the user.
+   * Reference data is a catalogue, not a quote, and its cache lifetime is nothing to do
+   * with the quote being edited.
+   */
+  quoteReferences: createRouteQueryKeys("quote-references"),
   relationships: createRouteQueryKeys("relationships"),
   renewals: createRouteQueryKeys("renewals"),
   reports: createRouteQueryKeys("reports"),

@@ -22,6 +22,7 @@ vi.mock("@tanstack/react-router", () => ({
     fullPath: path,
     useLoaderData: vi.fn(),
     useSearch: vi.fn(),
+    useRouteContext: vi.fn(() => ({})),
   }),
   Link: ({ children }: { children?: ReactNode }) => <a href="#">{children}</a>,
   notFound: vi.fn(),
@@ -60,8 +61,20 @@ vi.mock("@/components/pipeline/lead-preview-panel", () => ({
 vi.mock("@/components/pipeline/stage-move-dialog", () => ({ StageMoveDialog: () => null }));
 vi.mock("@/components/pipeline/won-conversion-dialog", () => ({ WonConversionDialog: () => null }));
 vi.mock("@/components/sales", () => ({
+  ActivityTimeline: () => null,
   CommandHeader: () => null,
+  EmptyWorkspaceState: () => null,
+  ErrorState: () => null,
+  FilteredEmptyState: () => null,
+  FilterToolbar: () => null,
+  LoadingSkeleton: () => null,
   MetricStrip: () => null,
+  ResponsiveRecordList: () => null,
+  SectionHeader: () => null,
+  StaleDataIndicator: () => null,
+  StatusBadge: () => null,
+  StickyActionBar: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  WorkspaceHeader: () => null,
   WorkSurfaceEmpty: () => null,
 }));
 vi.mock("@/components/ui/button", () => ({
@@ -101,8 +114,10 @@ vi.mock("@/lib/format", () => ({
   formatCompactHKD: (value: number) => String(value),
   formatCount: (value: number) => String(value),
   formatDate: (value: string) => value,
+  formatTime: (value: string) => value,
   formatCurrencyAmount: (value: number) => String(value),
   formatDateTime: (value: string) => value,
+  relativeTime: (value: string) => value,
 }));
 vi.mock("@/lib/pipeline", () => ({
   filterPipelineLeads: ({ leads }: { leads: unknown[] }) => leads,
@@ -118,6 +133,7 @@ vi.mock("@/server-functions/leads", () => ({
   moveLeadStage: vi.fn(),
   triggerLeadAgent: vi.fn(),
   triggerLeadReplyDraft: vi.fn(),
+  updateLead: vi.fn(),
 }));
 vi.mock("@/server-functions/pipeline", () => ({ getPipelineData: vi.fn() }));
 vi.mock("@/server-functions/products", () => ({
@@ -210,6 +226,12 @@ beforeEach(() => {
     agentRuns: [],
     activityLogs: [],
     products: [],
+    pipelineTotals: {
+      openLeads: 2,
+      activeQuoteValue: 0,
+      openTasks: 0,
+      pendingApprovals: 0,
+    },
   } as never);
   vi.mocked(Route.useSearch).mockReturnValue(search as never);
 });
