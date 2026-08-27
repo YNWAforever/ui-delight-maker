@@ -46,6 +46,7 @@ import { toSafeErrorMessage } from "@/lib/errors";
 import { formatCount, formatDate } from "@/lib/format";
 import { getBusinessDateKey } from "@/lib/business-date";
 import { getTaskBoardMetrics } from "@/lib/sales-workspace";
+import { invalidateLinkedCompanyWorkspaceMutation } from "@/lib/company-workspace/invalidation";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { getDerivedStatusLabel, getStatusLabel, isOverdue } from "@/lib/status-labels";
@@ -221,7 +222,8 @@ function TasksBoard() {
    */
   const move = async (id: string, status: TaskStatus) => {
     if (pendingTaskIdsRef.current.has(id)) return;
-    const previousStatus = rows.find((task) => task.id === id)?.status;
+    const movedTask = rows.find((task) => task.id === id);
+    const previousStatus = movedTask?.status;
     if (!previousStatus || previousStatus === status) return;
 
     markPending(id);
@@ -249,6 +251,7 @@ function TasksBoard() {
           exact: true,
         }),
         queryClient.invalidateQueries({ queryKey: crmQueryKeys.tasks.lists() }),
+        invalidateLinkedCompanyWorkspaceMutation(queryClient, movedTask?.account_id, "change_task"),
       ]);
     } catch {
       toast.error("Task saved, but the board could not refresh.");

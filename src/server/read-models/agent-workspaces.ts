@@ -1,21 +1,25 @@
-import { AGENT_DEFINITIONS, AGENT_RUN_STUCK_MINUTES } from "@/lib/agents";
+import { AGENT_DEFINITIONS } from "@/lib/agents";
 import type { AgentRun, HumanApproval } from "@/lib/types";
 import { query } from "@/server/db/neon.server";
 import { serializeAgentRun, serializeHumanApproval } from "@/lib/serializable";
 
 const DIRECTORY_RUN_LIMIT = 50;
+const ATTENTION_RUN_LIMIT = 25;
 const SPARKLINE_HOURS = 14;
+export const STUCK_RUN_MINUTES = 15;
 
 type AgentAggregateRow = {
   agent_name: string;
   runs_24h: number | string;
   completed_24h: number | string;
   failed_24h: number | string;
-  avg_confidence: number | string | null;
   waiting_approval: number | string;
   running: number | string;
-  stuck: number | string;
-  last_run_at: string | Date | null;
+  stuck_runs: number | string;
+  avg_confidence: number | string | null;
+  confidence_samples_24h: number | string;
+  tokens_24h: number | string;
+  last_run_at: string | null;
 };
 
 type AgentHourlyRow = {
@@ -30,7 +34,10 @@ export type AgentRunSummary = Pick<
   AgentRun,
   | "id"
   | "agent_name"
+  | "workflow_type"
   | "trigger_type"
+  | "subject_type"
+  | "subject_id"
   | "output_summary"
   | "status"
   | "duration_ms"
@@ -38,53 +45,45 @@ export type AgentRunSummary = Pick<
   | "confidence_score"
   | "human_review_required"
   | "created_at"
+  | "updated_at"
 >;
 
-/**
- * The counters one agent contributes to the directory.
- *
- * Two different windows on purpose, and the UI has to label them as such. `runs_24h`,
- * `completed_24h` and `failed_24h` describe the last twenty-four hours, because a success
- * rate over all time tells an operator nothing about today. `waiting_approval`, `running`
- * and `stuck` are *current state* and are therefore unbounded: a run that has been wedged
- * for three days is exactly the one worth showing, and a 24-hour window would hide it.
- *
- * There is no `success_rate` field. A rate needs a denominator decision — runs still in
- * flight are neither successes nor failures — and making that decision in SQL would bury it
- * where no reader of the page can check it. The two counts travel instead, and
- * `agentSuccessRate` in the route derives the rate from them, returning null rather than
- * 0% when nothing has settled yet.
- */
-export type AgentDirectoryCounters = {
-  runs_24h: number;
-  completed_24h: number;
-  failed_24h: number;
-  avg_confidence: number | null;
-  waiting_approval: number;
-  running: number;
-  stuck: number;
+export type AgentAttentionReason = "failed" | "waiting_approval" | "stuck";
+
+export type AgentAttentionRun = AgentRunSummary & {
+  attention_reason: AgentAttentionReason;
+  age_minutes: number;
 };
 
 export type AgentDirectoryRead = {
+  operations: {
+    runs_24h: number;
+    completed_24h: number;
+    failed_24h: number;
+    success_rate: number | null;
+    waiting_approval: number;
+    running: number;
+    stuck_runs: number;
+    needs_attention: number;
+    tokens_24h: number;
+    avg_confidence: number | null;
+  };
   agents: Array<
-    (typeof AGENT_DEFINITIONS)[number] &
-      AgentDirectoryCounters & {
-        sparkline: number[];
-        /** ISO timestamp of this agent's most recent run, or null if it has never run. */
-        last_run_at: string | null;
-      }
+    (typeof AGENT_DEFINITIONS)[number] & {
+      runs_24h: number;
+      completed_24h: number;
+      failed_24h: number;
+      success_rate: number | null;
+      waiting_approval: number;
+      running: number;
+      stuck_runs: number;
+      tokens_24h: number;
+      avg_confidence: number | null;
+      last_run_at: string | null;
+      sparkline: number[];
+    }
   >;
-  /**
-   * Workspace totals, summed over **every** `agent_name` in `agent_runs` — including names
-   * that are not in `AGENT_DEFINITIONS`.
-   *
-   * The per-agent list can only show catalogued agents, so summing the cards would quietly
-   * under-report the moment a workflow writes a name the catalogue has since renamed. That
-   * drift has happened in this codebase before (see the header comment on AGENT_DEFINITIONS),
-   * and a KPI strip that disagrees with the database is the defect this whole revision is
-   * about. Costs no extra query: it is a fold over the same aggregate rows.
-   */
-  totals: Omit<AgentDirectoryCounters, "avg_confidence"> & { avg_confidence: number | null };
+  attentionRuns: AgentAttentionRun[];
   recentRuns: AgentRunSummary[];
 };
 
@@ -95,57 +94,70 @@ export type AgentHistoryPageInput = {
   limit: number;
 };
 
-/**
- * One aggregate pass over `agent_runs`, not four.
- *
- * The 24-hour `where` clause this replaces was not saving a scan: `agent_runs` carries no
- * index on `created_at` (`neon/migrations/001_clientops_runtime.sql:197-199` indexes the
- * subject and the active-run pair, nothing else), so the filtered form was already a
- * sequential scan. Dropping it to `filter (...)` clauses buys current-state counts, a true
- * `max(created_at)`, and stuck detection for the same single pass — where a separate query
- * per fact would have been three more scans, and the route's query budget is three.
- *
- * The status literals are the four `agent_runs_status_check` allows. `ready_for_review`
- * appears in the status-label map for other sources and is deliberately absent here: the
- * check constraint cannot produce it, so counting it would be counting nothing.
- */
-const AGENT_AGGREGATE_SQL = `
-      select
-        agent_name,
-        count(*) filter (where created_at >= now() - interval '24 hours')::int as runs_24h,
-        count(*) filter (
-          where created_at >= now() - interval '24 hours' and status = 'completed'
-        )::int as completed_24h,
-        count(*) filter (
-          where created_at >= now() - interval '24 hours' and status = 'failed'
-        )::int as failed_24h,
-        avg(confidence_score) filter (
-          where created_at >= now() - interval '24 hours' and confidence_score is not null
-        ) as avg_confidence,
-        count(*) filter (where status = 'waiting_approval')::int as waiting_approval,
-        count(*) filter (where status = 'running')::int as running,
-        count(*) filter (
-          where status = 'running' and created_at < now() - (interval '1 minute' * $1::int)
-        )::int as stuck,
-        max(created_at) as last_run_at
-      from agent_runs
-      group by agent_name
-`;
-
-function toCount(value: number | string | null | undefined): number {
+function numeric(value: number | string | null | undefined) {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function toIsoOrNull(value: string | Date | null | undefined): string | null {
-  if (value == null) return null;
-  const parsed = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+function successRate(completed: number, failed: number) {
+  const finished = completed + failed;
+  return finished === 0 ? null : completed / finished;
+}
+
+function weightedConfidence(rows: AgentAggregateRow[]) {
+  let weightedTotal = 0;
+  let samples = 0;
+
+  for (const row of rows) {
+    const rowSamples = numeric(row.confidence_samples_24h);
+    if (row.avg_confidence == null || rowSamples === 0) continue;
+    weightedTotal += numeric(row.avg_confidence) * rowSamples;
+    samples += rowSamples;
+  }
+
+  return samples === 0 ? null : weightedTotal / samples;
 }
 
 export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
-  const [aggregateRows, hourlyRows, recentRuns] = await Promise.all([
-    query<AgentAggregateRow>(AGENT_AGGREGATE_SQL, [AGENT_RUN_STUCK_MINUTES]),
+  const [aggregateRows, hourlyRows, recentRuns, attentionRuns] = await Promise.all([
+    query<AgentAggregateRow>(
+      `
+        select
+          agent_name,
+          count(*) filter (
+            where created_at >= now() - interval '24 hours'
+          )::int as runs_24h,
+          count(*) filter (
+            where status = 'completed'
+              and created_at >= now() - interval '24 hours'
+          )::int as completed_24h,
+          count(*) filter (
+            where status = 'failed'
+              and created_at >= now() - interval '24 hours'
+          )::int as failed_24h,
+          count(*) filter (where status = 'waiting_approval')::int as waiting_approval,
+          count(*) filter (where status = 'running')::int as running,
+          count(*) filter (
+            where status = 'running'
+              and updated_at < now() - ($1::integer * interval '1 minute')
+          )::int as stuck_runs,
+          avg(confidence_score) filter (
+            where created_at >= now() - interval '24 hours'
+              and confidence_score is not null
+          ) as avg_confidence,
+          count(confidence_score) filter (
+            where created_at >= now() - interval '24 hours'
+              and confidence_score is not null
+          )::int as confidence_samples_24h,
+          coalesce(sum(tokens_used) filter (
+            where created_at >= now() - interval '24 hours'
+          ), 0)::bigint as tokens_24h,
+          max(created_at) as last_run_at
+        from agent_runs
+        group by agent_name
+      `,
+      [STUCK_RUN_MINUTES],
+    ),
     query<AgentHourlyRow>(`
       select
         agent_name,
@@ -158,13 +170,48 @@ export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
     query<AgentRunSummary>(
       `
         select
-          id, agent_name, trigger_type, output_summary, status, duration_ms,
-          tokens_used, confidence_score, human_review_required, created_at
+          id, agent_name, workflow_type, trigger_type, subject_type, subject_id,
+          output_summary, status, duration_ms, tokens_used, confidence_score,
+          human_review_required, created_at, updated_at
         from agent_runs
         order by created_at desc
         limit $1
       `,
       [DIRECTORY_RUN_LIMIT],
+    ),
+    query<AgentAttentionRun>(
+      `
+        select
+          id, agent_name, workflow_type, trigger_type, subject_type, subject_id,
+          output_summary, status, duration_ms, tokens_used, confidence_score,
+          human_review_required, created_at, updated_at,
+          case
+            when status = 'failed' then 'failed'
+            when status = 'waiting_approval' then 'waiting_approval'
+            else 'stuck'
+          end as attention_reason,
+          greatest(
+            0,
+            floor(extract(epoch from (now() - updated_at)) / 60)
+          )::int as age_minutes
+        from agent_runs
+        where (status = 'failed' and created_at >= now() - interval '7 days')
+          or status = 'waiting_approval'
+          or (
+            status = 'running'
+            and updated_at < now() - ($1::integer * interval '1 minute')
+          )
+        order by
+          case
+            when status = 'running' then 0
+            when status = 'failed' then 1
+            else 2
+          end,
+          case when status = 'waiting_approval' then updated_at end asc,
+          updated_at desc
+        limit $2
+      `,
+      [STUCK_RUN_MINUTES, ATTENTION_RUN_LIMIT],
     ),
   ]);
 
@@ -178,53 +225,55 @@ export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
     sparklines.set(row.agent_name, sparkline);
   }
 
-  // Confidence is a mean, so the workspace figure has to be re-weighted by run count
-  // rather than averaged across agents: five agents with one run each and one agent with
-  // two hundred are not equal votes on "how confident was the AI today".
-  let confidenceWeight = 0;
-  let confidenceSum = 0;
-  const totals = {
-    runs_24h: 0,
-    completed_24h: 0,
-    failed_24h: 0,
-    waiting_approval: 0,
-    running: 0,
-    stuck: 0,
-  };
-  for (const row of aggregateRows) {
-    const runs24h = toCount(row.runs_24h);
-    totals.runs_24h += runs24h;
-    totals.completed_24h += toCount(row.completed_24h);
-    totals.failed_24h += toCount(row.failed_24h);
-    totals.waiting_approval += toCount(row.waiting_approval);
-    totals.running += toCount(row.running);
-    totals.stuck += toCount(row.stuck);
-    if (row.avg_confidence != null && runs24h > 0) {
-      confidenceSum += Number(row.avg_confidence) * runs24h;
-      confidenceWeight += runs24h;
-    }
-  }
+  const operations = aggregateRows.reduce(
+    (summary, row) => ({
+      runs_24h: summary.runs_24h + numeric(row.runs_24h),
+      completed_24h: summary.completed_24h + numeric(row.completed_24h),
+      failed_24h: summary.failed_24h + numeric(row.failed_24h),
+      waiting_approval: summary.waiting_approval + numeric(row.waiting_approval),
+      running: summary.running + numeric(row.running),
+      stuck_runs: summary.stuck_runs + numeric(row.stuck_runs),
+      tokens_24h: summary.tokens_24h + numeric(row.tokens_24h),
+    }),
+    {
+      runs_24h: 0,
+      completed_24h: 0,
+      failed_24h: 0,
+      waiting_approval: 0,
+      running: 0,
+      stuck_runs: 0,
+      tokens_24h: 0,
+    },
+  );
 
   return {
+    operations: {
+      ...operations,
+      success_rate: successRate(operations.completed_24h, operations.failed_24h),
+      needs_attention: operations.failed_24h + operations.waiting_approval + operations.stuck_runs,
+      avg_confidence: weightedConfidence(aggregateRows),
+    },
     agents: AGENT_DEFINITIONS.map((agent) => {
       const aggregate = aggregates.get(agent.display_name);
+      const completed24h = numeric(aggregate?.completed_24h);
+      const failed24h = numeric(aggregate?.failed_24h);
       return {
         ...agent,
-        runs_24h: toCount(aggregate?.runs_24h),
-        completed_24h: toCount(aggregate?.completed_24h),
-        failed_24h: toCount(aggregate?.failed_24h),
-        avg_confidence: aggregate?.avg_confidence == null ? null : Number(aggregate.avg_confidence),
-        waiting_approval: toCount(aggregate?.waiting_approval),
-        running: toCount(aggregate?.running),
-        stuck: toCount(aggregate?.stuck),
-        last_run_at: toIsoOrNull(aggregate?.last_run_at),
+        runs_24h: numeric(aggregate?.runs_24h),
+        completed_24h: completed24h,
+        failed_24h: failed24h,
+        success_rate: successRate(completed24h, failed24h),
+        waiting_approval: numeric(aggregate?.waiting_approval),
+        running: numeric(aggregate?.running),
+        stuck_runs: numeric(aggregate?.stuck_runs),
+        tokens_24h: numeric(aggregate?.tokens_24h),
+        avg_confidence:
+          aggregate?.avg_confidence == null ? null : numeric(aggregate.avg_confidence),
+        last_run_at: aggregate?.last_run_at ?? null,
         sparkline: sparklines.get(agent.display_name) ?? Array(SPARKLINE_HOURS).fill(0),
       };
     }),
-    totals: {
-      ...totals,
-      avg_confidence: confidenceWeight === 0 ? null : confidenceSum / confidenceWeight,
-    },
+    attentionRuns,
     recentRuns,
   } satisfies AgentDirectoryRead;
 }
@@ -285,8 +334,9 @@ export async function loadAiReviewRead() {
     `),
     query<AgentRunSummary>(`
       select
-        id, agent_name, trigger_type, output_summary, status, duration_ms,
-        tokens_used, confidence_score, human_review_required, created_at
+        id, agent_name, workflow_type, trigger_type, subject_type, subject_id,
+        output_summary, status, duration_ms, tokens_used, confidence_score,
+        human_review_required, created_at, updated_at
       from agent_runs
       where human_review_required = true
       order by created_at desc

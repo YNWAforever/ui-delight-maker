@@ -23,7 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClientNow } from "@/hooks/use-client-now";
-import { agentSuccessRate, buildAgentAttentionItems } from "@/lib/agent-ops";
+import { buildAgentAttentionItems } from "@/lib/agent-ops";
 import { AGENT_RUN_STUCK_MINUTES } from "@/lib/agents";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatCount, formatDateTime, formatPercent } from "@/lib/format";
@@ -135,8 +135,8 @@ function AgentsMonitor() {
   );
 
   const attentionItems = useMemo(
-    () => buildAgentAttentionItems(directory.recentRuns, slugByDisplayName, clientNow),
-    [directory.recentRuns, slugByDisplayName, clientNow],
+    () => buildAgentAttentionItems(directory.attentionRuns, slugByDisplayName, clientNow),
+    [directory.attentionRuns, slugByDisplayName, clientNow],
   );
 
   const filteredRuns = useMemo(
@@ -147,9 +147,12 @@ function AgentsMonitor() {
     [directory.recentRuns, statusFilter],
   );
 
-  const totals = directory.totals;
-  const successRate = agentSuccessRate(totals.completed_24h, totals.failed_24h);
-  const needsAttention = totals.stuck + totals.failed_24h + totals.waiting_approval;
+  const operations = directory.operations;
+  // main's read model precomputes both, over ALL runs rather than the recent-runs window
+  // this route loads — so a stuck run older than that window is counted here and was
+  // invisible to the client-side derivation this replaces.
+  const successRate = operations.success_rate;
+  const needsAttention = operations.needs_attention;
 
   const refresh = async () => {
     setRefreshing(true);
@@ -168,7 +171,7 @@ function AgentsMonitor() {
     {
       id: "runs-24h",
       label: "Runs (24h)",
-      value: formatCount(totals.runs_24h),
+      value: formatCount(operations.runs_24h),
       hint: "every agent",
     },
     {
@@ -188,24 +191,24 @@ function AgentsMonitor() {
     {
       id: "running",
       label: "Running now",
-      value: formatCount(totals.running),
+      value: formatCount(operations.running),
       hint: "in flight",
-      tone: totals.running > 0 ? "info" : "neutral",
+      tone: operations.running > 0 ? "info" : "neutral",
     },
   ];
 
   const supportingMetrics: SalesMetric[] = [
-    { id: "waiting", label: "Waiting approval", value: formatCount(totals.waiting_approval) },
-    { id: "failed", label: "Failed (24h)", value: formatCount(totals.failed_24h) },
+    { id: "waiting", label: "Waiting approval", value: formatCount(operations.waiting_approval) },
+    { id: "failed", label: "Failed (24h)", value: formatCount(operations.failed_24h) },
     {
       id: "stuck",
       label: `Stuck over ${AGENT_RUN_STUCK_MINUTES}m`,
-      value: formatCount(totals.stuck),
+      value: formatCount(operations.stuck_runs),
     },
     {
       id: "confidence",
       label: "Avg confidence (24h)",
-      value: totals.avg_confidence === null ? "—" : formatPercent(totals.avg_confidence),
+      value: operations.avg_confidence === null ? "—" : formatPercent(operations.avg_confidence),
     },
   ];
 
@@ -297,7 +300,7 @@ function AgentsMonitor() {
       <WorkspaceHeader
         context="Operate"
         title="AI Ops"
-        description={`${formatCount(totals.running)} running now, ${formatCount(needsAttention)} needing a human. Decisions are made in AI Review.`}
+        description={`${formatCount(operations.running)} running now, ${formatCount(needsAttention)} needing a human. Decisions are made in AI Review.`}
         status={
           clientNow === null ? undefined : (
             <StaleDataIndicator
@@ -329,8 +332,8 @@ function AgentsMonitor() {
           />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {directory.agents.map((agent) => {
-              const rate = agentSuccessRate(agent.completed_24h, agent.failed_24h);
-              const attention = agent.stuck + agent.failed_24h + agent.waiting_approval;
+              const rate = agent.success_rate;
+              const attention = agent.stuck_runs + agent.failed_24h + agent.waiting_approval;
               const maxCount = Math.max(...agent.sparkline, 1);
 
               return (

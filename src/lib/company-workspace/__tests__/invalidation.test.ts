@@ -1,22 +1,112 @@
-import { describe, expect, it } from "vitest";
-
+import { QueryClient } from "@tanstack/react-query";
+import { describe, expect, it, vi } from "vitest";
 import { crmQueryKeys } from "@/lib/query-keys";
-import { getCompanyWorkspaceMutationQueryKeys } from "../invalidation";
 import { getCompanyWorkspaceSectionEnablement } from "../section-enablement";
+import {
+  companyWorkspaceQueryKey,
+  getCompanyWorkspaceMutationQueryKeys,
+  invalidateCompanyWorkspaceMutation,
+  invalidateLinkedCompanyWorkspaceMutation,
+} from "../invalidation";
 
-/**
- * The two halves of one defect.
- *
- * Account 360's signal mutations invalidated `overview` and `intelligence`. `activity` — the
- * tab a dismissal and a relationship-intelligence run both write into — was never
- * invalidated, so the timeline kept the pre-write state until its 30s stale time lapsed.
- * `intelligence` had the opposite problem: no tab enabled that section, so the key had no
- * consumer and invalidating it did nothing at all.
- *
- * These assertions are paired deliberately: a fix that removed the dead key without adding
- * the missing one, or that added a consumer for `intelligence` without invalidating
- * `activity`, would still leave a user looking at stale state.
- */
+const invalidationFor = (section: string) => ({
+  queryKey: ["company-workspace", "account-1", section],
+  exact: true,
+  refetchType: "active",
+});
+
+describe("company workspace mutation invalidation", () => {
+  it.each(["dismiss_relationship_signal", "run_relationship_intelligence"] as const)(
+    "invalidates overview, intelligence and activity for %s, and nothing else",
+    (mutation) => {
+      // `activity` was added after this assertion was first written. Both mutations write
+      // into the account timeline, which the Activity tab reads under its own key, so
+      // without it that tab kept the pre-write state until its stale time lapsed.
+      //
+      // The "and nothing else" half is the part worth keeping: neither mutation writes a
+      // client, engagement, quote, task or job sheet, so commercial and delivery_finance
+      // would be a refetch of data that cannot have changed.
+      expect(getCompanyWorkspaceMutationQueryKeys("account-1", mutation)).toEqual([
+        ["company-workspace", "account-1", "overview"],
+        ["company-workspace", "account-1", "intelligence"],
+        ["company-workspace", "account-1", "activity"],
+      ]);
+    },
+  );
+
+  it("reaches delivery and finance when a quote is accepted, because a job sheet appears", () => {
+    expect(getCompanyWorkspaceMutationQueryKeys("account-1", "accept_quote")).toEqual([
+      ["company-workspace", "account-1", "overview"],
+      ["company-workspace", "account-1", "commercial"],
+      ["company-workspace", "account-1", "delivery_finance"],
+      ["company-workspace", "account-1", "activity"],
+    ]);
+  });
+
+  it("leaves delivery and finance alone when a quote changes without acceptance", () => {
+    expect(getCompanyWorkspaceMutationQueryKeys("account-1", "change_quote")).toEqual([
+      ["company-workspace", "account-1", "overview"],
+      ["company-workspace", "account-1", "commercial"],
+      ["company-workspace", "account-1", "activity"],
+    ]);
+  });
+
+  it("invalidates delivery and finance for a task change, and not the commercial section", () => {
+    expect(getCompanyWorkspaceMutationQueryKeys("account-1", "change_task")).toEqual([
+      ["company-workspace", "account-1", "delivery_finance"],
+      ["company-workspace", "account-1", "activity"],
+    ]);
+  });
+
+  it("builds stable account-and-section keys", () => {
+    expect(companyWorkspaceQueryKey("account-1", "commercial")).toEqual([
+      "company-workspace",
+      "account-1",
+      "commercial",
+    ]);
+  });
+
+  it("invalidates every affected target exactly, and only for active observers", async () => {
+    const queryClient = new QueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+
+    await invalidateCompanyWorkspaceMutation(queryClient, "account-1", "accept_quote");
+
+    expect(invalidateQueries.mock.calls.map(([args]) => args)).toEqual([
+      invalidationFor("overview"),
+      invalidationFor("commercial"),
+      invalidationFor("delivery_finance"),
+      invalidationFor("activity"),
+    ]);
+  });
+});
+
+describe("linked company workspace invalidation", () => {
+  it.each([null, undefined, ""])(
+    "does not invalidate when the record has no company (%p)",
+    async (accountId) => {
+      const queryClient = new QueryClient();
+      const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+
+      await invalidateLinkedCompanyWorkspaceMutation(queryClient, accountId, "change_task");
+
+      expect(invalidateQueries).not.toHaveBeenCalled();
+    },
+  );
+
+  it("invalidates the linked company's workspace when the record carries an account", async () => {
+    const queryClient = new QueryClient();
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+
+    await invalidateLinkedCompanyWorkspaceMutation(queryClient, "account-1", "change_task");
+
+    expect(invalidateQueries.mock.calls.map(([args]) => args)).toEqual([
+      invalidationFor("delivery_finance"),
+      invalidationFor("activity"),
+    ]);
+  });
+});
+
 describe("Company Workspace mutation invalidation", () => {
   const activityKey = crmQueryKeys.companyWorkspace.section("account-1", "activity");
   const intelligenceKey = crmQueryKeys.companyWorkspace.section("account-1", "intelligence");

@@ -41,7 +41,11 @@ function run(overrides: Partial<AgentRunSummary> & { id: string }): AgentRunSumm
     tokens_used: null,
     confidence_score: null,
     human_review_required: false,
+    workflow_type: "qualify_lead",
+    subject_type: "lead",
+    subject_id: "lead-1",
     created_at: "2026-08-27T10:00:00.000Z",
+    updated_at: "2026-08-27T10:00:00.000Z",
     ...overrides,
   };
 }

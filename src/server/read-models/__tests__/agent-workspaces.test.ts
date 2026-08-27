@@ -1,232 +1,152 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AGENT_DEFINITIONS, AGENT_RUN_STUCK_MINUTES } from "@/lib/agents";
-
-/**
- * The AI Ops read model.
- *
- * `/agents` used to derive nothing: an enable switch stood in for state the database does
- * not hold, and every number on the page came either from a 24-hour count or from the fifty
- * runs the loader happened to bring back. This read model is what lets the page stop
- * guessing — so the things worth pinning are the ones a future edit would break silently:
- *
- * 1. **Three queries, not six.** The route's budget in `route-loader-contract.ts` is three.
- *    Success rate, current-state counts, stuck detection and "last run" were all added
- *    inside the existing aggregate rather than beside it. A fourth query would pass every
- *    behavioural assertion and quietly halve the page's speed.
- * 2. **No payloads.** `input_data` and `output_data` are unbounded jsonb. The directory
- *    reads neither, and a `select *` creeping into the recent-runs query is exactly how a
- *    50-row list becomes a megabyte.
- * 3. **Totals are not the sum of the cards.** `agent_runs.agent_name` is written by the
- *    dispatch path and the catalogue is code; they have drifted before. The cards can only
- *    show catalogued agents, so the KPI strip folds every row instead.
- */
-
 const { queryMock } = vi.hoisted(() => ({ queryMock: vi.fn() }));
 
 vi.mock("@/server/db/neon.server", () => ({ query: queryMock }));
 
-const [FIRST_AGENT, SECOND_AGENT] = AGENT_DEFINITIONS;
+const sqlText = (value: unknown) => String(value).replace(/\s+/g, " ").trim().toLowerCase();
 
-function aggregateRow(overrides: { agent_name: string } & Record<string, unknown>) {
-  return {
-    runs_24h: 0,
-    completed_24h: 0,
-    failed_24h: 0,
-    avg_confidence: null,
-    waiting_approval: 0,
-    running: 0,
-    stuck: 0,
-    last_run_at: null,
-    ...overrides,
-  };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((next) => {
-    resolve = next;
-  });
-  return { promise, resolve };
-}
-
-describe("loadAgentDirectoryRead", () => {
+describe("agent operations read model", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    queryMock.mockResolvedValue([]);
   });
 
-  it("issues three concurrent queries and reads no run payload", async () => {
-    const pending = Array.from({ length: 3 }, () => deferred<unknown[]>());
-    pending.forEach(({ promise }) => queryMock.mockReturnValueOnce(promise));
-    const { loadAgentDirectoryRead } = await import("../agent-workspaces");
-
-    const result = loadAgentDirectoryRead();
-
-    // All three are in flight before any resolves: a sequential rewrite would show 1 here.
-    expect(queryMock).toHaveBeenCalledTimes(3);
-
-    const calls = queryMock.mock.calls as Array<[string, unknown[]?]>;
-    const sql = calls.map(([statement]) => statement.replace(/\s+/g, " ").trim());
-
-    expect(sql.every((statement) => !/select\s+(?:\w+\.)?\*/i.test(statement))).toBe(true);
-    for (const column of ["input_data", "output_data"]) {
-      expect(sql.some((statement) => statement.includes(column))).toBe(false);
-    }
-
-    pending.forEach(({ resolve }) => resolve([]));
-    await result;
-  });
-
-  it("derives every card counter inside the one aggregate pass", async () => {
-    queryMock.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
-    const { loadAgentDirectoryRead } = await import("../agent-workspaces");
-    await loadAgentDirectoryRead();
-
-    const [statement, values] = queryMock.mock.calls[0] as [string, unknown[]];
-    const sql = statement.replace(/\s+/g, " ").trim();
-
-    expect(sql).toContain("group by agent_name");
-    for (const alias of [
-      "as runs_24h",
-      "as completed_24h",
-      "as failed_24h",
-      "as avg_confidence",
-      "as waiting_approval",
-      "as running",
-      "as stuck",
-      "as last_run_at",
-    ]) {
-      expect(sql).toContain(alias);
-    }
-
-    // The stuck threshold is a bound parameter, not interpolated text, and it is the same
-    // constant the route uses to decide which runs to list.
-    expect(values).toEqual([AGENT_RUN_STUCK_MINUTES]);
-    expect(sql).toContain("interval '1 minute' * $1::int");
-
-    // `ready_for_review` is in the status-label map for other sources but cannot exist here:
-    // agent_runs_status_check allows four values and that is not one of them.
-    expect(sql).not.toContain("ready_for_review");
-  });
-
-  it("counts current state without a time window, and rates within one", async () => {
-    queryMock.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
-    const { loadAgentDirectoryRead } = await import("../agent-workspaces");
-    await loadAgentDirectoryRead();
-
-    const sql = (queryMock.mock.calls[0] as [string])[0].replace(/\s+/g, " ").trim();
-
-    // A run wedged for three days is the one worth showing, so the open-state counters must
-    // not carry the 24-hour predicate the rate counters do.
-    expect(sql).toMatch(
-      /count\(\*\) filter \(where status = 'waiting_approval'\)::int as waiting_approval/,
-    );
-    expect(sql).toMatch(/count\(\*\) filter \(where status = 'running'\)::int as running/);
-    expect(sql).toMatch(
-      /count\(\*\) filter \( where created_at >= now\(\) - interval '24 hours' and status = 'completed' \)::int as completed_24h/,
-    );
-  });
-
-  it("totals every agent_name on record, not only the catalogued ones", async () => {
+  it("returns fleet health, per-agent metrics, and a bounded attention queue", async () => {
     queryMock
       .mockResolvedValueOnce([
-        aggregateRow({
-          agent_name: FIRST_AGENT.display_name,
-          runs_24h: 10,
-          completed_24h: 8,
-          failed_24h: 2,
-          waiting_approval: 1,
-          running: 3,
-          stuck: 1,
-          avg_confidence: 0.9,
-          last_run_at: "2026-08-27T10:00:00.000Z",
-        }),
-        // A name the dispatch path wrote and the catalogue no longer has. It can never
-        // appear as a card, and it must still appear in the totals.
-        aggregateRow({
-          agent_name: "Retired Agent",
-          runs_24h: 90,
-          completed_24h: 40,
-          failed_24h: 50,
-          waiting_approval: 4,
-          running: 0,
-          stuck: 0,
-          avg_confidence: 0.5,
-        }),
+        {
+          agent_name: "Lead Qualification Agent",
+          runs_24h: "10",
+          completed_24h: "8",
+          failed_24h: "2",
+          waiting_approval: "0",
+          running: "1",
+          stuck_runs: "1",
+          avg_confidence: "0.8",
+          confidence_samples_24h: "10",
+          tokens_24h: "12000",
+          last_run_at: "2026-08-26T01:00:00.000Z",
+        },
+        {
+          agent_name: "Reply Draft Agent",
+          runs_24h: "4",
+          completed_24h: "3",
+          failed_24h: "1",
+          waiting_approval: "2",
+          running: "0",
+          stuck_runs: "0",
+          avg_confidence: "0.9",
+          confidence_samples_24h: "4",
+          tokens_24h: "3000",
+          last_run_at: "2026-08-26T00:30:00.000Z",
+        },
       ])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+      .mockResolvedValueOnce([
+        { agent_name: "Lead Qualification Agent", hours_ago: "13", run_count: "1" },
+        { agent_name: "Lead Qualification Agent", hours_ago: "0", run_count: "3" },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "run-recent",
+          agent_name: "Lead Qualification Agent",
+          workflow_type: "qualify_lead",
+          trigger_type: "manual",
+          subject_type: "lead",
+          subject_id: "11111111-1111-4111-8111-111111111111",
+          output_summary: "Qualified",
+          status: "completed",
+          duration_ms: 1200,
+          tokens_used: 400,
+          confidence_score: 0.8,
+          human_review_required: false,
+          created_at: "2026-08-26T01:00:00.000Z",
+          updated_at: "2026-08-26T01:00:01.000Z",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "run-stuck",
+          agent_name: "Lead Qualification Agent",
+          workflow_type: "qualify_lead",
+          trigger_type: "schedule",
+          subject_type: "lead",
+          subject_id: "22222222-2222-4222-8222-222222222222",
+          output_summary: null,
+          status: "running",
+          duration_ms: null,
+          tokens_used: null,
+          confidence_score: null,
+          human_review_required: false,
+          created_at: "2026-08-25T23:00:00.000Z",
+          updated_at: "2026-08-25T23:10:00.000Z",
+          attention_reason: "stuck",
+          age_minutes: 110,
+        },
+      ]);
 
-    const { loadAgentDirectoryRead } = await import("../agent-workspaces");
-    const directory = await loadAgentDirectoryRead();
+    const { loadAgentDirectoryRead, STUCK_RUN_MINUTES } = await import("../agent-workspaces");
+    const result = await loadAgentDirectoryRead();
 
-    expect(directory.totals).toEqual({
-      runs_24h: 100,
-      completed_24h: 48,
-      failed_24h: 52,
-      waiting_approval: 5,
-      running: 3,
-      stuck: 1,
-      // Weighted by run count, not averaged across agents: (0.9*10 + 0.5*90) / 100.
-      avg_confidence: 0.54,
+    expect(result.operations).toMatchObject({
+      runs_24h: 14,
+      completed_24h: 11,
+      failed_24h: 3,
+      waiting_approval: 2,
+      running: 1,
+      stuck_runs: 1,
+      needs_attention: 6,
+      tokens_24h: 15000,
     });
+    expect(result.operations.success_rate).toBeCloseTo(11 / 14);
+    expect(result.operations.avg_confidence).toBeCloseTo((0.8 * 10 + 0.9 * 4) / 14);
 
-    // The catalogue is still what the cards enumerate.
-    expect(directory.agents).toHaveLength(AGENT_DEFINITIONS.length);
-    expect(directory.agents.some((agent) => agent.display_name === "Retired Agent")).toBe(false);
+    const leadAgent = result.agents.find((agent) => agent.name === "qualify-lead");
+    expect(leadAgent).toMatchObject({
+      runs_24h: 10,
+      completed_24h: 8,
+      failed_24h: 2,
+      success_rate: 0.8,
+      running: 1,
+      stuck_runs: 1,
+      tokens_24h: 12000,
+    });
+    expect(leadAgent?.sparkline[0]).toBe(1);
+    expect(leadAgent?.sparkline.at(-1)).toBe(3);
+    expect(result.attentionRuns).toEqual([
+      expect.objectContaining({ id: "run-stuck", attention_reason: "stuck", age_minutes: 110 }),
+    ]);
+
+    expect(queryMock).toHaveBeenCalledTimes(4);
+    const aggregateSql = sqlText(queryMock.mock.calls[0]?.[0]);
+    expect(aggregateSql).toContain("failed_24h");
+    expect(aggregateSql).toContain("stuck_runs");
+    expect(queryMock.mock.calls[0]?.[1]).toEqual([STUCK_RUN_MINUTES]);
+
+    const attentionSql = sqlText(queryMock.mock.calls[3]?.[0]);
+    expect(attentionSql).toContain("interval '7 days'");
+    expect(attentionSql).toContain("limit $2");
+    expect(queryMock.mock.calls[3]?.[1]).toEqual([STUCK_RUN_MINUTES, 25]);
   });
 
-  it("gives an agent that has never run zeros and a null last run, never a guess", async () => {
-    queryMock
-      .mockResolvedValueOnce([
-        aggregateRow({
-          agent_name: FIRST_AGENT.display_name,
-          runs_24h: 4,
-          completed_24h: 4,
-          last_run_at: new Date("2026-08-27T09:30:00.000Z"),
-        }),
-      ])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
-
+  it("keeps the full agent catalogue visible when no run data exists", async () => {
     const { loadAgentDirectoryRead } = await import("../agent-workspaces");
-    const directory = await loadAgentDirectoryRead();
+    const result = await loadAgentDirectoryRead();
 
-    const first = directory.agents.find((agent) => agent.name === FIRST_AGENT.name);
-    const second = directory.agents.find((agent) => agent.name === SECOND_AGENT.name);
-
-    // A Date from the driver is normalised to ISO so the value survives serialization to
-    // the client and `formatDateTime` gets what it expects.
-    expect(first?.last_run_at).toBe("2026-08-27T09:30:00.000Z");
-    expect(first?.runs_24h).toBe(4);
-
-    expect(second?.last_run_at).toBeNull();
-    expect(second?.runs_24h).toBe(0);
-    expect(second?.completed_24h).toBe(0);
-    expect(second?.stuck).toBe(0);
-    expect(second?.avg_confidence).toBeNull();
-    expect(directory.totals.avg_confidence).toBeNull();
-  });
-
-  it("places sparkline buckets oldest-first so the bars read left to right", async () => {
-    queryMock
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        { agent_name: FIRST_AGENT.display_name, hours_ago: 0, run_count: 5 },
-        { agent_name: FIRST_AGENT.display_name, hours_ago: 13, run_count: 2 },
-        // Outside the fourteen-hour window the sparkline covers: dropped, not folded into
-        // the nearest bucket, which would overstate a quiet hour.
-        { agent_name: FIRST_AGENT.display_name, hours_ago: 14, run_count: 99 },
-      ])
-      .mockResolvedValueOnce([]);
-
-    const { loadAgentDirectoryRead } = await import("../agent-workspaces");
-    const directory = await loadAgentDirectoryRead();
-
-    const sparkline = directory.agents.find((agent) => agent.name === FIRST_AGENT.name)?.sparkline;
-    expect(sparkline).toHaveLength(14);
-    expect(sparkline?.at(-1)).toBe(5);
-    expect(sparkline?.at(0)).toBe(2);
-    expect(sparkline?.includes(99)).toBe(false);
+    expect(result.agents).toHaveLength(5);
+    expect(result.attentionRuns).toEqual([]);
+    expect(result.recentRuns).toEqual([]);
+    expect(result.operations).toEqual({
+      runs_24h: 0,
+      completed_24h: 0,
+      failed_24h: 0,
+      success_rate: null,
+      waiting_approval: 0,
+      running: 0,
+      stuck_runs: 0,
+      needs_attention: 0,
+      tokens_24h: 0,
+      avg_confidence: null,
+    });
   });
 });

@@ -231,7 +231,11 @@ function run(overrides: Partial<AgentRunSummary> & { id: string }): AgentRunSumm
     tokens_used: null,
     confidence_score: null,
     human_review_required: false,
+    workflow_type: "qualify_lead",
+    subject_type: "lead",
+    subject_id: "lead-1",
     created_at: "2026-08-27T10:00:00.000Z",
+    updated_at: "2026-08-27T10:00:00.000Z",
     ...overrides,
   };
 }
@@ -306,26 +310,30 @@ describe("/agents/$name reports the catalogue's status, not the reader's clicks"
   });
 });
 
-describe("/agents reports totals the read model returned", () => {
+describe("/agents reports the aggregates the read model returned", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
   });
 
-  it("takes its KPI numbers from `totals`, not from the fifty loaded runs", () => {
+  it("takes its KPI numbers from `operations`, not from the fifty loaded runs", () => {
     vi.mocked(AgentsRoute.useLoaderData).mockReturnValue({
       agents: [],
       // Deliberately inconsistent with recentRuns: the strip must read the aggregate,
       // which counts every row in agent_runs, not the page the loader happened to bring.
-      totals: {
+      operations: {
         runs_24h: 412,
         completed_24h: 400,
         failed_24h: 4,
+        success_rate: 0.99,
         waiting_approval: 3,
         running: 2,
-        stuck: 1,
+        stuck_runs: 1,
+        needs_attention: 8,
+        tokens_24h: 0,
         avg_confidence: 0.82,
       },
+      attentionRuns: [],
       recentRuns: [run({ id: "only-one" })],
     } as never);
 
@@ -334,9 +342,9 @@ describe("/agents reports totals the read model returned", () => {
 
     const byId = new Map(captures.metrics.map((metric) => [metric.id, metric.value]));
     expect(byId.get("runs-24h")).toBe("412");
-    // 400 completed of 404 settled.
+    // Server-computed now, over every row rather than the loaded page.
     expect(byId.get("success-rate")).toBe("99%");
-    // stuck + failed + waiting = 1 + 4 + 3.
+    // Server-computed: stuck + failed + waiting = 1 + 4 + 3.
     expect(byId.get("needs-attention")).toBe("8");
     expect(byId.get("running")).toBe("2");
   });
