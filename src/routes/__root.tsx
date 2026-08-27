@@ -176,16 +176,30 @@ function RootComponent() {
           <div className="flex min-w-0 flex-1 flex-col">
             <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
               <SidebarTrigger />
-              <div className="hidden max-w-md flex-1 md:block">
+              {/* Search earns more room as the viewport allows: it is the fastest path to
+                  any record, and a 448px cap wastes a 1440px header. */}
+              <div className="hidden max-w-md flex-1 md:block lg:max-w-xl">
                 <GlobalSearch />
               </div>
-              <div className="ml-auto flex items-center gap-2">
+              {/* The shared icon size is h-9 (36px). This raises the header's own icon
+                  buttons to the 40px touch target the shell asks for, at the call site,
+                  because src/components/ui/ primitives must not be edited to suit one
+                  surface. */}
+              <div className="ml-auto flex items-center gap-2 [&_button[aria-label]]:h-10 [&_button[aria-label]]:w-10">
                 <div className="md:hidden">
                   <GlobalSearch iconOnly />
                 </div>
                 <ThemeToggle />
                 <NotificationBell />
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-xs font-medium text-primary">
+                {/* Presentational: the sidebar footer is what names the signed-in user and
+                    owns sign-out. Without a name this is two unexplained letters to a
+                    screen reader, so it is hidden from the accessibility tree rather than
+                    announced raw. */}
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-xs font-medium text-primary"
+                  title={profile?.name ?? undefined}
+                  aria-hidden="true"
+                >
                   {profile?.name?.slice(0, 2).toUpperCase() ?? "??"}
                 </div>
               </div>
