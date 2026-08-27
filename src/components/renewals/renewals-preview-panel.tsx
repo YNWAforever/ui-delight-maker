@@ -13,6 +13,7 @@ import { triggerRiskScoreAgent } from "@/server-functions/engagements";
 import { getClientContacts } from "@/server-functions/client-contacts";
 import { getEngagementsByClient } from "@/server-functions/engagements";
 import { annualizeValue } from "@/lib/engagement-utils";
+import { describeTriggerFailure } from "@/lib/errors";
 import { formatCompactHKD, formatDate } from "@/lib/format";
 import { crmQueryKeys } from "@/lib/query-keys";
 import type { Engagement } from "@/lib/types";
@@ -89,11 +90,20 @@ export function RenewalsPreviewPanel({
       const result = await triggerRiskScoreAgent({ data: { engagementId: engagement.id } });
       if (result.reason === "already_running") {
         toast.message("A risk score is already running for this engagement.");
-      } else if (result.reason === "missing_webhook") {
-        toast.error("N8N_SCORE_RENEWAL_RISK_WEBHOOK_URL isn't configured.");
-        setScoreStatus("idle");
-        return;
       } else {
+        /*
+          Branching on the two reason strings this panel happened to know meant every other
+          `triggered: false` fell through to the success toast — the panel would claim the
+          Renewal Risk Agent was working while nothing had been dispatched. The old
+          missing-webhook copy also read the env var name out to the user;
+          `describeTriggerFailure` owns that wording for all six trigger call sites.
+        */
+        const failure = describeTriggerFailure(result);
+        if (failure) {
+          toast.error(failure);
+          setScoreStatus("idle");
+          return;
+        }
         toast.success("Renewal risk scoring started.");
       }
       await invalidateRenewalMutation(queryClient, "score", engagement.id, engagement.client_id);

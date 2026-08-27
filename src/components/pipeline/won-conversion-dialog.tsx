@@ -25,6 +25,8 @@ import type { Engagement, Lead, Product, Quote } from "@/lib/types";
 
 const DEFAULT_TERM_MONTHS = 12;
 
+const todayDateString = () => new Date().toISOString().slice(0, 10);
+
 interface WonConversionDialogProps {
   lead: Lead | null;
   products: Product[];
@@ -44,7 +46,7 @@ export function WonConversionDialog({
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [value, setValue] = useState(matchingQuote?.total_value ?? 0);
   const [billingPeriod, setBillingPeriod] = useState<Engagement["billing_period"]>("monthly");
-  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(todayDateString());
   const [renewalDate, setRenewalDate] = useState("");
   const [renewalDateTouched, setRenewalDateTouched] = useState(false);
   /**
@@ -53,6 +55,27 @@ export function WonConversionDialog({
    * cleared only on failure: on success the dialog unmounts through `onDone`.
    */
   const [submitting, setSubmitting] = useState(false);
+
+  /**
+   * Re-seed the form for whichever lead the dialog is opened for.
+   *
+   * The Revenue Desk mounts this dialog once and permanently, flipping `lead` from null
+   * rather than mounting it on demand, so every initialiser above ran at a moment when
+   * there was no lead and no quote. Without this the value box opened at 0 for every
+   * conversion — and 0 is the number that would be written to the engagement — and a
+   * second conversion in the same session inherited the first lead's product and dates.
+   */
+  const [seededLeadId, setSeededLeadId] = useState(lead?.id ?? null);
+  if (lead !== null && lead.id !== seededLeadId) {
+    setSeededLeadId(lead.id);
+    setProductId(products[0]?.id ?? "");
+    setValue(matchingQuote?.total_value ?? 0);
+    setBillingPeriod("monthly");
+    setStartDate(todayDateString());
+    setRenewalDate("");
+    setRenewalDateTouched(false);
+    setSubmitting(false);
+  }
 
   // Auto-fill the renewal date from start_date + the selected product's
   // default_term_months (falling back to 12 months), matching the same

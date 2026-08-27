@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { signOut } from "@/server-functions/auth";
 import { getAppShellRead } from "@/server-functions/app-shell";
 import { isPublicAuthPath } from "@/lib/auth/auth-routes";
+import { toSafeErrorMessage } from "@/lib/errors";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import type { RouterContext } from "@/router";
@@ -50,6 +51,20 @@ function NotFoundComponent() {
   );
 }
 
+/**
+ * The last-resort boundary, and the one that catches the most.
+ *
+ * Most of the thirty-five routes define no `errorComponent` of their own, so anything they
+ * throw lands here — including whatever the Neon driver threw. This used to render
+ * `{error.message}` verbatim, which is why six route files carry a comment naming that leak
+ * as the reason they added a local boundary. The leak was real: a driver failure quotes the
+ * failing SQL, and `password authentication failed for user "clientops_rw"` prints the
+ * database role to whoever is looking at the screen.
+ *
+ * `toSafeErrorMessage` passes through a sentence a person wrote and replaces everything else
+ * with a generic, actionable one. The full value still reaches `console.error` above, where
+ * it belongs.
+ */
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
@@ -57,7 +72,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight">Something went wrong</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{toSafeErrorMessage(error)}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {

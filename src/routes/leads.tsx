@@ -663,12 +663,29 @@ function LeadsBulkBar({
 }) {
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignee, setAssignee] = useState("");
+  /**
+   * The pending confirmation holds the *status* to write, not a closure that writes it,
+   * and its title is derived rather than stored.
+   *
+   * It used to hold `action: () => onMarkStatus("qualified")` plus a title built from the
+   * count, both captured when the dialog opened. The dialog deliberately stays open after a
+   * partial failure so the batch can be retried — but the stored closure had captured the
+   * selection as it was *before* the failure, so the retry rewrote the leads that had
+   * already succeeded instead of the ones that had not, and the stored title went on asking
+   * about a number of leads the button would no longer touch.
+   */
   const [confirm, setConfirm] = useState<null | {
-    title: string;
     description: string;
-    action: () => Promise<boolean>;
+    status: Lead["status"];
     label: string;
   }>(null);
+
+  const confirmTitle = confirm
+    ? `Mark ${formatCount(count)} lead${count > 1 ? "s" : ""} as ${getStatusLabel(
+        "leads",
+        confirm.status,
+      ).label.toLowerCase()}?`
+    : "";
 
   const runAssign = async () => {
     const owner = assignee.trim();
@@ -688,7 +705,7 @@ function LeadsBulkBar({
 
   const runConfirm = async () => {
     if (!confirm) return;
-    const ok = await confirm.action();
+    const ok = await onMarkStatus(confirm.status);
     if (!ok) return;
     setConfirm(null);
   };
@@ -705,10 +722,9 @@ function LeadsBulkBar({
         disabled={busy}
         onClick={() =>
           setConfirm({
-            title: `Mark ${formatCount(count)} lead${count > 1 ? "s" : ""} as qualified?`,
             description: "This updates the status for every selected lead.",
             label: "Mark qualified",
-            action: () => onMarkStatus("qualified"),
+            status: "qualified",
           })
         }
       >
@@ -720,10 +736,9 @@ function LeadsBulkBar({
         disabled={busy}
         onClick={() =>
           setConfirm({
-            title: `Mark ${formatCount(count)} lead${count > 1 ? "s" : ""} as lost?`,
             description: "Lost leads stay in history but won't appear in active pipelines.",
             label: "Mark lost",
-            action: () => onMarkStatus("lost"),
+            status: "lost",
           })
         }
       >
@@ -786,7 +801,7 @@ function LeadsBulkBar({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{confirm?.title}</AlertDialogTitle>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>{confirm?.description}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
