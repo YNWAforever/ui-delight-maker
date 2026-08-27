@@ -81,7 +81,9 @@ describe("MetricStrip", () => {
     expect(screen.getByText("Watch")).toBeTruthy();
     expect(screen.getByText("On track")).toBeTruthy();
     expect(screen.getByText("Needs attention")).toBeTruthy();
-    expect(screen.getByText("Critical")).toBeTruthy();
+    // "Urgent", not "Critical": the copy rules name "Critical" as inflated wording to
+    // replace, and metric tones use the same restraint as everything else.
+    expect(screen.getByText("Urgent")).toBeTruthy();
   });
 
   it("leaves a neutral metric unmarked rather than labelling every card", () => {

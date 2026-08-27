@@ -79,12 +79,22 @@ const COLUMN_CLASS: Record<MetricColumns, string> = {
  * The phrase each tone renders. `neutral` deliberately renders nothing: "nothing to flag"
  * is the default, and a marker on every card would train people to ignore all of them.
  */
+/**
+ * Metric-health words, deliberately distinct from the record-status vocabulary that
+ * status-labels.ts owns. A metric describes the health of a number; a status describes
+ * where a record sits in its lifecycle, and conflating the two produces labels like
+ * "Draft" on a KPI.
+ *
+ * "Urgent" rather than "Critical": the copy rules single out inflated wording, and
+ * "Critical" is the example they replace. Neutral is unlabelled on purpose — if every
+ * metric carried a marker, the ones that mean something would stop standing out.
+ */
 const TONE_LABEL: Record<MetricTone, string | null> = {
   neutral: null,
   info: "Watch",
   success: "On track",
   warning: "Needs attention",
-  destructive: "Critical",
+  destructive: "Urgent",
 };
 
 const TONE_CLASS: Record<MetricTone, string> = {
