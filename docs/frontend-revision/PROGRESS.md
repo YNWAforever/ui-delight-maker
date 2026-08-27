@@ -21,11 +21,11 @@ Legend: `[ ]` not started · `[x]` done · `[~]` done-with-dependency (see [back
 
 ## Phase B — Global shell and foundational components
 
-- [ ] **B1** — Sidebar information architecture
-- [ ] **B2** — Top header
-- [ ] **B3** — `WorkspaceHeader` (command header)
+- [x] **B1** — Sidebar information architecture
+- [x] **B2** — Top header
+- [x] **B3** — `WorkspaceHeader` (command header)
 - [ ] **B4** — `MetricStrip`
-- [ ] **B5** — Global state components
+- [ ] **B5** — Global state components  _(errors.ts landed; state components pending)_
 - [ ] **B6** — `DataTableShell` and `ResponsiveRecordList`
 - [ ] **B7** — Status and identity primitives
 - [ ] **B8** — Workflow composites
@@ -156,3 +156,7 @@ Two lines per step: what changed, what was learned.
 - **A6/A7** — Wrote the design decisions and reconciled the checklist; every one of the 217 findings now has an owning step. Learned three things worth carrying: the light-mode nav rail differs from the page background by 0.005 lightness so 7.2 is simply unmet; Stuck, At risk and Overdue are derived states with no stored column, so the status vocabulary must not invent enum members for them; and B5/B7 have to land before any route step because nearly every route depends on them.
 
 **Phase A complete.** No file under `src/` changed.
+- **B1** — Regrouped navigation around the lifecycle: Campaigns to Acquire, Job Sheets to a new Deliver group, Agents relabelled AI Ops. Learned the rename left "Agent Monitor" on the /agents page title and in an /ai-review link — copy Instruction 21 names explicitly — so those were fixed here rather than left to E1/E2, since a branch that says AI Ops in the rail and Agent Monitor on the page is worse than either alone.
+- **B2** — Widened search on lg+, raised header icon buttons to a 40px target at the call site (the ui/ primitive is h-9 and must not be edited for one surface), and hid the decorative identity avatar from screen readers.
+- **B3** — WorkspaceHeader converges PageHeader (15 routes) and CommandHeader (10). Learned to make secondaryActions an array, not a node: the "at most two" rule is unenforceable against a fragment. Also learned to stop piping gate commands through tail — it masked a lint failure and I committed on a false green.
+- **B5 (part)** — toSafeErrorMessage denies by shape, not by blocklist. Learned the hard way that matching the bare SQL keyword "select" also eats legitimate copy like "Select a stage first", so SQL detection needs two parts of a statement; a sanitizer that silently swallows validation messages is a quieter bug than the leak it prevents.
