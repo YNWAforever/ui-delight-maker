@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { Quote, QuoteVersion } from "@/lib/types";
 import {
   evaluateCapabilityChecks,
   requireCapability,
@@ -104,7 +105,8 @@ async function authorizeQuote(id: string) {
  * its client silently removed is a misleading document. The lead degrades instead —
  * `accounting` holds `quotes.view` without `leads.view`, so requiring the lead made every
  * lead-linked row that role is allowed to see in the list throw when opened. A lead is
- * provenance; its absence changes nothing the quote says.
+ * provenance; nothing the quote says depends on it, so the quote still reads correctly once
+ * every trace of the lead is stripped — see `redactLeadIdentity` for what "every" means.
  */
 async function resolveLinkedQuoteVisibility(read: {
   quote: { client_id?: string | null; lead_id?: string | null };
@@ -128,13 +130,39 @@ async function resolveLinkedQuoteVisibility(read: {
   return { lead: leadDecision.allowed };
 }
 
+/**
+ * The fields to overwrite on a quote read whose lead this actor may not see.
+ *
+ * Dropping the `lead` object is not enough. `QUOTE_COLUMNS` selects `lead_id` onto the quote
+ * row itself, so a read that only nulls `lead` still hands the actor the primary key of the
+ * record they were just denied — and the quote header renders it: both `quotes.$id` and the
+ * PDF route fall back to `quote.lead_id` for their title, so the raw UUID appears on screen.
+ * The id is the identity here; redacting the object while keeping the id redacts nothing.
+ * Null the id too, and the title falls through to a neutral label.
+ */
+function redactLeadIdentity(quote: Quote) {
+  return { lead: null, quote: { ...quote, lead_id: null } };
+}
+
+/**
+ * The same redaction for a stored document version: `buildNormalizedQuoteSnapshot` spreads the
+ * whole quote row into the snapshot, so each version carries its own copy of `lead_id`.
+ * A snapshot is typed `JsonValue`, so anything that is not a plain object is passed through
+ * untouched. This shapes the response only — the stored version is never rewritten.
+ */
+function redactLeadIdentityFromVersion(version: QuoteVersion): QuoteVersion {
+  const { snapshot } = version;
+  if (snapshot === null || typeof snapshot !== "object" || Array.isArray(snapshot)) return version;
+  return { ...version, snapshot: { ...snapshot, lead_id: null } };
+}
+
 export const getQuoteDetailRead = createServerFn({ method: "GET" })
   .validator(parseIdInput)
   .handler(async ({ data }) => {
     await authorizeQuote(data.id);
     const read = await getQuoteWorkspaceDetail(data.id);
     const visibility = await resolveLinkedQuoteVisibility(read);
-    return visibility.lead ? read : { ...read, lead: null };
+    return visibility.lead ? read : { ...read, ...redactLeadIdentity(read.quote) };
   });
 
 export const getQuoteVersionsSection = createServerFn({ method: "GET" })
@@ -150,5 +178,10 @@ export const getQuoteDocumentRead = createServerFn({ method: "GET" })
     await authorizeQuote(data.id);
     const read = await loadQuoteDocumentRead(data.id);
     const visibility = await resolveLinkedQuoteVisibility(read);
-    return visibility.lead ? read : { ...read, lead: null };
+    if (visibility.lead) return read;
+    return {
+      ...read,
+      ...redactLeadIdentity(read.quote),
+      versions: read.versions.map(redactLeadIdentityFromVersion),
+    };
   });

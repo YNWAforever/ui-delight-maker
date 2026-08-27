@@ -79,7 +79,7 @@ import type { AppSession } from "@/lib/auth/neon-auth.server";
 import { CLIENTOPS_MIGRATION_PATHS } from "@/lib/clientops-relationship-schema";
 import type { Profile } from "@/lib/types";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
-import { getQuoteDetailRead } from "@/server-functions/quote-workspace";
+import { getQuoteDetailRead, getQuoteDocumentRead } from "@/server-functions/quote-workspace";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 
@@ -91,6 +91,8 @@ const CLIENT_DENIED_ID = "00000000-0000-4000-9000-000000000302";
 const LEAD_ID = "00000000-0000-4000-9000-000000000401";
 const QUOTE_LEAD_LINKED_ID = "00000000-0000-4000-9000-000000000601";
 const QUOTE_CLIENT_DENIED_ID = "00000000-0000-4000-9000-000000000602";
+const QUOTE_DOC_LEAD_ONLY_ID = "00000000-0000-4000-9000-000000000603";
+const QUOTE_DOC_VERSION_ID = "00000000-0000-4000-9000-000000000701";
 const DENY_OVERRIDE_ID = "00000000-0000-4000-9000-000000000a01";
 
 function makeProfile(overrides: Pick<Profile, "id" | "role">): Profile {
@@ -184,6 +186,41 @@ async function seed(pool: Pool) {
     [QUOTE_LEAD_LINKED_ID, CLIENT_VISIBLE_ID, LEAD_ID, QUOTE_CLIENT_DENIED_ID, CLIENT_DENIED_ID],
   );
 
+  // quoteC: lead-only (no client), issued, with a stored immutable version — the document read.
+  // `buildNormalizedQuoteSnapshot` spreads the whole quote row into the snapshot, so the stored
+  // snapshot carries its own copy of lead_id. Without a version row, the snapshot assertions
+  // below would pass vacuously against an empty `versions` array. The version FK requires the
+  // quote to exist first, so the issued pointer is set afterwards.
+  await pool.query(
+    `insert into quotes (id, number, client_id, lead_id, status) values
+       ($1, 'Q-VIS-DOC-LEAD-ONLY', null, $2, 'sent')
+     on conflict (id) do nothing`,
+    [QUOTE_DOC_LEAD_ONLY_ID, LEAD_ID],
+  );
+
+  await pool.query(
+    `insert into quote_versions (id, quote_id, version_number, reason, snapshot)
+     values ($1, $2, 1, 'issued', $3::jsonb)
+     on conflict (id) do nothing`,
+    [
+      QUOTE_DOC_VERSION_ID,
+      QUOTE_DOC_LEAD_ONLY_ID,
+      JSON.stringify({
+        id: QUOTE_DOC_LEAD_ONLY_ID,
+        number: "Q-VIS-DOC-LEAD-ONLY",
+        status: "sent",
+        client_id: null,
+        lead_id: LEAD_ID,
+        line_items: [],
+      }),
+    ],
+  );
+
+  await pool.query("update quotes set issued_version_id = $2 where id = $1", [
+    QUOTE_DOC_LEAD_ONLY_ID,
+    QUOTE_DOC_VERSION_ID,
+  ]);
+
   await pool.query(
     `insert into permission_overrides
        (id, profile_id, capability, effect, resource_type, resource_id, reason, granted_by)
@@ -195,7 +232,7 @@ async function seed(pool: Pool) {
   );
 }
 
-describe("getQuoteDetailRead: lead degradation is narrow", () => {
+describe("linked quote reads: lead degradation is narrow and complete", () => {
   beforeAll(async () => {
     if (!hasDatabase) return;
     holder.pool = new Pool({ connectionString: process.env.DATABASE_TEST_URL });
@@ -216,7 +253,7 @@ describe("getQuoteDetailRead: lead degradation is narrow", () => {
     async () => {
       holder.session = accountingSession;
       const read = (await getQuoteDetailRead({ data: { id: QUOTE_LEAD_LINKED_ID } })) as {
-        quote: { id: string; number: string | null; client_id: string | null };
+        quote: { id: string; number: string | null; client_id: string | null; lead_id: unknown };
         lead: unknown;
       };
 
@@ -225,6 +262,10 @@ describe("getQuoteDetailRead: lead degradation is narrow", () => {
       expect(read.quote.number).toBe("Q-VIS-LEAD-LINKED");
       expect(read.quote.client_id).toBe(CLIENT_VISIBLE_ID);
       expect(read.lead).toBeNull();
+      // `quote.lead_id` is the lead's primary key: leaving it while nulling `lead` redacts
+      // nothing, and the quote header renders it as the title for a lead-only quote.
+      expect(read.quote.lead_id).toBeNull();
+      expect(JSON.stringify(read)).not.toContain(LEAD_ID);
     },
   );
 
@@ -235,7 +276,7 @@ describe("getQuoteDetailRead: lead degradation is narrow", () => {
       // regardless of the actor's capabilities.
       holder.session = salesSession;
       const read = (await getQuoteDetailRead({ data: { id: QUOTE_LEAD_LINKED_ID } })) as {
-        quote: { id: string };
+        quote: { id: string; lead_id: unknown };
         lead: { id: string; company_name: string } | null;
       };
 
@@ -243,6 +284,59 @@ describe("getQuoteDetailRead: lead degradation is narrow", () => {
       expect(read.lead).not.toBeNull();
       expect(read.lead?.id).toBe(LEAD_ID);
       expect(read.lead?.company_name).toBe("Quote Visibility Lead");
+      // A redaction that nulls `quote.lead_id` unconditionally would pass the degraded case
+      // above while breaking every permitted reader — this is what stops that.
+      expect(read.quote.lead_id).toBe(LEAD_ID);
+    },
+  );
+
+  it.runIf(hasDatabase)(
+    "an actor without leads.view gets a document read with no lead id in the quote or snapshot",
+    async () => {
+      // getQuoteDocumentRead returns stored immutable versions alongside the quote, and each
+      // snapshot has its own copy of lead_id. Nulling `lead` and `quote.lead_id` alone still
+      // hands the denied actor the UUID via versions[].snapshot.
+      holder.session = accountingSession;
+      const read = (await getQuoteDocumentRead({ data: { id: QUOTE_DOC_LEAD_ONLY_ID } })) as {
+        quote: { id: string; number: string | null; lead_id: unknown };
+        lead: unknown;
+        versions: { id: string; snapshot: Record<string, unknown> }[];
+      };
+
+      expect(read.quote.id).toBe(QUOTE_DOC_LEAD_ONLY_ID);
+      expect(read.quote.number).toBe("Q-VIS-DOC-LEAD-ONLY");
+      expect(read.lead).toBeNull();
+      expect(read.quote.lead_id).toBeNull();
+
+      // The version must still be served — this is a redacted document, not a withheld one.
+      expect(read.versions).toHaveLength(1);
+      expect(read.versions[0].id).toBe(QUOTE_DOC_VERSION_ID);
+      expect(read.versions[0].snapshot.number).toBe("Q-VIS-DOC-LEAD-ONLY");
+      for (const version of read.versions) {
+        expect(version.snapshot.lead_id).toBeNull();
+      }
+
+      // Catch-all: no corner of the payload may still carry the denied lead's identifier.
+      expect(JSON.stringify(read)).not.toContain(LEAD_ID);
+    },
+  );
+
+  it.runIf(hasDatabase)(
+    "an actor with leads.view sees the same document read untouched",
+    async () => {
+      // Guards the snapshot redaction from being "fixed" by nulling lead_id for everyone: the
+      // stored version is immutable and a permitted reader must get it exactly as written.
+      holder.session = salesSession;
+      const read = (await getQuoteDocumentRead({ data: { id: QUOTE_DOC_LEAD_ONLY_ID } })) as {
+        quote: { id: string; lead_id: unknown };
+        lead: { id: string } | null;
+        versions: { snapshot: Record<string, unknown> }[];
+      };
+
+      expect(read.lead?.id).toBe(LEAD_ID);
+      expect(read.quote.lead_id).toBe(LEAD_ID);
+      expect(read.versions).toHaveLength(1);
+      expect(read.versions[0].snapshot.lead_id).toBe(LEAD_ID);
     },
   );
 
