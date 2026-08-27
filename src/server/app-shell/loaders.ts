@@ -53,7 +53,7 @@ export async function loadAuthenticatedShell({
     // fixes. Assuming permission would offer actions the server then refuses.
     getCapabilities().catch((error) => {
       console.error("Effective capabilities unavailable", error);
-      return [] as readonly Capability[];
+      return [];
     }),
   ]);
 

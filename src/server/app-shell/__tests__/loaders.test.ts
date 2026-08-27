@@ -96,6 +96,8 @@ describe("authenticated application shell loader", () => {
     // disables controls the actor may in fact hold, which a reload fixes; the opposite -
     // assuming permission - would offer actions the server then refuses. The server
     // enforces either way, so this costs nothing but a disabled button.
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
     const read = await loadAuthenticatedShell({
       getSession: vi.fn().mockResolvedValue(session),
       getPreferences: vi.fn().mockResolvedValue({ favorites: [] }),
@@ -104,5 +106,6 @@ describe("authenticated application shell loader", () => {
     });
 
     expect(read.capabilities).toEqual([]);
+    expect(log).toHaveBeenCalledTimes(1);
   });
 });
