@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   queryMock,
   queryOneMock,
+  evaluateCapabilityChecksMock,
   requireCapabilityChecksMock,
   requireCapabilityMock,
   createServerFnChain,
@@ -19,6 +20,7 @@ const {
   return {
     queryMock: vi.fn(),
     queryOneMock: vi.fn(),
+    evaluateCapabilityChecksMock: vi.fn(),
     requireCapabilityChecksMock: vi.fn(),
     requireCapabilityMock: vi.fn(),
     createServerFnChain,
@@ -27,6 +29,7 @@ const {
 
 vi.mock("@tanstack/react-start", () => ({ createServerFn: () => createServerFnChain }));
 vi.mock("@/server/auth/authorization.server", () => ({
+  evaluateCapabilityChecks: evaluateCapabilityChecksMock,
   requireCapabilityChecks: requireCapabilityChecksMock,
   requireCapability: requireCapabilityMock,
 }));
@@ -62,6 +65,7 @@ describe("quote workspace read models", () => {
       profile: { id: "user-1", role: "sales", status: "active" },
       session: {},
     });
+    evaluateCapabilityChecksMock.mockResolvedValue([{ allowed: true, reason: "role_grant" }]);
 
     queryOneMock.mockImplementation((sql: unknown, values?: unknown[]) => {
       const text = sqlText(sql);
@@ -349,13 +353,18 @@ describe("quote workspace read models", () => {
       () => getQuoteDetailRead({ data: { id: "quote-1" } }),
       () => getQuoteDocumentRead({ data: { id: "quote-1" } }),
     ]) {
+      requireCapabilityMock.mockClear();
+      evaluateCapabilityChecksMock.mockClear();
       await call();
-      expect(requireCapabilityMock).toHaveBeenLastCalledWith("quotes.view", {
+      expect(requireCapabilityMock).toHaveBeenNthCalledWith(1, "quotes.view", {
         resourceType: "quote",
         resourceId: "quote-1",
       });
-      expect(requireCapabilityChecksMock).toHaveBeenLastCalledWith([
-        { capability: "accounts.view", target: { resourceType: "client", resourceId: "client-1" } },
+      expect(requireCapabilityMock).toHaveBeenNthCalledWith(2, "accounts.view", {
+        resourceType: "client",
+        resourceId: "client-1",
+      });
+      expect(evaluateCapabilityChecksMock).toHaveBeenLastCalledWith([
         { capability: "leads.view", target: { resourceType: "lead", resourceId: "lead-1" } },
       ]);
     }

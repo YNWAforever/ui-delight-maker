@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
+  evaluateCapabilityChecks,
   requireCapability,
   requireCapabilityChecks,
-  type CapabilityCheck,
 } from "@/server/auth/authorization.server";
 import {
   loadQuoteCreateBootstrap,
@@ -97,23 +97,35 @@ async function authorizeQuote(id: string) {
   await requireCapability("quotes.view", { resourceType: "quote", resourceId: id });
 }
 
-async function authorizeLinkedQuoteParties(read: {
+/**
+ * Which of a quote's linked parties this actor may see.
+ *
+ * The client check still throws: a client is the quote's counterparty, and a quote with
+ * its client silently removed is a misleading document. The lead degrades instead —
+ * `accounting` holds `quotes.view` without `leads.view`, so requiring the lead made every
+ * lead-linked row that role is allowed to see in the list throw when opened. A lead is
+ * provenance; its absence changes nothing the quote says.
+ */
+async function resolveLinkedQuoteVisibility(read: {
   quote: { client_id?: string | null; lead_id?: string | null };
-}) {
-  const checks: CapabilityCheck[] = [];
+}): Promise<{ lead: boolean }> {
   if (read.quote.client_id) {
-    checks.push({
-      capability: "accounts.view",
-      target: { resourceType: "client", resourceId: read.quote.client_id },
+    await requireCapability("accounts.view", {
+      resourceType: "client",
+      resourceId: read.quote.client_id,
     });
   }
-  if (read.quote.lead_id) {
-    checks.push({
+
+  if (!read.quote.lead_id) return { lead: false };
+
+  const [leadDecision] = await evaluateCapabilityChecks([
+    {
       capability: "leads.view",
       target: { resourceType: "lead", resourceId: read.quote.lead_id },
-    });
-  }
-  if (checks.length) await requireCapabilityChecks(checks);
+    },
+  ]);
+
+  return { lead: leadDecision.allowed };
 }
 
 export const getQuoteDetailRead = createServerFn({ method: "GET" })
@@ -121,8 +133,8 @@ export const getQuoteDetailRead = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await authorizeQuote(data.id);
     const read = await getQuoteWorkspaceDetail(data.id);
-    await authorizeLinkedQuoteParties(read);
-    return read;
+    const visibility = await resolveLinkedQuoteVisibility(read);
+    return visibility.lead ? read : { ...read, lead: null };
   });
 
 export const getQuoteVersionsSection = createServerFn({ method: "GET" })
@@ -137,6 +149,6 @@ export const getQuoteDocumentRead = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await authorizeQuote(data.id);
     const read = await loadQuoteDocumentRead(data.id);
-    await authorizeLinkedQuoteParties(read);
-    return read;
+    const visibility = await resolveLinkedQuoteVisibility(read);
+    return visibility.lead ? read : { ...read, lead: null };
   });
