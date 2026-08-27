@@ -158,24 +158,25 @@ export async function requireCapabilityChecks(
 }
 
 /**
- * The same evaluation `requireCapabilityChecks` performs, reported instead of thrown.
+ * The same evaluation `requireCapabilityChecks` performs, returned instead of thrown.
  *
  * Some reads are allowed to degrade: a quote the actor may see can carry a lead they may
  * not, and the honest answer is a quote without a lead block, not a failed request. This
  * runs one context load and the same target resolution, so it cannot disagree with the
- * throwing path about what is permitted.
+ * throwing path about what is permitted. Callers that need to explain a degradation get
+ * the full decision, including the `reason` `decisionError` uses to distinguish
+ * `outside_scope` from `role_denied`.
  */
 export async function evaluateCapabilityChecks(
   checks: readonly CapabilityCheck[],
-): Promise<boolean[]> {
-  if (checks.length === 0) return [];
+): Promise<readonly AuthorizationDecision[]> {
   const context = await loadAuthorizationContext();
   const resolvedTargets = await Promise.all(
     checks.map(({ target = {} }) => resolveAuthorizationTarget(target)),
   );
 
-  return checks.map(
-    ({ capability }, index) => evaluate(context, capability, resolvedTargets[index]).allowed,
+  return checks.map(({ capability }, index) =>
+    evaluate(context, capability, resolvedTargets[index]),
   );
 }
 
