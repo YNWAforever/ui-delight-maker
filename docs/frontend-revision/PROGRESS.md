@@ -16,8 +16,8 @@ Legend: `[ ]` not started · `[x]` done · `[~]` done-with-dependency (see [back
 - [x] **A3** — Route/function parity map
 - [x] **A4** — Control integrity inventory
 - [x] **A5** — Shared pattern inventory
-- [ ] **A6** — Navigation and visual system decisions
-- [ ] **A7** — Implementation checklist confirmation
+- [x] **A6** — Navigation and visual system decisions
+- [x] **A7** — Implementation checklist confirmation
 
 ## Phase B — Global shell and foundational components
 
@@ -100,6 +100,48 @@ Evidence for each is in [repo-map.md](./repo-map.md) under the matching VF numbe
 
 ---
 
+## Finding ownership (A7)
+
+Every one of the 217 findings in [integrity-findings.md](./integrity-findings.md) has an owning step. Findings are numbered by audit slice; slices map to route steps as follows.
+
+| Prefix | Count | Routes | Owning steps |
+|---|---|---|---|
+| `IF-C1-*` | 25 | `/`, `/leads`, `/leads/$id` | C1, C2, C3 |
+| `IF-C2-*` | 36 | `/quotes`, `/quotes/new`, `/quotes/$id`, `/quotes/$id_/pdf` | C4, C5, C6, C7 |
+| `IF-C3-*` | 25 | `/approvals`, `/job-sheets`, `/job-sheets/$id` | C8, C9, C10 |
+| `IF-D1-*` | 22 | `/accounts`, `/accounts/$id`, `/clients`, `/clients/import`, `/clients/$id` | D1, D2, D3, D3b, D4 |
+| `IF-D2-*` | 26 | `/relationships`, `/renewals`, `/tasks`, `/campaigns`, `/campaigns/$id` | D5, D6, D7, D8, D9 |
+| `IF-E1-*` | 32 | `/ai-review`, `/agents`, `/agents/$name`, `/reports`, `/settings` | E1, E2, E3, E4, E5 |
+| `IF-E2-*` | 51 | 8 × `/admin/*`, `/account`, `/notifications` | E6, E7, E8 |
+
+### Findings owned by Phase B rather than a route
+
+Some defects are systemic and are fixed once in the shared layer, then adopted per route:
+
+| Defect | Owning step |
+|---|---|
+| Raw `error.message` reaching users at 22 sites | **B5** (`toSafeErrorMessage`), adopted per route in C–E |
+| Missing in-progress state / failure feedback / double-submission across imperative writes | **B5** mutation-feedback helper (PC-3), adopted per route |
+| `missing_webhook` sentinel treated as success at 3 sites | **B5** helper treats falsy `triggered` as a failure; call sites fixed in C1, C3, D2 |
+| Status label strings scattered across route files; `replace(/_/g," ")` duplicated ~29× | **B7** (`status-labels.ts`, PC-10) |
+| Two rival page headers, 10 routes with neither | **B3** |
+| Invalidation split across two partial helpers | **B5/B7** consolidation (PC-8), applied per route |
+| Route-discovery build warning | **B9** |
+| Light-mode navigation rail indistinguishable from the app background; no attention tint | **B1** + token change in `src/styles.css` |
+
+### Server-side work that passed the §2.8 gate during the audit
+
+None yet. Every finding so far is either frontend-fixable or a documented dependency. The 12 backend-owned findings become `backend-dependencies.md` entries as their owning route step is reached, so that each entry can state the truthful UI state actually shipped alongside it.
+
+### Ordering
+
+As written in the plan: A → B → C → D → E → F. Within Phase C–E, route steps run in plan order. Two exceptions, both forced by dependency:
+
+1. **B5 and B7 before any route step**, because nearly every route adopts `toSafeErrorMessage`, the mutation helper and the status map.
+2. **`/renewals` (D6) and `/campaigns` (D8) carry a correctness fix, not just a revision** — both are unable to repaint after a successful write today (PC-4). Their fix is not cosmetic and must not be deferred if Phase D is trimmed.
+
+---
+
 ## Session log
 
 Two lines per step: what changed, what was learned.
@@ -111,3 +153,6 @@ Two lines per step: what changed, what was learned.
 - **A2 correction** — BF-1 is a Windows-only test bug, not a product defect: the fixture exemption compares a `resolve()` path against a forward-slash literal, so it never fires here. CI is ubuntu-latest and green. Learned not to trust a red local gate as evidence of a real defect.
 - **A1** — Wrote `repo-map.md` from ten parallel readers plus a verification pass, then re-checked the load-bearing claims by hand. Learned the plan is wrong in ten places (PC-1..PC-10); the two that matter most are that `useMutation` does not exist anywhere in this codebase, and that nine routes load outside the query cache so `invalidateQueries` cannot refresh them.
 - **A3/A4/A5** — Seven auditors classified every control on all 35 routes, then an eighth attacked the results. 217 findings: 91 REAL, 57 READ-ONLY, 27 UNAVAILABLE, 21 REMOVED, and 169 of them fixable in the frontend. Learned that the adversarial pass earns its keep: it overturned my own VF-3 framing, found four controls written off as needing backend work that already have live server functions, and caught /quotes Archive locally deleting a row and toasting success.
+- **A6/A7** — Wrote the design decisions and reconciled the checklist; every one of the 217 findings now has an owning step. Learned three things worth carrying: the light-mode nav rail differs from the page background by 0.005 lightness so 7.2 is simply unmet; Stuck, At risk and Overdue are derived states with no stored column, so the status vocabulary must not invent enum members for them; and B5/B7 have to land before any route step because nearly every route depends on them.
+
+**Phase A complete.** No file under `src/` changed.
