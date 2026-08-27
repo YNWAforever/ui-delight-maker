@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Check, Info, Plus, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Plus, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { ROLE_GRANTS } from "@/lib/admin/policy";
+import { hasCapability } from "@/lib/admin/capabilities";
 import { cn } from "@/lib/utils";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatDate, formatHKD } from "@/lib/format";
@@ -129,6 +129,9 @@ const STEPS = [
   { id: 5, label: "Review" },
 ] as const;
 
+const QUOTE_CREATE_DENIED_ID = "quote-create-denied";
+const QUOTE_CREATE_DENIED_REASON = "Creating quotes is not part of your access.";
+
 function QuoteBuilder() {
   const {
     leadId: initialLeadId,
@@ -136,7 +139,7 @@ function QuoteBuilder() {
     productId: initialProductId,
   } = Route.useSearch();
   const { bootstrap, defaultValidUntil } = Route.useLoaderData();
-  const { profile } = Route.useRouteContext();
+  const { capabilities } = Route.useRouteContext();
   const templates = bootstrap.pricingTemplates;
   const quoteTemplates = bootstrap.quoteTemplates;
   const pdfTemplates = bootstrap.pdfTemplates;
@@ -166,18 +169,9 @@ function QuoteBuilder() {
     document_sections: initialQuoteTemplate?.default_scope_sections ?? [],
   });
 
-  /**
-   * Whether this actor's *role* normally includes creating quotes.
-   *
-   * Deliberately an advisory rather than a gate. `quotes.create` is granted to manager,
-   * sales, admin and super_admin, so client_success, accounting and read_only used to fill
-   * in the entire five-step wizard and only discover the refusal at Submit. But a role
-   * grant is not the whole answer: `permission_overrides` can allow an individual a
-   * capability their role denies, and that table is not readable from the client — so
-   * disabling the button here would lock out someone who has been given an exception. The
-   * honest control is one that states the rule and still lets the server decide.
-   */
-  const roleGrantsQuoteCreate = profile ? ROLE_GRANTS[profile.role].has("quotes.create") : true;
+  // The actor's effective capabilities, target-independent and override-aware (unlike a
+  // role-baseline guess). Gates the commit controls below; the server still decides.
+  const canCreate = hasCapability(capabilities ?? [], "quotes.create");
 
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unit_price, 0), [items]);
 
@@ -441,22 +435,6 @@ function QuoteBuilder() {
 
       <div className="grid grid-cols-1 gap-6 px-4 py-6 md:px-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          {!roleGrantsQuoteCreate && (
-            <div
-              role="note"
-              className="flex items-start gap-3 rounded-md border border-warning/30 bg-warning/10 p-4 text-sm"
-            >
-              <Info
-                aria-hidden="true"
-                className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground"
-              />
-              <p className="text-warning-foreground">
-                Creating quotes is not part of your role. You can build one here, but saving it will
-                be refused unless you have been granted an exception.
-              </p>
-            </div>
-          )}
-
           <Card className="p-4">
             <div className="max-w-full overflow-x-auto">
               <ol className="flex min-w-max items-center gap-2">
@@ -869,17 +847,24 @@ function QuoteBuilder() {
               </Button>
             ) : (
               <>
+                {!canCreate && (
+                  <span id={QUOTE_CREATE_DENIED_ID} className="text-xs text-muted-foreground">
+                    {QUOTE_CREATE_DENIED_REASON}
+                  </span>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={pending !== null}
+                  disabled={pending !== null || !canCreate}
+                  aria-describedby={!canCreate ? QUOTE_CREATE_DENIED_ID : undefined}
                   onClick={() => void persistQuote("draft")}
                 >
                   {pending === "draft" ? "Saving…" : "Save draft"}
                 </Button>
                 <Button
                   size="sm"
-                  disabled={pending !== null}
+                  disabled={pending !== null || !canCreate}
+                  aria-describedby={!canCreate ? QUOTE_CREATE_DENIED_ID : undefined}
                   onClick={() => void persistQuote("submit")}
                 >
                   <Send aria-hidden="true" className="mr-2 h-4 w-4" />
