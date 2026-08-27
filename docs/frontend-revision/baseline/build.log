@@ -1,0 +1,23 @@
+### bun run build
+$ bun run clientops:migrate-schema && bun run clientops:verify-schema && vite build && bun scripts/clientops/seed-on-deploy.ts
+$ bun scripts/clientops/apply-client-relationship-schema.ts
+{
+  "ok": true,
+  "skipped": true,
+  "reason": "DATABASE_URL is not set"
+}
+$ bun scripts/clientops/verify-clientops-schema.ts
+1 | import { Pool } from "@neondatabase/serverless";
+2 | import { verifyClientOpsDatabase } from "../../src/server/db/clientops-schema-contract";
+3 | 
+4 | const databaseUrl = process.env.DATABASE_URL;
+5 | if (!databaseUrl) {
+6 |   throw new Error("DATABASE_URL is required for schema verification");
+                ^
+error: DATABASE_URL is required for schema verification
+      at C:\Users\laich\Documents\FIMMICK ClientOps\ui-delight-maker\scripts\clientops\verify-clientops-schema.ts:6:13
+
+Bun v1.3.14 (Windows x64)
+error: script "clientops:verify-schema" exited with code 1
+error: script "build" exited with code 1
+BUILD_EXIT=1
