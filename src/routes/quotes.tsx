@@ -23,14 +23,13 @@ import { Card } from "@/components/ui/card";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatCount, formatCurrencyAmount, formatDate } from "@/lib/format";
-import { toAmount } from "@/lib/money";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { useIsExactPath } from "@/lib/routing-utils";
 import { getStatusLabel } from "@/lib/status-labels";
 import { createQuote, getQuotesPage, updateQuote } from "@/server-functions/quotes";
 import type { Quote, QuoteStatus } from "@/lib/types";
-import type { QuoteListRow } from "@/server/repositories/quotes";
+import type { QuoteListAggregate, QuoteListRow } from "@/server/repositories/quotes";
 import type { QuoteListVisibility } from "@/server/repositories/quote-list-query";
 
 /**
@@ -166,15 +165,15 @@ function QuotesPage() {
 /**
  * Money summed per currency, never flattened into one symbol.
  *
- * The old strip ran `formatHKD` over a sum taken across rows whose `currency` the table
- * itself rendered per row, so a page holding one USD quote reported a total in HKD that no
- * quote agreed with. Grouping is the only honest option without a server-side aggregate.
+ * The old strip ran `formatHKD` over a sum across rows whose `currency` the table itself
+ * displayed per row, so a USD quote was added to an HKD total and stamped HKD. These sums
+ * now come from the server and cover the whole filtered set, not the loaded page.
  */
-function totalsByCurrency(rows: Quote[]): string {
+function totalsByCurrency(aggregates: QuoteListAggregate[], statuses: QuoteStatus[]): string {
   const totals = new Map<string, number>();
-  for (const quote of rows) {
-    const currency = quote.currency || "HKD";
-    totals.set(currency, (totals.get(currency) ?? 0) + toAmount(quote.total_value));
+  for (const entry of aggregates) {
+    if (!statuses.includes(entry.status)) continue;
+    totals.set(entry.currency, (totals.get(entry.currency) ?? 0) + entry.total);
   }
   if (totals.size === 0) return "—";
 
@@ -262,9 +261,7 @@ function QuotesIndex() {
   }, [searchDraft, activeQuery, navigate]);
 
   const metrics = useMemo(() => {
-    const byStatus = (statuses: QuoteStatus[]) =>
-      rows.filter((quote) => statuses.includes(quote.status));
-
+    const { aggregates } = quotePage;
     return [
       {
         id: "quotes-in-view",
@@ -275,23 +272,23 @@ function QuotesIndex() {
       {
         id: "active-value",
         label: "Active value",
-        value: totalsByCurrency(byStatus(["pending_approval", "sent", "viewed"])),
-        hint: "pending, sent, viewed · this page",
+        value: totalsByCurrency(aggregates, ["pending_approval", "sent", "viewed"]),
+        hint: "pending, sent, viewed",
       },
       {
         id: "accepted-value",
         label: "Accepted value",
-        value: totalsByCurrency(byStatus(["accepted"])),
-        hint: "accepted · this page",
+        value: totalsByCurrency(aggregates, ["accepted"]),
+        hint: "accepted",
       },
       {
         id: "draft-value",
         label: "Draft value",
-        value: totalsByCurrency(byStatus(["draft"])),
-        hint: "not yet submitted · this page",
+        value: totalsByCurrency(aggregates, ["draft"]),
+        hint: "not yet submitted",
       },
     ];
-  }, [rows, quotePage.total, status]);
+  }, [quotePage, status]);
 
   const setSearchParams = (next: Partial<QuoteListSearch>) => {
     void navigate({ search: (current) => ({ ...current, ...next }), replace: true });
