@@ -113,11 +113,12 @@ describe("describeTriggerFailure", () => {
     expect(describeTriggerFailure({ triggered: true, reason: "queued" })).toBeNull();
   });
 
-  it("explains a paused agent without implying a failure", () => {
-    // A paused agent is a deliberate state, not a fault. The copy must not send someone
-    // looking for a broken integration.
-    expect(describeTriggerFailure({ triggered: false, reason: "agent_paused" })).toBe(
-      "This agent is paused, so nothing was started.",
+  it("explains an inactive agent without implying a failure", () => {
+    // An inactive agent is a deliberate state, not a fault. The copy must not send someone
+    // looking for a broken integration, and it says "inactive" because that is the word the
+    // catalogue uses and the badge on /agents/$name renders.
+    expect(describeTriggerFailure({ triggered: false, reason: "agent_inactive" })).toBe(
+      "This agent is inactive, so nothing was started.",
     );
   });
 

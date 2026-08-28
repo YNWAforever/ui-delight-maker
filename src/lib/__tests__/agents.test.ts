@@ -13,17 +13,17 @@ describe("resolveDispatchableAgent", () => {
     expect(result.agent.name).toBe(active.name);
   });
 
-  it("refuses a paused agent with the agent_paused reason", () => {
-    // Paused is currently hypothetical — every catalogue entry is active — so the guard is
+  it("refuses an inactive agent with the agent_inactive reason", () => {
+    // Inactive is currently hypothetical — every catalogue entry is active — so the guard is
     // exercised against an injected definition rather than a live entry. That is the point:
-    // pausing must already work on the day someone first pauses something.
+    // deactivating must already work on the day someone first deactivates something.
     //
-    // `AgentDefinition.status` is `"active" | "inactive"`, so the injected non-active state is
-    // spelled "inactive"; `agent_paused` is the refusal sentinel's name, not a status value.
+    // `AgentDefinition.status` is `"active" | "inactive"` and the badge renders "Inactive", so
+    // the sentinel is named for the state it reports rather than inventing a second word.
     const result = resolveDispatchableAgent("qualify_lead", [
       { ...AGENT_DEFINITIONS[0], workflow_type: "qualify_lead", status: "inactive" },
     ]);
-    expect(result).toEqual({ dispatchable: false, reason: "agent_paused" });
+    expect(result).toEqual({ dispatchable: false, reason: "agent_inactive" });
   });
 
   it("throws for an unknown workflow type", () => {

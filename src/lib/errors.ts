@@ -159,8 +159,8 @@ export function describeTriggerFailure(result: TriggerResult): string | null {
   if (result?.reason === "missing_webhook") {
     return "This agent is not connected yet, so nothing was started.";
   }
-  if (result?.reason === "agent_paused") {
-    return "This agent is paused, so nothing was started.";
+  if (result?.reason === "agent_inactive") {
+    return "This agent is inactive, so nothing was started.";
   }
   return "The agent could not be started. Nothing has changed.";
 }
