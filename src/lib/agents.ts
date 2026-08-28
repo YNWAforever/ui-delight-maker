@@ -144,6 +144,31 @@ export function agentNameFor(workflowType: AgentWorkflowType): string {
   return agent.display_name;
 }
 
+export type DispatchableAgent =
+  | { dispatchable: true; agent: AgentDefinition }
+  | { dispatchable: false; reason: "agent_paused" };
+
+/**
+ * Whether this workflow's agent may be dispatched, and its definition if so.
+ *
+ * `agentNameFor` returns a string and so cannot carry a refusal, which is why this is a
+ * sibling rather than a change to it. Until this existed, `status` was inert: pausing an
+ * agent changed the badge on `/agents/$name` and stopped nothing, while that page
+ * described the catalogue as "the values the dispatch path reads".
+ *
+ * The second parameter exists for tests. Every catalogue entry is `active` today, so
+ * without it the refusal path could not be exercised until the day it first mattered.
+ */
+export function resolveDispatchableAgent(
+  workflowType: AgentWorkflowType,
+  catalogue: AgentDefinition[] = AGENT_DEFINITIONS,
+): DispatchableAgent {
+  const agent = catalogue.find((a) => a.workflow_type === workflowType);
+  if (!agent) throw new Error(`No agent definition for workflow type "${workflowType}"`);
+  if (agent.status !== "active") return { dispatchable: false, reason: "agent_paused" };
+  return { dispatchable: true, agent };
+}
+
 /**
  * How long a run may sit in `running` before it reads as stuck.
  *
