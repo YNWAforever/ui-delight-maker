@@ -301,7 +301,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     // The import wizard's loader reads the active product catalogue, because
-    // validateImportRows rejects any product_name that is not one of them and the wizard
+    // validateClientImportRows rejects any product_name that is not one of them and the wizard
     // previously gave the user no way to know the accepted names before uploading.
     route: "clients.import",
     run: () => listProducts({ activeOnly: true }),

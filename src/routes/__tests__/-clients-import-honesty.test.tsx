@@ -29,7 +29,7 @@ vi.mock("sonner", () => ({
   toast: { error: toastErrorMock, success: toastSuccessMock, message: vi.fn() },
 }));
 vi.mock("@/server-functions/client-import", () => ({
-  validateClientImportRows: validateMock,
+  validateClientImportRowsFn: validateMock,
   commitClientImportFn: commitMock,
 }));
 vi.mock("@/server-functions/products", () => ({ getProducts: vi.fn() }));

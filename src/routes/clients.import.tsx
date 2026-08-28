@@ -28,7 +28,7 @@ import { formatCount } from "@/lib/format";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { parseImportCsv, type ImportRow, type ImportRowError } from "@/lib/csv-import";
-import { commitClientImportFn, validateClientImportRows } from "@/server-functions/client-import";
+import { commitClientImportFn, validateClientImportRowsFn } from "@/server-functions/client-import";
 import { getProducts } from "@/server-functions/products";
 
 /**
@@ -133,7 +133,7 @@ function ImportWizard() {
         return;
       }
 
-      const result = await validateClientImportRows({ data: { rows: parsed } });
+      const result = await validateClientImportRowsFn({ data: { rows: parsed } });
       setValid(result.valid);
       setErrors(result.errors);
     } catch (error) {
