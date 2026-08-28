@@ -5,6 +5,7 @@ import type {
   ReplyDraftWritebackPayload,
   ScoreRenewalRiskWritebackPayload,
 } from "@/lib/workflows/types";
+import { AGENT_DEFINITIONS, type AgentWorkflowType } from "@/lib/agents";
 import { normalizeQualificationData } from "@/lib/workflows/qualification";
 import { transaction } from "@/server/db/neon.server";
 import { createActivityLog } from "@/server/repositories/activity-logs";
@@ -15,6 +16,25 @@ import { applyEngagementScore, getEngagement } from "@/server/repositories/engag
 import { assertLeadExists, updateLead } from "@/server/repositories/leads";
 import { createQuote } from "@/server/repositories/quotes";
 import { upsertRelationshipSignals } from "@/server/repositories/relationship-signals";
+
+/**
+ * Whether this agent's catalogue entry permits parking a run in `waiting_approval`.
+ *
+ * Deliberately **not** `resolveDispatchableAgent`. A writeback runs after a dispatch that has
+ * already happened, so an agent deactivated mid-run must still be able to record its result;
+ * `status` is the dispatch path's business and nothing here reads it. Only `human_approval`
+ * is consulted, and only as a gate: each writeback keeps its own condition for *when* a run
+ * deserves a human, and this decides whether that condition is allowed to fire at all.
+ *
+ * Until this existed, `human_approval` described the writebacks rather than governing them —
+ * `/agents/$name` showed the flag beside values the dispatch path actually reads, and flipping
+ * it changed nothing.
+ */
+function agentParksForApproval(workflowType: AgentWorkflowType): boolean {
+  const agent = AGENT_DEFINITIONS.find((a) => a.workflow_type === workflowType);
+  if (!agent) throw new Error(`No agent definition for workflow type "${workflowType}"`);
+  return agent.human_approval;
+}
 
 /**
  * Whether the agent run a callback names is actually the run for the record it wants to write.
@@ -84,6 +104,14 @@ function getExistingQuoteDraftResult(outputData: unknown) {
   };
 }
 
+/**
+ * No `agentParksForApproval` call here, and that is the honest shape rather than an omission:
+ * `qualify_lead` carries `human_approval: false` and this writeback has no parking path to
+ * gate. The score it writes is advisory — `human_review_required` flags a low-confidence
+ * result for attention without withholding it — so the run always completes.
+ * `__tests__/writebacks.test.ts` pins the catalogue flag to that absence, so flipping it to
+ * `true` fails loudly instead of silently doing nothing.
+ */
 export async function writeQualificationResult(payload: QualificationWritebackPayload) {
   await transaction(async (db) => {
     const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
@@ -162,34 +190,38 @@ export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload)
       }
     }
 
-    const approval = await createApproval(
-      {
-        agent_run_id: payload.agent_run_id,
-        approval_type: "message_send",
-        requested_by: "Reply Draft Agent",
-        context_data: {
-          lead_id: payload.lead_id,
-          draft_message: payload.draft_message,
-          confidence_score: payload.confidence_score,
-          risk_notes: payload.risk_notes ?? [],
-        },
-        context_summary: payload.context_summary,
-      },
-      db,
-    );
+    // This writeback has no condition of its own — a reply draft is never sent unreviewed —
+    // so the catalogue flag is the whole decision.
+    const approval = agentParksForApproval("draft_reply")
+      ? await createApproval(
+          {
+            agent_run_id: payload.agent_run_id,
+            approval_type: "message_send",
+            requested_by: "Reply Draft Agent",
+            context_data: {
+              lead_id: payload.lead_id,
+              draft_message: payload.draft_message,
+              confidence_score: payload.confidence_score,
+              risk_notes: payload.risk_notes ?? [],
+            },
+            context_summary: payload.context_summary,
+          },
+          db,
+        )
+      : null;
 
     await updateAgentRunResult(
       payload.agent_run_id,
       {
-        status: "waiting_approval",
+        status: approval ? "waiting_approval" : "completed",
         output_data: {
-          approval_id: approval.id,
+          approval_id: approval?.id ?? null,
           draft_message: payload.draft_message,
           risk_notes: payload.risk_notes ?? [],
         },
         output_summary: payload.context_summary,
         confidence_score: payload.confidence_score,
-        human_review_required: true,
+        human_review_required: Boolean(approval),
       },
       db,
     );
@@ -199,15 +231,15 @@ export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload)
         actor_type: "agent",
         actor_id: payload.agent_run_id,
         actor_name: "Reply Draft Agent",
-        action: "drafted reply for review",
+        action: approval ? "drafted reply for review" : "drafted reply",
         object_type: "lead",
         object_id: payload.lead_id,
-        diff_data: { approval_id: approval.id },
+        diff_data: { approval_id: approval?.id ?? null },
       },
       db,
     );
 
-    return approval.id;
+    return approval?.id ?? null;
   });
 }
 
@@ -232,8 +264,10 @@ export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWrite
 
     const engagement = await getEngagement(payload.engagement_id, db);
     const isRaiseToHigh = payload.renewal_risk === "high" && engagement.renewal_risk !== "high";
+    // The condition is unchanged and stays where it was; the catalogue flag gates it.
+    const parksForApproval = agentParksForApproval("score_renewal_risk") && isRaiseToHigh;
 
-    const approval = isRaiseToHigh
+    const approval = parksForApproval
       ? await createApproval(
           {
             agent_run_id: payload.agent_run_id,
@@ -255,7 +289,7 @@ export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWrite
     await updateAgentRunResult(
       payload.agent_run_id,
       {
-        status: isRaiseToHigh ? "waiting_approval" : "completed",
+        status: parksForApproval ? "waiting_approval" : "completed",
         output_data: {
           health_score: payload.health_score,
           renewal_risk: payload.renewal_risk,
@@ -265,13 +299,13 @@ export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWrite
         },
         output_summary: payload.output_summary,
         confidence_score: payload.confidence,
-        human_review_required: isRaiseToHigh,
+        human_review_required: parksForApproval,
         model_used: payload.model_used ?? null,
       },
       db,
     );
 
-    if (isRaiseToHigh && approval) {
+    if (parksForApproval && approval) {
       await createActivityLog(
         {
           actor_type: "agent",
@@ -345,22 +379,24 @@ export async function writeQuoteDraftResult(payload: QuoteDraftWritebackPayload)
       db,
     );
 
-    const approval = payload.create_send_approval
-      ? await createApproval(
-          {
-            agent_run_id: payload.agent_run_id,
-            approval_type: "quote_send",
-            requested_by: "Quote Draft Agent",
-            context_data: {
-              lead_id: payload.lead_id,
-              quote_id: quote.id,
-              confidence_score: payload.confidence_score,
+    // The condition is unchanged and stays where it was; the catalogue flag gates it.
+    const approval =
+      agentParksForApproval("draft_quote") && payload.create_send_approval
+        ? await createApproval(
+            {
+              agent_run_id: payload.agent_run_id,
+              approval_type: "quote_send",
+              requested_by: "Quote Draft Agent",
+              context_data: {
+                lead_id: payload.lead_id,
+                quote_id: quote.id,
+                confidence_score: payload.confidence_score,
+              },
+              context_summary: payload.context_summary ?? "Review drafted quote before sending.",
             },
-            context_summary: payload.context_summary ?? "Review drafted quote before sending.",
-          },
-          db,
-        )
-      : null;
+            db,
+          )
+        : null;
 
     await updateAgentRunResult(
       payload.agent_run_id,
@@ -397,6 +433,13 @@ export async function writeQuoteDraftResult(payload: QuoteDraftWritebackPayload)
   });
 }
 
+/**
+ * Like `writeQualificationResult`, no gate: `relationship_intelligence` carries
+ * `human_approval: false` and there is no parking path to gate. Signals and a suggested next
+ * action are surfaced for a human to act on, not held back pending one, and no `approval_type`
+ * in the `approvals` check constraint describes this run. The catalogue flag is pinned to
+ * `false` in `__tests__/writebacks.test.ts` so it cannot start claiming otherwise.
+ */
 export async function writeRelationshipIntelligenceResult(
   payload: RelationshipIntelligenceWritebackPayload,
 ) {

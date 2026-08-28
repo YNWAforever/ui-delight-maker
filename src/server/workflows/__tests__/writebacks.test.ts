@@ -69,6 +69,8 @@ import {
   writeScoreRenewalRiskResult,
 } from "@/server/workflows/writebacks";
 
+import { AGENT_DEFINITIONS } from "@/lib/agents";
+
 describe("workflow writebacks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -903,6 +905,24 @@ describe("workflow writebacks", () => {
         expect.objectContaining({ status: "completed", human_review_required: false }),
         mocks.fakeDb,
       );
+    });
+  });
+
+  // Two agents have no parking path at all, so `human_approval` has nothing to gate for them
+  // and setting it would be a claim the writeback cannot honour. Pinned here rather than left
+  // to a code comment: the flag is what `/agents/$name` shows an operator.
+  describe("agents whose writebacks have no parking path", () => {
+    it.each([
+      ["qualify_lead", "the score is advisory and the run always completes"],
+      ["relationship_intelligence", "signals are surfaced, not withheld pending a human"],
+    ])("keeps human_approval false for %s", (workflowType, why) => {
+      const agent = AGENT_DEFINITIONS.find((a) => a.workflow_type === workflowType);
+      expect(agent).toBeDefined();
+      expect(
+        agent?.human_approval,
+        `${workflowType} cannot park a run — ${why}. Setting human_approval would show an ` +
+          `operator a control that does nothing; give the writeback a parking path first.`,
+      ).toBe(false);
     });
   });
 });
