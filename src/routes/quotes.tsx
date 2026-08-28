@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { Copy, FileText, Plus } from "lucide-react";
@@ -23,13 +23,14 @@ import { Card } from "@/components/ui/card";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatCount, formatCurrencyAmount, formatDate } from "@/lib/format";
-import { toAmount } from "@/lib/money";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { useIsExactPath } from "@/lib/routing-utils";
 import { getStatusLabel } from "@/lib/status-labels";
 import { createQuote, getQuotesPage, updateQuote } from "@/server-functions/quotes";
 import type { Quote, QuoteStatus } from "@/lib/types";
+import type { QuoteListAggregate, QuoteListRow } from "@/server/repositories/quotes";
+import type { QuoteListVisibility } from "@/server/repositories/quote-list-query";
 
 /**
  * Every lifecycle value `quotes_status_check` allows, plus the neutral choice.
@@ -56,6 +57,9 @@ const QUOTE_STATUS_VALUES: QuoteStatus[] = [
 
 const ALL_STATUSES = "all";
 
+/** Matches `/accounts`: long enough that typing a company name is one round trip, not ten. */
+const SEARCH_COMMIT_DELAY_MS = 300;
+
 const STATUS_OPTIONS: FilterOption[] = [
   { value: ALL_STATUSES, label: "All statuses" },
   ...QUOTE_STATUS_VALUES.map((value) => ({
@@ -76,6 +80,7 @@ const quoteListSearchSchema = z.object({
   page: z.coerce.number().int().min(1).default(1).catch(1),
   limit: z.coerce.number().int().min(1).max(100).default(50).catch(50),
   status: z.string().default(ALL_STATUSES).catch(ALL_STATUSES),
+  q: z.string().default("").catch(""),
 });
 
 type QuoteListSearch = z.infer<typeof quoteListSearchSchema>;
@@ -97,6 +102,8 @@ function toPageFilters(search: QuoteListSearch) {
     // "all" is a UI word, not a stored status. Sending it would filter for a value no row
     // holds and empty the workspace.
     status: status === ALL_STATUSES ? undefined : status,
+    // Empty is "no search", not "match the empty string".
+    search: search.q.trim() || undefined,
   };
 }
 
@@ -158,15 +165,15 @@ function QuotesPage() {
 /**
  * Money summed per currency, never flattened into one symbol.
  *
- * The old strip ran `formatHKD` over a sum taken across rows whose `currency` the table
- * itself rendered per row, so a page holding one USD quote reported a total in HKD that no
- * quote agreed with. Grouping is the only honest option without a server-side aggregate.
+ * The old strip ran `formatHKD` over a sum across rows whose `currency` the table itself
+ * displayed per row, so a USD quote was added to an HKD total and stamped HKD. These sums
+ * now come from the server and cover the whole filtered set, not the loaded page.
  */
-function totalsByCurrency(rows: Quote[]): string {
+function totalsByCurrency(aggregates: QuoteListAggregate[], statuses: QuoteStatus[]): string {
   const totals = new Map<string, number>();
-  for (const quote of rows) {
-    const currency = quote.currency || "HKD";
-    totals.set(currency, (totals.get(currency) ?? 0) + toAmount(quote.total_value));
+  for (const entry of aggregates) {
+    if (!statuses.includes(entry.status)) continue;
+    totals.set(entry.currency, (totals.get(entry.currency) ?? 0) + entry.total);
   }
   if (totals.size === 0) return "—";
 
@@ -180,15 +187,37 @@ function totalsByCurrency(rows: Quote[]): string {
  * What a quote is attached to.
  *
  * The old Lead cell called a stub that returned `undefined` for every id, so it printed an
- * em dash above the raw `lead_id` UUID on every row, forever. `listQuotesPage` still does
- * not join a company name, so rather than dress the id up as data this offers the one
- * truthful thing the row does carry: a way to open the record it belongs to.
+ * em dash above the raw `lead_id` UUID on every row, forever. The list read now joins the
+ * company name, so the cell can name the record instead of dressing an id up as data.
  */
-type LinkedRecord = { kind: "client" | "lead"; label: string; id: string };
+type LinkedRecord = {
+  kind: "client" | "lead";
+  id: string;
+  label: string;
+  /** False when the actor may not see this record type: render text, never a link. */
+  visible: boolean;
+};
 
-function linkedRecord(quote: Quote): LinkedRecord | null {
-  if (quote.client_id) return { kind: "client", label: "Client", id: quote.client_id };
-  if (quote.lead_id) return { kind: "lead", label: "Lead", id: quote.lead_id };
+function linkedRecord(quote: QuoteListRow, visibility: QuoteListVisibility): LinkedRecord | null {
+  if (quote.client_id) {
+    return {
+      kind: "client",
+      id: quote.client_id,
+      // The name when we have it; the generic word when the actor may see the record but
+      // no company name is recorded. A null name means both things, and the flag is what
+      // separates them.
+      label: quote.linked_company_name ?? "Client",
+      visible: visibility.clients,
+    };
+  }
+  if (quote.lead_id) {
+    return {
+      kind: "lead",
+      id: quote.lead_id,
+      label: quote.linked_company_name ?? "Lead",
+      visible: visibility.leads,
+    };
+  }
   return null;
 }
 
@@ -206,29 +235,33 @@ function QuotesIndex() {
   const queryClient = useQueryClient();
 
   const rows = quotePage.items;
-
-  /**
-   * A page-scoped filter, and it says so.
-   *
-   * `listQuotesPage` has no text search, so this can only ever narrow the fifty rows the
-   * loader returned. It used to be labelled "Search number, lead…" and matched against
-   * `lead_id` — a raw UUID — so searching for a company name never matched anything and
-   * the box quietly implied it searched the whole workspace.
-   */
-  const [pageQuery, setPageQuery] = useState("");
+  const activeQuery = search.q;
 
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    const needle = pageQuery.trim().toLowerCase();
-    if (!needle) return rows;
-    return rows.filter((quote) => quoteTitle(quote).toLowerCase().includes(needle));
-  }, [rows, pageQuery]);
+  /**
+   * The search box is committed to the URL, not held locally, because `listQuotesPage`
+   * matches the quote number and the visible company name in SQL — a page-local box could
+   * only ever narrow the fifty rows the loader returned while `ListPagination` reported the
+   * true server total. Same shape as `/accounts`: the delay keeps a keystroke from being a
+   * round trip, and the sync effect keeps Back and Clear reflected in the input.
+   */
+  const [searchDraft, setSearchDraft] = useState(activeQuery);
+  useEffect(() => setSearchDraft(activeQuery), [activeQuery]);
+  useEffect(() => {
+    const next = searchDraft.trim();
+    if (next === activeQuery) return;
+
+    const timer = setTimeout(() => {
+      // Page 1, or a narrower result set lands the user on an out-of-range page that looks
+      // like an empty workspace.
+      void navigate({ search: (current) => ({ ...current, q: next, page: 1 }), replace: true });
+    }, SEARCH_COMMIT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [searchDraft, activeQuery, navigate]);
 
   const metrics = useMemo(() => {
-    const byStatus = (statuses: QuoteStatus[]) =>
-      rows.filter((quote) => statuses.includes(quote.status));
-
+    const { aggregates } = quotePage;
     return [
       {
         id: "quotes-in-view",
@@ -239,31 +272,31 @@ function QuotesIndex() {
       {
         id: "active-value",
         label: "Active value",
-        value: totalsByCurrency(byStatus(["pending_approval", "sent", "viewed"])),
-        hint: "pending, sent, viewed · this page",
+        value: totalsByCurrency(aggregates, ["pending_approval", "sent", "viewed"]),
+        hint: "pending, sent, viewed",
       },
       {
         id: "accepted-value",
         label: "Accepted value",
-        value: totalsByCurrency(byStatus(["accepted"])),
-        hint: "accepted · this page",
+        value: totalsByCurrency(aggregates, ["accepted"]),
+        hint: "accepted",
       },
       {
         id: "draft-value",
         label: "Draft value",
-        value: totalsByCurrency(byStatus(["draft"])),
-        hint: "not yet submitted · this page",
+        value: totalsByCurrency(aggregates, ["draft"]),
+        hint: "not yet submitted",
       },
     ];
-  }, [rows, quotePage.total, status]);
+  }, [quotePage, status]);
 
   const setSearchParams = (next: Partial<QuoteListSearch>) => {
     void navigate({ search: (current) => ({ ...current, ...next }), replace: true });
   };
 
   const clearFilters = () => {
-    setPageQuery("");
-    setSearchParams({ status: ALL_STATUSES, page: 1 });
+    setSearchDraft("");
+    setSearchParams({ status: ALL_STATUSES, q: "", page: 1 });
   };
 
   /**
@@ -335,7 +368,7 @@ function QuotesIndex() {
     }
   };
 
-  const columns: ColumnDef<Quote>[] = [
+  const columns: ColumnDef<QuoteListRow>[] = [
     {
       id: "number",
       header: "Quote",
@@ -367,8 +400,11 @@ function QuotesIndex() {
       header: "Linked record",
       priority: "secondary",
       cell: (quote) => {
-        const linked = linkedRecord(quote);
+        const linked = linkedRecord(quote, quotePage.visibility);
         if (!linked) return <span className="text-muted-foreground">—</span>;
+        // A link to a record this actor may not open is a guaranteed 403 — the same
+        // dead-end BD-11 was filed for. Show the label, withhold the link.
+        if (!linked.visible) return <span className="text-muted-foreground">{linked.label}</span>;
         const linkClass =
           "rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
         return linked.kind === "client" ? (
@@ -399,11 +435,11 @@ function QuotesIndex() {
   /**
    * "Nothing here yet" and "your filter matched nothing" look identical on screen and need
    * opposite actions, so the workspace only claims to be empty when the server says the
-   * whole result set is empty *and* nothing is narrowing it. An out-of-range page or a page
-   * filter that matched nothing is a filtered empty, and its way out is Clear — which also
+   * whole result set is empty *and* nothing is narrowing it. An out-of-range page or a
+   * search that matched nothing is a filtered empty, and its way out is Clear — which also
    * returns to page 1.
    */
-  const hasActiveFilter = status !== ALL_STATUSES || pageQuery.trim() !== "";
+  const hasActiveFilter = status !== ALL_STATUSES || activeQuery !== "";
   const isEmptyWorkspace = quotePage.total === 0 && !hasActiveFilter;
 
   return (
@@ -427,9 +463,9 @@ function QuotesIndex() {
         <Card className="min-w-0 p-3">
           <FilterToolbar
             search={{
-              value: pageQuery,
-              onChange: setPageQuery,
-              placeholder: "Filter this page by quote number",
+              value: searchDraft,
+              onChange: setSearchDraft,
+              placeholder: "Search quotes by number or company",
             }}
             filters={[
               {
@@ -443,11 +479,11 @@ function QuotesIndex() {
               },
             ]}
             onClear={clearFilters}
-            resultCount={filtered.length}
+            resultCount={quotePage.total}
           />
         </Card>
 
-        {filtered.length === 0 ? (
+        {rows.length === 0 ? (
           isEmptyWorkspace ? (
             <EmptyWorkspaceState
               icon={FileText}
@@ -466,7 +502,7 @@ function QuotesIndex() {
                 status === ALL_STATUSES
                   ? null
                   : `Status: ${getStatusLabel("quotes", status).label}`,
-                pageQuery.trim() ? `Number contains "${pageQuery.trim()}"` : null,
+                activeQuery ? `Search: "${activeQuery}"` : null,
               ]
                 .filter(Boolean)
                 .join(" · ")}
@@ -476,7 +512,7 @@ function QuotesIndex() {
           <ResponsiveRecordList
             caption="Quotes"
             columns={columns}
-            rows={filtered}
+            rows={rows}
             rowKey={(quote) => quote.id}
             rowHref={(quote) => `/quotes/${quote.id}`}
             rowActions={(quote) => (
@@ -496,7 +532,7 @@ function QuotesIndex() {
                 <p className="font-medium">{quoteTitle(quote)}</p>
                 <p className="text-xs text-muted-foreground">
                   {formatCount(quote.line_items.length)} line items ·{" "}
-                  {linkedRecord(quote)?.label ?? "No linked record"}
+                  {linkedRecord(quote, quotePage.visibility)?.label ?? "No linked record"}
                 </p>
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <StatusBadge value={quote.status} domain="quotes" />

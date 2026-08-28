@@ -369,8 +369,16 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     maxQueries: 2,
   },
   {
+    // Both visibility flags on: the widest query this route can issue, with both joins
+    // present. Measuring the narrow case would let a join added later go uncounted.
+    // Still two queries — the aggregate replaced the count rather than joining it.
     route: "quotes",
-    run: () => listQuotesPage({ page: 1, limit: 50 } as Parameters<typeof listQuotesPage>[0]),
+    run: () =>
+      listQuotesPage({
+        page: 1,
+        limit: 50,
+        visibility: { leads: true, clients: true },
+      }),
     maxQueries: 2,
   },
   {

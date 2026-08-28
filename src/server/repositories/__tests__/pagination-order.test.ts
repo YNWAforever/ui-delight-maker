@@ -64,8 +64,8 @@ const CASES: Array<{ name: string; run: () => Promise<unknown>; tieBreaker: RegE
   },
   {
     name: "quotes",
-    run: () => listQuotesPage({}),
-    tieBreaker: /order by created_at desc, id desc/i,
+    run: () => listQuotesPage({ visibility: { leads: true, clients: true } }),
+    tieBreaker: /order by q\.created_at desc, q\.id desc/i,
   },
   {
     name: "job sheets",

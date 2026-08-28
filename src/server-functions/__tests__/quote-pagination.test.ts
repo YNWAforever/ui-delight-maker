@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
   return {
     createServerFnChain,
     requireCapability: vi.fn(),
+    requireCapabilitySet: vi.fn(),
     requireSession: vi.fn(),
     listQuotesPage: vi.fn(),
   };
@@ -24,6 +25,7 @@ vi.mock("@tanstack/react-start", () => ({
 
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapability: mocks.requireCapability,
+  requireCapabilitySet: mocks.requireCapabilitySet,
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
@@ -74,37 +76,57 @@ const pageData = {
 describe("paginated quote server function", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireCapability.mockResolvedValue({
-      user: { id: "user-1" },
-      profile: { id: "user-1", role: "sales", status: "active" },
-      session: {},
-    });
-    mocks.requireSession.mockResolvedValue({
-      user: { id: "user-1" },
-      profile: { id: "user-1", role: "sales", status: "active" },
-      session: {},
+    mocks.requireCapabilitySet.mockResolvedValue({
+      "quotes.view": true,
+      "leads.view": true,
+      "accounts.view": true,
     });
     mocks.listQuotesPage.mockResolvedValue({ items: [], total: 0, page: 2, limit: 25 });
   });
 
-  it("authorizes, checks the session, and forwards quote pagination inputs", async () => {
+  it("authorizes, resolves linked-record visibility in one load, and forwards it to the query", async () => {
+    const { getQuotesPage } = await import("../quotes");
+
+    const result = await getQuotesPage({ data: pageData });
+
+    expect(mocks.requireCapabilitySet).toHaveBeenCalledWith(["quotes.view"], {
+      optional: ["leads.view", "accounts.view"],
+    });
+    expect(mocks.listQuotesPage).toHaveBeenCalledWith({
+      ...pageData,
+      visibility: { leads: true, clients: true },
+    });
+    expect(mocks.requireCapabilitySet.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.listQuotesPage.mock.invocationCallOrder[0],
+    );
+    // The client needs to tell a redacted name from a genuinely absent one.
+    expect(result).toEqual({
+      items: [],
+      total: 0,
+      page: 2,
+      limit: 25,
+      visibility: { leads: true, clients: true },
+    });
+  });
+
+  it("resolves clients visibility from accounts.view and leaves leads redacted when denied", async () => {
+    mocks.requireCapabilitySet.mockResolvedValue({
+      "quotes.view": true,
+      "leads.view": false,
+      "accounts.view": true,
+    });
     const { getQuotesPage } = await import("../quotes");
 
     await getQuotesPage({ data: pageData });
 
-    expect(mocks.requireCapability).toHaveBeenCalledWith("quotes.view");
-    expect(mocks.requireSession).toHaveBeenCalledOnce();
-    expect(mocks.listQuotesPage).toHaveBeenCalledWith(pageData);
-    expect(mocks.requireCapability.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.listQuotesPage.mock.invocationCallOrder[0],
-    );
-    expect(mocks.requireSession.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.listQuotesPage.mock.invocationCallOrder[0],
-    );
+    expect(mocks.listQuotesPage).toHaveBeenCalledWith({
+      ...pageData,
+      visibility: { leads: false, clients: true },
+    });
   });
 
-  it("does not read quote pages when session validation fails", async () => {
-    mocks.requireSession.mockRejectedValueOnce(new Error("Unauthorized"));
+  it("does not read quote pages when authorization fails", async () => {
+    mocks.requireCapabilitySet.mockRejectedValueOnce(new Error("Unauthorized"));
     const { getQuotesPage } = await import("../quotes");
 
     await expect(getQuotesPage({ data: pageData })).rejects.toThrow("Unauthorized");

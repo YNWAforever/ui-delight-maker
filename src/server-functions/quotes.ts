@@ -1,5 +1,5 @@
 import { agentNameFor } from "@/lib/agents";
-import { requireCapability } from "@/server/auth/authorization.server";
+import { requireCapability, requireCapabilitySet } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import { getN8nDispatchConfig, triggerN8n } from "@/lib/n8n";
@@ -88,11 +88,24 @@ export const getQuotes = createServerFn({ method: "GET" })
   });
 
 export const getQuotesPage = createServerFn({ method: "GET" })
-  .validator((data: unknown) => (data ?? {}) as QuotePageFilters)
+  .validator((data: unknown) => (data ?? {}) as QuotePageFilters & { search?: string })
   .handler(async ({ data }) => {
-    await requireCapability("quotes.view");
-    await requireNeonAuthSession();
-    return listQuotesPage(data);
+    // One authorization context load answers all three questions. The previous
+    // `requireCapability` + `requireNeonAuthSession` pair was two loads, and
+    // `requireCapabilitySet` already establishes the session.
+    const access = await requireCapabilitySet(["quotes.view"], {
+      optional: ["leads.view", "accounts.view"],
+    });
+    const visibility = {
+      leads: access["leads.view"] === true,
+      // `accounts.view` gates clients — the same capability the quote detail page uses for
+      // its client check, so the list and the detail page agree by construction.
+      clients: access["accounts.view"] === true,
+    };
+
+    const page = await listQuotesPage({ ...data, visibility });
+    // Returned so the client can tell a redacted name from a genuinely absent one.
+    return { ...page, visibility };
   });
 
 export const getQuote = createServerFn({ method: "GET" })

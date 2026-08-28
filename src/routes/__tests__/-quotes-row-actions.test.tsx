@@ -19,7 +19,9 @@ vi.mock("@tanstack/react-router", () => ({
     options,
     fullPath: "/quotes",
     useLoaderData: vi.fn(),
-    useSearch: () => ({ page: 1, limit: 50, status: "all" }),
+    // `q` is a real search param now: the box commits to the URL and the loader filters in
+    // SQL, so the route reads `search.q` on first render.
+    useSearch: () => ({ page: 1, limit: 50, status: "all", q: "" }),
   }),
   useNavigate: () => navigateMock,
   useRouter: () => ({ invalidate: routerInvalidateMock }),
@@ -89,10 +91,14 @@ beforeEach(() => {
   toastErrorMock.mockReset();
   toastSuccessMock.mockReset();
   vi.mocked(Route.useLoaderData).mockReturnValue({
-    items: [SOURCE_QUOTE],
+    // `getQuotesPage` returns the joined company name plus what the actor is allowed to see,
+    // so the Linked record cell can tell a redacted name from an absent one.
+    items: [{ ...SOURCE_QUOTE, linked_company_name: "Northwind Studio" }],
     total: 1,
     page: 1,
     limit: 50,
+    aggregates: [],
+    visibility: { leads: true, clients: true },
   } as never);
 });
 
