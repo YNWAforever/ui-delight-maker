@@ -101,10 +101,12 @@ describe("commitLeadImport", () => {
       "profile-1",
     );
 
-    expect(result).toEqual({ created: 0, updated: 0, skipped: 1 });
-    // The leads table has a BEFORE UPDATE trigger on updated_at, so a no-op UPDATE would
-    // bump every row of a re-imported list and make it look freshly touched.
+    // Asserted before the counts: the counts alone would throw first and leave this
+    // unexercised, and the SQL shape is the thing that actually proves no statement was
+    // issued. The leads table has a BEFORE UPDATE trigger on updated_at, so a no-op
+    // UPDATE would bump every row of a re-imported list and make it look freshly touched.
     expect(sqlIssued().some((sql) => sql.startsWith("update leads"))).toBe(false);
+    expect(result).toEqual({ created: 0, updated: 0, skipped: 1 });
   });
 
   it("does not overwrite a stored value with a blank CSV cell", async () => {
