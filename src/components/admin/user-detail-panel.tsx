@@ -36,10 +36,11 @@ export type UserDetailPanelProps = {
  *   quieter than the safe actions beside it, and the destructive styling appears only inside
  *   the confirmation dialog where the consequence is written out.
  * - **A control the actor cannot use is not rendered.** The caller passes a handler only
- *   when the role baseline allows it (`src/lib/admin-capabilities.ts`). "Change role" used
- *   to be wired unconditionally while Invite and Manage-lifecycle beside it were gated, so
- *   a `read_only` actor — who legitimately reaches this screen through `users.view` — was
- *   offered a dialog, filled in a mandatory reason, submitted, and only then was refused.
+ *   when the actor's capabilities allow it (`src/lib/admin/control-access.ts`). "Change
+ *   role" used to be wired unconditionally while Invite and Manage-lifecycle beside it
+ *   were gated, so a `read_only` actor — who legitimately reaches this screen through
+ *   `users.view` — was offered a dialog, filled in a mandatory reason, submitted, and
+ *   only then was refused.
  * - **"Open full record" is a router `Link`.** It was a raw `<a href>`, so it cost a full
  *   document reload and re-ran both the root shell fetch and the `/admin` navigation fetch.
  */

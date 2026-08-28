@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { adminControlAccess } from "@/lib/admin-capabilities";
+import { adminControlAccess } from "@/lib/admin/control-access";
 import {
   adminOrganizationQueryKey,
   adminPeopleOptionsQueryKey,
@@ -178,7 +178,7 @@ function AdminPeopleRoute() {
 function AdminPeopleIndex() {
   const search = Route.useSearch();
   const loaderData = Route.useLoaderData();
-  const { profile } = Route.useRouteContext();
+  const { profile, capabilities } = Route.useRouteContext();
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -226,7 +226,7 @@ function AdminPeopleIndex() {
    * Manage-lifecycle beside it were gated, so `read_only` — which legitimately holds
    * `users.view` — was offered a dialog it could fill in and submit before being refused.
    */
-  const access = adminControlAccess(profile?.role);
+  const access = adminControlAccess(capabilities);
 
   const departments = departmentOptions(organization.data);
   const teams = teamOptions(organization.data);

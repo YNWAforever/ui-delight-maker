@@ -11,7 +11,7 @@ import {
   WorkspaceHeader,
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
-import { adminControlAccess } from "@/lib/admin-capabilities";
+import { adminControlAccess } from "@/lib/admin/control-access";
 import { AdminError } from "@/lib/admin/errors";
 import { adminAuditSearchSchema, type AdminAuditSearch } from "@/lib/admin/schemas";
 import { csvFileName, toCsv, type CsvColumn } from "@/lib/csv";
@@ -125,7 +125,7 @@ function AdminAuditRoute() {
   const loaded = Route.useLoaderData();
   const auditQuery = useQuery({ ...auditQueryOptions(search), initialData: loaded });
   const { data, forbidden } = auditQuery.data;
-  const { profile } = Route.useRouteContext();
+  const { profile, capabilities } = Route.useRouteContext();
   const navigate = useNavigate({ from: Route.fullPath });
   const exportLock = useRef(false);
   const [exporting, setExporting] = useState(false);
@@ -141,7 +141,7 @@ function AdminAuditRoute() {
   const [from, setFrom] = useState(toLocalInput(search.from));
   const [to, setTo] = useState(toLocalInput(search.to));
 
-  const access = adminControlAccess(profile?.role);
+  const access = adminControlAccess(capabilities);
 
   function submitFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

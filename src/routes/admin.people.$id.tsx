@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { adminControlAccess } from "@/lib/admin-capabilities";
+import { adminControlAccess } from "@/lib/admin/control-access";
 import { refreshAdminCapabilityScope } from "@/lib/admin-invalidation";
 import { AdminError } from "@/lib/admin/errors";
 import { ROLE_GRANTS } from "@/lib/admin/policy";
@@ -122,7 +122,7 @@ function AdminUserRoute() {
   const search = Route.useSearch();
   const params = Route.useParams();
   const loaderData = Route.useLoaderData();
-  const { profile } = Route.useRouteContext();
+  const { profile, capabilities } = Route.useRouteContext();
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -142,7 +142,7 @@ function AdminUserRoute() {
   });
 
   const user = userData ?? null;
-  const access = adminControlAccess(profile?.role);
+  const access = adminControlAccess(capabilities);
 
   if (loaderData.forbidden) {
     return (

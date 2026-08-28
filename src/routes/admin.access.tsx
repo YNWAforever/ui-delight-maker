@@ -31,7 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { adminControlAccess } from "@/lib/admin-capabilities";
+import { adminControlAccess } from "@/lib/admin/control-access";
 import {
   adminOrganizationQueryKey,
   adminOrganizationUnitQueryKey,
@@ -168,7 +168,7 @@ function AdminAccessErrorState({ error }: { error: unknown }) {
 function AdminAccessRoute() {
   const search = Route.useSearch();
   const loaded = Route.useLoaderData();
-  const { profile } = Route.useRouteContext();
+  const { profile, capabilities } = Route.useRouteContext();
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -201,7 +201,7 @@ function AdminAccessRoute() {
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<PermissionOverrideRecord | null>(null);
 
-  const access = adminControlAccess(profile?.role);
+  const access = adminControlAccess(capabilities);
   const updateSearch = (next: AdminAccessSearch) => navigate({ search: () => next, replace: true });
   const activeOverrides = overrides.filter(
     (entry) => !entry.revokedAt && (!entry.expiresAt || Date.parse(entry.expiresAt) > Date.now()),
