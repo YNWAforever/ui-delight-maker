@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   queryMock,
   queryOneMock,
+  evaluateCapabilityChecksMock,
   requireCapabilityChecksMock,
   requireCapabilityMock,
   createServerFnChain,
@@ -19,6 +20,7 @@ const {
   return {
     queryMock: vi.fn(),
     queryOneMock: vi.fn(),
+    evaluateCapabilityChecksMock: vi.fn(),
     requireCapabilityChecksMock: vi.fn(),
     requireCapabilityMock: vi.fn(),
     createServerFnChain,
@@ -27,6 +29,7 @@ const {
 
 vi.mock("@tanstack/react-start", () => ({ createServerFn: () => createServerFnChain }));
 vi.mock("@/server/auth/authorization.server", () => ({
+  evaluateCapabilityChecks: evaluateCapabilityChecksMock,
   requireCapabilityChecks: requireCapabilityChecksMock,
   requireCapability: requireCapabilityMock,
 }));
@@ -47,7 +50,9 @@ const quote = {
   line_items: [],
 };
 
-const immutableSnapshot = { id: "quote-1", number: "Q-001", line_items: [] };
+// buildNormalizedQuoteSnapshot spreads the whole quote row in, so a stored snapshot carries its
+// own copy of lead_id — that copy is what the degraded document read has to strip.
+const immutableSnapshot = { id: "quote-1", number: "Q-001", lead_id: "lead-1", line_items: [] };
 
 describe("quote workspace read models", () => {
   beforeEach(() => {
@@ -62,6 +67,7 @@ describe("quote workspace read models", () => {
       profile: { id: "user-1", role: "sales", status: "active" },
       session: {},
     });
+    evaluateCapabilityChecksMock.mockResolvedValue([{ allowed: true, reason: "role_grant" }]);
 
     queryOneMock.mockImplementation((sql: unknown, values?: unknown[]) => {
       const text = sqlText(sql);
@@ -349,13 +355,18 @@ describe("quote workspace read models", () => {
       () => getQuoteDetailRead({ data: { id: "quote-1" } }),
       () => getQuoteDocumentRead({ data: { id: "quote-1" } }),
     ]) {
+      requireCapabilityMock.mockClear();
+      evaluateCapabilityChecksMock.mockClear();
       await call();
-      expect(requireCapabilityMock).toHaveBeenLastCalledWith("quotes.view", {
+      expect(requireCapabilityMock).toHaveBeenNthCalledWith(1, "quotes.view", {
         resourceType: "quote",
         resourceId: "quote-1",
       });
-      expect(requireCapabilityChecksMock).toHaveBeenLastCalledWith([
-        { capability: "accounts.view", target: { resourceType: "client", resourceId: "client-1" } },
+      expect(requireCapabilityMock).toHaveBeenNthCalledWith(2, "accounts.view", {
+        resourceType: "client",
+        resourceId: "client-1",
+      });
+      expect(evaluateCapabilityChecksMock).toHaveBeenLastCalledWith([
         { capability: "leads.view", target: { resourceType: "lead", resourceId: "lead-1" } },
       ]);
     }
@@ -367,5 +378,29 @@ describe("quote workspace read models", () => {
       resourceId: "quote-1",
     });
     expect(requireCapabilityChecksMock).not.toHaveBeenCalled();
+  });
+
+  it("strips every trace of the lead from a read the actor may not see it on", async () => {
+    const { getQuoteDetailRead, getQuoteDocumentRead } =
+      await import("@/server-functions/quote-workspace");
+    evaluateCapabilityChecksMock.mockResolvedValue([{ allowed: false, reason: "no_grant" }]);
+
+    const detailRead = await getQuoteDetailRead({ data: { id: "quote-1" } });
+    expect(detailRead.lead).toBeNull();
+    expect(detailRead.quote.lead_id).toBeNull();
+    // Still a quote, not an empty shell.
+    expect(detailRead.quote).toMatchObject({ id: "quote-1", number: "Q-001" });
+
+    const documentRead = await getQuoteDocumentRead({ data: { id: "quote-1" } });
+    expect(documentRead.lead).toBeNull();
+    expect(documentRead.quote.lead_id).toBeNull();
+    expect(documentRead.versions).toHaveLength(1);
+    expect(documentRead.versions[0].snapshot).toMatchObject({ id: "quote-1", lead_id: null });
+
+    // No corner of either payload may still carry the denied lead's identifier...
+    expect(JSON.stringify(detailRead)).not.toContain("lead-1");
+    expect(JSON.stringify(documentRead)).not.toContain("lead-1");
+    // ...and nothing was written back: this is response shaping over an immutable version.
+    expect(immutableSnapshot.lead_id).toBe("lead-1");
   });
 });

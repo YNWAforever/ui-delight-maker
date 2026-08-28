@@ -1,3 +1,4 @@
+import { effectiveCapabilities } from "@/lib/admin/capabilities";
 import { AdminError } from "@/lib/admin/errors";
 import { evaluateAuthorization } from "@/lib/admin/policy";
 import type {
@@ -155,6 +156,40 @@ export async function requireCapabilityChecks(
 
   return context.session;
 }
+
+/**
+ * The same evaluation `requireCapabilityChecks` performs, returned instead of thrown.
+ *
+ * Some reads are allowed to degrade: a quote the actor may see can carry a lead they may
+ * not, and the honest answer is a quote without a lead block, not a failed request. This
+ * runs one context load and the same target resolution, so it cannot disagree with the
+ * throwing path about what is permitted. Callers that need to explain a degradation get
+ * the full decision, including the `reason` `decisionError` uses to distinguish
+ * `outside_scope` from `role_denied`.
+ */
+export async function evaluateCapabilityChecks(
+  checks: readonly CapabilityCheck[],
+): Promise<readonly AuthorizationDecision[]> {
+  const context = await loadAuthorizationContext();
+  const resolvedTargets = await Promise.all(
+    checks.map(({ target = {} }) => resolveAuthorizationTarget(target)),
+  );
+
+  return checks.map(({ capability }, index) =>
+    evaluate(context, capability, resolvedTargets[index]),
+  );
+}
+
+/**
+ * The actor's target-independent capability set, for the app shell.
+ *
+ * See `src/lib/admin/capabilities.ts` for what this set does and does not answer.
+ */
+export async function resolveEffectiveCapabilities(): Promise<readonly Capability[]> {
+  const context = await loadAuthorizationContext();
+  return effectiveCapabilities(context.actor, context.overrides);
+}
+
 export async function requireCapability(
   capability: Capability,
   target: AuthorizationTarget = {},

@@ -28,8 +28,14 @@ describe("authenticated application shell loader", () => {
     const getSession = vi.fn().mockResolvedValue(session);
     const getPreferences = vi.fn(() => preferences.promise);
     const getAdminNavigation = vi.fn(() => navigation.promise);
+    const getCapabilities = vi.fn().mockResolvedValue([]);
 
-    const read = loadAuthenticatedShell({ getSession, getPreferences, getAdminNavigation });
+    const read = loadAuthenticatedShell({
+      getSession,
+      getPreferences,
+      getAdminNavigation,
+      getCapabilities,
+    });
 
     await vi.waitFor(() => {
       expect(getPreferences).toHaveBeenCalledOnce();
@@ -56,6 +62,7 @@ describe("authenticated application shell loader", () => {
         getSession: vi.fn().mockResolvedValue(session),
         getPreferences: vi.fn().mockRejectedValue(new Error("preferences unavailable")),
         getAdminNavigation: vi.fn().mockRejectedValue(new Error("navigation unavailable")),
+        getCapabilities: vi.fn().mockResolvedValue([]),
       }),
     ).resolves.toMatchObject({ favorites: [], adminNavigation: [] });
 
@@ -68,7 +75,37 @@ describe("authenticated application shell loader", () => {
         getSession: vi.fn().mockResolvedValue(null),
         getPreferences: vi.fn(),
         getAdminNavigation: vi.fn(),
+        getCapabilities: vi.fn(),
       }),
     ).rejects.toSatisfy(isRedirect);
+  });
+
+  it("carries the actor's capabilities", async () => {
+    const read = await loadAuthenticatedShell({
+      getSession: vi.fn().mockResolvedValue(session),
+      getPreferences: vi.fn().mockResolvedValue({ favorites: [] }),
+      getAdminNavigation: vi.fn().mockResolvedValue([]),
+      getCapabilities: vi.fn().mockResolvedValue(["quotes.view", "quotes.create"]),
+    });
+
+    expect(read.capabilities).toEqual(["quotes.view", "quotes.create"]);
+  });
+
+  it("falls back to no capabilities when the resolve fails", async () => {
+    // Fail closed, matching how favorites and navigation already degrade. An empty set
+    // disables controls the actor may in fact hold, which a reload fixes; the opposite -
+    // assuming permission - would offer actions the server then refuses. The server
+    // enforces either way, so this costs nothing but a disabled button.
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const read = await loadAuthenticatedShell({
+      getSession: vi.fn().mockResolvedValue(session),
+      getPreferences: vi.fn().mockResolvedValue({ favorites: [] }),
+      getAdminNavigation: vi.fn().mockResolvedValue([]),
+      getCapabilities: vi.fn().mockRejectedValue(new Error("authorization context unavailable")),
+    });
+
+    expect(read.capabilities).toEqual([]);
+    expect(log).toHaveBeenCalledTimes(1);
   });
 });

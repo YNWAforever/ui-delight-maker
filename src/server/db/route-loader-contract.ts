@@ -376,7 +376,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   {
     // getQuoteDetailRead() (src/server-functions/quotes.ts) awaits authorizeQuote(id), then
     // calls getQuoteWorkspaceDetail(id) directly (a one-line pass-through to
-    // getQuoteWorkspaceDetail). The handler's authorizeLinkedQuoteParties() call runs after
+    // getQuoteWorkspaceDetail). The handler's resolveLinkedQuoteVisibility() call runs after
     // this read using its result, so it does not affect the quote SQL itself.
     // getQuoteWorkspaceDetail is genuinely sequential: it queries the quote row first and
     // throws "Quote not found" before ever reaching the client/lead lookups, which is why
