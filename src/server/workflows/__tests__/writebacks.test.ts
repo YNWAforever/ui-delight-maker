@@ -658,4 +658,251 @@ describe("workflow writebacks", () => {
       mocks.fakeDb,
     );
   });
+
+  // Pinned before `human_approval` became the gate on parking. Every assertion below is true of
+  // the code as it stood beforehand, so the refactor that makes the catalogue flag load-bearing
+  // is provably invisible: these pass unchanged on both sides of it. A failure here means
+  // behaviour moved, not that the pin was wrong.
+  describe("which writebacks park a run in waiting_approval", () => {
+    it("completes a qualification run outright and never parks it", async () => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "run-p1",
+        status: "running",
+        output_data: null,
+        subject_type: "lead",
+        subject_id: "lead-p1",
+      });
+
+      await writeQualificationResult({
+        lead_id: "lead-p1",
+        agent_run_id: "run-p1",
+        qualification_data: { confidence: 0.9 },
+        lead_score: 80,
+        output_summary: "Qualified",
+        confidence_score: 0.9,
+      });
+
+      expect(mocks.createApprovalMock).not.toHaveBeenCalled();
+      expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+        "run-p1",
+        expect.objectContaining({ status: "completed" }),
+        mocks.fakeDb,
+      );
+    });
+
+    // Confidence sits at the ceiling on purpose: the reply draft parks on nothing but the fact
+    // that it is a reply draft.
+    it("parks every reply draft run, whatever the confidence", async () => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "run-p2",
+        status: "running",
+        output_data: null,
+        subject_type: "lead",
+        subject_id: "lead-p2",
+      });
+      mocks.createApprovalMock.mockResolvedValue({ id: "approval-p2" });
+
+      await expect(
+        writeReplyDraftResult({
+          lead_id: "lead-p2",
+          agent_run_id: "run-p2",
+          draft_message: "Here is a draft reply",
+          context_summary: "Review before sending",
+          confidence_score: 0.99,
+        }),
+      ).resolves.toBe("approval-p2");
+
+      expect(mocks.createApprovalMock).toHaveBeenCalledWith(
+        expect.objectContaining({ approval_type: "message_send" }),
+        mocks.fakeDb,
+      );
+      expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+        "run-p2",
+        expect.objectContaining({ status: "waiting_approval", human_review_required: true }),
+        mocks.fakeDb,
+      );
+    });
+
+    it("parks a quote draft run when the draft asks for a send approval", async () => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "run-p3",
+        status: "running",
+        output_data: null,
+        subject_type: "lead",
+        subject_id: "lead-p3",
+      });
+      mocks.createQuoteMock.mockResolvedValue({ id: "quote-p3" });
+      mocks.createApprovalMock.mockResolvedValue({ id: "approval-p3" });
+
+      await expect(
+        writeQuoteDraftResult({
+          lead_id: "lead-p3",
+          agent_run_id: "run-p3",
+          quote: {
+            currency: "HKD",
+            total_value: 20000,
+            line_items: [
+              {
+                id: "line-1",
+                service: "Retainer",
+                description: "Monthly support",
+                qty: 1,
+                unit_price: 20000,
+              },
+            ],
+          },
+          create_send_approval: true,
+          confidence_score: 0.73,
+        }),
+      ).resolves.toEqual({ quoteId: "quote-p3", approvalId: "approval-p3" });
+
+      expect(mocks.createApprovalMock).toHaveBeenCalledWith(
+        expect.objectContaining({ approval_type: "quote_send" }),
+        mocks.fakeDb,
+      );
+      expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+        "run-p3",
+        expect.objectContaining({ status: "waiting_approval", human_review_required: true }),
+        mocks.fakeDb,
+      );
+    });
+
+    it("completes a quote draft run when no send approval is asked for", async () => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "run-p4",
+        status: "running",
+        output_data: null,
+        subject_type: "lead",
+        subject_id: "lead-p4",
+      });
+      mocks.createQuoteMock.mockResolvedValue({ id: "quote-p4" });
+
+      await expect(
+        writeQuoteDraftResult({
+          lead_id: "lead-p4",
+          agent_run_id: "run-p4",
+          quote: {
+            currency: "HKD",
+            total_value: 20000,
+            line_items: [
+              {
+                id: "line-1",
+                service: "Retainer",
+                description: "Monthly support",
+                qty: 1,
+                unit_price: 20000,
+              },
+            ],
+          },
+          create_send_approval: false,
+          confidence_score: 0.73,
+        }),
+      ).resolves.toEqual({ quoteId: "quote-p4", approvalId: null });
+
+      expect(mocks.createApprovalMock).not.toHaveBeenCalled();
+      expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+        "run-p4",
+        expect.objectContaining({ status: "completed", human_review_required: false }),
+        mocks.fakeDb,
+      );
+    });
+
+    it("parks a renewal risk run only when it raises the risk to high", async () => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "run-p5",
+        status: "running",
+        output_data: null,
+        subject_type: "engagement",
+        subject_id: "engagement-p5",
+      });
+      mocks.getEngagementMock.mockResolvedValue({ id: "engagement-p5", renewal_risk: "medium" });
+      mocks.createApprovalMock.mockResolvedValue({ id: "approval-p5" });
+
+      await expect(
+        writeScoreRenewalRiskResult({
+          engagement_id: "engagement-p5",
+          agent_run_id: "run-p5",
+          health_score: 42,
+          renewal_risk: "high",
+          risk_reasoning: "Usage collapsed",
+          suggested_next_action: "Escalate to CS lead",
+          confidence: 0.8,
+          output_summary: "High risk",
+        }),
+      ).resolves.toEqual({ applied: false, approvalId: "approval-p5" });
+
+      expect(mocks.createApprovalMock).toHaveBeenCalledWith(
+        expect.objectContaining({ approval_type: "cs_risk_review" }),
+        mocks.fakeDb,
+      );
+      // The score is withheld until a human agrees, which is the point of parking.
+      expect(mocks.applyEngagementScoreMock).not.toHaveBeenCalled();
+      expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+        "run-p5",
+        expect.objectContaining({ status: "waiting_approval", human_review_required: true }),
+        mocks.fakeDb,
+      );
+    });
+
+    it("completes a renewal risk run that does not raise the risk to high", async () => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "run-p6",
+        status: "running",
+        output_data: null,
+        subject_type: "engagement",
+        subject_id: "engagement-p6",
+      });
+      mocks.getEngagementMock.mockResolvedValue({ id: "engagement-p6", renewal_risk: "high" });
+
+      await expect(
+        writeScoreRenewalRiskResult({
+          engagement_id: "engagement-p6",
+          agent_run_id: "run-p6",
+          health_score: 42,
+          renewal_risk: "high",
+          risk_reasoning: "Still bad, already known",
+          suggested_next_action: "Keep the weekly check-in",
+          confidence: 0.8,
+          output_summary: "High risk, unchanged",
+        }),
+      ).resolves.toEqual({ applied: true });
+
+      expect(mocks.createApprovalMock).not.toHaveBeenCalled();
+      expect(mocks.applyEngagementScoreMock).toHaveBeenCalled();
+      expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+        "run-p6",
+        expect.objectContaining({ status: "completed", human_review_required: false }),
+        mocks.fakeDb,
+      );
+    });
+
+    it("completes a relationship intelligence run and never parks it", async () => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "run-p7",
+        status: "running",
+        output_data: null,
+        subject_type: "account",
+        subject_id: "account-p7",
+      });
+      mocks.upsertRelationshipSignalsMock.mockResolvedValue([]);
+
+      await expect(
+        writeRelationshipIntelligenceResult({
+          account_id: "account-p7",
+          agent_run_id: "run-p7",
+          output_summary: "Analyzed relationship health.",
+          next_action: "Book an executive alignment call.",
+          signals: [],
+          confidence_score: 0.81,
+        }),
+      ).resolves.toEqual({ applied: true, signalCount: 0 });
+
+      expect(mocks.createApprovalMock).not.toHaveBeenCalled();
+      expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+        "run-p7",
+        expect.objectContaining({ status: "completed", human_review_required: false }),
+        mocks.fakeDb,
+      );
+    });
+  });
 });
