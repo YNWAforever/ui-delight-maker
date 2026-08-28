@@ -37,6 +37,26 @@ export async function getApproval(id: string, db?: Queryable) {
   return approval;
 }
 
+/**
+ * The open approval for a quote, if there is one.
+ *
+ * `human_approvals` has no `quote_id` column, so the link lives in `context_data`. The
+ * `status = 'pending'` filter comes first and keeps this cheap: decided approvals accumulate,
+ * open ones do not. If that stops holding, the fix is an expression index —
+ * `activity_logs_diff_account_id_idx` (migration 008) is the precedent.
+ */
+export async function findPendingApprovalForQuote(quoteId: string, db?: Queryable) {
+  return queryOne<HumanApproval>(
+    `
+      select * from human_approvals
+       where status = 'pending' and context_data->>'quote_id' = $1
+       limit 1
+    `,
+    [quoteId],
+    db,
+  );
+}
+
 export async function createApproval(
   input: {
     agent_run_id?: string | null;

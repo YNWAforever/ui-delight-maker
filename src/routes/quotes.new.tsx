@@ -930,10 +930,12 @@ function QuoteBuilder() {
             {/*
               This card used to promise routing the system does not do:
               "Discounts >10% require manager approval" and ">HKD 400K requires director
-              approval". `requestQuoteApproval` only flips the status to `pending_approval`;
-              it never sees the discount and never branches on the total, so both quotes go
-              to the same queue and nothing is escalated. The copy now says what is true —
-              these are thresholds people apply, not rules the product enforces.
+              approval". `requestQuoteApproval` now records the quote's total on the approval
+              it raises, but nothing compares that total to anything, and there is no discount
+              to compare: the percentage above is applied into the line-item prices and never
+              stored as a field. Both quotes go to the same queue and nothing is escalated. The
+              copy now says what is true — these are thresholds people apply, not rules the
+              product enforces.
             */}
             <CardContent className="space-y-2 text-xs text-muted-foreground">
               <p>• Discounts above 10% are expected to be justified to the approver.</p>
