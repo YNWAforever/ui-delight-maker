@@ -3,7 +3,8 @@
 import type { ComponentType, ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SerializableHumanApproval } from "@/lib/serializable";
 
@@ -11,6 +12,9 @@ const decideApprovalMock = vi.hoisted(() => vi.fn());
 const approveAndIssueQuoteMock = vi.hoisted(() => vi.fn());
 const rejectQuoteMock = vi.hoisted(() => vi.fn());
 const navigateMock = vi.hoisted(() => vi.fn());
+
+const assignApprovalFnMock = vi.hoisted(() => vi.fn());
+const getAssignableApproversFnMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
@@ -29,6 +33,8 @@ vi.mock("sonner", () => ({
 vi.mock("@/server-functions/approvals", () => ({
   getApprovals: vi.fn(),
   decideApproval: decideApprovalMock,
+  assignApprovalFn: assignApprovalFnMock,
+  getAssignableApproversFn: getAssignableApproversFnMock,
 }));
 vi.mock("@/server-functions/quotes", () => ({
   approveAndIssueQuote: approveAndIssueQuoteMock,
@@ -88,6 +94,15 @@ beforeEach(() => {
   approveAndIssueQuoteMock.mockReset().mockResolvedValue(undefined);
   rejectQuoteMock.mockReset().mockResolvedValue(undefined);
   navigateMock.mockReset();
+  getAssignableApproversFnMock.mockReset().mockResolvedValue([
+    { id: "profile-1", name: "Ada Wong", email: "ada@fimmick.test" },
+    { id: "profile-2", name: "Bea Chan", email: "bea@fimmick.test" },
+  ]);
+  assignApprovalFnMock
+    .mockReset()
+    .mockImplementation(async ({ data }: { data: { id: string; assignedTo: string | null } }) =>
+      approval({ id: data.id, assigned_to: data.assignedTo }),
+    );
 });
 
 afterEach(() => {
@@ -181,35 +196,89 @@ describe("Every approval decision is confirmed, and the confirmation names the c
   });
 });
 
-describe("Assign reviewer is unavailable, and says so where it stands", () => {
-  it("is disabled and carries a visible reason rather than a dead button", () => {
-    // `human_approvals.assigned_to` has no writer — src/server-functions/approvals.ts exports
-    // only getApprovals and decideApproval. The control that stood here toasted success for a
-    // write that never happened. Disabled is correct; disabled and silent is not.
-    renderInbox([approval(), approval({ id: "ap-2" })]);
-
-    fireEvent.click(screen.getAllByRole("checkbox", { name: /Select row ap-1/ })[0]);
-
-    const assign = screen.getAllByRole("button", {
-      name: /Assign reviewer/,
-    })[0] as HTMLButtonElement;
-    expect(assign.disabled).toBe(true);
-
-    // The reason has to be readable, not only implied by the greyed pixels.
-    expect(
-      screen.getByText(/Not available yet — approvals are decided by whoever opens them/i),
-    ).toBeTruthy();
+describe("Assigning a reviewer", () => {
+  /**
+   * Radix Select is a listbox built from divs, and jsdom implements none of the pointer-capture
+   * surface it opens against. These four are the whole shim.
+   */
+  beforeAll(() => {
+    Element.prototype.hasPointerCapture = () => false;
+    Element.prototype.setPointerCapture = () => {};
+    Element.prototype.releasePointerCapture = () => {};
+    Element.prototype.scrollIntoView = () => {};
   });
 
-  it("keeps the bulk actions beside it live, so the reason is about this control only", () => {
-    // Guards against "the whole bar is disabled" passing the assertion above.
+  const reviewerSelect = () => screen.findByRole("combobox", { name: "Assign reviewer (inline)" });
+
+  it("routes a pending approval to the reviewer chosen from the assignable roster", async () => {
+    renderInbox([approval()]);
+
+    const trigger = await reviewerSelect();
+    expect(trigger.textContent).toContain("Unassigned");
+
+    await userEvent.click(trigger);
+    await userEvent.click(await screen.findByRole("option", { name: "Bea Chan" }));
+
+    await waitFor(() =>
+      expect(assignApprovalFnMock).toHaveBeenCalledWith({
+        data: { id: "ap-1", assignedTo: "profile-2" },
+      }),
+    );
+  });
+
+  it("makes unassigning reachable, not only picking somebody else", async () => {
+    // An approval routed to the wrong person needs a way back to the unassigned pool. A
+    // picker that can only ever name a different person is a one-way door.
+    renderInbox([approval({ assigned_to: "profile-2" })]);
+
+    const trigger = await reviewerSelect();
+    // The trigger shows the assignee's id until the roster that names them arrives, which is
+    // the honest intermediate state — it never shows a name it has not been told.
+    await waitFor(() => expect(trigger.textContent).toContain("Bea Chan"));
+
+    await userEvent.click(trigger);
+    await userEvent.click(await screen.findByRole("option", { name: "Unassigned" }));
+
+    await waitFor(() =>
+      expect(assignApprovalFnMock).toHaveBeenCalledWith({
+        data: { id: "ap-1", assignedTo: null },
+      }),
+    );
+  });
+
+  it("removes the control once the approval is decided rather than disabling it", async () => {
+    // `assignApproval` refuses to reassign anything that is not pending, so routing a decided
+    // approval is not unavailable — it is meaningless. A disabled control would imply it might
+    // come back.
+    renderInbox([approval()]);
+    expect(await reviewerSelect()).toBeTruthy();
+
+    // Select the row explicitly: a decided approval leaves `pending`, and only an explicit
+    // selection keeps it on screen afterwards to be asserted against.
+    fireEvent.click(screen.getAllByRole("button", { name: /Discount of 15% on renewal/ })[0]);
+    fireEvent.click(decisionButton(/^Approve$/));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Approve" }));
+
+    await screen.findByText(/This decision cannot be undone from ClientOps/i);
+    expect(screen.queryByRole("combobox", { name: /Assign reviewer/ })).toBeNull();
+  });
+
+  it("no longer offers the dead assign button in the bulk bar", async () => {
+    // What stood there toasted success for a write that never happened, against a hardcoded
+    // roster of five fixture users. The live control is per-approval, where the current
+    // assignee is visible and clearing it is possible.
     renderInbox([approval(), approval({ id: "ap-2" })]);
 
     fireEvent.click(screen.getAllByRole("checkbox", { name: /Select row ap-1/ })[0]);
 
-    const bulkApprove = screen.getAllByRole("button", {
-      name: /^Approve$/,
-    })[0] as HTMLButtonElement;
-    expect(bulkApprove.disabled).toBe(false);
+    expect(screen.queryByRole("button", { name: /Assign reviewer/ })).toBeNull();
+    expect(
+      screen.queryByText(/Not available yet — approvals are decided by whoever opens them/i),
+    ).toBeNull();
+    // The bulk actions beside it are untouched.
+    expect(
+      (screen.getAllByRole("button", { name: /^Approve$/ })[0] as HTMLButtonElement).disabled,
+    ).toBe(false);
   });
 });

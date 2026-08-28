@@ -66,6 +66,11 @@ export async function markAllNotificationsRead(userId: string) {
   ]);
 }
 
+/** The roles that hold `approvals.decide`, derived from the policy rather than hardcoded. */
+function approverRoles() {
+  return USER_ROLES.filter((role) => ROLE_GRANTS[role].has("approvals.decide"));
+}
+
 /**
  * Who gets told an approval is waiting.
  *
@@ -79,11 +84,31 @@ export async function markAllNotificationsRead(userId: string) {
  * only buries the ones that can.
  */
 export async function listApproverProfileIds() {
-  const approverRoles = USER_ROLES.filter((role) => ROLE_GRANTS[role].has("approvals.decide"));
-
   const rows = await query<{ id: string }>(
     "select id from profiles where status = 'active' and role = any($1::text[])",
-    [approverRoles],
+    [approverRoles()],
   );
   return rows.map((r) => r.id);
+}
+
+export type ApproverProfile = { id: string; name: string | null; email: string | null };
+
+/**
+ * The same people, named — the roster an approval can be routed to.
+ *
+ * Assignment shares this derivation rather than listing every profile, because an approval
+ * assigned to someone without `approvals.decide` is a dead end: they cannot act on it, and the
+ * queue would show it as handled when nobody can handle it. Whoever is told an approval is
+ * waiting is exactly whoever may be given it.
+ */
+export async function listApproverProfiles() {
+  return query<ApproverProfile>(
+    `
+      select id, name, email
+      from profiles
+      where status = 'active' and role = any($1::text[])
+      order by coalesce(name, email, id), id
+    `,
+    [approverRoles()],
+  );
 }

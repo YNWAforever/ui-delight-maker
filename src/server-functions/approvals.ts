@@ -8,6 +8,7 @@ import {
 } from "@/server/repositories/approvals";
 import { serializeHumanApproval } from "@/lib/serializable";
 import { applyRiskReviewDecision } from "@/server/workflows/decide-risk-review.server";
+import { listApproverProfiles } from "@/server/repositories/notifications";
 
 export const getApprovals = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as { status?: string })
@@ -51,3 +52,18 @@ export const assignApprovalFn = createServerFn({ method: "POST" })
     const approval = await assignApproval(data);
     return serializeHumanApproval(approval);
   });
+
+/**
+ * Who an approval can be routed to.
+ *
+ * Sourced from the approver roster in the notifications repository — the roles holding
+ * `approvals.decide`, derived from `ROLE_GRANTS` — so the picker cannot offer someone who
+ * would be unable to act on what they were given. It is gated on `approvals.decide` for the
+ * same reason the write is, and exposes strictly less than `getAdminUsersFn` already exposes
+ * to the same roles: every role holding `approvals.decide` also holds `users.view`.
+ */
+export const getAssignableApproversFn = createServerFn({ method: "GET" }).handler(async () => {
+  await requireCapability("approvals.decide");
+  await requireNeonAuthSession();
+  return listApproverProfiles();
+});
