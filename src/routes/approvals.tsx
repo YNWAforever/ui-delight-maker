@@ -50,6 +50,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useClientNow } from "@/hooks/use-client-now";
 import { slaChip } from "@/lib/approval-sla";
@@ -58,7 +65,12 @@ import { cn } from "@/lib/utils";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { formatDateTime } from "@/lib/format";
-import { getApprovals, decideApproval } from "@/server-functions/approvals";
+import {
+  assignApprovalFn,
+  decideApproval,
+  getApprovals,
+  getAssignableApproversFn,
+} from "@/server-functions/approvals";
 import type { SerializableHumanApproval } from "@/lib/serializable";
 import { approveAndIssueQuote, rejectQuote } from "@/server-functions/quotes";
 import type { ApprovalType } from "@/lib/types";
@@ -113,6 +125,17 @@ const approvalSearchSchema = z.object({
 });
 
 const approvalsQueryKey = crmQueryKeys.approvals.list({});
+/** Kept off `approvals.list` so decisions invalidating the queue do not refetch the roster. */
+const assignableApproversQueryKey = [...crmQueryKeys.approvals.all(), "assignable-approvers"];
+
+/**
+ * The value the reviewer Select uses for "nobody".
+ *
+ * Radix `SelectItem` rejects an empty string value, so unassigning needs a sentinel. It is
+ * mapped back to a real `null` before the write — `assignApproval` treats null as unassign,
+ * which is a deliberate action rather than an error.
+ */
+const UNASSIGNED_VALUE = "__unassigned__";
 
 /** How many decided approvals the history list shows. `listApprovals` returns every one. */
 const DECIDED_HISTORY_LIMIT = 10;
@@ -204,6 +227,46 @@ function ApprovalsInbox() {
   const [decidingIds, setDecidingIds] = useState<ReadonlySet<string>>(() => new Set<string>());
   const [refreshing, setRefreshing] = useState(false);
   const approvalMutationTokensRef = useRef(new Map<string, symbol>());
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+
+  /**
+   * Who this approval may be routed to: the profiles holding `approvals.decide`, which is the
+   * same roster already used to decide who is notified that an approval is waiting. Offering
+   * anyone else would let a reviewer be assigned who cannot act on what they were given.
+   */
+  const approversQuery = useQuery({
+    ...routeQueryOptions({
+      queryKey: assignableApproversQueryKey,
+      queryFn: () => getAssignableApproversFn(),
+    }),
+  });
+  const approvers = useMemo(() => approversQuery.data ?? [], [approversQuery.data]);
+  const approverLabel = (id: string) => {
+    const approver = approvers.find((candidate) => candidate.id === id);
+    return approver?.name ?? approver?.email ?? id;
+  };
+
+  const assignReviewer = async (approval: Approval, value: string) => {
+    const assignedTo = value === UNASSIGNED_VALUE ? null : value;
+    if ((approval.assigned_to ?? null) === assignedTo) return;
+
+    setAssigningId(approval.id);
+    try {
+      const updated = await assignApprovalFn({ data: { id: approval.id, assignedTo } });
+      queryClient.setQueryData<ApprovalRead>(approvalsQueryKey, (current) =>
+        current?.map((entry) =>
+          entry.id === updated.id ? { ...entry, assigned_to: updated.assigned_to } : entry,
+        ),
+      );
+      toast.success(assignedTo ? `Assigned to ${approverLabel(assignedTo)}` : "Reviewer cleared");
+      await queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true });
+    } catch (error) {
+      // The row is written from the server response, so a failure leaves the cache as it was.
+      toast.error(toSafeErrorMessage(error));
+    } finally {
+      setAssigningId(null);
+    }
+  };
 
   /** Workspace-wide counts. Never the type-filtered subset — the strip reads as a total. */
   const totals = useMemo(() => {
@@ -715,12 +778,66 @@ function ApprovalsInbox() {
   };
 
   const detailSections = (approval: Approval, surface: "inline" | "panel") => {
+    // An assignee whose role changed is no longer in the roster, but is still the assignee.
+    // Keeping them as an option is what stops the Select rendering blank over a real value.
+    const reviewerOptions =
+      approval.assigned_to && !approvers.some((one) => one.id === approval.assigned_to)
+        ? [{ id: approval.assigned_to, name: null, email: null }, ...approvers]
+        : approvers;
     const sections: RecordSummarySection[] = [
       {
         id: "summary",
         title: "What the agent proposes",
         content: <p className="text-sm">{approval.context_summary ?? "No summary provided"}</p>,
       },
+      /**
+       * Only a pending approval carries this control.
+       *
+       * `assignApproval` refuses to reassign anything that is not pending, so on a decided
+       * approval routing is not merely unavailable — it is not meaningful, and changing the
+       * reviewer on a closed decision would misrepresent who made it. A disabled control with
+       * a reason would imply it might come back. It does not.
+       */
+      ...(approval.status === "pending"
+        ? [
+            {
+              id: "reviewer",
+              title: "Reviewer",
+              content: (
+                <div className="space-y-2">
+                  <Select
+                    value={approval.assigned_to ?? UNASSIGNED_VALUE}
+                    disabled={isBusy || assigningId === approval.id || approversQuery.isPending}
+                    onValueChange={(value) => void assignReviewer(approval, value)}
+                  >
+                    {/* aria-label rather than a <label for>: this panel renders twice — inline
+                        above `lg` and in the sheet below it — so ids would collide. */}
+                    <SelectTrigger
+                      aria-label={`Assign reviewer (${surface})`}
+                      className="w-full sm:w-72"
+                    >
+                      <SelectValue placeholder="Unassigned" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={UNASSIGNED_VALUE}>Unassigned</SelectItem>
+                      {reviewerOptions.map((approver) => (
+                        <SelectItem key={approver.id} value={approver.id}>
+                          {approver.name ?? approver.email ?? approver.id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    <UserPlus className="mr-1 inline h-3 w-3" />
+                    {approval.assigned_to
+                      ? `Routed to ${approverLabel(approval.assigned_to)}. Anyone who can decide approvals still can.`
+                      : "Unassigned. Everyone who can decide approvals sees it."}
+                  </p>
+                </div>
+              ),
+            } satisfies RecordSummarySection,
+          ]
+        : []),
       {
         id: "payload",
         title: "Payload",
@@ -870,22 +987,6 @@ function ApprovalsInbox() {
                 >
                   <XCircle className="mr-2 h-4 w-4" /> Reject
                 </Button>
-                {/*
-                  `human_approvals.assigned_to` exists and is indexed, but no server function
-                  writes it — src/server-functions/approvals.ts exports only `getApprovals` and
-                  `decideApproval`. The control that stood here toasted a success for a write
-                  that never happened, against a hardcoded roster of five fixture users. It
-                  stays visible and disabled with its reason rather than silently disappearing,
-                  because the column and the ownership hook behind it are real.
-                */}
-                <span className="inline-flex flex-wrap items-center gap-2">
-                  <Button size="sm" variant="outline" disabled>
-                    <UserPlus className="mr-2 h-4 w-4" /> Assign reviewer
-                  </Button>
-                  <span className="text-xs text-muted-foreground">
-                    Not available yet — approvals are decided by whoever opens them.
-                  </span>
-                </span>
                 <Button
                   size="sm"
                   variant="ghost"

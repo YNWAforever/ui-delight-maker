@@ -37,6 +37,26 @@ export async function getApproval(id: string, db?: Queryable) {
   return approval;
 }
 
+/**
+ * The open approval for a quote, if there is one.
+ *
+ * `human_approvals` has no `quote_id` column, so the link lives in `context_data`. The
+ * `status = 'pending'` filter comes first and keeps this cheap: decided approvals accumulate,
+ * open ones do not. If that stops holding, the fix is an expression index —
+ * `activity_logs_diff_account_id_idx` (migration 008) is the precedent.
+ */
+export async function findPendingApprovalForQuote(quoteId: string, db?: Queryable) {
+  return queryOne<HumanApproval>(
+    `
+      select * from human_approvals
+       where status = 'pending' and context_data->>'quote_id' = $1
+       limit 1
+    `,
+    [quoteId],
+    db,
+  );
+}
+
 export async function createApproval(
   input: {
     agent_run_id?: string | null;
@@ -154,4 +174,42 @@ export async function decideApproval(input: {
 
     return approval;
   });
+}
+
+/**
+ * Route a pending approval to a reviewer, or clear the assignment.
+ *
+ * A decided approval cannot be reassigned: its status is no longer `pending`, and changing the
+ * reviewer on a closed decision would misrepresent who made it. The guard is `status !==
+ * "pending"`, so an `escalated` approval is refused too — it is waiting on a fresh request from
+ * the record itself, not on a reviewer.
+ *
+ * `assignedTo: null` unassigns. That is a real action — an approval routed to the wrong person
+ * needs a way back to the unassigned pool — not an error.
+ */
+export async function assignApproval(input: {
+  id: string;
+  assignedTo: string | null;
+}): Promise<HumanApproval> {
+  // `getApproval` throws "Approval not found" itself, so there is no missing-row branch here.
+  const existing = await getApproval(input.id);
+  if (existing.status !== "pending") {
+    throw new Error("A decided approval cannot be reassigned");
+  }
+
+  if (input.assignedTo) {
+    const profile = await queryOne<{ id: string }>("select id from profiles where id = $1", [
+      input.assignedTo,
+    ]);
+    // Rejected rather than stored: the column is FK-constrained, so a bad id would fail at the
+    // database anyway — but failing here gives a message a user can act on.
+    if (!profile) throw new Error("Assignee not found");
+  }
+
+  const approval = await queryOne<HumanApproval>(
+    "update human_approvals set assigned_to = $2 where id = $1 returning *",
+    [input.id, input.assignedTo],
+  );
+  if (!approval) throw new Error("Approval not found");
+  return approval;
 }

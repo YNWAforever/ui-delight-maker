@@ -70,7 +70,8 @@ import type { Product } from "@/lib/types";
  * - **Pricing** (IF-E1-20) presented "Manager approval threshold: 400000 HKD" as a live
  *   control governing money. Nothing read those four numbers: `pricing_templates` is a
  *   service price list (service, unit_price, currency), not an approval-threshold store,
- *   and `requestQuoteApproval` never sees a discount or a total (BD-10). Removed rather
+ *   and nothing compares a quote to a threshold: `requestQuoteApproval` records the quote's
+ *   total on the approval it raises, but never branches on it (BD-10). Removed rather
  *   than restated, because a threshold card on a Settings page reads as configuration
  *   however it is worded.
  * - **Notifications** (IF-E1-23) was checked before it was removed:

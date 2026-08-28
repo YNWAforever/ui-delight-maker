@@ -8,7 +8,9 @@ import { createJobSheetFromAcceptedQuote } from "@/server/repositories/job-sheet
 import { listPdfTemplates, listQuoteTemplates } from "@/server/repositories/quote-templates";
 import { createQuoteVersion, listQuoteVersions } from "@/server/repositories/quote-versions";
 import {
+  createApproval,
   decideApproval as decideApprovalInNeon,
+  findPendingApprovalForQuote,
   getApproval as getApprovalFromNeon,
 } from "@/server/repositories/approvals";
 import {
@@ -27,7 +29,8 @@ import {
   updateQuoteLifecycle as updateQuoteLifecycleInNeon,
   updateQuote as updateQuoteInNeon,
 } from "@/server/repositories/quotes";
-import { serializeAgentRun } from "@/lib/serializable";
+import { serializeAgentRun, serializeHumanApproval } from "@/lib/serializable";
+import { transaction } from "@/server/db/neon.server";
 import type { HumanApproval, JsonValue, PricingTemplate, Quote, QuoteVersion } from "@/lib/types";
 
 type GetQuotesInput = {
@@ -133,15 +136,56 @@ export const updateQuote = createServerFn({ method: "POST" })
     return updateQuoteInNeon(data.id, data.updates);
   });
 
+/**
+ * Send a quote for approval, and put it in the approvals queue.
+ *
+ * This used to call `updateQuoteLifecycleInNeon` and nothing else, so a quote flipped itself to
+ * `pending_approval` and never became a `human_approvals` row — /approvals never saw it, and
+ * there was no approval for a reviewer to be assigned to (BD-10).
+ *
+ * The context carries the total and currency, the facts a reviewer needs to judge the request,
+ * recorded as submitted rather than re-read at decision time. It deliberately carries no
+ * discount: `quotes` has no discount column, and the composer at src/routes/quotes.new.tsx
+ * applies the percentage into each line item's `unit_price` before saving, so nothing on a
+ * stored quote can be turned back into one without guessing at list prices.
+ */
 export const requestQuoteApproval = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { id: string })
+  .validator((data: unknown) => data as { id: string; assignedTo?: string | null })
   .handler(async ({ data }) => {
     await requireCapability("quotes.request_approval", {
       resourceType: "quote",
       resourceId: data.id,
     });
-    await requireNeonAuthSession();
-    return updateQuoteLifecycleInNeon(data.id, { status: "pending_approval" });
+    const session = await requireNeonAuthSession();
+
+    // Requesting twice must not queue twice: a reviewer would decide one and the other would
+    // linger. Returning the existing approval makes re-requesting idempotent.
+    const existing = await findPendingApprovalForQuote(data.id);
+    if (existing) return serializeHumanApproval(existing);
+
+    const quote = await getQuoteFromNeon(data.id);
+
+    // One transaction. A quote must never reach `pending_approval` with nothing in the queue —
+    // that is the state that made this invisible in the first place.
+    return transaction(async (db) => {
+      const approval = await createApproval(
+        {
+          approval_type: "quote_send",
+          requested_by: session.profile.id,
+          assigned_to: data.assignedTo ?? null,
+          context_summary: `Quote ${quote.number ?? quote.id} for approval`,
+          context_data: {
+            quote_id: quote.id,
+            quote_number: quote.number,
+            total_value: quote.total_value,
+            currency: quote.currency,
+          },
+        },
+        db,
+      );
+      await updateQuoteLifecycleInNeon(data.id, { status: "pending_approval" }, db);
+      return serializeHumanApproval(approval);
+    });
   });
 
 export const triggerQuoteAgent = createServerFn({ method: "POST" })
