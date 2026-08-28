@@ -30,6 +30,8 @@ import { useIsExactPath } from "@/lib/routing-utils";
 import { getStatusLabel } from "@/lib/status-labels";
 import { createQuote, getQuotesPage, updateQuote } from "@/server-functions/quotes";
 import type { Quote, QuoteStatus } from "@/lib/types";
+import type { QuoteListRow } from "@/server/repositories/quotes";
+import type { QuoteListVisibility } from "@/server/repositories/quote-list-query";
 
 /**
  * Every lifecycle value `quotes_status_check` allows, plus the neutral choice.
@@ -186,15 +188,37 @@ function totalsByCurrency(rows: Quote[]): string {
  * What a quote is attached to.
  *
  * The old Lead cell called a stub that returned `undefined` for every id, so it printed an
- * em dash above the raw `lead_id` UUID on every row, forever. `listQuotesPage` still does
- * not join a company name, so rather than dress the id up as data this offers the one
- * truthful thing the row does carry: a way to open the record it belongs to.
+ * em dash above the raw `lead_id` UUID on every row, forever. The list read now joins the
+ * company name, so the cell can name the record instead of dressing an id up as data.
  */
-type LinkedRecord = { kind: "client" | "lead"; label: string; id: string };
+type LinkedRecord = {
+  kind: "client" | "lead";
+  id: string;
+  label: string;
+  /** False when the actor may not see this record type: render text, never a link. */
+  visible: boolean;
+};
 
-function linkedRecord(quote: Quote): LinkedRecord | null {
-  if (quote.client_id) return { kind: "client", label: "Client", id: quote.client_id };
-  if (quote.lead_id) return { kind: "lead", label: "Lead", id: quote.lead_id };
+function linkedRecord(quote: QuoteListRow, visibility: QuoteListVisibility): LinkedRecord | null {
+  if (quote.client_id) {
+    return {
+      kind: "client",
+      id: quote.client_id,
+      // The name when we have it; the generic word when the actor may see the record but
+      // no company name is recorded. A null name means both things, and the flag is what
+      // separates them.
+      label: quote.linked_company_name ?? "Client",
+      visible: visibility.clients,
+    };
+  }
+  if (quote.lead_id) {
+    return {
+      kind: "lead",
+      id: quote.lead_id,
+      label: quote.linked_company_name ?? "Lead",
+      visible: visibility.leads,
+    };
+  }
   return null;
 }
 
@@ -347,7 +371,7 @@ function QuotesIndex() {
     }
   };
 
-  const columns: ColumnDef<Quote>[] = [
+  const columns: ColumnDef<QuoteListRow>[] = [
     {
       id: "number",
       header: "Quote",
@@ -379,8 +403,11 @@ function QuotesIndex() {
       header: "Linked record",
       priority: "secondary",
       cell: (quote) => {
-        const linked = linkedRecord(quote);
+        const linked = linkedRecord(quote, quotePage.visibility);
         if (!linked) return <span className="text-muted-foreground">—</span>;
+        // A link to a record this actor may not open is a guaranteed 403 — the same
+        // dead-end BD-11 was filed for. Show the label, withhold the link.
+        if (!linked.visible) return <span className="text-muted-foreground">{linked.label}</span>;
         const linkClass =
           "rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
         return linked.kind === "client" ? (
@@ -508,7 +535,7 @@ function QuotesIndex() {
                 <p className="font-medium">{quoteTitle(quote)}</p>
                 <p className="text-xs text-muted-foreground">
                   {formatCount(quote.line_items.length)} line items ·{" "}
-                  {linkedRecord(quote)?.label ?? "No linked record"}
+                  {linkedRecord(quote, quotePage.visibility)?.label ?? "No linked record"}
                 </p>
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <StatusBadge value={quote.status} domain="quotes" />
