@@ -93,16 +93,6 @@ const SOURCES = ["website", "whatsapp", "email", "linkedin", "csv", "event"];
 /** Source is not a lifecycle status, so it does not belong in `status-labels.ts`. */
 const sourceLabel = (source: string) => source.charAt(0).toUpperCase() + source.slice(1);
 
-const CSV_IMPORT_REASON_ID = "lead-csv-import-unavailable";
-/**
- * Import CSV used to `toast.message("CSV import is mocked in this prototype.")`. There is
- * no lead-import server function anywhere — `src/server-functions/` has `client-import.ts`
- * and `event-import.ts` and nothing else — so the control is disabled with the reason
- * rather than left live. It stays visible because the capability is planned and its
- * absence is the thing a user needs told.
- */
-const CSV_IMPORT_REASON = "Lead CSV import is not built yet. Nothing will be uploaded.";
-
 function LeadsRoute() {
   const isIndexRoute = useIsExactPath("/leads");
 
@@ -327,14 +317,11 @@ function LeadsPage() {
           <NewLeadDialog open={newOpen} onOpenChange={setNewOpen} onCreate={handleCreateLead} />
         }
         secondaryActions={[
-          <span key="import-csv" className="inline-flex items-center" title={CSV_IMPORT_REASON}>
-            <Button variant="outline" size="sm" disabled aria-describedby={CSV_IMPORT_REASON_ID}>
+          <Button key="import-csv" variant="outline" size="sm" asChild>
+            <Link to="/leads/import">
               <Upload className="mr-2 h-4 w-4" aria-hidden="true" /> Import CSV
-            </Button>
-            <span id={CSV_IMPORT_REASON_ID} className="sr-only">
-              {CSV_IMPORT_REASON}
-            </span>
-          </span>,
+            </Link>
+          </Button>,
         ]}
       />
 

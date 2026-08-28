@@ -32,6 +32,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as QuotesNewRouteImport } from './routes/quotes.new'
 import { Route as QuotesIdRouteImport } from './routes/quotes.$id'
 import { Route as LoginAuthPathRouteImport } from './routes/login.$authPath'
+import { Route as LeadsImportRouteImport } from './routes/leads.import'
 import { Route as LeadsIdRouteImport } from './routes/leads.$id'
 import { Route as JobSheetsIdRouteImport } from './routes/job-sheets.$id'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
@@ -173,6 +174,11 @@ const LoginAuthPathRoute = LoginAuthPathRouteImport.update({
   id: '/$authPath',
   path: '/$authPath',
   getParentRoute: () => LoginRoute,
+} as any)
+const LeadsImportRoute = LeadsImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => LeadsRoute,
 } as any)
 const LeadsIdRoute = LeadsIdRouteImport.update({
   id: '/$id',
@@ -342,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/invite/$token': typeof InviteTokenRouteWithChildren
   '/job-sheets/$id': typeof JobSheetsIdRoute
   '/leads/$id': typeof LeadsIdRoute
+  '/leads/import': typeof LeadsImportRoute
   '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
@@ -392,6 +399,7 @@ export interface FileRoutesByTo {
   '/invite/$token': typeof InviteTokenRouteWithChildren
   '/job-sheets/$id': typeof JobSheetsIdRoute
   '/leads/$id': typeof LeadsIdRoute
+  '/leads/import': typeof LeadsImportRoute
   '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
@@ -444,6 +452,7 @@ export interface FileRoutesById {
   '/invite/$token': typeof InviteTokenRouteWithChildren
   '/job-sheets/$id': typeof JobSheetsIdRoute
   '/leads/$id': typeof LeadsIdRoute
+  '/leads/import': typeof LeadsImportRoute
   '/login/$authPath': typeof LoginAuthPathRoute
   '/quotes/$id': typeof QuotesIdRoute
   '/quotes/new': typeof QuotesNewRoute
@@ -497,6 +506,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/job-sheets/$id'
     | '/leads/$id'
+    | '/leads/import'
     | '/login/$authPath'
     | '/quotes/$id'
     | '/quotes/new'
@@ -547,6 +557,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/job-sheets/$id'
     | '/leads/$id'
+    | '/leads/import'
     | '/login/$authPath'
     | '/quotes/$id'
     | '/quotes/new'
@@ -598,6 +609,7 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/job-sheets/$id'
     | '/leads/$id'
+    | '/leads/import'
     | '/login/$authPath'
     | '/quotes/$id'
     | '/quotes/new'
@@ -813,6 +825,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/login/$authPath'
       preLoaderRoute: typeof LoginAuthPathRouteImport
       parentRoute: typeof LoginRoute
+    }
+    '/leads/import': {
+      id: '/leads/import'
+      path: '/import'
+      fullPath: '/leads/import'
+      preLoaderRoute: typeof LeadsImportRouteImport
+      parentRoute: typeof LeadsRoute
     }
     '/leads/$id': {
       id: '/leads/$id'
@@ -1103,10 +1122,12 @@ const JobSheetsRouteWithChildren = JobSheetsRoute._addFileChildren(
 
 interface LeadsRouteChildren {
   LeadsIdRoute: typeof LeadsIdRoute
+  LeadsImportRoute: typeof LeadsImportRoute
 }
 
 const LeadsRouteChildren: LeadsRouteChildren = {
   LeadsIdRoute: LeadsIdRoute,
+  LeadsImportRoute: LeadsImportRoute,
 }
 
 const LeadsRouteWithChildren = LeadsRoute._addFileChildren(LeadsRouteChildren)
