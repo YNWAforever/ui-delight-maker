@@ -19,7 +19,9 @@ vi.mock("@tanstack/react-router", () => ({
     options,
     fullPath: "/quotes",
     useLoaderData: vi.fn(),
-    useSearch: () => ({ page: 1, limit: 50, status: "all" }),
+    // `q` is a real search param now: the box commits to the URL and the loader filters in
+    // SQL, so the route reads `search.q` on first render.
+    useSearch: () => ({ page: 1, limit: 50, status: "all", q: "" }),
   }),
   useNavigate: () => navigateMock,
   useRouter: () => ({ invalidate: routerInvalidateMock }),

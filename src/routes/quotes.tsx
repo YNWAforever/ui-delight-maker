@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { Copy, FileText, Plus } from "lucide-react";
@@ -56,6 +56,9 @@ const QUOTE_STATUS_VALUES: QuoteStatus[] = [
 
 const ALL_STATUSES = "all";
 
+/** Matches `/accounts`: long enough that typing a company name is one round trip, not ten. */
+const SEARCH_COMMIT_DELAY_MS = 300;
+
 const STATUS_OPTIONS: FilterOption[] = [
   { value: ALL_STATUSES, label: "All statuses" },
   ...QUOTE_STATUS_VALUES.map((value) => ({
@@ -76,6 +79,7 @@ const quoteListSearchSchema = z.object({
   page: z.coerce.number().int().min(1).default(1).catch(1),
   limit: z.coerce.number().int().min(1).max(100).default(50).catch(50),
   status: z.string().default(ALL_STATUSES).catch(ALL_STATUSES),
+  q: z.string().default("").catch(""),
 });
 
 type QuoteListSearch = z.infer<typeof quoteListSearchSchema>;
@@ -97,6 +101,8 @@ function toPageFilters(search: QuoteListSearch) {
     // "all" is a UI word, not a stored status. Sending it would filter for a value no row
     // holds and empty the workspace.
     status: status === ALL_STATUSES ? undefined : status,
+    // Empty is "no search", not "match the empty string".
+    search: search.q.trim() || undefined,
   };
 }
 
@@ -206,24 +212,30 @@ function QuotesIndex() {
   const queryClient = useQueryClient();
 
   const rows = quotePage.items;
-
-  /**
-   * A page-scoped filter, and it says so.
-   *
-   * `listQuotesPage` has no text search, so this can only ever narrow the fifty rows the
-   * loader returned. It used to be labelled "Search number, lead…" and matched against
-   * `lead_id` — a raw UUID — so searching for a company name never matched anything and
-   * the box quietly implied it searched the whole workspace.
-   */
-  const [pageQuery, setPageQuery] = useState("");
+  const activeQuery = search.q;
 
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    const needle = pageQuery.trim().toLowerCase();
-    if (!needle) return rows;
-    return rows.filter((quote) => quoteTitle(quote).toLowerCase().includes(needle));
-  }, [rows, pageQuery]);
+  /**
+   * The search box is committed to the URL, not held locally, because `listQuotesPage`
+   * matches the quote number and the visible company name in SQL — a page-local box could
+   * only ever narrow the fifty rows the loader returned while `ListPagination` reported the
+   * true server total. Same shape as `/accounts`: the delay keeps a keystroke from being a
+   * round trip, and the sync effect keeps Back and Clear reflected in the input.
+   */
+  const [searchDraft, setSearchDraft] = useState(activeQuery);
+  useEffect(() => setSearchDraft(activeQuery), [activeQuery]);
+  useEffect(() => {
+    const next = searchDraft.trim();
+    if (next === activeQuery) return;
+
+    const timer = setTimeout(() => {
+      // Page 1, or a narrower result set lands the user on an out-of-range page that looks
+      // like an empty workspace.
+      void navigate({ search: (current) => ({ ...current, q: next, page: 1 }), replace: true });
+    }, SEARCH_COMMIT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [searchDraft, activeQuery, navigate]);
 
   const metrics = useMemo(() => {
     const byStatus = (statuses: QuoteStatus[]) =>
@@ -262,8 +274,8 @@ function QuotesIndex() {
   };
 
   const clearFilters = () => {
-    setPageQuery("");
-    setSearchParams({ status: ALL_STATUSES, page: 1 });
+    setSearchDraft("");
+    setSearchParams({ status: ALL_STATUSES, q: "", page: 1 });
   };
 
   /**
@@ -399,11 +411,11 @@ function QuotesIndex() {
   /**
    * "Nothing here yet" and "your filter matched nothing" look identical on screen and need
    * opposite actions, so the workspace only claims to be empty when the server says the
-   * whole result set is empty *and* nothing is narrowing it. An out-of-range page or a page
-   * filter that matched nothing is a filtered empty, and its way out is Clear — which also
+   * whole result set is empty *and* nothing is narrowing it. An out-of-range page or a
+   * search that matched nothing is a filtered empty, and its way out is Clear — which also
    * returns to page 1.
    */
-  const hasActiveFilter = status !== ALL_STATUSES || pageQuery.trim() !== "";
+  const hasActiveFilter = status !== ALL_STATUSES || activeQuery !== "";
   const isEmptyWorkspace = quotePage.total === 0 && !hasActiveFilter;
 
   return (
@@ -427,9 +439,9 @@ function QuotesIndex() {
         <Card className="min-w-0 p-3">
           <FilterToolbar
             search={{
-              value: pageQuery,
-              onChange: setPageQuery,
-              placeholder: "Filter this page by quote number",
+              value: searchDraft,
+              onChange: setSearchDraft,
+              placeholder: "Search quotes by number or company",
             }}
             filters={[
               {
@@ -443,11 +455,11 @@ function QuotesIndex() {
               },
             ]}
             onClear={clearFilters}
-            resultCount={filtered.length}
+            resultCount={quotePage.total}
           />
         </Card>
 
-        {filtered.length === 0 ? (
+        {rows.length === 0 ? (
           isEmptyWorkspace ? (
             <EmptyWorkspaceState
               icon={FileText}
@@ -466,7 +478,7 @@ function QuotesIndex() {
                 status === ALL_STATUSES
                   ? null
                   : `Status: ${getStatusLabel("quotes", status).label}`,
-                pageQuery.trim() ? `Number contains "${pageQuery.trim()}"` : null,
+                activeQuery ? `Search: "${activeQuery}"` : null,
               ]
                 .filter(Boolean)
                 .join(" · ")}
@@ -476,7 +488,7 @@ function QuotesIndex() {
           <ResponsiveRecordList
             caption="Quotes"
             columns={columns}
-            rows={filtered}
+            rows={rows}
             rowKey={(quote) => quote.id}
             rowHref={(quote) => `/quotes/${quote.id}`}
             rowActions={(quote) => (
