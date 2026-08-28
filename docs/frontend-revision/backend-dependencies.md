@@ -14,6 +14,21 @@ One entry per gap that stops the frontend telling the truth. Template per execut
 - **UI state implemented meanwhile:** the forward path is fixed in this branch (C5 sets `account_id` on create; C6 surfaces and allows correcting the link), so new quotes link correctly. Historic rows stay unlinked until backfilled, and Account 360 shows the real count rather than inventing one.
 - **Proposed backend change:** a one-off backfill deriving `account_id` from `clients.account_id` / `leads.account_id`. No migration — the column, constraint and index all exist. Risk: low; a `NULL`-only update with an obvious dry-run.
 - **Integrity finding IDs:** IF-C2-14, IF-C2-30
+- **Backfill script:** `neon/backfill-quote-account-ids.mjs` (design: `docs/superpowers/specs/2026-08-28-quote-account-backfill-design.md`). It copies the account already recorded on the quote's own client or lead — client wins over lead, matching `linkedRecord` and `resolveLinkedQuoteVisibility`. It **never infers an account from a company name**; a quote whose client and lead both lack an account stays `NULL` and is reported as unresolvable, with the reason, so the underlying link can be fixed by hand.
+- **How to run it.** It dry-runs by default and prints the blast radius; `--apply` is the only way to write.
+
+  ```bash
+  # 1. Dry run. Writes nothing, exits 0, prints counts, the reasons rows are unresolvable,
+  #    and a sample of up to ten rows it would change.
+  DATABASE_URL=... node neon/backfill-quote-account-ids.mjs
+
+  # 2. Apply, after reading the dry run.
+  DATABASE_URL=... node neon/backfill-quote-account-ids.mjs --apply
+  ```
+
+  The UPDATE runs in a transaction and is guarded by `account_id is null`, so it is idempotent — a second run is a no-op — and it never re-points a quote that already has an account.
+
+> **BD-1 stays open.** The backfill script ships in this branch; it has **not** been run against the production database. Running it is the repository owner's action, after reading a dry run. This entry closes when that has happened, not when the code merged.
 
 > **Note against the source Instruction.** Instruction §9.5 and plan §2.4/§12 assume this column is *absent* and prescribe a "Not linked" state plus a name-matched count shown separately. That premise is wrong (PROGRESS.md PC-11). Building the prescribed UI would have made a write-path bug look like a permanent schema limitation.
 
