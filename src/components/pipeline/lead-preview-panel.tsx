@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, CalendarClock, Mail, Phone, Plus } from "lucide-react";
 import { AiSalesDesk } from "@/components/pipeline/ai-sales-desk";
+import { LeadTimelineSummaryCard } from "@/components/pipeline/lead-timeline-summary";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -166,6 +167,8 @@ export function LeadPreviewPanel({
           ))}
         </CardContent>
       </Card>
+
+      <LeadTimelineSummaryCard leadId={lead.id} />
 
       <Card className="rounded-md">
         <CardHeader>
