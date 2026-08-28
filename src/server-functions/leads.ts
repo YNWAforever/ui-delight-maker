@@ -1,4 +1,4 @@
-import { agentNameFor } from "@/lib/agents";
+import { resolveDispatchableAgent } from "@/lib/agents";
 import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -170,8 +170,16 @@ export const triggerLeadAgent = createServerFn({ method: "POST" })
       };
     }
 
+    // After the capability check, so an unauthorised caller is refused for being unauthorised
+    // rather than told the agent is inactive; before createAgentRun, so no run row records a
+    // dispatch that never happened.
+    const dispatchable = resolveDispatchableAgent("qualify_lead");
+    if (!dispatchable.dispatchable) {
+      return { triggered: false, reason: dispatchable.reason };
+    }
+
     const { run, created } = await createAgentRun({
-      agent_name: agentNameFor("qualify_lead"),
+      agent_name: dispatchable.agent.display_name,
       workflow_type: "qualify_lead",
       subject_id: data.leadId,
       input_data: { lead_id: data.leadId },
@@ -227,8 +235,16 @@ export const triggerLeadReplyDraft = createServerFn({ method: "POST" })
       };
     }
 
+    // After the capability check, so an unauthorised caller is refused for being unauthorised
+    // rather than told the agent is inactive; before createAgentRun, so no run row records a
+    // dispatch that never happened.
+    const dispatchable = resolveDispatchableAgent("draft_reply");
+    if (!dispatchable.dispatchable) {
+      return { triggered: false, reason: dispatchable.reason };
+    }
+
     const { run, created } = await createAgentRun({
-      agent_name: agentNameFor("draft_reply"),
+      agent_name: dispatchable.agent.display_name,
       workflow_type: "draft_reply",
       subject_id: data.leadId,
       input_data: { lead_id: data.leadId },

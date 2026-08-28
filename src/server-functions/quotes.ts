@@ -1,4 +1,4 @@
-import { agentNameFor } from "@/lib/agents";
+import { resolveDispatchableAgent } from "@/lib/agents";
 import { requireCapability, requireCapabilitySet } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -210,8 +210,16 @@ export const triggerQuoteAgent = createServerFn({ method: "POST" })
       };
     }
 
+    // After the capability check, so an unauthorised caller is refused for being unauthorised
+    // rather than told the agent is inactive; before createAgentRun, so no run row records a
+    // dispatch that never happened.
+    const dispatchable = resolveDispatchableAgent("draft_quote");
+    if (!dispatchable.dispatchable) {
+      return { triggered: false, reason: dispatchable.reason };
+    }
+
     const { run, created } = await createAgentRun({
-      agent_name: agentNameFor("draft_quote"),
+      agent_name: dispatchable.agent.display_name,
       workflow_type: "draft_quote",
       subject_id: data.leadId,
       input_data: { lead_id: data.leadId },
