@@ -12,7 +12,7 @@ import {
 } from "@/components/admin/organization-unit-dialog";
 import type { TeamMemberRow } from "@/components/admin/team-member-table";
 import { EmptyWorkspaceState, ErrorState, WorkspaceHeader } from "@/components/sales";
-import { adminControlAccess } from "@/lib/admin-capabilities";
+import { adminControlAccess } from "@/lib/admin/control-access";
 import {
   adminOrganizationQueryKey,
   adminOrganizationUnitQueryKey,
@@ -130,7 +130,7 @@ function AdminTeamDetailRoute() {
   const search = Route.useSearch();
   const params = Route.useParams();
   const loaded = Route.useLoaderData();
-  const { profile } = Route.useRouteContext();
+  const { profile, capabilities } = Route.useRouteContext();
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -153,7 +153,7 @@ function AdminTeamDetailRoute() {
     unit: Department | Team | null;
   } | null>(null);
 
-  const access = adminControlAccess(profile?.role);
+  const access = adminControlAccess(capabilities);
   const canManage = detail?.kind === "department" ? access.manageDepartment : access.manageTeam;
 
   const refreshOrganization = async (

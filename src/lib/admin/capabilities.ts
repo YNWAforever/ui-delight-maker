@@ -16,13 +16,9 @@ import { evaluateAuthorization } from "./policy";
  * scope. The set is therefore PERMISSIVE relative to some real targets: safe for
  * enabling a control, wrong for authorising an action.
  *
- * Do not confuse this with `src/lib/admin-capabilities.ts` (`roleAllows` /
- * `adminControlAccess`) — a similarly-named, one-path-different module. That one reads
- * only the role baseline (`ROLE_GRANTS`) and is advisory: it cannot see
- * `permission_overrides`, so it can hide a control the actor actually has. This module
- * closes that gap by evaluating overrides too, which is exactly what a real
- * allowed/not-allowed answer requires. Reach for this one whenever the answer needs to
- * be correct rather than merely a reasonable default for the UI to offer.
+ * This is the only client-side answer to "may this actor do X". `admin/control-access.ts`
+ * consumes it to decide which admin write controls to offer; it used to read `ROLE_GRANTS`
+ * directly and so could hide a control from someone holding an override for it.
  */
 export function effectiveCapabilities(
   actor: ActorAccessContext,
