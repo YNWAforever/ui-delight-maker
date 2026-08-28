@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { parseClientImportCsv, validateImportRows } from "../csv-import";
+import { parseImportCsv, validateImportRows } from "../csv-import";
 
 const HEADER =
   "company_name,industry,tier,owner_email,contact_name,contact_email,product_name,value,billing_period,start_date";
 
-describe("parseClientImportCsv", () => {
+describe("parseImportCsv", () => {
   it("parses rows into objects keyed by header", () => {
     const csv = `${HEADER}\nAcme Ltd,Retail,SME,ada@fimmick.com,Jane Doe,jane@acme.com,CRM Implementation,10000,monthly,2026-01-01`;
-    const rows = parseClientImportCsv(csv);
+    const rows = parseImportCsv(csv);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       company_name: "Acme Ltd",
@@ -17,18 +17,18 @@ describe("parseClientImportCsv", () => {
   });
 
   it("returns an empty array for a header-only file", () => {
-    expect(parseClientImportCsv(HEADER)).toEqual([]);
+    expect(parseImportCsv(HEADER)).toEqual([]);
   });
 
   it("handles quoted fields containing commas", () => {
     const csv = `${HEADER}\n"Acme, Ltd",Retail,SME,ada@fimmick.com,Jane Doe,jane@acme.com,CRM,10000,monthly,2026-01-01`;
-    const rows = parseClientImportCsv(csv);
+    const rows = parseImportCsv(csv);
     expect(rows[0].company_name).toBe("Acme, Ltd");
   });
 
   it("handles escaped double-quotes inside a quoted field", () => {
     const csv = `${HEADER}\n"Say ""hi"" Ltd",Retail,SME,ada@fimmick.com,Jane Doe,jane@acme.com,CRM,10000,monthly,2026-01-01`;
-    const rows = parseClientImportCsv(csv);
+    const rows = parseImportCsv(csv);
     expect(rows[0].company_name).toBe('Say "hi" Ltd');
   });
 });

@@ -27,7 +27,7 @@ import { toSafeErrorMessage } from "@/lib/errors";
 import { formatCount } from "@/lib/format";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
-import { parseClientImportCsv, type ImportRow, type ImportRowError } from "@/lib/csv-import";
+import { parseImportCsv, type ImportRow, type ImportRowError } from "@/lib/csv-import";
 import { commitClientImportFn, validateClientImportRows } from "@/server-functions/client-import";
 import { getProducts } from "@/server-functions/products";
 
@@ -118,14 +118,14 @@ function ImportWizard() {
     setIsValidating(true);
     try {
       const text = await file.text();
-      const parsed = parseClientImportCsv(text);
+      const parsed = parseImportCsv(text);
       setFileName(file.name);
       setRows(parsed);
       setSummary(null);
       setParsedEmpty(parsed.length === 0);
 
       if (parsed.length === 0) {
-        // `parseClientImportCsv` returns [] for an empty, headers-only or non-CSV file. The
+        // `parseImportCsv` returns [] for an empty, headers-only or non-CSV file. The
         // preview card is keyed off `rows.length`, so this used to end with the label flipping
         // back to "Choose a CSV file" and nothing else said at all.
         setValid([]);

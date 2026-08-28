@@ -1,6 +1,12 @@
 export type ImportRow = Record<string, string>;
 
-export function parseClientImportCsv(raw: string): ImportRow[] {
+/**
+ * Split a CSV into header-keyed rows, honouring quoted fields and doubled quotes.
+ *
+ * Nothing here is specific to any one importer — it was named `parseClientImportCsv`
+ * when the client import was the only caller.
+ */
+export function parseImportCsv(raw: string): ImportRow[] {
   const lines = raw.split(/\r?\n/).filter((line) => line.trim().length > 0);
   if (lines.length <= 1) return [];
 
