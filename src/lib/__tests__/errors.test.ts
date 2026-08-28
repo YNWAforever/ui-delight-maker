@@ -113,6 +113,14 @@ describe("describeTriggerFailure", () => {
     expect(describeTriggerFailure({ triggered: true, reason: "queued" })).toBeNull();
   });
 
+  it("explains a paused agent without implying a failure", () => {
+    // A paused agent is a deliberate state, not a fault. The copy must not send someone
+    // looking for a broken integration.
+    expect(describeTriggerFailure({ triggered: false, reason: "agent_paused" })).toBe(
+      "This agent is paused, so nothing was started.",
+    );
+  });
+
   it("reports a failure for any other not-triggered shape", () => {
     expect(describeTriggerFailure({ triggered: false })).toBe(
       "The agent could not be started. Nothing has changed.",
