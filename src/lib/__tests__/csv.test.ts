@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseClientImportCsv } from "@/lib/csv-import";
+import { parseImportCsv } from "@/lib/csv-import";
 import { CSV_RECORD_SEPARATOR, UTF8_BOM, csvFileName, escapeCsvValue, toCsv } from "@/lib/csv";
 
 /**
@@ -121,7 +121,7 @@ describe("toCsv", () => {
       ],
     );
 
-    expect(parseClientImportCsv(csv.slice(UTF8_BOM.length))).toEqual([
+    expect(parseImportCsv(csv.slice(UTF8_BOM.length))).toEqual([
       { company_name: 'Acme, "The" Co', note: "renewal; upsell", amount: "1240000" },
       { company_name: "Northstar", note: "", amount: "0" },
     ]);

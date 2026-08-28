@@ -46,7 +46,9 @@ describe("route performance review regressions", () => {
       ["dashboard", ["/"], []],
       ["accounts", ["/accounts", "/accounts/$id"], []],
       ["clients", ["/clients", "/clients/$id", "/clients/import"], ["/clients/import"]],
-      ["leads", ["/leads", "/leads/$id"], []],
+      // `/leads/import` is not exempt from the initial-payload budget the way `/clients/import`
+      // is: it has no loader, so it ships no data to be exempted from.
+      ["leads", ["/leads", "/leads/$id", "/leads/import"], []],
       ["campaigns", ["/campaigns", "/campaigns/$id"], []],
       ["quotes", ["/quotes", "/quotes/new", "/quotes/$id", "/quotes/$id/pdf"], ["/quotes/$id/pdf"]],
       ["job-sheets", ["/job-sheets", "/job-sheets/$id"], []],

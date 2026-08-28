@@ -47,7 +47,9 @@ export const APP_ROUTE_FAMILIES: ReadonlyArray<RoutePerformanceRoute> = [
     paths: ["/clients", "/clients/$id", "/clients/import"],
     initialPayloadBudgetExemptPaths: ["/clients/import"],
   },
-  { id: "leads", paths: ["/leads", "/leads/$id"] },
+  // `/leads/import` needs no initial-payload exemption: unlike `/clients/import` it has no
+  // loader, so it ships no data at all.
+  { id: "leads", paths: ["/leads", "/leads/$id", "/leads/import"] },
   { id: "campaigns", paths: ["/campaigns", "/campaigns/$id"] },
   {
     id: "quotes",
