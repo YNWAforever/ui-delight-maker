@@ -97,4 +97,42 @@ describe("buildQuoteListQuery", () => {
     const parts = buildQuoteListQuery({ filters: {}, search: "a".repeat(500), visibility: BOTH });
     expect(parts.values).toEqual([`%${"a".repeat(100)}%`]);
   });
+
+  it("omits the client join when clients are not visible", () => {
+    // The mirror of the leads case. Without it, a regression that special-cases one
+    // record type — swapped conditionals, say — would go uncaught.
+    const parts = buildQuoteListQuery({
+      filters: {},
+      search: "Acme",
+      visibility: { leads: true, clients: false },
+    });
+
+    expect(parts.joins).not.toContain("clients");
+    expect(parts.where).not.toContain("c.company_name");
+    expect(parts.companyNameExpression).toBe("coalesce(l.company_name)");
+  });
+
+  it("searches only the quote number when neither record type is visible", () => {
+    const parts = buildQuoteListQuery({ filters: {}, search: "Acme", visibility: NEITHER });
+
+    expect(parts.where).toContain("coalesce(q.number, '') ilike $1");
+    expect(parts.where).not.toContain("company_name");
+    expect(parts.values).toEqual(["%Acme%"]);
+  });
+
+  it("combines filters and search under a restricted visibility", () => {
+    // The shape the real caller produces: an accounting user, who may not see leads,
+    // typing in the search box. The pieces are each tested; this is the combination.
+    const parts = buildQuoteListQuery({
+      filters: { status: "sent", lead_id: "lead-1" },
+      search: "Acme",
+      visibility: { leads: false, clients: true },
+    });
+
+    expect(parts.where).toContain("q.status = $1");
+    expect(parts.where).toContain("q.lead_id = $2");
+    expect(parts.where).toContain("ilike $3");
+    expect(parts.where).not.toContain("l.company_name");
+    expect(parts.values).toEqual(["sent", "lead-1", "%Acme%"]);
+  });
 });
