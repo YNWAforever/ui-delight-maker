@@ -9,12 +9,11 @@ import type {
   QuoteLineItemRecord,
 } from "@/lib/types";
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
+import { normalizePagination, type PaginationInput } from "@/server/repositories/pagination";
 import {
-  normalizePagination,
-  parseCount,
-  type PaginatedResult,
-  type PaginationInput,
-} from "@/server/repositories/pagination";
+  buildQuoteListQuery,
+  type QuoteListVisibility,
+} from "@/server/repositories/quote-list-query";
 
 export type QuoteFilters = {
   status?: string;
@@ -26,6 +25,23 @@ export type QuoteFilters = {
 };
 
 export type QuotePageFilters = QuoteFilters & PaginationInput;
+
+export type QuoteListRow = Quote & { linked_company_name: string | null };
+
+export type QuoteListAggregate = {
+  status: Quote["status"];
+  currency: string;
+  count: number;
+  total: number;
+};
+
+export type QuoteListPage = {
+  items: QuoteListRow[];
+  total: number;
+  page: number;
+  limit: number;
+  aggregates: QuoteListAggregate[];
+};
 
 type CreateQuoteInput = Pick<Quote, "lead_id" | "currency"> &
   Partial<
@@ -126,40 +142,71 @@ export async function listQuotes(filters: QuoteFilters = {}) {
   );
 }
 
+type QuoteAggregateRow = {
+  status: Quote["status"];
+  currency: string;
+  count: number | string;
+  total: number | string;
+};
+
+/**
+ * `currency` is `not null default 'HKD'` but may be the empty string, which the client
+ * already normalises with `quote.currency || "HKD"`. The aggregate applies the identical
+ * rule: a row counted under '' beside a tile counted under HKD is exactly the row/tile
+ * disagreement this read exists to remove.
+ */
+const CURRENCY = "coalesce(nullif(q.currency, ''), 'HKD')";
+
 export async function listQuotesPage(
-  filters: QuotePageFilters = {},
-): Promise<PaginatedResult<Quote>> {
-  const where = buildFilters([
-    ["status", filters.status],
-    ["lead_id", filters.lead_id],
-    ["client_id", filters.client_id],
-    ["contact_id", filters.contact_id],
-    ["account_id", filters.account_id],
-    ["deal_id", filters.deal_id],
-  ]);
+  filters: QuotePageFilters & { search?: string; visibility: QuoteListVisibility },
+): Promise<QuoteListPage> {
+  const parts = buildQuoteListQuery({
+    filters,
+    search: filters.search,
+    visibility: filters.visibility,
+  });
   const { page, limit, offset } = normalizePagination(filters);
-  const [items, count] = await Promise.all([
-    query<Quote>(
+
+  const [items, aggregateRows] = await Promise.all([
+    query<QuoteListRow>(
       `
-        select *
-        from quotes
-        ${where.sql}
-        order by created_at desc, id desc
-        limit $${where.values.length + 1} offset $${where.values.length + 2}
+        select q.*, ${parts.companyNameExpression} as linked_company_name
+        from quotes q${parts.joins}
+        ${parts.where}
+        order by q.created_at desc, q.id desc
+        limit $${parts.values.length + 1} offset $${parts.values.length + 2}
       `,
-      [...where.values, limit, offset],
+      [...parts.values, limit, offset],
     ),
-    queryOne<{ total: number | string }>(
+    // Replaces the old count query rather than joining it: the per-currency sums and the
+    // row total come from one grouped read, so the route's query budget does not move.
+    // `total_value` is nullable and `sum` skips nulls, hence the coalesce.
+    query<QuoteAggregateRow>(
       `
-        select count(*) as total
-        from quotes
-        ${where.sql}
+        select q.status, ${CURRENCY} as currency,
+               count(*) as count, coalesce(sum(q.total_value), 0) as total
+        from quotes q${parts.joins}
+        ${parts.where}
+        group by q.status, ${CURRENCY}
       `,
-      where.values,
+      parts.values,
     ),
   ]);
 
-  return { items, total: parseCount(count), page, limit };
+  const aggregates = aggregateRows.map((row) => ({
+    status: row.status,
+    currency: row.currency,
+    count: Number(row.count),
+    total: Number(row.total),
+  }));
+
+  return {
+    items,
+    total: aggregates.reduce((sum, entry) => sum + entry.count, 0),
+    page,
+    limit,
+    aggregates,
+  };
 }
 
 export async function getQuote(id: string) {
