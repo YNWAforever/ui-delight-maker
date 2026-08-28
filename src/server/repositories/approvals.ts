@@ -155,3 +155,41 @@ export async function decideApproval(input: {
     return approval;
   });
 }
+
+/**
+ * Route a pending approval to a reviewer, or clear the assignment.
+ *
+ * A decided approval cannot be reassigned: its status is no longer `pending`, and changing the
+ * reviewer on a closed decision would misrepresent who made it. The guard is `status !==
+ * "pending"`, so an `escalated` approval is refused too — it is waiting on a fresh request from
+ * the record itself, not on a reviewer.
+ *
+ * `assignedTo: null` unassigns. That is a real action — an approval routed to the wrong person
+ * needs a way back to the unassigned pool — not an error.
+ */
+export async function assignApproval(input: {
+  id: string;
+  assignedTo: string | null;
+}): Promise<HumanApproval> {
+  // `getApproval` throws "Approval not found" itself, so there is no missing-row branch here.
+  const existing = await getApproval(input.id);
+  if (existing.status !== "pending") {
+    throw new Error("A decided approval cannot be reassigned");
+  }
+
+  if (input.assignedTo) {
+    const profile = await queryOne<{ id: string }>("select id from profiles where id = $1", [
+      input.assignedTo,
+    ]);
+    // Rejected rather than stored: the column is FK-constrained, so a bad id would fail at the
+    // database anyway — but failing here gives a message a user can act on.
+    if (!profile) throw new Error("Assignee not found");
+  }
+
+  const approval = await queryOne<HumanApproval>(
+    "update human_approvals set assigned_to = $2 where id = $1 returning *",
+    [input.id, input.assignedTo],
+  );
+  if (!approval) throw new Error("Approval not found");
+  return approval;
+}
