@@ -70,9 +70,10 @@ describe("AiSalesDesk", () => {
     expect(handlers.onDraftQuote).toHaveBeenCalledOnce();
   });
 
-  it("offers no control that has no server path behind it", () => {
-    // "Summarize" was removed rather than disabled: there is no summarization server
-    // function, workflow or webhook at any layer, so the button could only ever fail.
+  it("offers only the controls that dispatch an agent run", () => {
+    // "Summarize" is not absent for want of a server path any more — `getLeadTimelineSummary`
+    // exists. It is absent because it is a `leads.view` read that writes no `agent_runs` row
+    // and takes no part in this card's shared dispatch lock; it renders in its own card.
     render(
       <AiSalesDesk
         lead={lead}

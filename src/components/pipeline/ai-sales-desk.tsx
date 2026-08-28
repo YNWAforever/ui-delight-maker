@@ -6,11 +6,14 @@ import { getLeadAiState, getLeadPendingApprovals } from "@/lib/pipeline";
 import type { AgentRun, HumanApproval, Lead } from "@/lib/types";
 
 /**
- * "Summarize" used to be the fourth button here. It is gone rather than disabled: a
- * timeline summary has no server path at any layer — no `summar*` export in
- * `src/server-functions/`, no workflow JSON, no webhook env var — and the panel already
- * renders the real timeline two cards below, so nothing is lost by removing it. A control
- * that can never do anything is not a "coming soon", it is a dead end that costs a click.
+ * "Summarize" used to be the fourth button here, and does not belong here now that it works.
+ *
+ * Every control on this card dispatches an agent run: they require `agents.run`, write an
+ * `agent_runs` row, and share one in-flight lock so a second dispatch cannot be billed. The
+ * timeline summary is none of those things — it is a deterministic count gated on
+ * `leads.view` — so it lives in its own card beside the timeline it counts
+ * (`lead-timeline-summary.tsx`). Listing a read among three dispatches would misdescribe
+ * both what it costs and what it needs permission to do.
  */
 interface AiSalesDeskProps {
   lead: Lead;

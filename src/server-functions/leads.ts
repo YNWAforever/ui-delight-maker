@@ -19,6 +19,7 @@ import {
   updateLead as updateLeadInNeon,
   type LeadPageFilters,
 } from "@/server/repositories/leads";
+import { summariseLeadTimeline } from "@/server/read-models/lead-timeline";
 import { serializeActivityLog, serializeAgentRun } from "@/lib/serializable";
 import type { Engagement, Lead, LeadStatus } from "@/lib/types";
 
@@ -87,6 +88,16 @@ export const getLead = createServerFn({ method: "GET" })
       lead: result.lead,
       activityLogs: result.activityLogs.map(serializeActivityLog),
     };
+  });
+
+export const getLeadTimelineSummary = createServerFn({ method: "GET" })
+  .validator((data: unknown) => data as { leadId: string })
+  .handler(async ({ data }) => {
+    // Gated as a read, because it is one. Deliberately NOT `agents.run`: nothing is
+    // dispatched, no agent row is written, and requiring a capability the operation does
+    // not need would lock out users who should see this.
+    await requireCapability("leads.view", { resourceType: "lead", resourceId: data.leadId });
+    return summariseLeadTimeline(data.leadId);
   });
 
 export const createLead = createServerFn({ method: "POST" })
