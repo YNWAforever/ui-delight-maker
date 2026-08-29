@@ -1,8 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AGENT_DEFINITIONS } from "@/lib/agents";
 
-const { queryMock } = vi.hoisted(() => ({ queryMock: vi.fn() }));
+const { queryMock, mockLoadEffectiveAgentCatalogue } = vi.hoisted(() => ({
+  queryMock: vi.fn(),
+  mockLoadEffectiveAgentCatalogue: vi.fn(),
+}));
 
 vi.mock("@/server/db/neon.server", () => ({ query: queryMock }));
+vi.mock("@/server/read-models/agent-catalogue", () => ({
+  loadEffectiveAgentCatalogue: mockLoadEffectiveAgentCatalogue,
+}));
 
 const sqlText = (value: unknown) => String(value).replace(/\s+/g, " ").trim().toLowerCase();
 
@@ -10,6 +17,12 @@ describe("agent operations read model", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     queryMock.mockResolvedValue([]);
+    // Default: the plain catalogue, unmodified — existing tests below assert against
+    // AGENT_DEFINITIONS reaching the output untouched, so the effective catalogue must equal it
+    // unless a test overrides this mock.
+    mockLoadEffectiveAgentCatalogue.mockResolvedValue(
+      AGENT_DEFINITIONS.map((agent) => ({ ...agent })),
+    );
   });
 
   it("returns fleet health, per-agent metrics, and a bounded attention queue", async () => {
@@ -148,5 +161,21 @@ describe("agent operations read model", () => {
       tokens_24h: 0,
       avg_confidence: null,
     });
+  });
+
+  it("reports the effective status, not the catalogue status", async () => {
+    // The regression this slice exists to fix: pausing an agent left /agents showing "Active"
+    // because the read model mapped AGENT_DEFINITIONS directly.
+    mockLoadEffectiveAgentCatalogue.mockResolvedValue(
+      AGENT_DEFINITIONS.map((agent) =>
+        agent.workflow_type === "qualify_lead" ? { ...agent, status: "inactive" } : agent,
+      ),
+    );
+
+    const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+    const read = await loadAgentDirectoryRead();
+    const qualify = read.agents.find((a) => a.workflow_type === "qualify_lead");
+
+    expect(qualify?.status).toBe("inactive");
   });
 });

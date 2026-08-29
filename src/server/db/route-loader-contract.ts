@@ -233,7 +233,12 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // This budget was already stale on main: the read model gained the query there and the
     // number was never raised, but the contract suite could not report it because Actions
     // was blocked on billing from 12 August.
-    maxQueries: 4,
+    //
+    // 4 -> 5 on 2026-08-29: loadEffectiveAgentCatalogue adds loadAgentPolicies' single
+    // `select distinct on (workflow_type)`. It rides in the existing Promise.all, so this is
+    // one more query and no more round trips. Without it this page renders the code catalogue's
+    // status while the dispatch path obeys a stored override.
+    maxQueries: 5,
   },
   {
     // getAgentHistoryPage() (src/server-functions/agent-runs.ts) awaits
