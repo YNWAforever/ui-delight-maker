@@ -183,9 +183,19 @@ export function resolveDispatchableAgent(
   const agent = AGENT_DEFINITIONS.find((a) => a.workflow_type === workflowType);
   if (!agent) throw new Error(`No agent definition for workflow type "${workflowType}"`);
 
-  // The map already has the code defaults merged in, so a present entry is authoritative.
-  const policy = policies.get(workflowType);
-  if (policy && policy.status !== "active") {
+  // The map already has the code defaults merged in, so a present entry is authoritative — but
+  // a caller may legitimately hand in a partial or empty map (a test, or a future caller that
+  // has not loaded overrides), and a missing entry must not silently read as "active" no matter
+  // what the catalogue says. Falling back to `agent.status` is what makes an empty map behave
+  // exactly like the pre-policy-table guard that read the catalogue directly.
+  //
+  // This is a deliberate asymmetry with `agentParksForApproval` in
+  // `src/server/workflows/writebacks.ts`, which throws on a missing entry instead of falling
+  // back: a guard fails safe toward *refusing a dispatch that has not happened yet*, so a wrong
+  // guess only costs a retryable run, but a writeback runs after the dispatch it is deciding
+  // about — guessing there would silently skip human review on a run that already executed.
+  const status = policies.get(workflowType)?.status ?? agent.status;
+  if (status !== "active") {
     return { dispatchable: false, reason: "agent_inactive" };
   }
   return { dispatchable: true, agent };

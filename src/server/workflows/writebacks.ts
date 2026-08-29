@@ -32,14 +32,24 @@ import { upsertRelationshipSignals } from "@/server/repositories/relationship-si
  * it changed nothing. It now reads the same effective-policy map the dispatch guard reads
  * (stored overrides already merged over the catalogue by `loadAgentPolicies`), rather than the
  * catalogue directly, so a stored override changes what a writeback does too, not only what
- * the badge on `/agents/$name` shows. Every catalogue workflow is always present in that map,
- * so a missing entry here would mean the caller passed the wrong map, not a real gap.
+ * the badge on `/agents/$name` shows.
+ *
+ * Every catalogue workflow is always present in a map `loadAgentPolicies` produced, so a
+ * missing entry here means the caller passed the wrong map, not a real gap — and this throws
+ * rather than guessing, deliberately the opposite failure direction from
+ * `resolveDispatchableAgent`'s fallback to `agent.status`. The guard fails safe toward
+ * *refusing a dispatch that has not happened yet*, where a wrong guess only costs an agent run
+ * that could be retried. This function fails loudly instead, because guessing `false` here
+ * would silently skip human review on a run that already executed — the one thing this
+ * function exists to decide.
  */
 function agentParksForApproval(
   workflowType: AgentWorkflowType,
   policies: Map<AgentWorkflowType, AgentPolicy>,
 ): boolean {
-  return policies.get(workflowType)?.humanApproval ?? false;
+  const policy = policies.get(workflowType);
+  if (!policy) throw new Error(`No agent policy for workflow type "${workflowType}"`);
+  return policy.humanApproval;
 }
 
 /**

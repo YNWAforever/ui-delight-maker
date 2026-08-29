@@ -32,4 +32,23 @@ describe("resolveDispatchableAgent", () => {
     // A programming error, not a runtime state — the same contract `agentNameFor` has.
     expect(() => resolveDispatchableAgent("not_a_workflow" as never, new Map())).toThrow();
   });
+
+  it("falls back to the catalogue's own status when the policy map has no entry for the workflow", () => {
+    // `loadAgentPolicies` always seeds every catalogue entry, so in production the map is
+    // never missing a workflow — this exercises the fallback a caller with a partial or empty
+    // map (a test, or some future caller) would otherwise silently bypass. Every catalogue
+    // entry is active today, so the fallback path is walked by flipping one entry in place —
+    // the same "guard by mutation" style `agents-catalogue.test.ts` uses — rather than through
+    // a synthetic catalogue parameter, which `resolveDispatchableAgent` no longer accepts.
+    const target = AGENT_DEFINITIONS.find((a) => a.workflow_type === "qualify_lead");
+    if (!target) throw new Error("fixture: qualify_lead missing from the catalogue");
+    const originalStatus = target.status;
+    target.status = "inactive";
+    try {
+      const result = resolveDispatchableAgent("qualify_lead", new Map());
+      expect(result).toEqual({ dispatchable: false, reason: "agent_inactive" });
+    } finally {
+      target.status = originalStatus;
+    }
+  });
 });
