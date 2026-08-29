@@ -175,9 +175,16 @@ function AgentDetailErrorState({ error }: { error: unknown }) {
 
 function AgentDetail() {
   const loaderData = Route.useLoaderData();
-  const { agent } = loaderData;
   const search = Route.useSearch();
   const { capabilities } = Route.useRouteContext();
+  // Subscribed live, not read once off `loaderData` - the loader's `agent` is a snapshot
+  // taken at navigation time, so a plain destructure would never see the effect of a save.
+  // `AgentGovernancePanel` invalidates this exact key on save (same pattern `settings.tsx`'s
+  // `AgentCatalogueTab` already uses for it); the cache is warm from the loader's own
+  // `ensureQueryData` call, so this does not add a fetch, only a subscription to the one
+  // invalidation could actually cause.
+  const { data: catalogue } = useQuery(effectiveCatalogueQuery());
+  const agent = catalogue?.find((item) => item.name === loaderData.agent.name) ?? loaderData.agent;
   const { data: history } = useQuery({
     ...historyQuery(agent.display_name, search.page),
     initialData: loaderData.history,
