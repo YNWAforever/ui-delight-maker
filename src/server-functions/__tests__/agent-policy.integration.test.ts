@@ -82,9 +82,12 @@ vi.mock("@/lib/auth/neon-auth.server", () => ({
 import { CLIENTOPS_MIGRATION_PATHS } from "@/lib/clientops-relationship-schema";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
-import { setAgentPolicyFn } from "@/server-functions/agent-policy";
+import { getAgentPolicyHistoryFn, setAgentPolicyFn } from "@/server-functions/agent-policy";
 import { triggerLeadAgent } from "@/server-functions/leads";
-import { loadAgentPolicies } from "@/server/repositories/agent-policy";
+import {
+  loadAgentPolicies,
+  type AgentPolicyVersionListRow,
+} from "@/server/repositories/agent-policy";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 
@@ -97,6 +100,22 @@ const ADMIN_SESSION = {
 };
 const MANAGER_SESSION = {
   profile: { id: MANAGER, role: "manager", status: "active", primary_department_id: null },
+};
+
+// `accounting` grants neither `agents.view` nor `agents.configure` (see ROLE_GRANTS in
+// src/lib/admin/policy.ts) - the role this file's gating test needs is "holds neither", not
+// "holds the write one but not the read one" (that is what MANAGER_SESSION already proves for
+// setAgentPolicyFn). No profile row is inserted for it: loadAuthorizationContext's
+// department/team/report/override lookups are plain `where ... = $1` filters against the
+// actor id, not a join that requires the id to exist as a row, so an unseeded id is enough to
+// prove the refusal.
+const NO_AGENTS_SESSION = {
+  profile: {
+    id: "policy-no-agents",
+    role: "accounting",
+    status: "active",
+    primary_department_id: null,
+  },
 };
 
 /** The handlers are `createServerFn` chains flattened by the stub above, so they take `{ data }`. */
@@ -113,6 +132,10 @@ const setAgentPolicy = setAgentPolicyFn as unknown as Handler<
 const triggerAgent = triggerLeadAgent as unknown as Handler<
   { leadId: string },
   { triggered: boolean; reason?: string }
+>;
+const getPolicyHistory = getAgentPolicyHistoryFn as unknown as Handler<
+  { workflowType: string },
+  AgentPolicyVersionListRow[]
 >;
 
 function db() {
@@ -307,4 +330,51 @@ describe("agent policy store, proven against a real database", () => {
       humanApproval: true,
     });
   });
+
+  it.runIf(hasDatabase)(
+    "a manager (agents.view, not agents.configure) can read the policy history, newest first",
+    async () => {
+      // Two rows, not one: an ordering bug can hide behind a single-row assertion (any order
+      // is "newest first" when there is nothing to put out of order).
+      await insertPolicyVersion({
+        workflowType: "qualify_lead",
+        status: "inactive",
+        humanApproval: true,
+        changedBy: ADMIN,
+        createdAt: "2024-01-01T00:00:00Z",
+      });
+      await insertPolicyVersion({
+        workflowType: "qualify_lead",
+        status: "active",
+        humanApproval: false,
+        changedBy: ADMIN,
+        createdAt: "2024-06-01T00:00:00Z",
+      });
+
+      holder.session = MANAGER_SESSION;
+
+      const history = await getPolicyHistory({ data: { workflowType: "qualify_lead" } });
+
+      expect(history).toHaveLength(2);
+      // Asserted on the actual field values, not just length: a query that returned the two
+      // rows in insertion order rather than created_at order would still pass a length-only
+      // check.
+      expect(history[0]).toMatchObject({ status: "active", human_approval: false });
+      expect(history[1]).toMatchObject({ status: "inactive", human_approval: true });
+      expect(new Date(history[0]!.created_at).getTime()).toBeGreaterThan(
+        new Date(history[1]!.created_at).getTime(),
+      );
+    },
+  );
+
+  it.runIf(hasDatabase)(
+    "the history read is gated: a session holding neither agents.view nor agents.configure is refused",
+    async () => {
+      holder.session = NO_AGENTS_SESSION;
+
+      await expect(getPolicyHistory({ data: { workflowType: "qualify_lead" } })).rejects.toThrow(
+        "You do not have this capability",
+      );
+    },
+  );
 });
