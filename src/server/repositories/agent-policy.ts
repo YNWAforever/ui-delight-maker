@@ -103,3 +103,45 @@ export async function setAgentPolicy(input: {
     [input.workflowType, input.status, input.humanApproval, input.changedBy, input.reason ?? ""],
   );
 }
+
+export type AgentPolicyVersionListRow = {
+  id: string;
+  status: "active" | "inactive";
+  human_approval: boolean;
+  reason: string | null;
+  created_at: string;
+  version_seq: string;
+  changed_by: string;
+  changed_by_name: string | null;
+};
+
+/**
+ * One workflow's policy history, newest first.
+ *
+ * Read at `agents.view`, not `agents.configure`: a paused agent affects everyone who tries to
+ * use it, so "why is this off, and since when" is a fair question for anyone who can see the
+ * agent at all. That is also what makes the `reason` column worth writing.
+ *
+ * Ordered exactly as `loadAgentPolicies` orders, and for the same reason - read the comment on
+ * that query before changing either.
+ *
+ * A `left join`, deliberately: a deleted profile must not hide a policy change.
+ */
+export async function listAgentPolicyVersions(
+  workflowType: AgentWorkflowType,
+): Promise<AgentPolicyVersionListRow[]> {
+  const known = AGENT_DEFINITIONS.some((a) => a.workflow_type === workflowType);
+  if (!known) throw new Error(`No agent definition for workflow type "${workflowType}"`);
+
+  return query<AgentPolicyVersionListRow>(
+    `
+      select v.id, v.status, v.human_approval, v.reason, v.created_at, v.version_seq,
+             v.changed_by, p.name as changed_by_name
+        from agent_policy_versions v
+        left join profiles p on p.id = v.changed_by
+       where v.workflow_type = $1
+       order by v.created_at desc, v.version_seq desc
+    `,
+    [workflowType],
+  );
+}

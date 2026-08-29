@@ -12,7 +12,8 @@ vi.mock("@/server/db/neon.server", () => ({
   transaction: vi.fn(),
 }));
 
-const { loadAgentPolicies, setAgentPolicy } = await import("../agent-policy");
+const { loadAgentPolicies, setAgentPolicy, listAgentPolicyVersions } =
+  await import("../agent-policy");
 
 describe("loadAgentPolicies", () => {
   beforeEach(() => {
@@ -122,5 +123,32 @@ describe("setAgentPolicy", () => {
       }),
     ).rejects.toThrow();
     expect(mockQueryOne).not.toHaveBeenCalled();
+  });
+});
+
+describe("listAgentPolicyVersions", () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+  });
+
+  it("returns one workflow's versions newest first", async () => {
+    mockQuery.mockResolvedValue([]);
+
+    await listAgentPolicyVersions("qualify_lead");
+
+    const [sql, values] = mockQuery.mock.calls[0];
+    expect(String(sql)).toContain("from agent_policy_versions");
+    expect(String(sql)).toContain("where v.workflow_type = $1");
+    // Same ordering as loadAgentPolicies, for the same reason: rows written in one transaction
+    // share a created_at, and version_seq resolves that to true insertion order.
+    expect(String(sql)).toContain("order by v.created_at desc, v.version_seq desc");
+    expect(values).toEqual(["qualify_lead"]);
+  });
+
+  it("rejects a workflow the catalogue does not have", async () => {
+    // Symmetry with setAgentPolicy, which refuses to write one. A caller passing an unknown
+    // workflow has a bug, and returning an empty list would hide it.
+    await expect(listAgentPolicyVersions("not_a_workflow" as never)).rejects.toThrow();
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 });
