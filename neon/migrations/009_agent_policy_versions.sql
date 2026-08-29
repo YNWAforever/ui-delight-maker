@@ -7,6 +7,11 @@
 --
 -- `workflow_type` is deliberately not foreign-keyed: the catalogue lives in code, not in a
 -- table. A row naming a workflow that no longer exists is ignored on read.
+-- `version_seq` breaks ties among rows that share a `created_at`. Postgres's `now()` is
+-- transaction-start time, so two rows for the same workflow written in one transaction get an
+-- identical `created_at`; without a monotonic tiebreak, "the newest row" would be decided by
+-- plan order instead of insertion order. `generated always as identity` guarantees a strictly
+-- increasing value per insert, which `gen_random_uuid()` (see `id`) cannot provide.
 create table if not exists agent_policy_versions (
   id uuid primary key default gen_random_uuid(),
   workflow_type text not null,
@@ -14,11 +19,12 @@ create table if not exists agent_policy_versions (
   human_approval boolean not null,
   changed_by text not null references profiles(id),
   reason text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  version_seq bigint generated always as identity not null
 );
 
 create index if not exists agent_policy_versions_current_idx
-  on agent_policy_versions (workflow_type, created_at desc);
+  on agent_policy_versions (workflow_type, created_at desc, version_seq desc);
 
 -- Same append-only guarantee as admin_audit_logs (007): a DB-level trigger, not just
 -- application discipline, so no future write path can quietly edit or drop a policy version

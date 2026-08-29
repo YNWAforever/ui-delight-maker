@@ -24,7 +24,12 @@ export async function loadAgentPolicies(): Promise<Map<AgentWorkflowType, AgentP
     `
       select distinct on (workflow_type) workflow_type, status, human_approval
         from agent_policy_versions
-       order by workflow_type, created_at desc
+       -- created_at is the real ordering: the newest policy change governs. version_seq is
+       -- only a tiebreak — rows written in the same transaction share a created_at, because
+       -- Postgres's now() is transaction-start time, not statement time. version_seq is a
+       -- generated identity column, so it is strictly increasing and resolves that tie to
+       -- true insertion order. Do not drop it and do not put it ahead of created_at.
+       order by workflow_type, created_at desc, version_seq desc
     `,
   );
 

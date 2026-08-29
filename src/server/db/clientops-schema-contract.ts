@@ -177,6 +177,7 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
       type: "timestamp with time zone",
       nullable: false,
     },
+    "agent_policy_versions.version_seq": { type: "bigint", nullable: false },
     ...ADMIN_SCHEMA_COLUMNS,
   },
   constraints: [

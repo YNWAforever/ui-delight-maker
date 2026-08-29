@@ -56,4 +56,27 @@ describe("loadAgentPolicies", () => {
     await loadAgentPolicies();
     expect(mockQuery).toHaveBeenCalledOnce();
   });
+
+  it("breaks a same-created_at tie by the higher version_seq, not plan order", async () => {
+    // Two rows for one workflow can share a created_at: Postgres's now() is transaction-start
+    // time, so two policy changes written in a single transaction get an identical timestamp.
+    // version_seq — a generated identity column, strictly increasing per insert — is the only
+    // thing that then says which of the tied rows is actually newer; without it in the order
+    // by, distinct on would pick between them by plan order instead of insertion order.
+    //
+    // query() is mocked, so this test cannot make Postgres itself run distinct on the way the
+    // schema integration test (clientops-schema.integration.test.ts) does against a real
+    // database. What it CAN and must pin, from here, is that the SQL this function sends
+    // actually asks for that resolution: created_at desc as the real precedence, version_seq
+    // desc only to break a tie on it. A fixture-data assertion would pass no matter what this
+    // string says — the mock returns whatever it is told to regardless of the query text — so
+    // asserting on the SQL itself is the only check in this file that can go red when the
+    // tiebreak is silently dropped.
+    mockQuery.mockResolvedValue([]);
+
+    await loadAgentPolicies();
+
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    expect(sql).toContain("order by workflow_type, created_at desc, version_seq desc");
+  });
 });
