@@ -1,4 +1,4 @@
-import { agentNameFor } from "@/lib/agents";
+import { resolveDispatchableAgent } from "@/lib/agents";
 import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -103,8 +103,16 @@ export const triggerRiskScoreAgent = createServerFn({ method: "POST" })
       return { triggered: false, reason: "missing_webhook" as const };
     }
 
+    // After the capability check, so an unauthorised caller is refused for being unauthorised
+    // rather than told the agent is inactive; before createAgentRun, so no run row records a
+    // dispatch that never happened.
+    const dispatchable = resolveDispatchableAgent("score_renewal_risk");
+    if (!dispatchable.dispatchable) {
+      return { triggered: false, reason: dispatchable.reason };
+    }
+
     const { run, created } = await createAgentRun({
-      agent_name: agentNameFor("score_renewal_risk"),
+      agent_name: dispatchable.agent.display_name,
       workflow_type: "score_renewal_risk",
       subject_id: data.engagementId,
       subject_type: "engagement",

@@ -113,6 +113,15 @@ describe("describeTriggerFailure", () => {
     expect(describeTriggerFailure({ triggered: true, reason: "queued" })).toBeNull();
   });
 
+  it("explains an inactive agent without implying a failure", () => {
+    // An inactive agent is a deliberate state, not a fault. The copy must not send someone
+    // looking for a broken integration, and it says "inactive" because that is the word the
+    // catalogue uses and the badge on /agents/$name renders.
+    expect(describeTriggerFailure({ triggered: false, reason: "agent_inactive" })).toBe(
+      "This agent is inactive, so nothing was started.",
+    );
+  });
+
   it("reports a failure for any other not-triggered shape", () => {
     expect(describeTriggerFailure({ triggered: false })).toBe(
       "The agent could not be started. Nothing has changed.",

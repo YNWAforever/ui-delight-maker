@@ -1,4 +1,4 @@
-import { agentNameFor } from "@/lib/agents";
+import { resolveDispatchableAgent } from "@/lib/agents";
 import { query } from "@/server/db/neon.server";
 import { createNotification } from "@/server/repositories/notifications";
 import {
@@ -76,9 +76,15 @@ export async function runRetentionSweep(today: string) {
 
       const existingRun = await findActiveRun(engagement.id, "score_renewal_risk", "engagement");
       const dispatchConfig = getN8nDispatchConfig(process.env.N8N_SCORE_RENEWAL_RISK_WEBHOOK_URL);
-      if (!existingRun && dispatchConfig) {
+      // This is a scheduled sweep, not a server function: it collects per-engagement outcomes
+      // and returns counts, so an inactive agent is a skipped item like a missing webhook or an
+      // already-running run, never a thrown sweep that abandons the remaining engagements. The
+      // guard sits before createAgentRun so no run row records a dispatch that never happened,
+      // which also keeps `rescoreDispatched` truthful.
+      const dispatchable = resolveDispatchableAgent("score_renewal_risk");
+      if (!existingRun && dispatchConfig && dispatchable.dispatchable) {
         const { run, created } = await createAgentRun({
-          agent_name: agentNameFor("score_renewal_risk"),
+          agent_name: dispatchable.agent.display_name,
           workflow_type: "score_renewal_risk",
           subject_id: engagement.id,
           subject_type: "engagement",

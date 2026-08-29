@@ -323,7 +323,7 @@ function AgentDetail() {
                 <TabsContent value="governance" className="mt-4 space-y-5">
                   <SectionHeader
                     title="Catalogue definition"
-                    description="These are the values the dispatch path reads. Configuration is read-only until runtime policy enforcement is enabled."
+                    description="Catalogue state and Workflow type govern dispatch: an inactive agent is refused before any run is created. Human approval governs the writeback, deciding whether a finished run parks for a human; Model and Capabilities are descriptive only. Configuration is read-only until runtime policy enforcement is enabled."
                   />
 
                   <dl className="divide-y divide-border rounded-md border border-border">

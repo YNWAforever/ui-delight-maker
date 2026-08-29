@@ -11,6 +11,7 @@ const {
   buildRelationshipIntelligencePayloadMock,
   serializeAgentRunMock,
   getAccountWorkspaceDataMock,
+  resolveDispatchableAgentMock,
   createServerFnChain,
 } = vi.hoisted(() => {
   const createServerFnChain = {
@@ -33,6 +34,7 @@ const {
     buildRelationshipIntelligencePayloadMock: vi.fn(),
     serializeAgentRunMock: vi.fn((run) => run),
     getAccountWorkspaceDataMock: vi.fn(),
+    resolveDispatchableAgentMock: vi.fn(),
     createServerFnChain,
   };
 });
@@ -40,6 +42,16 @@ const {
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => createServerFnChain,
 }));
+
+/**
+ * Every catalogue entry is `active`, so the refusal path cannot be reached through the real
+ * catalogue. The mock defaults to the real implementation in beforeEach, which is why the
+ * dispatch case below still asserts the real "Relationship Intelligence Agent" display name.
+ */
+vi.mock("@/lib/agents", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/agents")>();
+  return { ...actual, resolveDispatchableAgent: resolveDispatchableAgentMock };
+});
 
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapability: requireCapabilityMock,
@@ -77,9 +89,13 @@ vi.mock("@/lib/serializable", () => ({
 }));
 
 describe("accounts server functions", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     process.env.N8N_RELATIONSHIP_INTELLIGENCE_WEBHOOK_URL = "https://n8n.example/webhook";
+
+    const actualAgents = await vi.importActual<typeof import("@/lib/agents")>("@/lib/agents");
+    resolveDispatchableAgentMock.mockImplementation(actualAgents.resolveDispatchableAgent);
+
     requireCapabilityMock.mockResolvedValue({
       user: { id: "user-1" },
       profile: { id: "user-1", role: "sales", status: "active" },
@@ -155,6 +171,40 @@ describe("accounts server functions", () => {
     });
     expect(triggerN8nMock).toHaveBeenCalled();
     expect(result).toEqual({ triggered: true, run: { id: "run-1", status: "running" } });
+  });
+
+  it("refuses to dispatch an inactive agent, and writes no run", async () => {
+    resolveDispatchableAgentMock.mockReturnValue({
+      dispatchable: false,
+      reason: "agent_inactive",
+    });
+    const { triggerRelationshipIntelligence } = await import("../accounts");
+
+    const result = await triggerRelationshipIntelligence({ data: { accountId: "account-1" } });
+
+    expect(result).toEqual({ triggered: false, reason: "agent_inactive" });
+    // Asserted on the write, not only the return value: a sentinel returned after a row was
+    // created would still be a lie about what happened.
+    expect(createAgentRunMock).not.toHaveBeenCalled();
+    expect(triggerN8nMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses an unauthorised caller for being unauthorised, not for an inactive agent", async () => {
+    // The guard sits after requireCapability so someone who may not run agents is told that,
+    // and never which agents this deployment has switched off. Both conditions hold here at
+    // once, so only the ordering decides the answer.
+    requireCapabilityMock.mockRejectedValue(new Error("Missing capability: agents.run"));
+    resolveDispatchableAgentMock.mockReturnValue({
+      dispatchable: false,
+      reason: "agent_inactive",
+    });
+    const { triggerRelationshipIntelligence } = await import("../accounts");
+
+    await expect(
+      triggerRelationshipIntelligence({ data: { accountId: "account-1" } }),
+    ).rejects.toThrow("Missing capability: agents.run");
+    expect(resolveDispatchableAgentMock).not.toHaveBeenCalled();
+    expect(createAgentRunMock).not.toHaveBeenCalled();
   });
 
   it("loads an Account workspace behind the existing auth guard", async () => {
