@@ -9,6 +9,12 @@ vi.mock("@/server/repositories/agent-policy", () => ({
 
 const { loadEffectiveAgentCatalogue } = await import("../agent-catalogue");
 
+// Captured at import, before any test body runs. Capturing inside the test is not enough:
+// earlier tests in this file override qualify_lead, so under a mutating implementation the
+// "before" value would already be corrupted and the assertion would compare a wrong value to
+// itself. Deep-cloned because a shallow copy would share the very objects being mutated.
+const CATALOGUE_AT_IMPORT = structuredClone(AGENT_DEFINITIONS);
+
 describe("loadEffectiveAgentCatalogue", () => {
   beforeEach(() => {
     mockLoadAgentPolicies.mockReset();
@@ -60,13 +66,12 @@ describe("loadEffectiveAgentCatalogue", () => {
   it("does not mutate AGENT_DEFINITIONS", async () => {
     // The catalogue is a module-level array shared by every importer. Merging in place would
     // leak one request's override into every later reader in the same process.
-    const before = AGENT_DEFINITIONS.find((a) => a.workflow_type === "qualify_lead")?.status;
     mockLoadAgentPolicies.mockResolvedValue(
       new Map([["qualify_lead", { status: "inactive", humanApproval: true }]]),
     );
 
     await loadEffectiveAgentCatalogue();
 
-    expect(AGENT_DEFINITIONS.find((a) => a.workflow_type === "qualify_lead")?.status).toBe(before);
+    expect(AGENT_DEFINITIONS).toEqual(CATALOGUE_AT_IMPORT);
   });
 });
