@@ -4,6 +4,7 @@ import { listAccessRequests, listAdminAuditLogs } from "@/server/repositories/ad
 import { getInvitationPreview } from "@/server/repositories/admin-invitations";
 import { getOrganizationUnit, listDepartmentsAndTeams } from "@/server/repositories/admin-teams";
 import { getAdminOverview, getAdminUser, listAdminUsers } from "@/server/repositories/admin-users";
+import { listAgentPolicyVersions } from "@/server/repositories/agent-policy";
 import { listApprovals } from "@/server/repositories/approvals";
 import { getCampaignWithAttendeeSummary, listCampaignsPage } from "@/server/repositories/campaigns";
 import { listClientsPage } from "@/server/repositories/clients";
@@ -263,6 +264,14 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
         }),
       ]),
     maxQueries: 4,
+  },
+  {
+    // getAgentPolicyHistoryFn() runs requireCapability("agents.view") then
+    // listAgentPolicyVersions(workflowType) - one select with a left join to profiles. Fetched
+    // when the Governance tab opens rather than in the loader, so it is contracted separately.
+    route: "agents.$name",
+    run: () => listAgentPolicyVersions(AGENT_DEFINITIONS[0].workflow_type),
+    maxQueries: 1,
   },
   {
     // getAiReviewRead() (src/server-functions/agent-runs.ts) awaits requireCapabilityChecks

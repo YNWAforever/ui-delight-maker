@@ -52,8 +52,22 @@ import { describe, expect, it } from "vitest";
  * Gated on agents.view rather than agents.configure: this is the read every page showing an
  * agent needs (agents, agents/$name, settings), and a paused agent is something anyone who
  * can see the agent should see - not just whoever can pause it.
+ *
+ * 227 -> 228 on 2026-08-29, for BD-3 slice 3 PR B (the Governance tab writes policy and reads
+ * its history). Established before changing: git diff main -- src/server-functions/
+ * ':(exclude)*__tests__*' filtered to requireCapability lines shows three + lines and no -
+ * lines at all - two belong to PR A's agents-catalogue.ts above (already counted in the
+ * 225 -> 227 change), and the third is new here:
+ *   +1  agent-policy.ts  requireCapability("agents.view") in getAgentPolicyHistoryFn
+ *
+ * Only +1, not +2: `requireCapability` was already imported in this file for
+ * setAgentPolicyFn, so the new handler adds one call site, not an import line as well.
+ *
+ * Read at agents.view rather than agents.configure, for the same reason as the catalogue
+ * read above: "why is this agent paused, and since when" is a fair question for anyone who
+ * can see the agent, not only whoever can change it.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 227;
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 228;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

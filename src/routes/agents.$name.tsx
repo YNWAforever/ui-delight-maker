@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 import { Bot, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
+import { AgentPolicyForm } from "@/components/agents/agent-policy-form";
 import {
   EmptyWorkspaceState,
   ErrorState,
@@ -16,10 +17,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { Capability } from "@/lib/admin/types";
 import { agentDetailSearchSchema } from "@/lib/admin-ux-search";
+import type { AgentDefinition, AgentWorkflowType } from "@/lib/agents";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { formatCount, formatDateTime, formatPercent } from "@/lib/format";
+import { getAgentPolicyHistoryFn, setAgentPolicyFn } from "@/server-functions/agent-policy";
 import { getAgentHistoryPage } from "@/server-functions/agent-runs";
 import { getEffectiveAgentCatalogue } from "@/server-functions/agents-catalogue";
 
@@ -38,10 +42,11 @@ import { getEffectiveAgentCatalogue } from "@/server-functions/agents-catalogue"
  * `status` and `human_approval` now come from `loadEffectiveAgentCatalogue` — the policy store
  * laid over the code catalogue — because those two fields are exactly what the dispatch path
  * and the writeback obey; every other field (model, capabilities, description, workflow type)
- * still comes straight from the code catalogue, since nothing overrides them. Nothing on this
- * page writes. BD-3 records what has to exist before any of it can become editable, and the
- * Governance tab states it on the page rather than leaving a reader to assume the controls
- * were merely misbehaving.
+ * still comes straight from the code catalogue, since nothing overrides them. The Governance
+ * tab now writes those two fields, through `AgentPolicyForm` and `setAgentPolicyFn`, gated on
+ * `agents.configure` — every other field on this page stays read-only, since nothing else has
+ * a policy store behind it. BD-3 still lists what has to exist before the rest of the
+ * catalogue (workflow type, model, capabilities) can become editable too.
  *
  * The Memory tab is gone (M-1). It was a URL-addressable destination whose entire body was
  * one sentence saying memory is not persisted — Instruction §16's "coming soon presented as
@@ -66,6 +71,17 @@ const effectiveCatalogueQuery = () =>
   routeQueryOptions({
     queryKey: crmQueryKeys.agents.section("catalogue", "effective"),
     queryFn: () => getEffectiveAgentCatalogue(),
+  });
+
+/**
+ * One agent's policy history, newest first. Deliberately not part of the route loader: the
+ * history is only read once the Governance tab is opened, and most visitors never open it —
+ * charging every loader run for a fetch most requests throw away is the cost this avoids.
+ */
+const policyHistoryQuery = (workflowType: AgentWorkflowType) =>
+  routeQueryOptions({
+    queryKey: crmQueryKeys.agents.section(workflowType, "policy-history"),
+    queryFn: () => getAgentPolicyHistoryFn({ data: { workflowType } }),
   });
 
 /**
@@ -159,8 +175,16 @@ function AgentDetailErrorState({ error }: { error: unknown }) {
 
 function AgentDetail() {
   const loaderData = Route.useLoaderData();
-  const { agent } = loaderData;
   const search = Route.useSearch();
+  const { capabilities } = Route.useRouteContext();
+  // Subscribed live, not read once off `loaderData` - the loader's `agent` is a snapshot
+  // taken at navigation time, so a plain destructure would never see the effect of a save.
+  // `AgentGovernancePanel` invalidates this exact key on save (same pattern `settings.tsx`'s
+  // `AgentCatalogueTab` already uses for it); the cache is warm from the loader's own
+  // `ensureQueryData` call, so this does not add a fetch, only a subscription to the one
+  // invalidation could actually cause.
+  const { data: catalogue } = useQuery(effectiveCatalogueQuery());
+  const agent = catalogue?.find((item) => item.name === loaderData.agent.name) ?? loaderData.agent;
   const { data: history } = useQuery({
     ...historyQuery(agent.display_name, search.page),
     initialData: loaderData.history,
@@ -333,26 +357,22 @@ function AgentDetail() {
                 <TabsContent value="governance" className="mt-4 space-y-5">
                   <SectionHeader
                     title="Catalogue definition"
-                    description="Catalogue state and Workflow type govern dispatch: an inactive agent is refused before any run is created. Human approval governs the writeback, deciding whether a finished run parks for a human; Model and Capabilities are descriptive only. These are the values the dispatch path enforces today - changing them requires the agents.configure capability."
+                    description="Catalogue state and Workflow type govern dispatch: an inactive agent is refused before any run is created. Human approval governs the writeback, deciding whether a finished run parks for a human; Model and Capabilities are descriptive only. Catalogue state and Human approval are editable below by anyone holding the agents.configure capability; Workflow type, Model and Capabilities are fixed in code."
                   />
 
                   <dl className="divide-y divide-border rounded-md border border-border">
-                    <GovernanceRow label="Catalogue state">
-                      <StatusBadge domain="agents" value={agent.status} />
-                    </GovernanceRow>
                     <GovernanceRow label="Workflow type">
                       <code className="text-xs">{agent.workflow_type}</code>
                     </GovernanceRow>
                     <GovernanceRow label="Model">
                       <code className="text-xs">{agent.model}</code>
                     </GovernanceRow>
-                    <GovernanceRow label="Human approval">
-                      <span className="text-sm">{humanApproval}</span>
-                    </GovernanceRow>
                     <GovernanceRow label="Capabilities">
                       <span className="text-right text-sm">{agent.capabilities.join(" · ")}</span>
                     </GovernanceRow>
                   </dl>
+
+                  <AgentGovernancePanel agent={agent} capabilities={capabilities ?? []} />
 
                   <div className="rounded-md border border-border bg-muted/30 p-4">
                     <h3 className="text-sm font-medium text-foreground">
@@ -421,6 +441,59 @@ function AgentDetail() {
         </Card>
       </div>
     </>
+  );
+}
+
+/**
+ * The write side of the Governance tab: the policy form plus the history it reads and the
+ * invalidation a save has to trigger.
+ *
+ * Invalidating `crmQueryKeys.agents.section("catalogue", "effective")` alongside the history
+ * key is not optional. `effectiveCatalogueQuery()` is what the loader above resolved `agent`
+ * from, so without this a save writes the new policy, the history refreshes to show it, and
+ * the status this page reports keeps the stale value — the exact defect this slice exists to
+ * remove, reintroduced one layer up.
+ */
+function AgentGovernancePanel({
+  agent,
+  capabilities,
+}: {
+  agent: AgentDefinition;
+  capabilities: readonly Capability[];
+}) {
+  const queryClient = useQueryClient();
+  const { data: versions } = useQuery(policyHistoryQuery(agent.workflow_type));
+
+  const handleSave = async (input: {
+    status: "active" | "inactive";
+    humanApproval: boolean;
+    reason: string;
+  }) => {
+    await setAgentPolicyFn({
+      data: {
+        workflowType: agent.workflow_type,
+        status: input.status,
+        humanApproval: input.humanApproval,
+        reason: input.reason,
+      },
+    });
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: crmQueryKeys.agents.section(agent.workflow_type, "policy-history"),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: crmQueryKeys.agents.section("catalogue", "effective"),
+      }),
+    ]);
+  };
+
+  return (
+    <AgentPolicyForm
+      agent={agent}
+      versions={versions ?? []}
+      capabilities={capabilities}
+      onSave={handleSave}
+    />
   );
 }
 
