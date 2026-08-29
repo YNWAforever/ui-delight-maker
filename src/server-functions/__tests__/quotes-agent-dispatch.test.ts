@@ -12,6 +12,7 @@ const {
   buildQuoteDraftPayloadMock,
   serializeAgentRunMock,
   resolveDispatchableAgentMock,
+  loadAgentPoliciesMock,
   createServerFnChain,
 } = vi.hoisted(() => {
   const createServerFnChain = {
@@ -34,6 +35,7 @@ const {
     buildQuoteDraftPayloadMock: vi.fn(),
     serializeAgentRunMock: vi.fn((run) => run),
     resolveDispatchableAgentMock: vi.fn(),
+    loadAgentPoliciesMock: vi.fn(),
     createServerFnChain,
   };
 });
@@ -110,6 +112,10 @@ vi.mock("@/lib/serializable", () => ({
 
 vi.mock("@/server/db/neon.server", () => ({ transaction: vi.fn() }));
 
+vi.mock("@/server/repositories/agent-policy", () => ({
+  loadAgentPolicies: loadAgentPoliciesMock,
+}));
+
 describe("quote draft dispatch honours the catalogue", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -117,6 +123,9 @@ describe("quote draft dispatch honours the catalogue", () => {
 
     const actual = await vi.importActual<typeof import("@/lib/agents")>("@/lib/agents");
     resolveDispatchableAgentMock.mockImplementation(actual.resolveDispatchableAgent);
+    // An empty map, like an empty `agent_policy_versions` table: `resolveDispatchableAgent`
+    // then falls through to the catalogue's own `status` for every workflow.
+    loadAgentPoliciesMock.mockResolvedValue(new Map());
 
     requireCapabilityMock.mockResolvedValue({
       user: { id: "user-1" },

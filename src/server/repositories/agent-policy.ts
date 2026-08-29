@@ -1,7 +1,5 @@
 import { query } from "@/server/db/neon.server";
-import { AGENT_DEFINITIONS, type AgentWorkflowType } from "@/lib/agents";
-
-export type AgentPolicy = { status: "active" | "inactive"; humanApproval: boolean };
+import { AGENT_DEFINITIONS, type AgentPolicy, type AgentWorkflowType } from "@/lib/agents";
 
 type PolicyRow = {
   workflow_type: string;

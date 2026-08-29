@@ -8,6 +8,11 @@ const mocks = vi.hoisted(() => {
   return {
     fakeDb,
     transactionMock: vi.fn(async (work: (db: typeof fakeDb) => Promise<unknown>) => work(fakeDb)),
+    // `loadAgentPolicies` reads through this pooled `query`, not the transaction's `db` client
+    // — resolving `[]` means no stored override exists, so every writeback below falls
+    // through to the real, unmocked `AGENT_DEFINITIONS.human_approval`, exactly as it did
+    // when `agentParksForApproval` read the catalogue directly.
+    poolQueryMock: vi.fn().mockResolvedValue([]),
     assertLeadExistsMock: vi.fn(),
     getAgentRunForUpdateMock: vi.fn(),
     getEngagementMock: vi.fn(),
@@ -24,6 +29,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("@/server/db/neon.server", () => ({
   transaction: mocks.transactionMock,
+  query: mocks.poolQueryMock,
 }));
 
 vi.mock("@/server/repositories/leads", () => ({

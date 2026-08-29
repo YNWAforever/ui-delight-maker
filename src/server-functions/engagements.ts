@@ -1,5 +1,6 @@
 import { resolveDispatchableAgent } from "@/lib/agents";
 import { requireCapability } from "@/server/auth/authorization.server";
+import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import { getN8nDispatchConfig, triggerN8n } from "@/lib/n8n";
@@ -106,7 +107,8 @@ export const triggerRiskScoreAgent = createServerFn({ method: "POST" })
     // After the capability check, so an unauthorised caller is refused for being unauthorised
     // rather than told the agent is inactive; before createAgentRun, so no run row records a
     // dispatch that never happened.
-    const dispatchable = resolveDispatchableAgent("score_renewal_risk");
+    const policies = await loadAgentPolicies();
+    const dispatchable = resolveDispatchableAgent("score_renewal_risk", policies);
     if (!dispatchable.dispatchable) {
       return { triggered: false, reason: dispatchable.reason };
     }

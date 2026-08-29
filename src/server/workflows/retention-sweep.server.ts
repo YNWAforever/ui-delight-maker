@@ -1,6 +1,7 @@
 import { resolveDispatchableAgent } from "@/lib/agents";
 import { query } from "@/server/db/neon.server";
 import { createNotification } from "@/server/repositories/notifications";
+import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import {
   createAgentRun,
   findActiveRun,
@@ -47,6 +48,10 @@ async function fallbackAdmins(): Promise<string[]> {
 export async function runRetentionSweep(today: string) {
   const engagements = await listActiveEngagementsForSweep();
   const admins = await fallbackAdmins();
+  // Loaded once for the whole sweep, not per engagement: every iteration asks the same
+  // question about the same agent, and `loadAgentPolicies`'s own budget is one query per
+  // caller — a sweep that re-loaded per engagement would turn that into a fan-out.
+  const policies = await loadAgentPolicies();
   let renewalNotified = 0;
   let staleNotified = 0;
   let rescoreDispatched = 0;
@@ -81,7 +86,7 @@ export async function runRetentionSweep(today: string) {
       // already-running run, never a thrown sweep that abandons the remaining engagements. The
       // guard sits before createAgentRun so no run row records a dispatch that never happened,
       // which also keeps `rescoreDispatched` truthful.
-      const dispatchable = resolveDispatchableAgent("score_renewal_risk");
+      const dispatchable = resolveDispatchableAgent("score_renewal_risk", policies);
       if (!existingRun && dispatchConfig && dispatchable.dispatchable) {
         const { run, created } = await createAgentRun({
           agent_name: dispatchable.agent.display_name,

@@ -18,6 +18,7 @@ const {
   triggerN8nMock,
   buildScoreRenewalRiskPayloadMock,
   resolveDispatchableAgentMock,
+  loadAgentPoliciesMock,
 } = vi.hoisted(() => ({
   queryMock: vi.fn(),
   createNotificationMock: vi.fn(),
@@ -28,9 +29,14 @@ const {
   triggerN8nMock: vi.fn(),
   buildScoreRenewalRiskPayloadMock: vi.fn(),
   resolveDispatchableAgentMock: vi.fn(),
+  loadAgentPoliciesMock: vi.fn(),
 }));
 
 vi.mock("@/server/db/neon.server", () => ({ query: queryMock }));
+
+vi.mock("@/server/repositories/agent-policy", () => ({
+  loadAgentPolicies: loadAgentPoliciesMock,
+}));
 
 vi.mock("@/server/repositories/notifications", () => ({
   createNotification: createNotificationMock,
@@ -87,6 +93,9 @@ describe("retention sweep honours the catalogue", () => {
 
     const actual = await vi.importActual<typeof import("@/lib/agents")>("@/lib/agents");
     resolveDispatchableAgentMock.mockImplementation(actual.resolveDispatchableAgent);
+    // An empty map, like an empty `agent_policy_versions` table: `resolveDispatchableAgent`
+    // then falls through to the catalogue's own `status` for every workflow.
+    loadAgentPoliciesMock.mockResolvedValue(new Map());
 
     // First query lists the engagements; second lists fallback admins.
     queryMock.mockResolvedValueOnce(ENGAGEMENTS).mockResolvedValueOnce([{ id: "admin-1" }]);

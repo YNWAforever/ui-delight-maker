@@ -18,6 +18,11 @@ const mocks = vi.hoisted(() => {
   return {
     fakeDb,
     transactionMock: vi.fn(async (work: (db: typeof fakeDb) => Promise<unknown>) => work(fakeDb)),
+    // `loadAgentPolicies` reads through this pooled `query`, not the transaction's `db`
+    // client. Resolving `[]` means no stored override exists, so the effective policy this
+    // test's writebacks see comes entirely from the `AGENT_DEFINITIONS` mocked below — the
+    // real merge in `loadAgentPolicies` still runs, only the catalogue under it is flipped.
+    poolQueryMock: vi.fn().mockResolvedValue([]),
     assertLeadExistsMock: vi.fn(),
     getAgentRunForUpdateMock: vi.fn(),
     getEngagementMock: vi.fn(),
@@ -43,6 +48,7 @@ vi.mock("@/lib/agents", async (importOriginal) => {
 
 vi.mock("@/server/db/neon.server", () => ({
   transaction: mocks.transactionMock,
+  query: mocks.poolQueryMock,
 }));
 
 vi.mock("@/server/repositories/leads", () => ({

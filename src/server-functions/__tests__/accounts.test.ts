@@ -12,6 +12,7 @@ const {
   serializeAgentRunMock,
   getAccountWorkspaceDataMock,
   resolveDispatchableAgentMock,
+  loadAgentPoliciesMock,
   createServerFnChain,
 } = vi.hoisted(() => {
   const createServerFnChain = {
@@ -35,6 +36,7 @@ const {
     serializeAgentRunMock: vi.fn((run) => run),
     getAccountWorkspaceDataMock: vi.fn(),
     resolveDispatchableAgentMock: vi.fn(),
+    loadAgentPoliciesMock: vi.fn(),
     createServerFnChain,
   };
 });
@@ -84,6 +86,10 @@ vi.mock("@/server/repositories/agent-runs", () => ({
   updateAgentRunResult: updateAgentRunResultMock,
 }));
 
+vi.mock("@/server/repositories/agent-policy", () => ({
+  loadAgentPolicies: loadAgentPoliciesMock,
+}));
+
 vi.mock("@/lib/serializable", () => ({
   serializeAgentRun: serializeAgentRunMock,
 }));
@@ -95,6 +101,9 @@ describe("accounts server functions", () => {
 
     const actualAgents = await vi.importActual<typeof import("@/lib/agents")>("@/lib/agents");
     resolveDispatchableAgentMock.mockImplementation(actualAgents.resolveDispatchableAgent);
+    // An empty map, like an empty `agent_policy_versions` table: `resolveDispatchableAgent`
+    // then falls through to the catalogue's own `status` for every workflow.
+    loadAgentPoliciesMock.mockResolvedValue(new Map());
 
     requireCapabilityMock.mockResolvedValue({
       user: { id: "user-1" },
