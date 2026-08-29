@@ -96,7 +96,6 @@ export type QualificationWritebackPayload = {
   lead_score: number;
   output_summary: string;
   confidence_score: number;
-  duration_ms?: number;
   tokens_used?: number;
   model_used?: string;
 };
@@ -108,6 +107,8 @@ export type ReplyDraftWritebackPayload = {
   context_summary: string;
   confidence_score: number;
   risk_notes?: string[];
+  tokens_used?: number;
+  model_used?: string;
 };
 
 export type QuoteDraftWritebackPayload = {
@@ -129,6 +130,8 @@ export type QuoteDraftWritebackPayload = {
   create_send_approval: boolean;
   context_summary?: string | null;
   confidence_score: number;
+  tokens_used?: number;
+  model_used?: string;
 };
 
 export type EngagementWorkflowContextRequestPayload = {
@@ -171,6 +174,7 @@ export type ScoreRenewalRiskWritebackPayload = {
   suggested_next_action: string;
   confidence: number;
   output_summary: string;
+  tokens_used?: number;
   model_used?: string;
 };
 
@@ -207,5 +211,6 @@ export type RelationshipIntelligenceWritebackPayload = {
     dedupe_key: string;
   }>;
   confidence_score: number;
+  tokens_used?: number;
   model_used?: string;
 };
