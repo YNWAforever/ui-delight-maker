@@ -49,6 +49,7 @@ vi.mock("@tanstack/react-router", () => ({
     fullPath: path,
     useLoaderData: vi.fn(),
     useSearch: vi.fn(),
+    useRouteContext: vi.fn(),
   }),
   Link: ({ children }: { children?: ReactNode }) => <a href="#">{children}</a>,
   Outlet: () => null,
@@ -132,15 +133,16 @@ const READ_ONLY_SENTENCE =
 
 /**
  * `agents.$name.tsx` no longer carries `READ_ONLY_SENTENCE` above: enforcement shipped, so
- * saying it is not yet enabled is false. The Governance description now says these are the
- * enforced values and states the capability a write would need instead.
+ * saying it is not yet enabled is false. Task 10 (BD-3 slice 3) wires up `AgentPolicyForm`, so
+ * the Governance description no longer says a write requires `agents.configure` — it says
+ * these two fields are editable by anyone who holds it.
  */
-const ENFORCED_VALUES_SENTENCE =
-  "These are the values the dispatch path enforces today - changing them requires the agents.configure capability.";
+const EDITABLE_VALUES_SENTENCE =
+  "Catalogue state and Human approval are editable below by anyone holding the agents.configure capability; Workflow type, Model and Capabilities are fixed in code.";
 
 const REGISTER_SENTENCE_BY_FILE: Record<(typeof ROUTE_FILES)[number], string> = {
   "agents.tsx": READ_ONLY_SENTENCE,
-  "agents.$name.tsx": ENFORCED_VALUES_SENTENCE,
+  "agents.$name.tsx": EDITABLE_VALUES_SENTENCE,
 };
 
 /**
@@ -289,6 +291,11 @@ describe("/agents/$name reports the catalogue's status, not the reader's clicks"
       },
     } as never);
     vi.mocked(AgentDetailRoute.useSearch).mockReturnValue({ page: 1 } as never);
+    // No agents.configure: the render tests below only need the read side to work, and a
+    // disabled AgentPolicyForm proves that path without also exercising the write gate.
+    vi.mocked(AgentDetailRoute.useRouteContext).mockReturnValue({
+      capabilities: ["agents.view"],
+    } as never);
     const Component = AgentDetailRoute.options.component as () => ReactNode;
     render(<Component />);
   }
@@ -311,7 +318,7 @@ describe("/agents/$name reports the catalogue's status, not the reader's clicks"
   it("says what has to exist before the settings come back", () => {
     renderDetail();
     expect(screen.getByText(/Required before settings become editable/)).toBeTruthy();
-    expect(screen.getByText(new RegExp(ENFORCED_VALUES_SENTENCE))).toBeTruthy();
+    expect(screen.getByText(new RegExp(EDITABLE_VALUES_SENTENCE))).toBeTruthy();
     // The Memory tab's one sentence survives as prose here rather than as a destination.
     expect(screen.getByText(/Long-term memory/)).toBeTruthy();
   });
