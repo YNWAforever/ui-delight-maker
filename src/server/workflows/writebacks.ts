@@ -5,9 +5,10 @@ import type {
   ReplyDraftWritebackPayload,
   ScoreRenewalRiskWritebackPayload,
 } from "@/lib/workflows/types";
-import { AGENT_DEFINITIONS, type AgentWorkflowType } from "@/lib/agents";
+import type { AgentPolicy, AgentWorkflowType } from "@/lib/agents";
 import { normalizeQualificationData } from "@/lib/workflows/qualification";
 import { transaction } from "@/server/db/neon.server";
+import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createActivityLog } from "@/server/repositories/activity-logs";
 import { getAgentRunForUpdate, updateAgentRunResult } from "@/server/repositories/agent-runs";
 import { createApproval } from "@/server/repositories/approvals";
@@ -18,22 +19,37 @@ import { createQuote } from "@/server/repositories/quotes";
 import { upsertRelationshipSignals } from "@/server/repositories/relationship-signals";
 
 /**
- * Whether this agent's catalogue entry permits parking a run in `waiting_approval`.
+ * Whether this workflow's effective policy permits parking a run in `waiting_approval`.
  *
  * Deliberately **not** `resolveDispatchableAgent`. A writeback runs after a dispatch that has
  * already happened, so an agent deactivated mid-run must still be able to record its result;
- * `status` is the dispatch path's business and nothing here reads it. Only `human_approval`
+ * `status` is the dispatch path's business and nothing here reads it. Only `humanApproval`
  * is consulted, and only as a gate: each writeback keeps its own condition for *when* a run
  * deserves a human, and this decides whether that condition is allowed to fire at all.
  *
  * Until this existed, `human_approval` described the writebacks rather than governing them —
  * `/agents/$name` showed the flag beside values the dispatch path actually reads, and flipping
- * it changed nothing.
+ * it changed nothing. It now reads the same effective-policy map the dispatch guard reads
+ * (stored overrides already merged over the catalogue by `loadAgentPolicies`), rather than the
+ * catalogue directly, so a stored override changes what a writeback does too, not only what
+ * the badge on `/agents/$name` shows.
+ *
+ * Every catalogue workflow is always present in a map `loadAgentPolicies` produced, so a
+ * missing entry here means the caller passed the wrong map, not a real gap — and this throws
+ * rather than guessing, deliberately the opposite failure direction from
+ * `resolveDispatchableAgent`'s fallback to `agent.status`. The guard fails safe toward
+ * *refusing a dispatch that has not happened yet*, where a wrong guess only costs an agent run
+ * that could be retried. This function fails loudly instead, because guessing `false` here
+ * would silently skip human review on a run that already executed — the one thing this
+ * function exists to decide.
  */
-function agentParksForApproval(workflowType: AgentWorkflowType): boolean {
-  const agent = AGENT_DEFINITIONS.find((a) => a.workflow_type === workflowType);
-  if (!agent) throw new Error(`No agent definition for workflow type "${workflowType}"`);
-  return agent.human_approval;
+function agentParksForApproval(
+  workflowType: AgentWorkflowType,
+  policies: Map<AgentWorkflowType, AgentPolicy>,
+): boolean {
+  const policy = policies.get(workflowType);
+  if (!policy) throw new Error(`No agent policy for workflow type "${workflowType}"`);
+  return policy.humanApproval;
 }
 
 /**
@@ -191,8 +207,9 @@ export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload)
     }
 
     // This writeback has no condition of its own — a reply draft is never sent unreviewed —
-    // so the catalogue flag is the whole decision.
-    const approval = agentParksForApproval("draft_reply")
+    // so the effective policy is the whole decision.
+    const policies = await loadAgentPolicies();
+    const approval = agentParksForApproval("draft_reply", policies)
       ? await createApproval(
           {
             agent_run_id: payload.agent_run_id,
@@ -264,8 +281,9 @@ export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWrite
 
     const engagement = await getEngagement(payload.engagement_id, db);
     const isRaiseToHigh = payload.renewal_risk === "high" && engagement.renewal_risk !== "high";
-    // The condition is unchanged and stays where it was; the catalogue flag gates it.
-    const parksForApproval = agentParksForApproval("score_renewal_risk") && isRaiseToHigh;
+    // The condition is unchanged and stays where it was; the effective policy gates it.
+    const policies = await loadAgentPolicies();
+    const parksForApproval = agentParksForApproval("score_renewal_risk", policies) && isRaiseToHigh;
 
     const approval = parksForApproval
       ? await createApproval(
@@ -379,9 +397,10 @@ export async function writeQuoteDraftResult(payload: QuoteDraftWritebackPayload)
       db,
     );
 
-    // The condition is unchanged and stays where it was; the catalogue flag gates it.
+    // The condition is unchanged and stays where it was; the effective policy gates it.
+    const policies = await loadAgentPolicies();
     const approval =
-      agentParksForApproval("draft_quote") && payload.create_send_approval
+      agentParksForApproval("draft_quote", policies) && payload.create_send_approval
         ? await createApproval(
             {
               agent_run_id: payload.agent_run_id,

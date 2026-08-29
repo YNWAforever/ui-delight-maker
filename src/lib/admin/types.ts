@@ -62,6 +62,7 @@ export const CAPABILITIES = [
   "reports.view",
   "agents.view",
   "agents.run",
+  "agents.configure",
   "products.view",
   "products.manage",
   "api_keys.manage",

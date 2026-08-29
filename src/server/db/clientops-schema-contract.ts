@@ -147,6 +147,7 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "access_requests",
     "work_delegations",
     "admin_audit_logs",
+    "agent_policy_versions",
   ] as const,
   columns: {
     "accounts.id": { type: "uuid", nullable: false },
@@ -166,6 +167,17 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
       type: "timestamp with time zone",
       nullable: true,
     },
+    "agent_policy_versions.id": { type: "uuid", nullable: false },
+    "agent_policy_versions.workflow_type": { type: "text", nullable: false },
+    "agent_policy_versions.status": { type: "text", nullable: false },
+    "agent_policy_versions.human_approval": { type: "boolean", nullable: false },
+    "agent_policy_versions.changed_by": { type: "text", nullable: false },
+    "agent_policy_versions.reason": { type: "text", nullable: true },
+    "agent_policy_versions.created_at": {
+      type: "timestamp with time zone",
+      nullable: false,
+    },
+    "agent_policy_versions.version_seq": { type: "bigint", nullable: false },
     ...ADMIN_SCHEMA_COLUMNS,
   },
   constraints: [
@@ -222,6 +234,8 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "work_delegations_check",
     "work_delegations_check1",
     "admin_audit_logs_actor_profile_id_fkey",
+    "agent_policy_versions_status_check",
+    "agent_policy_versions_changed_by_fkey",
   ] as const,
   indexes: [
     "accounts_last_activity_idx",
@@ -245,8 +259,12 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "teams_active_name_uidx",
     "team_memberships_active_uidx",
     "user_invitations_pending_email_uidx",
+    "agent_policy_versions_current_idx",
   ] as const,
-  triggers: { admin_audit_logs_immutable: ["DELETE", "UPDATE"] } as const,
+  triggers: {
+    admin_audit_logs_immutable: ["DELETE", "UPDATE"],
+    agent_policy_versions_immutable: ["DELETE", "UPDATE"],
+  } as const,
 } as const;
 
 type SchemaContract = typeof CLIENTOPS_SCHEMA_CONTRACT;

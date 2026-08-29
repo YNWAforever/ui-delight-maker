@@ -149,6 +149,15 @@ export type DispatchableAgent =
   | { dispatchable: false; reason: "agent_inactive" };
 
 /**
+ * The effective policy for one workflow: stored overrides laid over the code catalogue.
+ * `src/server/repositories/agent-policy.ts` is what produces one of these maps — it stays a
+ * database-free type here so this module, which the guard by mutation in
+ * `__tests__/agents.test.ts` depends on staying pure, does not have to import anything
+ * database-shaped to describe the shape it is handed.
+ */
+export type AgentPolicy = { status: "active" | "inactive"; humanApproval: boolean };
+
+/**
  * Whether this workflow's agent may be dispatched, and its definition if so.
  *
  * `agentNameFor` returns a string and so cannot carry a refusal, which is why this is a
@@ -159,16 +168,36 @@ export type DispatchableAgent =
  * The refusal is named after the state it reports: `status` is `"active" | "inactive"` and
  * the badge renders "Inactive", so the sentinel says `agent_inactive` and nothing else.
  *
- * The second parameter exists for tests. Every catalogue entry is `active` today, so
- * without it the refusal path could not be exercised until the day it first mattered.
+ * The second parameter is the effective policy for every workflow — stored overrides already
+ * merged over this same catalogue by `loadAgentPolicies`, so a present entry is authoritative
+ * and a workflow with no row simply keeps the catalogue's own `status`. This function stays
+ * synchronous and pure and does not load that map itself: it is called from both a scheduled
+ * sweep and several request handlers, each of which already has its own reason to load (or
+ * not load) policies, and a guard that reached for the database itself could not be reasoned
+ * about, or tested, independently of one.
  */
 export function resolveDispatchableAgent(
   workflowType: AgentWorkflowType,
-  catalogue: AgentDefinition[] = AGENT_DEFINITIONS,
+  policies: Map<AgentWorkflowType, AgentPolicy>,
 ): DispatchableAgent {
-  const agent = catalogue.find((a) => a.workflow_type === workflowType);
+  const agent = AGENT_DEFINITIONS.find((a) => a.workflow_type === workflowType);
   if (!agent) throw new Error(`No agent definition for workflow type "${workflowType}"`);
-  if (agent.status !== "active") return { dispatchable: false, reason: "agent_inactive" };
+
+  // The map already has the code defaults merged in, so a present entry is authoritative — but
+  // a caller may legitimately hand in a partial or empty map (a test, or a future caller that
+  // has not loaded overrides), and a missing entry must not silently read as "active" no matter
+  // what the catalogue says. Falling back to `agent.status` is what makes an empty map behave
+  // exactly like the pre-policy-table guard that read the catalogue directly.
+  //
+  // This is a deliberate asymmetry with `agentParksForApproval` in
+  // `src/server/workflows/writebacks.ts`, which throws on a missing entry instead of falling
+  // back: a guard fails safe toward *refusing a dispatch that has not happened yet*, so a wrong
+  // guess only costs a retryable run, but a writeback runs after the dispatch it is deciding
+  // about — guessing there would silently skip human review on a run that already executed.
+  const status = policies.get(workflowType)?.status ?? agent.status;
+  if (status !== "active") {
+    return { dispatchable: false, reason: "agent_inactive" };
+  }
   return { dispatchable: true, agent };
 }
 

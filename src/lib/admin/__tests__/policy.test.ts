@@ -324,6 +324,7 @@ describe("evaluateAuthorization", () => {
           "reports.view",
           "agents.view",
           "agents.run",
+          "agents.configure",
           "products.view",
           "products.manage",
           "api_keys.manage",
@@ -484,6 +485,7 @@ describe("evaluateAuthorization", () => {
           "reports.view",
           "agents.view",
           "agents.run",
+          "agents.configure",
           "products.view",
           "products.manage",
           "api_keys.manage",
@@ -492,6 +494,19 @@ describe("evaluateAuthorization", () => {
       }
     `);
   });
+  it("grants agents.configure to super_admin and admin only", () => {
+    // Configuring is stronger than running: pausing an agent stops it for every user.
+    // `manager` holds agents.run and must NOT hold this.
+    const holders = USER_ROLES.filter((role) => ROLE_GRANTS[role].has("agents.configure"));
+    expect(holders).toEqual(["super_admin", "admin"]);
+  });
+
+  it("does not let agents.run imply agents.configure", () => {
+    const runners = USER_ROLES.filter((role) => ROLE_GRANTS[role].has("agents.run"));
+    const configurers = USER_ROLES.filter((role) => ROLE_GRANTS[role].has("agents.configure"));
+    expect(runners.length).toBeGreaterThan(configurers.length);
+  });
+
   it("denies inactive actors before evaluating overrides", () => {
     expect(
       evaluateAuthorization({
