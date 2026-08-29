@@ -913,6 +913,147 @@ describe("workflow writebacks", () => {
     });
   });
 
+  // Telemetry reached one writeback of five. A metric collected for a fifth of the fleet is
+  // worse than none, because a total over it looks complete.
+  describe("every writeback forwards tokens_used and model_used to the run row", () => {
+    it("writeReplyDraftResult forwards tokens_used and model_used to the run row", async () => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "run-tok-2",
+        status: "running",
+        output_data: null,
+        subject_type: "lead",
+        subject_id: "lead-tok-2",
+      });
+      mocks.createApprovalMock.mockResolvedValue({ id: "approval-tok-2" });
+
+      await writeReplyDraftResult({
+        lead_id: "lead-tok-2",
+        agent_run_id: "run-tok-2",
+        draft_message: "Here is a draft reply",
+        context_summary: "Review before sending",
+        confidence_score: 0.61,
+        tokens_used: 4242,
+        model_used: "anthropic/claude-sonnet-4-6",
+      });
+
+      expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+        "run-tok-2",
+        expect.objectContaining({
+          tokens_used: 4242,
+          model_used: "anthropic/claude-sonnet-4-6",
+        }),
+        mocks.fakeDb,
+      );
+    });
+
+    it("writeQuoteDraftResult forwards tokens_used and model_used to the run row", async () => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "run-tok-3",
+        status: "running",
+        output_data: null,
+        subject_type: "lead",
+        subject_id: "lead-tok-3",
+      });
+      mocks.createQuoteMock.mockResolvedValue({ id: "quote-tok-3" });
+
+      await writeQuoteDraftResult({
+        lead_id: "lead-tok-3",
+        agent_run_id: "run-tok-3",
+        quote: {
+          currency: "HKD",
+          total_value: 20000,
+          line_items: [
+            {
+              id: "line-1",
+              service: "Retainer",
+              description: "Monthly support",
+              qty: 1,
+              unit_price: 20000,
+            },
+          ],
+        },
+        create_send_approval: false,
+        context_summary: "Draft quote created.",
+        confidence_score: 0.73,
+        tokens_used: 4242,
+        model_used: "anthropic/claude-sonnet-4-6",
+      });
+
+      expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+        "run-tok-3",
+        expect.objectContaining({
+          tokens_used: 4242,
+          model_used: "anthropic/claude-sonnet-4-6",
+        }),
+        mocks.fakeDb,
+      );
+    });
+
+    it("writeScoreRenewalRiskResult forwards tokens_used to the run row", async () => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "run-tok-4",
+        status: "running",
+        output_data: null,
+        subject_type: "engagement",
+        subject_id: "engagement-tok-4",
+      });
+      mocks.getEngagementMock.mockResolvedValue({ id: "engagement-tok-4", renewal_risk: "medium" });
+
+      await writeScoreRenewalRiskResult({
+        engagement_id: "engagement-tok-4",
+        agent_run_id: "run-tok-4",
+        health_score: 70,
+        renewal_risk: "medium",
+        risk_reasoning: "Stable usage",
+        suggested_next_action: "Keep monitoring",
+        confidence: 0.8,
+        output_summary: "Medium risk",
+        tokens_used: 4242,
+        model_used: "anthropic/claude-sonnet-4-6",
+      });
+
+      expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+        "run-tok-4",
+        expect.objectContaining({
+          tokens_used: 4242,
+          model_used: "anthropic/claude-sonnet-4-6",
+        }),
+        mocks.fakeDb,
+      );
+    });
+
+    it("writeRelationshipIntelligenceResult forwards tokens_used to the run row", async () => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "run-tok-5",
+        status: "running",
+        output_data: null,
+        subject_type: "account",
+        subject_id: "account-tok-5",
+      });
+      mocks.upsertRelationshipSignalsMock.mockResolvedValue([]);
+
+      await writeRelationshipIntelligenceResult({
+        account_id: "account-tok-5",
+        agent_run_id: "run-tok-5",
+        output_summary: "Analyzed relationship health.",
+        next_action: null,
+        signals: [],
+        confidence_score: 0.81,
+        tokens_used: 4242,
+        model_used: "anthropic/claude-sonnet-4-6",
+      });
+
+      expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+        "run-tok-5",
+        expect.objectContaining({
+          tokens_used: 4242,
+          model_used: "anthropic/claude-sonnet-4-6",
+        }),
+        mocks.fakeDb,
+      );
+    });
+  });
+
   // Two agents have no parking path at all, so `human_approval` has nothing to gate for them
   // and setting it would be a claim the writeback cannot honour. Pinned here rather than left
   // to a code comment: the flag is what `/agents/$name` shows an operator.

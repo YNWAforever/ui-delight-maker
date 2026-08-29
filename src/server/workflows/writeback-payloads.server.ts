@@ -28,7 +28,6 @@ export const qualificationWritebackSchema = z.object({
   lead_score: z.number().finite(),
   output_summary: z.string(),
   confidence_score: z.number().finite(),
-  duration_ms: z.number().finite().optional(),
   tokens_used: z.number().finite().optional(),
   model_used: z.string().optional(),
 });
@@ -40,6 +39,8 @@ export const replyDraftWritebackSchema = z.object({
   context_summary: z.string(),
   confidence_score: z.number().finite(),
   risk_notes: z.array(z.string()).optional(),
+  tokens_used: z.number().finite().optional(),
+  model_used: z.string().optional(),
 });
 
 export const quoteDraftWritebackSchema = z.object({
@@ -63,6 +64,8 @@ export const quoteDraftWritebackSchema = z.object({
   create_send_approval: z.boolean(),
   context_summary: z.string().nullable().optional(),
   confidence_score: z.number().finite(),
+  tokens_used: z.number().finite().optional(),
+  model_used: z.string().optional(),
 });
 
 export const scoreRenewalRiskWritebackSchema = z.object({
@@ -74,6 +77,7 @@ export const scoreRenewalRiskWritebackSchema = z.object({
   suggested_next_action: z.string(),
   confidence: z.number().finite(),
   output_summary: z.string(),
+  tokens_used: z.number().finite().optional(),
   model_used: z.string().optional(),
 });
 
