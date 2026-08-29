@@ -40,6 +40,7 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/006_unified_crm_workspace_foundation.sql",
       "neon/migrations/007_admin_team_user_management.sql",
       "neon/migrations/008_read_path_indexes.sql",
+      "neon/migrations/009_agent_policy_versions.sql",
     ]);
   });
 
