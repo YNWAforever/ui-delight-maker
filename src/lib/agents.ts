@@ -152,7 +152,7 @@ export type DispatchableAgent =
  * The effective policy for one workflow: stored overrides laid over the code catalogue.
  * `src/server/repositories/agent-policy.ts` is what produces one of these maps — it stays a
  * database-free type here so this module, which the guard by mutation in
- * `agents-catalogue.test.ts` depends on staying pure, does not have to import anything
+ * `__tests__/agents.test.ts` depends on staying pure, does not have to import anything
  * database-shaped to describe the shape it is handed.
  */
 export type AgentPolicy = { status: "active" | "inactive"; humanApproval: boolean };

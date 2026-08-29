@@ -37,9 +37,9 @@ describe("resolveDispatchableAgent", () => {
     // `loadAgentPolicies` always seeds every catalogue entry, so in production the map is
     // never missing a workflow — this exercises the fallback a caller with a partial or empty
     // map (a test, or some future caller) would otherwise silently bypass. Every catalogue
-    // entry is active today, so the fallback path is walked by flipping one entry in place —
-    // the same "guard by mutation" style `agents-catalogue.test.ts` uses — rather than through
-    // a synthetic catalogue parameter, which `resolveDispatchableAgent` no longer accepts.
+    // entry is active today, so the fallback path is walked by flipping one entry in place,
+    // restored in the `finally` below, rather than through a synthetic catalogue parameter —
+    // which `resolveDispatchableAgent` no longer accepts.
     const target = AGENT_DEFINITIONS.find((a) => a.workflow_type === "qualify_lead");
     if (!target) throw new Error("fixture: qualify_lead missing from the catalogue");
     const originalStatus = target.status;
