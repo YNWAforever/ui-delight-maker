@@ -40,8 +40,20 @@ import { describe, expect, it } from "vitest";
  * That single check is the entire write gate on the policy store. agents.configure is a new
  * capability held by super_admin and admin only; agents.run, which three roles hold, is
  * deliberately not sufficient, because pausing an agent stops it for every user.
+ *
+ * 225 -> 227 on 2026-08-29, for BD-3 slice 3 PR A (routes reading the effective catalogue
+ * instead of the stale AGENT_DEFINITIONS value). Established before changing: git diff main
+ * -- src/server-functions/ ':(exclude)*__tests__*' filtered to requireCapability lines shows
+ * two + lines and no - lines at all, so nothing that already enforced was moved, renamed or
+ * weakened.
+ *   +2  agents-catalogue.ts  new file - the import line, and requireCapability("agents.view")
+ *                            in getEffectiveAgentCatalogue
+ *
+ * Gated on agents.view rather than agents.configure: this is the read every page showing an
+ * agent needs (agents, agents/$name, settings), and a paused agent is something anyone who
+ * can see the agent should see - not just whoever can pause it.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 225;
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 227;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {
