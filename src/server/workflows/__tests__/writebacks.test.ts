@@ -121,7 +121,6 @@ describe("workflow writebacks", () => {
       lead_score: 78,
       output_summary: "Qualified lead",
       confidence_score: 0.84,
-      duration_ms: 1250,
       tokens_used: 330,
       model_used: "model-x",
     });

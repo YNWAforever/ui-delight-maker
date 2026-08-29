@@ -96,7 +96,6 @@ export type QualificationWritebackPayload = {
   lead_score: number;
   output_summary: string;
   confidence_score: number;
-  duration_ms?: number;
   tokens_used?: number;
   model_used?: string;
 };

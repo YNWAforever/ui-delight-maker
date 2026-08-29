@@ -129,7 +129,6 @@ export async function updateAgentRunResult(
     output_summary?: string | null;
     confidence_score?: number | null;
     human_review_required?: boolean;
-    duration_ms?: number | null;
     tokens_used?: number | null;
     model_used?: string | null;
   },
@@ -143,9 +142,17 @@ export async function updateAgentRunResult(
         output_summary = $4,
         confidence_score = $5,
         human_review_required = $6,
-        duration_ms = $7,
-        tokens_used = $8,
-        model_used = coalesce($9, model_used)
+        -- Wall-clock from dispatch to callback: queue time, model time and network together.
+        -- Deliberately NOT n8n's execution time, and deliberately now() rather than the
+        -- per-statement wall-clock function: now() is transaction-start, which is the moment
+        -- this callback began processing, while the per-statement function samples the live
+        -- clock and would fold this transaction's own earlier work into the agent's measured
+        -- time. Computed here, not passed in, because four of the five writebacks used to
+        -- forget it and a missing duration is indistinguishable from a run that never called
+        -- back.
+        duration_ms = greatest(0, round(extract(epoch from (now() - created_at)) * 1000))::integer,
+        tokens_used = $7,
+        model_used = coalesce($8, model_used)
       where id = $1
       returning *
     `,
@@ -156,7 +163,6 @@ export async function updateAgentRunResult(
       input.output_summary ?? null,
       input.confidence_score ?? null,
       input.human_review_required ?? false,
-      input.duration_ms ?? null,
       input.tokens_used ?? null,
       input.model_used ?? null,
     ],

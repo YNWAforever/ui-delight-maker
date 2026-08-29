@@ -164,7 +164,6 @@ export async function writeQualificationResult(payload: QualificationWritebackPa
         output_summary: payload.output_summary,
         confidence_score: payload.confidence_score,
         human_review_required: getHumanReviewRequired(qualificationData, payload.confidence_score),
-        duration_ms: payload.duration_ms ?? null,
         tokens_used: payload.tokens_used ?? null,
         model_used: payload.model_used ?? null,
       },
