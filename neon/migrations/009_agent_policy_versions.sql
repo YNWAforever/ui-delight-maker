@@ -19,3 +19,17 @@ create table if not exists agent_policy_versions (
 
 create index if not exists agent_policy_versions_current_idx
   on agent_policy_versions (workflow_type, created_at desc);
+
+-- Same append-only guarantee as admin_audit_logs (007): a DB-level trigger, not just
+-- application discipline, so no future write path can quietly edit or drop a policy version
+-- and destroy the audit trail.
+create or replace function prevent_agent_policy_versions_mutation()
+returns trigger language plpgsql as $$
+begin
+  raise exception 'agent_policy_versions are append-only';
+end;
+$$;
+drop trigger if exists agent_policy_versions_immutable on agent_policy_versions;
+create trigger agent_policy_versions_immutable
+before update or delete on agent_policy_versions
+for each row execute function prevent_agent_policy_versions_mutation();

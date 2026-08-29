@@ -260,7 +260,10 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "user_invitations_pending_email_uidx",
     "agent_policy_versions_current_idx",
   ] as const,
-  triggers: { admin_audit_logs_immutable: ["DELETE", "UPDATE"] } as const,
+  triggers: {
+    admin_audit_logs_immutable: ["DELETE", "UPDATE"],
+    agent_policy_versions_immutable: ["DELETE", "UPDATE"],
+  } as const,
 } as const;
 
 type SchemaContract = typeof CLIENTOPS_SCHEMA_CONTRACT;
