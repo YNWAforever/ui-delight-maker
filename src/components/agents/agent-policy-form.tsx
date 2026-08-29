@@ -65,6 +65,18 @@ export function AgentPolicyForm({ agent, versions, capabilities, onSave }: Agent
     }
   };
 
+  /**
+   * Populates the form from a past version. Nothing else: no call to `onSave`, no
+   * `setAgentPolicy`. Rollback goes through the same Save button and the same
+   * `agents.configure` check as any other edit, rather than a shortcut that could drift
+   * from that path or bypass it.
+   */
+  const restoreFrom = (version: AgentPolicyVersionListRow) => {
+    setStatus(version.status);
+    setHumanApproval(version.human_approval);
+    setReason(`Restoring version from ${formatDateTime(version.created_at)}`);
+  };
+
   return (
     <div className="space-y-6">
       {!canConfigure ? (
@@ -143,6 +155,15 @@ export function AgentPolicyForm({ agent, versions, capabilities, onSave }: Agent
                     {formatDateTime(version.created_at)}
                   </p>
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => restoreFrom(version)}
+                  disabled={!canConfigure}
+                >
+                  Restore
+                </Button>
               </li>
             ))}
           </ul>

@@ -1,9 +1,21 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { AgentPolicyForm } from "../agent-policy-form";
 
 const AGENT = { workflow_type: "qualify_lead", status: "active", human_approval: false } as const;
+
+const RESTORABLE_VERSION = {
+  id: "v1",
+  status: "inactive" as const,
+  human_approval: true,
+  reason: "vendor review",
+  created_at: "2026-08-01T00:00:00.000Z",
+  version_seq: "1",
+  changed_by: "profile-1",
+  changed_by_name: "Ada",
+};
 
 describe("AgentPolicyForm", () => {
   afterEach(() => cleanup());
@@ -68,5 +80,43 @@ describe("AgentPolicyForm", () => {
     // Radix Select's displayed value, so this follows it rather than weakening the assertion.
     const statusControl = screen.getByLabelText(/status/i);
     expect(statusControl.textContent).toContain("Inactive");
+  });
+
+  it("Restore fills the form from that version and writes nothing by itself", async () => {
+    // Rollback shares one write path with every other change: Restore only populates the form,
+    // and the administrator saves. So it cannot bypass the capability check or skip the reason,
+    // and it cannot drift from the path it shares.
+    const onSave = vi.fn();
+    const actor = userEvent.setup();
+    render(
+      <AgentPolicyForm
+        agent={{ workflow_type: "qualify_lead", status: "active", human_approval: false }}
+        versions={[RESTORABLE_VERSION]}
+        capabilities={["agents.view", "agents.configure"]}
+        onSave={onSave}
+      />,
+    );
+
+    await actor.click(screen.getByRole("button", { name: /restore/i }));
+
+    expect(screen.getByLabelText(/status/i).textContent).toContain("Inactive");
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("Restore is disabled without agents.configure", () => {
+    // A restore that a viewer can trigger would populate a form they cannot submit, which is
+    // a smaller lie but still one.
+    render(
+      <AgentPolicyForm
+        agent={AGENT}
+        versions={[RESTORABLE_VERSION]}
+        capabilities={["agents.view"]}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect((screen.getByRole("button", { name: /restore/i }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
   });
 });
