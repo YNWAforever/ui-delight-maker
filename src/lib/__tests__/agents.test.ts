@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { AGENT_DEFINITIONS, resolveDispatchableAgent, type AgentPolicy } from "@/lib/agents";
+import {
+  AGENT_DEFINITIONS,
+  agentSlugForDisplayName,
+  resolveDispatchableAgent,
+  type AgentPolicy,
+} from "@/lib/agents";
 import type { AgentWorkflowType } from "@/lib/agents";
 
 describe("resolveDispatchableAgent", () => {
@@ -50,5 +55,16 @@ describe("resolveDispatchableAgent", () => {
     } finally {
       target.status = originalStatus;
     }
+  });
+});
+
+describe("agentSlugForDisplayName", () => {
+  it("returns the slug for a known display name", () => {
+    const known = AGENT_DEFINITIONS[0];
+    expect(agentSlugForDisplayName(known.display_name)).toBe(known.name);
+  });
+
+  it("returns null for an unknown display name", () => {
+    expect(agentSlugForDisplayName("Not A Real Agent")).toBeNull();
   });
 });

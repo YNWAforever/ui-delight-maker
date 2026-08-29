@@ -144,6 +144,19 @@ export function agentNameFor(workflowType: AgentWorkflowType): string {
   return agent.display_name;
 }
 
+/**
+ * The route slug for an agent's display name, or null if no agent has that name.
+ *
+ * The inverse of `agentNameFor`, and the only reason `ai-review.tsx` needed the catalogue:
+ * `agent_runs.agent_name` stores `display_name`, so mapping a historical run back to its agent
+ * page is a name lookup. Identity only - it reads nothing that stored policy can override,
+ * which is why it stays here and stays synchronous rather than going through
+ * loadEffectiveAgentCatalogue.
+ */
+export function agentSlugForDisplayName(displayName: string): string | null {
+  return AGENT_DEFINITIONS.find((agent) => agent.display_name === displayName)?.name ?? null;
+}
+
 export type DispatchableAgent =
   | { dispatchable: true; agent: AgentDefinition }
   | { dispatchable: false; reason: "agent_inactive" };

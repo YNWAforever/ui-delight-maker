@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AGENT_DEFINITIONS } from "@/lib/agents";
 import { crmQueryKeys } from "@/lib/query-keys";
 
 /**
@@ -30,6 +31,7 @@ const {
   deactivateProductMock,
   updateProductMock,
   getProductsMock,
+  getEffectiveAgentCatalogueMock,
   toastErrorMock,
   toastSuccessMock,
 } = vi.hoisted(() => ({
@@ -39,6 +41,7 @@ const {
   deactivateProductMock: vi.fn(),
   updateProductMock: vi.fn(),
   getProductsMock: vi.fn(),
+  getEffectiveAgentCatalogueMock: vi.fn(),
   toastErrorMock: vi.fn(),
   toastSuccessMock: vi.fn(),
 }));
@@ -67,6 +70,10 @@ vi.mock("@/server-functions/products", () => ({
   deactivateProductFn: deactivateProductMock,
   getProducts: getProductsMock,
   updateProduct: updateProductMock,
+}));
+
+vi.mock("@/server-functions/agents-catalogue", () => ({
+  getEffectiveAgentCatalogue: getEffectiveAgentCatalogueMock,
 }));
 
 // Rendered flat so both tabs and the dialog body are in the document at once. The tab and
@@ -105,7 +112,7 @@ vi.mock("@/components/sales", () => ({
     </div>
   ),
   StaleDataIndicator: () => null,
-  StatusBadge: ({ value }: { value: string }) => <span>{value}</span>,
+  StatusBadge: ({ value }: { value: string }) => <span data-testid="status-badge">{value}</span>,
   WorkspaceHeader: ({ title }: { title: string }) => <h1>{title}</h1>,
   ResponsiveRecordList: <T,>({
     rows,
@@ -170,6 +177,8 @@ beforeEach(() => {
   updateProductMock.mockReset();
   getProductsMock.mockReset();
   getProductsMock.mockResolvedValue([product]);
+  getEffectiveAgentCatalogueMock.mockReset();
+  getEffectiveAgentCatalogueMock.mockResolvedValue(AGENT_DEFINITIONS);
   toastErrorMock.mockReset();
   toastSuccessMock.mockReset();
   routeContext.profile = { role: "admin" };
@@ -311,21 +320,56 @@ describe("settings product catalogue", () => {
 });
 
 describe("settings agent catalogue", () => {
-  it("renders the catalogue read-only, with the reason BD-3 gives", () => {
+  it("renders the catalogue read-only, with the reason BD-3 gives", async () => {
     renderPage();
+    await waitFor(() => expect(getEffectiveAgentCatalogueMock).toHaveBeenCalled());
 
-    expect(
-      screen
-        .getAllByRole("note")
-        .some((node) =>
-          (node.textContent ?? "").includes(
-            "Configuration is read-only until runtime policy enforcement is enabled.",
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("note")
+          .some((node) =>
+            (node.textContent ?? "").includes(
+              "These are the values the dispatch path enforces today. Changing them requires the " +
+                "agents.configure capability and is not yet available from this page.",
+            ),
           ),
-        ),
-    ).toBe(true);
+      ).toBe(true),
+    );
     // The two switches that wrote nothing but React state are gone, along with the badge that
     // re-rendered from them (IF-E1-21/22).
     expect(screen.queryAllByRole("switch")).toEqual([]);
     expect(screen.queryAllByRole("checkbox")).toEqual([]);
+  });
+
+  /**
+   * `AgentCatalogueTab` used to map `AGENT_DEFINITIONS` directly, so a paused agent still read
+   * "Active" here while the dispatch path refused it. It now reads `getEffectiveAgentCatalogue`
+   * through a `useQuery` on the same key `agents.$name.tsx`'s loader warms - this proves a
+   * stored override actually reaches the render, not just the read model `loadAgentPolicies`
+   * feeds (that path is covered separately in
+   * `src/server/read-models/__tests__/agent-catalogue.test.ts`).
+   */
+  it("shows a stored 'inactive' override rather than the catalogue's own 'active' status", async () => {
+    const target = AGENT_DEFINITIONS.find((agent) => agent.workflow_type === "qualify_lead");
+    if (!target) throw new Error("fixture: qualify_lead missing from the catalogue");
+    // The code catalogue says "active" for every entry today - assert the premise so this
+    // test cannot pass by accident if that ever stops being true.
+    expect(target.status).toBe("active");
+
+    getEffectiveAgentCatalogueMock.mockResolvedValue(
+      AGENT_DEFINITIONS.map((agent) =>
+        agent.name === target.name ? { ...agent, status: "inactive" as const } : agent,
+      ),
+    );
+    renderPage();
+
+    const card = await waitFor(() => {
+      const node = screen.getByText(target.display_name).closest("li");
+      if (!node) throw new Error("agent card <li> not found");
+      return node;
+    });
+    const badge = card.querySelector('[data-testid="status-badge"]');
+    expect(badge?.textContent).toBe("inactive");
   });
 });

@@ -78,12 +78,12 @@ describe("settings has no unpersisted surface left", () => {
   it("shows agent configuration read-only, with BD-3's reason stated on the page", () => {
     // IF-E1-21/22. Two switches per agent wrote React state only, and the badge beside the
     // second one re-rendered from that state - so the page reported a status the dispatch
-    // path never saw.
+    // path never saw. Enforcement has since shipped (BD-3 slice 3), so the page now says
+    // these are the enforced values rather than claiming enforcement is not yet on.
     expect(source).not.toContain("Switch");
     expect(source).not.toContain("onCheckedChange");
-    expect(source).toContain(
-      "Configuration is read-only until runtime policy enforcement is enabled.",
-    );
+    expect(source).toContain("These are the values the dispatch path enforces today.");
+    expect(source).toContain("agents.configure");
   });
 
   it("never toasts a success for work that did not happen", () => {

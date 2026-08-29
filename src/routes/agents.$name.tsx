@@ -21,7 +21,7 @@ import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { formatCount, formatDateTime, formatPercent } from "@/lib/format";
 import { getAgentHistoryPage } from "@/server-functions/agent-runs";
-import { AGENT_DEFINITIONS } from "@/lib/agents";
+import { getEffectiveAgentCatalogue } from "@/server-functions/agents-catalogue";
 
 /**
  * One agent: its run history, and the catalogue definition the dispatch path reads.
@@ -35,10 +35,13 @@ import { AGENT_DEFINITIONS } from "@/lib/agents";
  * flipping a switch that did nothing visibly rewrote the status the page reported, while the
  * n8n dispatch path went on running the agent.
  *
- * Every one of those values is now read from `AGENT_DEFINITIONS`, which is where the running
- * system reads it from too. Nothing on this page writes. BD-3 records what has to exist
- * before any of it can become editable, and the Governance tab states it on the page rather
- * than leaving a reader to assume the controls were merely misbehaving.
+ * `status` and `human_approval` now come from `loadEffectiveAgentCatalogue` — the policy store
+ * laid over the code catalogue — because those two fields are exactly what the dispatch path
+ * and the writeback obey; every other field (model, capabilities, description, workflow type)
+ * still comes straight from the code catalogue, since nothing overrides them. Nothing on this
+ * page writes. BD-3 records what has to exist before any of it can become editable, and the
+ * Governance tab states it on the page rather than leaving a reader to assume the controls
+ * were merely misbehaving.
  *
  * The Memory tab is gone (M-1). It was a URL-addressable destination whose entire body was
  * one sentence saying memory is not persisted — Instruction §16's "coming soon presented as
@@ -57,6 +60,12 @@ const historyQuery = (agent: string, page: number) =>
   routeQueryOptions({
     queryKey: crmQueryKeys.agents.section(agent, "history", { page, limit: HISTORY_PAGE_SIZE }),
     queryFn: () => getAgentHistoryPage({ data: { agent, page, limit: HISTORY_PAGE_SIZE } }),
+  });
+
+const effectiveCatalogueQuery = () =>
+  routeQueryOptions({
+    queryKey: crmQueryKeys.agents.section("catalogue", "effective"),
+    queryFn: () => getEffectiveAgentCatalogue(),
   });
 
 /**
@@ -93,7 +102,8 @@ export const Route = createFileRoute("/agents/$name")({
   validateSearch: agentHistorySearchSchema,
   loaderDeps: ({ search }) => ({ page: search.page }),
   loader: async ({ context, params, deps }) => {
-    const agent = AGENT_DEFINITIONS.find((item) => item.name === params.name);
+    const catalogue = await context.queryClient.ensureQueryData(effectiveCatalogueQuery());
+    const agent = catalogue.find((item) => item.name === params.name);
     if (!agent) throw notFound();
     const history = await context.queryClient.ensureQueryData(
       historyQuery(agent.display_name, deps.page),
@@ -323,7 +333,7 @@ function AgentDetail() {
                 <TabsContent value="governance" className="mt-4 space-y-5">
                   <SectionHeader
                     title="Catalogue definition"
-                    description="Catalogue state and Workflow type govern dispatch: an inactive agent is refused before any run is created. Human approval governs the writeback, deciding whether a finished run parks for a human; Model and Capabilities are descriptive only. Configuration is read-only until runtime policy enforcement is enabled."
+                    description="Catalogue state and Workflow type govern dispatch: an inactive agent is refused before any run is created. Human approval governs the writeback, deciding whether a finished run parks for a human; Model and Capabilities are descriptive only. These are the values the dispatch path enforces today - changing them requires the agents.configure capability."
                   />
 
                   <dl className="divide-y divide-border rounded-md border border-border">

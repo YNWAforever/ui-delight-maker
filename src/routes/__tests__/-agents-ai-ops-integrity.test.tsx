@@ -131,6 +131,19 @@ const READ_ONLY_SENTENCE =
   "Configuration is read-only until runtime policy enforcement is enabled.";
 
 /**
+ * `agents.$name.tsx` no longer carries `READ_ONLY_SENTENCE` above: enforcement shipped, so
+ * saying it is not yet enabled is false. The Governance description now says these are the
+ * enforced values and states the capability a write would need instead.
+ */
+const ENFORCED_VALUES_SENTENCE =
+  "These are the values the dispatch path enforces today - changing them requires the agents.configure capability.";
+
+const REGISTER_SENTENCE_BY_FILE: Record<(typeof ROUTE_FILES)[number], string> = {
+  "agents.tsx": READ_ONLY_SENTENCE,
+  "agents.$name.tsx": ENFORCED_VALUES_SENTENCE,
+};
+
+/**
  * `process.cwd()` rather than `import.meta.url`: under the jsdom environment this file
  * needs for its render tests, `import.meta.url` is not a project-rooted file URL, and a
  * source guard that silently read the wrong path would pass by finding nothing.
@@ -184,8 +197,8 @@ describe("AI Ops ships no ungoverned control", () => {
       }
     });
 
-    it(`${file} states the read-only rule in the words the register uses`, () => {
-      expect(fullSource(file)).toContain(READ_ONLY_SENTENCE);
+    it(`${file} states the governance rule in the words the register uses`, () => {
+      expect(fullSource(file)).toContain(REGISTER_SENTENCE_BY_FILE[file]);
     });
   }
 
@@ -298,7 +311,7 @@ describe("/agents/$name reports the catalogue's status, not the reader's clicks"
   it("says what has to exist before the settings come back", () => {
     renderDetail();
     expect(screen.getByText(/Required before settings become editable/)).toBeTruthy();
-    expect(screen.getByText(new RegExp(READ_ONLY_SENTENCE))).toBeTruthy();
+    expect(screen.getByText(new RegExp(ENFORCED_VALUES_SENTENCE))).toBeTruthy();
     // The Memory tab's one sentence survives as prose here rather than as a destination.
     expect(screen.getByText(/Long-term memory/)).toBeTruthy();
   });
