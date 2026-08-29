@@ -38,7 +38,16 @@ export async function loadAgentPolicies(): Promise<Map<AgentWorkflowType, AgentP
        -- only a tiebreak — rows written in the same transaction share a created_at, because
        -- Postgres's now() is transaction-start time, not statement time. version_seq is a
        -- generated identity column, so it is strictly increasing and resolves that tie to
-       -- true insertion order. Do not drop it and do not put it ahead of created_at.
+       -- true insertion order. Do not put it ahead of created_at.
+       --
+       -- Deleting this third key would not currently change any observed result, which is
+       -- exactly why it must stay. agent_policy_versions_current_idx is a btree on
+       -- (workflow_type, created_at desc, version_seq desc), and a btree scan returns rows
+       -- in full index-key order however few of those keys the ORDER BY names - so the
+       -- index supplies the tiebreak today whether or not this clause asks for it. The
+       -- clause is the guarantee; the index is an implementation detail that agrees with
+       -- it. Drop the index, or let the planner choose a seq scan, and this clause is all
+       -- that stands between a same-created_at tie and a silently stale policy.
        order by workflow_type, created_at desc, version_seq desc
     `,
   );

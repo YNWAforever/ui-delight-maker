@@ -273,41 +273,38 @@ describe("agent policy store, proven against a real database", () => {
     },
   );
 
-  it.runIf(hasDatabase)(
-    "version_seq breaks a tie among rows sharing one created_at",
-    async () => {
-      const tiedCreatedAt = "2024-03-15T12:00:00Z";
-      // Neither row's values equal the catalogue default for qualify_lead (active / false), for
-      // the same reason as the created_at case above: a bug that dropped stored rows entirely
-      // must not be able to pass this by accident.
-      //
-      // Same created_at for both, so only version_seq can decide. Inserted in this order, the
-      // first row gets the LOWER version_seq — which is what would win with no tiebreak, since
-      // an ORDER BY with no tiebreak column tends to return equal-created_at rows in the heap
-      // scan order a freshly inserted, unvacuumed table shares with insertion order. Proving
-      // the HIGHER version_seq (the second insert) governs instead is what proves the tiebreak
-      // is real, not merely present in the SQL text.
-      await insertPolicyVersion({
-        workflowType: "qualify_lead",
-        status: "inactive",
-        humanApproval: false,
-        changedBy: ADMIN,
-        createdAt: tiedCreatedAt,
-      });
-      await insertPolicyVersion({
-        workflowType: "qualify_lead",
-        status: "inactive",
-        humanApproval: true,
-        changedBy: ADMIN,
-        createdAt: tiedCreatedAt,
-      });
+  it.runIf(hasDatabase)("version_seq breaks a tie among rows sharing one created_at", async () => {
+    const tiedCreatedAt = "2024-03-15T12:00:00Z";
+    // Neither row's values equal the catalogue default for qualify_lead (active / false), for
+    // the same reason as the created_at case above: a bug that dropped stored rows entirely
+    // must not be able to pass this by accident.
+    //
+    // Same created_at for both, so only version_seq can decide. Inserted in this order, the
+    // first row gets the LOWER version_seq — which is what would win with no tiebreak, since
+    // an ORDER BY with no tiebreak column tends to return equal-created_at rows in the heap
+    // scan order a freshly inserted, unvacuumed table shares with insertion order. Proving
+    // the HIGHER version_seq (the second insert) governs instead is what proves the tiebreak
+    // is real, not merely present in the SQL text.
+    await insertPolicyVersion({
+      workflowType: "qualify_lead",
+      status: "inactive",
+      humanApproval: false,
+      changedBy: ADMIN,
+      createdAt: tiedCreatedAt,
+    });
+    await insertPolicyVersion({
+      workflowType: "qualify_lead",
+      status: "inactive",
+      humanApproval: true,
+      changedBy: ADMIN,
+      createdAt: tiedCreatedAt,
+    });
 
-      const policies = await loadAgentPolicies();
+    const policies = await loadAgentPolicies();
 
-      expect(
-        policies.get("qualify_lead"),
-        "the higher version_seq must govern the tie",
-      ).toEqual({ status: "inactive", humanApproval: true });
-    },
-  );
+    expect(policies.get("qualify_lead"), "the higher version_seq must govern the tie").toEqual({
+      status: "inactive",
+      humanApproval: true,
+    });
+  });
 });
