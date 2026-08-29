@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useClientNow } from "@/hooks/use-client-now";
-import { AGENT_DEFINITIONS } from "@/lib/agents";
+import { agentSlugForDisplayName } from "@/lib/agents";
 import { ROLE_GRANTS } from "@/lib/admin/policy";
 import type { Capability } from "@/lib/admin/types";
 import {
@@ -186,7 +186,7 @@ function riskNoteOf(approval: Approval): string | null {
 
 function agentSlug(displayName: string | null | undefined): string | null {
   if (!displayName) return null;
-  return AGENT_DEFINITIONS.find((agent) => agent.display_name === displayName)?.name ?? null;
+  return agentSlugForDisplayName(displayName);
 }
 
 /* -------------------------------------------------------------------------- */

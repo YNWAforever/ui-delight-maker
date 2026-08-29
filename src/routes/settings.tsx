@@ -37,11 +37,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { settingsSearchSchema } from "@/lib/admin-ux-search";
 import { ROLE_GRANTS } from "@/lib/admin/policy";
-import { AGENT_DEFINITIONS } from "@/lib/agents";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatDateTime } from "@/lib/format";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
+import { getEffectiveAgentCatalogue } from "@/server-functions/agents-catalogue";
 import {
   createProduct,
   deactivateProductFn,
@@ -108,9 +108,26 @@ const productsQueryOptions = () =>
     queryFn: () => getProducts({}),
   });
 
+/**
+ * Same query key as `agents.$name.tsx`'s `effectiveCatalogueQuery`, so both routes share one
+ * cache entry: the agent panel here and the agent detail page are reading the same governing
+ * data, not two independently-fetched copies of it.
+ */
+const effectiveCatalogueQueryOptions = () =>
+  routeQueryOptions({
+    queryKey: crmQueryKeys.agents.section("catalogue", "effective"),
+    queryFn: () => getEffectiveAgentCatalogue(),
+  });
+
 export const Route = createFileRoute("/settings")({
   validateSearch: settingsSearchSchema,
-  loader: ({ context }) => context.queryClient.ensureQueryData(productsQueryOptions()),
+  loader: async ({ context }) => {
+    const [products] = await Promise.all([
+      context.queryClient.ensureQueryData(productsQueryOptions()),
+      context.queryClient.ensureQueryData(effectiveCatalogueQueryOptions()),
+    ]);
+    return products;
+  },
   head: () => ({
     meta: [
       { title: "Settings - Fimmick ClientOps" },
@@ -670,20 +687,29 @@ function ToggleActiveButton({
  *
  * This card used to carry two switches per agent - "Approval" and enable/pause - under the
  * description "Toggle agents and switch approval requirements" (IF-E1-21/22). Neither
- * switch left the browser: `status` and `human_approval` are fields of the code constant
- * `AGENT_DEFINITIONS`, there is no agent-config table in any migration, and no export in
- * `src/server-functions/` writes one. The `StatusBadge` beside the second switch rendered
- * from that same local state, so flipping it visibly rewrote the status the page reported
- * while the n8n dispatch path went on running the agent.
+ * switch left the browser: `status` and `human_approval` were rendered from the code constant
+ * `AGENT_DEFINITIONS`, and nothing in `src/server-functions/` wrote a switch's flip anywhere.
+ * The `StatusBadge` beside the second switch rendered from that same local state, so flipping
+ * it visibly rewrote the status the page reported while the n8n dispatch path went on running
+ * the agent.
+ *
+ * That has since changed: migration `009_agent_policy_versions.sql` created
+ * `agent_policy_versions`, and `status` / `human_approval` are now read here through
+ * `loadEffectiveAgentCatalogue` - the stored override when a row exists for a workflow, the
+ * code catalogue's own value when it does not. This panel is a read-only mirror of that: it
+ * still writes nothing, and the switches this card used to have are not coming back until the
+ * form BD-3 describes lands.
  *
  * It was also the third independent copy of the same fake control, after `/agents` and
  * `/agents/$name` - three surfaces, three local states, so flipping one contradicted the
- * other two. Per BD-3 the whole enforcement chain is missing (a versioned policy store,
- * server-side dispatch enforcement, capability checks on policy writes, an audit log,
- * rollback and runtime telemetry), and that is a project of its own, not a frontend
- * revision.
+ * other two. Per BD-3 the remaining prerequisites for an editable version of this panel are a
+ * capability check on the write itself, an audit log, rollback and runtime telemetry - and
+ * that is a project of its own, not a frontend revision.
  */
 function AgentCatalogueTab() {
+  const catalogueQuery = useQuery(effectiveCatalogueQueryOptions());
+  const agents = catalogueQuery.data ?? [];
+
   return (
     <div className="space-y-4">
       <SectionHeader
@@ -697,12 +723,13 @@ function AgentCatalogueTab() {
       >
         <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <p className="text-muted-foreground">
-          Configuration is read-only until runtime policy enforcement is enabled.
+          These are the values the dispatch path enforces today. Changing them requires the
+          agents.configure capability and is not yet available from this page.
         </p>
       </div>
 
       <ul className="space-y-3">
-        {AGENT_DEFINITIONS.map((agent) => (
+        {agents.map((agent) => (
           <li key={agent.name}>
             <Card>
               <CardContent className="flex flex-wrap items-start justify-between gap-4 p-4">

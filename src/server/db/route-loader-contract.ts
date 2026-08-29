@@ -15,6 +15,7 @@ import { getQuoteWorkspaceDetail, listQuotesPage } from "@/server/repositories/q
 import { listRelationshipIndexPage } from "@/server/repositories/relationship-signals";
 import { listTasks } from "@/server/repositories/tasks";
 import { getAccountsIndexReadModel } from "@/server/read-models/accounts-index";
+import { loadEffectiveAgentCatalogue } from "@/server/read-models/agent-catalogue";
 import {
   loadAgentDirectoryRead,
   loadAgentHistoryPage,
@@ -233,7 +234,12 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // This budget was already stale on main: the read model gained the query there and the
     // number was never raised, but the contract suite could not report it because Actions
     // was blocked on billing from 12 August.
-    maxQueries: 4,
+    //
+    // 4 -> 5 on 2026-08-29: loadEffectiveAgentCatalogue adds loadAgentPolicies' single
+    // `select distinct on (workflow_type)`. It rides in the existing Promise.all, so this is
+    // one more query and no more round trips. Without it this page renders the code catalogue's
+    // status while the dispatch path obeys a stored override.
+    maxQueries: 5,
   },
   {
     // getAgentHistoryPage() (src/server-functions/agent-runs.ts) awaits
@@ -242,14 +248,21 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // AGENT_DEFINITIONS entry and passes its display_name, so a real definition is used here
     // rather than a placeholder — the agent name is a plain text filter, and page/limit mirror
     // the loader's own { page: search.page, limit: 25 }.
+    //
+    // 3 -> 4 on 2026-08-29: the loader now resolves params.name from
+    // loadEffectiveAgentCatalogue rather than the code catalogue, so a paused agent reads as
+    // paused here. One query.
     route: "agents.$name",
     run: () =>
-      loadAgentHistoryPage({
-        agent: AGENT_DEFINITIONS[0].display_name,
-        page: 1,
-        limit: 25,
-      }),
-    maxQueries: 3,
+      Promise.all([
+        loadEffectiveAgentCatalogue(),
+        loadAgentHistoryPage({
+          agent: AGENT_DEFINITIONS[0].display_name,
+          page: 1,
+          limit: 25,
+        }),
+      ]),
+    maxQueries: 4,
   },
   {
     // getAiReviewRead() (src/server-functions/agent-runs.ts) awaits requireCapabilityChecks
@@ -422,9 +435,12 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     maxQueries: 1,
   },
   {
+    // 1 -> 2 on 2026-08-29: the agent panel mirrored AGENT_DEFINITIONS, which stopped being the
+    // governing value when the policy store shipped. This route doubles its budget, from one
+    // query to two - worth stating plainly rather than burying.
     route: "settings",
-    run: () => listProducts({}),
-    maxQueries: 1,
+    run: () => Promise.all([listProducts({}), loadEffectiveAgentCatalogue()]),
+    maxQueries: 2,
   },
   {
     route: "tasks",

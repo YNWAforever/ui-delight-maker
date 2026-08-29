@@ -2,6 +2,7 @@ import { AGENT_DEFINITIONS } from "@/lib/agents";
 import type { AgentRun, HumanApproval } from "@/lib/types";
 import { query } from "@/server/db/neon.server";
 import { serializeAgentRun, serializeHumanApproval } from "@/lib/serializable";
+import { loadEffectiveAgentCatalogue } from "@/server/read-models/agent-catalogue";
 
 const DIRECTORY_RUN_LIMIT = 50;
 const ATTENTION_RUN_LIMIT = 25;
@@ -119,7 +120,7 @@ function weightedConfidence(rows: AgentAggregateRow[]) {
 }
 
 export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
-  const [aggregateRows, hourlyRows, recentRuns, attentionRuns] = await Promise.all([
+  const [aggregateRows, hourlyRows, recentRuns, attentionRuns, catalogue] = await Promise.all([
     query<AgentAggregateRow>(
       `
         select
@@ -213,6 +214,7 @@ export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
       `,
       [STUCK_RUN_MINUTES, ATTENTION_RUN_LIMIT],
     ),
+    loadEffectiveAgentCatalogue(),
   ]);
 
   const aggregates = new Map(aggregateRows.map((row) => [row.agent_name, row]));
@@ -253,7 +255,7 @@ export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
       needs_attention: operations.failed_24h + operations.waiting_approval + operations.stuck_runs,
       avg_confidence: weightedConfidence(aggregateRows),
     },
-    agents: AGENT_DEFINITIONS.map((agent) => {
+    agents: catalogue.map((agent) => {
       const aggregate = aggregates.get(agent.display_name);
       const completed24h = numeric(aggregate?.completed_24h);
       const failed24h = numeric(aggregate?.failed_24h);
