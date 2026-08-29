@@ -1,10 +1,22 @@
-import { query } from "@/server/db/neon.server";
+import { query, queryOne } from "@/server/db/neon.server";
 import { AGENT_DEFINITIONS, type AgentPolicy, type AgentWorkflowType } from "@/lib/agents";
 
 type PolicyRow = {
   workflow_type: string;
   status: "active" | "inactive";
   human_approval: boolean;
+};
+
+/** The full row shape `insert ... returning *` yields, matching migration 009's columns. */
+type AgentPolicyVersionRow = {
+  id: string;
+  workflow_type: string;
+  status: "active" | "inactive";
+  human_approval: boolean;
+  changed_by: string;
+  reason: string | null;
+  created_at: string;
+  version_seq: string;
 };
 
 /**
@@ -54,4 +66,31 @@ export async function loadAgentPolicies(): Promise<Map<AgentWorkflowType, AgentP
   }
 
   return policies;
+}
+
+/**
+ * Append a policy version. Never updates, never deletes.
+ *
+ * A mistaken change is corrected by appending a corrected version; the mistake stays in
+ * the history. That is the difference between an audit log and a settings row.
+ */
+export async function setAgentPolicy(input: {
+  workflowType: AgentWorkflowType;
+  status: "active" | "inactive";
+  humanApproval: boolean;
+  reason?: string | null;
+  changedBy: string;
+}): Promise<AgentPolicyVersionRow | null> {
+  const known = AGENT_DEFINITIONS.some((a) => a.workflow_type === input.workflowType);
+  if (!known) throw new Error(`No agent definition for workflow type "${input.workflowType}"`);
+
+  return queryOne<AgentPolicyVersionRow>(
+    `
+      insert into agent_policy_versions
+        (workflow_type, status, human_approval, changed_by, reason)
+      values ($1, $2, $3, $4, nullif($5, ''))
+      returning *
+    `,
+    [input.workflowType, input.status, input.humanApproval, input.changedBy, input.reason ?? ""],
+  );
 }

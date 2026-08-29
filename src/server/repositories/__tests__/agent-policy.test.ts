@@ -1,19 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentWorkflowType } from "@/lib/agents";
 
-const { mockQuery } = vi.hoisted(() => ({ mockQuery: vi.fn() }));
+const { mockQuery, mockQueryOne } = vi.hoisted(() => ({
+  mockQuery: vi.fn(),
+  mockQueryOne: vi.fn(),
+}));
 
 vi.mock("@/server/db/neon.server", () => ({
   query: mockQuery,
-  queryOne: vi.fn(),
+  queryOne: mockQueryOne,
   transaction: vi.fn(),
 }));
 
-const { loadAgentPolicies } = await import("../agent-policy");
+const { loadAgentPolicies, setAgentPolicy } = await import("../agent-policy");
 
 describe("loadAgentPolicies", () => {
   beforeEach(() => {
     mockQuery.mockReset();
+    mockQueryOne.mockReset();
   });
 
   it("falls back to the code default for a workflow with no row", async () => {
@@ -78,5 +82,45 @@ describe("loadAgentPolicies", () => {
 
     const [sql] = mockQuery.mock.calls[0] as [string];
     expect(sql).toContain("order by workflow_type, created_at desc, version_seq desc");
+  });
+});
+
+describe("setAgentPolicy", () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+    mockQueryOne.mockReset();
+  });
+
+  it("appends a version rather than updating", async () => {
+    mockQueryOne.mockResolvedValue({ id: "v1" });
+
+    await setAgentPolicy({
+      workflowType: "qualify_lead",
+      status: "inactive",
+      humanApproval: false,
+      reason: "vendor review",
+      changedBy: "profile-1",
+    });
+
+    const [sql] = mockQueryOne.mock.calls[0];
+    expect(String(sql)).toContain("insert into agent_policy_versions");
+    // Append-only: a mistaken change is corrected by a new version, and the mistake stays
+    // visible. An update or delete would erase the record this table exists to keep.
+    expect(String(sql)).not.toContain("update ");
+    expect(String(sql)).not.toContain("delete ");
+  });
+
+  it("rejects a workflow the catalogue does not have", async () => {
+    // Accepting one would deliberately create the stale row loadAgentPolicies has to ignore
+    // on every read.
+    await expect(
+      setAgentPolicy({
+        workflowType: "not_a_workflow" as never,
+        status: "inactive",
+        humanApproval: false,
+        changedBy: "profile-1",
+      }),
+    ).rejects.toThrow();
+    expect(mockQueryOne).not.toHaveBeenCalled();
   });
 });
