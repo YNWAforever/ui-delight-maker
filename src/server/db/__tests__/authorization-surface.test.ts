@@ -29,8 +29,19 @@ import { describe, expect, it } from "vitest";
  * only: it can go red for a documentary change, but it cannot go quiet when a real check
  * disappears. For this particular job, loud and sometimes wrong beats silent and sometimes
  * wrong.
+ *
+ * 223 -> 225 on 2026-08-29, for BD-3 slice 2 (the agent policy store). Established before
+ * changing, not after: git diff main -- src/server-functions/ ':(exclude)*__tests__*'
+ * filtered to requireCapability lines shows two + lines and no - lines at all, so nothing
+ * that already enforced was moved, renamed or weakened.
+ *   +2  agent-policy.ts  new file - the import line, and requireCapability("agents.configure")
+ *                        in setAgentPolicyFn
+ *
+ * That single check is the entire write gate on the policy store. agents.configure is a new
+ * capability held by super_admin and admin only; agents.run, which three roles hold, is
+ * deliberately not sufficient, because pausing an agent stops it for every user.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 223;
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 225;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {
