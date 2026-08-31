@@ -59,6 +59,8 @@ vi.mock("@/components/reports/report-charts", () => ({
   ReportChart: () => <div data-testid="report-chart" />,
 }));
 
+import { DEFAULT_REPORT, REPORT_IDS } from "@/lib/reports";
+
 import { Route } from "../reports";
 
 const summary = {
@@ -212,6 +214,32 @@ describe("the reports export produces a real file", () => {
     expect(caption?.textContent).toMatch(/gaps/i);
     // Once in the visible note under the chart, once inside the caption above.
     expect(screen.getAllByText(/No value is inferred for them/i).length).toBeGreaterThan(0);
+  });
+});
+
+describe("the report search param cannot drift from the report catalogue", () => {
+  /**
+   * `reportSearchSchema`'s `report` field used to be `z.enum(["revenue", "pipeline", ...])` —
+   * five literals hand-copied from `ReportId`. Adding `human_review_workload` to the catalogue
+   * compiled everywhere else and 404'd only here, because nothing forced the two lists to
+   * agree. The fix derives the enum from `REPORT_IDS` itself; this test proves the derivation
+   * actually holds by parsing every value `REPORT_IDS` currently contains, not a list retyped
+   * by hand that would keep passing while the enum drifted again.
+   */
+  it("accepts every report id the catalogue exports", () => {
+    const schema = Route.options.validateSearch as { parse: (input: unknown) => unknown };
+    for (const id of REPORT_IDS) {
+      const parsed = schema.parse({ range: "30d", report: id });
+      expect(parsed).toMatchObject({ report: id });
+    }
+  });
+
+  it("falls back to the default report for a value outside the catalogue", () => {
+    // The search param must never throw on a bad URL - it lands on the default instead. This
+    // is the behaviour the fix was required to preserve exactly.
+    const schema = Route.options.validateSearch as { parse: (input: unknown) => unknown };
+    const parsed = schema.parse({ range: "30d", report: "not-a-report" });
+    expect(parsed).toMatchObject({ report: DEFAULT_REPORT });
   });
 });
 
