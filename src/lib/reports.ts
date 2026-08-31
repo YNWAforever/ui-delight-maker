@@ -22,7 +22,13 @@ import { getStatusLabel, type StatusDomain } from "@/lib/status-labels";
  * describing it here is a compile error rather than an unlabelled chart.
  */
 
-export type ReportId = "revenue" | "pipeline" | "conversion" | "agents" | "tasks";
+export type ReportId =
+  | "revenue"
+  | "pipeline"
+  | "conversion"
+  | "agents"
+  | "tasks"
+  | "human_review_workload";
 export type ReportRange = "7d" | "30d" | "90d";
 
 export const REPORT_IDS: readonly ReportId[] = [
@@ -31,6 +37,7 @@ export const REPORT_IDS: readonly ReportId[] = [
   "conversion",
   "agents",
   "tasks",
+  "human_review_workload",
 ];
 
 export const REPORT_RANGES: readonly ReportRange[] = ["7d", "30d", "90d"];
@@ -133,6 +140,20 @@ export const REPORT_SPECS: Record<ReportId, ReportSpec> = {
     periodStepDays: 1,
     // Charted: created against completed over days shows whether the backlog is growing.
     periodNoun: "day",
+  },
+  human_review_workload: {
+    fields: [
+      { key: "reviewer", header: "Reviewer", kind: "label" },
+      { key: "pending", header: "Pending now", kind: "count" },
+      { key: "decided", header: "Decided in range", kind: "count" },
+      { key: "median_minutes", header: "Median minutes to decide", kind: "count" },
+      { key: "oldest_pending_days", header: "Oldest pending (days)", kind: "count" },
+    ],
+    shape: "chart",
+    // Reviewers are categories, not periods. buildReportSeries only fills gaps when the first
+    // field is a period, so a non-zero step here would invent reviewers who do not exist.
+    periodStepDays: 0,
+    periodNoun: "reviewer",
   },
 };
 
