@@ -223,6 +223,18 @@ describe("operations read models", () => {
     expect(sql).toContain(table);
     expect(sql).toContain("order by");
   });
+
+  it("keeps pending unwindowed while windowing decided", async () => {
+    // A 7-day range must not hide a 30-day-old untouched approval - that is the single row
+    // this report exists to surface.
+    const { reportQueries } = await import("../operations");
+    const sql = reportQueries["human_review_workload"];
+
+    expect(sql).toContain("status = 'pending'");
+    expect(sql).toContain("or a.decided_at >= now()");
+    expect(sql).toContain("left join profiles");
+  });
+
   it("updates matched portions in place without overwriting Xero fields", async () => {
     const db = { query: vi.fn() };
     queryOneMock.mockResolvedValueOnce({ id: "job-1", status: "draft", locked_at: null });

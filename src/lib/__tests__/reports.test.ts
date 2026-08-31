@@ -51,6 +51,32 @@ describe("report specifications", () => {
     expect(isReportId("margin")).toBe(false);
     expect(isReportId(null)).toBe(false);
   });
+
+  it("describes the human review workload family with honest headers", () => {
+    const spec = REPORT_SPECS["human_review_workload"];
+
+    // The dimension is the reviewer, so gaps must never be filled: buildReportSeries only
+    // interpolates when the first field is a period, and a non-zero step would invent
+    // reviewers who do not exist.
+    expect(spec.periodStepDays).toBe(0);
+    expect(spec.fields[0].key).toBe("reviewer");
+
+    // The two columns carry different time semantics and the headers are where a reader
+    // learns that. Pending is a now fact; decided is windowed by the range selector.
+    const headers = spec.fields.map((field) => field.header);
+    expect(headers).toContain("Pending now");
+    expect(headers).toContain("Decided in range");
+  });
+
+  it("measures decision time in minutes, which never rounds a real duration to zero", () => {
+    // formatCount uses maximumFractionDigits: 0, so 0.4 hours would render as "0" - a reviewer
+    // deciding in 24 minutes would read as instant, which is the inverse of the truth.
+    const spec = REPORT_SPECS["human_review_workload"];
+    const keys = spec.fields.map((field) => field.key);
+
+    expect(keys).toContain("median_minutes");
+    expect(keys).not.toContain("median_hours");
+  });
 });
 
 describe("formatReportCell", () => {

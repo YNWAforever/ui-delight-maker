@@ -2,7 +2,13 @@ import { query, queryOne } from "@/server/db/neon.server";
 import { listRenewalsRead, type RenewalsReadFilters } from "@/server/repositories/engagements";
 
 export type ReportRange = "7d" | "30d" | "90d";
-export type ReportId = "revenue" | "pipeline" | "conversion" | "agents" | "tasks";
+export type ReportId =
+  | "revenue"
+  | "pipeline"
+  | "conversion"
+  | "agents"
+  | "tasks"
+  | "human_review_workload";
 
 export type ReportDefinition = {
   id: ReportId;
@@ -119,7 +125,7 @@ export async function loadReportSummary(input: { range: ReportRange }) {
   };
 }
 
-const reportQueries: Record<ReportId, string> = {
+export const reportQueries: Record<ReportId, string> = {
   revenue: `
     select
       date_trunc('week', updated_at)::date::text as week,
@@ -170,6 +176,43 @@ const reportQueries: Record<ReportId, string> = {
     where created_at >= now() - ($1::integer * interval '1 day')
     group by created_at::date
     order by created_at::date asc
+  `,
+  // Pending is deliberately NOT windowed by $1 while decided is. A backlog is a now fact: if
+  // the pending count moved when a reader switched 7d/30d/90d, a 30-day-old untouched
+  // approval would vanish from the 7-day view - the one row this report most needs to show.
+  // The field headers ("Pending now" vs "Decided in range") are where that is stated.
+  //
+  // The median is over decided rows only, via a case in the order by rather than a filter:
+  // percentile_cont ignores nulls, so a row outside the window contributes nothing. Counting a
+  // pending row as zero would make a stuck queue read as instant; counting now() - created_at
+  // would mix "decided in two hours" with "has waited nine days" in one number.
+  //
+  // Minutes, not hours: formatCount uses maximumFractionDigits: 0, so a 24-minute median in
+  // hours would render as "0".
+  human_review_workload: `
+    select
+      coalesce(p.name, 'Unassigned') as reviewer,
+      count(*) filter (where a.status = 'pending')::integer as pending,
+      count(*) filter (
+        where a.decided_at >= now() - ($1::integer * interval '1 day')
+      )::integer as decided,
+      round(
+        percentile_cont(0.5) within group (
+          order by case
+            when a.decided_at >= now() - ($1::integer * interval '1 day')
+            then extract(epoch from (a.decided_at - a.created_at)) / 60.0
+          end
+        )
+      )::integer as median_minutes,
+      max(
+        extract(day from (now() - a.created_at))
+      ) filter (where a.status = 'pending')::integer as oldest_pending_days
+    from human_approvals a
+    left join profiles p on p.id = a.assigned_to
+    where a.status = 'pending'
+       or a.decided_at >= now() - ($1::integer * interval '1 day')
+    group by coalesce(p.name, 'Unassigned')
+    order by pending desc, decided desc, reviewer asc
   `,
 };
 
