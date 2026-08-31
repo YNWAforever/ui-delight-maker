@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { Pool } from "pg";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * Human-Review Workload report, Task 3: the one place `reportQueries.human_review_workload`
@@ -13,20 +13,60 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
  * 'Unassigned')` grouping actually work against Postgres - fixture data decides the result
  * regardless of what the SQL says. This file closes that gap by running the real query.
  *
- * Nothing is mocked below the driver: `loadReportDataset` and `reportQueries` run for real
- * against the migrated schema.
+ * Only the session/driver boundary is mocked, the same way `agent-policy.integration.test.ts`
+ * and `agent-run-duration.integration.test.ts` do it: `@/server/db/neon.server` is redirected
+ * at a real `pg.Pool` built from `DATABASE_TEST_URL`, so `loadReportDataset` and
+ * `reportQueries.human_review_workload` run for real against the migrated schema instead of
+ * against `getDatabaseUrl()`'s `DATABASE_URL` (which CI does not set for this job).
  */
+const holder = vi.hoisted(() => ({
+  pool: null as InstanceType<typeof import("pg").Pool> | null,
+}));
+
+// Redirecting this module at the pg driver is what lets the real repositories run against the
+// CI Postgres service without touching production code. The SQL text is identical either way.
+vi.mock("@/server/db/neon.server", () => {
+  type Runner = { query(text: string, values?: unknown[]): Promise<{ rows: unknown[] }> };
+  const getPool = (): Runner => {
+    if (!holder.pool) throw new Error("test pool not initialised");
+    return holder.pool as unknown as Runner;
+  };
+  const query = async (text: string, values: readonly unknown[] = [], db?: Runner) => {
+    const result = await (db ?? getPool()).query(text, values as unknown[]);
+    return result.rows;
+  };
+  const queryOne = async (text: string, values: readonly unknown[] = [], db?: Runner) => {
+    const rows = await query(text, values, db);
+    return rows[0] ?? null;
+  };
+  const transaction = async (work: (db: Runner) => Promise<unknown>) => {
+    const client = await holder.pool!.connect();
+    try {
+      await client.query("begin");
+      const result = await work({
+        query: (text: string, values?: unknown[]) => client.query(text, values),
+      });
+      await client.query("commit");
+      return result;
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    } finally {
+      client.release();
+    }
+  };
+  return { query, queryOne, transaction, getDatabaseUrl: () => "test" };
+});
+
 import { CLIENTOPS_MIGRATION_PATHS } from "@/lib/clientops-relationship-schema";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
 import { loadReportDataset } from "@/server/read-models/operations";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 
-let pool: InstanceType<typeof import("pg").Pool> | null = null;
-
 function db() {
-  if (!pool) throw new Error("test pool not initialised");
-  return pool;
+  if (!holder.pool) throw new Error("test pool not initialised");
+  return holder.pool;
 }
 
 type Row = {
@@ -107,16 +147,16 @@ async function profileName(id: string) {
 describe("human_review_workload, proven against a real database", () => {
   beforeAll(async () => {
     if (!hasDatabase) return;
-    pool = new Pool({ connectionString: process.env.DATABASE_TEST_URL });
+    holder.pool = new Pool({ connectionString: process.env.DATABASE_TEST_URL });
     const migrations = await Promise.all(
       CLIENTOPS_MIGRATION_PATHS.map(async (path) => ({ path, sql: await readFile(path, "utf8") })),
     );
-    await runClientOpsMigrations(pool, migrations);
+    await runClientOpsMigrations(holder.pool, migrations);
   }, 60_000);
 
   afterAll(async () => {
-    await pool?.end();
-    pool = null;
+    await holder.pool?.end();
+    holder.pool = null;
   });
 
   beforeEach(() => {
