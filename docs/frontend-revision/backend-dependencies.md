@@ -51,7 +51,13 @@ One entry per gap that stops the frontend telling the truth. Template per execut
 - **What is missing:** the whole enforcement chain — a versioned policy store, server-side dispatch enforcement, capability checks on policy writes, an audit log, rollback, and runtime telemetry. There is no agent-config table in `neon/migrations/` at all; `status` and `human_approval` come from the code-defined `AGENT_DEFINITIONS` catalogue.
 - **Why the UI cannot be truthful without it:** the enable/pause switches, auto-execute toggle, temperature and confidence-threshold sliders changed React state only. One toasted `"Agent enabled"`. Worse, `/agents/$name` rendered its "Status" row *from that local state*, so flipping a switch that did nothing visibly changed the status the page reported.
 - **UI state implemented meanwhile:** READ-ONLY displays of the catalogue values, with the standard sentence: "Configuration is read-only until runtime policy enforcement is enabled."
-- **Proposed backend change:** substantial and explicitly out of scope for a frontend revision. Requires a migration. Should be scoped as its own project.
+- **Proposed backend change:** ~~substantial and explicitly out of scope for a frontend revision. Requires a migration. Should be scoped as its own project.~~ **Superseded - see below.**
+
+> **Established 2026-08-30. Status: COMPLETE.** Shipped as four sub-projects: catalogue enforcement (#65), the policy store (#66), controls with history and rollback (#67, #68), and run telemetry (#69).
+>
+> **"Requires a migration" was true of one slice only.** The policy store needed `009_agent_policy_versions.sql`. Run telemetry needed none: `agent_runs` has carried `duration_ms`, `tokens_used` and `model_used` since `001`, and `updateAgentRunResult` already wrote all three. The real gap was that `duration_ms` reached one writeback of five and no n8n workflow sent anything.
+>
+> Specs, in the planning repo under `docs/superpowers/specs/` (a separate checkout - this repo has no such directory): `2026-08-29-enforce-agent-catalogue-design.md`, `2026-08-29-agent-policy-store-design.md`, `2026-08-29-agent-policy-controls-design.md`, `2026-08-30-agent-run-telemetry-design.md`.
 - **Integrity finding IDs:** IF-E1-04 and the `/agents/$name` config-tab findings
 - **Priority note:** these controls are the ones most likely to be mistaken for working, because they look and feel exactly like real ones.
 
@@ -63,7 +69,19 @@ One entry per gap that stops the frontend telling the truth. Template per execut
 - **What is missing:** persistence, a retention policy, access controls, and deletion/audit behaviour.
 - **Why the UI cannot be truthful without it:** the tab is a URL-addressable destination whose entire body says memory is not yet persisted — an empty room with a signpost.
 - **UI state implemented meanwhile:** a read-only explanation naming what is required before it becomes real, per Instruction §9.22. The tab trigger itself is a candidate for removal, since a navigable tab with nothing in it is what §16 calls "coming soon presented as active navigation".
-- **Proposed backend change:** requires a migration and a data-retention decision. Out of scope.
+- **Proposed backend change:** ~~requires a migration and a data-retention decision. Out of scope.~~ **Superseded - see below.**
+
+> **Established 2026-09-03. Status: DECIDED, deliberately unbuilt.**
+>
+> **No migration is needed.** `agent_runs` already records `input_data`, `output_data`, `output_summary`, `confidence_score` and the subject for every run - episodic memory is written today and simply never read back. `create extension if not exists vector` has been present since `001:2`, unused.
+>
+> **The retention decision is made:** two separate horizons (short recall, long storage, nothing deleted), agent-only with no human surface, and orphaned runs excluded by construction rather than by a check that could never fire.
+>
+> **It is unbuilt on purpose.** The server can send prior context and no n8n workflow reads it. Unlike the token telemetry, sending a field nobody consumes cannot become useful on its own.
+>
+> **One gap is recorded and open:** `subject_id` has no foreign key, so agent output about a deleted subject persists indefinitely and nothing removes it. If erasure is ever requested, the answer today is no. Closing it needs a purge job with its own spec.
+>
+> Spec and plan, in the planning repo under `docs/superpowers/`: `specs/2026-09-03-agent-episodic-memory-design.md` and `plans/2026-09-03-agent-episodic-memory.md`, the latter gated on the n8n workflows.
 - **Integrity finding IDs:** M-1
 
 ---
@@ -96,7 +114,25 @@ One entry per gap that stops the frontend telling the truth. Template per execut
 - **What is missing:** read models for forecast accuracy, campaign attribution, gross margin, renewal and expansion, AI cost per outcome, human-review workload, and AI quality and latency.
 - **Why the UI cannot be truthful without it:** each would be an empty chart claiming a measurement nobody is taking.
 - **UI state implemented meanwhile:** none of them appear. They are documented here rather than shipped as visible empty reports, per Instruction §9.23.
-- **Proposed backend change:** one read model per family, sized individually. Several need no migration; AI cost and latency need run-level telemetry that does not exist yet (see BD-3).
+- **Proposed backend change:** ~~one read model per family, sized individually. Several need no migration; AI cost and latency need run-level telemetry that does not exist yet (see BD-3).~~ **Superseded - see below.**
+
+> **Established 2026-09-03. Status: FINISHED - two shipped, one premature, four not buildable.**
+>
+> "One read model per family" holds only for the two that shipped. Measured against the schema:
+>
+> | Family | Verdict |
+> |---|---|
+> | Human-review workload | **Shipped** (#70) |
+> | Renewal and expansion | **Shipped** (#72) |
+> | AI quality and latency | **Premature** - `duration_ms` is captured from #69 onward, so it becomes buildable once runs accumulate |
+> | Gross margin | **Not buildable** - no cost column in any migration. Needs a business process that records cost |
+> | Forecast accuracy | **Not buildable** - nothing stores a historical forecast, so there is nothing to compare against |
+> | AI cost per outcome | **Not buildable** - `tokens_used` stays null until the n8n workflows change |
+> | Campaign attribution | **Not buildable** - nothing records that a campaign caused anything |
+>
+> Campaign attribution is the subtlest of the four: `leads.source_campaign_id` and `leads.campaign_member_id` both exist, are indexed and are accepted by the API, and **neither has a writer**. The only joinable path measures membership, and it inflates revenue by attendee headcount - monotone in campaign size, so it looks exactly like a good campaign.
+>
+> Specs, in the planning repo under `docs/superpowers/specs/`: `2026-08-30-human-review-workload-report-design.md`, `2026-08-31-renewal-expansion-report-design.md`, `2026-09-03-campaign-attribution-not-buildable.md`.
 - **Integrity finding IDs:** —
 
 ---
@@ -107,7 +143,19 @@ One entry per gap that stops the frontend telling the truth. Template per execut
 - **What is missing:** the route, its read model, and its capability rules. `src/server/repositories/projects.ts` still reads from the legacy Supabase database.
 - **Why the UI cannot be truthful without it:** Instruction §6.1 is explicit that Projects must not appear in navigation until a real Neon-backed route and permissions exist.
 - **UI state implemented meanwhile:** absent from navigation, as required.
-- **Proposed backend change:** part of the Supabase-to-Neon migration already tracked in `src/legacy-supabase/README.md`. Out of scope.
+- **Proposed backend change:** part of the Supabase-to-Neon migration already tracked in `src/legacy-supabase/README.md`. ~~Out of scope.~~ **Decomposed - see below. Do not pick this up as a routine backlog item.**
+
+> **Established 2026-09-03. Status: DECOMPOSED into six sub-projects. Two of them fail OPEN.**
+>
+> **This is the authorization-path piece of the Supabase-to-Neon migration**, and the piece most able to grant access it should deny.
+>
+> - A persisted `deny` permission override pinned to a Supabase project id **stops matching** when the id space changes. The matcher returns false on id mismatch, so `evaluateAuthorization` never reaches its deny branch - **a deliberate denial silently becomes an allow.**
+> - The obvious Neon ownership query **redefines who the owner is**: the Supabase branch resolves account owner first, project `owner` second. No test covers the Supabase branch to compare against.
+> - A copy script reading Supabase through the anon key gets **HTTP 200 and an empty array** under RLS, not an error - so a migration can report success having copied nothing.
+>
+> There is no `projects` table in Neon, nor `engagement_events`, `customer_success_profiles`, `deals` or `contacts`. Three decisions are required before sub-projects 4 and 5 can be specified honestly: whether deals migrates or `getDealForProject` goes away; how the copy is verified; and what `owner` means after the move.
+>
+> Spec, in the planning repo under `docs/superpowers/specs/`: `2026-09-03-bd8-projects-to-neon-decomposition.md`.
 - **Integrity finding IDs:** —
 
 ---
