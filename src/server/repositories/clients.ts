@@ -1,6 +1,7 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
 import { query, queryOne, type Queryable } from "@/server/db/neon.server";
 import type { Client, RenewalRisk } from "@/lib/types";
+import { CLIENT_ENGAGEMENT_ROLLUP } from "@/server/repositories/client-rollup";
 import {
   normalizePagination,
   parseCount,
@@ -43,28 +44,7 @@ const ROLLUP_SELECT = `
     r.renewal_date as rollup_renewal_date,
     coalesce(r.renewal_risk, 'low') as rollup_renewal_risk
   from clients c
-  left join (
-    select
-      e.client_id,
-      sum(
-        case e.billing_period
-          when 'monthly' then coalesce(e.value, 0) * 12
-          when 'quarterly' then coalesce(e.value, 0) * 4
-          when 'annual' then coalesce(e.value, 0)
-          else 0
-        end
-      ) as arr,
-      min(e.health_score) as health_score,
-      min(e.renewal_date) as renewal_date,
-      case
-        when bool_or(e.renewal_risk = 'high') then 'high'
-        when bool_or(e.renewal_risk = 'medium') then 'medium'
-        else 'low'
-      end as renewal_risk
-    from engagements e
-    where e.status = 'active'
-    group by e.client_id
-  ) r on r.client_id = c.id
+  left join (${CLIENT_ENGAGEMENT_ROLLUP}) r on r.client_id = c.id
 `;
 
 type ClientRollupRow = Client & {
