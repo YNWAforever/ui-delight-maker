@@ -58,15 +58,12 @@ const ReportChart = lazy(() =>
  * The enum is built from `REPORT_IDS`, not retyped here. A hand-copied list of five literals
  * is exactly what let this schema silently reject a sixth report — `human_review_workload`
  * compiled everywhere else in the app and 404'd only at this one boundary. `REPORT_IDS` is a
- * plain array rather than a `[string, ...string[]]` tuple, so the cast is needed to satisfy
- * `z.enum`'s type; the runtime values are unaffected and still come from the catalogue.
+ * `readonly` tuple of literals, so `z.enum` reads the exact ids straight off the catalogue and
+ * no cast is needed; a report missing from the catalogue is a compile error there.
  */
 const reportSearchSchema = z.object({
   range: z.enum(["7d", "30d", "90d"]).default(DEFAULT_RANGE).catch(DEFAULT_RANGE),
-  report: z
-    .enum(REPORT_IDS as unknown as [ReportId, ...ReportId[]])
-    .default(DEFAULT_REPORT)
-    .catch(DEFAULT_REPORT),
+  report: z.enum(REPORT_IDS).default(DEFAULT_REPORT).catch(DEFAULT_REPORT),
 });
 
 const summaryQueryOptions = (range: ReportRange) =>

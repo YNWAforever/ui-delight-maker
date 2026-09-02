@@ -1,14 +1,20 @@
+import type { AssertEveryReportId, ReportId } from "@/lib/reports";
 import { query, queryOne } from "@/server/db/neon.server";
 import { listRenewalsRead, type RenewalsReadFilters } from "@/server/repositories/engagements";
 
 export type ReportRange = "7d" | "30d" | "90d";
-export type ReportId =
-  | "revenue"
-  | "pipeline"
-  | "conversion"
-  | "agents"
-  | "tasks"
-  | "human_review_workload";
+
+/**
+ * Re-exported, not redeclared.
+ *
+ * This module used to own a second, hand-maintained copy of the `ReportId` union that had to
+ * stay letter-identical to the one in `src/lib/reports.ts`. Two unions meant a seventh report
+ * added to one of them left every `Record<ReportId, …>` keyed on the *other* one still
+ * complete and still green, so the compiler-forced structures on this side were only ever
+ * checking against a copy the change had not touched. The import is type-only, so it costs
+ * nothing at runtime and cannot pull client code into the server bundle.
+ */
+export type { ReportId };
 
 export type ReportDefinition = {
   id: ReportId;
@@ -16,13 +22,44 @@ export type ReportDefinition = {
   description: string;
 };
 
-const REPORT_DEFINITIONS: readonly ReportDefinition[] = [
+/**
+ * The report tab bar, in tab order.
+ *
+ * An array rather than a `Record<ReportId, …>` because the order *is* the tab order —
+ * `src/routes/reports.tsx` renders `summary.reports.map(...)` straight into `TabsList` with
+ * no re-sort. A `Record` has no order, so switching to one would mean keeping a second,
+ * separately maintained list of ids just to sort by, which is exactly as forgeable as the
+ * array it replaced.
+ *
+ * `satisfies` rather than a `readonly ReportDefinition[]` annotation. An annotation widens
+ * each `id` back to `ReportId`, which would make the assertion below compare `ReportId` with
+ * itself and pass no matter which reports were listed. `satisfies` keeps the literal ids
+ * visible to `(typeof REPORT_DEFINITIONS)[number]["id"]` while still rejecting an entry that
+ * is not a well-formed `ReportDefinition`.
+ */
+export const REPORT_DEFINITIONS = [
   { id: "revenue", title: "Revenue trend", description: "Accepted quote value by week." },
   { id: "pipeline", title: "Pipeline funnel", description: "Lead volume by stage." },
   { id: "conversion", title: "Lead conversion", description: "Created and won leads by week." },
   { id: "agents", title: "Agent performance", description: "Runs and successful outcomes." },
   { id: "tasks", title: "Task throughput", description: "Created and completed tasks by day." },
-];
+  {
+    id: "human_review_workload",
+    title: "Review workload",
+    description: "Pending and decided approvals, and how long decisions take, by reviewer.",
+  },
+] satisfies readonly ReportDefinition[];
+
+/**
+ * `human_review_workload` shipped in PR #70 as a valid `ReportId` everywhere else and simply
+ * absent from the array above: five tabs, six reports, and silence from `tsc`, because
+ * `readonly ReportDefinition[]` only checks that each element *present* is a
+ * `ReportDefinition` and says nothing about which ids are missing. Add a seventh `ReportId`
+ * without an entry above and this assertion's type becomes `false`, which the literal `true`
+ * cannot satisfy — a real `tsc` failure, not a lint warning or a test someone forgot to run.
+ */
+const everyReportIdHasATab: AssertEveryReportId<(typeof REPORT_DEFINITIONS)[number]["id"]> = true;
+void everyReportIdHasATab;
 
 const RANGE_DAYS: Record<ReportRange, number> = {
   "7d": 7,

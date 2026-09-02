@@ -31,14 +31,50 @@ export type ReportId =
   | "human_review_workload";
 export type ReportRange = "7d" | "30d" | "90d";
 
-export const REPORT_IDS: readonly ReportId[] = [
+/**
+ * `true` only when `Present` covers every member of `ReportId`, otherwise `false`.
+ *
+ * Assigning the result to a literal `true` turns "a report id is missing from this
+ * collection" into a `tsc` error. It exists because the two shapes this file's neighbours
+ * reach for — `readonly ReportId[]` and `Set<ReportId>` — type-check *membership* and say
+ * nothing about *completeness*: every element being a valid `ReportId` is exactly as true of
+ * a list of five as of a list of six. `Record<ReportId, …>` (see `REPORT_SPECS` below) gets
+ * completeness for free, which is why it never drifted; ordered collections cannot use it
+ * without giving up their order, so they use this instead.
+ *
+ * The tuple wrapping (`[ReportId] extends [Present]`) suppresses distribution over the union.
+ * Without it a naked conditional would test each member separately and collapse to `boolean`,
+ * which `true` happens to be assignable from — a check that never fails.
+ */
+export type AssertEveryReportId<Present extends ReportId> = [ReportId] extends [Present]
+  ? true
+  : false;
+
+/**
+ * Every report id, in the order the product talks about them.
+ *
+ * `as const satisfies` rather than a `readonly ReportId[]` annotation, and the difference is
+ * the whole point: an annotation *widens* the value to the declared type, so
+ * `(typeof REPORT_IDS)[number]` would read back as `ReportId` no matter what the array
+ * actually held, and the assertion below would be vacuously satisfied. `satisfies` checks the
+ * literal against the type while preserving it, so the assertion compares the ids genuinely
+ * present here against `ReportId`.
+ *
+ * This array is load-bearing at two boundaries that used to hand-copy it — the search-param
+ * enum in `src/routes/reports.tsx` and the validator Set in `src/server-functions/operations.ts`
+ * — so a gap here silently un-ships a report at both.
+ */
+export const REPORT_IDS = [
   "revenue",
   "pipeline",
   "conversion",
   "agents",
   "tasks",
   "human_review_workload",
-];
+] as const satisfies readonly ReportId[];
+
+const everyReportIdIsListed: AssertEveryReportId<(typeof REPORT_IDS)[number]> = true;
+void everyReportIdIsListed;
 
 export const REPORT_RANGES: readonly ReportRange[] = ["7d", "30d", "90d"];
 
