@@ -83,7 +83,13 @@ function parseRange(data: unknown): { range: ReportRange } {
   return { range };
 }
 
-function parseDatasetInput(data: unknown): { report: ReportId; range: ReportRange } {
+/**
+ * Exported for `report-registries.test.ts`, which drives every id in the catalogue through it.
+ *
+ * This is the function that answered "Invalid report" for a report the rest of the app
+ * considered real, and it is not otherwise reachable without a session and a database.
+ */
+export function parseDatasetInput(data: unknown): { report: ReportId; range: ReportRange } {
   const candidate = (data ?? {}) as Record<string, unknown>;
   const report = String(candidate.report) as ReportId;
   if (!REPORT_IDS.has(report)) throw new Error("Invalid report");
