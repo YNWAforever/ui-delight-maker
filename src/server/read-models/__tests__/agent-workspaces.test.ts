@@ -178,4 +178,137 @@ describe("agent operations read model", () => {
 
     expect(qualify?.status).toBe("inactive");
   });
+
+  describe("loadAgentHistoryPage", () => {
+    const row = (id: string, subjectType: string) => ({
+      id,
+      agent_name: "Qualification Agent",
+      workflow_type: "qualify_lead",
+      trigger_type: "manual",
+      subject_type: subjectType,
+      subject_id: "00000000-0000-0000-0000-000000000001",
+      input_data: { lead_id: "secret-lead", notes: "commercially sensitive" },
+      output_summary: "Qualified",
+      status: "completed",
+      duration_ms: 1200,
+      tokens_used: 900,
+      confidence_score: 0.8,
+      human_review_required: false,
+      created_at: "2026-09-01T00:00:00.000Z",
+      updated_at: "2026-09-01T00:00:00.000Z",
+    });
+
+    const seed = (rows: ReturnType<typeof row>[]) => {
+      queryMock
+        .mockResolvedValueOnce([{ total: rows.length }])
+        .mockResolvedValueOnce(rows)
+        .mockResolvedValueOnce([{ runs_24h: rows.length, avg_confidence: 0.8 }]);
+    };
+
+    it("keeps input_data when the actor holds that row's subject capability", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "lead")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": true },
+      });
+
+      expect(page.items[0].input_restricted).toBe(false);
+      expect(page.items[0].input_data).toEqual({
+        lead_id: "secret-lead",
+        notes: "commercially sensitive",
+      });
+    });
+
+    it("blanks input_data when the actor lacks that row's subject capability", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "lead")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": false },
+      });
+
+      expect(page.items[0].input_restricted).toBe(true);
+      expect(page.items[0].input_data).toBeNull();
+    });
+
+    it("redacts per row, not per page", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-lead", "lead"), row("run-account", "account")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": true, "accounts.view": false },
+      });
+
+      expect(page.items[0].input_restricted).toBe(false);
+      expect(page.items[1].input_restricted).toBe(true);
+      expect(page.items[1].input_data).toBeNull();
+    });
+
+    it("blanks input_data for a subject_type the capability table does not name", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "job_sheet")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: {
+          "agents.view": true,
+          "leads.view": true,
+          "accounts.view": true,
+          "campaigns.view": true,
+          "quotes.view": true,
+          "engagements.view": true,
+          "tasks.view": true,
+          "approvals.view": true,
+        },
+      });
+
+      expect(page.items[0].input_restricted).toBe(true);
+      expect(page.items[0].input_data).toBeNull();
+    });
+
+    it("never selects or returns output_data", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "lead")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": true },
+      });
+
+      const sql = sqlText(queryMock.mock.calls[1][0]);
+      expect(sql).not.toContain("select *");
+      expect(sql).not.toContain("output_data");
+      expect(page.items[0]).not.toHaveProperty("output_data");
+    });
+
+    it("still issues exactly three queries", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "lead")]);
+
+      await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": true },
+      });
+
+      // Redaction is in-memory. If this number moves, the page has started resolving
+      // ownership per row, which the agents.$name maxQueries budget cannot absorb.
+      expect(queryMock).toHaveBeenCalledTimes(3);
+    });
+  });
 });

@@ -1,7 +1,10 @@
 import { AGENT_DEFINITIONS } from "@/lib/agents";
+import { canReadAgentRunInput } from "@/lib/agent-run-visibility";
+import type { Capability } from "@/lib/admin/types";
 import type { AgentRun, HumanApproval } from "@/lib/types";
 import { query } from "@/server/db/neon.server";
-import { serializeAgentRun, serializeHumanApproval } from "@/lib/serializable";
+import type { JsonValue } from "@/lib/serializable";
+import { serializeAgentRun, serializeHumanApproval, toJsonValue } from "@/lib/serializable";
 import { loadEffectiveAgentCatalogue } from "@/server/read-models/agent-catalogue";
 
 const DIRECTORY_RUN_LIMIT = 50;
@@ -93,6 +96,46 @@ export type AgentHistoryPageInput = {
   agent: string;
   page: number;
   limit: number;
+  /**
+   * What the caller may see, resolved once by `requireCapabilitySet` in the server function.
+   * Passed in rather than resolved here, so the read model stays free of the auth layer and
+   * costs no query of its own.
+   */
+  access: Partial<Record<Capability, boolean>>;
+};
+
+/**
+ * The columns the history page selects. Deliberately not `AgentRun`: `output_data` is not
+ * selected, because nothing renders it and shipping it disclosed every run's model output to
+ * anyone holding `agents.view`.
+ */
+type AgentHistoryRow = Pick<
+  AgentRun,
+  | "id"
+  | "agent_name"
+  | "workflow_type"
+  | "trigger_type"
+  | "subject_type"
+  | "subject_id"
+  | "input_data"
+  | "output_summary"
+  | "status"
+  | "duration_ms"
+  | "tokens_used"
+  | "confidence_score"
+  | "human_review_required"
+  | "created_at"
+  | "updated_at"
+>;
+
+/**
+ * `input_restricted` distinguishes "you may not see this" from "this run recorded nothing".
+ * Without it the UI renders both as the same em-dash, which reports a permission boundary as
+ * missing data.
+ */
+export type AgentHistoryItem = Omit<AgentHistoryRow, "input_data"> & {
+  input_data: JsonValue;
+  input_restricted: boolean;
 };
 
 function numeric(value: number | string | null | undefined) {
@@ -290,9 +333,12 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
   const page = Math.min(input.page, lastPage);
   const offset = (page - 1) * input.limit;
   const [runs, summaryRows] = await Promise.all([
-    query<AgentRun>(
+    query<AgentHistoryRow>(
       `
-        select *
+        select
+          id, agent_name, workflow_type, trigger_type, subject_type, subject_id,
+          input_data, output_summary, status, duration_ms, tokens_used, confidence_score,
+          human_review_required, created_at, updated_at
         from agent_runs
         where agent_name = $1
         order by created_at desc
@@ -314,7 +360,18 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
   const summary = summaryRows[0];
 
   return {
-    items: runs.map(serializeAgentRun),
+    items: runs.map((run): AgentHistoryItem => {
+      // Capability-level, per row. This does not honour a deny override scoped to one
+      // specific subject — that needs per-row ownership resolution, which the route's query
+      // budget cannot absorb. See the spec's "What this does not fix".
+      const allowed = canReadAgentRunInput(run.subject_type, input.access);
+      const { input_data, ...rest } = run;
+      return {
+        ...rest,
+        input_data: allowed ? toJsonValue(input_data) : null,
+        input_restricted: !allowed,
+      };
+    }),
     total,
     page,
     limit: input.limit,
