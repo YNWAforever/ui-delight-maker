@@ -1,6 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { requireCapability, requireCapabilityChecks } from "@/server/auth/authorization.server";
+import {
+  requireCapability,
+  requireCapabilityChecks,
+  requireCapabilitySet,
+} from "@/server/auth/authorization.server";
 import {
   loadAgentDirectoryRead,
   loadAgentHistoryPage,
@@ -13,6 +17,7 @@ import {
   serializeAgentRun,
   serializeAgentToolCall,
 } from "@/lib/serializable";
+import { AGENT_SUBJECT_VIEW_CAPABILITIES } from "@/lib/agent-run-visibility";
 
 export type {
   AgentDirectoryRead,
@@ -55,8 +60,15 @@ export const getAgentHistoryPage = createServerFn({ method: "GET" })
     ),
   )
   .handler(async ({ data }) => {
-    await requireCapability("agents.view");
-    return loadAgentHistoryPage(data);
+    // One authorization context load answers every question this page asks. `agents.view`
+    // stays required and throws on denial exactly as `requireCapability` did; the subject
+    // capabilities come back as booleans. With no target passed, no ownership query runs, so
+    // the page costs the same three queries it always did — which the `agents.$name`
+    // maxQueries budget requires.
+    const access = await requireCapabilitySet(["agents.view"], {
+      optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+    });
+    return loadAgentHistoryPage({ ...data, access });
   });
 
 export const getAiReviewRead = createServerFn({ method: "GET" }).handler(async () => {

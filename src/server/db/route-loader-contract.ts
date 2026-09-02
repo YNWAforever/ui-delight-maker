@@ -260,6 +260,9 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
           agent: AGENT_DEFINITIONS[0].display_name,
           page: 1,
           limit: 25,
+          // Redaction is in-memory, so the map's contents cannot change the query count this
+          // entry measures. An empty map redacts every row and still issues three queries.
+          access: {},
         }),
       ]),
     maxQueries: 4,
