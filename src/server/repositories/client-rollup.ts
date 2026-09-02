@@ -2,8 +2,10 @@
  * The engagement rollup for one client: annualised value, worst renewal risk, earliest
  * renewal, lowest health.
  *
- * Shared because the same arithmetic is read by two surfaces - /clients and the renewal
- * report - and a second copy is how they come to state different revenue numbers.
+ * It lives in its own file so that a second consumer cannot drift from it: a second copy of
+ * this arithmetic is how two surfaces come to state different revenue numbers. `clients.ts`
+ * is its first consumer, and it was extracted ahead of the renewal report, which needs the
+ * same annualisation and worst-risk aggregation.
  *
  * Three constraints this fragment must keep, all load-bearing:
  *
@@ -16,8 +18,12 @@
  *    `coalesce(r.health_score, 50) >= $n` from outside this string.
  *
  * `one_off` falls to `else 0` deliberately: a one-off engagement has no annual recurring
- * value. Note this is one of FOUR copies of that rule - `engagements.ts` and
- * `annualizeValue` in `engagement-utils.ts` have their own. This unifies two of them.
+ * value. This fragment does not consolidate that rule - three other copies of it remain live,
+ * and whoever unifies them next will find them at:
+ *   - `engagements.ts`, the `annualized_value` sum
+ *   - `engagements.ts`, the `arr_at_risk` sum - the same case block again, nested inside a
+ *     `renewal_risk = 'high'` test
+ *   - `annualizeValue` in `lib/engagement-utils.ts`, the TypeScript one
  */
 export const CLIENT_ENGAGEMENT_ROLLUP = `
   select
