@@ -216,14 +216,15 @@ describe("agent operations read model", () => {
         access: { "agents.view": true, "leads.view": true },
       });
 
-      expect(page.items[0].input_restricted).toBe(false);
+      expect(page.items[0].subject_restricted).toBe(false);
       expect(page.items[0].input_data).toEqual({
         lead_id: "secret-lead",
         notes: "commercially sensitive",
       });
+      expect(page.items[0].output_summary).toBe("Qualified");
     });
 
-    it("blanks input_data when the actor lacks that row's subject capability", async () => {
+    it("blanks the run's content when the actor lacks that row's subject capability", async () => {
       const { loadAgentHistoryPage } = await import("../agent-workspaces");
       seed([row("run-1", "lead")]);
 
@@ -234,8 +235,9 @@ describe("agent operations read model", () => {
         access: { "agents.view": true, "leads.view": false },
       });
 
-      expect(page.items[0].input_restricted).toBe(true);
+      expect(page.items[0].subject_restricted).toBe(true);
       expect(page.items[0].input_data).toBeNull();
+      expect(page.items[0].output_summary).toBeNull();
     });
 
     it("redacts per row, not per page", async () => {
@@ -249,12 +251,14 @@ describe("agent operations read model", () => {
         access: { "agents.view": true, "leads.view": true, "accounts.view": false },
       });
 
-      expect(page.items[0].input_restricted).toBe(false);
-      expect(page.items[1].input_restricted).toBe(true);
+      expect(page.items[0].subject_restricted).toBe(false);
+      expect(page.items[0].output_summary).toBe("Qualified");
+      expect(page.items[1].subject_restricted).toBe(true);
       expect(page.items[1].input_data).toBeNull();
+      expect(page.items[1].output_summary).toBeNull();
     });
 
-    it("blanks input_data for a subject_type the capability table does not name", async () => {
+    it("blanks the run's content for a subject_type the capability table does not name", async () => {
       const { loadAgentHistoryPage } = await import("../agent-workspaces");
       seed([row("run-1", "job_sheet")]);
 
@@ -274,8 +278,9 @@ describe("agent operations read model", () => {
         },
       });
 
-      expect(page.items[0].input_restricted).toBe(true);
+      expect(page.items[0].subject_restricted).toBe(true);
       expect(page.items[0].input_data).toBeNull();
+      expect(page.items[0].output_summary).toBeNull();
     });
 
     it("never selects or returns output_data", async () => {

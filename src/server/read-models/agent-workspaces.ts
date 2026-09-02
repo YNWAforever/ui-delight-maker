@@ -129,13 +129,16 @@ type AgentHistoryRow = Pick<
 >;
 
 /**
- * `input_restricted` distinguishes "you may not see this" from "this run recorded nothing".
+ * `subject_restricted` distinguishes "you may not see this" from "this run recorded nothing".
  * Without it the UI renders both as the same em-dash, which reports a permission boundary as
  * missing data.
+ *
+ * Named for the cause, not the field: it gates both `input_data` and `output_summary`, since
+ * `output_summary` is unvalidated model output that routinely restates the subject's identity.
  */
 export type AgentHistoryItem = Omit<AgentHistoryRow, "input_data"> & {
   input_data: JsonValue;
-  input_restricted: boolean;
+  subject_restricted: boolean;
 };
 
 function numeric(value: number | string | null | undefined) {
@@ -364,12 +367,17 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
       // Capability-level, per row. This does not honour a deny override scoped to one
       // specific subject — that needs per-row ownership resolution, which the route's query
       // budget cannot absorb. See the spec's "What this does not fix".
+      //
+      // Both content fields ride the one check. output_summary is unvalidated model output
+      // that routinely restates the subject's identity, and it renders on every list row
+      // rather than behind an expander — so it was the wider of the two exposures.
       const allowed = canReadAgentRunInput(run.subject_type, input.access);
-      const { input_data, ...rest } = run;
+      const { input_data, output_summary, ...rest } = run;
       return {
         ...rest,
         input_data: allowed ? toJsonValue(input_data) : null,
-        input_restricted: !allowed,
+        output_summary: allowed ? output_summary : null,
+        subject_restricted: !allowed,
       };
     }),
     total,
