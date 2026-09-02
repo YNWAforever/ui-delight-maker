@@ -13,10 +13,25 @@ import {
 } from "@/server/read-models/operations";
 import type { RenewalWindowFilter, RenewalsReadFilters } from "@/server/repositories/engagements";
 import { getJobSheetOperationsRead } from "@/server/repositories/job-sheets";
+import { REPORT_IDS as REPORT_ID_CATALOGUE } from "@/lib/reports";
 import type { RenewalRisk } from "@/lib/types";
 
 const REPORT_RANGES = new Set<ReportRange>(["7d", "30d", "90d"]);
-const REPORT_IDS = new Set<ReportId>(["revenue", "pipeline", "conversion", "agents", "tasks"]);
+/**
+ * Built from the `REPORT_IDS` catalogue in `src/lib/reports.ts`, not retyped here.
+ *
+ * A hand-copied Set of five ids is what let `human_review_workload` compile everywhere else
+ * in the app and still throw "Invalid report" at this one boundary (PR #70): a URL that
+ * passed the route's search-param validation and then died in the server function.
+ * `Set<ReportId>` checks that each id it is given is a real `ReportId` — it has no way to
+ * notice that one is absent, so `tsc` had nothing to complain about.
+ *
+ * Deriving it removes the copy, and the catalogue it derives from is itself held complete by
+ * a compile-time assertion in `src/lib/reports.ts`. `src/routes/reports.tsx` builds its enum
+ * from the same array, so the route and this validator can no longer disagree about which
+ * reports exist.
+ */
+const REPORT_IDS = new Set<ReportId>(REPORT_ID_CATALOGUE);
 const RENEWAL_WINDOWS = new Set<RenewalWindowFilter>(["all", "overdue", "30", "60", "90", "later"]);
 const RENEWAL_RISKS = new Set<RenewalRisk>(["low", "medium", "high"]);
 

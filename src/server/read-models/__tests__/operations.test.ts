@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { REPORT_IDS } from "@/lib/reports";
+
 const {
   queryMock,
   queryOneMock,
@@ -194,13 +196,10 @@ describe("operations read models", () => {
       successfulAgentRuns: 4,
       openTasks: 3,
     });
-    expect(result.reports.map((report) => report.id)).toEqual([
-      "revenue",
-      "pipeline",
-      "conversion",
-      "agents",
-      "tasks",
-    ]);
+    // Asserted against the catalogue rather than a list retyped here. A hand-written list of
+    // five literals is what let PR #70's sixth report ship with no tab while this test stayed
+    // green, so a list of six would be the same trap set one report further along.
+    expect(result.reports.map((report) => report.id)).toEqual([...REPORT_IDS]);
     expect(queryOneMock).toHaveBeenCalledTimes(1);
     expect(queryMock).not.toHaveBeenCalled();
     const summarySql = sqlText(queryOneMock.mock.calls[0]?.[0]);

@@ -22,6 +22,11 @@ const REPORT_DEFINITIONS: readonly ReportDefinition[] = [
   { id: "conversion", title: "Lead conversion", description: "Created and won leads by week." },
   { id: "agents", title: "Agent performance", description: "Runs and successful outcomes." },
   { id: "tasks", title: "Task throughput", description: "Created and completed tasks by day." },
+  {
+    id: "human_review_workload",
+    title: "Review workload",
+    description: "Pending and decided approvals, and how long decisions take, by reviewer.",
+  },
 ];
 
 const RANGE_DAYS: Record<ReportRange, number> = {
