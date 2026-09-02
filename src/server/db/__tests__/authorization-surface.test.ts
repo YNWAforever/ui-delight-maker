@@ -52,8 +52,27 @@ import { describe, expect, it } from "vitest";
  * Gated on agents.view rather than agents.configure: this is the read every page showing an
  * agent needs (agents, agents/$name, settings), and a paused agent is something anyone who
  * can see the agent should see - not just whoever can pause it.
+ *
+ * 227 -> 228 on 2026-09-03, for the agent run input redaction. Established before changing:
+ * the count over src/server-functions/*.ts is 228, and the only source change is one added
+ * import name — nothing that already enforced was removed or weakened.
+ *   +1  agent-runs.ts  requireCapabilitySet added to the existing authorization.server import
+ *    0  agent-runs.ts  getAgentHistoryPage's requireCapability("agents.view") became
+ *                      requireCapabilitySet(["agents.view"], { optional: ... }) — count
+ *                      neutral, because this regex matches the substring
+ *
+ * agents.view is still required and still throws on denial. The optional capabilities are not
+ * a second gate: they are read as booleans so the history page can redact each run's content
+ * against its own subject, rather than shipping every run's input and summary to anyone who
+ * can see the agent.
+ *
+ * Note for whoever edits that handler's comment next: it deliberately avoids writing the
+ * tracked identifier in prose. An earlier draft said "exactly as `requireCapability` did",
+ * which this counter matched as a 229th occurrence — a documentary false positive. Keep
+ * prose in that directory clear of the literal string, or this number drifts for a reason
+ * that has nothing to do with enforcement.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 227;
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 228;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

@@ -61,10 +61,10 @@ export const getAgentHistoryPage = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     // One authorization context load answers every question this page asks. `agents.view`
-    // stays required and throws on denial exactly as `requireCapability` did; the subject
-    // capabilities come back as booleans. With no target passed, no ownership query runs, so
-    // the page costs the same three queries it always did — which the `agents.$name`
-    // maxQueries budget requires.
+    // stays required and throws on denial exactly as the single-capability check it replaces;
+    // the subject capabilities come back as booleans. With no target passed, no ownership
+    // query runs, so the page costs the same three queries it always did — which the
+    // `agents.$name` maxQueries budget requires.
     const access = await requireCapabilitySet(["agents.view"], {
       optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
     });
