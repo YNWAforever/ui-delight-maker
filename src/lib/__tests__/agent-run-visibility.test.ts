@@ -49,6 +49,14 @@ describe("agent run subject visibility", () => {
     expect(subjectViewCapability("")).toBeNull();
   });
 
+  it("returns null for prototype-chain keys instead of leaking an inherited member", () => {
+    // A bare index read (`table[subjectType]`) returns a truthy function from
+    // Object.prototype for these keys, which would defeat the `?? null` fallback.
+    expect(subjectViewCapability("__proto__")).toBeNull();
+    expect(subjectViewCapability("constructor")).toBeNull();
+    expect(subjectViewCapability("toString")).toBeNull();
+  });
+
   it("offers each distinct capability exactly once for the optional list", () => {
     expect(AGENT_SUBJECT_VIEW_CAPABILITIES).toHaveLength(
       new Set(AGENT_SUBJECT_VIEW_CAPABILITIES).size,

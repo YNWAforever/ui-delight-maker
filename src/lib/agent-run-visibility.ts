@@ -47,10 +47,15 @@ export const AGENT_SUBJECT_VIEW_CAPABILITIES: readonly Capability[] = [
  * Callers must treat `null` as "not entitled". `AgentRun.subject_type` is typed `string`
  * (`lib/types.ts:409`), not the four-value union, so a value outside this table is reachable
  * at runtime and the compiler will not flag its absence.
+ *
+ * `Object.hasOwn` rather than a bare index read: `AGENT_SUBJECT_VIEW_CAPABILITY["constructor"]`
+ * returns a function from the prototype chain, which is truthy, so a `subject_type` of
+ * `"constructor"`, `"__proto__"` or `"toString"` would otherwise leak that inherited member
+ * instead of failing closed (see the same idiom at `lib/status-labels.ts:326-336`).
  */
 export function subjectViewCapability(subjectType: string): Capability | null {
-  const table: Record<string, Capability | undefined> = AGENT_SUBJECT_VIEW_CAPABILITY;
-  return table[subjectType] ?? null;
+  const table: Record<string, Capability> = AGENT_SUBJECT_VIEW_CAPABILITY;
+  return Object.hasOwn(table, subjectType) ? table[subjectType] : null;
 }
 
 /**
