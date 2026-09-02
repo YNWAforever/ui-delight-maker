@@ -4,7 +4,7 @@ import type { Capability } from "@/lib/admin/types";
 import type { AgentRun, HumanApproval } from "@/lib/types";
 import { query } from "@/server/db/neon.server";
 import type { JsonValue } from "@/lib/serializable";
-import { serializeAgentRun, serializeHumanApproval, toJsonValue } from "@/lib/serializable";
+import { serializeHumanApproval, toJsonValue } from "@/lib/serializable";
 import { loadEffectiveAgentCatalogue } from "@/server/read-models/agent-catalogue";
 
 const DIRECTORY_RUN_LIMIT = 50;
