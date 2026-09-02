@@ -77,6 +77,19 @@ describe("report specifications", () => {
     expect(keys).toContain("median_minutes");
     expect(keys).not.toContain("median_hours");
   });
+
+  it("describes the renewal and expansion family with directional headers", () => {
+    const spec = REPORT_SPECS["renewal_expansion"];
+
+    // Clients are categories, not periods - a non-zero step would invent clients.
+    expect(spec.periodStepDays).toBe(0);
+    expect(spec.fields[0].key).toBe("client");
+
+    // One range parameter, two directions. The headers are where a reader learns that.
+    const headers = spec.fields.map((f) => f.header);
+    expect(headers.some((h) => /ahead/i.test(h))).toBe(true);
+    expect(headers.some((h) => /recently/i.test(h))).toBe(true);
+  });
 });
 
 describe("formatReportCell", () => {

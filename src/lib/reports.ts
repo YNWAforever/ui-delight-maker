@@ -28,7 +28,8 @@ export type ReportId =
   | "conversion"
   | "agents"
   | "tasks"
-  | "human_review_workload";
+  | "human_review_workload"
+  | "renewal_expansion";
 export type ReportRange = "7d" | "30d" | "90d";
 
 /**
@@ -71,6 +72,7 @@ export const REPORT_IDS = [
   "agents",
   "tasks",
   "human_review_workload",
+  "renewal_expansion",
 ] as const satisfies readonly ReportId[];
 
 const everyReportIdIsListed: AssertEveryReportId<(typeof REPORT_IDS)[number]> = true;
@@ -190,6 +192,20 @@ export const REPORT_SPECS: Record<ReportId, ReportSpec> = {
     // field is a period, so a non-zero step here would invent reviewers who do not exist.
     periodStepDays: 0,
     periodNoun: "reviewer",
+  },
+  renewal_expansion: {
+    fields: [
+      { key: "client", header: "Client", kind: "label" },
+      { key: "renewing_value", header: "Annualised value renewing ahead", kind: "currency" },
+      { key: "renewal_risk", header: "Worst renewal risk", kind: "label" },
+      { key: "active_engagements", header: "Active engagements", kind: "count" },
+      { key: "added_recently", header: "Engagements added recently", kind: "count" },
+    ],
+    shape: "chart",
+    // Clients are categories, not periods. buildReportSeries only fills gaps when the first
+    // field is a period, so a non-zero step here would invent clients that do not exist.
+    periodStepDays: 0,
+    periodNoun: "client",
   },
 };
 
