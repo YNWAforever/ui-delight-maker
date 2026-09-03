@@ -29,32 +29,42 @@ type SupabaseOwnedResourceType =
   | "project";
 
 /**
- * Ownership queries for resources whose tables are in the Neon schema. Each returns at most
- * one row with an `owner_profile_id` column; a null or missing row means unowned, which the
- * policy treats as out of a manager's scope rather than as an error.
+ * Ownership by resource type, batched.
+ *
+ * Every query takes an id array and returns `(id, owner_profile_id)` pairs, so one round trip
+ * answers a whole page. There is deliberately no single-id variant: two SQL strings per type
+ * that must agree forever is the shape that hand-copied `REPORT_IDS` into two places and let
+ * `SubjectType` drift from its own check constraint. `resolveOwnerProfileId` wraps this
+ * instead.
+ *
+ * On the six joined queries the id comes from the OUTER alias — `q.id`, `p.id`, `c.id`,
+ * `cc.id`, `t.id`, `s.id`. Selecting the joined table's id instead would key owners by the
+ * wrong record, and both sides are strings, so nothing but the multi-id integration test
+ * would notice.
  */
 const NEON_OWNERSHIP_QUERIES = {
-  account: "select account_owner as owner_profile_id from accounts where id = $1",
-  client: "select account_owner as owner_profile_id from clients where id = $1",
-  lead: "select assigned_to as owner_profile_id from leads where id = $1",
-  campaign: "select owner as owner_profile_id from campaigns where id = $1",
-  task: "select assigned_to as owner_profile_id from tasks where id = $1",
-  engagement: "select owner as owner_profile_id from engagements where id = $1",
-  human_approval: "select assigned_to as owner_profile_id from human_approvals where id = $1",
+  account: "select id, account_owner as owner_profile_id from accounts where id = any($1)",
+  client: "select id, account_owner as owner_profile_id from clients where id = any($1)",
+  lead: "select id, assigned_to as owner_profile_id from leads where id = any($1)",
+  campaign: "select id, owner as owner_profile_id from campaigns where id = any($1)",
+  task: "select id, assigned_to as owner_profile_id from tasks where id = any($1)",
+  engagement: "select id, owner as owner_profile_id from engagements where id = any($1)",
+  human_approval:
+    "select id, assigned_to as owner_profile_id from human_approvals where id = any($1)",
   quote:
-    "select coalesce(q.created_by, a.account_owner) as owner_profile_id from quotes q left join accounts a on a.id = q.account_id where q.id = $1",
+    "select q.id, coalesce(q.created_by, a.account_owner) as owner_profile_id from quotes q left join accounts a on a.id = q.account_id where q.id = any($1)",
   job_sheet:
-    "select coalesce(sales_owner, accounting_owner) as owner_profile_id from job_sheets where id = $1",
+    "select id, coalesce(sales_owner, accounting_owner) as owner_profile_id from job_sheets where id = any($1)",
   job_sheet_portion:
-    "select coalesce(js.sales_owner, js.accounting_owner) as owner_profile_id from job_sheet_portions p join job_sheets js on js.id = p.job_sheet_id where p.id = $1",
+    "select p.id, coalesce(js.sales_owner, js.accounting_owner) as owner_profile_id from job_sheet_portions p join job_sheets js on js.id = p.job_sheet_id where p.id = any($1)",
   account_contact:
-    "select a.account_owner as owner_profile_id from account_contacts c join accounts a on a.id = c.account_id where c.id = $1",
+    "select c.id, a.account_owner as owner_profile_id from account_contacts c join accounts a on a.id = c.account_id where c.id = any($1)",
   client_contact:
-    "select c.account_owner as owner_profile_id from client_contacts cc join clients c on c.id = cc.client_id where cc.id = $1",
+    "select cc.id, c.account_owner as owner_profile_id from client_contacts cc join clients c on c.id = cc.client_id where cc.id = any($1)",
   touchpoint:
-    "select c.account_owner as owner_profile_id from touchpoints t join clients c on c.id = t.client_id where t.id = $1",
+    "select t.id, c.account_owner as owner_profile_id from touchpoints t join clients c on c.id = t.client_id where t.id = any($1)",
   relationship_signal:
-    "select a.account_owner as owner_profile_id from relationship_signals s join accounts a on a.id = s.account_id where s.id = $1",
+    "select s.id, a.account_owner as owner_profile_id from relationship_signals s join accounts a on a.id = s.account_id where s.id = any($1)",
 } as const;
 
 export type NeonOwnedResourceType = keyof typeof NEON_OWNERSHIP_QUERIES;
@@ -86,7 +96,7 @@ const SUPABASE_OWNED_RESOURCE_TYPES = new Set<string>([
   "project",
 ] satisfies SupabaseOwnedResourceType[]);
 
-type ScopeRow = { owner_profile_id: string | null };
+type ScopeRow = { id: string; owner_profile_id: string | null };
 
 export function neonOwnershipQuery(resourceType: NeonOwnedResourceType) {
   return NEON_OWNERSHIP_QUERIES[resourceType];
@@ -217,21 +227,57 @@ async function supabaseOwnerProfileId(
 }
 
 /**
+ * Resolves owners for many ids of one resource type in a single round trip.
+ *
+ * The returned map is **total**: it carries an entry for every id passed, `null` where the row
+ * is absent or the resource is unowned. Those are the same answer — no row means no owner — so
+ * a caller never has to distinguish them, and never has to wonder whether a missing key means
+ * "unowned" or "I forgot to ask".
+ *
+ * Throws only when a store errors, exactly as the single-id form does — never a guess, because
+ * callers use this to widen a manager's access.
+ */
+export async function resolveOwnerProfileIds(
+  resourceType: string,
+  ids: readonly string[],
+): Promise<Map<string, string | null>> {
+  const owners = new Map<string, string | null>();
+  if (ids.length === 0) return owners;
+
+  const unique = [...new Set(ids)];
+
+  if (SUPABASE_OWNED_RESOURCE_TYPES.has(resourceType)) {
+    // Sequential, deliberately. This is a correctness placeholder, NOT a batched path: it
+    // issues one Supabase read per id. No Supabase-owned type is reachable from any caller
+    // that needs batching today, so nothing pays for it — but anyone building a page on this
+    // for a Supabase type would get N queries and should add a real batch first.
+    for (const id of unique) {
+      owners.set(id, await supabaseOwnerProfileId(resourceType, id));
+    }
+    return owners;
+  }
+
+  const sql = NEON_OWNERSHIP_QUERIES[resourceType as NeonOwnedResourceType];
+  if (!sql) return owners;
+
+  const rows = await query<ScopeRow>(sql, [unique]);
+  for (const id of unique) owners.set(id, null);
+  for (const row of rows) owners.set(row.id, row.owner_profile_id);
+  return owners;
+}
+
+/**
  * Resolves the owning profile for a resource, or null when the resource is unowned, absent,
  * or of a type that carries no ownership at all. Throws only when a store errors — never
  * returns a guess, because the caller uses this to widen a manager's access.
+ *
+ * A one-element call into `resolveOwnerProfileIds`, so there is one SQL string per resource
+ * type rather than two that could disagree.
  */
 export async function resolveOwnerProfileId(
   resourceType: string,
   resourceId: string,
 ): Promise<string | null> {
-  if (SUPABASE_OWNED_RESOURCE_TYPES.has(resourceType)) {
-    return await supabaseOwnerProfileId(resourceType, resourceId);
-  }
-
-  const sql = NEON_OWNERSHIP_QUERIES[resourceType as NeonOwnedResourceType];
-  if (!sql) return null;
-
-  const rows = await query<ScopeRow>(sql, [resourceId]);
-  return rows[0]?.owner_profile_id ?? null;
+  const owners = await resolveOwnerProfileIds(resourceType, [resourceId]);
+  return owners.get(resourceId) ?? null;
 }

@@ -71,7 +71,12 @@ function installDatabaseRows(
 ) {
   mocks.query.mockImplementation(async (sql: string, values: readonly unknown[]) => {
     if (sql.includes("from accounts")) {
-      return [{ owner_profile_id: options.resourceOwners?.[String(values[0])] ?? "actor-1" }];
+      // The batch query passes the id array as $1, i.e. values === [ids]. Key off the array's
+      // first element explicitly — real callers here only ever ask for one id at a time, but
+      // reading through `values[0]` as a scalar (as the old single-id query allowed) would be
+      // relying on a one-element array coincidentally stringifying to its own element.
+      const [id] = values[0] as string[];
+      return [{ id, owner_profile_id: options.resourceOwners?.[id] ?? "actor-1" }];
     }
     expect(values).toEqual(["actor-1"]);
     if (sql.includes("from departments")) {
@@ -174,7 +179,7 @@ describe("admin authorization orchestration", () => {
     const accountScopeCall = mocks.query.mock.calls.find(([sql]) =>
       String(sql).includes("from accounts"),
     );
-    expect(accountScopeCall?.[1]).toEqual(["account-1"]);
+    expect(accountScopeCall?.[1]).toEqual([["account-1"]]);
   });
 
   it("rejects a manager target when the server-derived owner is outside scope", async () => {
