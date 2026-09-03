@@ -46,6 +46,24 @@ describe("report specifications", () => {
     expect(REPORT_SPECS.conversion.shape).toBe("chart");
   });
 
+  it("tabulates the per-entity families, whose measures no fallback chart can draw", () => {
+    // Do not "restore" these to "chart" for visual parity with their neighbours.
+    // `renderChart` in `src/components/reports/report-charts.tsx` special-cases exactly three
+    // reports — revenue, conversion and tasks — and every other chart-shaped report falls
+    // through to a bar chart bound to `dataKey="count"`. That works for `pipeline`, which has
+    // a `count` field. Neither of these does, so "chart" renders an empty drawing above a
+    // correct table. `human_review_workload` shipped that way in PR #70.
+    for (const report of ["human_review_workload", "renewal_expansion"] as const) {
+      expect(REPORT_SPECS[report].shape).toBe("table");
+      expect(REPORT_SPECS[report].fields.map((field) => field.key)).not.toContain("count");
+    }
+
+    // The one fallback-charted family, kept honest: pipeline may stay "chart" only while it
+    // still has the field the fallback draws.
+    expect(REPORT_SPECS.pipeline.shape).toBe("chart");
+    expect(REPORT_SPECS.pipeline.fields.map((field) => field.key)).toContain("count");
+  });
+
   it("rejects an unknown report id", () => {
     expect(isReportId("revenue")).toBe(true);
     expect(isReportId("margin")).toBe(false);
@@ -76,6 +94,19 @@ describe("report specifications", () => {
 
     expect(keys).toContain("median_minutes");
     expect(keys).not.toContain("median_hours");
+  });
+
+  it("describes the renewal and expansion family with directional headers", () => {
+    const spec = REPORT_SPECS["renewal_expansion"];
+
+    // Clients are categories, not periods - a non-zero step would invent clients.
+    expect(spec.periodStepDays).toBe(0);
+    expect(spec.fields[0].key).toBe("client");
+
+    // One range parameter, two directions. The headers are where a reader learns that.
+    const headers = spec.fields.map((f) => f.header);
+    expect(headers.some((h) => /ahead/i.test(h))).toBe(true);
+    expect(headers.some((h) => /recently/i.test(h))).toBe(true);
   });
 });
 

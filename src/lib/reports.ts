@@ -28,7 +28,8 @@ export type ReportId =
   | "conversion"
   | "agents"
   | "tasks"
-  | "human_review_workload";
+  | "human_review_workload"
+  | "renewal_expansion";
 export type ReportRange = "7d" | "30d" | "90d";
 
 /**
@@ -71,6 +72,7 @@ export const REPORT_IDS = [
   "agents",
   "tasks",
   "human_review_workload",
+  "renewal_expansion",
 ] as const satisfies readonly ReportId[];
 
 const everyReportIdIsListed: AssertEveryReportId<(typeof REPORT_IDS)[number]> = true;
@@ -185,11 +187,32 @@ export const REPORT_SPECS: Record<ReportId, ReportSpec> = {
       { key: "median_minutes", header: "Median minutes to decide", kind: "count" },
       { key: "oldest_pending_days", header: "Oldest pending (days)", kind: "count" },
     ],
-    shape: "chart",
+    shape: "table",
     // Reviewers are categories, not periods. buildReportSeries only fills gaps when the first
     // field is a period, so a non-zero step here would invent reviewers who do not exist.
     periodStepDays: 0,
+    // Tabulated, for the same reason as `agents`: four measures per named reviewer, and none
+    // of them is a bar whose relative length is the decision. It shipped as "chart" in PR #70
+    // and drew an empty one — `renderChart` special-cases revenue, conversion and tasks and
+    // otherwise falls back to `dataKey="count"`, which is not a field this report has.
     periodNoun: "reviewer",
+  },
+  renewal_expansion: {
+    fields: [
+      { key: "client", header: "Client", kind: "label" },
+      { key: "renewing_value", header: "Annualised value renewing ahead", kind: "currency" },
+      { key: "renewal_risk", header: "Worst renewal risk", kind: "label" },
+      { key: "active_engagements", header: "Active engagements", kind: "count" },
+      { key: "added_recently", header: "Engagements added recently", kind: "count" },
+    ],
+    shape: "table",
+    // Clients are categories, not periods. buildReportSeries only fills gaps when the first
+    // field is a period, so a non-zero step here would invent clients that do not exist.
+    periodStepDays: 0,
+    // Tabulated, like `agents` and `human_review_workload`: four measures per client, two of
+    // which read in opposite time directions, and `renderChart`'s fallback would draw
+    // `dataKey="count"` — not a field this report has.
+    periodNoun: "client",
   },
 };
 

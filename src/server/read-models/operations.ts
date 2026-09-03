@@ -48,6 +48,12 @@ export const REPORT_DEFINITIONS = [
     title: "Review workload",
     description: "Pending and decided approvals, and how long decisions take, by reviewer.",
   },
+  {
+    id: "renewal_expansion",
+    title: "Renewal and expansion",
+    description:
+      "Annualised value renewing ahead, worst renewal risk and engagements added recently, by client.",
+  },
 ] satisfies readonly ReportDefinition[];
 
 /**
@@ -250,6 +256,58 @@ export const reportQueries: Record<ReportId, string> = {
        or a.decided_at >= now() - ($1::integer * interval '1 day')
     group by coalesce(p.name, 'Unassigned')
     order by pending desc, decided desc, reviewer asc
+  `,
+  // One range parameter read in two directions: renewal looks forward from today
+  // (`current_date + $1 days`), expansion looks back (`current_date - $1 days`). The field
+  // headers - "Annualised value renewing ahead" and "Engagements added recently" - are where a
+  // reader learns that the same number is being spent twice.
+  //
+  // `current_date`, not `now()`: `renewal_date` and `start_date` are `date` columns, and
+  // `date >= timestamptz` is a legal implicit cast in Postgres. A now()-based window would
+  // therefore compile and run while shifting its boundary by the server's clock time.
+  //
+  // The annualisation is not `CLIENT_ENGAGEMENT_ROLLUP`: that fragment annualises every active
+  // engagement, and this column annualises only the ones renewing inside the window.
+  //
+  // `count(e.id)` rather than `count(*)`, and the risk rank rather than the raw text in the
+  // order by - alphabetically `high < low < medium`, which would put medium rows on top.
+  renewal_expansion: `
+    select
+      c.company_name as client,
+      coalesce(sum(
+        case when e.renewal_date between current_date
+                                     and current_date + ($1::integer * interval '1 day')
+             then case e.billing_period
+                    when 'monthly' then coalesce(e.value, 0) * 12
+                    when 'quarterly' then coalesce(e.value, 0) * 4
+                    when 'annual' then coalesce(e.value, 0)
+                    else 0
+                  end
+             else 0 end
+      ), 0)::float8 as renewing_value,
+      initcap(case
+        when bool_or(e.renewal_risk = 'high') then 'high'
+        when bool_or(e.renewal_risk = 'medium') then 'medium'
+        else 'low'
+      end) as renewal_risk,
+      count(e.id)::integer as active_engagements,
+      count(e.id) filter (
+        where e.start_date >= current_date - ($1::integer * interval '1 day')
+      )::integer as added_recently
+    from clients c
+    join engagements e on e.client_id = c.id and e.status = 'active'
+    group by c.id, c.company_name
+    having
+      bool_or(e.renewal_date between current_date
+                                 and current_date + ($1::integer * interval '1 day'))
+      or bool_or(e.start_date >= current_date - ($1::integer * interval '1 day'))
+    order by renewing_value desc,
+             case
+               when bool_or(e.renewal_risk = 'high') then 3
+               when bool_or(e.renewal_risk = 'medium') then 2
+               else 1
+             end desc,
+             c.company_name asc
   `,
 };
 

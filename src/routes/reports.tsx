@@ -379,10 +379,10 @@ function ReportsPage() {
 /**
  * The same rows as the chart, as a table.
  *
- * It is the primary view for Agent performance — four values per agent, and the decision is
- * the completion rate rather than the relative length of a bar (Instruction §13) — and the
- * disclosure under every other report, so the data is readable without the chart chunk and
- * without sight.
+ * It is the primary view for every report whose spec says `shape: "table"` — the per-entity
+ * families, where several values sit against one named row and the decision is one of them
+ * rather than the relative length of a bar (Instruction §13) — and the disclosure under every
+ * charted report, so the data is readable without the chart chunk and without sight.
  */
 function ReportTable({
   report,

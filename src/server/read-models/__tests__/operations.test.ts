@@ -220,6 +220,7 @@ describe("operations read models", () => {
     agents: "from agent_runs",
     tasks: "from tasks",
     human_review_workload: "from human_approvals",
+    renewal_expansion: "from clients",
   };
 
   it.each(Object.entries(DATASET_TABLE) as [ReportId, string][])(
@@ -243,6 +244,24 @@ describe("operations read models", () => {
     expect(sql).toContain("status = 'pending'");
     expect(sql).toContain("or a.decided_at >= now()");
     expect(sql).toContain("left join profiles");
+  });
+
+  it("windows dates against current_date, not now()", async () => {
+    // renewal_date and start_date are `date`, not timestamptz. `date >= timestamptz` is a
+    // legal implicit cast in Postgres, so a now()-based window compiles, runs, and shifts
+    // its boundary by the server's clock time.
+    const { reportQueries } = await import("../operations");
+    const sql = reportQueries["renewal_expansion"];
+
+    expect(sql).toContain("current_date");
+    expect(sql).not.toContain("now()");
+  });
+
+  it("counts engagements by id, not by row", async () => {
+    // count(*) over a left join counts the null-extended row, so a client with zero
+    // engagements reports 1 - a perfectly plausible number.
+    const { reportQueries } = await import("../operations");
+    expect(reportQueries["renewal_expansion"]).toContain("count(e.id)");
   });
 
   it("updates matched portions in place without overwriting Xero fields", async () => {

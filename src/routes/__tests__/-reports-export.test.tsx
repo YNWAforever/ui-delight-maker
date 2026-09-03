@@ -7,6 +7,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ReportId, ReportRange } from "@/lib/reports";
+
 /**
  * "Export CSV" used to be `onClick={() => toast.success("CSV export queued")}`.
  *
@@ -31,7 +33,8 @@ const { navigateMock, routerInvalidateMock, toastSuccessMock, toastErrorMock } =
   toastErrorMock: vi.fn(),
 }));
 
-const search = { range: "30d" as const, report: "revenue" as const };
+// Mutable so a test can select a report other than the default. `beforeEach` puts it back.
+const search: { range: ReportRange; report: ReportId } = { range: "30d", report: "revenue" };
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
@@ -59,7 +62,7 @@ vi.mock("@/components/reports/report-charts", () => ({
   ReportChart: () => <div data-testid="report-chart" />,
 }));
 
-import { DEFAULT_REPORT, REPORT_IDS } from "@/lib/reports";
+import { DEFAULT_REPORT, REPORT_IDS, REPORT_SPECS } from "@/lib/reports";
 
 import { Route } from "../reports";
 
@@ -129,6 +132,8 @@ function captureDownload(): CapturedDownload {
 }
 
 beforeEach(() => {
+  search.range = "30d";
+  search.report = "revenue";
   navigateMock.mockReset();
   routerInvalidateMock.mockReset().mockResolvedValue(undefined);
   toastSuccessMock.mockReset();
@@ -214,6 +219,58 @@ describe("the reports export produces a real file", () => {
     expect(caption?.textContent).toMatch(/gaps/i);
     // Once in the visible note under the chart, once inside the caption above.
     expect(screen.getAllByText(/No value is inferred for them/i).length).toBeGreaterThan(0);
+  });
+});
+
+describe("a report's shape decides whether a chart is drawn at all", () => {
+  /**
+   * `spec.shape` is read in exactly one place: the ternary in `src/routes/reports.tsx` that
+   * chooses between `ReportTable` on its own and the `figure` wrapping `ReportChart`. Nothing
+   * else in the app branches on it — `report-charts.tsx` keys off the report *id*, not the
+   * shape, and is only ever reached from inside that branch.
+   *
+   * So `"table"` is the entire mechanism by which a family with no chartable measure avoids
+   * `renderChart`'s `dataKey="count"` fallback, which draws an empty chart for any report
+   * that is neither special-cased nor in possession of a `count` field. These cases render
+   * the page and look, rather than trusting the spec table to mean what it says.
+   *
+   * Both lists are derived from `REPORT_SPECS`, so a report that changes shape simply moves
+   * between them and these cases keep passing — deliberately. What they pin is the branch in
+   * `reports.tsx`, not which family belongs on which side of it. *That* is pinned by
+   * "tabulates the per-entity families" in `src/lib/__tests__/reports.test.ts`, which fails
+   * if either of them is set back to "chart".
+   */
+  const tableReports = REPORT_IDS.filter((id) => REPORT_SPECS[id].shape === "table");
+  const chartReports = REPORT_IDS.filter((id) => REPORT_SPECS[id].shape === "chart");
+
+  /** One plausible row, shaped from the spec so it fits whatever fields a family declares. */
+  const rowFor = (report: ReportId): Record<string, string | number | null> =>
+    Object.fromEntries(
+      REPORT_SPECS[report].fields.map((field) => {
+        if (field.kind === "period") return [field.key, "2026-01-05"];
+        if (field.kind === "status") return [field.key, "won"];
+        if (field.kind === "label") return [field.key, "Row one"];
+        return [field.key, 1];
+      }),
+    );
+
+  it.each(tableReports)("renders %s as a table with no chart element", (report) => {
+    search.report = report;
+    renderReports([rowFor(report)]);
+
+    expect(screen.queryByTestId("report-chart")).toBeNull();
+    // Not a chart whose disclosure merely happens to be collapsed: there is no "behind this
+    // chart" details element either, and the table is the primary view rather than a nested
+    // one, so exactly one table is present.
+    expect(screen.queryByText(/behind this chart/i)).toBeNull();
+    expect(screen.getAllByRole("table")).toHaveLength(1);
+  });
+
+  it.each(chartReports)("still renders a chart for %s", (report) => {
+    search.report = report;
+    renderReports([rowFor(report)]);
+
+    expect(screen.queryByTestId("report-chart")).not.toBeNull();
   });
 });
 
