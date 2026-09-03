@@ -3,7 +3,7 @@ import { canReadAgentRunInput } from "@/lib/agent-run-visibility";
 import type { Capability } from "@/lib/admin/types";
 import type { AgentRun, HumanApproval } from "@/lib/types";
 import { query } from "@/server/db/neon.server";
-import type { JsonValue } from "@/lib/serializable";
+import type { JsonValue, SerializableHumanApproval } from "@/lib/serializable";
 import { serializeHumanApproval, toJsonValue } from "@/lib/serializable";
 import { loadEffectiveAgentCatalogue } from "@/server/read-models/agent-catalogue";
 
@@ -464,13 +464,31 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
   };
 }
 
+/**
+ * A pending approval joined to its run's subject. `subject_type` decides the redaction and is
+ * stripped before the row is returned — the join exists to answer a question, not to widen the
+ * payload. `subject_id` is deliberately not selected at all.
+ */
+type ApprovalRow = HumanApproval & { subject_type: string | null };
+
+/**
+ * `subject_restricted` carries the same meaning here as on the run reads: the reader lacks the
+ * view capability for the record this approval concerns, so its content is withheld rather
+ * than absent.
+ */
+export type AiReviewApproval = SerializableHumanApproval & { subject_restricted: boolean };
+
 export async function loadAiReviewRead(access: Partial<Record<Capability, boolean>>) {
   const [approvals, humanReviewRuns] = await Promise.all([
-    query<HumanApproval>(`
-      select *
-      from human_approvals
-      where status = 'pending'
-      order by created_at desc
+    query<ApprovalRow>(`
+      select
+        a.id, a.agent_run_id, a.approval_type, a.requested_by, a.assigned_to, a.status,
+        a.context_data, a.context_summary, a.reviewer_notes, a.decided_at, a.created_at,
+        r.subject_type
+      from human_approvals a
+      left join agent_runs r on r.id = a.agent_run_id
+      where a.status = 'pending'
+      order by a.created_at desc
       limit 100
     `),
     query<AgentRunSummary>(`
@@ -486,13 +504,23 @@ export async function loadAiReviewRead(access: Partial<Record<Capability, boolea
   ]);
 
   return {
-    approvals: approvals.map(serializeHumanApproval),
-    // Redaction is in-memory, keyed on the same `access` map `loadAgentDirectoryRead` resolves
-    // via `requireCapabilitySet` — no per-row ownership query, so this costs no query of its
-    // own and the two `query()` calls above stay two.
-    // Redaction is in-memory, keyed on the same `access` map `loadAgentDirectoryRead` resolves
-    // via `requireCapabilitySet` — no per-row ownership query, so this costs no query of its
-    // own and the two `query()` calls above stay two.
+    approvals: approvals.map((row): AiReviewApproval => {
+      // `subject_type` is destructured off so it cannot reach the client. A left join means it
+      // is null for an approval whose run was deleted, which has no subject and so redacts.
+      const { subject_type, ...approval } = row;
+      const allowed = subject_type !== null && canReadAgentRunInput(subject_type, access);
+      return {
+        ...serializeHumanApproval(
+          allowed
+            ? approval
+            : { ...approval, context_data: null, context_summary: null, reviewer_notes: null },
+        ),
+        subject_restricted: !allowed,
+      };
+    }),
+    // Redaction is in-memory, keyed on the same `access` map `requireCapabilitySet` resolves in
+    // the server function — no per-row ownership query, so the two `query()` calls above stay
+    // two and this route's maxQueries budget is unmoved.
     humanReviewRuns: humanReviewRuns.map((run) => redactDirectoryRun(run, access)),
   };
 }
