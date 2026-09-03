@@ -130,8 +130,9 @@ type AgentHistoryRow = Pick<
 
 /**
  * `subject_restricted` distinguishes "you may not see this" from "this run recorded nothing".
- * Without it the UI renders both as the same em-dash, which reports a permission boundary as
- * missing data.
+ * Without it, each field falls back to its own "nothing here" placeholder — `input_data` to
+ * the UI's em-dash, `output_summary` to "No output summary recorded." — and both placeholders
+ * report a permission boundary as missing data.
  *
  * Named for the cause, not the field: it gates both `input_data` and `output_summary`, since
  * `output_summary` is unvalidated model output that routinely restates the subject's identity.
@@ -366,7 +367,7 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
     items: runs.map((run): AgentHistoryItem => {
       // Capability-level, per row. This does not honour a deny override scoped to one
       // specific subject — that needs per-row ownership resolution, which the route's query
-      // budget cannot absorb. See the spec's "What this does not fix".
+      // budget cannot absorb.
       //
       // Both content fields ride the one check. output_summary is unvalidated model output
       // that routinely restates the subject's identity, and it renders on every list row

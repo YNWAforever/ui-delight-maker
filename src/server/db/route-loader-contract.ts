@@ -243,11 +243,14 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     // getAgentHistoryPage() (src/server-functions/agent-runs.ts) awaits
-    // requireCapability("agents.view"), then calls loadAgentHistoryPage(data) with the
-    // already-normalized validator output. The route resolves params.name to an
-    // AGENT_DEFINITIONS entry and passes its display_name, so a real definition is used here
-    // rather than a placeholder — the agent name is a plain text filter, and page/limit mirror
-    // the loader's own { page: search.page, limit: 25 }.
+    // requireCapabilitySet(["agents.view"], { optional: AGENT_SUBJECT_VIEW_CAPABILITIES }), then
+    // calls loadAgentHistoryPage({ ...data, access }) with the already-normalized validator
+    // output plus the resolved access map. The optional capabilities come back as booleans for
+    // per-row redaction, not as a second query — no target is passed, so no ownership query
+    // runs. The route resolves params.name to an AGENT_DEFINITIONS entry and passes its
+    // display_name, so a real definition is used here rather than a placeholder — the agent
+    // name is a plain text filter, and page/limit mirror the loader's own
+    // { page: search.page, limit: 25 }.
     //
     // 3 -> 4 on 2026-08-29: the loader now resolves params.name from
     // loadEffectiveAgentCatalogue rather than the code catalogue, so a paused agent reads as

@@ -1,8 +1,8 @@
 import type { Capability } from "@/lib/admin/types";
 
 /**
- * Which capability entitles a reader to an agent run's `input_data`, keyed on the run's
- * `subject_type`.
+ * Which capability entitles a reader to an agent run's content — `input_data` and
+ * `output_summary` alike — keyed on the run's `subject_type`.
  *
  * An explicit literal table rather than a derivation, because two of the eight values do not
  * follow the pattern. There is no `clients.view` capability — the product gates client reads
@@ -59,7 +59,10 @@ export function subjectViewCapability(subjectType: string): Capability | null {
 }
 
 /**
- * True only when the actor holds the capability entitling them to this row's `input_data`.
+ * True only when the actor holds the capability entitling them to this row's content. "Input"
+ * here means both fields the caller gates on it — `input_data` and `output_summary` alike, per
+ * `agent-workspaces.ts`'s `loadAgentHistoryPage` — not `input_data` alone; the name stays
+ * `canReadAgentRunInput` for the one capability check both fields share.
  *
  * Fails closed twice over: an unmapped subject type has no capability to hold, and a
  * capability absent from the access map reads as `undefined`, which is not `true`.
