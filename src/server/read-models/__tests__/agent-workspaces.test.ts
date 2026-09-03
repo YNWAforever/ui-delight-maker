@@ -99,7 +99,7 @@ describe("agent operations read model", () => {
       ]);
 
     const { loadAgentDirectoryRead, STUCK_RUN_MINUTES } = await import("../agent-workspaces");
-    const result = await loadAgentDirectoryRead();
+    const result = await loadAgentDirectoryRead({});
 
     expect(result.operations).toMatchObject({
       runs_24h: 14,
@@ -144,7 +144,7 @@ describe("agent operations read model", () => {
 
   it("keeps the full agent catalogue visible when no run data exists", async () => {
     const { loadAgentDirectoryRead } = await import("../agent-workspaces");
-    const result = await loadAgentDirectoryRead();
+    const result = await loadAgentDirectoryRead({});
 
     expect(result.agents).toHaveLength(5);
     expect(result.attentionRuns).toEqual([]);
@@ -173,7 +173,7 @@ describe("agent operations read model", () => {
     );
 
     const { loadAgentDirectoryRead } = await import("../agent-workspaces");
-    const read = await loadAgentDirectoryRead();
+    const read = await loadAgentDirectoryRead({});
     const qualify = read.agents.find((a) => a.workflow_type === "qualify_lead");
 
     expect(qualify?.status).toBe("inactive");
@@ -346,6 +346,124 @@ describe("agent operations read model", () => {
       // Redaction is in-memory. If this number moves, the page has started resolving
       // ownership per row, which the agents.$name maxQueries budget cannot absorb.
       expect(queryMock).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe("loadAgentDirectoryRead redaction", () => {
+    // Same fields loadAgentHistoryPage's `row` seeds — the two directory lists select the
+    // same columns as the history page, minus input_data.
+    const recentRow = (id: string, subjectType: string) => ({
+      id,
+      agent_name: "Lead Qualification Agent",
+      workflow_type: "qualify_lead",
+      trigger_type: "manual",
+      subject_type: subjectType,
+      subject_id: "00000000-0000-0000-0000-000000000002",
+      output_summary: "Qualified",
+      status: "completed",
+      duration_ms: 1200,
+      tokens_used: 900,
+      confidence_score: 0.8,
+      human_review_required: false,
+      created_at: "2026-09-01T00:00:00.000Z",
+      updated_at: "2026-09-01T00:00:00.000Z",
+    });
+
+    const attentionRow = (id: string, subjectType: string) => ({
+      ...recentRow(id, subjectType),
+      status: "failed",
+      attention_reason: "failed",
+      age_minutes: 5,
+    });
+
+    const seedDirectory = (
+      recentRows: ReturnType<typeof recentRow>[],
+      attentionRows: ReturnType<typeof attentionRow>[],
+    ) => {
+      queryMock
+        .mockResolvedValueOnce([]) // aggregateRows
+        .mockResolvedValueOnce([]) // hourlyRows
+        .mockResolvedValueOnce(recentRows)
+        .mockResolvedValueOnce(attentionRows);
+    };
+
+    it("keeps output_summary, subject_id and subject_type on a recentRuns row the actor may see", async () => {
+      const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+      seedDirectory([recentRow("run-1", "lead")], []);
+
+      const result = await loadAgentDirectoryRead({ "agents.view": true, "leads.view": true });
+
+      expect(result.recentRuns[0].subject_restricted).toBe(false);
+      expect(result.recentRuns[0].output_summary).toBe("Qualified");
+      expect(result.recentRuns[0].subject_id).toBe("00000000-0000-0000-0000-000000000002");
+      expect(result.recentRuns[0].subject_type).toBe("lead");
+    });
+
+    it("nulls output_summary, subject_id and subject_type on a recentRuns row the actor may not see", async () => {
+      const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+      seedDirectory([recentRow("run-1", "lead")], []);
+
+      const result = await loadAgentDirectoryRead({ "agents.view": true, "leads.view": false });
+
+      expect(result.recentRuns[0].subject_restricted).toBe(true);
+      expect(result.recentRuns[0].output_summary).toBeNull();
+      expect(result.recentRuns[0].subject_id).toBeNull();
+      expect(result.recentRuns[0].subject_type).toBeNull();
+    });
+
+    it("redacts attentionRuns on the same per-subject check", async () => {
+      const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+      seedDirectory([], [attentionRow("run-attn", "account")]);
+
+      const result = await loadAgentDirectoryRead({ "agents.view": true, "accounts.view": false });
+
+      expect(result.attentionRuns[0].subject_restricted).toBe(true);
+      expect(result.attentionRuns[0].output_summary).toBeNull();
+      expect(result.attentionRuns[0].subject_id).toBeNull();
+      expect(result.attentionRuns[0].subject_type).toBeNull();
+      // attention_reason and age_minutes are not content — nothing gates them.
+      expect(result.attentionRuns[0].attention_reason).toBe("failed");
+    });
+
+    it("keeps output_summary, subject_id and subject_type on an attentionRuns row the actor may see", async () => {
+      const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+      seedDirectory([], [attentionRow("run-attn", "account")]);
+
+      const result = await loadAgentDirectoryRead({ "agents.view": true, "accounts.view": true });
+
+      expect(result.attentionRuns[0].subject_restricted).toBe(false);
+      expect(result.attentionRuns[0].output_summary).toBe("Qualified");
+      expect(result.attentionRuns[0].subject_id).toBe("00000000-0000-0000-0000-000000000002");
+      expect(result.attentionRuns[0].subject_type).toBe("account");
+    });
+
+    it("redacts per row, not per response", async () => {
+      const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+      seedDirectory([recentRow("run-lead", "lead"), recentRow("run-account", "account")], []);
+
+      const result = await loadAgentDirectoryRead({
+        "agents.view": true,
+        "leads.view": true,
+        "accounts.view": false,
+      });
+
+      expect(result.recentRuns[0].subject_restricted).toBe(false);
+      expect(result.recentRuns[0].output_summary).toBe("Qualified");
+      expect(result.recentRuns[1].subject_restricted).toBe(true);
+      expect(result.recentRuns[1].output_summary).toBeNull();
+      expect(result.recentRuns[1].subject_id).toBeNull();
+      expect(result.recentRuns[1].subject_type).toBeNull();
+    });
+
+    it("still issues exactly four queries", async () => {
+      // Redaction is in-memory. If this number moves, the directory read has started
+      // resolving ownership per row, which the agents route's maxQueries budget cannot absorb.
+      const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+      seedDirectory([recentRow("run-1", "lead")], [attentionRow("run-2", "lead")]);
+
+      await loadAgentDirectoryRead({ "agents.view": true, "leads.view": true });
+
+      expect(queryMock).toHaveBeenCalledTimes(4);
     });
   });
 });

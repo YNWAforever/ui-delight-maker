@@ -1,10 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import {
-  requireCapability,
-  requireCapabilityChecks,
-  requireCapabilitySet,
-} from "@/server/auth/authorization.server";
+import { requireCapabilityChecks, requireCapabilitySet } from "@/server/auth/authorization.server";
 import {
   loadAgentDirectoryRead,
   loadAgentHistoryPage,
@@ -21,6 +17,7 @@ import { AGENT_SUBJECT_VIEW_CAPABILITIES } from "@/lib/agent-run-visibility";
 
 export type {
   AgentDirectoryRead,
+  AgentDirectoryRunSummary,
   AgentHistoryPageRead,
   AgentRunSummary,
   AiReviewRead,
@@ -49,8 +46,16 @@ export function normalizeAgentHistoryInput(input: {
 }
 
 export const getAgentDirectoryRead = createServerFn({ method: "GET" }).handler(async () => {
-  await requireCapability("agents.view");
-  return loadAgentDirectoryRead();
+  // Same shape as getAgentHistoryPage below: one authorization context load answers both
+  // "can this actor see the agents surface at all" and "which subjects can they see the
+  // content of". agents.view stays required and throws on denial exactly as the single
+  // capability check it replaces; the subject capabilities come back as booleans with no
+  // target passed, so no ownership query runs and the directory read's query count is
+  // unchanged — redaction happens in memory in loadAgentDirectoryRead.
+  const access = await requireCapabilitySet(["agents.view"], {
+    optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+  });
+  return loadAgentDirectoryRead(access);
 });
 
 export const getAgentHistoryPage = createServerFn({ method: "GET" })

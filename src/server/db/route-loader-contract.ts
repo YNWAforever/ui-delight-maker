@@ -220,11 +220,14 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     // getAgentDirectoryRead() (src/server-functions/agent-runs.ts) awaits
-    // requireCapability("agents.view"), then calls loadAgentDirectoryRead() — the read model
-    // this SQL was extracted into so the gate could reach it. It takes no arguments: the
-    // route's loader passes none.
+    // requireCapabilitySet(["agents.view"], { optional: AGENT_SUBJECT_VIEW_CAPABILITIES }), then
+    // calls loadAgentDirectoryRead(access) with the resolved access map — the read model this
+    // SQL was extracted into so the gate could reach it. The route's loader itself passes no
+    // arguments; access is resolved once by the server function, same as agents.$name below.
+    // Redaction is in-memory, so it cannot change the query count this entry measures — an
+    // empty map redacts every row and still issues the same four queries.
     route: "agents",
-    run: () => loadAgentDirectoryRead(),
+    run: () => loadAgentDirectoryRead({}),
     // Four, deliberately. The fourth is the attention query: stuck, failed and
     // waiting-approval runs are now selected in SQL across every row, rather than being
     // derived on the client from whichever page of recent runs happened to load — which
