@@ -134,11 +134,21 @@ type AgentHistoryRow = Pick<
  * the UI's em-dash, `output_summary` to "No output summary recorded." — and both placeholders
  * report a permission boundary as missing data.
  *
- * Named for the cause, not the field: it gates both `input_data` and `output_summary`, since
- * `output_summary` is unvalidated model output that routinely restates the subject's identity.
+ * Named for the cause, not the field: it gates `input_data`, `output_summary`, `subject_id` and
+ * `subject_type` alike, since `output_summary` is unvalidated model output that routinely
+ * restates the subject's identity — and the identity is the same problem again. Per
+ * `quote-workspace.ts`'s `redactLeadIdentity`, the id *is* the identity: redacting the content
+ * while a restricted row still ships the record it ran against, and when, redacts nothing. Both
+ * are widened to `string | null` here because `AgentHistoryRow`'s (via `AgentRun`) are plain
+ * `string` — the columns themselves are non-null.
  */
-export type AgentHistoryItem = Omit<AgentHistoryRow, "input_data"> & {
+export type AgentHistoryItem = Omit<
+  AgentHistoryRow,
+  "input_data" | "subject_id" | "subject_type"
+> & {
   input_data: JsonValue;
+  subject_id: string | null;
+  subject_type: string | null;
   subject_restricted: boolean;
 };
 
@@ -372,10 +382,17 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
       // Both content fields ride the one check. output_summary is unvalidated model output
       // that routinely restates the subject's identity, and it renders on every list row
       // rather than behind an expander — so it was the wider of the two exposures.
+      //
+      // subject_id and subject_type are nulled on the same check, not just input_data and
+      // output_summary: per quote-workspace.ts's redactLeadIdentity, the id is the identity,
+      // and a restricted row that still ships which record the agent ran against — and when —
+      // redacts nothing.
       const allowed = canReadAgentRunInput(run.subject_type, input.access);
-      const { input_data, output_summary, ...rest } = run;
+      const { input_data, output_summary, subject_id, subject_type, ...rest } = run;
       return {
         ...rest,
+        subject_id: allowed ? subject_id : null,
+        subject_type: allowed ? subject_type : null,
         input_data: allowed ? toJsonValue(input_data) : null,
         output_summary: allowed ? output_summary : null,
         subject_restricted: !allowed,

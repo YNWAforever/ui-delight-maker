@@ -240,6 +240,38 @@ describe("agent operations read model", () => {
       expect(page.items[0].output_summary).toBeNull();
     });
 
+    it("nulls subject_id and subject_type on a restricted row, not just the content", async () => {
+      // The id is the identity: per quote-workspace.ts's redactLeadIdentity, a restricted row
+      // that still ships which record the agent ran against redacts nothing.
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "lead")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": false },
+      });
+
+      expect(page.items[0].subject_id).toBeNull();
+      expect(page.items[0].subject_type).toBeNull();
+    });
+
+    it("preserves subject_id and subject_type on a permitted row", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "lead")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": true },
+      });
+
+      expect(page.items[0].subject_id).toBe("00000000-0000-0000-0000-000000000001");
+      expect(page.items[0].subject_type).toBe("lead");
+    });
+
     it("redacts per row, not per page", async () => {
       const { loadAgentHistoryPage } = await import("../agent-workspaces");
       seed([row("run-lead", "lead"), row("run-account", "account")]);
