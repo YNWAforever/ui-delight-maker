@@ -620,6 +620,12 @@ describe("agent operations read model", () => {
       // agent_run_id is `on delete set null`, so deleting a run orphans its approval. It has
       // no subject, so it redacts — but it must still appear, or a misassigned item silently
       // vanishes from the queue instead of being seen and reassigned.
+      //
+      // This covers the in-memory path only: a null subject_type has no capability to hold, so
+      // the approval redacts. It does NOT prove the query keeps orphans — `query` is mocked
+      // here, so the seeded row comes back whatever the SQL says. Switching `left join` to
+      // `inner join` leaves this test green; the join type is guarded by the SQL assertion in
+      // "selects explicit columns and joins the run, in two queries" instead.
       const result = await loadAiReviewRead({
         "agents.view": true,
         "leads.view": true,
@@ -669,6 +675,7 @@ describe("agent operations read model", () => {
       const sql = sqlText(queryMock.mock.calls[0][0]);
       expect(sql).not.toContain("select *");
       expect(sql).toContain("left join agent_runs");
+      expect(sql).not.toContain("inner join");
       expect(sql).not.toContain("subject_id");
       expect(queryMock).toHaveBeenCalledTimes(2);
     });
