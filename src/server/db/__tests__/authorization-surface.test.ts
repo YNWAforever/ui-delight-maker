@@ -71,8 +71,41 @@ import { describe, expect, it } from "vitest";
  * which this counter matched as a 229th occurrence — a documentary false positive. Keep
  * prose in that directory clear of the literal string, or this number drifts for a reason
  * that has nothing to do with enforcement.
+ *
+ * 228 -> 226 on 2026-09-03, for the directory and ai-review reads' redaction — the second and
+ * third of the three reads this branch redacts, the history page above being the first.
+ * Established before changing: git diff origin/main -- src/server-functions/
+ * ':(exclude)*__tests__*' shows only agent-runs.ts changed, and every requireCapability line in
+ * it is either an import name or a one-for-one call substitution — no bare check dropped
+ * without a requireCapabilitySet replacement that still throws on denial for that capability.
+ *   -1  agent-runs.ts  getAgentDirectoryRead's redaction. Already on this branch (commit
+ *                      b01ad41) before this count was re-derived, and the reason the test went
+ *                      red: requireCapability dropped from the import once both
+ *                      getAgentHistoryPage and getAgentDirectoryRead called
+ *                      requireCapabilitySet instead of requireCapability — the import shrank
+ *                      from three names to two. getAgentDirectoryRead's own
+ *                      requireCapability("agents.view") became requireCapabilitySet(
+ *                      ["agents.view"], { optional: AGENT_SUBJECT_VIEW_CAPABILITIES }) — one
+ *                      call for one call, count neutral on its own.
+ *   -1  agent-runs.ts  getAiReviewRead's redaction (this change). requireCapabilityChecks
+ *                      dropped from the import: it had no remaining caller once
+ *                      getAiReviewRead's requireCapabilityChecks([{ capability:
+ *                      "approvals.view" }, { capability: "agents.view" }]) became
+ *                      requireCapabilitySet(["approvals.view", "agents.view"], { optional:
+ *                      AGENT_SUBJECT_VIEW_CAPABILITIES }) — again one call for one call, count
+ *                      neutral on its own. The now-dead import is the only reason the total
+ *                      moved.
+ *
+ * approvals.view and agents.view are both still required on the ai-review read and both still
+ * throw on denial, exactly as the two-check pair they replaced; agents.view is likewise still
+ * required on the directory read, exactly as the single check it replaced. Nothing that
+ * previously enforced was removed or weakened. The optional capabilities are not a second gate
+ * on either read: they are read as booleans so loadAgentDirectoryRead and loadAiReviewRead can
+ * redact each run's content against its own subject, the same as the history page already does
+ * — not shipping every run's summary and subject to anyone who can see agents (and, on
+ * ai-review, approvals).
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 228;
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 226;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {
