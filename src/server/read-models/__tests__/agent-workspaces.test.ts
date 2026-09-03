@@ -554,5 +554,130 @@ describe("agent operations read model", () => {
 
       expect(queryMock).toHaveBeenCalledTimes(2);
     });
+
+    const approvalRow = (id: string, subjectType: string | null) => ({
+      id,
+      agent_run_id: subjectType === null ? null : "00000000-0000-0000-0000-0000000000aa",
+      approval_type: "message_send",
+      requested_by: "Reply Draft Agent",
+      assigned_to: "user-1",
+      status: "pending",
+      context_data: { lead_id: "lead-1", draft_message: "Hello Acme, about your enquiry…" },
+      context_summary: "Drafted a reply for review.",
+      reviewer_notes: "Checked the tone.",
+      decided_at: null,
+      created_at: "2026-09-01T00:00:00.000Z",
+      subject_type: subjectType,
+    });
+
+    it("keeps approval content when the actor holds the run subject's capability", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      queryMock.mockResolvedValueOnce([approvalRow("ap-1", "lead")]).mockResolvedValueOnce([]);
+
+      const result = await loadAiReviewRead({ "agents.view": true, "leads.view": true });
+
+      expect(result.approvals[0].subject_restricted).toBe(false);
+      expect(result.approvals[0].context_data).toEqual({
+        lead_id: "lead-1",
+        draft_message: "Hello Acme, about your enquiry…",
+      });
+      expect(result.approvals[0].context_summary).toBe("Drafted a reply for review.");
+      expect(result.approvals[0].reviewer_notes).toBe("Checked the tone.");
+    });
+
+    it("nulls the drafted message when the actor lacks that capability", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      queryMock.mockResolvedValueOnce([approvalRow("ap-1", "lead")]).mockResolvedValueOnce([]);
+
+      const result = await loadAiReviewRead({ "agents.view": true, "leads.view": false });
+
+      expect(result.approvals[0].subject_restricted).toBe(true);
+      expect(result.approvals[0].context_data).toBeNull();
+    });
+
+    it("nulls the approval's own summary when restricted", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      queryMock.mockResolvedValueOnce([approvalRow("ap-1", "lead")]).mockResolvedValueOnce([]);
+
+      const result = await loadAiReviewRead({ "agents.view": true, "leads.view": false });
+
+      expect(result.approvals[0].context_summary).toBeNull();
+    });
+
+    it("nulls the reviewer notes when restricted", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      queryMock.mockResolvedValueOnce([approvalRow("ap-1", "lead")]).mockResolvedValueOnce([]);
+
+      const result = await loadAiReviewRead({ "agents.view": true, "leads.view": false });
+
+      expect(result.approvals[0].reviewer_notes).toBeNull();
+    });
+
+    it("redacts an orphaned approval but keeps it in the queue", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      queryMock.mockResolvedValueOnce([approvalRow("ap-orphan", null)]).mockResolvedValueOnce([]);
+
+      // agent_run_id is `on delete set null`, so deleting a run orphans its approval. It has
+      // no subject, so it redacts — but it must still appear, or a misassigned item silently
+      // vanishes from the queue instead of being seen and reassigned.
+      //
+      // This covers the in-memory path only: a null subject_type has no capability to hold, so
+      // the approval redacts. It does NOT prove the query keeps orphans — `query` is mocked
+      // here, so the seeded row comes back whatever the SQL says. Switching `left join` to
+      // `inner join` leaves this test green; the join type is guarded by the SQL assertion in
+      // "selects explicit columns and joins the run, in two queries" instead.
+      const result = await loadAiReviewRead({
+        "agents.view": true,
+        "leads.view": true,
+        "accounts.view": true,
+      });
+
+      expect(result.approvals).toHaveLength(1);
+      expect(result.approvals[0].id).toBe("ap-orphan");
+      expect(result.approvals[0].subject_restricted).toBe(true);
+      expect(result.approvals[0].context_data).toBeNull();
+    });
+
+    it("redacts per approval, not per response", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      queryMock
+        .mockResolvedValueOnce([approvalRow("ap-lead", "lead"), approvalRow("ap-acct", "account")])
+        .mockResolvedValueOnce([]);
+
+      const result = await loadAiReviewRead({
+        "agents.view": true,
+        "leads.view": true,
+        "accounts.view": false,
+      });
+
+      expect(result.approvals[0].subject_restricted).toBe(false);
+      expect(result.approvals[1].subject_restricted).toBe(true);
+      expect(result.approvals[1].context_data).toBeNull();
+    });
+
+    it("never ships the joined subject_type", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      queryMock.mockResolvedValueOnce([approvalRow("ap-1", "lead")]).mockResolvedValueOnce([]);
+
+      const result = await loadAiReviewRead({ "agents.view": true, "leads.view": true });
+
+      // The join exists to decide the redaction, not to widen the payload. subject_id is not
+      // selected at all; subject_type must not survive into the response either.
+      expect(result.approvals[0]).not.toHaveProperty("subject_type");
+    });
+
+    it("selects explicit columns and joins the run, in two queries", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      queryMock.mockResolvedValueOnce([approvalRow("ap-1", "lead")]).mockResolvedValueOnce([]);
+
+      await loadAiReviewRead({ "agents.view": true, "leads.view": true });
+
+      const sql = sqlText(queryMock.mock.calls[0][0]);
+      expect(sql).not.toContain("select *");
+      expect(sql).toContain("left join agent_runs");
+      expect(sql).not.toContain("inner join");
+      expect(sql).not.toContain("subject_id");
+      expect(queryMock).toHaveBeenCalledTimes(2);
+    });
   });
 });
