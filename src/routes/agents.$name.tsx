@@ -268,7 +268,9 @@ function AgentDetail() {
                                   )}
                                 </span>
                                 <span className="mt-1 block text-sm text-muted-foreground">
-                                  {run.output_summary ?? "No output summary recorded."}
+                                  {run.subject_restricted
+                                    ? "Summary restricted."
+                                    : (run.output_summary ?? "No output summary recorded.")}
                                 </span>
                                 <span className="mt-1 block text-xs text-muted-foreground">
                                   {formatDateTime(run.created_at)}
@@ -283,7 +285,11 @@ function AgentDetail() {
                                 <pre className="overflow-auto rounded-md border border-border bg-muted/30 p-2 text-xs">
                                   <span className="font-medium text-primary">Input data</span>
                                   {"\n"}
-                                  {run.input_data ? JSON.stringify(run.input_data, null, 2) : "—"}
+                                  {run.subject_restricted
+                                    ? "Restricted. This run is about a record you do not have permission to view."
+                                    : run.input_data
+                                      ? JSON.stringify(run.input_data, null, 2)
+                                      : "—"}
                                 </pre>
                               </div>
                             )}

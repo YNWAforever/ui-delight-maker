@@ -99,7 +99,7 @@ describe("agent operations read model", () => {
       ]);
 
     const { loadAgentDirectoryRead, STUCK_RUN_MINUTES } = await import("../agent-workspaces");
-    const result = await loadAgentDirectoryRead();
+    const result = await loadAgentDirectoryRead({});
 
     expect(result.operations).toMatchObject({
       runs_24h: 14,
@@ -144,7 +144,7 @@ describe("agent operations read model", () => {
 
   it("keeps the full agent catalogue visible when no run data exists", async () => {
     const { loadAgentDirectoryRead } = await import("../agent-workspaces");
-    const result = await loadAgentDirectoryRead();
+    const result = await loadAgentDirectoryRead({});
 
     expect(result.agents).toHaveLength(5);
     expect(result.attentionRuns).toEqual([]);
@@ -173,9 +173,386 @@ describe("agent operations read model", () => {
     );
 
     const { loadAgentDirectoryRead } = await import("../agent-workspaces");
-    const read = await loadAgentDirectoryRead();
+    const read = await loadAgentDirectoryRead({});
     const qualify = read.agents.find((a) => a.workflow_type === "qualify_lead");
 
     expect(qualify?.status).toBe("inactive");
+  });
+
+  describe("loadAgentHistoryPage", () => {
+    const row = (id: string, subjectType: string) => ({
+      id,
+      agent_name: "Qualification Agent",
+      workflow_type: "qualify_lead",
+      trigger_type: "manual",
+      subject_type: subjectType,
+      subject_id: "00000000-0000-0000-0000-000000000001",
+      input_data: { lead_id: "secret-lead", notes: "commercially sensitive" },
+      output_summary: "Qualified",
+      status: "completed",
+      duration_ms: 1200,
+      tokens_used: 900,
+      confidence_score: 0.8,
+      human_review_required: false,
+      created_at: "2026-09-01T00:00:00.000Z",
+      updated_at: "2026-09-01T00:00:00.000Z",
+    });
+
+    const seed = (rows: ReturnType<typeof row>[]) => {
+      queryMock
+        .mockResolvedValueOnce([{ total: rows.length }])
+        .mockResolvedValueOnce(rows)
+        .mockResolvedValueOnce([{ runs_24h: rows.length, avg_confidence: 0.8 }]);
+    };
+
+    it("keeps input_data when the actor holds that row's subject capability", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "lead")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": true },
+      });
+
+      expect(page.items[0].subject_restricted).toBe(false);
+      expect(page.items[0].input_data).toEqual({
+        lead_id: "secret-lead",
+        notes: "commercially sensitive",
+      });
+      expect(page.items[0].output_summary).toBe("Qualified");
+    });
+
+    it("blanks the run's content when the actor lacks that row's subject capability", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "lead")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": false },
+      });
+
+      expect(page.items[0].subject_restricted).toBe(true);
+      expect(page.items[0].input_data).toBeNull();
+      expect(page.items[0].output_summary).toBeNull();
+    });
+
+    it("nulls subject_id and subject_type on a restricted row, not just the content", async () => {
+      // The id is the identity: per quote-workspace.ts's redactLeadIdentity, a restricted row
+      // that still ships which record the agent ran against redacts nothing.
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "lead")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": false },
+      });
+
+      expect(page.items[0].subject_id).toBeNull();
+      expect(page.items[0].subject_type).toBeNull();
+    });
+
+    it("preserves subject_id and subject_type on a permitted row", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "lead")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": true },
+      });
+
+      expect(page.items[0].subject_id).toBe("00000000-0000-0000-0000-000000000001");
+      expect(page.items[0].subject_type).toBe("lead");
+    });
+
+    it("redacts per row, not per page", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-lead", "lead"), row("run-account", "account")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": true, "accounts.view": false },
+      });
+
+      expect(page.items[0].subject_restricted).toBe(false);
+      expect(page.items[0].output_summary).toBe("Qualified");
+      expect(page.items[1].subject_restricted).toBe(true);
+      expect(page.items[1].input_data).toBeNull();
+      expect(page.items[1].output_summary).toBeNull();
+    });
+
+    it("blanks the run's content for a subject_type the capability table does not name", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "job_sheet")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: {
+          "agents.view": true,
+          "leads.view": true,
+          "accounts.view": true,
+          "campaigns.view": true,
+          "quotes.view": true,
+          "engagements.view": true,
+          "tasks.view": true,
+          "approvals.view": true,
+        },
+      });
+
+      expect(page.items[0].subject_restricted).toBe(true);
+      expect(page.items[0].input_data).toBeNull();
+      expect(page.items[0].output_summary).toBeNull();
+    });
+
+    it("never selects or returns output_data", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "lead")]);
+
+      const page = await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": true },
+      });
+
+      const sql = sqlText(queryMock.mock.calls[1][0]);
+      expect(sql).not.toContain("select *");
+      expect(sql).not.toContain("output_data");
+      expect(page.items[0]).not.toHaveProperty("output_data");
+    });
+
+    it("still issues exactly three queries", async () => {
+      const { loadAgentHistoryPage } = await import("../agent-workspaces");
+      seed([row("run-1", "lead")]);
+
+      await loadAgentHistoryPage({
+        agent: "Qualification Agent",
+        page: 1,
+        limit: 25,
+        access: { "agents.view": true, "leads.view": true },
+      });
+
+      // Redaction is in-memory. If this number moves, the page has started resolving
+      // ownership per row, which the agents.$name maxQueries budget cannot absorb.
+      expect(queryMock).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe("loadAgentDirectoryRead redaction", () => {
+    // Same fields loadAgentHistoryPage's `row` seeds — the two directory lists select the
+    // same columns as the history page, minus input_data.
+    const recentRow = (id: string, subjectType: string) => ({
+      id,
+      agent_name: "Lead Qualification Agent",
+      workflow_type: "qualify_lead",
+      trigger_type: "manual",
+      subject_type: subjectType,
+      subject_id: "00000000-0000-0000-0000-000000000002",
+      output_summary: "Qualified",
+      status: "completed",
+      duration_ms: 1200,
+      tokens_used: 900,
+      confidence_score: 0.8,
+      human_review_required: false,
+      created_at: "2026-09-01T00:00:00.000Z",
+      updated_at: "2026-09-01T00:00:00.000Z",
+    });
+
+    const attentionRow = (id: string, subjectType: string) => ({
+      ...recentRow(id, subjectType),
+      status: "failed",
+      attention_reason: "failed",
+      age_minutes: 5,
+    });
+
+    const seedDirectory = (
+      recentRows: ReturnType<typeof recentRow>[],
+      attentionRows: ReturnType<typeof attentionRow>[],
+    ) => {
+      queryMock
+        .mockResolvedValueOnce([]) // aggregateRows
+        .mockResolvedValueOnce([]) // hourlyRows
+        .mockResolvedValueOnce(recentRows)
+        .mockResolvedValueOnce(attentionRows);
+    };
+
+    it("keeps output_summary, subject_id and subject_type on a recentRuns row the actor may see", async () => {
+      const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+      seedDirectory([recentRow("run-1", "lead")], []);
+
+      const result = await loadAgentDirectoryRead({ "agents.view": true, "leads.view": true });
+
+      expect(result.recentRuns[0].subject_restricted).toBe(false);
+      expect(result.recentRuns[0].output_summary).toBe("Qualified");
+      expect(result.recentRuns[0].subject_id).toBe("00000000-0000-0000-0000-000000000002");
+      expect(result.recentRuns[0].subject_type).toBe("lead");
+    });
+
+    it("nulls output_summary, subject_id and subject_type on a recentRuns row the actor may not see", async () => {
+      const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+      seedDirectory([recentRow("run-1", "lead")], []);
+
+      const result = await loadAgentDirectoryRead({ "agents.view": true, "leads.view": false });
+
+      expect(result.recentRuns[0].subject_restricted).toBe(true);
+      expect(result.recentRuns[0].output_summary).toBeNull();
+      expect(result.recentRuns[0].subject_id).toBeNull();
+      expect(result.recentRuns[0].subject_type).toBeNull();
+    });
+
+    it("redacts attentionRuns on the same per-subject check", async () => {
+      const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+      seedDirectory([], [attentionRow("run-attn", "account")]);
+
+      const result = await loadAgentDirectoryRead({ "agents.view": true, "accounts.view": false });
+
+      expect(result.attentionRuns[0].subject_restricted).toBe(true);
+      expect(result.attentionRuns[0].output_summary).toBeNull();
+      expect(result.attentionRuns[0].subject_id).toBeNull();
+      expect(result.attentionRuns[0].subject_type).toBeNull();
+      // attention_reason and age_minutes are not content — nothing gates them.
+      expect(result.attentionRuns[0].attention_reason).toBe("failed");
+    });
+
+    it("keeps output_summary, subject_id and subject_type on an attentionRuns row the actor may see", async () => {
+      const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+      seedDirectory([], [attentionRow("run-attn", "account")]);
+
+      const result = await loadAgentDirectoryRead({ "agents.view": true, "accounts.view": true });
+
+      expect(result.attentionRuns[0].subject_restricted).toBe(false);
+      expect(result.attentionRuns[0].output_summary).toBe("Qualified");
+      expect(result.attentionRuns[0].subject_id).toBe("00000000-0000-0000-0000-000000000002");
+      expect(result.attentionRuns[0].subject_type).toBe("account");
+    });
+
+    it("redacts per row, not per response", async () => {
+      const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+      seedDirectory([recentRow("run-lead", "lead"), recentRow("run-account", "account")], []);
+
+      const result = await loadAgentDirectoryRead({
+        "agents.view": true,
+        "leads.view": true,
+        "accounts.view": false,
+      });
+
+      expect(result.recentRuns[0].subject_restricted).toBe(false);
+      expect(result.recentRuns[0].output_summary).toBe("Qualified");
+      expect(result.recentRuns[1].subject_restricted).toBe(true);
+      expect(result.recentRuns[1].output_summary).toBeNull();
+      expect(result.recentRuns[1].subject_id).toBeNull();
+      expect(result.recentRuns[1].subject_type).toBeNull();
+    });
+
+    it("still issues exactly four queries", async () => {
+      // Redaction is in-memory. If this number moves, the directory read has started
+      // resolving ownership per row, which the agents route's maxQueries budget cannot absorb.
+      const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+      seedDirectory([recentRow("run-1", "lead")], [attentionRow("run-2", "lead")]);
+
+      await loadAgentDirectoryRead({ "agents.view": true, "leads.view": true });
+
+      expect(queryMock).toHaveBeenCalledTimes(4);
+    });
+  });
+
+  describe("loadAiReviewRead redaction", () => {
+    // Same fields loadAgentDirectoryRead's recentRow seeds — humanReviewRuns is selected with
+    // the same columns as the two directory lists.
+    const runRow = (id: string, subjectType: string) => ({
+      id,
+      agent_name: "Reply Draft Agent",
+      workflow_type: "draft_reply",
+      trigger_type: "webhook",
+      subject_type: subjectType,
+      subject_id: "00000000-0000-0000-0000-000000000003",
+      output_summary: "Drafted a reply",
+      status: "waiting_approval",
+      duration_ms: 800,
+      tokens_used: 500,
+      confidence_score: 0.7,
+      human_review_required: true,
+      created_at: "2026-09-01T00:00:00.000Z",
+      updated_at: "2026-09-01T00:00:00.000Z",
+    });
+
+    const seedAiReview = (approvalRows: unknown[], runRows: ReturnType<typeof runRow>[]) => {
+      queryMock
+        .mockResolvedValueOnce(approvalRows) // approvals
+        .mockResolvedValueOnce(runRows); // humanReviewRuns
+    };
+
+    it("keeps output_summary, subject_id and subject_type on a humanReviewRuns row the actor may see", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      seedAiReview([], [runRow("run-1", "lead")]);
+
+      const result = await loadAiReviewRead({
+        "approvals.view": true,
+        "agents.view": true,
+        "leads.view": true,
+      });
+
+      expect(result.humanReviewRuns[0].subject_restricted).toBe(false);
+      expect(result.humanReviewRuns[0].output_summary).toBe("Drafted a reply");
+      expect(result.humanReviewRuns[0].subject_id).toBe("00000000-0000-0000-0000-000000000003");
+      expect(result.humanReviewRuns[0].subject_type).toBe("lead");
+    });
+
+    it("nulls output_summary, subject_id and subject_type on a humanReviewRuns row the actor may not see", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      seedAiReview([], [runRow("run-1", "lead")]);
+
+      const result = await loadAiReviewRead({
+        "approvals.view": true,
+        "agents.view": true,
+        "leads.view": false,
+      });
+
+      expect(result.humanReviewRuns[0].subject_restricted).toBe(true);
+      expect(result.humanReviewRuns[0].output_summary).toBeNull();
+      expect(result.humanReviewRuns[0].subject_id).toBeNull();
+      expect(result.humanReviewRuns[0].subject_type).toBeNull();
+    });
+
+    it("redacts per row, not per response", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      seedAiReview([], [runRow("run-lead", "lead"), runRow("run-account", "account")]);
+
+      const result = await loadAiReviewRead({
+        "approvals.view": true,
+        "agents.view": true,
+        "leads.view": true,
+        "accounts.view": false,
+      });
+
+      expect(result.humanReviewRuns[0].subject_restricted).toBe(false);
+      expect(result.humanReviewRuns[0].output_summary).toBe("Drafted a reply");
+      expect(result.humanReviewRuns[1].subject_restricted).toBe(true);
+      expect(result.humanReviewRuns[1].output_summary).toBeNull();
+      expect(result.humanReviewRuns[1].subject_id).toBeNull();
+      expect(result.humanReviewRuns[1].subject_type).toBeNull();
+    });
+
+    it("still issues exactly two queries", async () => {
+      // Redaction is in-memory. If this number moves, the read has started resolving
+      // ownership per row, which the ai-review route's maxQueries budget cannot absorb.
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      seedAiReview([], [runRow("run-1", "lead")]);
+
+      await loadAiReviewRead({ "approvals.view": true, "agents.view": true, "leads.view": true });
+
+      expect(queryMock).toHaveBeenCalledTimes(2);
+    });
   });
 });

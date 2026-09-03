@@ -220,11 +220,14 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     // getAgentDirectoryRead() (src/server-functions/agent-runs.ts) awaits
-    // requireCapability("agents.view"), then calls loadAgentDirectoryRead() — the read model
-    // this SQL was extracted into so the gate could reach it. It takes no arguments: the
-    // route's loader passes none.
+    // requireCapabilitySet(["agents.view"], { optional: AGENT_SUBJECT_VIEW_CAPABILITIES }), then
+    // calls loadAgentDirectoryRead(access) with the resolved access map — the read model this
+    // SQL was extracted into so the gate could reach it. The route's loader itself passes no
+    // arguments; access is resolved once by the server function, same as agents.$name below.
+    // Redaction is in-memory, so it cannot change the query count this entry measures — an
+    // empty map redacts every row and still issues the same four queries.
     route: "agents",
-    run: () => loadAgentDirectoryRead(),
+    run: () => loadAgentDirectoryRead({}),
     // Four, deliberately. The fourth is the attention query: stuck, failed and
     // waiting-approval runs are now selected in SQL across every row, rather than being
     // derived on the client from whichever page of recent runs happened to load — which
@@ -243,11 +246,14 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     // getAgentHistoryPage() (src/server-functions/agent-runs.ts) awaits
-    // requireCapability("agents.view"), then calls loadAgentHistoryPage(data) with the
-    // already-normalized validator output. The route resolves params.name to an
-    // AGENT_DEFINITIONS entry and passes its display_name, so a real definition is used here
-    // rather than a placeholder — the agent name is a plain text filter, and page/limit mirror
-    // the loader's own { page: search.page, limit: 25 }.
+    // requireCapabilitySet(["agents.view"], { optional: AGENT_SUBJECT_VIEW_CAPABILITIES }), then
+    // calls loadAgentHistoryPage({ ...data, access }) with the already-normalized validator
+    // output plus the resolved access map. The optional capabilities come back as booleans for
+    // per-row redaction, not as a second query — no target is passed, so no ownership query
+    // runs. The route resolves params.name to an AGENT_DEFINITIONS entry and passes its
+    // display_name, so a real definition is used here rather than a placeholder — the agent
+    // name is a plain text filter, and page/limit mirror the loader's own
+    // { page: search.page, limit: 25 }.
     //
     // 3 -> 4 on 2026-08-29: the loader now resolves params.name from
     // loadEffectiveAgentCatalogue rather than the code catalogue, so a paused agent reads as
@@ -260,17 +266,25 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
           agent: AGENT_DEFINITIONS[0].display_name,
           page: 1,
           limit: 25,
+          // Redaction is in-memory, so the map's contents cannot change the query count this
+          // entry measures. An empty map redacts every row and still issues three queries.
+          access: {},
         }),
       ]),
     maxQueries: 4,
   },
   {
-    // getAiReviewRead() (src/server-functions/agent-runs.ts) awaits requireCapabilityChecks
-    // for approvals.view + agents.view, then calls loadAiReviewRead() — likewise extracted
-    // out of the handler so this gate can execute it. No arguments; the route's loader passes
-    // none.
+    // getAiReviewRead() (src/server-functions/agent-runs.ts) awaits
+    // requireCapabilitySet(["approvals.view", "agents.view"], { optional:
+    // AGENT_SUBJECT_VIEW_CAPABILITIES }), then calls loadAiReviewRead(access) with the resolved
+    // access map — the read model this SQL was extracted into so the gate could reach it. Both
+    // capabilities stay required and still throw on denial exactly as the two-check pair they
+    // replaced; the subject capabilities come back as booleans with no target passed, so no
+    // ownership query runs and this entry's query count is unchanged. Redaction of
+    // humanReviewRuns happens in memory in loadAiReviewRead, same as loadAgentDirectoryRead
+    // above — an empty map redacts every row and still issues the same two queries.
     route: "ai-review",
-    run: () => loadAiReviewRead(),
+    run: () => loadAiReviewRead({}),
     maxQueries: 2,
   },
   {

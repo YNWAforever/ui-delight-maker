@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AGENT_SUBJECT_VIEW_CAPABILITIES } from "@/lib/agent-run-visibility";
 
 const mocks = vi.hoisted(() => ({
   query: vi.fn(),
   requireCapability: vi.fn(),
   requireCapabilityChecks: vi.fn(),
+  requireCapabilitySet: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => ({
@@ -25,6 +27,7 @@ vi.mock("@tanstack/react-start", () => ({
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapability: mocks.requireCapability,
   requireCapabilityChecks: mocks.requireCapabilityChecks,
+  requireCapabilitySet: mocks.requireCapabilitySet,
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
@@ -45,6 +48,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.requireCapability.mockResolvedValue({ profile: { id: "user-1" } });
   mocks.requireCapabilityChecks.mockResolvedValue({ profile: { id: "user-1" } });
+  mocks.requireCapabilitySet.mockResolvedValue({ "agents.view": true, "leads.view": true });
   mocks.query.mockResolvedValue([]);
 });
 
@@ -71,7 +75,11 @@ describe("agent operational read models", () => {
       data: { agent: "Qualification Agent", page: 2, limit: 100 },
     });
 
-    expect(mocks.requireCapability).toHaveBeenCalledWith("agents.view");
+    // agents.view stays required and still throws on denial; the subject capabilities are
+    // requested as optional so the read model can redact per row without a second load.
+    expect(mocks.requireCapabilitySet).toHaveBeenCalledWith(["agents.view"], {
+      optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+    });
     expect(mocks.query).toHaveBeenNthCalledWith(1, expect.stringContaining("count(*)"), [
       "Qualification Agent",
     ]);
@@ -110,11 +118,13 @@ describe("agent operational read models", () => {
 
     const result = await getAiReviewRead({});
 
-    expect(mocks.requireCapabilityChecks).toHaveBeenCalledWith([
-      { capability: "approvals.view" },
-      { capability: "agents.view" },
-    ]);
-    expect(mocks.requireCapabilityChecks.mock.invocationCallOrder[0]).toBeLessThan(
+    // approvals.view and agents.view both stay required and still throw on denial exactly as
+    // the requireCapabilityChecks pair they replaced; the subject capabilities are requested as
+    // optional so the read model can redact each run's content per row without a second load.
+    expect(mocks.requireCapabilitySet).toHaveBeenCalledWith(["approvals.view", "agents.view"], {
+      optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+    });
+    expect(mocks.requireCapabilitySet.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.query.mock.invocationCallOrder[0],
     );
     expect(result).toMatchObject({

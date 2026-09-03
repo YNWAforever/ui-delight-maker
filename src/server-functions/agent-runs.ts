@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { requireCapability, requireCapabilityChecks } from "@/server/auth/authorization.server";
+import { requireCapabilitySet } from "@/server/auth/authorization.server";
 import {
   loadAgentDirectoryRead,
   loadAgentHistoryPage,
@@ -13,9 +13,11 @@ import {
   serializeAgentRun,
   serializeAgentToolCall,
 } from "@/lib/serializable";
+import { AGENT_SUBJECT_VIEW_CAPABILITIES } from "@/lib/agent-run-visibility";
 
 export type {
   AgentDirectoryRead,
+  AgentDirectoryRunSummary,
   AgentHistoryPageRead,
   AgentRunSummary,
   AiReviewRead,
@@ -44,8 +46,16 @@ export function normalizeAgentHistoryInput(input: {
 }
 
 export const getAgentDirectoryRead = createServerFn({ method: "GET" }).handler(async () => {
-  await requireCapability("agents.view");
-  return loadAgentDirectoryRead();
+  // Same shape as getAgentHistoryPage below: one authorization context load answers both
+  // "can this actor see the agents surface at all" and "which subjects can they see the
+  // content of". agents.view stays required and throws on denial exactly as the single
+  // capability check it replaces; the subject capabilities come back as booleans with no
+  // target passed, so no ownership query runs and the directory read's query count is
+  // unchanged — redaction happens in memory in loadAgentDirectoryRead.
+  const access = await requireCapabilitySet(["agents.view"], {
+    optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+  });
+  return loadAgentDirectoryRead(access);
 });
 
 export const getAgentHistoryPage = createServerFn({ method: "GET" })
@@ -55,11 +65,26 @@ export const getAgentHistoryPage = createServerFn({ method: "GET" })
     ),
   )
   .handler(async ({ data }) => {
-    await requireCapability("agents.view");
-    return loadAgentHistoryPage(data);
+    // One authorization context load answers every question this page asks. `agents.view`
+    // stays required and throws on denial exactly as the single-capability check it replaces;
+    // the subject capabilities come back as booleans. With no target passed, no ownership
+    // query runs, so the page costs the same three queries it always did — which the
+    // `agents.$name` maxQueries budget requires.
+    const access = await requireCapabilitySet(["agents.view"], {
+      optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+    });
+    return loadAgentHistoryPage({ ...data, access });
   });
 
 export const getAiReviewRead = createServerFn({ method: "GET" }).handler(async () => {
-  await requireCapabilityChecks([{ capability: "approvals.view" }, { capability: "agents.view" }]);
-  return loadAiReviewRead();
+  // Same shape as getAgentDirectoryRead and getAgentHistoryPage above: one authorization
+  // context load answers both "can this actor see approvals and agent runs at all" and "which
+  // subjects can they see the content of". approvals.view and agents.view both stay required
+  // and throw on denial exactly as the two-capability check pair they replace; the subject
+  // capabilities come back as booleans with no target passed, so no ownership query runs and
+  // this read's query count is unchanged — redaction happens in memory in loadAiReviewRead.
+  const access = await requireCapabilitySet(["approvals.view", "agents.view"], {
+    optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+  });
+  return loadAiReviewRead(access);
 });

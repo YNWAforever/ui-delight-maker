@@ -47,7 +47,7 @@ import { routeQueryOptions } from "@/lib/route-query";
 import type { SerializableHumanApproval } from "@/lib/serializable";
 import { getStatusLabel } from "@/lib/status-labels";
 import { cn } from "@/lib/utils";
-import type { AgentRunSummary } from "@/server-functions/agent-runs";
+import type { AgentDirectoryRunSummary } from "@/server-functions/agent-runs";
 import { getAiReviewRead } from "@/server-functions/agent-runs";
 import { decideApproval, getApprovals } from "@/server-functions/approvals";
 import { approveAndIssueQuote, rejectQuote } from "@/server-functions/quotes";
@@ -152,7 +152,7 @@ function linkedRecord(approval: Approval): LinkedRecord | null {
   return null;
 }
 
-function confidenceOf(approval: Approval, run: AgentRunSummary | null): number | null {
+function confidenceOf(approval: Approval, run: AgentDirectoryRunSummary | null): number | null {
   if (run?.confidence_score != null) return run.confidence_score;
   const raw = contextOf(approval).confidence_score;
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
@@ -874,7 +874,9 @@ function AiReviewPage() {
                         )}
                       </span>
                       <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                        {run.output_summary ?? "No output summary recorded"}
+                        {run.subject_restricted
+                          ? "Summary restricted."
+                          : (run.output_summary ?? "No output summary recorded")}
                       </span>
                       <span className="text-xs tabular-nums text-muted-foreground">
                         {formatPercent(run.confidence_score)}

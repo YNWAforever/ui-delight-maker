@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { agentSuccessRate, buildAgentAttentionItems, isStuckRun } from "@/lib/agent-ops";
 import { AGENT_RUN_STUCK_MINUTES } from "@/lib/agents";
-import type { AgentRunSummary } from "@/server/read-models/agent-workspaces";
+import type { AgentDirectoryRunSummary } from "@/server/read-models/agent-workspaces";
 
 /**
  * The two derived numbers AI Ops puts in front of an operator.
@@ -31,7 +31,9 @@ describe("success rate", () => {
   });
 });
 
-function run(overrides: Partial<AgentRunSummary> & { id: string }): AgentRunSummary {
+function run(
+  overrides: Partial<AgentDirectoryRunSummary> & { id: string },
+): AgentDirectoryRunSummary {
   return {
     agent_name: "Lead Qualification Agent",
     trigger_type: "manual",
@@ -44,6 +46,7 @@ function run(overrides: Partial<AgentRunSummary> & { id: string }): AgentRunSumm
     workflow_type: "qualify_lead",
     subject_type: "lead",
     subject_id: "lead-1",
+    subject_restricted: false,
     created_at: "2026-08-27T10:00:00.000Z",
     updated_at: "2026-08-27T10:00:00.000Z",
     ...overrides,
@@ -133,5 +136,35 @@ describe("the attention queue", () => {
       run({ id: `failed-${index}`, status: "failed" }),
     );
     expect(buildAgentAttentionItems(many, SLUGS, NOW, 8)).toHaveLength(8);
+  });
+
+  it("says the summary is restricted rather than 'recorded no summary' on a redacted failure", () => {
+    // loadAgentDirectoryRead nulls output_summary the same way for a restricted row and a
+    // genuinely empty one. Without subject_restricted, a redaction reads as "the run recorded
+    // no summary" — which is false, not merely uninformative.
+    const items = buildAgentAttentionItems(
+      [
+        run({
+          id: "restricted",
+          status: "failed",
+          subject_restricted: true,
+          output_summary: null,
+        }),
+      ],
+      SLUGS,
+      NOW,
+    );
+
+    expect(items[0].reason).toBe("Summary restricted.");
+  });
+
+  it("still reports a genuinely empty summary as such, when the row is not restricted", () => {
+    const items = buildAgentAttentionItems(
+      [run({ id: "empty", status: "failed", subject_restricted: false, output_summary: null })],
+      SLUGS,
+      NOW,
+    );
+
+    expect(items[0].reason).toBe("The run failed and recorded no summary.");
   });
 });

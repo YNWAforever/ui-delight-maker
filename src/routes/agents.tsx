@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 import {
   getAgentDirectoryRead,
   type AgentDirectoryRead,
-  type AgentRunSummary,
+  type AgentDirectoryRunSummary,
 } from "@/server-functions/agent-runs";
 
 /**
@@ -220,7 +220,7 @@ function AgentsMonitor() {
     })),
   ];
 
-  const runColumns: ColumnDef<AgentRunSummary>[] = [
+  const runColumns: ColumnDef<AgentDirectoryRunSummary>[] = [
     {
       id: "agent",
       header: "Agent",
@@ -273,20 +273,24 @@ function AgentsMonitor() {
     },
   ];
 
-  const renderRunDetails = (run: AgentRunSummary) => (
+  const renderRunDetails = (run: AgentDirectoryRunSummary) => (
     <p className="text-sm text-muted-foreground">
-      {run.output_summary ?? "No output summary recorded."}
+      {run.subject_restricted
+        ? "Summary restricted."
+        : (run.output_summary ?? "No output summary recorded.")}
     </p>
   );
 
-  const renderRunCard = (run: AgentRunSummary) => (
+  const renderRunCard = (run: AgentDirectoryRunSummary) => (
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium">{run.agent_name}</span>
         <StatusBadge domain="agentRuns" value={run.status} />
       </div>
       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-        {run.output_summary ?? "No output summary recorded."}
+        {run.subject_restricted
+          ? "Summary restricted."
+          : (run.output_summary ?? "No output summary recorded.")}
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
         {formatDateTime(run.created_at)}

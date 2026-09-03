@@ -1,7 +1,10 @@
 import { AGENT_DEFINITIONS } from "@/lib/agents";
+import { canReadAgentRunInput } from "@/lib/agent-run-visibility";
+import type { Capability } from "@/lib/admin/types";
 import type { AgentRun, HumanApproval } from "@/lib/types";
 import { query } from "@/server/db/neon.server";
-import { serializeAgentRun, serializeHumanApproval } from "@/lib/serializable";
+import type { JsonValue } from "@/lib/serializable";
+import { serializeHumanApproval, toJsonValue } from "@/lib/serializable";
 import { loadEffectiveAgentCatalogue } from "@/server/read-models/agent-catalogue";
 
 const DIRECTORY_RUN_LIMIT = 50;
@@ -51,7 +54,30 @@ export type AgentRunSummary = Pick<
 
 export type AgentAttentionReason = "failed" | "waiting_approval" | "stuck";
 
-export type AgentAttentionRun = AgentRunSummary & {
+/**
+ * `AgentRunSummary` after the same per-subject redaction `loadAgentHistoryPage` applies to
+ * produce `AgentHistoryItem`: `output_summary`, `subject_id` and `subject_type` nulled, plus
+ * `subject_restricted`, when the reader lacks the view capability for the run's subject.
+ *
+ * `recentRuns` and `attentionRuns` used to ship the raw `AgentRunSummary` — every run's
+ * summary and subject, unredacted, to anyone holding `agents.view` — one route over from the
+ * history page that gates the same content. Per `quote-workspace.ts`'s `redactLeadIdentity`,
+ * the id is the identity: nulling `output_summary` alone would still tell a restricted reader
+ * which record the agent ran against, and when.
+ */
+export type AgentDirectoryRunSummary = Omit<AgentRunSummary, "subject_type" | "subject_id"> & {
+  subject_type: string | null;
+  subject_id: string | null;
+  subject_restricted: boolean;
+};
+
+/** The columns the two directory queries select, before per-subject redaction is applied. */
+type AgentAttentionRunRow = AgentRunSummary & {
+  attention_reason: AgentAttentionReason;
+  age_minutes: number;
+};
+
+export type AgentAttentionRun = AgentDirectoryRunSummary & {
   attention_reason: AgentAttentionReason;
   age_minutes: number;
 };
@@ -85,7 +111,7 @@ export type AgentDirectoryRead = {
     }
   >;
   attentionRuns: AgentAttentionRun[];
-  recentRuns: AgentRunSummary[];
+  recentRuns: AgentDirectoryRunSummary[];
 };
 
 /** Already normalized by the route's validator — see normalizeAgentHistoryInput. */
@@ -93,6 +119,60 @@ export type AgentHistoryPageInput = {
   agent: string;
   page: number;
   limit: number;
+  /**
+   * What the caller may see, resolved once by `requireCapabilitySet` in the server function.
+   * Passed in rather than resolved here, so the read model stays free of the auth layer and
+   * costs no query of its own.
+   */
+  access: Partial<Record<Capability, boolean>>;
+};
+
+/**
+ * The columns the history page selects. Deliberately not `AgentRun`: `output_data` is not
+ * selected, because nothing renders it and shipping it disclosed every run's model output to
+ * anyone holding `agents.view`.
+ */
+type AgentHistoryRow = Pick<
+  AgentRun,
+  | "id"
+  | "agent_name"
+  | "workflow_type"
+  | "trigger_type"
+  | "subject_type"
+  | "subject_id"
+  | "input_data"
+  | "output_summary"
+  | "status"
+  | "duration_ms"
+  | "tokens_used"
+  | "confidence_score"
+  | "human_review_required"
+  | "created_at"
+  | "updated_at"
+>;
+
+/**
+ * `subject_restricted` distinguishes "you may not see this" from "this run recorded nothing".
+ * Without it, each field falls back to its own "nothing here" placeholder — `input_data` to
+ * the UI's em-dash, `output_summary` to "No output summary recorded." — and both placeholders
+ * report a permission boundary as missing data.
+ *
+ * Named for the cause, not the field: it gates `input_data`, `output_summary`, `subject_id` and
+ * `subject_type` alike, since `output_summary` is unvalidated model output that routinely
+ * restates the subject's identity — and the identity is the same problem again. Per
+ * `quote-workspace.ts`'s `redactLeadIdentity`, the id *is* the identity: redacting the content
+ * while a restricted row still ships the record it ran against, and when, redacts nothing. Both
+ * are widened to `string | null` here because `AgentHistoryRow`'s (via `AgentRun`) are plain
+ * `string` — the columns themselves are non-null.
+ */
+export type AgentHistoryItem = Omit<
+  AgentHistoryRow,
+  "input_data" | "subject_id" | "subject_type"
+> & {
+  input_data: JsonValue;
+  subject_id: string | null;
+  subject_type: string | null;
+  subject_restricted: boolean;
 };
 
 function numeric(value: number | string | null | undefined) {
@@ -119,10 +199,39 @@ function weightedConfidence(rows: AgentAggregateRow[]) {
   return samples === 0 ? null : weightedTotal / samples;
 }
 
-export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
-  const [aggregateRows, hourlyRows, recentRuns, attentionRuns, catalogue] = await Promise.all([
-    query<AgentAggregateRow>(
-      `
+/**
+ * Redacts a directory run row exactly as `loadAgentHistoryPage` redacts `AgentHistoryRow`:
+ * `output_summary`, `subject_id` and `subject_type` nulled when the reader lacks the row's
+ * subject capability. Shared by `recentRuns`, `attentionRuns` and `loadAiReviewRead`'s
+ * `humanReviewRuns` — three read paths that used to ship every run's summary and subject with
+ * no per-subject check at all.
+ */
+function redactDirectoryRun<T extends AgentRunSummary>(
+  run: T,
+  access: Partial<Record<Capability, boolean>>,
+): Omit<T, "subject_type" | "subject_id" | "output_summary"> & {
+  subject_type: string | null;
+  subject_id: string | null;
+  output_summary: string | null;
+  subject_restricted: boolean;
+} {
+  const allowed = canReadAgentRunInput(run.subject_type, access);
+  return {
+    ...run,
+    subject_type: allowed ? run.subject_type : null,
+    subject_id: allowed ? run.subject_id : null,
+    output_summary: allowed ? run.output_summary : null,
+    subject_restricted: !allowed,
+  };
+}
+
+export async function loadAgentDirectoryRead(
+  access: Partial<Record<Capability, boolean>>,
+): Promise<AgentDirectoryRead> {
+  const [aggregateRows, hourlyRows, recentRunRows, attentionRunRows, catalogue] = await Promise.all(
+    [
+      query<AgentAggregateRow>(
+        `
         select
           agent_name,
           count(*) filter (
@@ -157,9 +266,9 @@ export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
         from agent_runs
         group by agent_name
       `,
-      [STUCK_RUN_MINUTES],
-    ),
-    query<AgentHourlyRow>(`
+        [STUCK_RUN_MINUTES],
+      ),
+      query<AgentHourlyRow>(`
       select
         agent_name,
         floor(extract(epoch from (now() - created_at)) / 3600)::int as hours_ago,
@@ -168,8 +277,8 @@ export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
       where created_at >= now() - interval '14 hours'
       group by agent_name, hours_ago
     `),
-    query<AgentRunSummary>(
-      `
+      query<AgentRunSummary>(
+        `
         select
           id, agent_name, workflow_type, trigger_type, subject_type, subject_id,
           output_summary, status, duration_ms, tokens_used, confidence_score,
@@ -178,10 +287,10 @@ export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
         order by created_at desc
         limit $1
       `,
-      [DIRECTORY_RUN_LIMIT],
-    ),
-    query<AgentAttentionRun>(
-      `
+        [DIRECTORY_RUN_LIMIT],
+      ),
+      query<AgentAttentionRunRow>(
+        `
         select
           id, agent_name, workflow_type, trigger_type, subject_type, subject_id,
           output_summary, status, duration_ms, tokens_used, confidence_score,
@@ -212,10 +321,11 @@ export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
           updated_at desc
         limit $2
       `,
-      [STUCK_RUN_MINUTES, ATTENTION_RUN_LIMIT],
-    ),
-    loadEffectiveAgentCatalogue(),
-  ]);
+        [STUCK_RUN_MINUTES, ATTENTION_RUN_LIMIT],
+      ),
+      loadEffectiveAgentCatalogue(),
+    ],
+  );
 
   const aggregates = new Map(aggregateRows.map((row) => [row.agent_name, row]));
   const sparklines = new Map<string, number[]>();
@@ -275,8 +385,11 @@ export async function loadAgentDirectoryRead(): Promise<AgentDirectoryRead> {
         sparkline: sparklines.get(agent.display_name) ?? Array(SPARKLINE_HOURS).fill(0),
       };
     }),
-    attentionRuns,
-    recentRuns,
+    // Redaction is in-memory, keyed on the same `access` map `loadAgentHistoryPage` resolves
+    // via `requireCapabilitySet` — no per-row ownership query, so this costs no query of its
+    // own and the four `query()` calls above stay four.
+    attentionRuns: attentionRunRows.map((run) => redactDirectoryRun(run, access)),
+    recentRuns: recentRunRows.map((run) => redactDirectoryRun(run, access)),
   } satisfies AgentDirectoryRead;
 }
 
@@ -290,9 +403,12 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
   const page = Math.min(input.page, lastPage);
   const offset = (page - 1) * input.limit;
   const [runs, summaryRows] = await Promise.all([
-    query<AgentRun>(
+    query<AgentHistoryRow>(
       `
-        select *
+        select
+          id, agent_name, workflow_type, trigger_type, subject_type, subject_id,
+          input_data, output_summary, status, duration_ms, tokens_used, confidence_score,
+          human_review_required, created_at, updated_at
         from agent_runs
         where agent_name = $1
         order by created_at desc
@@ -314,7 +430,30 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
   const summary = summaryRows[0];
 
   return {
-    items: runs.map(serializeAgentRun),
+    items: runs.map((run): AgentHistoryItem => {
+      // Capability-level, per row. This does not honour a deny override scoped to one
+      // specific subject — that needs per-row ownership resolution, which the route's query
+      // budget cannot absorb.
+      //
+      // Both content fields ride the one check. output_summary is unvalidated model output
+      // that routinely restates the subject's identity, and it renders on every list row
+      // rather than behind an expander — so it was the wider of the two exposures.
+      //
+      // subject_id and subject_type are nulled on the same check, not just input_data and
+      // output_summary: per quote-workspace.ts's redactLeadIdentity, the id is the identity,
+      // and a restricted row that still ships which record the agent ran against — and when —
+      // redacts nothing.
+      const allowed = canReadAgentRunInput(run.subject_type, input.access);
+      const { input_data, output_summary, subject_id, subject_type, ...rest } = run;
+      return {
+        ...rest,
+        subject_id: allowed ? subject_id : null,
+        subject_type: allowed ? subject_type : null,
+        input_data: allowed ? toJsonValue(input_data) : null,
+        output_summary: allowed ? output_summary : null,
+        subject_restricted: !allowed,
+      };
+    }),
     total,
     page,
     limit: input.limit,
@@ -325,7 +464,7 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
   };
 }
 
-export async function loadAiReviewRead() {
+export async function loadAiReviewRead(access: Partial<Record<Capability, boolean>>) {
   const [approvals, humanReviewRuns] = await Promise.all([
     query<HumanApproval>(`
       select *
@@ -348,7 +487,13 @@ export async function loadAiReviewRead() {
 
   return {
     approvals: approvals.map(serializeHumanApproval),
-    humanReviewRuns,
+    // Redaction is in-memory, keyed on the same `access` map `loadAgentDirectoryRead` resolves
+    // via `requireCapabilitySet` — no per-row ownership query, so this costs no query of its
+    // own and the two `query()` calls above stay two.
+    // Redaction is in-memory, keyed on the same `access` map `loadAgentDirectoryRead` resolves
+    // via `requireCapabilitySet` — no per-row ownership query, so this costs no query of its
+    // own and the two `query()` calls above stay two.
+    humanReviewRuns: humanReviewRuns.map((run) => redactDirectoryRun(run, access)),
   };
 }
 

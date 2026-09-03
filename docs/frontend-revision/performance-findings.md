@@ -42,10 +42,10 @@ Both predate this branch and neither is a regression. Splitting either is a real
 
 ## N+1 review
 
-One improvement, one known remainder.
+Two improvements, no remainder.
 
 - `loadAgentDirectoryRead` folded its per-agent counters into the existing aggregate rather than adding queries: it still issues **three** queries, matching its budget in `route-loader-contract.ts`, while now returning `completed_24h`, `failed_24h`, `waiting_approval`, `running`, `stuck` and `last_run_at` per agent. Dropping the `where created_at >= now() - interval '24 hours'` predicate in favour of `filter (...)` clauses costs nothing here because `agent_runs` carries no index on `created_at`, so that form was already a sequential scan.
-- **Remaining:** `loadAgentHistoryPage` still uses `select *`, so the agent Runs tab loads `output_data` it never renders. Narrowing it needs a new row type because `serializeAgentRun` takes a full `AgentRun`. Out of scope for this branch; worth doing next.
+- **Done:** `loadAgentHistoryPage` no longer uses `select *`. It now selects an explicit 15-column projection instead — `output_data` dropped entirely, not merely left unrendered — and returns it through a new `AgentHistoryRow` type (`agent-workspaces.ts`), because narrowing needed a row type that `serializeAgentRun` (which takes a full `AgentRun`) could not supply. The agent Runs tab no longer loads a payload it never renders.
 
 ## Invalidation review
 
@@ -55,7 +55,6 @@ One improvement, one known remainder.
 
 ## Remaining recommendations
 
-1. Narrow `loadAgentHistoryPage` off `select *` (above).
-2. Split the client entry, or move the shared component vocabulary behind a boundary. Worth measuring first — the entry is 217 kB gzipped, and the win may not justify the churn.
-3. Add an index on `agent_runs(created_at)` if the AI Ops page becomes slow; the current queries are sequential scans that are cheap only while the table is small.
-4. The `styles.css` raw size is not reported by the new build output in the same form as baseline; only the gzip figure is comparable (+0.43 kB). Two token additions and a print block account for it.
+1. Split the client entry, or move the shared component vocabulary behind a boundary. Worth measuring first — the entry is 217 kB gzipped, and the win may not justify the churn.
+2. Add an index on `agent_runs(created_at)` if the AI Ops page becomes slow; the current queries are sequential scans that are cheap only while the table is small.
+3. The `styles.css` raw size is not reported by the new build output in the same form as baseline; only the gzip figure is comparable (+0.43 kB). Two token additions and a print block account for it.

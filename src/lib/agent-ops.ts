@@ -1,7 +1,10 @@
 import type { AttentionItem } from "@/components/sales";
 import { AGENT_RUN_STUCK_MINUTES } from "@/lib/agents";
 import { formatDateTime, relativeTime } from "@/lib/format";
-import type { AgentRunSummary } from "@/server/read-models/agent-workspaces";
+import type {
+  AgentDirectoryRunSummary,
+  AgentRunSummary,
+} from "@/server/read-models/agent-workspaces";
 
 /**
  * The product rules behind AI Ops' derived numbers.
@@ -78,12 +81,12 @@ function attentionBucket(
 }
 
 export function buildAgentAttentionItems(
-  runs: AgentRunSummary[],
+  runs: AgentDirectoryRunSummary[],
   slugByDisplayName: ReadonlyMap<string, string>,
   now: number | null,
   limit: number = ATTENTION_QUEUE_LIMIT,
 ): AttentionItem[] {
-  const buckets = new Map<AttentionBucket, AgentRunSummary[]>(
+  const buckets = new Map<AttentionBucket, AgentDirectoryRunSummary[]>(
     ATTENTION_ORDER.map((bucket) => [bucket, []]),
   );
 
@@ -108,7 +111,14 @@ export function buildAgentAttentionItems(
         bucket === "stuck"
           ? `Still running after ${AGENT_RUN_STUCK_MINUTES} minutes, so nothing else can be dispatched for the same record.`
           : bucket === "failure"
-            ? (run.output_summary ?? "The run failed and recorded no summary.")
+            ? // A restricted run's output_summary is nulled by loadAgentDirectoryRead the same
+              // way a genuinely empty one is, so this cannot tell the two apart on its own —
+              // "recorded no summary" would misreport a redaction as missing data. Checked
+              // first, and worded like the placeholder loadAgentHistoryPage's readers already
+              // see on `/agents/$name`, so the same fact reads the same way everywhere it shows.
+              run.subject_restricted
+              ? "Summary restricted."
+              : (run.output_summary ?? "The run failed and recorded no summary.")
             : "A human decision is required before this run can proceed.",
       age: now === null ? formatDateTime(run.created_at) : relativeTime(run.created_at, now),
       // An approval is decided in AI Review; a stuck or failed run is read in the agent's
