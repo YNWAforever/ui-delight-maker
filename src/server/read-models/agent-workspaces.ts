@@ -202,8 +202,9 @@ function weightedConfidence(rows: AgentAggregateRow[]) {
 /**
  * Redacts a directory run row exactly as `loadAgentHistoryPage` redacts `AgentHistoryRow`:
  * `output_summary`, `subject_id` and `subject_type` nulled when the reader lacks the row's
- * subject capability. Shared by `recentRuns` and `attentionRuns`, the two directory lists that
- * used to ship every run's summary and subject with no per-subject check at all.
+ * subject capability. Shared by `recentRuns`, `attentionRuns` and `loadAiReviewRead`'s
+ * `humanReviewRuns` — three read paths that used to ship every run's summary and subject with
+ * no per-subject check at all.
  */
 function redactDirectoryRun<T extends AgentRunSummary>(
   run: T,
@@ -463,7 +464,7 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
   };
 }
 
-export async function loadAiReviewRead() {
+export async function loadAiReviewRead(access: Partial<Record<Capability, boolean>>) {
   const [approvals, humanReviewRuns] = await Promise.all([
     query<HumanApproval>(`
       select *
@@ -486,7 +487,13 @@ export async function loadAiReviewRead() {
 
   return {
     approvals: approvals.map(serializeHumanApproval),
-    humanReviewRuns,
+    // Redaction is in-memory, keyed on the same `access` map `loadAgentDirectoryRead` resolves
+    // via `requireCapabilitySet` — no per-row ownership query, so this costs no query of its
+    // own and the two `query()` calls above stay two.
+    // Redaction is in-memory, keyed on the same `access` map `loadAgentDirectoryRead` resolves
+    // via `requireCapabilitySet` — no per-row ownership query, so this costs no query of its
+    // own and the two `query()` calls above stay two.
+    humanReviewRuns: humanReviewRuns.map((run) => redactDirectoryRun(run, access)),
   };
 }
 

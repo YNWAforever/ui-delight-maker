@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { requireCapabilityChecks, requireCapabilitySet } from "@/server/auth/authorization.server";
+import { requireCapabilitySet } from "@/server/auth/authorization.server";
 import {
   loadAgentDirectoryRead,
   loadAgentHistoryPage,
@@ -77,6 +77,14 @@ export const getAgentHistoryPage = createServerFn({ method: "GET" })
   });
 
 export const getAiReviewRead = createServerFn({ method: "GET" }).handler(async () => {
-  await requireCapabilityChecks([{ capability: "approvals.view" }, { capability: "agents.view" }]);
-  return loadAiReviewRead();
+  // Same shape as getAgentDirectoryRead and getAgentHistoryPage above: one authorization
+  // context load answers both "can this actor see approvals and agent runs at all" and "which
+  // subjects can they see the content of". approvals.view and agents.view both stay required
+  // and throw on denial exactly as the two-capability check pair they replace; the subject
+  // capabilities come back as booleans with no target passed, so no ownership query runs and
+  // this read's query count is unchanged — redaction happens in memory in loadAiReviewRead.
+  const access = await requireCapabilitySet(["approvals.view", "agents.view"], {
+    optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+  });
+  return loadAiReviewRead(access);
 });

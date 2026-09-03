@@ -274,12 +274,17 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     maxQueries: 4,
   },
   {
-    // getAiReviewRead() (src/server-functions/agent-runs.ts) awaits requireCapabilityChecks
-    // for approvals.view + agents.view, then calls loadAiReviewRead() — likewise extracted
-    // out of the handler so this gate can execute it. No arguments; the route's loader passes
-    // none.
+    // getAiReviewRead() (src/server-functions/agent-runs.ts) awaits
+    // requireCapabilitySet(["approvals.view", "agents.view"], { optional:
+    // AGENT_SUBJECT_VIEW_CAPABILITIES }), then calls loadAiReviewRead(access) with the resolved
+    // access map — the read model this SQL was extracted into so the gate could reach it. Both
+    // capabilities stay required and still throw on denial exactly as the two-check pair they
+    // replaced; the subject capabilities come back as booleans with no target passed, so no
+    // ownership query runs and this entry's query count is unchanged. Redaction of
+    // humanReviewRuns happens in memory in loadAiReviewRead, same as loadAgentDirectoryRead
+    // above — an empty map redacts every row and still issues the same two queries.
     route: "ai-review",
-    run: () => loadAiReviewRead(),
+    run: () => loadAiReviewRead({}),
     maxQueries: 2,
   },
   {

@@ -466,4 +466,93 @@ describe("agent operations read model", () => {
       expect(queryMock).toHaveBeenCalledTimes(4);
     });
   });
+
+  describe("loadAiReviewRead redaction", () => {
+    // Same fields loadAgentDirectoryRead's recentRow seeds — humanReviewRuns is selected with
+    // the same columns as the two directory lists.
+    const runRow = (id: string, subjectType: string) => ({
+      id,
+      agent_name: "Reply Draft Agent",
+      workflow_type: "draft_reply",
+      trigger_type: "webhook",
+      subject_type: subjectType,
+      subject_id: "00000000-0000-0000-0000-000000000003",
+      output_summary: "Drafted a reply",
+      status: "waiting_approval",
+      duration_ms: 800,
+      tokens_used: 500,
+      confidence_score: 0.7,
+      human_review_required: true,
+      created_at: "2026-09-01T00:00:00.000Z",
+      updated_at: "2026-09-01T00:00:00.000Z",
+    });
+
+    const seedAiReview = (approvalRows: unknown[], runRows: ReturnType<typeof runRow>[]) => {
+      queryMock
+        .mockResolvedValueOnce(approvalRows) // approvals
+        .mockResolvedValueOnce(runRows); // humanReviewRuns
+    };
+
+    it("keeps output_summary, subject_id and subject_type on a humanReviewRuns row the actor may see", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      seedAiReview([], [runRow("run-1", "lead")]);
+
+      const result = await loadAiReviewRead({
+        "approvals.view": true,
+        "agents.view": true,
+        "leads.view": true,
+      });
+
+      expect(result.humanReviewRuns[0].subject_restricted).toBe(false);
+      expect(result.humanReviewRuns[0].output_summary).toBe("Drafted a reply");
+      expect(result.humanReviewRuns[0].subject_id).toBe("00000000-0000-0000-0000-000000000003");
+      expect(result.humanReviewRuns[0].subject_type).toBe("lead");
+    });
+
+    it("nulls output_summary, subject_id and subject_type on a humanReviewRuns row the actor may not see", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      seedAiReview([], [runRow("run-1", "lead")]);
+
+      const result = await loadAiReviewRead({
+        "approvals.view": true,
+        "agents.view": true,
+        "leads.view": false,
+      });
+
+      expect(result.humanReviewRuns[0].subject_restricted).toBe(true);
+      expect(result.humanReviewRuns[0].output_summary).toBeNull();
+      expect(result.humanReviewRuns[0].subject_id).toBeNull();
+      expect(result.humanReviewRuns[0].subject_type).toBeNull();
+    });
+
+    it("redacts per row, not per response", async () => {
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      seedAiReview([], [runRow("run-lead", "lead"), runRow("run-account", "account")]);
+
+      const result = await loadAiReviewRead({
+        "approvals.view": true,
+        "agents.view": true,
+        "leads.view": true,
+        "accounts.view": false,
+      });
+
+      expect(result.humanReviewRuns[0].subject_restricted).toBe(false);
+      expect(result.humanReviewRuns[0].output_summary).toBe("Drafted a reply");
+      expect(result.humanReviewRuns[1].subject_restricted).toBe(true);
+      expect(result.humanReviewRuns[1].output_summary).toBeNull();
+      expect(result.humanReviewRuns[1].subject_id).toBeNull();
+      expect(result.humanReviewRuns[1].subject_type).toBeNull();
+    });
+
+    it("still issues exactly two queries", async () => {
+      // Redaction is in-memory. If this number moves, the read has started resolving
+      // ownership per row, which the ai-review route's maxQueries budget cannot absorb.
+      const { loadAiReviewRead } = await import("../agent-workspaces");
+      seedAiReview([], [runRow("run-1", "lead")]);
+
+      await loadAiReviewRead({ "approvals.view": true, "agents.view": true, "leads.view": true });
+
+      expect(queryMock).toHaveBeenCalledTimes(2);
+    });
+  });
 });

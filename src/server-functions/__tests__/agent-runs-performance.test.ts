@@ -118,11 +118,13 @@ describe("agent operational read models", () => {
 
     const result = await getAiReviewRead({});
 
-    expect(mocks.requireCapabilityChecks).toHaveBeenCalledWith([
-      { capability: "approvals.view" },
-      { capability: "agents.view" },
-    ]);
-    expect(mocks.requireCapabilityChecks.mock.invocationCallOrder[0]).toBeLessThan(
+    // approvals.view and agents.view both stay required and still throw on denial exactly as
+    // the requireCapabilityChecks pair they replaced; the subject capabilities are requested as
+    // optional so the read model can redact each run's content per row without a second load.
+    expect(mocks.requireCapabilitySet).toHaveBeenCalledWith(["approvals.view", "agents.view"], {
+      optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+    });
+    expect(mocks.requireCapabilitySet.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.query.mock.invocationCallOrder[0],
     );
     expect(result).toMatchObject({
