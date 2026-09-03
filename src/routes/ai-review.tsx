@@ -44,15 +44,20 @@ import { formatDateTime, formatPercent, relativeTime } from "@/lib/format";
 import { getOperationalMutationKeys } from "@/lib/operational-invalidation";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
-import type { SerializableHumanApproval } from "@/lib/serializable";
 import { getStatusLabel } from "@/lib/status-labels";
 import { cn } from "@/lib/utils";
-import type { AgentDirectoryRunSummary } from "@/server-functions/agent-runs";
+import type { AgentDirectoryRunSummary, AiReviewRead } from "@/server-functions/agent-runs";
 import { getAiReviewRead } from "@/server-functions/agent-runs";
 import { decideApproval, getApprovals } from "@/server-functions/approvals";
 import { approveAndIssueQuote, rejectQuote } from "@/server-functions/quotes";
 
-type Approval = SerializableHumanApproval;
+/**
+ * The redacted shape `loadAiReviewRead` returns — `SerializableHumanApproval` plus
+ * `subject_restricted`. Aliased from `AiReviewRead` rather than importing
+ * `AiReviewApproval` directly so this route stays off the read-model module; the two types
+ * are structurally identical.
+ */
+type Approval = AiReviewRead["approvals"][number];
 type Decision = "approved" | "rejected" | "escalated";
 
 const aiReviewQueryKey = crmQueryKeys.aiReview.list({ view: "queue" });
@@ -535,7 +540,11 @@ function AiReviewPage() {
       {
         id: "agent-summary",
         title: "Agent summary",
-        content: (
+        content: approval.subject_restricted ? (
+          <p className="text-sm text-muted-foreground">
+            Restricted. This approval is about a record you do not have permission to view.
+          </p>
+        ) : (
           <div className="space-y-2 text-sm">
             <p>{approval.context_summary ?? "No summary provided."}</p>
             {run?.output_summary && <p className="text-muted-foreground">{run.output_summary}</p>}
@@ -615,9 +624,11 @@ function AiReviewPage() {
               Raw agent payload
             </summary>
             <pre className="max-h-72 overflow-auto whitespace-pre-wrap border-t border-border p-3 text-xs text-muted-foreground">
-              {approval.context_data
-                ? JSON.stringify(approval.context_data, null, 2)
-                : "No payload data"}
+              {approval.subject_restricted
+                ? "Restricted. This approval is about a record you do not have permission to view."
+                : approval.context_data
+                  ? JSON.stringify(approval.context_data, null, 2)
+                  : "No payload data"}
             </pre>
           </details>
         ),
