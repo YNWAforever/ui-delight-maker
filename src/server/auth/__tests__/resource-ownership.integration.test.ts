@@ -20,7 +20,11 @@ vi.mock("@/server/db/neon.server", () => ({
 import { CLIENTOPS_MIGRATION_PATHS } from "@/lib/clientops-relationship-schema";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
 import { isPostgresError } from "@/server/db/postgres-error";
-import { NEON_OWNED_RESOURCE_TYPES, resolveOwnerProfileId } from "../resource-ownership";
+import {
+  NEON_OWNED_RESOURCE_TYPES,
+  resolveOwnerProfileId,
+  resolveOwnerProfileIds,
+} from "../resource-ownership";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 
@@ -28,6 +32,17 @@ const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 // whether a row comes back — a resource type whose table or column is missing fails with
 // 42P01/42703 before it can report "no rows".
 const ABSENT_ID = "00000000-0000-0000-0000-0000000000ff";
+
+// Three distinct absent ids, not one: `= any($1)` with a single element exercises different
+// SQL from a multi-element array, and — more importantly — a joined query that selects the
+// wrong side's id (e.g. `select a.id` instead of `select q.id` for `quote`) can still
+// round-trip correctly with one id by coincidence. Three ids is what makes wrong keying
+// observable.
+const ABSENT_IDS = [
+  "00000000-0000-0000-0000-0000000000fc",
+  "00000000-0000-0000-0000-0000000000fd",
+  "00000000-0000-0000-0000-0000000000fe",
+] as const;
 
 describe("resource ownership resolves against the migrated schema", () => {
   beforeAll(async () => {
@@ -62,6 +77,34 @@ describe("resource ownership resolves against the migrated schema", () => {
         throw error;
       }
     });
+  }
+
+  // The single-id loop above proves each query is syntactically valid against the migrated
+  // schema, but it cannot catch a joined query keyed off the wrong side (see the module doc
+  // on NEON_OWNERSHIP_QUERIES) — one id can round-trip correctly by coincidence. This loop
+  // calls the batch entry point with three ids and checks the returned map is total and
+  // every value is null, which is what makes wrong keying observable.
+  for (const resourceType of NEON_OWNED_RESOURCE_TYPES) {
+    it.runIf(hasDatabase)(
+      `answers batch ownership for three absent ${resourceType} ids`,
+      async () => {
+        try {
+          const owners = await resolveOwnerProfileIds(resourceType, ABSENT_IDS);
+          for (const id of ABSENT_IDS) {
+            expect(owners.has(id)).toBe(true);
+            expect(owners.get(id)).toBeNull();
+          }
+        } catch (error) {
+          if (isPostgresError(error)) {
+            throw new Error(
+              `Batch ownership lookup for "${resourceType}" issued SQL the migrated schema ` +
+                `rejects: [${error.code}] ${error.message}`,
+            );
+          }
+          throw error;
+        }
+      },
+    );
   }
 
   it.runIf(hasDatabase)("returns null for a type it does not own", async () => {
