@@ -21,6 +21,8 @@ import {
   loadAgentHistoryPage,
   loadAiReviewRead,
 } from "@/server/read-models/agent-workspaces";
+import type { RowAuthorizer } from "@/server/auth/authorization.server";
+import { resolveOwnerProfileIds } from "@/server/auth/resource-ownership";
 import { loadClientWorkspaceRead } from "@/server/read-models/client-workspace";
 import { getDashboardReadModel } from "@/server/read-models/dashboard";
 import { loadRenewalsRead, loadReportSummary } from "@/server/read-models/operations";
@@ -92,6 +94,26 @@ export const FIXTURE = {
 // this just needs to be a string, since hashInvitationToken() hashes it before the lookup
 // query runs.
 const MISSING_TOKEN = "0000000000000000000000000000000000000000000";
+
+/**
+ * A `RowAuthorizer` for the three agent-workspace entries below, which call the read models
+ * directly rather than through the server functions that would normally build one via
+ * `requirePageAuthorization` — there is no request/session to load a real authorization context
+ * from here. It still resolves real ownership through `resolveOwnerProfileIds`, so the queries
+ * this gate counts are the queries the route actually issues, not a stand-in for them; the
+ * boolean verdict itself is irrelevant to every assertion in this file, which measures query
+ * counts, not what gets redacted.
+ */
+function fixtureRows(): RowAuthorizer {
+  return {
+    async allow(_capability, resourceType, ids) {
+      const owners = await resolveOwnerProfileIds(resourceType, ids);
+      const decided = new Map<string, boolean>();
+      for (const id of ids) decided.set(id, owners.get(id) != null);
+      return decided;
+    },
+  };
+}
 
 export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   {
@@ -227,7 +249,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // Redaction is in-memory, so it cannot change the query count this entry measures — an
     // empty map redacts every row and still issues the same four queries.
     route: "agents",
-    run: () => loadAgentDirectoryRead({}),
+    run: () => loadAgentDirectoryRead({}, fixtureRows()),
     // Four, deliberately. The fourth is the attention query: stuck, failed and
     // waiting-approval runs are now selected in SQL across every row, rather than being
     // derived on the client from whichever page of recent runs happened to load — which
@@ -266,9 +288,12 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
           agent: AGENT_DEFINITIONS[0].display_name,
           page: 1,
           limit: 25,
-          // Redaction is in-memory, so the map's contents cannot change the query count this
-          // entry measures. An empty map redacts every row and still issues three queries.
+          // The access map's contents cannot change the query count this entry measures; an
+          // empty map redacts every row. `rows` now resolves real ownership per distinct
+          // subject on the page, which is a genuine extra query this budget does not yet
+          // account for — see the maxQueries comment below.
           access: {},
+          rows: fixtureRows(),
         }),
       ]),
     maxQueries: 4,
@@ -284,7 +309,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // humanReviewRuns happens in memory in loadAiReviewRead, same as loadAgentDirectoryRead
     // above — an empty map redacts every row and still issues the same two queries.
     route: "ai-review",
-    run: () => loadAiReviewRead({}),
+    run: () => loadAiReviewRead({}, fixtureRows()),
     maxQueries: 2,
   },
   {

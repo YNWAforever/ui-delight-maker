@@ -28,10 +28,19 @@ const DIR = resolve(process.cwd(), "src/server-functions");
  * asserts it rejects before touching the database; that needs valid validator input per
  * handler, so it is real work tracked separately. This catches the file-level escape that
  * actually happened, not every possible one.
+ *
+ * `PageAuthorization` added 2026-09-04, for the row-level agent redaction branch:
+ * `agent-runs.ts`'s three handlers moved from `requireCapabilitySet` to
+ * `requirePageAuthorization`, which still throws on a denied required capability exactly as
+ * `requireCapabilitySet` did — it additionally returns a row-level authorizer, which none of
+ * these five other helpers do. Leaving it out of this alternation would have made three
+ * genuinely-guarded handlers read as unguarded, the same false-negative shape this file's own
+ * history warns about for `requireCapabilityChecks`/`requireCapabilitySet`/`requireAnyCapability`.
  */
 const HANDLER =
   /export const ([A-Za-z0-9_]+)\s*=\s*createServerFn[\s\S]*?(?=export const [A-Za-z0-9_]+\s*=\s*createServerFn|$)/g;
-const CAPABILITY_HELPER = /require(?:Capability|CapabilityChecks|CapabilitySet|AnyCapability)\(/;
+const CAPABILITY_HELPER =
+  /require(?:Capability|CapabilityChecks|CapabilitySet|AnyCapability|PageAuthorization)\(/;
 const CALLS = /\b([a-z][A-Za-z0-9_]*)\s*\(/g;
 
 /** Handlers that legitimately run without a capability check, each with its reason. */

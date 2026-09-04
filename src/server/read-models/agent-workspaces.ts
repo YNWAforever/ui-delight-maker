@@ -1,11 +1,19 @@
 import { AGENT_DEFINITIONS } from "@/lib/agents";
-import { canReadAgentRunInput } from "@/lib/agent-run-visibility";
+import { decideAgentSubjects } from "@/lib/agent-run-visibility";
 import type { Capability } from "@/lib/admin/types";
 import type { AgentRun, HumanApproval } from "@/lib/types";
 import { query } from "@/server/db/neon.server";
 import type { JsonValue, SerializableHumanApproval } from "@/lib/serializable";
 import { serializeHumanApproval, toJsonValue } from "@/lib/serializable";
 import { loadEffectiveAgentCatalogue } from "@/server/read-models/agent-catalogue";
+import type { RowAuthorizer } from "@/server/auth/authorization.server";
+
+/**
+ * A per-subject verdict, as `decideAgentSubjects` returns it: `true` only when the actor holds
+ * the capability entitling them to that specific row's content, resolved against real ownership
+ * rather than the capability alone.
+ */
+type SubjectDecision = (subjectType: string, subjectId: string) => boolean;
 
 const DIRECTORY_RUN_LIMIT = 50;
 const ATTENTION_RUN_LIMIT = 25;
@@ -120,11 +128,18 @@ export type AgentHistoryPageInput = {
   page: number;
   limit: number;
   /**
-   * What the caller may see, resolved once by `requireCapabilitySet` in the server function.
-   * Passed in rather than resolved here, so the read model stays free of the auth layer and
-   * costs no query of its own.
+   * What the caller may see, resolved once by `requirePageAuthorization` in the server
+   * function. Passed in rather than resolved here, so the read model stays free of the auth
+   * layer's session load.
    */
   access: Partial<Record<Capability, boolean>>;
+  /**
+   * The row-level authorizer from the same `requirePageAuthorization` call. `decideAgentSubjects`
+   * uses it to resolve real ownership for every distinct subject on the page, so a `deny`
+   * override scoped to one record redacts that record without redacting its neighbours of the
+   * same subject type.
+   */
+  rows: RowAuthorizer;
 };
 
 /**
@@ -205,17 +220,22 @@ function weightedConfidence(rows: AgentAggregateRow[]) {
  * subject capability. Shared by `recentRuns`, `attentionRuns` and `loadAiReviewRead`'s
  * `humanReviewRuns` — three read paths that used to ship every run's summary and subject with
  * no per-subject check at all.
+ *
+ * Takes the per-row decision lookup `decideAgentSubjects` returns, not the capability-level
+ * `access` map it used to: a `deny` override scoped to one record has to be able to redact that
+ * one row without touching its neighbours of the same subject type, which a capability-only
+ * check can never express.
  */
 function redactDirectoryRun<T extends AgentRunSummary>(
   run: T,
-  access: Partial<Record<Capability, boolean>>,
+  decide: SubjectDecision,
 ): Omit<T, "subject_type" | "subject_id" | "output_summary"> & {
   subject_type: string | null;
   subject_id: string | null;
   output_summary: string | null;
   subject_restricted: boolean;
 } {
-  const allowed = canReadAgentRunInput(run.subject_type, access);
+  const allowed = decide(run.subject_type, run.subject_id);
   return {
     ...run,
     subject_type: allowed ? run.subject_type : null,
@@ -227,6 +247,7 @@ function redactDirectoryRun<T extends AgentRunSummary>(
 
 export async function loadAgentDirectoryRead(
   access: Partial<Record<Capability, boolean>>,
+  rows: RowAuthorizer,
 ): Promise<AgentDirectoryRead> {
   const [aggregateRows, hourlyRows, recentRunRows, attentionRunRows, catalogue] = await Promise.all(
     [
@@ -358,6 +379,15 @@ export async function loadAgentDirectoryRead(
     },
   );
 
+  // One decision per distinct subject type across both lists, before either is mapped — not
+  // once per row, and not once per list. recentRuns and attentionRuns can both name the same
+  // subject (a run stuck long enough also shows up recently), so deciding them together is what
+  // keeps this at one ownership query per subject type rather than two.
+  const decide = await decideAgentSubjects(rows, [
+    ...recentRunRows.map(({ subject_type, subject_id }) => ({ subject_type, subject_id })),
+    ...attentionRunRows.map(({ subject_type, subject_id }) => ({ subject_type, subject_id })),
+  ]);
+
   return {
     operations: {
       ...operations,
@@ -385,11 +415,11 @@ export async function loadAgentDirectoryRead(
         sparkline: sparklines.get(agent.display_name) ?? Array(SPARKLINE_HOURS).fill(0),
       };
     }),
-    // Redaction is in-memory, keyed on the same `access` map `loadAgentHistoryPage` resolves
-    // via `requireCapabilitySet` — no per-row ownership query, so this costs no query of its
-    // own and the four `query()` calls above stay four.
-    attentionRuns: attentionRunRows.map((run) => redactDirectoryRun(run, access)),
-    recentRuns: recentRunRows.map((run) => redactDirectoryRun(run, access)),
+    // Redaction is row-level: `decide` above resolved real ownership for every distinct
+    // subject in either list, so a `deny` override scoped to one lead redacts that lead's run
+    // without touching another run about a different lead of the same type.
+    attentionRuns: attentionRunRows.map((run) => redactDirectoryRun(run, decide)),
+    recentRuns: recentRunRows.map((run) => redactDirectoryRun(run, decide)),
   } satisfies AgentDirectoryRead;
 }
 
@@ -429,21 +459,29 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
   ]);
   const summary = summaryRows[0];
 
+  // One decision per distinct subject type on the page, before any row is mapped — a `deny`
+  // override scoped to one lead now redacts that lead's run without redacting a neighbouring
+  // row about a different lead of the same subject type.
+  const decide = await decideAgentSubjects(
+    input.rows,
+    runs.map(({ subject_type, subject_id }) => ({ subject_type, subject_id })),
+  );
+
   return {
     items: runs.map((run): AgentHistoryItem => {
-      // Capability-level, per row. This does not honour a deny override scoped to one
-      // specific subject — that needs per-row ownership resolution, which the route's query
-      // budget cannot absorb.
+      // Row-level: `decide` above resolved real ownership for every distinct subject on the
+      // page, so this honours a deny override scoped to one specific subject, not just the
+      // capability as a whole.
       //
-      // Both content fields ride the one check. output_summary is unvalidated model output
+      // Both content fields ride the one decision. output_summary is unvalidated model output
       // that routinely restates the subject's identity, and it renders on every list row
       // rather than behind an expander — so it was the wider of the two exposures.
       //
-      // subject_id and subject_type are nulled on the same check, not just input_data and
+      // subject_id and subject_type are nulled on the same decision, not just input_data and
       // output_summary: per quote-workspace.ts's redactLeadIdentity, the id is the identity,
       // and a restricted row that still ships which record the agent ran against — and when —
       // redacts nothing.
-      const allowed = canReadAgentRunInput(run.subject_type, input.access);
+      const allowed = decide(run.subject_type, run.subject_id);
       const { input_data, output_summary, subject_id, subject_type, ...rest } = run;
       return {
         ...rest,
@@ -465,11 +503,17 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
 }
 
 /**
- * A pending approval joined to its run's subject. `subject_type` decides the redaction and is
- * stripped before the row is returned — the join exists to answer a question, not to widen the
- * payload. `subject_id` is deliberately not selected at all.
+ * A pending approval joined to its run's subject. `subject_type` and `subject_id` decide the
+ * redaction and are both stripped before the row is returned — the join exists to answer a
+ * question, not to widen the payload.
+ *
+ * `subject_id` is selected now, deliberately, where PR #76 deliberately did not select it: row-
+ * level ownership resolution needs the id to know *which* lead (or account, or quote…) the
+ * approval concerns, not just that it concerns a lead. Selecting it here does not undo #76 — it
+ * is stripped before `AiReviewApproval` is built, the same way `subject_type` already is, so it
+ * never reaches the client. See `loadAiReviewRead` below.
  */
-type ApprovalRow = HumanApproval & { subject_type: string | null };
+type ApprovalRow = HumanApproval & { subject_type: string | null; subject_id: string | null };
 
 /**
  * `subject_restricted` carries the same meaning here as on the run reads: the reader lacks the
@@ -478,13 +522,16 @@ type ApprovalRow = HumanApproval & { subject_type: string | null };
  */
 export type AiReviewApproval = SerializableHumanApproval & { subject_restricted: boolean };
 
-export async function loadAiReviewRead(access: Partial<Record<Capability, boolean>>) {
+export async function loadAiReviewRead(
+  access: Partial<Record<Capability, boolean>>,
+  rows: RowAuthorizer,
+) {
   const [approvals, humanReviewRuns] = await Promise.all([
     query<ApprovalRow>(`
       select
         a.id, a.agent_run_id, a.approval_type, a.requested_by, a.assigned_to, a.status,
         a.context_data, a.context_summary, a.reviewer_notes, a.decided_at, a.created_at,
-        r.subject_type
+        r.subject_type, r.subject_id
       from human_approvals a
       left join agent_runs r on r.id = a.agent_run_id
       where a.status = 'pending'
@@ -503,12 +550,30 @@ export async function loadAiReviewRead(access: Partial<Record<Capability, boolea
     `),
   ]);
 
+  // One decision per distinct subject type across both approvals and humanReviewRuns, before
+  // either is mapped. An approval whose run was deleted (left join miss) has no subject_id to
+  // decide against, so it is left out here and denied explicitly below — the same fail-closed
+  // outcome `canReadAgentRunInput` gave a null subject_type.
+  const decide = await decideAgentSubjects(rows, [
+    ...approvals
+      .filter(
+        (row): row is ApprovalRow & { subject_type: string; subject_id: string } =>
+          row.subject_type !== null && row.subject_id !== null,
+      )
+      .map(({ subject_type, subject_id }) => ({ subject_type, subject_id })),
+    ...humanReviewRuns.map(({ subject_type, subject_id }) => ({ subject_type, subject_id })),
+  ]);
+
   return {
     approvals: approvals.map((row): AiReviewApproval => {
-      // `subject_type` is destructured off so it cannot reach the client. A left join means it
-      // is null for an approval whose run was deleted, which has no subject and so redacts.
-      const { subject_type, ...approval } = row;
-      const allowed = subject_type !== null && canReadAgentRunInput(subject_type, access);
+      // `subject_type` and `subject_id` are both destructured off so neither can reach the
+      // client — `subject_id` exists only to resolve the row's owner above, exactly as
+      // `redactLeadIdentity` in quote-workspace.ts treats an id as identity. A left join means
+      // both are null for an approval whose run was deleted, which has no subject and so
+      // redacts.
+      const { subject_type, subject_id, ...approval } = row;
+      const allowed =
+        subject_type !== null && subject_id !== null && decide(subject_type, subject_id);
       return {
         ...serializeHumanApproval(
           allowed
@@ -518,10 +583,10 @@ export async function loadAiReviewRead(access: Partial<Record<Capability, boolea
         subject_restricted: !allowed,
       };
     }),
-    // Redaction is in-memory, keyed on the same `access` map `requireCapabilitySet` resolves in
-    // the server function — no per-row ownership query, so the two `query()` calls above stay
-    // two and this route's maxQueries budget is unmoved.
-    humanReviewRuns: humanReviewRuns.map((run) => redactDirectoryRun(run, access)),
+    // Row-level: `decide` above resolved real ownership for every distinct subject across both
+    // arrays, so a `deny` override scoped to one lead redacts that lead's run without redacting
+    // a neighbouring run about a different lead of the same subject type.
+    humanReviewRuns: humanReviewRuns.map((run) => redactDirectoryRun(run, decide)),
   };
 }
 
