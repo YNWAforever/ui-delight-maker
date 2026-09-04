@@ -145,7 +145,30 @@ import { describe, expect, it } from "vitest";
  * times and pushed this to 230, which reads as four new enforcement sites that do not exist.
  * That comment now names behaviour rather than functions, and says why.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 227;
+/*
+ * 227 -> 225 on 2026-09-05, for the quotes list gaining row-level redaction — and this one
+ * goes DOWN, which needs explaining, because a falling count normally means enforcement was
+ * removed. It was not.
+ *
+ * getQuotesPage swapped its capability-set call for the page authorizer. That swap is
+ * count-neutral: both names are matched, and both appear once in the import and once at the
+ * call site. The drop of 2 comes from deleting a two-line COMMENT in that handler which named
+ * both helpers in prose. Its replacement follows the convention tasks.ts established and names
+ * behaviour instead.
+ *
+ * Which means this constant has been 2 too high since that comment was written. The guard has
+ * been counting two phantom enforcement sites, and only removing the prose revealed it. 225 is
+ * the number of real calls and imports, verified by measurement over src/server-functions/.
+ *
+ * Every quotes.view gate that existed still exists — getQuotesPage still requires it and still
+ * throws on denial. What the swap adds is the row authorizer, so a deny override scoped to one
+ * lead or client now redacts that quote's company name.
+ *
+ * Sixth time prose has moved this number on this project, and the first where it had been wrong
+ * for weeks rather than minutes. If you are about to write either identifier in a comment under
+ * src/server-functions/: don't.
+ */
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 225;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

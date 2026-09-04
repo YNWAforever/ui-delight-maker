@@ -22,7 +22,7 @@ const quoteFilters = {
 
 const filterValues = Object.values(quoteFilters);
 const sqlMarkers = Object.keys(quoteFilters);
-const visibility = { leads: true, clients: true };
+const searchScope = { leads: true, clients: true };
 
 describe("paginated quote repository", () => {
   beforeEach(() => {
@@ -36,7 +36,7 @@ describe("paginated quote repository", () => {
       .mockResolvedValueOnce([{ status: "sent", currency: "HKD", count: "7", total: "0" }]);
     const { listQuotesPage } = await import("../quotes");
 
-    const page = await listQuotesPage({ visibility });
+    const page = await listQuotesPage({ searchScope });
 
     expect(page).toMatchObject({
       items: [{ id: "quote-1" }],
@@ -64,7 +64,7 @@ describe("paginated quote repository", () => {
       ...quoteFilters,
       page: 2,
       limit: 500,
-      visibility,
+      searchScope,
     });
 
     expect(result).toMatchObject({ total: 7, page: 2, limit: 100 });
@@ -97,7 +97,7 @@ describe("paginated quote repository", () => {
       );
     const { listQuotesPage } = await import("../quotes");
 
-    const pending = listQuotesPage({ visibility });
+    const pending = listQuotesPage({ searchScope });
 
     // Both `query` calls fire synchronously inside the `Promise.all([...])` array
     // construction, before either awaits — this is the concurrency the aggregate depends on.

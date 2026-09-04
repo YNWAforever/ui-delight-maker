@@ -28,9 +28,9 @@ import { routeQueryOptions } from "@/lib/route-query";
 import { useIsExactPath } from "@/lib/routing-utils";
 import { getStatusLabel } from "@/lib/status-labels";
 import { createQuote, getQuotesPage, updateQuote } from "@/server-functions/quotes";
+import type { QuoteListItem } from "@/server-functions/quotes";
 import type { Quote, QuoteStatus } from "@/lib/types";
-import type { QuoteListAggregate, QuoteListRow } from "@/server/repositories/quotes";
-import type { QuoteListVisibility } from "@/server/repositories/quote-list-query";
+import type { QuoteListAggregate } from "@/server/repositories/quotes";
 
 /**
  * Every lifecycle value `quotes_status_check` allows, plus the neutral choice.
@@ -198,7 +198,7 @@ type LinkedRecord = {
   visible: boolean;
 };
 
-function linkedRecord(quote: QuoteListRow, visibility: QuoteListVisibility): LinkedRecord | null {
+function linkedRecord(quote: QuoteListItem): LinkedRecord | null {
   if (quote.client_id) {
     return {
       kind: "client",
@@ -207,7 +207,7 @@ function linkedRecord(quote: QuoteListRow, visibility: QuoteListVisibility): Lin
       // no company name is recorded. A null name means both things, and the flag is what
       // separates them.
       label: quote.linked_company_name ?? "Client",
-      visible: visibility.clients,
+      visible: !quote.linked_record_restricted,
     };
   }
   if (quote.lead_id) {
@@ -215,7 +215,7 @@ function linkedRecord(quote: QuoteListRow, visibility: QuoteListVisibility): Lin
       kind: "lead",
       id: quote.lead_id,
       label: quote.linked_company_name ?? "Lead",
-      visible: visibility.leads,
+      visible: !quote.linked_record_restricted,
     };
   }
   return null;
@@ -368,7 +368,7 @@ function QuotesIndex() {
     }
   };
 
-  const columns: ColumnDef<QuoteListRow>[] = [
+  const columns: ColumnDef<QuoteListItem>[] = [
     {
       id: "number",
       header: "Quote",
@@ -400,7 +400,7 @@ function QuotesIndex() {
       header: "Linked record",
       priority: "secondary",
       cell: (quote) => {
-        const linked = linkedRecord(quote, quotePage.visibility);
+        const linked = linkedRecord(quote);
         if (!linked) return <span className="text-muted-foreground">—</span>;
         // A link to a record this actor may not open is a guaranteed 403 — the same
         // dead-end BD-11 was filed for. Show the label, withhold the link.
@@ -532,7 +532,7 @@ function QuotesIndex() {
                 <p className="font-medium">{quoteTitle(quote)}</p>
                 <p className="text-xs text-muted-foreground">
                   {formatCount(quote.line_items.length)} line items ·{" "}
-                  {linkedRecord(quote, quotePage.visibility)?.label ?? "No linked record"}
+                  {linkedRecord(quote)?.label ?? "No linked record"}
                 </p>
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   <StatusBadge value={quote.status} domain="quotes" />

@@ -37,7 +37,7 @@ describe("listQuotesPage", () => {
         { status: "draft", currency: "USD", count: "3", total: "250.50" },
       ]);
 
-    const page = await listQuotesPage({ visibility: { leads: true, clients: true } });
+    const page = await listQuotesPage({ searchScope: { leads: true, clients: true } });
 
     expect(page.total).toBe(10);
     expect(page.aggregates).toEqual([
@@ -56,7 +56,7 @@ describe("listQuotesPage", () => {
     await listQuotesPage({
       status: "sent",
       search: "Acme",
-      visibility: { leads: true, clients: true },
+      searchScope: { leads: true, clients: true },
     });
 
     const [rowSql, rowValues] = mockQuery.mock.calls[0];
@@ -67,13 +67,18 @@ describe("listQuotesPage", () => {
     expect(rowValues.slice(0, aggValues.length)).toEqual(aggValues);
   });
 
-  it("omits the lead join from both queries when leads are not visible", async () => {
+  it("always joins both linked record types, in both queries, regardless of search scope", async () => {
+    // The join used to be conditional on `visibility`, so a denied capability meant an absent
+    // join. Redaction moved to a per-row decision made after this read (see
+    // src/server-functions/quotes.ts), so the join no longer varies with search scope at all —
+    // only the search predicate does, which is a separate, narrower concern.
     mockQuery.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
-    await listQuotesPage({ search: "Acme", visibility: { leads: false, clients: true } });
+    await listQuotesPage({ search: "Acme", searchScope: { leads: false, clients: true } });
 
     for (const [sql] of mockQuery.mock.calls) {
-      expect(sql).not.toContain("leads");
+      expect(sql).toContain("left join leads l on l.id = q.lead_id");
+      expect(sql).toContain("left join clients c on c.id = q.client_id");
     }
   });
 });

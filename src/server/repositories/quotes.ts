@@ -12,7 +12,7 @@ import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.s
 import { normalizePagination, type PaginationInput } from "@/server/repositories/pagination";
 import {
   buildQuoteListQuery,
-  type QuoteListVisibility,
+  type QuoteListSearchScope,
 } from "@/server/repositories/quote-list-query";
 
 export type QuoteFilters = {
@@ -158,12 +158,12 @@ type QuoteAggregateRow = {
 const CURRENCY = "coalesce(nullif(q.currency, ''), 'HKD')";
 
 export async function listQuotesPage(
-  filters: QuotePageFilters & { search?: string; visibility: QuoteListVisibility },
+  filters: QuotePageFilters & { search?: string; searchScope: QuoteListSearchScope },
 ): Promise<QuoteListPage> {
   const parts = buildQuoteListQuery({
     filters,
     search: filters.search,
-    visibility: filters.visibility,
+    searchScope: filters.searchScope,
   });
   const { page, limit, offset } = normalizePagination(filters);
 
