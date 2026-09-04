@@ -441,15 +441,21 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     maxQueries: 2,
   },
   {
-    // Both visibility flags on: the widest query this route can issue, with both joins
-    // present. Measuring the narrow case would let a join added later go uncounted.
+    // The join used to be conditional on a page-level `visibility` pair, so this entry passed
+    // both flags true deliberately — the widest query the route could issue, so a join added
+    // later could not go uncounted. The join is now unconditional (row-level redaction happens
+    // after this read, in getQuotesPage — a repository-level entry like this one bypasses that
+    // layer entirely, same as the "tasks" entry below), so there is no longer a narrow case to
+    // avoid measuring. `searchScope` is passed true/true anyway: it only shapes the search
+    // predicate, this call passes no search text so it cannot move the query count either way,
+    // and the widest setting is the safer default for anyone who copies this fixture later.
     // Still two queries — the aggregate replaced the count rather than joining it.
     route: "quotes",
     run: () =>
       listQuotesPage({
         page: 1,
         limit: 50,
-        visibility: { leads: true, clients: true },
+        searchScope: { leads: true, clients: true },
       }),
     maxQueries: 2,
   },
