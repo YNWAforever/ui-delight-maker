@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   requireCapability: vi.fn(),
   requireCapabilityChecks: vi.fn(),
   requireCapabilitySet: vi.fn(),
+  requirePageAuthorization: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => ({
@@ -28,6 +29,7 @@ vi.mock("@/server/auth/authorization.server", () => ({
   requireCapability: mocks.requireCapability,
   requireCapabilityChecks: mocks.requireCapabilityChecks,
   requireCapabilitySet: mocks.requireCapabilitySet,
+  requirePageAuthorization: mocks.requirePageAuthorization,
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
@@ -44,11 +46,19 @@ vi.mock("@/server/repositories/agent-runs", () => ({
 
 const loadModule = () => import("../agent-runs");
 
+/** A no-op `RowAuthorizer` stub — these tests assert on `access` and query shape, not on any
+ * particular row-level verdict. */
+const stubRowAuthorizer = { allow: vi.fn().mockResolvedValue(new Map()) };
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.requireCapability.mockResolvedValue({ profile: { id: "user-1" } });
   mocks.requireCapabilityChecks.mockResolvedValue({ profile: { id: "user-1" } });
   mocks.requireCapabilitySet.mockResolvedValue({ "agents.view": true, "leads.view": true });
+  mocks.requirePageAuthorization.mockResolvedValue({
+    access: { "agents.view": true, "leads.view": true },
+    rows: stubRowAuthorizer,
+  });
   mocks.query.mockResolvedValue([]);
 });
 
@@ -77,7 +87,7 @@ describe("agent operational read models", () => {
 
     // agents.view stays required and still throws on denial; the subject capabilities are
     // requested as optional so the read model can redact per row without a second load.
-    expect(mocks.requireCapabilitySet).toHaveBeenCalledWith(["agents.view"], {
+    expect(mocks.requirePageAuthorization).toHaveBeenCalledWith(["agents.view"], {
       optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
     });
     expect(mocks.query).toHaveBeenNthCalledWith(1, expect.stringContaining("count(*)"), [
@@ -121,10 +131,10 @@ describe("agent operational read models", () => {
     // approvals.view and agents.view both stay required and still throw on denial exactly as
     // the requireCapabilityChecks pair they replaced; the subject capabilities are requested as
     // optional so the read model can redact each run's content per row without a second load.
-    expect(mocks.requireCapabilitySet).toHaveBeenCalledWith(["approvals.view", "agents.view"], {
+    expect(mocks.requirePageAuthorization).toHaveBeenCalledWith(["approvals.view", "agents.view"], {
       optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
     });
-    expect(mocks.requireCapabilitySet.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mocks.requirePageAuthorization.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.query.mock.invocationCallOrder[0],
     );
     expect(result).toMatchObject({

@@ -104,6 +104,29 @@ import { describe, expect, it } from "vitest";
  * redact each run's content against its own subject, the same as the history page already does
  * — not shipping every run's summary and subject to anyone who can see agents (and, on
  * ai-review, approvals).
+ *
+ * 226, pattern widened, on 2026-09-04, for row-level agent redaction (BD-3 slice 3 PR C). The
+ * count itself did not move: it fell from 226 to 222 on this branch, and the four that
+ * disappeared were not four checks that stopped enforcing. They were three call sites in
+ * agent-runs.ts (getAgentDirectoryRead, getAgentHistoryPage, getAiReviewRead) that swapped
+ * requireCapabilitySet(...) for requirePageAuthorization(...), plus that name's own import
+ * line — requirePageAuthorization does not contain the substring "requireCapability", so the
+ * old regex went blind to all four the moment the swap landed.
+ *
+ * requirePageAuthorization is an enforcement call, not a different kind of thing: it takes the
+ * same required-capabilities list requireCapabilitySet did and throws on a denied required
+ * capability exactly as requireCapabilitySet and requireCapability do. What it adds is the row
+ * authorizer (RowAuthorizer) that the read model uses afterward to redact per record — that is
+ * additional behavior layered on top of the same required-capability enforcement, not a
+ * replacement for it. So the scan below now matches both identifiers, the constant stays at
+ * 226 to reflect that the surface itself is unchanged, and a future handler that calls
+ * requirePageAuthorization instead of requireCapability/requireCapabilitySet will still be
+ * counted rather than silently falling outside the guard's view.
+ *
+ * Verified before changing: grep -c for requirePageAuthorization across src/server-functions/
+ * agent-runs.ts (the only top-level file using it) finds 4 occurrences — the import line plus
+ * the three call sites named above — and 222 + 4 = 226, the same total this file already
+ * expected before the swap.
  */
 const EXPECTED_REQUIRE_CAPABILITY_CALLS = 226;
 
@@ -115,7 +138,12 @@ describe("authorization surface", () => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       if (!entry.isFile() || !entry.name.endsWith(".ts")) continue;
       const source = readFileSync(resolve(dir, entry.name), "utf8");
-      count += source.match(/requireCapability/g)?.length ?? 0;
+      // requirePageAuthorization is counted alongside requireCapability: it is the same kind
+      // of call (required capabilities, throws on denial) under a different name, introduced
+      // when a call site adds row-level redaction on top of the same enforcement. Without this,
+      // the guard would be blind to any handler that uses requirePageAuthorization instead of
+      // requireCapability/requireCapabilitySet.
+      count += source.match(/requireCapability|requirePageAuthorization/g)?.length ?? 0;
     }
 
     expect(count).toBe(EXPECTED_REQUIRE_CAPABILITY_CALLS);
