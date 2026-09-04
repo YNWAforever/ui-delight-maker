@@ -264,7 +264,17 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // `select distinct on (workflow_type)`. It rides in the existing Promise.all, so this is
     // one more query and no more round trips. Without it this page renders the code catalogue's
     // status while the dispatch path obeys a stored override.
-    maxQueries: 5,
+    //
+    // 5 -> 7 on 2026-09-04, for row-level agent redaction (BD-3 slice 3 PR C). fixtureRows()
+    // now resolves real per-row ownership instead of an in-memory allow-all, and that costs
+    // one query per distinct subject type present on the page. The directory fixture spans
+    // three distinct subject types, so this is +3, not +1 — three separate
+    // resolveOwnerProfileIds calls, one per type, not an N+1 fan-out over rows. The figure
+    // tracks this fixture, not production: a real directory page spanning more subject types
+    // costs more. What the third query buys: row-level ownership resolution, so a deny
+    // override scoped to one record finally redacts that row instead of only ever redacting
+    // (or admitting) an entire subject type at once.
+    maxQueries: 7,
   },
   {
     // getAgentHistoryPage() (src/server-functions/agent-runs.ts) awaits
@@ -308,9 +318,19 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // ownership query runs and this entry's query count is unchanged. Redaction of
     // humanReviewRuns happens in memory in loadAiReviewRead, same as loadAgentDirectoryRead
     // above — an empty map redacts every row and still issues the same two queries.
+    //
+    // 2 -> 3 on 2026-09-04, for row-level agent redaction (BD-3 slice 3 PR C), the same change
+    // as the agents entry above: fixtureRows() now resolves real per-row ownership rather than
+    // an in-memory allow-all, at a cost of one query per distinct subject type present on the
+    // page. The ai-review fixture spans one distinct subject type, so this is +1, not an N+1 —
+    // a single resolveOwnerProfileIds call, not one per row. The figure tracks this fixture,
+    // not production: a real ai-review page spanning more subject types costs more. What the
+    // third query buys: row-level ownership resolution, so a deny override scoped to one
+    // record finally redacts that row instead of only ever redacting (or admitting) an entire
+    // subject type at once.
     route: "ai-review",
     run: () => loadAiReviewRead({}, fixtureRows()),
-    maxQueries: 2,
+    maxQueries: 3,
   },
   {
     route: "approvals",
