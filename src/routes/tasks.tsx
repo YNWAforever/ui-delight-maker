@@ -52,6 +52,7 @@ import { routeQueryOptions } from "@/lib/route-query";
 import { getDerivedStatusLabel, getStatusLabel, isOverdue } from "@/lib/status-labels";
 import { cn } from "@/lib/utils";
 import { getTasks, createTask, updateTask } from "@/server-functions/tasks";
+import type { TaskListItem } from "@/server-functions/tasks";
 import type { Task, TaskStatus } from "@/lib/types";
 
 /**
@@ -128,7 +129,25 @@ const COLUMNS: { id: TaskStatus; label: string }[] = [
 
 const OVERDUE_LABEL = getDerivedStatusLabel("overdue").label;
 
-const replaceOnlyTaskStatus = (tasks: Task[], id: string, status: TaskStatus) =>
+/**
+ * The wording `getTasks` implies with `restricted: true`, matched to the short/long split
+ * `/ai-review` and `/agents` already use for this same distinction: a compact label for a
+ * name-sized slot, and a full sentence for a body-sized one. Task rows are gated on the
+ * task's own ownership (`tasks.view` against `resourceType: "task"`), not a record the task
+ * points at, so this says "this task", not "a record".
+ */
+const RESTRICTED_TASK_TITLE = "Task restricted.";
+const RESTRICTED_TASK_DESCRIPTION = "Restricted. You do not have permission to view this task.";
+
+function taskTitle(task: TaskListItem): string {
+  return task.restricted ? RESTRICTED_TASK_TITLE : (task.title ?? "");
+}
+
+function taskDescription(task: TaskListItem): string | null {
+  return task.restricted ? RESTRICTED_TASK_DESCRIPTION : task.description;
+}
+
+const replaceOnlyTaskStatus = (tasks: TaskListItem[], id: string, status: TaskStatus) =>
   tasks.map((task) => (task.id === id ? { ...task, status } : task));
 
 function TasksBoard() {
@@ -173,7 +192,7 @@ function TasksBoard() {
     const needle = query.trim().toLowerCase();
     if (needle === "") return rows;
     return rows.filter((task) =>
-      `${task.title} ${task.description ?? ""}`.toLowerCase().includes(needle),
+      `${taskTitle(task)} ${taskDescription(task) ?? ""}`.toLowerCase().includes(needle),
     );
   }, [rows, query]);
 
@@ -228,15 +247,17 @@ function TasksBoard() {
 
     markPending(id);
     await queryClient.cancelQueries({ queryKey: crmQueryKeys.tasks.lists() });
-    queryClient.setQueriesData<Task[]>({ queryKey: crmQueryKeys.tasks.lists() }, (current) =>
-      current ? replaceOnlyTaskStatus(current, id, status) : current,
+    queryClient.setQueriesData<TaskListItem[]>(
+      { queryKey: crmQueryKeys.tasks.lists() },
+      (current) => (current ? replaceOnlyTaskStatus(current, id, status) : current),
     );
 
     try {
       await updateTask({ data: { id, updates: { status } } });
     } catch {
-      queryClient.setQueriesData<Task[]>({ queryKey: crmQueryKeys.tasks.lists() }, (current) =>
-        current ? replaceOnlyTaskStatus(current, id, previousStatus) : current,
+      queryClient.setQueriesData<TaskListItem[]>(
+        { queryKey: crmQueryKeys.tasks.lists() },
+        (current) => (current ? replaceOnlyTaskStatus(current, id, previousStatus) : current),
       );
       toast.error("Task move failed. Try again.");
       clearPending(id);
@@ -260,7 +281,13 @@ function TasksBoard() {
 
   const createAndRefresh = async (payload: CreateTaskPayload) => {
     const created = await createTask({ data: payload });
-    queryClient.setQueryData<Task[]>(tasksQueryKey, (current) => [created, ...(current ?? [])]);
+    // A task the caller just created is never restricted for them — they hold `tasks.create`
+    // and the task's own ownership resolves to the assignee they just set (or nobody).
+    const createdListItem: TaskListItem = { ...created, restricted: false };
+    queryClient.setQueryData<TaskListItem[]>(tasksQueryKey, (current) => [
+      createdListItem,
+      ...(current ?? []),
+    ]);
     await queryClient.invalidateQueries({ queryKey: crmQueryKeys.tasks.lists() });
     toast.success("Task created");
   };
@@ -281,7 +308,7 @@ function TasksBoard() {
     .filter(Boolean)
     .join(" · ");
 
-  const listColumns: ColumnDef<Task>[] = [
+  const listColumns: ColumnDef<TaskListItem>[] = [
     {
       id: "task",
       header: "Task",
@@ -290,9 +317,11 @@ function TasksBoard() {
       width: "18rem",
       cell: (task) => (
         <div className="min-w-0">
-          <span className="font-medium">{task.title}</span>
-          {task.description && (
-            <span className="block truncate text-xs text-muted-foreground">{task.description}</span>
+          <span className="font-medium">{taskTitle(task)}</span>
+          {taskDescription(task) && (
+            <span className="block truncate text-xs text-muted-foreground">
+              {taskDescription(task)}
+            </span>
           )}
         </div>
       ),
@@ -350,8 +379,8 @@ function TasksBoard() {
     },
   ];
 
-  const taskRowActions = (task: Task) => (
-    <RowActionsMenu label={`Actions for ${task.title}`}>
+  const taskRowActions = (task: TaskListItem) => (
+    <RowActionsMenu label={`Actions for ${taskTitle(task)}`}>
       {COLUMNS.filter((column) => column.id !== task.status).map((column) => (
         <DropdownMenuItem
           key={column.id}
@@ -510,9 +539,9 @@ function TasksBoard() {
                     <StatusBadge domain="tasks" value={task.status} />
                     <StatusBadge domain="priority" value={task.priority} />
                   </div>
-                  <p className="text-sm font-medium">{task.title}</p>
-                  {task.description && (
-                    <p className="text-xs text-muted-foreground">{task.description}</p>
+                  <p className="text-sm font-medium">{taskTitle(task)}</p>
+                  {taskDescription(task) && (
+                    <p className="text-xs text-muted-foreground">{taskDescription(task)}</p>
                   )}
                   <p
                     className={cn(
@@ -558,7 +587,7 @@ function TasksBoard() {
                             key={t.id}
                             role="button"
                             tabIndex={isPending ? -1 : 0}
-                            aria-label={`${t.title} — ${col.label}. Press left or right arrow to move between columns.`}
+                            aria-label={`${taskTitle(t)} — ${col.label}. Press left or right arrow to move between columns.`}
                             aria-busy={isPending}
                             aria-disabled={isPending}
                             draggable={!isPending}
@@ -581,10 +610,12 @@ function TasksBoard() {
                             )}
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <p className="text-sm font-medium leading-snug">{t.title}</p>
+                              <p className="text-sm font-medium leading-snug">{taskTitle(t)}</p>
                               <StatusBadge domain="priority" value={t.priority} />
                             </div>
-                            <p className="mt-2 text-xs text-muted-foreground">{t.description}</p>
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              {taskDescription(t)}
+                            </p>
                             <div className="mt-3 flex items-center justify-between gap-2 text-xs">
                               <span
                                 className={cn(

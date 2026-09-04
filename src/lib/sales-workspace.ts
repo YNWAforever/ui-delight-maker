@@ -200,7 +200,17 @@ export function getClientPortfolioMetrics(clients: Client[], today: string) {
   };
 }
 
-export function getTaskBoardMetrics(tasks: Task[], today: string) {
+/**
+ * Only the three columns this reads: `status`, `due_date`, `priority`. All three survive
+ * task-content redaction unchanged (`src/server-functions/tasks.ts`'s `getTasks` only nulls
+ * `title`/`description`), so the narrower `Pick` — rather than `Task[]` — is what lets both
+ * the full `Task[]` shape and `TaskListItem[]` (`title`/`description` widened to nullable,
+ * plus `restricted`) satisfy this signature honestly, without a cast at either call site.
+ */
+export function getTaskBoardMetrics(
+  tasks: Pick<Task, "status" | "due_date" | "priority">[],
+  today: string,
+) {
   const openTasks = tasks.filter((task) => task.status !== "done");
   const todayKey = dateKey(today);
   return {
