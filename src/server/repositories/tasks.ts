@@ -57,7 +57,9 @@ export async function listTasks(filters: TaskFilters = {}) {
 
   return query<Task>(
     `
-      select *
+      select
+        id, title, description, assigned_to, account_id, due_date, priority, status,
+        created_by_agent
       from tasks
       ${where.sql}
       order by created_at desc
