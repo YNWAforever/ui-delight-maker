@@ -53,10 +53,11 @@ import {
 } from "@/server-functions/client-contacts";
 import { getTouchpointsByClient } from "@/server-functions/touchpoints";
 import { getTasks } from "@/server-functions/tasks";
+import type { TaskListItem } from "@/server-functions/tasks";
 import { getProducts } from "@/server-functions/products";
 import { getClientWorkspaceRead } from "@/server-functions/client-workspace";
 import type { SerializableActivityLog } from "@/lib/serializable";
-import type { ClientContact, Engagement, Task, TouchpointRecord } from "@/lib/types";
+import type { ClientContact, Engagement, TouchpointRecord } from "@/lib/types";
 
 export const Route = createFileRoute("/clients/$id")({
   validateSearch: clientDetailSearchSchema,
@@ -1248,7 +1249,7 @@ function ContactDialog({
   );
 }
 
-function ClientTasksPanel({ tasks }: { tasks: Task[] }) {
+function ClientTasksPanel({ tasks }: { tasks: TaskListItem[] }) {
   if (tasks.length === 0) {
     return (
       <EmptyWorkspaceState
@@ -1263,7 +1264,10 @@ function ClientTasksPanel({ tasks }: { tasks: Task[] }) {
       {tasks.map((t) => (
         <li key={t.id} className="flex items-center justify-between gap-3 py-3">
           <div className="min-w-0">
-            <p className="text-sm font-medium">{t.title}</p>
+            {/* Same restricted wording `/tasks` uses: `getTasks` nulls `title` for a task this
+                reader's own `tasks.view` denies, and `restricted` says so rather than leaving
+                the row looking merely untitled. */}
+            <p className="text-sm font-medium">{t.restricted ? "Task restricted." : t.title}</p>
             <p className="text-xs text-muted-foreground">
               Due {t.due_date ? formatDate(t.due_date) : "—"} · {t.assigned_to ?? "Unassigned"}
             </p>
