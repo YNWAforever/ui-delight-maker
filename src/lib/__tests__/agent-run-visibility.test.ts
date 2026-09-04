@@ -1,11 +1,32 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   AGENT_SUBJECT_VIEW_CAPABILITIES,
   AGENT_SUBJECT_VIEW_CAPABILITY,
+  AGENT_SUBJECT_VISIBILITY,
   canReadAgentRunInput,
+  decideAgentSubjects,
   subjectViewCapability,
 } from "@/lib/agent-run-visibility";
 import { CAPABILITIES } from "@/lib/admin/types";
+import { NEON_OWNED_RESOURCE_TYPES } from "@/server/auth/resource-ownership";
+import type { RowAuthorizer } from "@/server/auth/authorization.server";
+
+/**
+ * A stubbed `RowAuthorizer` whose `allow` answers from a fixed id -> verdict map, defaulting to
+ * `false` for any id not named — so a test only has to spell out the ids it cares about.
+ */
+function stubRows(verdicts: Record<string, boolean> = {}): RowAuthorizer & {
+  allow: ReturnType<typeof vi.fn>;
+} {
+  const allow = vi.fn(
+    async (_capability: string, _resourceType: string, ids: readonly string[]) => {
+      const decided = new Map<string, boolean>();
+      for (const id of ids) decided.set(id, verdicts[id] ?? false);
+      return decided;
+    },
+  );
+  return { allow };
+}
 
 describe("agent run subject visibility", () => {
   it("names a capability for every subject_type the database can store", () => {
@@ -78,5 +99,73 @@ describe("agent run subject visibility", () => {
 
   it("treats a capability the actor was never asked about as not held", () => {
     expect(canReadAgentRunInput("lead", {})).toBe(false);
+  });
+
+  it("resolves every resourceType under a key Neon ownership actually resolves", () => {
+    // A resourceType outside NEON_OWNED_RESOURCE_TYPES resolves no owner, which denies every
+    // manager on every run of that subject type and makes a resource-scoped deny override
+    // never match — the exact failure mode `approval` -> `human_approval` exists to avoid.
+    for (const entry of Object.values(AGENT_SUBJECT_VISIBILITY)) {
+      expect(NEON_OWNED_RESOURCE_TYPES).toContain(entry.resourceType);
+    }
+  });
+});
+
+describe("decideAgentSubjects", () => {
+  it("calls rows.allow once per distinct subject type, not once per row", async () => {
+    const rows = stubRows({ "lead-1": true, "lead-2": true, "campaign-1": true });
+    await decideAgentSubjects(rows, [
+      { subject_type: "lead", subject_id: "lead-1" },
+      { subject_type: "lead", subject_id: "lead-2" },
+      { subject_type: "campaign", subject_id: "campaign-1" },
+    ]);
+
+    expect(rows.allow).toHaveBeenCalledTimes(2);
+    expect(rows.allow).toHaveBeenCalledWith(
+      "leads.view",
+      "lead",
+      expect.arrayContaining(["lead-1", "lead-2"]),
+    );
+    expect(rows.allow).toHaveBeenCalledWith("campaigns.view", "campaign", ["campaign-1"]);
+  });
+
+  it("sends one id per subject even when two runs share the same subject", async () => {
+    const rows = stubRows({ "lead-1": true });
+    await decideAgentSubjects(rows, [
+      { subject_type: "lead", subject_id: "lead-1" },
+      { subject_type: "lead", subject_id: "lead-1" },
+    ]);
+
+    expect(rows.allow).toHaveBeenCalledTimes(1);
+    const [, , ids] = rows.allow.mock.calls[0] as [string, string, readonly string[]];
+    expect(ids).toEqual(["lead-1"]);
+  });
+
+  it("refuses an unmapped subject_type without ever calling rows.allow", async () => {
+    const rows = stubRows();
+    const decide = await decideAgentSubjects(rows, [
+      { subject_type: "job_sheet", subject_id: "js-1" },
+    ]);
+
+    expect(rows.allow).not.toHaveBeenCalled();
+    expect(decide("job_sheet", "js-1")).toBe(false);
+  });
+
+  it("resolves an approval subject's ownership under human_approval, not approval", async () => {
+    const rows = stubRows({ "approval-1": true });
+    await decideAgentSubjects(rows, [{ subject_type: "approval", subject_id: "approval-1" }]);
+
+    expect(rows.allow).toHaveBeenCalledWith("approvals.view", "human_approval", ["approval-1"]);
+  });
+
+  it("returns the authorizer's own verdict per subject, denied and allowed alike", async () => {
+    const rows = stubRows({ "lead-allow": true, "lead-deny": false });
+    const decide = await decideAgentSubjects(rows, [
+      { subject_type: "lead", subject_id: "lead-allow" },
+      { subject_type: "lead", subject_id: "lead-deny" },
+    ]);
+
+    expect(decide("lead", "lead-allow")).toBe(true);
+    expect(decide("lead", "lead-deny")).toBe(false);
   });
 });
