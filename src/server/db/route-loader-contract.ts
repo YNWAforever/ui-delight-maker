@@ -503,6 +503,15 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     route: "tasks",
+    // Unchanged at 1 on 2026-09-04, deliberately, and worth explaining: the tasks list gained
+    // row-level redaction that same day, which costs one ownership query per page. That query
+    // does NOT appear here, because this entry calls the repository directly while the
+    // authorization lives in getTasks, the server function above it. So the route really costs
+    // two queries and this budget measures one.
+    //
+    // The number is still right for what it guards — a regression inside listTasks itself —
+    // but it is not a statement about what the route costs end to end. Raising it to 2 would
+    // be worse: it would leave a query of slack that a real N+1 could hide in.
     run: () => listTasks({}),
     maxQueries: 1,
   },

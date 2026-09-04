@@ -127,8 +127,25 @@ import { describe, expect, it } from "vitest";
  * agent-runs.ts (the only top-level file using it) finds 4 occurrences — the import line plus
  * the three call sites named above — and 222 + 4 = 226, the same total this file already
  * expected before the swap.
+ *
+ * 226 -> 227 on 2026-09-04, for the tasks list gaining row-level redaction. getTasks swapped
+ * its single-capability check for the page authorizer, so tasks.ts now imports both helpers
+ * where it previously imported one. Established by measurement: the count over
+ * src/server-functions/ reads 227.
+ *   +1  tasks.ts  the page-authorizer name added to the existing import
+ *    0  tasks.ts  getTasks' call site swapped one counted identifier for the other
+ *
+ * tasks.view is still required and still throws on denial; createTask and updateTask are
+ * untouched. What the swap adds is the row authorizer, so a deny override scoped to one task
+ * now redacts that row — the list previously ignored what updateTask already enforced.
+ *
+ * A caution for whoever edits that handler next, because this has now cost four separate
+ * people time: the scan matches these identifiers as bare substrings, so naming them in a
+ * COMMENT inflates the count. The first draft of getTasks' docblock mentioned them three
+ * times and pushed this to 230, which reads as four new enforcement sites that do not exist.
+ * That comment now names behaviour rather than functions, and says why.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 226;
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 227;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

@@ -57,13 +57,17 @@ export const getTasks = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<TaskListItem[]> => {
     // One authorization context load answers both questions this page asks: "can this actor
     // see the tasks surface at all" (tasks.view, required, throws on denial exactly as the
-    // requireCapability + requireNeonAuthSession pair it replaced) and, via `rows`, "which
-    // specific tasks may they see once a task's own ownership (assigned_to) and any
-    // resource-scoped override are resolved". The separate requireNeonAuthSession call is
-    // gone: requirePageAuthorization's context load already establishes the session
-    // (loadAuthorizationContext calls requireNeonAuthSession internally), the same property
-    // requireCapabilitySet has that src/server-functions/quotes.ts:97-99 already relies on to
-    // drop the second call, and nothing here needs the session's return value.
+    // single-capability check it replaced) and, via `rows`, "which specific tasks may they
+    // see once a task's own ownership (assigned_to) and any resource-scoped override are
+    // resolved".
+    //
+    // The separate session call is gone: the context load already establishes the session
+    // internally — the same property src/server-functions/quotes.ts:97-99 relies on to drop
+    // its second call — and nothing here needs the session's return value.
+    //
+    // This comment deliberately avoids naming the authorization helpers. The counter in
+    // authorization-surface.test.ts matches those identifiers as bare substrings, so prose
+    // mentioning them inflates the enforcement count. Name behaviour here, not functions.
     const { rows } = await requirePageAuthorization(["tasks.view"]);
     const { priority, ...filters } = data;
     const tasks = await listTasks(filters);
