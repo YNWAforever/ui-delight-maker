@@ -9,7 +9,7 @@ import type {
   PermissionOverride,
 } from "@/lib/admin/types";
 import { requireNeonAuthSession, type AppSession } from "@/lib/auth/neon-auth.server";
-import { resolveOwnerProfileId } from "@/server/auth/resource-ownership";
+import { resolveOwnerProfileId, resolveOwnerProfileIds } from "@/server/auth/resource-ownership";
 import { query } from "@/server/db/neon.server";
 
 type IdRow = { id: string };
@@ -224,6 +224,72 @@ export async function requireCapabilitySet(
 
   return access;
 }
+/**
+ * Decides a page of rows of one resource type against a context already loaded.
+ *
+ * `allow` costs one ownership query per call — per distinct resource type, not per row — and
+ * no context load at all, because the context is captured when the authorizer is built.
+ */
+export type RowAuthorizer = {
+  allow(
+    capability: Capability,
+    resourceType: string,
+    ids: readonly string[],
+  ): Promise<Map<string, boolean>>;
+};
+
+/**
+ * Capability-level access and a row-level authorizer, from **one** context load.
+ *
+ * The two come together deliberately. Callers that need per-row decisions already call
+ * `requireCapabilitySet` for the page-level gate, so a standalone authorizer would load a
+ * second context — eight queries before a row is read, on routes budgeted at four. Returning
+ * both from one call makes the single load structural rather than something each caller has
+ * to remember.
+ *
+ * `access` behaves exactly as `requireCapabilitySet`'s return does: required capabilities
+ * throw on denial, optional ones come back as booleans.
+ */
+export async function requirePageAuthorization(
+  required: readonly Capability[],
+  options: { optional?: readonly Capability[] } = {},
+): Promise<{ access: Partial<Record<Capability, boolean>>; rows: RowAuthorizer }> {
+  const context = await loadAuthorizationContext();
+  const access: Partial<Record<Capability, boolean>> = {};
+
+  for (const capability of required) {
+    const decision = evaluate(context, capability, {});
+    if (!decision.allowed) throw decisionError(decision);
+    access[capability] = true;
+  }
+
+  for (const capability of options.optional ?? []) {
+    access[capability] = evaluate(context, capability, {}).allowed;
+  }
+
+  const rows: RowAuthorizer = {
+    async allow(capability, resourceType, ids) {
+      const decided = new Map<string, boolean>();
+      if (ids.length === 0) return decided;
+
+      const owners = await resolveOwnerProfileIds(resourceType, ids);
+      for (const id of ids) {
+        const ownerProfileId = owners.get(id) ?? null;
+        // Built exactly as resolveAuthorizationTarget does — the key is OMITTED when there is
+        // no owner, not set to null. managerCanTarget reads its absence, and the equivalence
+        // property depends on both paths producing the same shape.
+        const target: AuthorizationTarget = ownerProfileId
+          ? { resourceType, resourceId: id, ownerProfileId }
+          : { resourceType, resourceId: id };
+        decided.set(id, evaluate(context, capability, target).allowed);
+      }
+      return decided;
+    },
+  };
+
+  return { access, rows };
+}
+
 export async function requireAnyCapability(
   capabilities: readonly Capability[],
   target: AuthorizationTarget = {},

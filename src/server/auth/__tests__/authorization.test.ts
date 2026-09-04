@@ -25,6 +25,7 @@ import {
   requireCapability,
   requireCapabilityChecks,
   requireCapabilitySet,
+  requirePageAuthorization,
 } from "../authorization.server";
 
 function session(role: AppSession["profile"]["role"] = "manager"): AppSession {
@@ -71,12 +72,20 @@ function installDatabaseRows(
 ) {
   mocks.query.mockImplementation(async (sql: string, values: readonly unknown[]) => {
     if (sql.includes("from accounts")) {
-      // The batch query passes the id array as $1, i.e. values === [ids]. Key off the array's
-      // first element explicitly — real callers here only ever ask for one id at a time, but
-      // reading through `values[0]` as a scalar (as the old single-id query allowed) would be
-      // relying on a one-element array coincidentally stringifying to its own element.
-      const [id] = values[0] as string[];
-      return [{ id, owner_profile_id: options.resourceOwners?.[id] ?? "actor-1" }];
+      // The batch query passes the id array as $1, i.e. values === [ids]. Answer every id in
+      // the batch, not just the first — `requirePageAuthorization`'s row authorizer calls this
+      // with many ids at once, and a mock that only resolved the first would let a batch-only
+      // bug hide behind tests that happen to ask for one id at a time. An id explicitly mapped
+      // to `null` in resourceOwners answers unowned; `??` would treat that the same as "not
+      // mentioned" and fall back to "actor-1", so this checks for the key instead.
+      const ids = values[0] as string[];
+      return ids.map((id) => ({
+        id,
+        owner_profile_id:
+          options.resourceOwners && id in options.resourceOwners
+            ? options.resourceOwners[id]
+            : "actor-1",
+      }));
     }
     expect(values).toEqual(["actor-1"]);
     if (sql.includes("from departments")) {
@@ -369,5 +378,111 @@ describe("admin authorization orchestration", () => {
         managedTeamIds: ["team-injected"],
       } as never),
     ).rejects.toMatchObject({ code: "OUTSIDE_SCOPE" });
+  });
+
+  /**
+   * `requirePageAuthorization`'s `rows.allow` decides a page of rows from one context load
+   * instead of calling `requireCapability` once per row. The whole safety argument for doing
+   * that rests on one property: for any single id, `rows.allow(c, t, [id])` must return exactly
+   * what `requireCapability(c, { resourceType: t, resourceId: id })` decides. Each case below
+   * runs both paths against the same fixture and asserts they agree, rather than merely
+   * asserting the batched path returns some expected value on its own.
+   */
+  describe("rows.allow agrees with requireCapability for the same target", () => {
+    it("denies a manager an unowned row, matching requireCapability's rejection", async () => {
+      installDatabaseRows({ resourceOwners: { "account-unowned": null } });
+
+      await expect(
+        requireCapability("accounts.update", {
+          resourceType: "account",
+          resourceId: "account-unowned",
+        }),
+      ).rejects.toEqual(new AdminError("OUTSIDE_SCOPE", "Target is outside your management scope"));
+
+      const { rows } = await requirePageAuthorization(["accounts.view"]);
+      const decided = await rows.allow("accounts.update", "account", ["account-unowned"]);
+      expect(decided.get("account-unowned")).toBe(false);
+    });
+
+    it("grants a sales role the same unowned row, matching requireCapability's resolution", async () => {
+      mocks.requireNeonAuthSession.mockResolvedValue(session("sales"));
+      installDatabaseRows({ resourceOwners: { "account-unowned": null } });
+
+      await expect(
+        requireCapability("accounts.update", {
+          resourceType: "account",
+          resourceId: "account-unowned",
+        }),
+      ).resolves.toMatchObject({ profile: { id: "actor-1" } });
+
+      const { rows } = await requirePageAuthorization(["accounts.view"]);
+      const decided = await rows.allow("accounts.update", "account", ["account-unowned"]);
+      expect(decided.get("account-unowned")).toBe(true);
+    });
+
+    it("agrees with requireCapability for a manager's in-scope and out-of-scope owners, batched", async () => {
+      installDatabaseRows({
+        reports: ["report-1"],
+        resourceOwners: {
+          "account-in-scope": "report-1",
+          "account-out-of-scope": "someone-else",
+        },
+      });
+
+      await expect(
+        requireCapability("accounts.update", {
+          resourceType: "account",
+          resourceId: "account-in-scope",
+        }),
+      ).resolves.toMatchObject({ profile: { id: "actor-1" } });
+      await expect(
+        requireCapability("accounts.update", {
+          resourceType: "account",
+          resourceId: "account-out-of-scope",
+        }),
+      ).rejects.toEqual(new AdminError("OUTSIDE_SCOPE", "Target is outside your management scope"));
+
+      const { rows } = await requirePageAuthorization(["accounts.view"]);
+      // The out-of-scope id is listed first so a batch that only resolved the first id's owner
+      // (the bug the "from accounts" mock used to have) would leave the second id's ownership
+      // unresolved and deny it too, silently passing this assertion for the wrong reason.
+      const decided = await rows.allow("accounts.update", "account", [
+        "account-out-of-scope",
+        "account-in-scope",
+      ]);
+      expect(decided.get("account-out-of-scope")).toBe(false);
+      expect(decided.get("account-in-scope")).toBe(true);
+    });
+
+    it("honours a resource-scoped deny override on a batched row", async () => {
+      installDatabaseRows({
+        reports: ["report-1"],
+        resourceOwners: { "account-denied": "report-1" },
+        overrides: [
+          {
+            profile_id: "actor-1",
+            capability: "accounts.update",
+            effect: "deny",
+            department_id: null,
+            team_id: null,
+            resource_type: "account",
+            resource_id: "account-denied",
+            expires_at: null,
+            revoked_at: null,
+          },
+        ],
+      });
+
+      await expect(
+        requireCapability("accounts.update", {
+          resourceType: "account",
+          resourceId: "account-denied",
+        }),
+      ).rejects.toEqual(new AdminError("FORBIDDEN", "You do not have this capability"));
+
+      const { rows } = await requirePageAuthorization(["accounts.view"]);
+      const decided = await rows.allow("accounts.update", "account", ["account-denied"]);
+      expect(decided.get("account-denied")).toBe(false);
+    });
   });
 });
