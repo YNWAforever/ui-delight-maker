@@ -129,7 +129,17 @@ const SECOND_LEAD_QUOTE_NUMBER = "BD9-Q-003";
 const SECOND_LEAD_QUOTE_2_NUMBER = "BD9-Q-005";
 
 // Five quotes so a limit of 2 spans three pages — enough to walk, without seeding 50 rows.
-const SEEDED_QUOTE_COUNT = 5;
+// 5 -> 7 on 2026-09-05, when the manager fixture below added two more quotes under
+// SCOPE_ACCOUNT_ID. They belong there: the manager test reaches them through `listAs`, which
+// filters on that account.
+//
+// This constant describes the fixture, not a policy. The two assertions using it — that an
+// unsearched list yields every seeded quote, and that the tiles total equals the rows — mean
+// the same thing at 7 as they did at 5. Updating it is not the same as loosening them.
+//
+// Caught by CI rather than locally: Docker was unavailable in the session that wrote the
+// manager fixture, so these DB-gated tests first ran on the pull request.
+const SEEDED_QUOTE_COUNT = 7;
 
 // A deny override, not a role difference: `sales` holds leads.view broadly (ROLE_GRANTS), so
 // without this row every lead-linked quote SALES can see would be visible. This narrows one
