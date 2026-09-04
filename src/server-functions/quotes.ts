@@ -1,5 +1,5 @@
 import { resolveDispatchableAgent } from "@/lib/agents";
-import { requireCapability, requireCapabilitySet } from "@/server/auth/authorization.server";
+import { requireCapability, requirePageAuthorization } from "@/server/auth/authorization.server";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -26,6 +26,7 @@ import {
   listQuoteLineItems,
   listQuotes,
   listQuotesPage,
+  type QuoteListRow,
   type QuotePageFilters,
   updateQuoteLifecycle as updateQuoteLifecycleInNeon,
   updateQuote as updateQuoteInNeon,
@@ -42,6 +43,22 @@ type GetQuotesInput = {
   account_id?: string;
   deal_id?: string;
 };
+
+/**
+ * A `listQuotesPage` row, redacted per-row against the ownership of its own linked lead or
+ * client, rather than against a page-level "may this actor see leads/clients at all" pair.
+ *
+ * The repository now always joins and always selects a real `linked_company_name` (see
+ * `src/server/repositories/quote-list-query.ts`), so this handler is the one place that
+ * decides, per row, whether that name may leave the server. `linked_record_restricted` is the
+ * per-row replacement for the page-level `visibility` pair the route used to receive: without
+ * it, a quote with a genuinely absent name (impossible today — `quotes_must_have_context` and
+ * both companies' `company_name` columns being `not null` rule it out, but the flag does not
+ * depend on that holding forever) would be indistinguishable from one redacted for this reader.
+ * `false` covers both "visible" and "nothing to redact" (no lead_id and no client_id); only a
+ * row actually nulled below sets it `true`.
+ */
+export type QuoteListItem = QuoteListRow & { linked_record_restricted: boolean };
 
 export type CreateQuoteInput = Pick<Quote, "lead_id" | "currency"> &
   Partial<
@@ -94,22 +111,64 @@ export const getQuotes = createServerFn({ method: "GET" })
 export const getQuotesPage = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as QuotePageFilters & { search?: string })
   .handler(async ({ data }) => {
-    // One authorization context load answers all three questions. The previous
-    // `requireCapability` + `requireNeonAuthSession` pair was two loads, and
-    // `requireCapabilitySet` already establishes the session.
-    const access = await requireCapabilitySet(["quotes.view"], {
+    // One authorization context load answers every question this page asks: "can this actor
+    // see the quotes surface at all" (quotes.view, required, throws on denial exactly as the
+    // single-capability-set check it replaced) and, via `rows`, "which specific linked leads
+    // and clients may they see once each one's own ownership is resolved". The separate session
+    // call stays gone: the context load already establishes it internally. This comment
+    // deliberately avoids naming the authorization helpers by their identifiers — the counter
+    // in authorization-surface.test.ts matches those as bare substrings.
+    const { access, rows } = await requirePageAuthorization(["quotes.view"], {
       optional: ["leads.view", "accounts.view"],
     });
-    const visibility = {
-      leads: access["leads.view"] === true,
-      // `accounts.view` gates clients — the same capability the quote detail page uses for
-      // its client check, so the list and the detail page agree by construction.
-      clients: access["accounts.view"] === true,
-    };
+    const canSeeLeads = access["leads.view"] === true;
+    // `accounts.view` gates clients — the same capability the quote detail page uses for its
+    // client check, so the list and the detail page agree by construction.
+    const canSeeClients = access["accounts.view"] === true;
 
-    const page = await listQuotesPage({ ...data, visibility });
-    // Returned so the client can tell a redacted name from a genuinely absent one.
-    return { ...page, visibility };
+    const page = await listQuotesPage({
+      ...data,
+      searchScope: { leads: canSeeLeads, clients: canSeeClients },
+    });
+
+    // Capability first, then ownership: an actor who lacks the capability outright is denied
+    // every row of that kind, so no ownership query is spent finding out what they already
+    // cannot see. `leadIds`/`clientIds` are gathered from every quote carrying that id — not
+    // only the ones where it would actually be displayed — because `rows.allow` batches into
+    // one query regardless of how many ids it is asked about; which id a row is judged against
+    // is decided per row below, matching `linkedRecord` in src/routes/quotes.tsx (a client wins
+    // over a lead when a quote carries both).
+    const leadIds = page.items.filter((item) => item.lead_id).map((item) => item.lead_id!);
+    const clientIds = page.items.filter((item) => item.client_id).map((item) => item.client_id!);
+
+    const [leadDecisions, clientDecisions] = await Promise.all([
+      canSeeLeads && leadIds.length > 0
+        ? rows.allow("leads.view", "lead", leadIds)
+        : Promise.resolve(new Map<string, boolean>()),
+      canSeeClients && clientIds.length > 0
+        ? rows.allow("accounts.view", "client", clientIds)
+        : Promise.resolve(new Map<string, boolean>()),
+    ]);
+
+    const items = page.items.map((item): QuoteListItem => {
+      // A client on the row wins over a lead, exactly as `linkedRecord` renders it — so only
+      // the winning id's decision determines what this row shows.
+      if (item.client_id) {
+        const visible = canSeeClients && clientDecisions.get(item.client_id) === true;
+        return visible
+          ? { ...item, linked_record_restricted: false }
+          : { ...item, linked_company_name: null, linked_record_restricted: true };
+      }
+      if (item.lead_id) {
+        const visible = canSeeLeads && leadDecisions.get(item.lead_id) === true;
+        return visible
+          ? { ...item, linked_record_restricted: false }
+          : { ...item, linked_company_name: null, linked_record_restricted: true };
+      }
+      return { ...item, linked_record_restricted: false };
+    });
+
+    return { ...page, items };
   });
 
 export const getQuote = createServerFn({ method: "GET" })
