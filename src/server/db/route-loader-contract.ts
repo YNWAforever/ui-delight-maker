@@ -342,7 +342,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     route: "approvals",
-    run: () => listApprovals({}),
+    run: () => listApprovals({}, jobSheetAuthorization),
     maxQueries: 1,
   },
   {

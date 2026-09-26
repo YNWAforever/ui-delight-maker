@@ -1,5 +1,5 @@
 import { parseOperationInput } from "@/lib/operations/errors";
-import { requireCapability } from "@/server/auth/authorization.server";
+import { loadRequestAuthorization, requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
@@ -15,9 +15,9 @@ import { ApprovalAssignmentSchema, ApprovalDecisionSchema } from "@/lib/operatio
 export const getApprovals = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as { status?: string })
   .handler(async ({ data }) => {
-    await requireCapability("approvals.view");
-    await requireNeonAuthSession();
-    const approvals = await listApprovals(data);
+    const context = await loadRequestAuthorization();
+    await requireCapability("approvals.view", {}, context);
+    const approvals = await listApprovals(data, context);
     return approvals.map(serializeHumanApproval);
   });
 

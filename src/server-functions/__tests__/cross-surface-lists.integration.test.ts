@@ -17,6 +17,7 @@ vi.mock("@/server/db/neon.server", () => ({
 }));
 
 import { listJobSheets, listJobSheetsPage } from "@/server/repositories/job-sheets";
+import { listApprovals } from "@/server/repositories/approvals";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 const context: RequestAuthorization = {
@@ -28,6 +29,9 @@ const context: RequestAuthorization = {
   overrides: [{
     profileId: "actor-1", capability: "job_sheets.view", effect: "deny",
     resourceType: "job_sheet", resourceId: "sheet-denied",
+  }, {
+    profileId: "actor-1", capability: "approvals.view", effect: "deny",
+    resourceType: "human_approval", resourceId: "approval-denied",
   }],
   now: new Date("2026-09-27T04:00:00.000Z"),
 };
@@ -39,6 +43,17 @@ describe("job-sheet queue SQL visibility", () => {
     pool = new Pool({ connectionString: process.env.DATABASE_TEST_URL });
     holder.client = await pool.connect();
     await holder.client.query("begin");
+    await holder.client.query(`create temp table human_approvals (
+      id text, agent_run_id text, approval_type text, requested_by text,
+      assigned_to text, status text, context_data jsonb, context_summary text,
+      reviewer_notes text, decided_at timestamptz, created_at timestamptz
+    ) on commit drop`);
+    await holder.client.query(`insert into human_approvals
+      (id, approval_type, assigned_to, status, context_data, context_summary, created_at)
+      values
+      ('approval-allowed','quote_send','actor-1','pending','{"quote_id":"quote-1","secret":"sensitive"}','Allowed',now()),
+      ('approval-denied','quote_send','actor-1','pending','{"quote_id":"quote-2","secret":"denied"}','Denied',now()),
+      ('approval-other','quote_send','other-1','pending','{"quote_id":"quote-3","secret":"other"}','Other',now())`);
     await holder.client.query(`create temp table job_sheets (
       id text, number text, quote_id text, status text, po_number text,
       client_order_number text, created_at timestamptz, total_amount numeric,
@@ -64,6 +79,13 @@ describe("job-sheet queue SQL visibility", () => {
     expect(page.total).toBe(1);
     expect(page.items.map((item) => item.id)).toEqual(["sheet-allowed"]);
     expect(page.items[0]).not.toHaveProperty("accounting_notes");
+  });
+
+  it.runIf(hasDatabase)("scopes approvals and redacts raw context before response", async () => {
+    const approvals = await listApprovals({ status: "pending" }, context);
+    expect(approvals.map((approval) => approval.id)).toEqual(["approval-allowed"]);
+    expect(JSON.stringify(approvals[0]?.context_data)).not.toContain("sensitive");
+    expect(approvals[0]?.context_data).toMatchObject({ quote_id: "quote-1" });
   });
 
   it.runIf(hasDatabase)("scopes the unpaginated queue and omits private detail fields", async () => {
