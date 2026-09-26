@@ -1,24 +1,35 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { requireSession, loadRead, createServerFnChain } = vi.hoisted(() => {
-  const createServerFnChain = () => {
-    let validatorFn: (data: unknown) => unknown = (data) => data;
-    return {
-      validator(validator: (data: unknown) => unknown) {
-        validatorFn = validator;
-        return this;
-      },
-      handler<T extends (...args: never[]) => unknown>(handler: T) {
-        const invoke = handler as unknown as (args: { data: unknown }) => unknown;
-        return async (args: { data: unknown }) => invoke({ ...args, data: validatorFn(args.data) });
-      },
+const { requireSession, loadRequestAuthorizationMock, loadRead, createServerFnChain } = vi.hoisted(
+  () => {
+    const createServerFnChain = () => {
+      let validatorFn: (data: unknown) => unknown = (data) => data;
+      return {
+        validator(validator: (data: unknown) => unknown) {
+          validatorFn = validator;
+          return this;
+        },
+        handler<T extends (...args: never[]) => unknown>(handler: T) {
+          const invoke = handler as unknown as (args: { data: unknown }) => unknown;
+          return async (args: { data: unknown }) =>
+            invoke({ ...args, data: validatorFn(args.data) });
+        },
+      };
     };
-  };
-  return { requireSession: vi.fn(), loadRead: vi.fn(), createServerFnChain };
-});
+    return {
+      requireSession: vi.fn(),
+      loadRequestAuthorizationMock: vi.fn(),
+      loadRead: vi.fn(),
+      createServerFnChain,
+    };
+  },
+);
 
 vi.mock("@tanstack/react-start", () => ({ createServerFn: () => createServerFnChain() }));
-vi.mock("@/server/auth/authorization.server", () => ({ requireCapability: requireSession }));
+vi.mock("@/server/auth/authorization.server", () => ({
+  requireCapability: requireSession,
+  loadRequestAuthorization: loadRequestAuthorizationMock,
+}));
 vi.mock("@/server/company-workspace/loaders", () => ({
   loadCompanyWorkspaceCore: vi.fn(),
   loadCompanyWorkspaceSection: vi.fn(),
@@ -33,6 +44,10 @@ describe("Company Workspace deep read server function", () => {
       profile: { id: "user-1", role: "sales", status: "active" },
       session: {},
     });
+    loadRequestAuthorizationMock.mockResolvedValue({
+      actor: { profileId: "user-1" },
+      overrides: [],
+    });
     loadRead.mockResolvedValue({ requestId: "request-1", sections: {} });
   });
 
@@ -44,7 +59,13 @@ describe("Company Workspace deep read server function", () => {
     });
 
     expect(requireSession).toHaveBeenCalledTimes(1);
-    expect(loadRead).toHaveBeenCalledWith("account-1", ["activity", "commercial"]);
+    expect(loadRead).toHaveBeenCalledWith(
+      "account-1",
+      ["activity", "commercial"],
+      undefined,
+      undefined,
+      expect.anything(),
+    );
   });
 
   it("rejects duplicate or unknown section names before authorizing", async () => {

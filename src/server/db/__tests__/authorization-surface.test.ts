@@ -168,7 +168,14 @@ import { describe, expect, it } from "vitest";
  * for weeks rather than minutes. If you are about to write either identifier in a comment under
  * src/server-functions/: don't.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 225;
+/*
+ * 225 -> 222 in T02/T03: the Admin navigation loop's per-item gate moved into the
+ * request-context policy evaluator (-1). The dashboard's imported/called single-domain
+ * gate became a multi-domain gate so accounting can enter through job sheets (-2).
+ * The same authorization is still checked before querying, with row scopes in SQL.
+ * Measured each top-level server-function file against audited origin/main before updating.
+ */
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 222;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {
