@@ -1,3 +1,4 @@
+import { loadRequestAuthorization, type RequestAuthorization } from "@/server/auth/authorization.server";
 import { getAccountTimeline } from "@/server/repositories/account-timeline";
 import { listAccountContacts } from "@/server/repositories/account-contacts";
 import { getAccount } from "@/server/repositories/accounts";
@@ -78,6 +79,7 @@ async function loadCompanyWorkspaceOverview(
 async function loadSectionData<Section extends CompanyWorkspaceSection>(
   accountId: string,
   section: Section,
+  context?: RequestAuthorization,
 ): Promise<CompanyWorkspaceSectionData[Section]> {
   if (section === "commercial") {
     const [clients, leads, quotes] = await Promise.all([
@@ -96,7 +98,7 @@ async function loadSectionData<Section extends CompanyWorkspaceSection>(
   if (section === "delivery_finance") {
     const [tasks, jobSheets] = await Promise.all([
       listTasks({ account_id: accountId }),
-      listJobSheets({ account_id: accountId }),
+      listJobSheets({ account_id: accountId }, context ?? (await loadRequestAuthorization())),
     ]);
     return { tasks, jobSheets } as CompanyWorkspaceSectionData[Section];
   }
@@ -116,9 +118,10 @@ export async function loadCompanyWorkspaceSection<Section extends CompanyWorkspa
   accountId: string,
   section: Section,
   requestId: string = crypto.randomUUID(),
+  context?: RequestAuthorization,
 ): Promise<SectionState<CompanyWorkspaceSectionData[Section]>> {
   try {
-    const data = await loadSectionData(accountId, section);
+    const data = await loadSectionData(accountId, section, context);
     return { status: isEmptySection(data) ? "empty" : "ready", data };
   } catch (error) {
     return { status: "error", error: toCompanyWorkspaceError(error, section, requestId) };
@@ -130,6 +133,7 @@ export async function loadCompanyWorkspaceRead(
   requestedSections: CompanyWorkspaceSection[] = [],
   requestId: string = crypto.randomUUID(),
   now: () => Date = () => new Date(),
+  context?: RequestAuthorization,
 ): Promise<CompanyWorkspaceRead> {
   const cacheMetadata = { fetchedAt: now().toISOString(), freshForMs: 30_000 };
   const [core, overview, sectionEntries] = await Promise.all([
@@ -138,7 +142,7 @@ export async function loadCompanyWorkspaceRead(
     Promise.all(
       requestedSections.map(
         async (section) =>
-          [section, await loadCompanyWorkspaceSection(accountId, section, requestId)] as const,
+          [section, await loadCompanyWorkspaceSection(accountId, section, requestId, context)] as const,
       ),
     ),
   ]);
@@ -159,10 +163,11 @@ export async function loadCompanyWorkspaceRead(
 export async function loadCompanyWorkspace(
   accountId: string,
   requestId: string = crypto.randomUUID(),
+  context?: RequestAuthorization,
 ): Promise<CompanyWorkspace> {
   const core = await loadCompanyWorkspaceCore(accountId);
   const sectionResults = await Promise.all(
-    sections.map((section) => loadCompanyWorkspaceSection(accountId, section, requestId)),
+    sections.map((section) => loadCompanyWorkspaceSection(accountId, section, requestId, context)),
   );
   return {
     core,

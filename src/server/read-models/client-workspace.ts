@@ -3,7 +3,6 @@ import type {
   Client,
   ClientContact,
   Engagement,
-  JobSheet,
   Quote,
   RenewalRisk,
 } from "@/lib/types";
@@ -14,7 +13,8 @@ import { listActivityLogsByClientAndEngagementIds } from "@/server/repositories/
 import { listClientContacts } from "@/server/repositories/client-contacts";
 import { getClient } from "@/server/repositories/clients";
 import { listEngagementsByClient } from "@/server/repositories/engagements";
-import { listJobSheets } from "@/server/repositories/job-sheets";
+import { listJobSheets, type JobSheetListItem } from "@/server/repositories/job-sheets";
+import { loadRequestAuthorization, type RequestAuthorization } from "@/server/auth/authorization.server";
 import { listQuotes } from "@/server/repositories/quotes";
 
 export const clientWorkspaceSections = [
@@ -32,7 +32,7 @@ export type ClientWorkspaceSectionData = {
   activity: { activityLogs: SerializableActivityLog[] };
   commercial: { quotes: Quote[] };
   engagements: { engagements: Engagement[] };
-  job_sheets: { jobSheets: JobSheet[] };
+  job_sheets: { jobSheets: JobSheetListItem[] };
 };
 
 export type ClientWorkspaceSectionState<T> =
@@ -160,6 +160,7 @@ export async function loadClientWorkspaceRead(
 async function loadSectionData<Section extends ClientWorkspaceSection>(
   clientId: string,
   section: Section,
+  context?: RequestAuthorization,
 ): Promise<ClientWorkspaceSectionData[Section]> {
   if (section === "contacts") {
     return { contacts: await listClientContacts(clientId) } as ClientWorkspaceSectionData[Section];
@@ -185,7 +186,7 @@ async function loadSectionData<Section extends ClientWorkspaceSection>(
     } as ClientWorkspaceSectionData[Section];
   }
   return {
-    jobSheets: await listJobSheets({ client_id: clientId }),
+    jobSheets: await listJobSheets({ client_id: clientId }, context ?? (await loadRequestAuthorization())),
   } as ClientWorkspaceSectionData[Section];
 }
 
@@ -197,9 +198,10 @@ export async function loadClientWorkspaceSection<Section extends ClientWorkspace
   clientId: string,
   section: Section,
   requestId: string = crypto.randomUUID(),
+  context?: RequestAuthorization,
 ): Promise<ClientWorkspaceSectionState<ClientWorkspaceSectionData[Section]>> {
   try {
-    const data = await loadSectionData(clientId, section);
+    const data = await loadSectionData(clientId, section, context);
     return { status: isEmptySection(data) ? "empty" : "ready", data };
   } catch (error) {
     // This used to swallow the error and report `query_failed` / `retryable: true` for every

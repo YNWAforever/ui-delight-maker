@@ -3,7 +3,6 @@ import type {
   AccountContact,
   Client,
   Engagement,
-  JobSheet,
   Lead,
   Quote,
   RelationshipSignal,
@@ -11,6 +10,7 @@ import type {
 } from "@/lib/types";
 import type { AccountTimelineEntry } from "@/lib/relationship/types";
 import type { DatabaseFailureKind } from "@/server/db/postgres-error";
+import type { JobSheetListItem } from "@/server/repositories/job-sheets";
 
 export type CompanyWorkspaceSection =
   | "commercial"
@@ -64,7 +64,7 @@ export type CompanyWorkspaceSectionData = {
   };
   delivery_finance: {
     tasks: Task[];
-    jobSheets: JobSheet[];
+    jobSheets: JobSheetListItem[];
   };
   activity: {
     timeline: AccountTimelineEntry[];

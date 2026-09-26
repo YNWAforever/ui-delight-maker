@@ -1,4 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+const jobSheetAuthorization = {
+  actor: { profileId: "fixture-accounting", role: "accounting", status: "active", directReportIds: [] },
+  overrides: [],
+  now: new Date("2026-09-27T00:00:00Z"),
+  session: { profile: { id: "fixture-accounting" } },
+} as unknown as RequestAuthorization;
+
 
 /**
  * Keyset-stable ordering for every paginated list.
@@ -69,8 +77,8 @@ const CASES: Array<{ name: string; run: () => Promise<unknown>; tieBreaker: RegE
   },
   {
     name: "job sheets",
-    run: () => listJobSheetsPage({}),
-    tieBreaker: /order by created_at desc, id desc/i,
+    run: () => listJobSheetsPage({}, jobSheetAuthorization),
+    tieBreaker: /order by js\.created_at desc, js\.id desc/i,
   },
 ];
 

@@ -216,8 +216,9 @@ export async function resolveEffectiveCapabilities(): Promise<readonly Capabilit
 export async function requireCapability(
   capability: Capability,
   target: AuthorizationTarget = {},
+  request?: RequestAuthorization,
 ): Promise<AppSession> {
-  const context = await loadAuthorizationContext();
+  const context = request ?? (await loadAuthorizationContext());
   const resolvedTarget = await resolveAuthorizationTarget(target);
   const decision = evaluate(context, capability, resolvedTarget);
   if (!decision.allowed) throw decisionError(decision);
@@ -229,9 +230,10 @@ export async function requireCapabilitySet(
   options: {
     optional?: readonly Capability[];
     target?: AuthorizationTarget;
+    context?: RequestAuthorization;
   } = {},
 ): Promise<Partial<Record<Capability, boolean>>> {
-  const context = await loadAuthorizationContext();
+  const context = options.context ?? (await loadAuthorizationContext());
   const resolvedTarget = await resolveAuthorizationTarget(options.target ?? {});
   const access: Partial<Record<Capability, boolean>> = {};
 

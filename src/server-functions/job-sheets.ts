@@ -1,5 +1,5 @@
 import { parseOperationInput } from "@/lib/operations/errors";
-import { requireCapability } from "@/server/auth/authorization.server";
+import { loadRequestAuthorization, requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
@@ -21,17 +21,17 @@ import {
 export const getJobSheets = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as JobSheetFilters)
   .handler(async ({ data }) => {
-    await requireCapability("job_sheets.view");
-    await requireNeonAuthSession();
-    return listJobSheets(data);
+    const context = await loadRequestAuthorization();
+    await requireCapability("job_sheets.view", {}, context);
+    return listJobSheets(data, context);
   });
 
 export const getJobSheetsPage = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as JobSheetPageFilters)
   .handler(async ({ data }) => {
-    await requireCapability("job_sheets.view");
-    await requireNeonAuthSession();
-    return listJobSheetsPage(data);
+    const context = await loadRequestAuthorization();
+    await requireCapability("job_sheets.view", {}, context);
+    return listJobSheetsPage(data, context);
   });
 
 export const getJobSheet = createServerFn({ method: "GET" })
