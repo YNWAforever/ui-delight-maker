@@ -25,6 +25,20 @@ const VIEW_CAPABILITY = {
 
 export type VisibleResourceType = keyof typeof VIEW_CAPABILITY;
 
+/** Whether a query can return any row for this actor; SQL still decides every row. */
+export function hasPotentialVisibility(
+  context: RequestAuthorization,
+  resourceType: string,
+): boolean {
+  if (!(resourceType in VIEW_CAPABILITY) || context.actor.status !== "active") return false;
+  const type = resourceType as VisibleResourceType;
+  const capability = VIEW_CAPABILITY[type];
+  return (
+    ROLE_GRANTS[context.actor.role].has(capability) ||
+    activeRowOverrides(context, type, capability).some((override) => override.effect === "allow")
+  );
+}
+
 function ownerExpression(resourceType: VisibleResourceType, alias: string): string {
   switch (resourceType) {
     case "account":
@@ -119,4 +133,62 @@ export function buildVisibilityScope(
       [context.actor.profileId, ...context.actor.directReportIds],
     ],
   };
+}
+
+type SubjectResource = {
+  subject: "lead" | "quote" | "client" | "task" | "approval";
+  resource: VisibleResourceType;
+  table: string;
+  alias: string;
+};
+
+const SUBJECT_RESOURCES: readonly SubjectResource[] = [
+  { subject: "lead", resource: "lead", table: "leads", alias: "l" },
+  { subject: "quote", resource: "quote", table: "quotes", alias: "q" },
+  { subject: "client", resource: "client", table: "clients", alias: "c" },
+  { subject: "task", resource: "task", table: "tasks", alias: "t" },
+  { subject: "approval", resource: "human_approval", table: "human_approvals", alias: "ha" },
+];
+
+/** Scope polymorphic agent runs or activity logs to their visible subject rows. */
+export function buildSubjectVisibility(
+  context: RequestAuthorization,
+  outerAlias: string,
+  kindColumn: "subject_type" | "object_type",
+  idColumn: "subject_id" | "object_id",
+): { sql: string; values: readonly unknown[] } {
+  if (!/^[a-z][a-z0-9_]*$/.test(outerAlias)) throw new Error("Invalid subject alias");
+  const values: unknown[] = [];
+  const clauses: string[] = [];
+  for (const item of SUBJECT_RESOURCES) {
+    if (!hasPotentialVisibility(context, item.resource)) continue;
+    const scope = buildVisibilityScope(context, item.resource, item.alias);
+    const predicate = scope.sql.replace(
+      /\$(\d+)/g,
+      (_, index: string) => "$" + (Number(index) + values.length),
+    );
+    clauses.push(
+      "(" +
+        outerAlias +
+        "." +
+        kindColumn +
+        " = '" +
+        item.subject +
+        "' and exists (select 1 from " +
+        item.table +
+        " " +
+        item.alias +
+        " where " +
+        item.alias +
+        ".id = " +
+        outerAlias +
+        "." +
+        idColumn +
+        " and " +
+        predicate +
+        "))",
+    );
+    values.push(...scope.values);
+  }
+  return { sql: clauses.length ? "(" + clauses.join(" or ") + ")" : "false", values };
 }

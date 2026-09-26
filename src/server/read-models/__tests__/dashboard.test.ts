@@ -1,26 +1,37 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+
+const salesContext = {
+  actor: { profileId: "sales-1", role: "sales", status: "active", directReportIds: [] },
+  overrides: [],
+  now: new Date(),
+  session: { profile: { id: "sales-1" } },
+} as unknown as RequestAuthorization;
 import {
   ROUTE_PERFORMANCE_BUDGET,
   measureSerializedBytes,
 } from "@/lib/performance/route-performance";
 
-const { queryMock, requireCapabilityMock, createServerFnChain } = vi.hoisted(() => {
-  const createServerFnChain = {
-    handler<T extends (...args: never[]) => unknown>(handler: T) {
-      return handler;
-    },
-  };
+const { queryMock, requireAnyCapabilityMock, loadRequestAuthorizationMock, createServerFnChain } =
+  vi.hoisted(() => {
+    const createServerFnChain = {
+      handler<T extends (...args: never[]) => unknown>(handler: T) {
+        return handler;
+      },
+    };
 
-  return {
-    queryMock: vi.fn(),
-    requireCapabilityMock: vi.fn(),
-    createServerFnChain,
-  };
-});
+    return {
+      queryMock: vi.fn(),
+      requireAnyCapabilityMock: vi.fn(),
+      loadRequestAuthorizationMock: vi.fn(),
+      createServerFnChain,
+    };
+  });
 
 vi.mock("@/server/db/neon.server", () => ({ query: queryMock }));
 vi.mock("@/server/auth/authorization.server", () => ({
-  requireCapability: requireCapabilityMock,
+  requireAnyCapability: requireAnyCapabilityMock,
+  loadRequestAuthorization: loadRequestAuthorizationMock,
 }));
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => createServerFnChain,
@@ -44,29 +55,24 @@ describe("dashboard read model", () => {
     pending.forEach(({ promise }) => queryMock.mockReturnValueOnce(promise));
     const { getDashboardRead } = await import("../dashboard");
 
-    const resultPromise = getDashboardRead();
+    const resultPromise = getDashboardRead(salesContext);
 
     expect(queryMock).toHaveBeenCalledTimes(8);
     const calls = queryMock.mock.calls as Array<[string, unknown[]?]>;
     const sql = calls.map(([statement]) => statement.replace(/\s+/g, " ").trim());
-    expect(sql.slice(0, 7).every((statement) => /limit \$1/i.test(statement))).toBe(true);
-    expect(calls.map(([, values]) => values)).toEqual([
-      [40],
-      [40],
-      [60],
-      [30],
-      [30],
-      [20],
-      [50],
-      undefined,
+    expect(sql.slice(0, 7).every((statement) => /limit \$\d+/i.test(statement))).toBe(true);
+    expect(calls.slice(0, 7).map(([, values]) => values?.at(-1))).toEqual([
+      40, 40, 60, 30, 30, 20, 50,
     ]);
+    expect(sql[0]).toContain("jsonb_array_elements");
+    expect(sql[7]).toContain("jsonb_array_elements");
     expect(sql[5]).toContain("from activity_logs");
     expect(sql.slice(0, 7).every((statement) => !/select\s+(?:\w+\.)?\*/i.test(statement))).toBe(
       true,
     );
-    expect(sql[0]).toContain("left(enquiry_text, 500)");
+    expect(sql[0]).toContain("left(l.enquiry_text,500)");
     expect(sql[1]).toContain("'[]'::jsonb as line_items");
-    expect(sql[3]).toContain("jsonb_build_object('lead_id'");
+    expect(sql[3]).toContain("context_data");
     expect(sql[4]).toContain("jsonb_build_object('lead_id'");
 
     const rows = [
@@ -96,6 +102,8 @@ describe("dashboard read model", () => {
       agentRuns: rows[4],
       activityLogs: rows[5],
       products: rows[6],
+      jobSheets: [],
+      access: { leads: true, jobSheets: true },
       pipelineTotals: {
         openLeads: 80,
         activeQuoteValue: 120000,
@@ -170,31 +178,36 @@ describe("dashboard read model", () => {
       ]);
     const { getDashboardRead } = await import("../dashboard");
 
-    expect(measureSerializedBytes(await getDashboardRead())).toBeLessThanOrEqual(
+    expect(measureSerializedBytes(await getDashboardRead(salesContext))).toBeLessThanOrEqual(
       ROUTE_PERFORMANCE_BUDGET.maxInitialPayloadBytes,
     );
   });
 
   it("authorizes exactly once before starting dashboard reads", async () => {
-    const authorization = deferred<{ user: { id: string } }>();
-    requireCapabilityMock.mockReturnValueOnce(authorization.promise);
+    const authorization = deferred<RequestAuthorization>();
+    loadRequestAuthorizationMock.mockReturnValueOnce(authorization.promise);
+    requireAnyCapabilityMock.mockResolvedValue(salesContext.session);
     queryMock.mockResolvedValue([]);
     const { getDashboard } = await import("@/server-functions/dashboard");
 
     const resultPromise = getDashboard();
 
-    expect(requireCapabilityMock).toHaveBeenCalledTimes(1);
-    expect(requireCapabilityMock).toHaveBeenCalledWith("leads.view");
+    expect(loadRequestAuthorizationMock).toHaveBeenCalledTimes(1);
+    expect(requireAnyCapabilityMock).not.toHaveBeenCalled();
     expect(queryMock).not.toHaveBeenCalled();
 
-    authorization.resolve({ user: { id: "user-1" } });
+    authorization.resolve(salesContext);
 
     await expect(resultPromise).resolves.toMatchObject({
       leads: [],
       activityLogs: [],
       products: [],
     });
-    expect(requireCapabilityMock).toHaveBeenCalledTimes(1);
+    expect(requireAnyCapabilityMock).toHaveBeenCalledWith(
+      ["leads.view", "job_sheets.view", "quotes.view", "tasks.view", "approvals.view"],
+      {},
+      salesContext,
+    );
     expect(queryMock).toHaveBeenCalledTimes(8);
   });
 });

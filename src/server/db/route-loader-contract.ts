@@ -60,7 +60,12 @@ export type RouteLoaderContractEntry = {
 const FAKE_PROFILE_ID = "00000000-0000-0000-0000-000000000001";
 // Query-budget fixture only; authenticated role/UAT acceptance uses real sessions.
 const jobSheetAuthorization = {
-  actor: { profileId: "fixture-accounting", role: "accounting", status: "active", directReportIds: [] },
+  actor: {
+    profileId: "fixture-accounting",
+    role: "accounting",
+    status: "active",
+    directReportIds: [],
+  },
   overrides: [],
   now: new Date("2026-09-27T00:00:00Z"),
   session: { profile: { id: "fixture-accounting" } },
@@ -389,7 +394,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     route: "index",
-    run: () => getDashboardReadModel(),
+    run: () => getDashboardReadModel(jobSheetAuthorization),
     maxQueries: 8,
   },
   {
@@ -504,7 +509,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     route: "reports",
-    run: () => loadReportSummary({ range: "30d" } as Parameters<typeof loadReportSummary>[0]),
+    run: () => loadReportSummary({ range: "30d" }, jobSheetAuthorization),
     maxQueries: 1,
   },
   {

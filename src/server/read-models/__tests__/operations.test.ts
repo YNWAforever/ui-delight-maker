@@ -1,6 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { REPORT_IDS, type ReportId } from "@/lib/reports";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+const reportContext = {
+  actor: {
+    profileId: "fixture-report-admin",
+    role: "admin",
+    status: "active",
+    directReportIds: [],
+  },
+  overrides: [],
+  now: new Date("2026-09-27T00:00:00Z"),
+  session: { profile: { id: "fixture-report-admin" } },
+} as unknown as RequestAuthorization;
 
 const {
   queryMock,
@@ -8,6 +20,7 @@ const {
   requireCapabilityChecksMock,
   requireCapabilityMock,
   requireCapabilitySetMock,
+  loadRequestAuthorizationMock,
   createServerFnChain,
 } = vi.hoisted(() => {
   const createServerFnChain = {
@@ -25,6 +38,7 @@ const {
     requireCapabilityChecksMock: vi.fn(),
     requireCapabilityMock: vi.fn(),
     requireCapabilitySetMock: vi.fn(),
+    loadRequestAuthorizationMock: vi.fn(),
     createServerFnChain,
   };
 });
@@ -34,6 +48,7 @@ vi.mock("@/server/auth/authorization.server", () => ({
   requireCapabilityChecks: requireCapabilityChecksMock,
   requireCapability: requireCapabilityMock,
   requireCapabilitySet: requireCapabilitySetMock,
+  loadRequestAuthorization: loadRequestAuthorizationMock,
 }));
 vi.mock("@/server/db/neon.server", () => ({ query: queryMock, queryOne: queryOneMock }));
 
@@ -44,6 +59,7 @@ describe("operations read models", () => {
     vi.clearAllMocks();
     queryMock.mockResolvedValue([]);
     queryOneMock.mockResolvedValue(null);
+    loadRequestAuthorizationMock.mockResolvedValue(reportContext);
     requireCapabilityChecksMock.mockResolvedValue({
       user: { id: "user-1" },
       profile: { id: "user-1", role: "sales", status: "active" },
@@ -184,7 +200,7 @@ describe("operations read models", () => {
       open_tasks: "3",
     });
 
-    const result = await loadReportSummary({ range: "30d" });
+    const result = await loadReportSummary({ range: "30d" }, reportContext);
 
     expect(result.metrics).toEqual({
       revenue: 1200,
@@ -227,7 +243,7 @@ describe("operations read models", () => {
     "queries only the selected %s report dataset",
     async (report, table) => {
       const { loadReportDataset } = await import("../operations");
-      await loadReportDataset({ report, range: "30d" });
+      await loadReportDataset({ report, range: "30d" }, reportContext);
       expect(queryMock).toHaveBeenCalledTimes(1);
       const sql = sqlText(queryMock.mock.calls[0]?.[0]);
       expect(sql).toContain(table);
@@ -418,7 +434,7 @@ describe("operations server functions", () => {
     const { getReportDataset, getReportSummary } = await import("@/server-functions/operations");
     await getReportSummary({ data: { range: "7d" } });
     await getReportDataset({ data: { report: "tasks", range: "90d" } });
-    expect(requireCapabilityMock).toHaveBeenNthCalledWith(1, "reports.view");
-    expect(requireCapabilityMock).toHaveBeenNthCalledWith(2, "reports.view");
+    expect(requireCapabilityMock).toHaveBeenNthCalledWith(1, "reports.view", {}, reportContext);
+    expect(requireCapabilityMock).toHaveBeenNthCalledWith(2, "reports.view", {}, reportContext);
   });
 });

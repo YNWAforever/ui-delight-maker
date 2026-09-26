@@ -2,6 +2,18 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { Pool } from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+const reportContext = {
+  actor: {
+    profileId: "fixture-report-admin",
+    role: "admin",
+    status: "active",
+    directReportIds: [],
+  },
+  overrides: [],
+  now: new Date("2026-09-27T00:00:00Z"),
+  session: { profile: { id: "fixture-report-admin" } },
+} as unknown as RequestAuthorization;
 
 /**
  * Human-Review Workload report, Task 3: the one place `reportQueries.human_review_workload`
@@ -126,7 +138,10 @@ function minutesAgo(minutes: number) {
 }
 
 async function loadRows() {
-  const { data } = await loadReportDataset({ report: "human_review_workload", range: "7d" });
+  const { data } = await loadReportDataset(
+    { report: "human_review_workload", range: "7d" },
+    reportContext,
+  );
   return data as unknown as Row[];
 }
 
