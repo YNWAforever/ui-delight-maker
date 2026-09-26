@@ -10,8 +10,8 @@ Allowed finding states: `open`, `in_progress`, `verified_fixed`, `already_fixed_
 |---|---|---|---|---|
 | T00 Baseline | complete | `aa16d943e3365ac6aa430663c12597984556b204`, `bce702a` | Hashes and SHA equality; pure Vite build; TypeScript; lint; real Postgres full suite 1,920/1,920 with 4 workers, 0 skip | Role sessions unavailable; local migration CLI WebSocket incompatible |
 | T01 Runtime input contracts | complete | `56bee37` | 25 positive boundary tests; 44 existing related tests; full suite 270 files/1,945 tests, 0 skip on disposable PostgreSQL; `tsc` exit 0, pure Vite build exit 0, lint exit 0 (one existing warning); before-fix tests failed as expected. [T01 evidence](t01-evidence.md) | Seven-role UI smoke unavailable; production migration CLI is incompatible with plain local PG WebSocket |
-| T02 Request authorization context | complete | `93047f8` | 82/82 affected tests on disposable PostgreSQL, including 7-role SQL/evaluator parity and 14 migrated resource predicates; TypeScript, lint, pure Vite build exit 0; [T02 evidence](t02-evidence.md) | Authenticated role UI and true runtime auth-query timing unavailable; T03 must wire read surfaces into scope |
-| T03 Read surface visibility | in_progress | `8f9d672` (search slice) | Real PostgreSQL search regression 3/3; existing search tests 2/2; TypeScript exit 0; [T03 evidence](t03-evidence.md) | Dashboard, approvals, job sheet list/count/export and role UI still open; pure Vite gate for full T03 pending |
+| T02 Request authorization context | complete | `93047f8` | 82/82 affected tests on disposable PostgreSQL, including 7-role SQL/evaluator parity and 14 migrated resource predicates; TypeScript, lint, pure Vite build exit 0; [T02 evidence](t02-evidence.md) | Authenticated role UI and true runtime auth-query timing unavailable |
+| T03 Read surface visibility | in_progress | `8f9d672`, `1db2945`, `e0c92b2`, `8b8d65e`, `e70ca82` | Real PostgreSQL cross-surface 7/7; full suite 276 files/1,970 tests, 0 skip; TypeScript, lint, pure Vite build exit 0; [T03 evidence](t03-evidence.md) | Seven-role authenticated UI/network smoke unavailable; CO-03 pagination remains T12 |
 | T04 Import row authorization | open | — | — | — |
 | T05 Approval terminal state and receipts | open | — | — | — |
 | T06 Quote immutability | open | — | — | — |
@@ -39,8 +39,8 @@ The latest main is identical to the audited commit. The audit's code findings th
 | Finding | Severity | Owner | State | Unit / real DB / role UI evidence | Blocker |
 |---|---|---|---|---|---|
 | CO-01 Search bypass | P1 | T03 | in_progress | `8f9d672`; real PostgreSQL tests reject lead-only and denied-task matches while preserving visible quote/task; [evidence](t03-evidence.md) | Authenticated role UI/network smoke pending |
-| CO-02 Dashboard visibility | P1 | T03 | open | audit code path; positive test pending | role UI pending |
-| CO-03 Approval and sheet lists | P1 | T03, T12 | open | audit code path; positive test pending | role UI pending |
+| CO-02 Dashboard visibility | P1 | T03 | in_progress | `8b8d65e`; real PostgreSQL accounting, quote linked lead redaction, denied task and scoped totals pass; [evidence](t03-evidence.md) | Authenticated role UI/network smoke pending |
+| CO-03 Approval and sheet lists | P1 | T03, T12 | in_progress | `1db2945`, `e0c92b2`; real PostgreSQL list/count/approval context redaction pass; route loader 35/35; [evidence](t03-evidence.md) | Authenticated role UI and T12 pagination pending |
 | CO-04 Import write authorization | P1 | T04 | open | audit code path; positive test pending | role UI pending |
 | CO-05 Quote commercial immutability | P1 | T06 | open | audit probe 4; real DB pending | role UI pending |
 | CO-06 Approval terminal state | P1 | T05 | open | audit probe 3; real DB pending | role UI pending |

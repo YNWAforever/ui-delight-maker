@@ -1,8 +1,12 @@
-# T03 read surface visibility — work in progress
+# T03 read surface visibility — implementation evidence
 
-Search slice commit: `8f9d672` (`fix: scope global search before matching`).
+Code commits: `8f9d672` (search), `1db2945` (job sheet list/workspace), `e0c92b2` (approval queue), `8b8d65e` (dashboard/reports), `e70ca82` (legacy fixture alignment). `b8aa418` formats T03 list paths.
 
-- Before fix, real isolated PostgreSQL returned a lead when accounting searched a lead-only email token, and returned a task when the actor had an explicit task deny and searched its title/description.
-- Global search now requires a request authorization context, and each of its six UNION branches applies its resource SQL scope inside the branch before matching, ordering or LIMIT. The quote branch remains visible to accounting without `leads.view`; an allowed task remains searchable. The repository requires context so direct callers cannot accidentally use an unscoped default.
-- On disposable local PostgreSQL, the three positive security cases pass; the two existing repository tests pass with the required context. `bunx tsc --noEmit` exit 0.
-- Dashboard, approvals, job sheet list/count/detail/export, UI role smoke, and the full T03 build/release gates remain open. This evidence does not mark CO-01–03 verified fixed.
+- Search: before the fix, real isolated PostgreSQL returned a lead on accounting's lead-only token and a task after an explicit task deny. The six UNION branches now apply resource scope before text matching, ordering and LIMIT. Accounting still finds a visible quote and an allowed task.
+- Job sheets: before the fix, direct list and count returned unscoped rows. Both now require request authorization context and apply SQL scope before filter/count/page. Company/client workspace server functions pass that context. Queue uses a minimal DTO.
+- Approvals: before the fix, the list included three rows, including forbidden records and raw context. It now returns only the authorized row and allowlisted quote reference context.
+- Dashboard: before the fix, accounting's home returned a hidden lead and a visible quote exposed its hidden linked lead ID. The read model now scopes each section and total in SQL, redacts that ID, and gives accounting a job sheet operations desk. An explicit task deny removes both rows and totals.
+- Reports/export: before the fix, an accounting pipeline report counted one inaccessible lead. The report dataset now denies that resource and scopes rows before GROUP BY; summary aggregates are scoped and inaccessible metrics hidden. CSV export uses the same authorized dataset.
+- Green gates on disposable PostgreSQL: cross-surface 7/7; report/CSV 60/60; migrated route-loader 35/35; complete suite 276 files, 1,970 tests, zero skipped. `bunx tsc --noEmit`, ESLint, and pure `bunx vite build` exited 0. ESLint retains one existing Fast Refresh warning in `src/components/sales/data-table-shell.tsx`. `git diff --check` clean. The eight supplied defect probes were characterization evidence only, never treated as release gates.
+
+CO-01–03 remain `in_progress` until authenticated seven-role UI/network evidence is available. CO-03 queue pagination is owned by T12. The production build wrapper includes migrations/seed and was not run because its Neon WebSocket migration path is incompatible with the disposable local PostgreSQL; no production database or customer messaging was touched.
