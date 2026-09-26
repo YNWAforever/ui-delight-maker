@@ -31,14 +31,17 @@ export type CapabilityCheck = {
   target?: AuthorizationTarget;
 };
 
-type AuthorizationContext = {
+export type RequestAuthorization = {
   session: AppSession;
   actor: ActorAccessContext;
   overrides: PermissionOverride[];
+  now: Date;
 };
 
-async function loadAuthorizationContext(): Promise<AuthorizationContext> {
-  const session = await requireNeonAuthSession();
+export async function loadRequestAuthorization(
+  existingSession?: AppSession,
+): Promise<RequestAuthorization> {
+  const session = existingSession ?? (await requireNeonAuthSession());
   const actorId = session.profile.id;
   const [departments, teams, reports, overrideRows] = await Promise.all([
     query<IdRow>(
@@ -83,6 +86,7 @@ async function loadAuthorizationContext(): Promise<AuthorizationContext> {
 
   return {
     session,
+    now: new Date(),
     actor: {
       profileId: actorId,
       role: session.profile.role,
@@ -129,7 +133,7 @@ async function resolveAuthorizationTarget(
 }
 
 function evaluate(
-  context: AuthorizationContext,
+  context: RequestAuthorization,
   capability: Capability,
   target: AuthorizationTarget,
 ) {
@@ -138,9 +142,23 @@ function evaluate(
     capability,
     target,
     overrides: context.overrides,
+    now: context.now,
   });
 }
 
+export async function checkWithContext(
+  context: RequestAuthorization,
+  checks: readonly CapabilityCheck[],
+): Promise<readonly AuthorizationDecision[]> {
+  const resolvedTargets = await Promise.all(
+    checks.map(({ target = {} }) => resolveAuthorizationTarget(target)),
+  );
+  return checks.map(({ capability }, index) =>
+    evaluate(context, capability, resolvedTargets[index]),
+  );
+}
+
+const loadAuthorizationContext = loadRequestAuthorization;
 export async function requireCapabilityChecks(
   checks: readonly CapabilityCheck[],
 ): Promise<AppSession> {
@@ -185,9 +203,14 @@ export async function evaluateCapabilityChecks(
  *
  * See `src/lib/admin/capabilities.ts` for what this set does and does not answer.
  */
+export function effectiveCapabilitiesWithContext(
+  context: RequestAuthorization,
+): readonly Capability[] {
+  return effectiveCapabilities(context.actor, context.overrides);
+}
 export async function resolveEffectiveCapabilities(): Promise<readonly Capability[]> {
   const context = await loadAuthorizationContext();
-  return effectiveCapabilities(context.actor, context.overrides);
+  return effectiveCapabilitiesWithContext(context);
 }
 
 export async function requireCapability(
@@ -293,8 +316,9 @@ export async function requirePageAuthorization(
 export async function requireAnyCapability(
   capabilities: readonly Capability[],
   target: AuthorizationTarget = {},
+  request?: RequestAuthorization,
 ): Promise<AppSession> {
-  const context = await loadAuthorizationContext();
+  const context = request ?? (await loadAuthorizationContext());
   let outsideScopeDecision: AuthorizationDecision | null = null;
 
   const resolvedTarget = await resolveAuthorizationTarget(target);
