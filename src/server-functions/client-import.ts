@@ -1,8 +1,10 @@
+import { parseOperationInput } from "@/lib/operations/errors";
 import { requireCapability } from "@/server/auth/authorization.server";
 // src/server-functions/client-import.ts
 import { createServerFn } from "@tanstack/react-start";
+import { ImportRowsSchema } from "@/lib/operations/input-schemas";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { validateImportRows, type ImportRow } from "@/lib/csv-import";
+import { validateImportRows } from "@/lib/csv-import";
 import { commitClientImport } from "@/server/repositories/client-import";
 import { listProducts } from "@/server/repositories/products";
 import { query } from "@/server/db/neon.server";
@@ -19,7 +21,7 @@ async function loadValidationContext() {
 }
 
 export const validateClientImportRows = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { rows: ImportRow[] })
+  .validator((data: unknown) => parseOperationInput(ImportRowsSchema, data))
   .handler(async ({ data }) => {
     await requireCapability("accounts.view");
     await requireNeonAuthSession();
@@ -28,7 +30,7 @@ export const validateClientImportRows = createServerFn({ method: "POST" })
   });
 
 export const commitClientImportFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { rows: ImportRow[] })
+  .validator((data: unknown) => parseOperationInput(ImportRowsSchema, data))
   .handler(async ({ data }) => {
     await requireCapability("accounts.create");
     const session = await requireNeonAuthSession();

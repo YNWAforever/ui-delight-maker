@@ -1,3 +1,4 @@
+import { parseOperationInput } from "@/lib/operations/errors";
 import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -9,6 +10,7 @@ import {
 import { serializeHumanApproval } from "@/lib/serializable";
 import { applyRiskReviewDecision } from "@/server/workflows/decide-risk-review.server";
 import { listApproverProfiles } from "@/server/repositories/notifications";
+import { ApprovalAssignmentSchema, ApprovalDecisionSchema } from "@/lib/operations/input-schemas";
 
 export const getApprovals = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as { status?: string })
@@ -20,10 +22,7 @@ export const getApprovals = createServerFn({ method: "GET" })
   });
 
 export const decideApproval = createServerFn({ method: "POST" })
-  .validator(
-    (data: unknown) =>
-      data as { id: string; decision: "approved" | "rejected" | "escalated"; notes?: string },
-  )
+  .validator((data: unknown) => parseOperationInput(ApprovalDecisionSchema, data))
   .handler(async ({ data }) => {
     await requireCapability("approvals.decide", {
       resourceType: "human_approval",
@@ -38,7 +37,7 @@ export const decideApproval = createServerFn({ method: "POST" })
   });
 
 export const assignApprovalFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { id: string; assignedTo: string | null })
+  .validator((data: unknown) => parseOperationInput(ApprovalAssignmentSchema, data))
   .handler(async ({ data }) => {
     // `approvals.decide`, not a new `approvals.assign`. Routing an approval is strictly weaker
     // than deciding it, and every role holding `decide` is already trusted with the outcome.

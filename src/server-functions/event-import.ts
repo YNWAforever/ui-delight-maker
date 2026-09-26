@@ -1,6 +1,8 @@
+import { parseOperationInput } from "@/lib/operations/errors";
 import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 
+import { EventImportCommitSchema, EventImportRowsSchema } from "@/lib/operations/input-schemas";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
   resolveMatchedAccountIds,
@@ -30,7 +32,7 @@ async function loadEventImportValidationContext(rows: EventImportRow[]) {
 }
 
 export const validateEventImportRowsFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { rows: EventImportRow[] })
+  .validator((data: unknown) => parseOperationInput(EventImportRowsSchema, data))
   .handler(async ({ data }) => {
     await requireCapability("engagements.view");
     await requireCapability("accounts.view");
@@ -43,7 +45,7 @@ export const validateEventImportRowsFn = createServerFn({ method: "POST" })
   });
 
 export const commitEventImportFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { campaignId: string; rows: EventImportRow[] })
+  .validator((data: unknown) => parseOperationInput(EventImportCommitSchema, data))
   .handler(async ({ data }) => {
     await requireCapability("engagements.create", {
       resourceType: "campaign",

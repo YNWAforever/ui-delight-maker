@@ -1,7 +1,12 @@
+import { parseOperationInput } from "@/lib/operations/errors";
 import { requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import type { NewJobSheetPortion } from "@/lib/quote-to-cash";
+import {
+  IdSchema,
+  JobSheetMutationSchema,
+  XeroReferenceSchema,
+} from "@/lib/operations/input-schemas";
 import {
   acceptJobSheet as acceptJobSheetInRepository,
   getJobSheet as getJobSheetFromRepository,
@@ -11,7 +16,6 @@ import {
   updateJobSheetXeroReference,
   type JobSheetFilters,
   type JobSheetPageFilters,
-  type UpdateJobSheetXeroReferenceInput,
 } from "@/server/repositories/job-sheets";
 
 export const getJobSheets = createServerFn({ method: "GET" })
@@ -31,7 +35,7 @@ export const getJobSheetsPage = createServerFn({ method: "GET" })
   });
 
 export const getJobSheet = createServerFn({ method: "GET" })
-  .validator((data: unknown) => data as { id: string })
+  .validator((data: unknown) => parseOperationInput(IdSchema, data))
   .handler(async ({ data }) => {
     await requireCapability("job_sheets.view", { resourceType: "job_sheet", resourceId: data.id });
     await requireNeonAuthSession();
@@ -39,7 +43,7 @@ export const getJobSheet = createServerFn({ method: "GET" })
   });
 
 export const updateJobSheetPortions = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { id: string; portions: NewJobSheetPortion[] })
+  .validator((data: unknown) => parseOperationInput(JobSheetMutationSchema, data))
   .handler(async ({ data }) => {
     await requireCapability("job_sheets.update_billing", {
       resourceType: "job_sheet",
@@ -50,7 +54,7 @@ export const updateJobSheetPortions = createServerFn({ method: "POST" })
   });
 
 export const acceptJobSheetForAccounting = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { id: string })
+  .validator((data: unknown) => parseOperationInput(IdSchema, data))
   .handler(async ({ data }) => {
     await requireCapability("job_sheets.accept", {
       resourceType: "job_sheet",
@@ -61,7 +65,7 @@ export const acceptJobSheetForAccounting = createServerFn({ method: "POST" })
   });
 
 export const updatePortionXeroReference = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as UpdateJobSheetXeroReferenceInput)
+  .validator((data: unknown) => parseOperationInput(XeroReferenceSchema, data))
   .handler(async ({ data }) => {
     await requireCapability("job_sheets.update_billing", {
       resourceType: "job_sheet_portion",
