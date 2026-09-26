@@ -8,8 +8,8 @@ Allowed finding states: `open`, `in_progress`, `verified_fixed`, `already_fixed_
 
 | Task | State | Commit / PR | Tests and evidence | Remaining blocker |
 |---|---|---|---|---|
-| T00 Baseline | complete | `aa16d943e3365ac6aa430663c12597984556b204` | Hashes and SHA equality; pure Vite build; TypeScript; lint; real Postgres full suite 1,920/1,920 with 4 workers, 0 skip | Role sessions unavailable; local migration CLI WebSocket incompatible |
-| T01 Runtime input contracts | open | — | — | — |
+| T00 Baseline | complete | `aa16d943e3365ac6aa430663c12597984556b204`, `bce702a` | Hashes and SHA equality; pure Vite build; TypeScript; lint; real Postgres full suite 1,920/1,920 with 4 workers, 0 skip | Role sessions unavailable; local migration CLI WebSocket incompatible |
+| T01 Runtime input contracts | complete | `56bee37` | 25 positive boundary tests; 44 existing related tests; full suite 270 files/1,945 tests, 0 skip on disposable PostgreSQL; `tsc` exit 0, pure Vite build exit 0, lint exit 0 (one existing warning); before-fix tests failed as expected. [T01 evidence](t01-evidence.md) | Seven-role UI smoke unavailable; production migration CLI is incompatible with plain local PG WebSocket |
 | T02 Request authorization context | open | — | — | — |
 | T03 Read surface visibility | open | — | — | — |
 | T04 Import row authorization | open | — | — | — |
@@ -67,7 +67,7 @@ The latest main is identical to the audited commit. The audit's code findings th
 | CO-27 Docs and CI drift | P2 | T22 | open | audit code path; current gate pending | release candidate pending |
 | CO-28 AI governance and telemetry | P2 | T21 | open | audit code path; positive test pending | sandbox provider/n8n pending |
 | CO-29 Spreadsheet formula text | P2 | T14 | open | audit probe 7; positive test pending | spreadsheet UI pending |
-| CO-30 Runtime write validation | P2 | T01 | open | audit code path; positive test pending | — |
+| CO-30 Runtime write validation | P2 | T01 | in_progress | 25 new positive tests; 44 existing related tests; full suite 1,945/1,945 on disposable PG; commit `56bee37`; [evidence](t01-evidence.md) | Authenticated role UI field-error smoke pending |
 
 ## Shared gates
 
