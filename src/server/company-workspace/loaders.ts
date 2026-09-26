@@ -1,4 +1,7 @@
-import { loadRequestAuthorization, type RequestAuthorization } from "@/server/auth/authorization.server";
+import {
+  loadRequestAuthorization,
+  type RequestAuthorization,
+} from "@/server/auth/authorization.server";
 import { getAccountTimeline } from "@/server/repositories/account-timeline";
 import { listAccountContacts } from "@/server/repositories/account-contacts";
 import { getAccount } from "@/server/repositories/accounts";
@@ -142,7 +145,10 @@ export async function loadCompanyWorkspaceRead(
     Promise.all(
       requestedSections.map(
         async (section) =>
-          [section, await loadCompanyWorkspaceSection(accountId, section, requestId, context)] as const,
+          [
+            section,
+            await loadCompanyWorkspaceSection(accountId, section, requestId, context),
+          ] as const,
       ),
     ),
   ]);

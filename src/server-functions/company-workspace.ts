@@ -70,10 +70,14 @@ export const getCompanyWorkspaceRead = createServerFn({ method: "GET" })
     // account could still read it here, which is the primary account screen.
     // requireCapability loads the session itself, so no separate session check is needed.
     const context = await loadRequestAuthorization();
-    await requireCapability("accounts.view", {
-      resourceType: "account",
-      resourceId: data.accountId,
-    }, context);
+    await requireCapability(
+      "accounts.view",
+      {
+        resourceType: "account",
+        resourceId: data.accountId,
+      },
+      context,
+    );
     return loadCompanyWorkspaceRead(data.accountId, data.sections, undefined, undefined, context);
   });
 
@@ -101,9 +105,13 @@ export const getCompanyWorkspaceSection = createServerFn({ method: "GET" })
     // account could still read it here, which is the primary account screen.
     // requireCapability loads the session itself, so no separate session check is needed.
     const context = await loadRequestAuthorization();
-    await requireCapability("accounts.view", {
-      resourceType: "account",
-      resourceId: data.accountId,
-    }, context);
+    await requireCapability(
+      "accounts.view",
+      {
+        resourceType: "account",
+        resourceId: data.accountId,
+      },
+      context,
+    );
     return loadCompanyWorkspaceSection(data.accountId, data.section, undefined, context);
   });

@@ -1,7 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RequestAuthorization } from "@/server/auth/authorization.server";
 
-const fixtureContext = { actor: { profileId: "fixture-accounting", role: "accounting", status: "active", directReportIds: [] }, overrides: [], now: new Date(), session: { profile: { id: "fixture-accounting" } } } as unknown as RequestAuthorization;
+const fixtureContext = {
+  actor: {
+    profileId: "fixture-accounting",
+    role: "accounting",
+    status: "active",
+    directReportIds: [],
+  },
+  overrides: [],
+  now: new Date(),
+  session: { profile: { id: "fixture-accounting" } },
+} as unknown as RequestAuthorization;
 
 const repositories = vi.hoisted(() => ({
   getAccount: vi.fn(),

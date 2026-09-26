@@ -11,8 +11,9 @@ export async function listApprovals(
 ): Promise<HumanApproval[]> {
   const where = buildFilters([["status", input.status]]);
   const scope = buildVisibilityScope(context, "human_approval", "ha");
-  const predicate = scope.sql.replace(/\$(\d+)/g, (_, index: string) =>
-    "$" + (Number(index) + where.values.length),
+  const predicate = scope.sql.replace(
+    /\$(\d+)/g,
+    (_, index: string) => "$" + (Number(index) + where.values.length),
   );
   const clause = where.sql ? where.sql + " and " + predicate : "where " + predicate;
   return query<HumanApproval>(

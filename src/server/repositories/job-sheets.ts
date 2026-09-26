@@ -138,25 +138,30 @@ async function createDefaultPortionsFromAcceptedVersion(
 
 export type JobSheetListItem = Pick<
   JobSheet,
-  "id" | "number" | "quote_id" | "status" | "po_number" | "client_order_number" |
-  "created_at" | "total_amount" | "currency"
+  | "id"
+  | "number"
+  | "quote_id"
+  | "status"
+  | "po_number"
+  | "client_order_number"
+  | "created_at"
+  | "total_amount"
+  | "currency"
 > & { has_xero_customer_reference: boolean };
 
 const JOB_SHEET_LIST_COLUMNS =
   "js.id, js.number, js.quote_id, js.status, js.po_number, js.client_order_number, js.created_at, js.total_amount, js.currency, (js.xero_customer_reference is not null) as has_xero_customer_reference";
 
-function visibleJobSheetWhere(
-  filters: JobSheetFilters,
-  context: RequestAuthorization,
-) {
+function visibleJobSheetWhere(filters: JobSheetFilters, context: RequestAuthorization) {
   const where = buildFilters([
     ["status", filters.status],
     ["client_id", filters.client_id],
     ["account_id", filters.account_id],
   ]);
   const scope = buildVisibilityScope(context, "job_sheet", "js");
-  const predicate = scope.sql.replace(/\$(\d+)/g, (_, index: string) =>
-    `$${Number(index) + where.values.length}`,
+  const predicate = scope.sql.replace(
+    /\$(\d+)/g,
+    (_, index: string) => `$${Number(index) + where.values.length}`,
   );
   return {
     sql: where.sql ? `${where.sql} and ${predicate}` : `where ${predicate}`,

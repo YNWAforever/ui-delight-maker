@@ -232,7 +232,10 @@ describe("client workspace read model", () => {
   it("authorizes both server reads before starting repository work", async () => {
     const authorization = deferred<Record<string, boolean>>();
     requireCapabilitySetMock.mockReturnValueOnce(authorization.promise);
-    loadRequestAuthorizationMock.mockResolvedValue({ actor: { profileId: "fixture" }, overrides: [] });
+    loadRequestAuthorizationMock.mockResolvedValue({
+      actor: { profileId: "fixture" },
+      overrides: [],
+    });
     const { getClientWorkspaceRead, getClientWorkspaceSection } =
       await import("@/server-functions/client-workspace");
 

@@ -14,7 +14,10 @@ import { listClientContacts } from "@/server/repositories/client-contacts";
 import { getClient } from "@/server/repositories/clients";
 import { listEngagementsByClient } from "@/server/repositories/engagements";
 import { listJobSheets, type JobSheetListItem } from "@/server/repositories/job-sheets";
-import { loadRequestAuthorization, type RequestAuthorization } from "@/server/auth/authorization.server";
+import {
+  loadRequestAuthorization,
+  type RequestAuthorization,
+} from "@/server/auth/authorization.server";
 import { listQuotes } from "@/server/repositories/quotes";
 
 export const clientWorkspaceSections = [
@@ -186,7 +189,10 @@ async function loadSectionData<Section extends ClientWorkspaceSection>(
     } as ClientWorkspaceSectionData[Section];
   }
   return {
-    jobSheets: await listJobSheets({ client_id: clientId }, context ?? (await loadRequestAuthorization())),
+    jobSheets: await listJobSheets(
+      { client_id: clientId },
+      context ?? (await loadRequestAuthorization()),
+    ),
   } as ClientWorkspaceSectionData[Section];
 }
 

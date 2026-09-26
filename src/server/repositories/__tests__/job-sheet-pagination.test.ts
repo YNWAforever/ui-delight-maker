@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RequestAuthorization } from "@/server/auth/authorization.server";
 const jobSheetAuthorization = {
-  actor: { profileId: "fixture-accounting", role: "accounting", status: "active", directReportIds: [] },
+  actor: {
+    profileId: "fixture-accounting",
+    role: "accounting",
+    status: "active",
+    directReportIds: [],
+  },
   overrides: [],
   now: new Date("2026-09-27T00:00:00Z"),
   session: { profile: { id: "fixture-accounting" } },
 } as unknown as RequestAuthorization;
-
 
 const { mockQuery, mockQueryOne } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
@@ -39,13 +43,18 @@ describe("paginated job-sheet repository", () => {
       limit: 50,
     });
     expect(mockQuery.mock.calls[0][1].slice(-2)).toEqual([50, 0]);
-    expect(mockQueryOne).toHaveBeenCalledWith(expect.stringContaining("count(*)"), expect.any(Array));
+    expect(mockQueryOne).toHaveBeenCalledWith(
+      expect.stringContaining("count(*)"),
+      expect.any(Array),
+    );
     expect(mockQueryOne.mock.calls[0][0]).toContain("jsonb_array_elements");
   });
 
   it("pushes filters into list/count SQL and clamps the limit", async () => {
     const listPage = await loadPage();
-    await expect(listPage({ ...filters, page: 2, limit: 500 }, jobSheetAuthorization)).resolves.toMatchObject({
+    await expect(
+      listPage({ ...filters, page: 2, limit: 500 }, jobSheetAuthorization),
+    ).resolves.toMatchObject({
       total: 7,
       page: 2,
       limit: 100,

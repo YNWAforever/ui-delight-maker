@@ -1,12 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { RequestAuthorization } from "@/server/auth/authorization.server";
 const jobSheetAuthorization = {
-  actor: { profileId: "fixture-accounting", role: "accounting", status: "active", directReportIds: [] },
+  actor: {
+    profileId: "fixture-accounting",
+    role: "accounting",
+    status: "active",
+    directReportIds: [],
+  },
   overrides: [],
   now: new Date("2026-09-27T00:00:00Z"),
   session: { profile: { id: "fixture-accounting" } },
 } as unknown as RequestAuthorization;
-
 
 /**
  * Keyset-stable ordering for every paginated list.

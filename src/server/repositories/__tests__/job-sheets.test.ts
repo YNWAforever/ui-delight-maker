@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RequestAuthorization } from "@/server/auth/authorization.server";
 const jobSheetAuthorization = {
-  actor: { profileId: "fixture-accounting", role: "accounting", status: "active", directReportIds: [] },
+  actor: {
+    profileId: "fixture-accounting",
+    role: "accounting",
+    status: "active",
+    directReportIds: [],
+  },
   overrides: [],
   now: new Date("2026-09-27T00:00:00Z"),
   session: { profile: { id: "fixture-accounting" } },
 } as unknown as RequestAuthorization;
-
 
 const { mockQuery, mockQueryOne, mockTransaction } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
@@ -198,7 +202,10 @@ describe("job sheets repository", () => {
 
     await listJobSheets({ status: "accounting_review" }, jobSheetAuthorization);
 
-    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("from job_sheets"), expect.arrayContaining(["accounting_review"]));
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("from job_sheets"),
+      expect.arrayContaining(["accounting_review"]),
+    );
   });
 
   it("lists job sheets by client and account filters", async () => {
