@@ -8,7 +8,7 @@ Allowed finding states: `open`, `in_progress`, `verified_fixed`, `already_fixed_
 
 | Task | State | Commit / PR | Tests and evidence | Remaining blocker |
 |---|---|---|---|---|
-| T00 Baseline | complete | commit to be recorded below | Hashes and SHA equality; pure Vite build; TypeScript; lint; real Postgres full suite 1,920/1,920 with 4 workers, 0 skip | Role sessions unavailable; local migration CLI WebSocket incompatible |
+| T00 Baseline | complete | `aa16d943e3365ac6aa430663c12597984556b204` | Hashes and SHA equality; pure Vite build; TypeScript; lint; real Postgres full suite 1,920/1,920 with 4 workers, 0 skip | Role sessions unavailable; local migration CLI WebSocket incompatible |
 | T01 Runtime input contracts | open | — | — | — |
 | T02 Request authorization context | open | — | — | — |
 | T03 Read surface visibility | open | — | — | — |
