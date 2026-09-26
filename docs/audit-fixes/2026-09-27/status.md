@@ -10,7 +10,7 @@ Allowed finding states: `open`, `in_progress`, `verified_fixed`, `already_fixed_
 |---|---|---|---|---|
 | T00 Baseline | complete | `aa16d943e3365ac6aa430663c12597984556b204`, `bce702a` | Hashes and SHA equality; pure Vite build; TypeScript; lint; real Postgres full suite 1,920/1,920 with 4 workers, 0 skip | Role sessions unavailable; local migration CLI WebSocket incompatible |
 | T01 Runtime input contracts | complete | `56bee37` | 25 positive boundary tests; 44 existing related tests; full suite 270 files/1,945 tests, 0 skip on disposable PostgreSQL; `tsc` exit 0, pure Vite build exit 0, lint exit 0 (one existing warning); before-fix tests failed as expected. [T01 evidence](t01-evidence.md) | Seven-role UI smoke unavailable; production migration CLI is incompatible with plain local PG WebSocket |
-| T02 Request authorization context | open | — | — | — |
+| T02 Request authorization context | complete | `93047f8` | 82/82 affected tests on disposable PostgreSQL, including 7-role SQL/evaluator parity and 14 migrated resource predicates; TypeScript, lint, pure Vite build exit 0; [T02 evidence](t02-evidence.md) | Authenticated role UI and true runtime auth-query timing unavailable; T03 must wire read surfaces into scope |
 | T03 Read surface visibility | open | — | — | — |
 | T04 Import row authorization | open | — | — | — |
 | T05 Approval terminal state and receipts | open | — | — | — |
@@ -59,7 +59,7 @@ The latest main is identical to the audited commit. The audit's code findings th
 | CO-19 Job Sheet maintenance | P2 | T16 | open | audit code path; real DB pending | accounting UI pending |
 | CO-20 Large Admin directory | P2 | T12, T17 | open | audit code path; UI pending | 250-profile fixture pending |
 | CO-21 Invitation access state | P2 | T18 | open | audit public UI and code; positive test pending | isolated role UI pending |
-| CO-22 Repeated shell auth | P2 | T02 | open | audit code path; query count pending | runtime pending |
+| CO-22 Repeated shell auth | P2 | T02 | in_progress | Navigation context 1 session resolution + 4 authorization queries (baseline 6 + 24); shell shares one context; `93047f8`; [evidence](t02-evidence.md) | Authenticated runtime request/query timing and role UI pending |
 | CO-23 Shared bundle size | P2 | T19 | open | historical Vite build; current measurements pending | runtime pending |
 | CO-24 Synthetic performance evidence | P2 | T19 | open | audit code path; real timings pending | runtime pending |
 | CO-25 Neon and legacy data split | P2 | T20 | open | audit code path; reconciliation pending | isolated legacy snapshot pending |
