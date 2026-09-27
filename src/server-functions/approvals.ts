@@ -3,19 +3,53 @@ import { parseOperationInput } from "@/lib/operations/errors";
 import { loadRequestAuthorization, requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { assignApproval, listApprovals } from "@/server/repositories/approvals";
+import {
+  assignApproval,
+  listApprovals,
+  listClaimableApprovals,
+} from "@/server/repositories/approvals";
 import { serializeHumanApproval } from "@/lib/serializable";
 import { decideApprovalCommand } from "@/server/commands/approval-decision.server";
+import { claimApprovalCommand } from "@/server/commands/agent-recovery.server";
+import {
+  recordManualMessageSentCommand,
+  type MessageHandoff,
+} from "@/server/commands/message-handoff.server";
+import { AdminError } from "@/lib/admin/errors";
+import { getApproval } from "@/server/repositories/approvals";
+import { queryOne } from "@/server/db/neon.server";
 import { listApproverProfiles } from "@/server/repositories/notifications";
-import { ApprovalAssignmentSchema, ApprovalDecisionSchema } from "@/lib/operations/input-schemas";
+import {
+  ApprovalAssignmentSchema,
+  ApprovalClaimSchema,
+  ApprovalDecisionSchema,
+  IdSchema,
+  ManualMessageHandoffSchema,
+} from "@/lib/operations/input-schemas";
 
 export const getApprovals = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as { status?: string })
   .handler(async ({ data }) => {
     const context = await loadRequestAuthorization();
     await requireCapability("approvals.view", {}, context);
-    const approvals = await listApprovals(data, context);
-    return approvals.map(serializeHumanApproval);
+    const [approvals, claimable] = await Promise.all([
+      listApprovals(data, context),
+      data.status && data.status !== "pending" && data.status !== "escalated"
+        ? Promise.resolve([])
+        : listClaimableApprovals(context),
+    ]);
+    const merged = new Map(
+      [
+        ...approvals,
+        ...claimable.filter((approval) => !data.status || approval.status === data.status),
+      ].map((approval) => [approval.id, approval]),
+    );
+    return [...merged.values()]
+      .sort(
+        (left, right) =>
+          right.created_at.localeCompare(left.created_at) || right.id.localeCompare(left.id),
+      )
+      .map(serializeHumanApproval);
   });
 
 export const decideApproval = createServerFn({ method: "POST" })
@@ -71,3 +105,55 @@ export const getAssignableApproversFn = createServerFn({ method: "GET" }).handle
   await requireNeonAuthSession();
   return listApproverProfiles();
 });
+
+/** Claim is scoped to the persisted linked subject inside one locked command. */
+export const claimApprovalFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parseOperationInput(ApprovalClaimSchema, data))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    const approval = await claimApprovalCommand(context, {
+      ...data,
+      idempotencyKey: data.idempotencyKey ?? randomUUID(),
+    });
+    return serializeHumanApproval(approval);
+  });
+
+/** Draft text is fetched only for the selected, authorized approved message request. */
+export const getMessageHandoffFn = createServerFn({ method: "GET" })
+  .validator((data: unknown) => parseOperationInput(IdSchema, data))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "approvals.view",
+      {
+        resourceType: "human_approval",
+        resourceId: data.id,
+      },
+      context,
+    );
+    const approval = await getApproval(data.id);
+    if (approval.approval_type !== "message_send" || approval.status !== "approved") {
+      throw new AdminError("CONFLICT", "Approved message draft is unavailable");
+    }
+    const handoff = await queryOne<MessageHandoff>(
+      "select * from approval_message_handoffs where approval_id=$1",
+      [approval.id],
+    );
+    if (!handoff) throw new AdminError("CONFLICT", "Manual handoff is unavailable");
+    const payload = approval.context_data as { draft_message?: unknown } | null;
+    return {
+      approvalId: approval.id,
+      draftMessage: typeof payload?.draft_message === "string" ? payload.draft_message : null,
+      handoff,
+    };
+  });
+
+export const recordManualMessageSentFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parseOperationInput(ManualMessageHandoffSchema, data))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    return recordManualMessageSentCommand(context, {
+      ...data,
+      idempotencyKey: data.idempotencyKey ?? randomUUID(),
+    });
+  });

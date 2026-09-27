@@ -21,6 +21,7 @@ export async function listApprovals(
   return query<HumanApproval>(
     `select ha.id, ha.agent_run_id, ha.approval_type, ha.requested_by,
             ha.assigned_to, ha.status, ha.row_version, ha.superseded_by,
+            ha.recovery_outcome_code, ha.recovery_reason,
             jsonb_strip_nulls(jsonb_build_object('quote_id', ha.context_data->>'quote_id')) as context_data,
             left(ha.context_summary, 300) as context_summary,
             ha.reviewer_notes, ha.decided_at, ha.created_at
@@ -29,6 +30,75 @@ export async function listApprovals(
      order by ha.created_at desc, ha.id desc`,
     [...where.values, ...scope.values],
   );
+}
+
+/** Discover unassigned review work only through a linked, manager-owned subject. */
+export async function listClaimableApprovals(
+  context: RequestAuthorization,
+): Promise<HumanApproval[]> {
+  if (context.actor.role !== "manager" || context.actor.status !== "active") return [];
+  const ownerIds = [context.actor.profileId, ...context.actor.directReportIds];
+  const rows = await query<HumanApproval & { claim_owner: string }>(
+    `select ha.id,ha.agent_run_id,ha.approval_type,ha.requested_by,ha.assigned_to,
+            ha.status,ha.row_version,ha.superseded_by,ha.recovery_outcome_code,
+            ha.recovery_reason,
+            jsonb_strip_nulls(jsonb_build_object('quote_id',ha.context_data->>'quote_id')) as context_data,
+            left(ha.context_summary,300) as context_summary,
+            ha.reviewer_notes,ha.decided_at,ha.created_at,
+            subject.owner_profile_id as claim_owner
+       from human_approvals ha
+       left join agent_runs ar on ar.id=ha.agent_run_id
+       cross join lateral (
+         select case
+           when ar.status='waiting_approval' and ar.subject_type='lead'
+             then (select l.assigned_to from leads l where l.id=ar.subject_id)
+           when ar.status='waiting_approval' and ar.subject_type='engagement'
+             then (select e.owner from engagements e where e.id=ar.subject_id)
+           when ar.status='waiting_approval' and ar.subject_type='account'
+             then (select a.account_owner from accounts a where a.id=ar.subject_id)
+           when ar.status='waiting_approval' and ar.subject_type='campaign'
+             then (select c.owner from campaigns c where c.id=ar.subject_id)
+           when ar.status='waiting_approval' and ar.subject_type='client'
+             then (select c.account_owner from clients c where c.id=ar.subject_id)
+           when ar.status='waiting_approval' and ar.subject_type='task'
+             then (select t.assigned_to from tasks t where t.id=ar.subject_id)
+           when ar.status='waiting_approval' and ar.subject_type='quote'
+             then (select coalesce(q.created_by,a.account_owner) from quotes q
+                   left join accounts a on a.id=q.account_id where q.id=ar.subject_id)
+           when ha.agent_run_id is null and ha.approval_type='quote_send'
+             then (select coalesce(q.created_by,a.account_owner) from quotes q
+                   left join accounts a on a.id=q.account_id
+                   where q.id::text=ha.context_data->>'quote_id')
+         end as owner_profile_id
+       ) subject
+      where ha.assigned_to is null and ha.status in ('pending','escalated')
+        and subject.owner_profile_id=any($1::text[])
+      order by ha.created_at desc,ha.id desc
+      limit 200`,
+    [ownerIds],
+  );
+  return rows.flatMap(({ claim_owner, ...approval }) => {
+    const target = {
+      resourceType: "human_approval",
+      resourceId: approval.id,
+      ownerProfileId: claim_owner,
+    };
+    const view = evaluateAuthorization({
+      actor: context.actor,
+      capability: "approvals.view",
+      target,
+      overrides: context.overrides,
+      now: context.now,
+    });
+    const decide = evaluateAuthorization({
+      actor: context.actor,
+      capability: "approvals.decide",
+      target,
+      overrides: context.overrides,
+      now: context.now,
+    });
+    return view.allowed && decide.allowed ? [approval] : [];
+  });
 }
 
 export async function listActiveApprovals() {

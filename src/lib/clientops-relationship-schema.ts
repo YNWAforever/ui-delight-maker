@@ -19,6 +19,7 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/012_quote_open_approval_constraint.sql",
   "neon/migrations/013_xero_entry_transitions.sql",
   "neon/migrations/014_locked_job_sheet_portions.sql",
+  "neon/migrations/015_agent_recovery_metadata.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
@@ -60,6 +61,7 @@ export const CLIENTOPS_REQUIRED_TABLES = [
   "work_delegations",
   "admin_audit_logs",
   "command_receipts",
+  "approval_message_handoffs",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_COLUMNS = [
@@ -108,6 +110,11 @@ export const CLIENTOPS_REQUIRED_COLUMNS = [
   "touchpoints.contact_id",
   "human_approvals.row_version",
   "human_approvals.superseded_by",
+  "human_approvals.recovery_outcome_code",
+  "agent_runs.outcome_code",
+  "agent_runs.attempt_id",
+  "agent_runs.retry_of",
+  "approval_message_handoffs.handoff_status",
 ] as const;
 
 export type RelationshipSchemaMigrationDecision =

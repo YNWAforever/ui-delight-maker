@@ -205,7 +205,13 @@ import { describe, expect, it } from "vitest";
  * to the portion, then the command rechecks current actor and row permission
  * after locking the portion in PostgreSQL.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 224;
+/*
+ * 224 -> 225 in T11: getMessageHandoffFn adds one approvals.view check for the
+ * selected approved draft. Claim, recovery and manual-send mutations perform
+ * their scoped checks inside the locked PostgreSQL command; a targetless precheck
+ * would deny a legitimate resource-scoped allow and cannot replace those checks.
+ */
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 225;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

@@ -46,6 +46,7 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/012_quote_open_approval_constraint.sql",
       "neon/migrations/013_xero_entry_transitions.sql",
       "neon/migrations/014_locked_job_sheet_portions.sql",
+      "neon/migrations/015_agent_recovery_metadata.sql",
     ]);
   });
 

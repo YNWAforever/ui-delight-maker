@@ -394,7 +394,9 @@ function AiReviewPage() {
           decision === "approved"
             ? approval.approval_type === "quote_send"
               ? "Quote approved. Issuance is a separate step."
-              : "Approved — recorded and the agent run released"
+              : approval.approval_type === "message_send"
+                ? "Draft approved. Copy it in Approvals for manual sending; no delivery is confirmed."
+                : "Approved — recorded and the agent run released"
             : decision === "rejected"
               ? "Rejected — recorded and the agent run released"
               : "Changes requested",
@@ -652,6 +654,11 @@ function AiReviewPage() {
             Decided {formatDateTime(approval.decided_at)}. This decision cannot be undone from
             ClientOps.
           </p>
+          {approval.approval_type === "message_send" && approval.status === "approved" && (
+            <Link to="/approvals" className="text-xs text-primary underline">
+              Open manual message handoff
+            </Link>
+          )}
           {nextPending && (
             <Button size="sm" onClick={() => selectApproval(nextPending.id)}>
               <ClipboardCheck className="mr-2 h-4 w-4" aria-hidden="true" /> Review next

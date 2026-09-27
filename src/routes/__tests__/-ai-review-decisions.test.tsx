@@ -220,6 +220,10 @@ describe("a decided item keeps its place and the queue moves on", () => {
     await waitFor(() => expect(decideApprovalMock).toHaveBeenCalledTimes(1));
 
     await waitFor(() => expect(screen.getByText(/cannot be undone from ClientOps/i)).toBeTruthy());
+    expect(screen.getByText("Open manual message handoff")).toBeTruthy();
+    expect(toastSuccessMock).toHaveBeenCalledWith(
+      expect.stringContaining("no delivery is confirmed"),
+    );
     expect(screen.queryByRole("button", { name: /^Reject$/ })).toBeNull();
   });
 });

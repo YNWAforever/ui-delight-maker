@@ -157,6 +157,22 @@ export const ApprovalAssignmentSchema = z.strictObject({
   assignedTo: UuidSchema.nullable(),
   expectedVersion: z.number().int().nonnegative().optional(),
 });
+export const ApprovalClaimSchema = z.strictObject({
+  id: UuidSchema,
+  expectedVersion: z.number().int().nonnegative().optional(),
+  idempotencyKey: UuidSchema.optional(),
+});
+export const AgentRecoverySchema = z.strictObject({
+  runId: UuidSchema,
+  action: z.enum(["expire", "cancel", "retry"]),
+  reason: z.string().trim().min(10).max(1000),
+  idempotencyKey: UuidSchema.optional(),
+});
+export const ManualMessageHandoffSchema = z.strictObject({
+  approvalId: UuidSchema,
+  reference: z.string().trim().min(3).max(255),
+  idempotencyKey: UuidSchema.optional(),
+});
 
 const JobSheetPortionSchema = z.strictObject({
   id: UuidSchema.optional(),

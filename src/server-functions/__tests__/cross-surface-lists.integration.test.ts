@@ -133,6 +133,7 @@ describe("job-sheet queue SQL visibility", () => {
     await holder.client.query(`create temp table human_approvals (
       id text, agent_run_id text, approval_type text, requested_by text,
       assigned_to text, status text, row_version integer not null default 0, superseded_by text,
+      recovery_outcome_code text, recovery_reason text,
       context_data jsonb, context_summary text, reviewer_notes text,
       decided_at timestamptz, created_at timestamptz
     ) on commit drop`);

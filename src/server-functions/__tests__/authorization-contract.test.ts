@@ -49,6 +49,12 @@ const ACKNOWLEDGED_UNGUARDED: Record<string, string> = {
   "auth.ts::signIn": "establishes a session",
   "auth.ts::signOut": "ends a session",
   "admin-invitations.ts::getInvitationPreview": "must work for a signed-out invitee",
+  "approvals.ts::claimApprovalFn":
+    "command checks approvals.decide against the locked approval and linked subject owner",
+  "approvals.ts::recordManualMessageSentFn":
+    "command checks approvals.decide against the locked approved message handoff",
+  "agent-runs.ts::recoverAgentRunFn":
+    "command checks agents.run and approvals.decide against the locked run and approval",
   "app-shell.ts::getAppShellRead":
     "reads only the actor's favorites and builds navigation/capabilities from one server-loaded authorization context",
   ...Object.fromEntries(
