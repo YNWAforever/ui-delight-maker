@@ -1,6 +1,6 @@
 # ClientOps audit release candidate — 2026-09-28
 
-**State: reviewable source candidate; not released or deployed.** Source baseline is main/audit SHA `2904faa502f7494173f48f412875c1d0a3aba674`. T00–T21 are in stacked draft PRs #82–#99. T22 is the cumulative candidate branch intended for a draft PR against main, so all fixes and release gates can be reviewed together. Use its head SHA and compare it to GET `/api/build` on its preview. A null or different response blocks release. The 30 finding states and task commits are in [status](status.md); task-level proof is in `t00`–`t22` evidence files where present. A passing local test never upgrades a blocked browser, data-parity or provider gate.
+**State: reviewable source candidate; not released or deployed.** Source baseline is main/audit SHA `2904faa502f7494173f48f412875c1d0a3aba674`. T00–T21 are in stacked draft PRs #82–#99. T22 is [cumulative draft PR #100](https://github.com/YNWAforever/ui-delight-maker/pull/100) against main, so all fixes and release gates can be reviewed together. Use its head SHA and compare it to GET `/api/build` on its preview. A null or different response blocks release. The 30 finding states and task commits are in [status](status.md); task-level proof is in `t00`–`t22` evidence files where present. A passing local test never upgrades a blocked browser, data-parity or provider gate.
 
 ## Feature status and evidence map
 

@@ -1,6 +1,6 @@
 # T22 — release candidate, CI and role acceptance evidence
 
-**Candidate branch:** `codex/clientops-release-candidate`, cumulative against unchanged main/audit SHA `2904faa502f7494173f48f412875c1d0a3aba674`. Final PR and head SHA are recorded in [status](status.md) after publication. This is a source candidate, not a deployment or production release.
+**Candidate branch:** `codex/clientops-release-candidate`, cumulative against unchanged main/audit SHA `2904faa502f7494173f48f412875c1d0a3aba674`. [Cumulative draft PR #100](https://github.com/YNWAforever/ui-delight-maker/pull/100) is based on main; resolve its current head SHA from the PR when comparing preview runtime metadata. This is a source candidate, not a deployment or production release.
 
 ## Baseline and repair
 
@@ -19,7 +19,7 @@
 - `bun run lint`: pass, 0 errors and one pre-existing Fast Refresh warning in `data-table-shell.tsx`.
 - Pure `bunx vite build`: client and SSR pass. `bun run performance:bundles`: pass; login initial emitted static JS is 165,496 gzip bytes at this build. This is transfer size, not route latency.
 - `bun run build` was not used because it applies migration and seed. The full suite itself migrates/validates the disposable PostgreSQL fixture through `pg`. The production migration CLI uses Neon's WebSocket driver and has not been proven against this plain local PostgreSQL container; a wrapper rehearsal needs a separate disposable Neon-compatible target.
-- `git diff --check`: pass for code commits; final document diff and remote PR SHA checked at publication.
+- `git diff --check`: pass for code commits; final document diff checked before publication; remote PR head and checks must be read live.
 
 ## External gates
 
