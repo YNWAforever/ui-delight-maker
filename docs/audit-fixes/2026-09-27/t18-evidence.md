@@ -1,6 +1,6 @@
 # T18 Invitation and workspace access evidence
 
-Branch: `codex/clientops-workspace-access`, stacked on T17 evidence commit `714d0f3`. Implementation commit: `b74a92d`. No deployment, production data change, or customer message was performed.
+Branch: `codex/clientops-workspace-access`, stacked on T17 evidence commit `714d0f3`. Implementation commit: `b74a92d`; [draft PR #96](https://github.com/YNWAforever/ui-delight-maker/pull/96). No deployment, production data change, or customer message was performed.
 
 ## Positive behavior
 
