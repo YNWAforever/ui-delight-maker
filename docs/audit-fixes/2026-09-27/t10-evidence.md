@@ -1,6 +1,6 @@
 # T10 renewal risk decision evidence
 
-Scope: CO-11. Branch: `codex/clientops-risk-review`, stacked on T09. Code commit: `4ac211b`. Audit baseline: `2904faa502f7494173f48f412875c1d0a3aba674`.
+Scope: CO-11. Branch: `codex/clientops-risk-review`, stacked on T09. Code commit: `4ac211b`; [draft PR #88](https://github.com/YNWAforever/ui-delight-maker/pull/88). Audit baseline: `2904faa502f7494173f48f412875c1d0a3aba674`.
 
 ## Baseline and red tests
 
