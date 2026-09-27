@@ -96,6 +96,7 @@ describe("legacy domain reconciliation", () => {
           CLIENTOPS_LEGACY_TASK_REHEARSAL: "1",
           NODE_ENV: "test",
           DATABASE_URL: process.env.DATABASE_TEST_URL,
+          DATABASE_TEST_URL: process.env.DATABASE_TEST_URL,
         },
       );
       expect(workspace.error).toBeNull();

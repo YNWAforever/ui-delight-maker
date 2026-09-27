@@ -181,8 +181,9 @@ describe("agent policy store, proven against a real database", () => {
     // TRUNCATE, not DELETE: migration 009 puts an append-only trigger on this table that
     // rejects UPDATE and DELETE (`agent_policy_versions are append-only`). TRUNCATE fires a
     // different trigger event and is what actually resets the table between tests.
-    await db().query("truncate agent_policy_versions");
-    await db().query("delete from agent_runs where subject_id = $1", [LEAD_ID]);
+    await db().query(
+      "truncate approval_message_handoffs, human_approvals, agent_tool_calls, agent_runs, agent_policy_versions",
+    );
     holder.session = ADMIN_SESSION;
   });
 

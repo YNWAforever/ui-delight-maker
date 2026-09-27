@@ -51,9 +51,15 @@ export function selectLegacyTaskReadSource(env: Environment = process.env) {
   } catch {
     throw new Error("Neon task rehearsal requires a disposable local database");
   }
+  const databaseName = decodeURIComponent(url.pathname.slice(1));
+  const isolatedTestDatabase =
+    env.NODE_ENV === "test" &&
+    env.DATABASE_TEST_URL === env.DATABASE_URL &&
+    Boolean(env.DATABASE_TEST_URL) &&
+    databaseName.startsWith("clientops_");
   if (
     !["localhost", "127.0.0.1"].includes(url.hostname) ||
-    !url.pathname.slice(1).startsWith("clientops_t20_")
+    !(databaseName.startsWith("clientops_t20_") || isolatedTestDatabase)
   ) {
     throw new Error("Neon task rehearsal requires a disposable local database");
   }

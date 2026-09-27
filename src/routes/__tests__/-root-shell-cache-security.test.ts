@@ -4,7 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 
-const rootSource = readFileSync(new URL("../__root.tsx", import.meta.url), "utf8");
+const rootSource = readFileSync(
+  new URL("../../components/authenticated-app-shell.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("root shell auth cache boundaries", () => {
   it("clears every user-scoped query before invalidating or navigating after sign-out", () => {
