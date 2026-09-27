@@ -1,7 +1,7 @@
 # T16 Job Sheet handoff evidence
 
-Branch: `codex/clientops-job-sheet-handoff`, stacked on T15 commit `0704197`.
-Commits: `f389485` (migration/repository/bulk/real-DB tests), `d3159ba` (server endpoints and UI).
+Branch: `codex/clientops-job-sheet-handoff`, stacked on T15 commit `0704197`; [draft PR #94](https://github.com/YNWAforever/ui-delight-maker/pull/94). Refreshed `origin/main` on 2026-09-28 remains audit SHA `2904faa502f7494173f48f412875c1d0a3aba674`.
+Commits: `f389485` (migration/repository/bulk/real-DB tests), `d3159ba` (server endpoints and UI), `fc977e3` (status/evidence).
 No deployment or production data change was performed.
 
 ## Positive behavior
