@@ -1,6 +1,6 @@
 # T21 — governed AI invocation and telemetry
 
-Code commit: `e80b9d4`. Draft review PR: pending at evidence capture. No provider call, production message, migration or deployment was executed.
+Code commit: `e80b9d4`. Draft review PR: [#99](https://github.com/YNWAforever/ui-delight-maker/pull/99). No provider call, production message, migration or deployment was executed.
 
 ## Implemented
 
