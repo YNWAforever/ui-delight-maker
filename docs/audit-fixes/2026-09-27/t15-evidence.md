@@ -2,7 +2,7 @@
 
 ## Scope and commits
 
-- Branch: `codex/clientops-import-resume`, stacked on T13 draft PR #92.
+- Branch: `codex/clientops-import-resume`; [draft PR #93](https://github.com/YNWAforever/ui-delight-maker/pull/93) stacked on T13 draft PR #92.
 - `d2a3c1e`: additive migration 019, durable session/row/identity receipts, production Lead/Client/Event adapters, and real PostgreSQL behavior tests.
 - `413f194`: authenticated session API and shared Lead/Client/Event upload, preview, commit, resume, recovery and issues export; old whole-file commit endpoints reject writes.
 - `17bf56d`: explicit expired-row cleanup command, read-only identity inventory SQL, and migration/authorization contract updates.
@@ -21,6 +21,7 @@
 - Real PostgreSQL focused tests on the isolated local container: 11/11 for 5,000-row reconciliation, chunk bound, replay, concurrent same-key create, rollback and retry, owner/expiry, same-name distinct customers, inactive actor and contact transaction rollback. An additional bounded retention sweep test passed 1/1.
 - UI and retired-endpoint focused tests passed 35/35. TypeScript noEmit, changed-file ESLint and `git diff --check` passed. Pure `bunx vite build` completed client and SSR bundles. The migration-and-seed `bun run build` wrapper was not run.
 - Final fresh isolated-DB full suite at implementation head: 291/291 files and 2,098/2,098 tests passed with two thread workers, 0 skipped, 429.32 seconds. This includes the 5,000-row, concurrency, rollback, idempotency, cleanup, role revocation and adapter integration tests. The duration is test-suite wall time, not application performance.
+- Remote draft PR #93: at first check, Vercel preview failed; GitHub contract and Types/lint were pending. This is a remote gate, not evidence of local build failure. The underlying Vercel failure has not been attributed.
 - Authenticated Lead/Client/Event browser upload, close/resume, role revocation and issues-download UAT is blocked by absent role sessions. No super_admin proxy was used.
 - No production database, customer message, provider call, deployment or secret was touched.
 
