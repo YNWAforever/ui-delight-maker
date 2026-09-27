@@ -25,6 +25,11 @@ export const BulkActionSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("lead.assign"), profileId: z.string().min(1) }),
   z.object({ type: z.literal("lead.status"), status: z.enum(["qualified", "lost"]) }),
+  z.object({ type: z.literal("job_sheet.assign"), profileId: z.string().min(1).max(200) }),
+  z.object({
+    type: z.literal("job_sheet.invoice_date"),
+    targetInvoiceDate: z.iso.date().nullable(),
+  }),
 ]);
 export const BulkPreviewRequestSchema = z.object({ action: BulkActionSchema, ids });
 export const BulkCommitRequestSchema = z.object({

@@ -317,6 +317,8 @@ export interface JobSheet {
   status: JobSheetStatus;
   accepted_scope_summary: string | null;
   po_number: string | null;
+  no_po_reason: string | null;
+  row_version: number;
   client_order_number: string | null;
   xero_customer_reference: string | null;
   accounting_notes: string | null;

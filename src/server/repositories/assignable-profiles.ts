@@ -10,6 +10,8 @@ export type ProfilePurpose =
   | "task_filter"
   | "task_assign"
   | "approval_reviewer"
+  | "job_sheet_owner"
+  | "job_sheet_owner_filter"
   | "admin_access"
   | "successor";
 export type AssignableProfile = {
@@ -74,11 +76,15 @@ export async function listAssignableProfiles(
         ? permits(context, "tasks.update")
         : purpose === "approval_reviewer"
           ? permits(context, "approvals.decide")
-          : purpose === "admin_access"
-            ? permits(context, "permissions.override")
-            : purpose === "successor"
-              ? permits(context, "users.manage")
-              : false;
+          : purpose === "job_sheet_owner"
+            ? permits(context, "job_sheets.update_billing")
+            : purpose === "job_sheet_owner_filter"
+              ? permits(context, "job_sheets.view")
+              : purpose === "admin_access"
+                ? permits(context, "permissions.override")
+                : purpose === "successor"
+                  ? permits(context, "users.manage")
+                  : false;
   if (!authorized) throw new AdminError("FORBIDDEN", "People search is not authorized");
   const search = input.query?.trim().toLowerCase() ?? "";
   if (search.length > 200) throw new AdminError("VALIDATION_FAILED", "Search is too long");
@@ -112,9 +118,14 @@ export async function listAssignableProfiles(
   } else if (
     purpose === "task_assign" ||
     purpose === "approval_reviewer" ||
+    purpose === "job_sheet_owner" ||
+    purpose === "job_sheet_owner_filter" ||
     purpose === "admin_access" ||
     purpose === "successor"
   ) {
+    if (purpose === "job_sheet_owner" || purpose === "job_sheet_owner_filter") {
+      clauses.push("p.role=any(" + add(["accounting", "admin", "super_admin"]) + "::text[])");
+    }
     if (purpose === "approval_reviewer") {
       const roles = Object.entries(ROLE_GRANTS)
         .filter(([, capabilities]) => capabilities.has("approvals.decide"))
@@ -127,7 +138,12 @@ export async function listAssignableProfiles(
           add([context.actor.profileId, ...context.actor.directReportIds]) +
           "::text[])",
       );
-    } else if (context.actor.role !== "admin" && context.actor.role !== "super_admin") {
+    } else if (
+      purpose !== "job_sheet_owner" &&
+      purpose !== "job_sheet_owner_filter" &&
+      context.actor.role !== "admin" &&
+      context.actor.role !== "super_admin"
+    ) {
       clauses.push("p.id=" + add(context.actor.profileId));
     }
   }
@@ -206,11 +222,15 @@ export async function resolveAssignableProfile(
         ? permits(context, "tasks.update")
         : purpose === "approval_reviewer"
           ? permits(context, "approvals.decide")
-          : purpose === "admin_access"
-            ? permits(context, "permissions.override")
-            : purpose === "successor"
-              ? permits(context, "users.manage")
-              : false;
+          : purpose === "job_sheet_owner"
+            ? permits(context, "job_sheets.update_billing")
+            : purpose === "job_sheet_owner_filter"
+              ? permits(context, "job_sheets.view")
+              : purpose === "admin_access"
+                ? permits(context, "permissions.override")
+                : purpose === "successor"
+                  ? permits(context, "users.manage")
+                  : false;
   if (!authorized) throw new AdminError("FORBIDDEN", "People search is not authorized");
   const values: unknown[] = [input.id];
   const clauses = ["p.id=$1", "p.status='active'"];
@@ -223,6 +243,10 @@ export async function resolveAssignableProfile(
     clauses.push("exists (select 1 from tasks t where t.assigned_to=p.id and " + shifted + ")");
     values.push(...scope.values);
   } else {
+    if (purpose === "job_sheet_owner" || purpose === "job_sheet_owner_filter") {
+      values.push(["accounting", "admin", "super_admin"]);
+      clauses.push("p.role=any($" + values.length + "::text[])");
+    }
     if (purpose === "approval_reviewer") {
       const roles = Object.entries(ROLE_GRANTS)
         .filter(([, capabilities]) => capabilities.has("approvals.decide"))
@@ -233,7 +257,12 @@ export async function resolveAssignableProfile(
     if (context.actor.role === "manager") {
       values.push([context.actor.profileId, ...context.actor.directReportIds]);
       clauses.push("p.id=any($" + values.length + "::text[])");
-    } else if (context.actor.role !== "admin" && context.actor.role !== "super_admin") {
+    } else if (
+      purpose !== "job_sheet_owner" &&
+      purpose !== "job_sheet_owner_filter" &&
+      context.actor.role !== "admin" &&
+      context.actor.role !== "super_admin"
+    ) {
       values.push(context.actor.profileId);
       clauses.push("p.id=$" + values.length);
     }

@@ -114,7 +114,9 @@ export function canAcceptJobSheet(input: {
   totalAmount: number;
   portions: Array<{ amount: number }>;
   requirePoNumber: boolean;
+  requirePoOrReason?: boolean;
   poNumber?: string | null;
+  noPoReason?: string | null;
   clientOrderNumber?: string | null;
   /**
    * The job sheet's own currency. Optional, defaulting to HKD, so the many existing callers
@@ -134,6 +136,10 @@ export function canAcceptJobSheet(input: {
         input.currency ?? "HKD",
       )}.`,
     );
+  }
+
+  if (input.requirePoOrReason && !input.poNumber?.trim() && !input.noPoReason?.trim()) {
+    reasons.push("PO number or documented reason is required before acceptance.");
   }
 
   if (input.requirePoNumber && !input.poNumber?.trim() && !input.clientOrderNumber?.trim()) {

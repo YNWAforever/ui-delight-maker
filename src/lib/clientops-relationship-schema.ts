@@ -24,6 +24,7 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/017_bulk_operations.sql",
   "neon/migrations/018_bulk_row_versions.sql",
   "neon/migrations/019_import_sessions_and_identity_keys.sql",
+  "neon/migrations/020_job_sheet_handoff_fields.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
@@ -106,6 +107,8 @@ export const CLIENTOPS_REQUIRED_COLUMNS = [
   "quote_versions.quote_id",
   "job_sheets.quote_id",
   "job_sheets.accepted_quote_version_id",
+  "job_sheets.no_po_reason",
+  "job_sheets.row_version",
   "job_sheet_portions.job_sheet_id",
   "job_sheet_portions.row_version",
   "job_sheet_portions.xero_confirmed_at",

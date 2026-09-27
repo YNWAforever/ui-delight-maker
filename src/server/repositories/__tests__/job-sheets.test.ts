@@ -218,8 +218,8 @@ describe("job sheets repository", () => {
     const [sql, values] = mockQuery.mock.calls[0];
 
     expect(sql).toContain("from job_sheets");
-    expect(sql).toContain("client_id = $1");
-    expect(sql).toContain("account_id = $2");
+    expect(sql).toContain("js.client_id=$1");
+    expect(sql).toContain("js.account_id=$2");
     expect(sql).toContain("order by js.created_at desc");
     expect(sql).toContain("jsonb_array_elements");
     expect(values.slice(0, 2)).toEqual(["client-1", "account-1"]);
@@ -406,47 +406,52 @@ describe("job sheets repository", () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  it("accepts only when portions reconcile and then locks the job sheet", async () => {
+  it("accepts only when the owner, PO, snapshot and portions reconcile", async () => {
     mockQueryOne
       .mockResolvedValueOnce({
         id: "job-1",
         status: "accounting_review",
+        quote_id: "quote-1",
+        accepted_quote_version_id: "version-1",
+        accounting_owner: "acct-1",
         total_amount: 120000,
         currency: "HKD",
-        po_number: null,
+        po_number: "PO-1",
         client_order_number: null,
       })
+      .mockResolvedValueOnce({ id: "acct-1" })
+      .mockResolvedValueOnce({ snapshot: { total_value: 120000, currency: "HKD" } })
       .mockResolvedValueOnce({ id: "job-1", status: "accepted" });
-    mockQuery.mockResolvedValueOnce([{ id: "portion-1", amount: 120000 }]);
+    mockQuery.mockResolvedValueOnce([{ id: "portion-1", amount: 120000, currency: "HKD" }]);
     const { acceptJobSheet } = await import("../job-sheets");
 
     await acceptJobSheet("job-1", { accepted_by: "acct-1" });
 
+    expect(mockQueryOne).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("status='active'"),
+      ["acct-1"],
+      expect.any(Object),
+    );
+    expect(mockQueryOne).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining("from quote_versions"),
+      ["version-1", "quote-1"],
+      expect.any(Object),
+    );
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringContaining("from job_sheet_portions"),
       ["job-1"],
       expect.any(Object),
     );
     expect(mockQueryOne).toHaveBeenNthCalledWith(
-      2,
+      4,
       expect.stringContaining("status = 'accepted'"),
       ["acct-1", "job-1"],
       expect.any(Object),
     );
     expect(mockQueryOne).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining("status = 'accounting_review'"),
-      ["acct-1", "job-1"],
-      expect.any(Object),
-    );
-    expect(mockQueryOne).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining("locked_at is null"),
-      ["acct-1", "job-1"],
-      expect.any(Object),
-    );
-    expect(mockQueryOne).toHaveBeenNthCalledWith(
-      2,
+      4,
       expect.stringContaining("locked_at = now()"),
       ["acct-1", "job-1"],
       expect.any(Object),
@@ -474,19 +479,26 @@ describe("job sheets repository", () => {
   });
 
   it("blocks acceptance when job sheet totals do not reconcile", async () => {
-    mockQueryOne.mockResolvedValueOnce({
-      id: "job-1",
-      status: "accounting_review",
-      total_amount: 120000,
-      currency: "HKD",
-      po_number: null,
-      client_order_number: null,
-    });
-    mockQuery.mockResolvedValueOnce([{ id: "portion-1", amount: 100000 }]);
+    mockQueryOne
+      .mockResolvedValueOnce({
+        id: "job-1",
+        status: "accounting_review",
+        quote_id: "quote-1",
+        accepted_quote_version_id: "version-1",
+        accounting_owner: "acct-1",
+        total_amount: 120000,
+        currency: "HKD",
+        po_number: "PO-1",
+        client_order_number: null,
+      })
+      .mockResolvedValueOnce({ id: "acct-1" })
+      .mockResolvedValueOnce({ snapshot: { total_value: 120000, currency: "HKD" } });
+    mockQuery.mockResolvedValueOnce([{ id: "portion-1", amount: 100000, currency: "HKD" }]);
     const { acceptJobSheet } = await import("../job-sheets");
 
     await expect(acceptJobSheet("job-1", { accepted_by: "acct-1" })).rejects.toThrow(
       "Billing portions are short by HKD 20,000.",
     );
+    expect(mockQueryOne).toHaveBeenCalledTimes(3);
   });
 });

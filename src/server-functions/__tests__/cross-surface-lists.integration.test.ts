@@ -81,10 +81,10 @@ describe("job-sheet queue SQL visibility", () => {
     holder.client = await pool.connect();
     await holder.client.query("begin");
     await holder.client.query(`create temp table accounts (
-      id text, account_owner text
+      id text, account_owner text, name text
     ) on commit drop`);
     await holder.client.query(`create temp table clients (
-      id text, account_owner text
+      id text, account_owner text, company_name text
     ) on commit drop`);
     await holder.client.query(`create temp table leads (
       id text, contact_id text, account_id text, source_campaign_id text,
