@@ -6,6 +6,7 @@ type PolicyRow = { id: string; status: "active" | "inactive" };
 type InvocationRow = {
   id: string;
   status: string;
+  outcome_code: string | null;
   input_data: { sha256?: string } | null;
   output_data: { tidied?: string } | null;
 };
@@ -35,7 +36,7 @@ export async function beginNoteTidyRun(input: Parameters<AIInvocationContext["be
   );
   if (inserted) return { runId: inserted.id, created: true };
   const existing = await queryOne<InvocationRow>(
-    `select id,status,input_data,output_data from agent_runs
+    `select id,status,outcome_code,input_data,output_data from agent_runs
       where workflow_type='note_tidy' and created_by=$1 and idempotency_key=$2`,
     [input.actorId, input.idempotencyKey],
   );
@@ -46,6 +47,8 @@ export async function beginNoteTidyRun(input: Parameters<AIInvocationContext["be
   return {
     runId: existing.id,
     created: false,
+    status: existing.status,
+    outcomeCode: existing.outcome_code,
     output: existing.status === "completed" ? (existing.output_data?.tidied ?? null) : null,
   };
 }

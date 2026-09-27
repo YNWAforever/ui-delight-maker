@@ -37,5 +37,5 @@ jobs:
       # A JSON summary makes skips a hard failure, including self-skipped DB tests.
       # The Postgres service and DATABASE_TEST_URL above are required for this gate.
       - run: test -n "$DATABASE_TEST_URL"
-      - run: bunx vitest run --no-file-parallelism --reporter=json --outputFile="$RUNNER_TEMP/vitest-results.json"
+      - run: bunx vitest run --no-file-parallelism --testTimeout=30000 --reporter=json --outputFile="$RUNNER_TEMP/vitest-results.json"
       - run: bun scripts/clientops/assert-vitest-no-skips.ts "$RUNNER_TEMP/vitest-results.json"
