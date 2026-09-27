@@ -6,7 +6,10 @@ import {
   type ApprovalDecisionWrite,
 } from "@/server/repositories/approvals";
 import { claimCommandReceipt, completeCommandReceipt } from "./receipts.server";
-import { applyRiskReviewDecisionInTransaction } from "@/server/workflows/decide-risk-review.server";
+import {
+  applyRiskReviewDecisionInTransaction,
+  validateRiskReviewTargetInTransaction,
+} from "@/server/workflows/decide-risk-review.server";
 import { syncQuoteApprovalDecisionInTransaction } from "./quote-lifecycle.server";
 
 export type ApprovalDecisionCommandInput = ApprovalDecisionWrite & {
@@ -31,9 +34,13 @@ export async function decideApprovalCommand(
       },
     });
     if (claim.kind === "replay") return claim.result;
-    const approval = await decideApprovalInTransaction(db, context, input);
+    const approval = await decideApprovalInTransaction(db, context, input, async (current) => {
+      if (input.decision !== "escalated") {
+        await validateRiskReviewTargetInTransaction(current, context, db);
+      }
+    });
     await syncQuoteApprovalDecisionInTransaction(db, context, approval);
-    await applyRiskReviewDecisionInTransaction(approval, context.actor.profileId, db);
+    await applyRiskReviewDecisionInTransaction(approval, context, db);
     await completeCommandReceipt(db, claim.id, approval);
     return approval;
   });
