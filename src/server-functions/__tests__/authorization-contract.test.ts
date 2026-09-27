@@ -61,6 +61,18 @@ const ACKNOWLEDGED_UNGUARDED: Record<string, string> = {
     "the actor-owned operation is checked and every resumed item rechecks capability",
   "bulk-operations.ts::getBulkResultFn":
     "returns only this actor's receipt statuses and IDs, without preview summaries",
+  "lead-import.ts::commitLeadImportFn":
+    "retired endpoint authenticates then rejects every write; new session endpoint owns commits",
+  "client-import.ts::commitClientImportFn":
+    "retired endpoint authenticates then rejects every write; new session endpoint owns commits",
+  "event-import.ts::commitEventImportFn":
+    "retired endpoint authenticates then rejects every write; new session endpoint owns commits",
+  "import-sessions.ts::commitImportFn":
+    "actor-owned session and each row rechecks current capability before any write",
+  "import-sessions.ts::resumeImportFn":
+    "actor-owned session and each resumed row rechecks current capability before any write",
+  "import-sessions.ts::getImportResultFn":
+    "returns only this actor's receipt statuses and IDs, without raw CSV fields",
 
   "agent-runs.ts::recoverAgentRunFn":
     "command checks agents.run and approvals.decide against the locked run and approval",
