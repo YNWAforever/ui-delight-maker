@@ -490,30 +490,6 @@ describe("job sheets repository", () => {
     );
   });
 
-  it("updates Xero references and marks the portion entered in Xero", async () => {
-    mockQueryOne.mockResolvedValue({ id: "portion-1", status: "entered_in_xero" });
-    const { updateJobSheetXeroReference } = await import("../job-sheets");
-
-    await updateJobSheetXeroReference({
-      portion_id: "portion-1",
-      xero_invoice_number: "INV-001",
-      xero_invoice_reference: "XERO-REF-001",
-      xero_invoice_date: "2026-07-09",
-      xero_notes: "Manually entered in Xero",
-    });
-
-    const [sql, values] = mockQueryOne.mock.calls[0];
-
-    expect(sql).toContain("then 'entered_in_xero'");
-    expect(values).toEqual([
-      "INV-001",
-      "XERO-REF-001",
-      "2026-07-09",
-      "Manually entered in Xero",
-      "portion-1",
-    ]);
-  });
-
   it("keeps a portion planned when the Xero save is blank after trimming", async () => {
     mockQueryOne.mockResolvedValue({ id: "portion-1", status: "planned" });
     const { updateJobSheetXeroReference } = await import("../job-sheets");
@@ -530,8 +506,6 @@ describe("job sheets repository", () => {
     const [sql, values] = mockQueryOne.mock.calls[0];
 
     expect(sql).toContain("update job_sheet_portions");
-    expect(sql).toContain("status =");
-    expect(sql).not.toContain("status = 'entered_in_xero'");
     expect(values).toEqual([null, null, null, null, "portion-1"]);
   });
 });

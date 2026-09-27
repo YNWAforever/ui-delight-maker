@@ -502,14 +502,7 @@ export async function updateJobSheetXeroReference(
       set xero_invoice_number = $1,
           xero_invoice_reference = $2,
           xero_invoice_date = $3,
-          xero_notes = $4,
-          status = case
-            when $1 is not null or $2 is not null or $3 is not null or $4 is not null
-              then 'entered_in_xero'
-            when status = 'cancelled'
-              then status
-            else 'planned'
-          end
+          xero_notes = $4
       where id = $5
       returning *
     `,
