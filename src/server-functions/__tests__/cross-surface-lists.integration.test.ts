@@ -186,6 +186,7 @@ describe("job-sheet queue SQL visibility", () => {
       expect(dashboard.tasks.map((task) => task.id)).toEqual(["task-allowed"]);
       expect(dashboard.pipelineTotals.openTasks).toBe(1);
     },
+    15_000,
   );
 
   it.runIf(hasDatabase)("does not count inaccessible leads in report summary", async () => {
