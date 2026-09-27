@@ -1,6 +1,6 @@
 # Role UAT — audit release candidate
 
-**Execution state: blocked.** No authenticated, isolated seven-role browser sessions were supplied. No case below is marked pass from a super_admin account, unit test, database test, or mock probe. The 8 old probes show defects in the audit baseline; their positive replacements are in the task evidence and are not live release acceptance. A protected preview returned a matching build SHA at source checkpoint `cf57a87ae43859cbbe20a94e59075f26b5ba0663`; role screenshots and application network response capture remain absent.
+**Execution state: blocked.** No authenticated, isolated seven-role browser sessions were supplied. No case below is marked pass from a super_admin account, unit test, database test, or mock probe. The 8 old probes show defects in the audit baseline; their positive replacements are in the task evidence and are not live release acceptance. A protected preview returned a matching build SHA at checkpoint `e4db5ca2824300b885da500b7a9f8692aa3ad69f`, and anonymous `/login` SSR rendered successfully; role screenshots and application network response capture remain absent.
 
 | Case | Role and disposable data required | Expected browser and network result | Actual UAT | Supporting local proof |
 |---|---|---|---|---|

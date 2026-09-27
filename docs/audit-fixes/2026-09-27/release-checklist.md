@@ -47,11 +47,11 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 
 | Gate | Current result | Owner / way to close |
 |---|---|---|
-| PR/source CI on exact head and main push | Types/lint and Database contract passed at source checkpoint `cf57a87ae43859cbbe20a94e59075f26b5ba0663`; recheck final docs-only head | engineering: require `Checks / Types and lint` and `Database contract / contract`; repository admin applies branch protection if desired |
+| PR/source CI on exact head and main push | Types/lint and Database contract passed at checkpoint `e4db5ca2824300b885da500b7a9f8692aa3ad69f`; recheck later docs-only head | engineering: require `Checks / Types and lint` and `Database contract / contract`; repository admin applies branch protection if desired |
 | Full isolated DB, zero skipped | local pass: 304 files / 2,161 tests, 0 skipped at code SHA `a4abea7` | engineering verifies remote final PR CI at document head; [T22 evidence](t22-evidence.md) |
 | Migration/seed build wrapper rehearsal | blocked on an isolated Neon-compatible connection | operator supplies disposable Neon-compatible target; verify identity, then run migration, schema verify and wrapper in that environment |
 | TypeScript, lint, pure Vite, bundle | see T22 evidence | engineering |
-| Preview GET /api/build equals final PR SHA | protected preview matched source checkpoint `cf57a87ae43859cbbe20a94e59075f26b5ba0663`; recheck final docs-only head | preview operator supplies URL; engineering compares exact 40-hex SHA |
+| Preview GET /api/build equals final PR SHA | protected preview matched checkpoint `e4db5ca2824300b885da500b7a9f8692aa3ad69f`; recheck later docs-only head | preview operator supplies URL; engineering compares exact 40-hex SHA |
 | Seven roles, explicit allow/deny/expired overrides, 390/768/1440 and keyboard | blocked; sessions unavailable | UAT owner supplies disposable identities; [UAT matrix](uat-results.md) |
 | Legacy snapshot parity and migration/cutover | blocked; snapshots promised later | data owner supplies complete isolated snapshots; T20 compare and supervised rehearsal |
 | Provider/n8n callbacks and actual usage | blocked; sandbox contract/credential unavailable | integration owner supplies sandbox workflow and safe test credential |
