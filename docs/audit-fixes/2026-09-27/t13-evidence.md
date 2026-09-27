@@ -2,7 +2,7 @@
 
 ## Scope and commits
 
-- Branch: codex/clientops-bulk-resume, stacked on draft PR #91.
+- Branch: codex/clientops-bulk-resume; draft PR #92 stacked on draft PR #91.
 - 2854c36: durable operation/item receipts, actor-owned preview and resume, migrations 017 and 018, allowlisted Task/Lead/Approval/Team adapters, real PostgreSQL regressions.
 - 4183121: Lead, Approval, Task and both Team entrypoints use preview, progress, resume, failed-result export and retained selection; outdated direct-write Lead assertions replaced with positive UI regressions.
 - 38efee1: a lost commit response keeps the same idempotency key across reload; a persisted running lease exposes Check or resume.
@@ -21,7 +21,8 @@
 - Red phase: the new bulk database and result UI tests failed before implementation; first full-suite run exposed eight old Lead direct-write expectations, one exact migration-list expectation, one source-level authorization registration, and a 39-versus-40-day fixture clock boundary.
 - Green focused run on isolated PostgreSQL: six files, 51/51 tests before the final browser recovery additions; final Lead and result UI suites 12/12, including 100 items with 70 success / 10 forbidden / 10 stale / 10 missing; exactly one successful write after resume; two workers claiming one item; owner swap and preview expiry; rollback and retry; one-type Approval decision; Task version conflict; Team partial eligibility; a 5.2-second injected delay with item-boundary pause and lease release. The injected delay verifies control flow and is not a performance measurement.
 - TypeScript noEmit: pass. Changed-file ESLint: pass. Pure Vite client and SSR build: pass. The repository's build wrapper was not run because it includes migration and seed.
-- Final exact-head full suite: running against a fresh isolated database at time this evidence was written. Update this line with result before PR handoff.
+- Final exact-head full suite: fresh isolated PostgreSQL database, 289/289 files and 2,086/2,086 tests passed with two workers, 0 skip, 366.84 seconds. The full run includes the bulk concurrency, rollback and idempotency integration cases. Exact-head pure Vite client and SSR build passed after the final browser-recovery change.
+- Remote preview: GitHub Types and lint and contract checks passed on PR #92 at the inspected head. Vercel deployment dpl_D3wnVAkYWBTDvcUit8EyFKwN6fxV failed with BUILD_UTILS_SPAWN_1 because the repository build wrapper exited 1; the Vercel build-log connector returned tool-not-found, so the underlying step is not yet attributed. This is a remote release gate, separate from the safe local pure Vite build.
 - Role UI: no authenticated seven-role sessions are available. Browser UAT for role-specific selection, permission revocation and error download remains blocked. No super_admin proxy acceptance is claimed.
 - Production data, messages, deployment and secrets: untouched.
 
