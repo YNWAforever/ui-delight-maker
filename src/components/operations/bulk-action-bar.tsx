@@ -1,0 +1,73 @@
+import type { ReactNode } from "react";
+import type { BulkResult } from "@/lib/operations/bulk-contract";
+import { csvFileName } from "@/lib/csv";
+import { bulkFailuresCsv } from "./bulk-results";
+import { Button } from "@/components/ui/button";
+
+function downloadFailures(result: BulkResult) {
+  const blob = new Blob([bulkFailuresCsv(result)], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = csvFileName("bulk-errors", result.operationId);
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+export function BulkActionBar({
+  selectedCount,
+  busy,
+  result,
+  onResume,
+  onClear,
+  children,
+}: {
+  selectedCount: number;
+  busy: boolean;
+  result: BulkResult | null;
+  onResume: () => void;
+  onClear: () => void;
+  children?: ReactNode;
+}) {
+  const failures = result?.results.filter((item) => item.status !== "succeeded").length ?? 0;
+  const successes = result?.results.filter((item) => item.status === "succeeded").length ?? 0;
+  return (
+    <div
+      className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="font-medium">{selectedCount} selected</span>
+      {children}
+      {result && (
+        <>
+          <span>
+            {result.processed} of {result.total} processed; {successes} succeeded; {failures} need
+            review
+          </span>
+          {result.state === "paused" && (
+            <Button type="button" size="sm" variant="outline" disabled={busy} onClick={onResume}>
+              Resume
+            </Button>
+          )}
+          {failures > 0 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => downloadFailures(result)}
+            >
+              Download failures
+            </Button>
+          )}
+        </>
+      )}
+      <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={onClear}>
+        Clear selection
+      </Button>
+    </div>
+  );
+}

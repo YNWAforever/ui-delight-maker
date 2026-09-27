@@ -21,6 +21,10 @@ import {
 import { StatusBadge } from "@/components/status-badge";
 import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
 import { Button } from "@/components/ui/button";
+import { BulkActionBar } from "@/components/operations/bulk-action-bar";
+import { remainingBulkSelection } from "@/components/operations/bulk-results";
+import { BulkPreviewDialog } from "@/components/operations/bulk-preview-dialog";
+import { useBulkOperation } from "@/components/operations/use-bulk-operation";
 import { Card } from "@/components/ui/card";
 import {
   Dialog,
@@ -202,6 +206,7 @@ function TasksBoard() {
   const filters = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
+  const router = useRouter();
   const today = getBusinessDateKey();
   const tasksQueryKey = crmQueryKeys.tasks.list({
     priority: filters.priority,
@@ -228,6 +233,15 @@ function TasksBoard() {
   const [dragging, setDragging] = useState<string | null>(null);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
   const pendingTaskIdsRef = useRef(new Set<string>());
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
+  const [bulkAssignee, setBulkAssignee] = useState("");
+  const [bulkDueDate, setBulkDueDate] = useState("");
+  const bulkOperation = useBulkOperation("clientops:bulk:tasks", async (result) => {
+    setBulkSelected((current) => new Set(remainingBulkSelection(Array.from(current), result)));
+    await queryClient.invalidateQueries({ queryKey: crmQueryKeys.tasks.lists() });
+    await router.invalidate({ filter: (match) => match.routeId === "/tasks" });
+  });
+  const bulkIds = () => Array.from(bulkSelected);
 
   const setFilters = (patch: Partial<TaskSearch>) =>
     navigate({
@@ -533,6 +547,111 @@ function TasksBoard() {
           onChange={(assignee) => setFilters({ assignee })}
         />
 
+        {(bulkSelected.size > 0 || bulkOperation.result) && (
+          <BulkActionBar
+            selectedCount={bulkSelected.size}
+            busy={bulkOperation.busy}
+            result={bulkOperation.result}
+            onResume={() => void bulkOperation.resume()}
+            onClear={() => {
+              setBulkSelected(new Set());
+              bulkOperation.dismiss();
+            }}
+          >
+            {bulkSelected.size > 0 && (
+              <>
+                <Select
+                  onValueChange={(value) =>
+                    void bulkOperation.prepare(
+                      { type: "task.status", status: value as TaskStatus },
+                      bulkIds(),
+                    )
+                  }
+                >
+                  <SelectTrigger className="w-40" aria-label="Bulk task status">
+                    <SelectValue placeholder="Set status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COLUMNS.map((column) => (
+                      <SelectItem key={column.id} value={column.id}>
+                        {column.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  onValueChange={(value) =>
+                    void bulkOperation.prepare(
+                      { type: "task.priority", priority: value as Task["priority"] },
+                      bulkIds(),
+                    )
+                  }
+                >
+                  <SelectTrigger className="w-40" aria-label="Bulk task priority">
+                    <SelectValue placeholder="Set priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(["low", "medium", "high"] as const).map((priority) => (
+                      <SelectItem key={priority} value={priority}>
+                        {getStatusLabel("priority", priority).label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Label className="flex items-center gap-2 text-xs">
+                  Due date
+                  <Input
+                    type="date"
+                    value={bulkDueDate}
+                    onChange={(event) => setBulkDueDate(event.target.value)}
+                    className="w-40"
+                  />
+                </Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkOperation.busy}
+                  onClick={() =>
+                    void bulkOperation.prepare(
+                      { type: "task.due", dueDate: bulkDueDate || null },
+                      bulkIds(),
+                    )
+                  }
+                >
+                  Set due date
+                </Button>
+                <ProfileSearchCombobox
+                  purpose="task_assign"
+                  label="Bulk task owner"
+                  value={bulkAssignee}
+                  onChange={setBulkAssignee}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkOperation.busy || !bulkAssignee}
+                  onClick={() =>
+                    void bulkOperation.prepare(
+                      { type: "task.assign", profileId: bulkAssignee },
+                      bulkIds(),
+                    )
+                  }
+                >
+                  Assign owner
+                </Button>
+              </>
+            )}
+          </BulkActionBar>
+        )}
+        <BulkPreviewDialog
+          preview={bulkOperation.preview}
+          busy={bulkOperation.busy}
+          onCancel={bulkOperation.cancelPreview}
+          onCommit={() => void bulkOperation.commit()}
+        />
+
         <section className="space-y-3">
           <SectionHeader
             title={filters.view === "board" ? "Board" : "List"}
@@ -579,6 +698,16 @@ function TasksBoard() {
                 columns={listColumns}
                 rows={filtered}
                 rowKey={(task) => task.id}
+                selection={{
+                  selected: bulkSelected,
+                  onChange: (next) => {
+                    if (next.size > 100) {
+                      toast.error("Select at most 100 tasks per bulk operation.");
+                      return;
+                    }
+                    setBulkSelected(next);
+                  },
+                }}
                 rowActions={taskRowActions}
                 renderCard={(task) => (
                   <div className="space-y-1">

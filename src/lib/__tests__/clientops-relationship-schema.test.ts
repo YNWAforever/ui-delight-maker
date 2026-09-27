@@ -48,6 +48,8 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/014_locked_job_sheet_portions.sql",
       "neon/migrations/015_agent_recovery_metadata.sql",
       "neon/migrations/016_work_queue_pagination_indexes.sql",
+      "neon/migrations/017_bulk_operations.sql",
+      "neon/migrations/018_bulk_row_versions.sql",
     ]);
   });
 

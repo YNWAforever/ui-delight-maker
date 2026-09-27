@@ -6,6 +6,9 @@ import { toast } from "sonner";
 
 import { OrganizationDirectory } from "@/components/admin/organization-directory";
 import { OrganizationUnitDetail } from "@/components/admin/organization-unit-detail";
+import { BulkActionBar } from "@/components/operations/bulk-action-bar";
+import { BulkPreviewDialog } from "@/components/operations/bulk-preview-dialog";
+import { useBulkOperation } from "@/components/operations/use-bulk-operation";
 import {
   OrganizationUnitDialog,
   type OrganizationUnitKind,
@@ -254,29 +257,27 @@ function AdminTeamsIndex() {
     await refreshOrganization(value.kind, value.id ?? saved.id, profileIds, true);
   }
 
+  const teamBulk = useBulkOperation(
+    "clientops:bulk:team:" + (selectedUnit?.kind === "team" ? selectedUnit.unit.id : "none"),
+    async (result) => {
+      if (selectedUnit?.kind === "team") {
+        await refreshOrganization(
+          "team",
+          selectedUnit.unit.id,
+          result.results.map((item) => item.id),
+          true,
+        );
+      }
+    },
+  );
+
   async function addMembers(profileIds: string[], startsAt: string | null, endsAt: string | null) {
     if (!selectedUnit || selectedUnit.kind !== "team") return;
-    await runWrite(async () => {
-      await Promise.all(
-        profileIds.map((profileId) =>
-          upsertAdminTeamMembershipFn({
-            data: {
-              teamId: selectedUnit.unit.id,
-              profileId,
-              membershipRole: "member",
-              ...(startsAt ? { startsAt } : {}),
-              ...(endsAt ? { endsAt } : {}),
-            },
-          }),
-        ),
-      );
-      toast.success(
-        profileIds.length === 1
-          ? "Member added"
-          : `${formatCount(profileIds.length)} members added`,
-      );
-      await refreshOrganization("team", selectedUnit.unit.id, profileIds, true);
-    });
+    await teamBulk.prepare(
+      { type: "team.add_member", teamId: selectedUnit.unit.id, startsAt, endsAt },
+      profileIds,
+    );
+    return false;
   }
 
   async function updateMember(member: TeamMemberRow, role: "lead" | "deputy" | "member") {
@@ -357,12 +358,28 @@ function AdminTeamsIndex() {
           showFullRecordLink={Boolean(selectedUnit)}
           onTabChange={(tab) => updateSearch({ ...search, tab })}
           onEdit={(unit) => setDialog({ kind: selectedUnit?.kind ?? "team", unit })}
+          bulkResult={teamBulk.result}
           onAddMembers={canManageSelected ? addMembers : undefined}
           onUpdateMember={canManageSelected ? updateMember : undefined}
           onEndMember={canManageSelected ? endMember : undefined}
         />
       </div>
 
+      {teamBulk.result && (
+        <BulkActionBar
+          selectedCount={teamBulk.result.remainingIds.length}
+          busy={teamBulk.busy}
+          result={teamBulk.result}
+          onResume={() => void teamBulk.resume()}
+          onClear={teamBulk.dismiss}
+        />
+      )}
+      <BulkPreviewDialog
+        preview={teamBulk.preview}
+        busy={teamBulk.busy}
+        onCancel={teamBulk.cancelPreview}
+        onCommit={() => void teamBulk.commit()}
+      />
       {dialog ? (
         <OrganizationUnitDialog
           open

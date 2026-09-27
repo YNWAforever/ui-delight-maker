@@ -4,15 +4,17 @@ import type { ComponentType, ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 import type { Lead } from "@/lib/types";
+import type { BulkResult } from "@/lib/operations/bulk-contract";
 
-const updateLeadMock = vi.hoisted(() => vi.fn());
+const previewBulkMock = vi.hoisted(() => vi.fn());
+const commitBulkMock = vi.hoisted(() => vi.fn());
+const resumeBulkMock = vi.hoisted(() => vi.fn());
+const getBulkResultMock = vi.hoisted(() => vi.fn());
 const createLeadMock = vi.hoisted(() => vi.fn());
 const navigateMock = vi.hoisted(() => vi.fn());
 const routerInvalidateMock = vi.hoisted(() => vi.fn());
 const toastErrorMock = vi.hoisted(() => vi.fn());
-const toastSuccessMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
@@ -28,17 +30,24 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("@/lib/routing-utils", () => ({ useIsExactPath: () => true }));
 vi.mock("sonner", () => ({
-  toast: { error: toastErrorMock, success: toastSuccessMock, message: vi.fn() },
+  toast: { error: toastErrorMock, success: vi.fn(), message: vi.fn() },
 }));
 vi.mock("@/server-functions/leads", () => ({
   getLeadsPage: vi.fn(),
   createLead: createLeadMock,
-  updateLead: updateLeadMock,
+}));
+vi.mock("@/server-functions/bulk-operations", () => ({
+  previewBulkFn: previewBulkMock,
+  commitBulkFn: commitBulkMock,
+  resumeBulkFn: resumeBulkMock,
+  getBulkResultFn: getBulkResultMock,
 }));
 
 import { Route } from "../leads";
 
-const makeLead = (overrides: Partial<Lead> & Pick<Lead, "id" | "company_name">): Lead => ({
+const makeLead = (id: string, name: string): Lead => ({
+  id,
+  company_name: name,
   contact_id: null,
   account_id: null,
   source_campaign_id: null,
@@ -54,31 +63,65 @@ const makeLead = (overrides: Partial<Lead> & Pick<Lead, "id" | "company_name">):
   enquiry_text: null,
   created_at: "2026-07-01T00:00:00.000Z",
   updated_at: "2026-07-01T00:00:00.000Z",
-  ...overrides,
 });
-
-const LEADS: Lead[] = [
-  makeLead({ id: "lead-1", company_name: "Northstar", created_at: "2026-07-01T00:00:00.000Z" }),
-  makeLead({ id: "lead-2", company_name: "Bluepeak", created_at: "2026-07-02T00:00:00.000Z" }),
-];
+const LEADS = [makeLead("lead-1", "Northstar"), makeLead("lead-2", "Bluepeak")];
+const preview = {
+  operationId: "operation-1",
+  token: "preview-1",
+  expiresAt: "2026-09-27T12:00:00.000Z",
+  rows: LEADS.map((lead) => ({
+    id: lead.id,
+    eligible: true,
+    summary: lead.company_name,
+    expectedVersion: 0,
+  })),
+  eligibleCount: 2,
+};
+const partialResult: BulkResult = {
+  operationId: "operation-1",
+  state: "paused",
+  processed: 2,
+  total: 2,
+  remainingIds: ["lead-2"],
+  results: [
+    { id: "lead-1", status: "succeeded", retryable: false },
+    { id: "lead-2", status: "failed", code: "RETRY", retryable: true },
+  ],
+};
+const completedResult: BulkResult = {
+  ...partialResult,
+  state: "completed",
+  remainingIds: [],
+  results: [
+    { id: "lead-1", status: "succeeded", retryable: false },
+    { id: "lead-2", status: "succeeded", retryable: false },
+  ],
+};
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
+  const promise = new Promise<T>((res) => {
     resolve = res;
-    reject = rej;
   });
-  return { promise, resolve, reject };
+  return { promise, resolve };
 }
-
 beforeEach(() => {
-  updateLeadMock.mockReset();
-  createLeadMock.mockReset();
-  navigateMock.mockReset();
-  routerInvalidateMock.mockReset();
-  toastErrorMock.mockReset();
-  toastSuccessMock.mockReset();
+  sessionStorage.clear();
+  for (const mock of [
+    previewBulkMock,
+    commitBulkMock,
+    resumeBulkMock,
+    getBulkResultMock,
+    createLeadMock,
+    navigateMock,
+    routerInvalidateMock,
+    toastErrorMock,
+  ])
+    mock.mockReset();
+  previewBulkMock.mockResolvedValue(preview);
+  commitBulkMock.mockResolvedValue(partialResult);
+  resumeBulkMock.mockResolvedValue(completedResult);
+  getBulkResultMock.mockResolvedValue(partialResult);
   vi.mocked(Route.useLoaderData).mockReturnValue({
     items: LEADS,
     total: 2,
@@ -86,7 +129,6 @@ beforeEach(() => {
     limit: 50,
   } as never);
 });
-
 afterEach(cleanup);
 
 function renderLeads() {
@@ -102,233 +144,124 @@ function renderLeads() {
   );
   return { invalidateQueries };
 }
-
-/** The table and the card list each render one, and they share the caller's selection. */
 const rowCheckbox = (id: string) =>
-  screen.getAllByRole("checkbox", { name: `Select row ${id}` })[0];
-
-const selectEveryLead = () => {
+  screen.getAllByRole("checkbox", { name: "Select row " + id, hidden: true })[0];
+const selectEveryLead = () =>
   fireEvent.click(screen.getByRole("checkbox", { name: "Select all rows" }));
-};
-
-/** Clicks the bulk bar's Mark qualified, then confirms in the alert dialog it opens. */
-const confirmMarkQualified = async () => {
+async function prepareQualified() {
   fireEvent.click(screen.getByRole("button", { name: "Mark qualified" }));
-  const dialog = await screen.findByRole("alertdialog");
-  fireEvent.click(within(dialog).getByRole("button", { name: "Mark qualified" }));
-};
+  const confirm = await screen.findByRole("alertdialog");
+  fireEvent.click(within(confirm).getByRole("button", { name: "Mark qualified" }));
+  return screen.findByRole("dialog", { name: "Review bulk change" });
+}
+async function commitPreview() {
+  const dialog = await screen.findByRole("dialog", { name: "Review bulk change" });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Process first 20" }));
+}
 
-/** The dialog stays open after a failed batch, so a retry is one more click on it. */
-const retryFromOpenDialog = () => {
-  const dialog = screen.getByRole("alertdialog");
-  fireEvent.click(within(dialog).getByRole("button", { name: "Mark qualified" }));
-};
-
-const dismissOpenDialog = () => {
-  const dialog = screen.getByRole("alertdialog");
-  fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
-};
-
-describe("Leads bulk writes keep the table agreeing with the database", () => {
-  it("refreshes and clears the selection when every write lands", async () => {
-    updateLeadMock.mockResolvedValue({});
-    const { invalidateQueries } = renderLeads();
-
-    selectEveryLead();
-    expect(screen.getByText("2 selected")).toBeTruthy();
-    await confirmMarkQualified();
-
-    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledOnce());
-    expect(updateLeadMock).toHaveBeenCalledTimes(2);
-    expect(toastSuccessMock).toHaveBeenCalledWith("Marked 2 leads as Qualified");
-    // Nothing stays selected, so the bulk bar goes away rather than inviting a second run
-    // of a batch that already succeeded.
-    expect(screen.queryByText(/ selected$/)).toBeNull();
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["leads", "list"] });
-    expect(routerInvalidateMock).toHaveBeenCalledOnce();
-  });
-
-  it("still refreshes on a partial failure, and says how many of how many failed", async () => {
-    // The batch used to be a `Promise.all`, which rejects on the first failure and returns
-    // before the invalidation ever runs — so the writes that DID land stayed invisible and
-    // the table sat there showing pre-write state next to an error toast.
-    updateLeadMock.mockImplementation(({ data }: { data: { id: string } }) =>
-      data.id === "lead-2"
-        ? Promise.reject(new Error("That lead is locked by another user."))
-        : Promise.resolve({}),
-    );
-    const { invalidateQueries } = renderLeads();
-
-    selectEveryLead();
-    await confirmMarkQualified();
-
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledOnce());
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["leads", "list"] });
-    expect(routerInvalidateMock).toHaveBeenCalledOnce();
-    // The counts are the point: "some failed" is not actionable, "1 of 2" is.
-    expect(toastErrorMock).toHaveBeenCalledWith(
-      "Marked 1 lead as Qualified. 1 of 2 failed — That lead is locked by another user.",
-    );
-    expect(toastSuccessMock).not.toHaveBeenCalled();
-  });
-
-  it("unticks the leads that succeeded and leaves the failed one ticked", async () => {
-    updateLeadMock.mockImplementation(({ data }: { data: { id: string } }) =>
-      data.id === "lead-2" ? Promise.reject(new Error("Try again shortly.")) : Promise.resolve({}),
-    );
+describe("Leads bulk preview and durable partial results", () => {
+  it("previews fixed IDs without writing from the browser", async () => {
     renderLeads();
-
     selectEveryLead();
-    await confirmMarkQualified();
-    await waitFor(() => expect(screen.getByText("1 selected")).toBeTruthy());
-    dismissOpenDialog();
+    await prepareQualified();
+    expect(previewBulkMock).toHaveBeenCalledWith({
+      data: { action: { type: "lead.status", status: "qualified" }, ids: ["lead-1", "lead-2"] },
+    });
+    expect(commitBulkMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/2 of 2 selected items were eligible/)).toBeTruthy();
+  });
 
+  it("refreshes after a partial commit and keeps only failed IDs selected", async () => {
+    const { invalidateQueries } = renderLeads();
+    selectEveryLead();
+    await prepareQualified();
+    await commitPreview();
+    await waitFor(() => expect(screen.getByText(/2 of 2 processed/)).toBeTruthy());
+    expect(rowCheckbox("lead-1").getAttribute("aria-checked")).toBe("false");
     expect(rowCheckbox("lead-2").getAttribute("aria-checked")).toBe("true");
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["leads", "list"] });
+    expect(routerInvalidateMock).toHaveBeenCalledOnce();
+    expect(sessionStorage.getItem("clientops:bulk:leads")).toBe("operation-1");
+  });
+
+  it("resumes the persisted operation and does not resubmit successful IDs", async () => {
+    renderLeads();
+    selectEveryLead();
+    await prepareQualified();
+    await commitPreview();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Resume" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    await waitFor(() =>
+      expect(resumeBulkMock).toHaveBeenCalledWith({
+        data: { operationId: "operation-1" },
+      }),
+    );
+    await waitFor(() => expect(rowCheckbox("lead-2").getAttribute("aria-checked")).toBe("false"));
+    expect(previewBulkMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores the failed selection after a page refresh", async () => {
+    sessionStorage.setItem("clientops:bulk:leads", "operation-1");
+    renderLeads();
+    await waitFor(() =>
+      expect(getBulkResultMock).toHaveBeenCalledWith({
+        data: { operationId: "operation-1" },
+      }),
+    );
+    await waitFor(() => expect(rowCheckbox("lead-2").getAttribute("aria-checked")).toBe("true"));
     expect(rowCheckbox("lead-1").getAttribute("aria-checked")).toBe("false");
   });
 
-  it("retries against only the leads that failed", async () => {
-    // The retry is the reason the failed ids stay selected. If the selection were cleared
-    // wholesale, this second run would rewrite `lead-1`, which already changed.
-    updateLeadMock.mockImplementation(({ data }: { data: { id: string } }) =>
-      data.id === "lead-2" ? Promise.reject(new Error("Try again shortly.")) : Promise.resolve({}),
-    );
+  it("prevents a second preview while the first request is in flight", async () => {
+    const pending = deferred<typeof preview>();
+    previewBulkMock.mockReturnValueOnce(pending.promise);
     renderLeads();
-
-    selectEveryLead();
-    await confirmMarkQualified();
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledOnce());
-
-    updateLeadMock.mockReset();
-    updateLeadMock.mockResolvedValue({});
-    retryFromOpenDialog();
-
-    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledOnce());
-    expect(updateLeadMock).toHaveBeenCalledTimes(1);
-    expect(updateLeadMock).toHaveBeenCalledWith({
-      data: { id: "lead-2", updates: { status: "qualified" } },
-    });
-    expect(toastSuccessMock).toHaveBeenCalledWith("Marked 1 lead as Qualified");
-  });
-
-  it("asks about the leads it is actually about to write, not the ones first selected", async () => {
-    // The dialog stays open after a partial failure and the selection shrinks under it, so
-    // a title captured when the dialog opened asks about a number the button no longer
-    // touches — and the user confirms a batch of two that writes one.
-    updateLeadMock.mockImplementation(({ data }: { data: { id: string } }) =>
-      data.id === "lead-2" ? Promise.reject(new Error("Try again shortly.")) : Promise.resolve({}),
-    );
-    renderLeads();
-
     selectEveryLead();
     fireEvent.click(screen.getByRole("button", { name: "Mark qualified" }));
-    const dialog = await screen.findByRole("alertdialog");
-    expect(within(dialog).getByRole("heading").textContent).toBe("Mark 2 leads as qualified?");
-
-    fireEvent.click(within(dialog).getByRole("button", { name: "Mark qualified" }));
-
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledOnce());
-    expect(within(screen.getByRole("alertdialog")).getByRole("heading").textContent).toBe(
-      "Mark 1 lead as qualified?",
-    );
-  });
-
-  it("refreshes and keeps every id selected when the whole batch fails", async () => {
-    updateLeadMock.mockRejectedValue(new Error("Try again shortly."));
-    const { invalidateQueries } = renderLeads();
-
-    selectEveryLead();
-    await confirmMarkQualified();
-
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledOnce());
-    expect(toastErrorMock).toHaveBeenCalledWith("No leads were updated. Try again shortly.");
-    expect(screen.getByText("2 selected")).toBeTruthy();
-    // A rejected write is not proof nothing changed server side, so the view still refreshes.
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["leads", "list"] });
-    expect(routerInvalidateMock).toHaveBeenCalledOnce();
-  });
-
-  it("refuses a second submit while the batch is in flight", async () => {
-    // Two batches over the same ids would double-write, and the second would race the
-    // first one's invalidation.
-    const inFlight = deferred<unknown>();
-    updateLeadMock.mockReturnValue(inFlight.promise);
-    renderLeads();
-
-    selectEveryLead();
-    await confirmMarkQualified();
-    expect(updateLeadMock).toHaveBeenCalledTimes(2);
-
-    const dialog = screen.getByRole("alertdialog");
-    fireEvent.click(within(dialog).getByRole("button", { name: "Updating…" }));
-    expect(updateLeadMock).toHaveBeenCalledTimes(2);
-
+    const confirm = await screen.findByRole("alertdialog");
+    fireEvent.click(within(confirm).getByRole("button", { name: "Mark qualified" }));
+    expect(previewBulkMock).toHaveBeenCalledTimes(1);
+    expect(
+      within(confirm).getByRole("button", { name: "Updating…" }).hasAttribute("disabled"),
+    ).toBe(true);
     await act(async () => {
-      inFlight.resolve({});
+      pending.resolve(preview);
     });
-    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledOnce());
+    expect(previewBulkMock).toHaveBeenCalledTimes(1);
   });
-});
 
-describe("Leads bulk assign refuses an empty owner before it writes", () => {
-  const openAssignDialog = async () => {
+  it("trims an owner ID, and refuses an empty one before preview", async () => {
+    renderLeads();
+    selectEveryLead();
     fireEvent.click(screen.getByRole("button", { name: "Assign owner" }));
-    return screen.findByRole("dialog");
-  };
-
-  it("issues zero writes when the owner box holds nothing but whitespace", async () => {
-    // `leads.assigned_to` references `profiles(id)`. Sending "" for every selected id used
-    // to hand Postgres a foreign-key violation, one per lead.
-    updateLeadMock.mockResolvedValue({});
-    renderLeads();
-
-    selectEveryLead();
-    const dialog = await openAssignDialog();
-    const assign = within(dialog).getByRole("button", { name: "Assign" });
-
-    fireEvent.click(assign);
-    fireEvent.change(within(dialog).getByLabelText("Owner user ID"), {
-      target: { value: "   " },
-    });
-    fireEvent.click(assign);
-
-    expect(updateLeadMock).not.toHaveBeenCalled();
-    expect(toastSuccessMock).not.toHaveBeenCalled();
-  });
-
-  it("writes the trimmed owner to every selected lead once a real id is given", async () => {
-    updateLeadMock.mockResolvedValue({});
-    renderLeads();
-
-    selectEveryLead();
-    const dialog = await openAssignDialog();
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Owner user ID"), { target: { value: "   " } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Assign" }));
+    expect(previewBulkMock).not.toHaveBeenCalled();
     fireEvent.change(within(dialog).getByLabelText("Owner user ID"), {
       target: { value: "  user-77  " },
     });
     fireEvent.click(within(dialog).getByRole("button", { name: "Assign" }));
-
-    await waitFor(() => expect(updateLeadMock).toHaveBeenCalledTimes(2));
-    expect(updateLeadMock).toHaveBeenCalledWith({
-      data: { id: "lead-1", updates: { assigned_to: "user-77" } },
-    });
-    expect(updateLeadMock).toHaveBeenCalledWith({
-      data: { id: "lead-2", updates: { assigned_to: "user-77" } },
-    });
+    await waitFor(() =>
+      expect(previewBulkMock).toHaveBeenCalledWith({
+        data: { action: { type: "lead.assign", profileId: "user-77" }, ids: ["lead-1", "lead-2"] },
+      }),
+    );
   });
 
-  it("keeps the assign dialog open when the batch fails, so the error toast has context", async () => {
-    updateLeadMock.mockRejectedValue(new Error("Try again shortly."));
+  it("keeps selection and assignment context when preview is refused", async () => {
+    previewBulkMock.mockRejectedValueOnce(new Error("Preview refused"));
     renderLeads();
-
     selectEveryLead();
-    const dialog = await openAssignDialog();
+    fireEvent.click(screen.getByRole("button", { name: "Assign owner" }));
+    const dialog = await screen.findByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText("Owner user ID"), {
       target: { value: "user-77" },
     });
     fireEvent.click(within(dialog).getByRole("button", { name: "Assign" }));
-
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledOnce());
-    const stillOpen = screen.getByRole("dialog");
-    expect(within(stillOpen).getByLabelText("Owner user ID")).toHaveProperty("value", "user-77");
+    expect(within(dialog).getByLabelText("Owner user ID")).toHaveProperty("value", "user-77");
+    expect(rowCheckbox("lead-1").getAttribute("aria-checked")).toBe("true");
+    expect(rowCheckbox("lead-2").getAttribute("aria-checked")).toBe("true");
   });
 });

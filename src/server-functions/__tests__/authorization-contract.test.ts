@@ -53,6 +53,15 @@ const ACKNOWLEDGED_UNGUARDED: Record<string, string> = {
     "command checks approvals.decide against the locked approval and linked subject owner",
   "approvals.ts::recordManualMessageSentFn":
     "command checks approvals.decide against the locked approved message handoff",
+  "bulk-operations.ts::previewBulkFn":
+    "the allowlisted action handler checks capability per item before exposing any summary",
+  "bulk-operations.ts::commitBulkFn":
+    "the actor-owned token is checked and every item rechecks capability inside its transaction",
+  "bulk-operations.ts::resumeBulkFn":
+    "the actor-owned operation is checked and every resumed item rechecks capability",
+  "bulk-operations.ts::getBulkResultFn":
+    "returns only this actor's receipt statuses and IDs, without preview summaries",
+
   "agent-runs.ts::recoverAgentRunFn":
     "command checks agents.run and approvals.decide against the locked run and approval",
   "app-shell.ts::getAppShellRead":
