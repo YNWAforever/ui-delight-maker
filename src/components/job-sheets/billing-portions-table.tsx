@@ -117,9 +117,10 @@ export function BillingPortionsTable({
             reconciliation.reconciled ? "text-success" : "text-destructive"
           }`}
         >
+          Reconciliation delta: {formatCurrencyAmount(reconciliation.delta, currency)}
           {reconciliation.reconciled
-            ? "Billing plan reconciles with the accepted quote total."
-            : `Reconciliation delta: ${formatCurrencyAmount(reconciliation.delta, currency)}`}
+            ? " · Billing plan reconciles with the accepted quote total."
+            : " · Resolve before acceptance."}
         </p>
         {/* Progress as a sentence, never a bar: "2 of 3" says which two are left to raise. */}
         <p className="mt-1 text-xs text-muted-foreground">{describeBillingProgress(portions)}</p>

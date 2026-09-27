@@ -268,7 +268,7 @@ export function rebaseXeroDrafts(
   return toXeroDrafts(nextBaseline);
 }
 
-export type JobSheetMutation = "billing" | "xero" | "accept";
+export type JobSheetMutation = "billing" | "xero" | "accept" | "header";
 
 export function getJobSheetMutationQueryKeys(
   jobSheet: Pick<JobSheet, "id" | "client_id" | "account_id">,
@@ -276,7 +276,8 @@ export function getJobSheetMutationQueryKeys(
 ): QueryKey[] {
   const queryKeys: QueryKey[] = [crmQueryKeys.jobSheets.detail(jobSheet.id)];
 
-  if (mutation === "accept") queryKeys.push(crmQueryKeys.jobSheets.lists());
+  if (mutation === "accept" || mutation === "header")
+    queryKeys.push(crmQueryKeys.jobSheets.lists());
   if (jobSheet.client_id) {
     queryKeys.push(crmQueryKeys.clients.section(jobSheet.client_id, "job_sheets"));
     if (mutation === "accept") {

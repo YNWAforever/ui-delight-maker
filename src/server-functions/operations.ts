@@ -100,22 +100,39 @@ export function parseDatasetInput(data: unknown): { report: ReportId; range: Rep
 export const getJobSheetRead = createServerFn({ method: "GET" })
   .validator(parseJobSheetInput)
   .handler(async ({ data }) => {
-    await requireCapability("job_sheets.view", {
-      resourceType: "job_sheet",
-      resourceId: data.id,
-    });
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "job_sheets.view",
+      { resourceType: "job_sheet", resourceId: data.id },
+      context,
+    );
     const read = await getJobSheetOperationsRead(data.id);
+    const handoffAccess = await requireCapabilitySet([], {
+      optional: ["job_sheets.update_billing", "job_sheets.accept"],
+      target: { resourceType: "job_sheet", resourceId: data.id },
+      context,
+    });
 
     const quoteAccess = read.quote
       ? await requireCapabilitySet([], {
           optional: ["quotes.view"],
           target: { resourceType: "quote", resourceId: read.quote.id },
+          context,
         })
       : {};
     const clientAccess = read.client
       ? await requireCapabilitySet([], {
           optional: ["accounts.view"],
           target: { resourceType: "client", resourceId: read.client.id },
+          context,
+        })
+      : {};
+
+    const accountAccess = read.jobSheet.account_id
+      ? await requireCapabilitySet([], {
+          optional: ["accounts.view"],
+          target: { resourceType: "account", resourceId: read.jobSheet.account_id },
+          context,
         })
       : {};
 
@@ -123,6 +140,19 @@ export const getJobSheetRead = createServerFn({ method: "GET" })
       ...read,
       quote: quoteAccess["quotes.view"] ? read.quote : null,
       client: clientAccess["accounts.view"] ? read.client : null,
+      companyName: read.jobSheet.client_id
+        ? clientAccess["accounts.view"]
+          ? read.companyName
+          : null
+        : read.jobSheet.account_id
+          ? accountAccess["accounts.view"]
+            ? read.companyName
+            : null
+          : quoteAccess["quotes.view"]
+            ? read.companyName
+            : null,
+      canUpdateHeader: Boolean(handoffAccess["job_sheets.update_billing"]),
+      canAcceptJobSheet: Boolean(handoffAccess["job_sheets.accept"]),
     };
   });
 export const getRenewalsRead = createServerFn({ method: "GET" })

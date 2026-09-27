@@ -12,6 +12,8 @@ const PurposeSchema = z.enum([
   "task_filter",
   "task_assign",
   "approval_reviewer",
+  "job_sheet_owner",
+  "job_sheet_owner_filter",
   "admin_access",
   "successor",
 ]);
@@ -39,6 +41,8 @@ async function requirePurpose(
   const capability = {
     task_filter: "tasks.view",
     approval_reviewer: "approvals.decide",
+    job_sheet_owner: "job_sheets.update_billing",
+    job_sheet_owner_filter: "job_sheets.view",
     admin_access: "permissions.override",
     successor: "users.manage",
   } as const;

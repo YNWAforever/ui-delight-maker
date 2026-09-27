@@ -70,6 +70,8 @@ const makeJobSheet = (overrides: Partial<JobSheet>): JobSheet => ({
   status: "accepted",
   accepted_scope_summary: null,
   po_number: null,
+  no_po_reason: null,
+  row_version: 0,
   client_order_number: null,
   xero_customer_reference: null,
   accounting_notes: null,
