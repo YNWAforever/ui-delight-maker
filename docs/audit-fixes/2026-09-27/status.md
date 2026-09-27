@@ -1,6 +1,6 @@
 # ClientOps audit remediation status
 
-Baseline: fetched `origin/main` = audit SHA `2904faa502f7494173f48f412875c1d0a3aba674` on 2026-09-27 (HKT). Work branch: `codex/clientops-audit-fixes`. See [baseline](baseline.md) and the preserved [source plan](source/ClientOps_Codex_GPT6_Sol_Implementation_Plan_2026-09-27_zhHK.md).
+Baseline: fetched `origin/main` = audit SHA `2904faa502f7494173f48f412875c1d0a3aba674` on 2026-09-27 (HKT), reconfirmed before PR creation. Work branch: `codex/clientops-audit-fixes`; [draft Wave 1 PR #82](https://github.com/YNWAforever/ui-delight-maker/pull/82). See [baseline](baseline.md) and the preserved [source plan](source/ClientOps_Codex_GPT6_Sol_Implementation_Plan_2026-09-27_zhHK.md).
 
 Allowed finding states: `open`, `in_progress`, `verified_fixed`, `already_fixed_with_evidence`, `blocked_external`. A code change alone does not qualify for `verified_fixed`; use positive behavior, real PostgreSQL when applicable, and role UI evidence when applicable.
 
@@ -74,4 +74,4 @@ The latest main is identical to the audited commit. The audit's code findings th
 - Real PostgreSQL: dedicated disposable local container available. Existing integration tests use `pg`; the production migration CLI cannot speak directly to plain local PostgreSQL through Neon's WebSocket driver. Record exact per-task DB execution and skipped count.
 - Role UI: no authenticated seven-role sessions supplied. All UAT cases requiring a session remain unverified; no super_admin proxy acceptance.
 - Performance: fixture-derived formulas remain synthetic. No p95 or before/after runtime claim until a real same-environment measurement is captured.
-- Release: no deployment or production mutation. Review branch and PR status are recorded after creation.
+- Release: no deployment or production mutation. Wave 1 is pushed as draft PR #82; later waves and release gates remain open.
