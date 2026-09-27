@@ -71,15 +71,19 @@ const auditQueryOptions = (search: AdminAuditSearch) =>
  * they are already the redacted structures the server stored. Formatting belongs on screen.
  */
 const AUDIT_CSV_COLUMNS: CsvColumn<AdminAuditLog>[] = [
-  { header: "Timestamp (UTC)", value: (entry) => entry.created_at },
-  { header: "Actor profile id", value: (entry) => entry.actor_profile_id ?? "" },
-  { header: "Target type", value: (entry) => entry.target_type },
-  { header: "Target id", value: (entry) => entry.target_id ?? "" },
-  { header: "Action", value: (entry) => entry.action },
-  { header: "Severity", value: (entry) => entry.severity },
-  { header: "Reason", value: (entry) => entry.reason ?? "" },
-  { header: "Before", value: (entry) => JSON.stringify(entry.before_snapshot ?? null) },
-  { header: "After", value: (entry) => JSON.stringify(entry.after_snapshot ?? null) },
+  { header: "Timestamp (UTC)", kind: "date", value: (entry) => entry.created_at },
+  { header: "Actor profile id", kind: "text", value: (entry) => entry.actor_profile_id ?? "" },
+  { header: "Target type", kind: "text", value: (entry) => entry.target_type },
+  { header: "Target id", kind: "text", value: (entry) => entry.target_id ?? "" },
+  { header: "Action", kind: "text", value: (entry) => entry.action },
+  { header: "Severity", kind: "text", value: (entry) => entry.severity },
+  { header: "Reason", kind: "text", value: (entry) => entry.reason ?? "" },
+  {
+    header: "Before",
+    kind: "text",
+    value: (entry) => JSON.stringify(entry.before_snapshot ?? null),
+  },
+  { header: "After", kind: "text", value: (entry) => JSON.stringify(entry.after_snapshot ?? null) },
 ];
 
 export const Route = createFileRoute("/admin/audit")({
