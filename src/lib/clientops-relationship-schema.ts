@@ -23,6 +23,7 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/016_work_queue_pagination_indexes.sql",
   "neon/migrations/017_bulk_operations.sql",
   "neon/migrations/018_bulk_row_versions.sql",
+  "neon/migrations/019_import_sessions_and_identity_keys.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
@@ -67,6 +68,9 @@ export const CLIENTOPS_REQUIRED_TABLES = [
   "approval_message_handoffs",
   "bulk_operations",
   "bulk_operation_items",
+  "import_sessions",
+  "import_session_rows",
+  "import_identity_keys",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_COLUMNS = [
@@ -76,6 +80,8 @@ export const CLIENTOPS_REQUIRED_COLUMNS = [
   "profiles.session_invalid_before",
   "leads.contact_id",
   "leads.row_version",
+  "clients.row_version",
+  "accounts.row_version",
   "tasks.row_version",
   "leads.account_id",
   "leads.source_campaign_id",
