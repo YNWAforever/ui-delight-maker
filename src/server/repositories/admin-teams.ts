@@ -48,6 +48,9 @@ export type TeamMembership = {
   id: string;
   teamId: string;
   profileId: string;
+  profileName?: string | null;
+  profileEmail?: string | null;
+  profileStatus?: string | null;
   membershipRole: MembershipRole;
   startsAt: string | null;
   endsAt: string | null;
@@ -145,6 +148,13 @@ function mapMembership(row: Record<string, unknown>): TeamMembership {
     id: requiredString(row.id),
     teamId: requiredString(row.team_id),
     profileId: requiredString(row.profile_id),
+    ...("profile_name" in row
+      ? {
+          profileName: nullableString(row.profile_name),
+          profileEmail: nullableString(row.profile_email),
+          profileStatus: nullableString(row.profile_status),
+        }
+      : {}),
     membershipRole: row.membership_role as MembershipRole,
     startsAt: nullableString(row.starts_at),
     endsAt: nullableString(row.ends_at),
@@ -235,11 +245,13 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
     )) as Record<string, unknown>[];
     const memberships = (await query(
       `
-        select *
-        from team_memberships
-        where (starts_at is null or starts_at <= now())
-          and (ends_at is null or ends_at > now())
-        order by team_id, profile_id, id
+        select tm.*, p.name as profile_name, p.email as profile_email,
+               p.status as profile_status
+        from team_memberships tm
+        left join profiles p on p.id = tm.profile_id
+        where (tm.starts_at is null or tm.starts_at <= now())
+          and (tm.ends_at is null or tm.ends_at > now())
+        order by tm.team_id, tm.profile_id, tm.id
       `,
     )) as Record<string, unknown>[];
 
@@ -276,12 +288,14 @@ export function createAdminTeamsRepository(dependencies: Dependencies = {}) {
     if (!row) return null;
     const memberships = (await query(
       `
-        select *
-        from team_memberships
-        where team_id = $1
-          and (starts_at is null or starts_at <= now())
-          and (ends_at is null or ends_at > now())
-        order by profile_id, id
+        select tm.*, p.name as profile_name, p.email as profile_email,
+               p.status as profile_status
+        from team_memberships tm
+        left join profiles p on p.id = tm.profile_id
+        where tm.team_id = $1
+          and (tm.starts_at is null or tm.starts_at <= now())
+          and (tm.ends_at is null or tm.ends_at > now())
+        order by tm.profile_id, tm.id
       `,
       [id],
     )) as Record<string, unknown>[];

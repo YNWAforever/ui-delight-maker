@@ -122,6 +122,7 @@ describe("admin user server functions", () => {
       profileId: "profile-1",
       buckets: [],
       totalCount: 0,
+      totalHistoryCount: 0,
     });
     deactivateUserWithReassignmentMock.mockResolvedValue({
       profileId: "profile-1",
@@ -240,6 +241,7 @@ describe("admin user server functions", () => {
       profileId: "profile-1",
       buckets: [],
       totalCount: 0,
+      totalHistoryCount: 0,
     };
     await deactivateAdminUserWithReassignmentFn({
       data: {

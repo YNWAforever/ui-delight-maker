@@ -13,6 +13,7 @@ export type ProfilePurpose =
   | "job_sheet_owner"
   | "job_sheet_owner_filter"
   | "admin_access"
+  | "admin_directory"
   | "successor";
 export type AssignableProfile = {
   id: string;
@@ -82,9 +83,11 @@ export async function listAssignableProfiles(
               ? permits(context, "job_sheets.view")
               : purpose === "admin_access"
                 ? permits(context, "permissions.override")
-                : purpose === "successor"
-                  ? permits(context, "users.manage")
-                  : false;
+                : purpose === "admin_directory"
+                  ? permits(context, "users.view")
+                  : purpose === "successor"
+                    ? permits(context, "users.manage")
+                    : false;
   if (!authorized) throw new AdminError("FORBIDDEN", "People search is not authorized");
   const search = input.query?.trim().toLowerCase() ?? "";
   if (search.length > 200) throw new AdminError("VALIDATION_FAILED", "Search is too long");
@@ -121,6 +124,7 @@ export async function listAssignableProfiles(
     purpose === "job_sheet_owner" ||
     purpose === "job_sheet_owner_filter" ||
     purpose === "admin_access" ||
+    purpose === "admin_directory" ||
     purpose === "successor"
   ) {
     if (purpose === "job_sheet_owner" || purpose === "job_sheet_owner_filter") {
@@ -228,9 +232,11 @@ export async function resolveAssignableProfile(
               ? permits(context, "job_sheets.view")
               : purpose === "admin_access"
                 ? permits(context, "permissions.override")
-                : purpose === "successor"
-                  ? permits(context, "users.manage")
-                  : false;
+                : purpose === "admin_directory"
+                  ? permits(context, "users.view")
+                  : purpose === "successor"
+                    ? permits(context, "users.manage")
+                    : false;
   if (!authorized) throw new AdminError("FORBIDDEN", "People search is not authorized");
   const values: unknown[] = [input.id];
   const clauses = ["p.id=$1", "p.status='active'"];

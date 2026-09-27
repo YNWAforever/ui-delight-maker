@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
 import { adminControlAccess } from "@/lib/admin-capabilities";
 import {
   adminOrganizationQueryKey,
@@ -56,7 +57,7 @@ import {
   revokeAdminPermissionOverrideFn,
   getAdminOverridesFn,
 } from "@/server-functions/admin-access";
-import { getAdminUsersFn } from "@/server-functions/admin-users";
+import { getAdminUserFn, getAdminUsersFn } from "@/server-functions/admin-users";
 
 const adminOverviewQueryKey = crmQueryKeys.admin.section("overview", "summary");
 const accessRequestsQueryKey = (search: AdminAccessSearch) =>
@@ -65,7 +66,7 @@ const accessUsersQueryKey = crmQueryKeys.admin.list({
   scope: "access-users",
   status: "active",
   page: 1,
-  limit: 100,
+  limit: 1,
 });
 const accessOverridesQueryKey = (profileId: string) =>
   crmQueryKeys.admin.section(profileId, "access-overrides", { includeHistory: true });
@@ -78,7 +79,12 @@ const requestsQueryOptions = (search: AdminAccessSearch) =>
 const usersQueryOptions = () =>
   routeQueryOptions({
     queryKey: accessUsersQueryKey,
-    queryFn: () => getAdminUsersFn({ data: { status: "active", page: 1, limit: 100 } }),
+    queryFn: () => getAdminUsersFn({ data: { status: "active", page: 1, limit: 1 } }),
+  });
+const selectedUserQueryOptions = (profileId: string) =>
+  routeQueryOptions({
+    queryKey: crmQueryKeys.admin.detail(profileId),
+    queryFn: () => getAdminUserFn({ data: { profileId } }),
   });
 const overridesQueryOptions = (profileId: string) =>
   routeQueryOptions({
@@ -116,7 +122,9 @@ export const Route = createFileRoute("/admin/access")({
         context.queryClient.ensureQueryData(organizationQueryOptions()),
       ]);
       const selectedProfileId = requestedProfileId ?? users.items[0]?.id;
-      const selectedUser = users.items.find((user) => user.id === selectedProfileId) ?? null;
+      const selectedUser = selectedProfileId
+        ? await context.queryClient.ensureQueryData(selectedUserQueryOptions(selectedProfileId))
+        : null;
       const overrides =
         selectedProfileId && selectedProfileId !== requestedProfileId
           ? await context.queryClient.ensureQueryData(overridesQueryOptions(selectedProfileId))
@@ -175,13 +183,13 @@ function AdminAccessRoute() {
   const writeLock = useRef(false);
 
   const requestsQuery = useQuery({ ...requestsQueryOptions(search), initialData: loaded.requests });
-  const usersQuery = useQuery({
-    ...usersQueryOptions(),
-    initialData: { items: loaded.users, total: loaded.users.length, page: 1, limit: 100 },
+  const selectedProfileId = search.profile ?? loaded.selectedUser?.id;
+  const selectedUserQuery = useQuery({
+    ...selectedUserQueryOptions(selectedProfileId ?? "unselected"),
+    initialData: loaded.selectedUser?.id === selectedProfileId ? loaded.selectedUser : undefined,
+    enabled: !loaded.forbidden && Boolean(selectedProfileId),
   });
-  const selectedUser =
-    usersQuery.data.items.find((user) => user.id === (search.profile ?? loaded.selectedUser?.id)) ??
-    loaded.selectedUser;
+  const selectedUser = selectedUserQuery.data ?? null;
   const overridesQuery = useQuery({
     ...overridesQueryOptions(selectedUser?.id ?? "unselected"),
     initialData: loaded.overrides,
@@ -194,7 +202,6 @@ function AdminAccessRoute() {
   });
 
   const requests = requestsQuery.data;
-  const users = usersQuery.data.items;
   const overrides = overridesQuery.data;
   const forbidden = loaded.forbidden;
   const [overrideOpen, setOverrideOpen] = useState(false);
@@ -364,23 +371,14 @@ function AdminAccessRoute() {
             </select>
           </label>
         ) : (
-          <label className="block min-w-56">
-            <span className="text-xs font-medium text-muted-foreground">Profile</span>
-            <select
-              aria-label="Access profile"
-              value={selectedUser?.id ?? ""}
-              onChange={(event) =>
-                updateSearch({ ...search, profile: event.target.value || undefined })
-              }
-              className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name || user.email || user.id}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="min-w-56">
+            <ProfileSearchCombobox
+              purpose="admin_directory"
+              label="Access profile"
+              value={selectedProfileId ?? ""}
+              onChange={(profileId) => updateSearch({ ...search, profile: profileId || undefined })}
+            />
+          </div>
         )}
       </div>
 

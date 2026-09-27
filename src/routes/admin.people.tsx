@@ -12,7 +12,6 @@ import {
   type UserLifecycleSubmit,
 } from "@/components/admin/user-lifecycle-dialog";
 import { UserRoleDialog } from "@/components/admin/user-role-dialog";
-import type { LifecycleSuccessorOption } from "@/components/admin/work-reassignment-table";
 import {
   ErrorState,
   PermissionDeniedState,
@@ -35,7 +34,6 @@ import {
   adminOrganizationQueryKey,
   adminPeopleOptionsQueryKey,
   departmentOptions,
-  loadActiveProfiles,
   loadOrganizationDirectory,
   teamOptions,
 } from "@/lib/admin-directory";
@@ -90,12 +88,6 @@ const organizationQuery = () =>
     queryFn: loadOrganizationDirectory,
   });
 
-const activeProfilesQuery = () =>
-  routeQueryOptions({
-    queryKey: adminPeopleOptionsQueryKey(),
-    queryFn: loadActiveProfiles,
-  });
-
 export const Route = createFileRoute("/admin/people")({
   validateSearch: adminPeopleSearchSchema,
   loaderDeps: ({ search }) => ({ search }),
@@ -110,21 +102,9 @@ export const Route = createFileRoute("/admin/people")({
         })
       : Promise.resolve(null);
 
-    /**
-     * The organization is loaded here so the invite dialog can offer real departments,
-     * managers and teams.
-     *
-     * Without it the dialog degraded to free-text boxes labelled "Department ID (optional)"
-     * and "Manager profile ID (optional)", and the Initial-teams fieldset never rendered at
-     * all — so `initialTeamIds` was always `[]`. That is the exact field
-     * `requireInvitationTargets` uses to scope a manager's invite authority, so a manager
-     * could not send a scoped invitation from this screen at all. Both reads degrade to
-     * empty for an actor without the capability, so this cannot fail the page.
-     */
-    const optionsPromise = Promise.all([
-      context.queryClient.ensureQueryData(organizationQuery()),
-      context.queryClient.ensureQueryData(activeProfilesQuery()),
-    ]);
+    // The invite dialog needs real department and team options. Manager selection uses
+    // the scoped server-side directory search and does not preload a fixed roster.
+    const optionsPromise = context.queryClient.ensureQueryData(organizationQuery());
 
     try {
       const [directory, selectedUser] = await Promise.all([directoryPromise, selectedUserPromise]);
@@ -194,7 +174,6 @@ function AdminPeopleIndex() {
     enabled: !loaderData.forbidden && Boolean(search.user),
   });
   const organization = useQuery({ ...organizationQuery(), enabled: !loaderData.forbidden });
-  const activeProfiles = useQuery({ ...activeProfilesQuery(), enabled: !loaderData.forbidden });
 
   const directory = directoryQuery.data;
   const selectedUser = selectedUserData ?? null;
@@ -206,7 +185,6 @@ function AdminPeopleIndex() {
   const [roleUser, setRoleUser] = useState(selectedUser);
   const [lifecycleUser, setLifecycleUser] = useState(selectedUser);
   const [lifecycleInventory, setLifecycleInventory] = useState<ReassignmentInventory>();
-  const [lifecycleSuccessors, setLifecycleSuccessors] = useState<LifecycleSuccessorOption[]>([]);
   const [lifecycleLoading, setLifecycleLoading] = useState(false);
   const [lifecycleAction, setLifecycleAction] = useState<"suspend" | "reactivate">("suspend");
   const [busy, setBusy] = useState(false);
@@ -230,7 +208,6 @@ function AdminPeopleIndex() {
 
   const departments = departmentOptions(organization.data);
   const teams = teamOptions(organization.data);
-  const managers = activeProfiles.data ?? [];
 
   /**
    * Everything a change to a person can make stale.
@@ -251,6 +228,7 @@ function AdminPeopleIndex() {
         exact: true,
       }),
       queryClient.invalidateQueries({ queryKey: adminPeopleOptionsQueryKey(), exact: true }),
+      queryClient.invalidateQueries({ queryKey: ["people"] }),
       queryClient.invalidateQueries({ queryKey: adminOrganizationQueryKey, exact: true }),
     ];
     if (profileId) {
@@ -306,7 +284,6 @@ function AdminPeopleIndex() {
     setLifecycleAction(intent === "reactivate" ? "reactivate" : "suspend");
     setLifecycleUser(selectedUser);
     setLifecycleInventory(undefined);
-    setLifecycleSuccessors([]);
     if (intent === "reactivate" || !access.deactivate) {
       setLifecycleLoading(false);
       return;
@@ -314,15 +291,11 @@ function AdminPeopleIndex() {
 
     setLifecycleLoading(true);
     try {
-      const [inventory, candidates] = await Promise.all([
-        getAdminReassignmentInventoryFn({ data: { profileId: selectedUser.id } }),
-        getAdminUsersFn({ data: { status: "active", page: 1, limit: 100 } }),
-      ]);
+      const inventory = await getAdminReassignmentInventoryFn({
+        data: { profileId: selectedUser.id },
+      });
       if (requestNumber !== lifecycleRequest.current) return;
       setLifecycleInventory(inventory);
-      setLifecycleSuccessors(
-        candidates.items.filter((candidate) => candidate.id !== selectedUser.id),
-      );
     } catch (error) {
       if (requestNumber !== lifecycleRequest.current) return;
       setLifecycleUser(null);
@@ -339,7 +312,6 @@ function AdminPeopleIndex() {
       lifecycleRequest.current += 1;
       setLifecycleUser(null);
       setLifecycleInventory(undefined);
-      setLifecycleSuccessors([]);
       setLifecycleLoading(false);
     }
   };
@@ -462,7 +434,6 @@ function AdminPeopleIndex() {
         onOpenChange={setInviteOpen}
         departments={departments}
         teams={teams}
-        managers={managers}
         onSubmit={async (invitations) => {
           const result = await inviteUsers({ data: { invitations } });
           // The route no longer toasts "Invitation batch processed" unconditionally. The
@@ -504,7 +475,6 @@ function AdminPeopleIndex() {
           canSuspend={access.suspend && lifecycleAction !== "reactivate"}
           inventory={lifecycleInventory}
           inventoryLoading={lifecycleLoading}
-          successors={lifecycleSuccessors}
           onOpenChange={closeLifecycle}
           onSubmit={submitLifecycle}
         />

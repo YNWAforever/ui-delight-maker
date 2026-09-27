@@ -15,6 +15,7 @@ const PurposeSchema = z.enum([
   "job_sheet_owner",
   "job_sheet_owner_filter",
   "admin_access",
+  "admin_directory",
   "successor",
 ]);
 const ResolveSchema = z.strictObject({
@@ -44,6 +45,7 @@ async function requirePurpose(
     job_sheet_owner: "job_sheets.update_billing",
     job_sheet_owner_filter: "job_sheets.view",
     admin_access: "permissions.override",
+    admin_directory: "users.view",
     successor: "users.manage",
   } as const;
   await requireCapability(capability[purpose], {}, context);

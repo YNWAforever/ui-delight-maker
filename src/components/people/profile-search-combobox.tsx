@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import {
   listAssignableProfilesFn,
   resolveAssignableProfileFn,
 } from "@/server-functions/assignable-profiles";
-import type { ProfilePurpose } from "@/server/repositories/assignable-profiles";
+import type { AssignableProfile, ProfilePurpose } from "@/server/repositories/assignable-profiles";
 
 const FILTER_PRESETS = [
   { value: "all", label: "All owners" },
@@ -19,15 +19,22 @@ export function ProfileSearchCombobox({
   label,
   value,
   onChange,
+  onSelected,
   resourceId,
 }: {
   purpose: ProfilePurpose;
   label: string;
   value: string;
   onChange: (value: string) => void;
+  onSelected?: (person: AssignableProfile) => void;
   resourceId?: string;
 }) {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [extra, setExtra] = useState<
     Array<{ id: string; displayName: string; isEligible: boolean; reason: string | null }>
@@ -43,14 +50,15 @@ export function ProfileSearchCombobox({
     enabled: Boolean(selectedId),
   });
   const matches = useQuery({
-    queryKey: ["people", "search", purpose, resourceId ?? null, search.trim()],
+    queryKey: ["people", "search", purpose, resourceId ?? null, debouncedSearch],
     queryFn: () =>
       listAssignableProfilesFn({
-        data: { purpose, query: search.trim(), limit: 50, resourceId },
+        data: { purpose, query: debouncedSearch, limit: 50, resourceId },
       }),
-    enabled: search.trim().length > 0,
+    enabled: debouncedSearch.length > 0,
   });
-  const suggestions = [...(matches.data?.items ?? []), ...extra];
+  const suggestions =
+    debouncedSearch === search.trim() ? [...(matches.data?.items ?? []), ...extra] : [];
 
   function updateSearch(next: string) {
     setSearch(next);
@@ -64,7 +72,7 @@ export function ProfileSearchCombobox({
     setLoadingMore(true);
     try {
       const page = await listAssignableProfilesFn({
-        data: { purpose, query: search.trim(), cursor, limit: 50, resourceId },
+        data: { purpose, query: debouncedSearch, cursor, limit: 50, resourceId },
       });
       setExtra((current) => [...current, ...page.items]);
       setNextCursor(page.nextCursor);
@@ -95,6 +103,12 @@ export function ProfileSearchCombobox({
           Unassigned
         </Button>
       )}
+      {selectedId &&
+      (purpose === "admin_directory" || purpose === "successor" || purpose === "admin_access") ? (
+        <Button type="button" size="sm" variant="outline" onClick={() => onChange("")}>
+          Clear {label}
+        </Button>
+      ) : null}
       <p className="text-xs text-muted-foreground">
         Selected:{" "}
         {selectedId
@@ -120,6 +134,7 @@ export function ProfileSearchCombobox({
           if (event.key === "Enter" && suggestions[0]) {
             event.preventDefault();
             onChange(suggestions[0].id);
+            onSelected?.(suggestions[0]);
             updateSearch("");
           }
         }}
@@ -140,6 +155,7 @@ export function ProfileSearchCombobox({
               disabled={!person.isEligible}
               onClick={() => {
                 onChange(person.id);
+                onSelected?.(person);
                 updateSearch("");
               }}
             >
