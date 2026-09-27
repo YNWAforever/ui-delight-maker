@@ -1,4 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -9,17 +10,7 @@ import {
   Scripts,
   redirect,
 } from "@tanstack/react-router";
-import { GlobalSearch } from "@/components/global-search";
-import { NotificationBell } from "@/components/notification-bell";
-import { ThemeToggle } from "@/components/theme-toggle";
 
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-
-import { Toaster } from "@/components/ui/sonner";
-import { toast } from "sonner";
-
-import { signOut } from "@/server-functions/auth";
 import { getAppShellRead } from "@/server-functions/app-shell";
 import { isPublicAuthPath } from "@/lib/auth/auth-routes";
 import { toSafeErrorMessage } from "@/lib/errors";
@@ -28,6 +19,12 @@ import { routeQueryOptions } from "@/lib/route-query";
 import type { RouterContext } from "@/router";
 
 import appCss from "../styles.css?url";
+
+const AuthenticatedAppShell = lazy(() =>
+  import("@/components/authenticated-app-shell").then((module) => ({
+    default: module.AuthenticatedAppShell,
+  })),
+);
 
 function NotFoundComponent() {
   return (
@@ -159,8 +156,6 @@ function RootComponent() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const router = useRouter();
-
   if (isPublicAuthPath(pathname)) {
     return (
       <QueryClientProvider client={queryClient}>
@@ -171,61 +166,23 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full bg-background">
-          <AppSidebar
-            profile={profile ?? null}
-            favorites={favorites ?? []}
-            adminNavigation={adminNavigation ?? []}
-            onSignOut={async () => {
-              try {
-                await signOut();
-                queryClient.clear();
-                await router.invalidate();
-                await router.navigate({ to: "/login" });
-              } catch (error) {
-                toast.error(error instanceof Error ? error.message : "Neon Auth sign-out failed");
-              }
-            }}
-          />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
-              <SidebarTrigger />
-              {/* Search earns more room as the viewport allows: it is the fastest path to
-                  any record, and a 448px cap wastes a 1440px header. */}
-              <div className="hidden max-w-md flex-1 md:block lg:max-w-xl">
-                <GlobalSearch />
-              </div>
-              {/* The shared icon size is h-9 (36px). This raises the header's own icon
-                  buttons to the 40px touch target the shell asks for, at the call site,
-                  because src/components/ui/ primitives must not be edited to suit one
-                  surface. */}
-              <div className="ml-auto flex items-center gap-2 [&_button[aria-label]]:h-10 [&_button[aria-label]]:w-10">
-                <div className="md:hidden">
-                  <GlobalSearch iconOnly />
-                </div>
-                <ThemeToggle />
-                <NotificationBell />
-                {/* Presentational: the sidebar footer is what names the signed-in user and
-                    owns sign-out. Without a name this is two unexplained letters to a
-                    screen reader, so it is hidden from the accessibility tree rather than
-                    announced raw. */}
-                <div
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-xs font-medium text-primary"
-                  title={profile?.name ?? undefined}
-                  aria-hidden="true"
-                >
-                  {profile?.name?.slice(0, 2).toUpperCase() ?? "??"}
-                </div>
-              </div>
-            </header>
-            <main id="main-content" className="flex-1">
-              <Outlet />
-            </main>
+      <Suspense
+        fallback={
+          <div
+            className="flex min-h-screen items-center justify-center bg-background"
+            role="status"
+          >
+            Loading workspace...
           </div>
-        </div>
-        <Toaster richColors position="top-right" />
-      </SidebarProvider>
+        }
+      >
+        <AuthenticatedAppShell
+          queryClient={queryClient}
+          profile={profile ?? null}
+          favorites={favorites ?? []}
+          adminNavigation={adminNavigation ?? []}
+        />
+      </Suspense>
     </QueryClientProvider>
   );
 }

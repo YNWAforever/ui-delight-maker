@@ -24,6 +24,7 @@ export type RouteFamily =
 export const ROUTE_PERFORMANCE_BUDGET = {
   maxInitialPayloadBytes: 102_400,
   maxRouteChunkBytes: 256_000,
+  maxLoginInitialJsGzipBytes: 307_200,
   maxPrimaryServerCalls: 1,
 } as const;
 export type RoutePerformanceBudget = typeof ROUTE_PERFORMANCE_BUDGET;
