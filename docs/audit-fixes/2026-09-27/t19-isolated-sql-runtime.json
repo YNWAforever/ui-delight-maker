@@ -1,0 +1,30 @@
+{
+  "evidenceType": "isolated_postgresql_component_runtime",
+  "sha": "32fc89b0f6f6188a78ce6ac033ce0d76fe2b0d1c",
+  "dataset": {
+    "tasks": 10000,
+    "approvals": 100000
+  },
+  "environment": "local-disposable-postgresql",
+  "caveat": "Direct SQL list/count component timing; excludes auth, HTTP, browser and cache",
+  "measures": [
+    {
+      "component": "tasks-sql-list-count",
+      "samples": 30,
+      "p50Ms": 18.108400000000984,
+      "p95Ms": 33.46700000000055,
+      "pageRows": 50,
+      "payloadBytes": 8626,
+      "queryCountPerSample": 2
+    },
+    {
+      "component": "approvals-sql-list-count",
+      "samples": 30,
+      "p50Ms": 49.11210000000028,
+      "p95Ms": 522.5563000000002,
+      "pageRows": 50,
+      "payloadBytes": 10077,
+      "queryCountPerSample": 2
+    }
+  ]
+}
