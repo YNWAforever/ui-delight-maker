@@ -1,6 +1,6 @@
 # T14 CSV parsing and spreadsheet-safe export
 
-Scope: CO-17 and CO-29. Branch: codex/clientops-csv-safety, stacked on T12. Code commit: 68daa83. Audit baseline: 2904faa502f7494173f48f412875c1d0a3aba674.
+Scope: CO-17 and CO-29. Branch: codex/clientops-csv-safety, stacked on T12. Code commit: 68daa83. Draft PR: https://github.com/YNWAforever/ui-delight-maker/pull/91. Audit baseline: 2904faa502f7494173f48f412875c1d0a3aba674.
 
 ## Baseline and red evidence
 
