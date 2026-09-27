@@ -34,7 +34,7 @@
 |---|---|---|
 | Remote final PR CI | checkpoint pass | Both GitHub checks passed at `e4db5ca2824300b885da500b7a9f8692aa3ad69f`; later docs-only head must be checked live |
 | Vercel preview and runtime SHA | checkpoint pass | Protected preview matched `e4db5ca2824300b885da500b7a9f8692aa3ad69f`; recheck later docs-only head. Role UAT remains blocked |
-| Seven-role UI/network UAT | blocked | no authenticated disposable sessions; [15-case matrix](uat-results.md) records no invented passes |
+| Seven-role UI/network UAT | blocked | no authenticated disposable sessions; [16-case matrix](uat-results.md) records no invented passes |
 | Full route p95 before/after | blocked | no authenticated route runtime; [T19](t19-evidence.md) only has emitted bundle and actual isolated SQL component measurements |
 | Legacy data parity | blocked | user will provide isolated snapshots later; [T20](t20-evidence.md) has no cross-database result |
 | Provider/n8n sandbox | blocked | no sandbox workflow/credential; no real token/cost or callback claim |

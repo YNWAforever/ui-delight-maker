@@ -19,6 +19,7 @@
 | U13 risk application | client_success and manager, synthetic risk review with injected failure | all related writes commit or all roll back | blocked: sessions | [T10](t10-evidence.md) |
 | U14 Hong Kong date/report | accounting; HK midnight, HKD and USD, 100.25 amount | timezone stable; separate currency; accepted period fixed; decimal retained | blocked: session | [T09](t09-evidence.md) |
 | U15 responsive/keyboard | U02/U07/U08 at 390, 768, 1440 px and 200% zoom | visible focus, Enter/Escape/Tab, dialog return focus, readable errors, unobscured bulk bar | blocked: sessions | none; browser evidence required |
+| U16 spreadsheet-safe export | report/Admin exporter role with synthetic formula-shaped text and -12.50 numeric amount | downloaded CSV opens with text, no formula evaluation; amount stays numeric | blocked: authenticated export; local LibreOffice render passed | [T14](t14-evidence.md), [render](evidence/co29-libreoffice-render.png) |
 
 ## Role and override coverage to run
 
