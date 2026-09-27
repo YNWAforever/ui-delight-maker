@@ -18,3 +18,7 @@ Ruling: note tidy runs before a touchpoint exists, so its `subject_type='note'` 
 - Fresh disposable PostgreSQL `clientops_t21_final`: migration/schema, real concurrent same-key run, null versus reported usage, old failed callback rollback and prior duration contracts: 3 files, 8 tests passed. Existing writeback transaction prevents the old failed callback from changing the Lead or newer run.
 - `bunx tsc --noEmit`, changed-file ESLint and pure `bunx vite build` passed. `bun run build` was not run because it includes migration and seed.
 - Blocked: no sandbox OpenRouter credential or authenticated note-tidy role session was supplied; real provider timeout/usage, live n8n callback payload and five deployed workflow templates remain unverified. No fake token or cost sample is reported.
+
+## Release-candidate follow-up
+
+Final branch review found a direct note-tidy replay that returned a generic duplicate state for a persisted failed run. Commit `195f8b0` now returns the prior failure outcome without contacting the provider again. The regression was RED in both unit and real PostgreSQL tests before the fix and GREEN in 2 files/13 tests after it. This does not close the provider sandbox or deployed n8n contract gates.

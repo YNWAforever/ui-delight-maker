@@ -214,3 +214,9 @@ Each of these looked like a dependency and is not. Recording them stops a future
 | `/quotes` **Duplicate** | Needs no new server function. `CreateQuoteInput` already accepts every field required, and `parent_quote_id` is settable through `updateQuote` — both exported and capability-checked. |
 | `/settings` **Team tab** (invite / role / remove) | `inviteUsers`, `changeAdminUserRoleFn`, `suspendAdminUserFn` and `deactivateAdminUserWithReassignmentFn` all exist and are already called by `/admin/people`; a finished invite dialog exists. The correct treatment is removal as a duplicate surface with a link to Admin — Instruction §9.24 forbids duplicating Admin — not a backend ask. |
 | Contact and account editing | Thirteen server functions are exported, capability-checked and wired to **nothing**: `updateClientContact`, `createAccountContact`, `updateAccountContact`, `createAccount`, `updateAccount`, `updateCampaign`, `addCampaignMember`, and six admin-user functions. `/clients/$id` ships Add and Remove contact but no Edit, though `updateClientContact` exists. These are missing controls over live server paths. |
+
+---
+
+## 2026-09-27 audit remediation addendum
+
+This historical register describes the frontend revision at its original date. Current audit implementation and remaining backend gates are tracked in [CO-01–CO-30 status](../audit-fixes/2026-09-27/status.md). In particular, BD-1's production backfill remains unrun; T20's five Supabase domains remain on legacy source pending complete isolated snapshots and ID/owner/task/override parity. T21 governs note tidy locally, but provider and deployed n8n telemetry are still unverified. Do not infer production repair or external integration from merged code or a local test.
