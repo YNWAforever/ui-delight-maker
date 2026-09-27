@@ -11,6 +11,7 @@
 - The next fresh serial database run passed 2,157/2,159 with zero skipped; the only failures were existing 5-second Vitest timeouts in visibility scope and competing bulk workers, each with duration just over 5 seconds. A later fresh focused 100-item bulk test completed in 18.36 seconds with every assertion intact. CI now uses a 30-second general ceiling; the real 100-item case has a scoped 60-second ceiling. Neither ceiling is an application performance result. Final fresh full suite on `clientops_t22_release_final` passed at code SHA `a4abea78ecd511cf2151b3e0c5308cb26d5bb62f`: 304 files, 2,161/2,161 tests, zero failed and zero skipped. The JSON gate accepted that report.
 - A final review found that replaying a previously failed same-key direct AI run reported `duplicate` and the UI called it still running. The `195f8b0` fix reads persisted failure status/outcome and returns failed/ambiguous without a new provider call. RED unit and real-PostgreSQL tests both failed before the fix; 2 files/13 tests passed after it.
 - The CI JSON summary gate accepted a valid 2/2 report and rejected a report with one skipped or failed test. Both workflows parse with PR and main-push triggers. The DB workflow checks the test database variable and rejects any failed or skipped full-suite result.
+- First PR #100 remote head `2d0e886`: Database contract passed in 4m12s; Types/lint failed after the pure Vite build because the bundle gate picked `dist/server/.vite/manifest.json` on Linux. Two focused regression tests failed before the fix: client manifest must win when both exist, and server-only output must be rejected. Commit `665b32a` makes the gate select only known browser manifest paths; the five focused tests, TypeScript, lint, pure client/SSR Vite build and emitted bundle gate pass locally. The Vercel deployment also failed; no matching preview runtime SHA is available. Recheck both remote gates on the revised PR head.
 
 ## Local verification
 
@@ -25,7 +26,7 @@
 
 | Gate | State | Reason / closure |
 |---|---|---|
-| Remote final PR CI | pending | Inspect checks on final head; require Types/lint and zero-skip Database contract |
+| Remote final PR CI | pending | First head: contract passed; Types/lint failed on server-manifest selection, repaired locally. Require both green on revised head |
 | Vercel preview and runtime SHA | blocked | PR #99 Vercel failed; no final candidate preview with matching SHA |
 | Seven-role UI/network UAT | blocked | no authenticated disposable sessions; [15-case matrix](uat-results.md) records no invented passes |
 | Full route p95 before/after | blocked | no authenticated route runtime; [T19](t19-evidence.md) only has emitted bundle and actual isolated SQL component measurements |
