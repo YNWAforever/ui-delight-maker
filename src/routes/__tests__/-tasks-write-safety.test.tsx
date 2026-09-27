@@ -39,10 +39,11 @@ const {
   toastSuccessMock: vi.fn(),
 }));
 
-const search: { view: "board" | "list"; priority: string; assignee: string } = {
+const search: { view: "board" | "list"; priority: string; assignee: string; search: string } = {
   view: "board",
   priority: "all",
   assignee: "all",
+  search: "",
 };
 
 vi.mock("@tanstack/react-router", () => ({
@@ -61,7 +62,7 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@/server-functions/tasks", () => ({
-  getTasks: getTasksMock,
+  getTasksPage: getTasksMock,
   createTask: createTaskMock,
   updateTask: updateTaskMock,
 }));
@@ -109,6 +110,10 @@ vi.mock("@/components/sales", () => ({
   ),
 }));
 
+vi.mock("@/components/people/profile-search-combobox", () => ({
+  ProfileSearchCombobox: () => null,
+}));
+
 import { Route } from "../tasks";
 
 function deferred<T>() {
@@ -130,6 +135,7 @@ const tasks = [
     priority: "high",
     due_date: "2026-07-15",
     assigned_to: "profile-42",
+    owner_display_name: "Alice Owner",
     created_by_agent: null,
   },
 ];
@@ -164,7 +170,27 @@ beforeEach(() => {
   getTasksMock.mockReset();
   toastErrorMock.mockReset();
   toastSuccessMock.mockReset();
-  vi.mocked(Route.useLoaderData).mockReturnValue(tasks as never);
+  vi.mocked(Route.useLoaderData).mockImplementation(
+    () =>
+      (search.view === "list"
+        ? { view: "list", page: { items: tasks, total: tasks.length, nextCursor: null } }
+        : {
+            view: "board",
+            lanes: {
+              open: {
+                items: tasks.filter((task) => task.status === "open"),
+                total: tasks.filter((task) => task.status === "open").length,
+                nextCursor: null,
+              },
+              in_progress: {
+                items: tasks.filter((task) => task.status === "in_progress"),
+                total: tasks.filter((task) => task.status === "in_progress").length,
+                nextCursor: null,
+              },
+              done: { items: [], total: 0, nextCursor: null },
+            },
+          }) as never,
+  );
 });
 
 afterEach(cleanup);
@@ -205,7 +231,7 @@ describe("task view switcher", () => {
     renderBoard();
 
     // Previously `userById(task.assigned_to)?.name` against a fixture roster: always blank.
-    expect(screen.getByTestId("cell-owner").textContent).toBe("profile-42");
+    expect(screen.getByTestId("cell-owner").textContent).toBe("Alice Owner");
   });
 });
 

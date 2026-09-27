@@ -48,7 +48,7 @@ import { getStatusLabel } from "@/lib/status-labels";
 import { cn } from "@/lib/utils";
 import type { AgentDirectoryRunSummary, AiReviewRead } from "@/server-functions/agent-runs";
 import { getAiReviewRead } from "@/server-functions/agent-runs";
-import { decideApproval, getApprovals } from "@/server-functions/approvals";
+import { decideApproval, getLastReviewedAtFn } from "@/server-functions/approvals";
 import { approveQuote, rejectQuote } from "@/server-functions/quotes";
 
 /**
@@ -68,19 +68,11 @@ const aiReviewQuery = () =>
     queryFn: () => getAiReviewRead(),
   });
 
-/**
- * The decided-approval history, read only when the queue is empty.
- *
- * `loadAiReviewRead` selects `where status = 'pending'`, so it can never answer "when was the
- * last thing reviewed?" — the empty state needs a decided row, which by definition is not in
- * that result. `getApprovals` returns every approval and requires `approvals.view`, which this
- * route already holds, so this is the same authorization, not a wider one. It is gated on the
- * queue actually being empty so the common case pays nothing for it.
- */
+/** A scoped aggregate, requested only for the empty queue. */
 const approvalHistoryQuery = () =>
   routeQueryOptions({
-    queryKey: crmQueryKeys.approvals.list({}),
-    queryFn: () => getApprovals({}),
+    queryKey: [...crmQueryKeys.approvals.all(), "last-reviewed-at"],
+    queryFn: () => getLastReviewedAtFn(),
   });
 
 export const Route = createFileRoute("/ai-review")({
@@ -277,14 +269,7 @@ function AiReviewPage() {
     enabled: queue.length === 0,
   });
 
-  const lastReviewedAt = useMemo(() => {
-    const history = lastReviewedQuery.data;
-    if (!history) return null;
-    return history.reduce<string | null>((latest, approval) => {
-      if (!approval.decided_at) return latest;
-      return latest === null || approval.decided_at > latest ? approval.decided_at : latest;
-    }, null);
-  }, [lastReviewedQuery.data]);
+  const lastReviewedAt = lastReviewedQuery.data ?? null;
 
   const selectApproval = (id: string) => {
     setSelectedId(id);

@@ -98,13 +98,14 @@ export function buildVisibilityScope(
   context: RequestAuthorization,
   resourceType: string,
   alias: string,
+  options?: { ownerSql?: string; capability?: Capability },
 ): { sql: string; values: readonly unknown[] } {
   if (!(resourceType in VIEW_CAPABILITY)) return { sql: "FALSE", values: [] };
   if (!/^[a-z][a-z0-9_]*$/.test(alias)) throw new Error("Invalid visibility alias");
 
   const type = resourceType as VisibleResourceType;
-  const capability = VIEW_CAPABILITY[type];
-  const owner = ownerExpression(type, alias);
+  const capability = options?.capability ?? VIEW_CAPABILITY[type];
+  const owner = options?.ownerSql ?? ownerExpression(type, alias);
   const overrides = activeRowOverrides(context, type, capability);
   const matchesOverride = `((o.value->>'resourceId') is null or (o.value->>'resourceId') = ${alias}.id::text)`;
   const overrideExists = (effect: "allow" | "deny") =>

@@ -5,8 +5,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
   assignApproval,
-  listApprovals,
-  listClaimableApprovals,
+  listApprovalQueuePage,
+  getLatestDecidedApprovalAt,
 } from "@/server/repositories/approvals";
 import { serializeHumanApproval } from "@/lib/serializable";
 import { decideApprovalCommand } from "@/server/commands/approval-decision.server";
@@ -21,35 +21,49 @@ import { queryOne } from "@/server/db/neon.server";
 import { listApproverProfiles } from "@/server/repositories/notifications";
 import {
   ApprovalAssignmentSchema,
+  ApprovalQueuePageSchema,
   ApprovalClaimSchema,
   ApprovalDecisionSchema,
   IdSchema,
   ManualMessageHandoffSchema,
 } from "@/lib/operations/input-schemas";
 
-export const getApprovals = createServerFn({ method: "GET" })
-  .validator((data: unknown) => (data ?? {}) as { status?: string })
+/** Bounded list responses omit context_data; the selected detail is a separate authorized read. */
+export const getApprovalsPage = createServerFn({ method: "GET" })
+  .validator((data: unknown) => parseOperationInput(ApprovalQueuePageSchema, data))
   .handler(async ({ data }) => {
     const context = await loadRequestAuthorization();
     await requireCapability("approvals.view", {}, context);
-    const [approvals, claimable] = await Promise.all([
-      listApprovals(data, context),
-      data.status && data.status !== "pending" && data.status !== "escalated"
-        ? Promise.resolve([])
-        : listClaimableApprovals(context),
-    ]);
-    const merged = new Map(
-      [
-        ...approvals,
-        ...claimable.filter((approval) => !data.status || approval.status === data.status),
-      ].map((approval) => [approval.id, approval]),
+    const page = await listApprovalQueuePage(data, context);
+    return {
+      ...page,
+      items: page.items.map((item) => ({
+        ...item,
+        created_at: new Date(item.created_at).toISOString(),
+        decided_at: item.decided_at ? new Date(item.decided_at).toISOString() : null,
+      })),
+    };
+  });
+
+export const getLastReviewedAtFn = createServerFn({ method: "GET" }).handler(async () => {
+  const context = await loadRequestAuthorization();
+  await requireCapability("approvals.view", {}, context);
+  return getLatestDecidedApprovalAt(context);
+});
+
+export const getApprovalDetailFn = createServerFn({ method: "GET" })
+  .validator((data: unknown) => parseOperationInput(IdSchema, data))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "approvals.view",
+      {
+        resourceType: "human_approval",
+        resourceId: data.id,
+      },
+      context,
     );
-    return [...merged.values()]
-      .sort(
-        (left, right) =>
-          right.created_at.localeCompare(left.created_at) || right.id.localeCompare(left.id),
-      )
-      .map(serializeHumanApproval);
+    return serializeHumanApproval(await getApproval(data.id));
   });
 
 export const decideApproval = createServerFn({ method: "POST" })

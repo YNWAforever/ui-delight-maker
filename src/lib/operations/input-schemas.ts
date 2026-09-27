@@ -39,6 +39,32 @@ export const TaskMutationSchema = z.strictObject({
     .refine((updates) => Object.keys(updates).length > 0, "At least one update is required"),
 });
 
+export const TaskQueuePageSchema = z.strictObject({
+  status: z.enum(["open", "in_progress", "done"]).optional(),
+  priority: z.enum(["low", "medium", "high"]).optional(),
+  assigned_to: z.string().trim().min(1).max(255).optional(),
+  search: z.string().trim().max(200).optional(),
+  cursor: z.string().max(2048).optional(),
+  limit: z.coerce.number().int().positive().max(1000).optional(),
+});
+
+export const ApprovalQueuePageSchema = z.strictObject({
+  group: z.enum(["pending", "history"]),
+  type: z
+    .enum([
+      "quote_send",
+      "message_send",
+      "discount",
+      "qualification_review",
+      "campaign_send",
+      "forecast_review",
+      "cs_risk_review",
+    ])
+    .optional(),
+  cursor: z.string().max(2048).optional(),
+  limit: z.coerce.number().int().positive().max(1000).optional(),
+});
+
 export type TaskCreateInput = z.infer<typeof TaskCreateSchema>;
 export type TaskMutationInput = z.infer<typeof TaskMutationSchema>;
 

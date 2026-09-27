@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { Bot, Plus } from "lucide-react";
@@ -17,9 +17,9 @@ import {
   StaleDataIndicator,
   WorkspaceHeader,
   type ColumnDef,
-  type FilterOption,
 } from "@/components/sales";
 import { StatusBadge } from "@/components/status-badge";
+import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -51,30 +51,70 @@ import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { getDerivedStatusLabel, getStatusLabel, isOverdue } from "@/lib/status-labels";
 import { cn } from "@/lib/utils";
-import { getTasks, createTask, updateTask } from "@/server-functions/tasks";
+import { getTasksPage, createTask, updateTask } from "@/server-functions/tasks";
 import type { TaskListItem } from "@/server-functions/tasks";
 import type { Task, TaskStatus } from "@/lib/types";
 
-/**
- * `view` is a search param, not component state.
- *
- * A board and a list are two readings of the same queue, and which one a person is looking
- * at is part of what they would send a colleague. Held in `useState` it survives neither a
- * refresh nor the Back button; held here it does both, and it stays out of `loaderDeps`
- * because it changes no server request.
- */
+/** Board/list and filters live in the URL so refresh and shared links retain the queue. */
 const taskSearchSchema = z.object({
   view: z.enum(["board", "list"]).default("board").catch("board"),
   priority: z.enum(["all", "high", "medium", "low"]).default("all").catch("all"),
   assignee: z.string().default("all").catch("all"),
+  search: z.string().default("").catch(""),
 });
 
 type TaskSearch = z.infer<typeof taskSearchSchema>;
 
-const getTaskReadInput = (filters: { priority: TaskSearch["priority"]; assignee: string }) => ({
+type QueuePage = { items: TaskListItem[]; nextCursor: string | null; total: number };
+type QueueData =
+  | { view: "list"; page: QueuePage }
+  | { view: "board"; lanes: Record<TaskStatus, QueuePage> };
+const QUEUE_STATUSES: TaskStatus[] = ["open", "in_progress", "done"];
+
+const getTaskReadInput = (filters: TaskSearch, status?: TaskStatus, cursor?: string) => ({
   priority: filters.priority === "all" ? undefined : filters.priority,
   assigned_to: filters.assignee === "all" ? undefined : filters.assignee,
+  search: filters.search.trim() || undefined,
+  status,
+  cursor,
+  limit: 50,
 });
+
+async function fetchTaskQueue(filters: TaskSearch): Promise<QueueData> {
+  if (filters.view === "list") {
+    return { view: "list", page: await getTasksPage({ data: getTaskReadInput(filters) }) };
+  }
+  const pages = await Promise.all(
+    QUEUE_STATUSES.map((status) => getTasksPage({ data: getTaskReadInput(filters, status) })),
+  );
+  return {
+    view: "board",
+    lanes: { open: pages[0], in_progress: pages[1], done: pages[2] },
+  };
+}
+
+function queueRows(data: QueueData): TaskListItem[] {
+  return data.view === "list"
+    ? data.page.items
+    : QUEUE_STATUSES.flatMap((status) => data.lanes[status].items);
+}
+
+function mapQueueRows(
+  data: QueueData,
+  transform: (rows: TaskListItem[]) => TaskListItem[],
+): QueueData {
+  if (data.view === "list")
+    return { ...data, page: { ...data.page, items: transform(data.page.items) } };
+  return {
+    ...data,
+    lanes: Object.fromEntries(
+      QUEUE_STATUSES.map((status) => [
+        status,
+        { ...data.lanes[status], items: transform(data.lanes[status].items) },
+      ]),
+    ) as Record<TaskStatus, QueuePage>,
+  };
+}
 
 export const Route = createFileRoute("/tasks")({
   validateSearch: taskSearchSchema,
@@ -82,12 +122,14 @@ export const Route = createFileRoute("/tasks")({
   loaderDeps: ({ search }) => ({
     priority: search.priority,
     assignee: search.assignee,
+    search: search.search,
+    view: search.view,
   }),
   loader: ({ context, deps }) =>
     context.queryClient.ensureQueryData(
       routeQueryOptions({
         queryKey: crmQueryKeys.tasks.list(deps),
-        queryFn: () => getTasks({ data: getTaskReadInput(deps) }),
+        queryFn: () => fetchTaskQueue(deps),
       }),
     ),
   head: () => ({
@@ -146,6 +188,11 @@ function taskTitle(task: TaskListItem): string {
 function taskDescription(task: TaskListItem): string | null {
   return task.restricted ? RESTRICTED_TASK_DESCRIPTION : task.description;
 }
+function taskOwnerName(task: TaskListItem): string {
+  if (!task.assigned_to) return "Unassigned";
+  const named = task as TaskListItem & { owner_display_name?: string | null };
+  return named.owner_display_name || "Name unavailable";
+}
 
 const replaceOnlyTaskStatus = (tasks: TaskListItem[], id: string, status: TaskStatus) =>
   tasks.map((task) => (task.id === id ? { ...task, status } : task));
@@ -159,19 +206,28 @@ function TasksBoard() {
   const tasksQueryKey = crmQueryKeys.tasks.list({
     priority: filters.priority,
     assignee: filters.assignee,
+    search: filters.search,
+    view: filters.view,
   });
   const tasksQuery = useQuery({
     ...routeQueryOptions({
       queryKey: tasksQueryKey,
-      queryFn: () => getTasks({ data: getTaskReadInput(filters) }),
+      queryFn: () => fetchTaskQueue(filters),
     }),
     initialData: loaderTasks,
   });
-  const rows = tasksQuery.data;
+  const rows = queueRows(tasksQuery.data);
+  let total = 0;
+  if (tasksQuery.data.view === "list") {
+    total = tasksQuery.data.page.total;
+  } else {
+    for (const status of QUEUE_STATUSES) total += tasksQuery.data.lanes[status].total;
+  }
+  const query = filters.search ?? "";
+  const [loadingMore, setLoadingMore] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
   const pendingTaskIdsRef = useRef(new Set<string>());
-  const [query, setQuery] = useState("");
 
   const setFilters = (patch: Partial<TaskSearch>) =>
     navigate({
@@ -179,47 +235,49 @@ function TasksBoard() {
       replace: true,
     });
 
-  /**
-   * A real filter, not the identity memo this replaced.
-   *
-   * `const filtered = useMemo(() => rows, [rows])` made `${filtered.length} of ${rows.length}`
-   * two names for one number, so the header could only ever read "N of N tasks" while
-   * presenting a filter relationship that did not exist. `listTasks` is unpaginated, so
-   * `rows` is the whole server-filtered set and searching it is a search over everything
-   * that matched — the count below is therefore true rather than page-scoped.
-   */
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (needle === "") return rows;
-    return rows.filter((task) =>
-      `${taskTitle(task)} ${taskDescription(task) ?? ""}`.toLowerCase().includes(needle),
-    );
-  }, [rows, query]);
+  // PostgreSQL applies search before the page limit; the loaded rows are already filtered.
+  const filtered = rows;
+
+  const loadMore = async (status?: TaskStatus) => {
+    const current = queryClient.getQueryData<QueueData>(tasksQueryKey) ?? tasksQuery.data;
+    const page = current.view === "list" ? current.page : current.lanes[status!];
+    if (!page.nextCursor || loadingMore) return;
+    setLoadingMore(status ?? "list");
+    try {
+      const next = await getTasksPage({
+        data: getTaskReadInput(filters, status, page.nextCursor),
+      });
+      queryClient.setQueryData<QueueData>(tasksQueryKey, (existing) => {
+        if (!existing) return current;
+        if (existing.view === "list") {
+          return {
+            ...existing,
+            page: {
+              ...next,
+              items: [...existing.page.items, ...next.items],
+            },
+          };
+        }
+        const lane = existing.lanes[status!];
+        return {
+          ...existing,
+          lanes: {
+            ...existing.lanes,
+            [status!]: {
+              ...next,
+              items: [...lane.items, ...next.items],
+            },
+          },
+        };
+      });
+    } catch (error) {
+      toast.error(toSafeErrorMessage(error));
+    } finally {
+      setLoadingMore(null);
+    }
+  };
 
   const metrics = getTaskBoardMetrics(rows, today);
-
-  /**
-   * Owner options are built from the ids on real rows, never from a fixture roster.
-   *
-   * The Select here used to be filled from `APP_USERS` — five hardcoded placeholder UUIDs
-   * that appear in no migration and no seed. `tasks.assigned_to` is `text references
-   * profiles(id)`, so picking any of them sent an id that could match nothing and emptied
-   * the board. Deriving the list from `assigned_to` values actually present guarantees
-   * every option can return rows. The active value stays listed even when the current
-   * result set no longer contains it, otherwise the Select renders blank against a URL the
-   * reader can still see.
-   */
-  const assigneeOptions: FilterOption[] = useMemo(() => {
-    const present = new Set<string>();
-    for (const task of rows) {
-      if (task.assigned_to) present.add(task.assigned_to);
-    }
-    if (filters.assignee !== "all") present.add(filters.assignee);
-    return [
-      { value: "all", label: "All owners" },
-      ...[...present].sort().map((value) => ({ value, label: value })),
-    ];
-  }, [rows, filters.assignee]);
 
   const markPending = (id: string) => {
     pendingTaskIdsRef.current.add(id);
@@ -247,17 +305,19 @@ function TasksBoard() {
 
     markPending(id);
     await queryClient.cancelQueries({ queryKey: crmQueryKeys.tasks.lists() });
-    queryClient.setQueriesData<TaskListItem[]>(
-      { queryKey: crmQueryKeys.tasks.lists() },
-      (current) => (current ? replaceOnlyTaskStatus(current, id, status) : current),
+    queryClient.setQueriesData<QueueData>({ queryKey: crmQueryKeys.tasks.lists() }, (current) =>
+      current
+        ? mapQueueRows(current, (items) => replaceOnlyTaskStatus(items, id, status))
+        : current,
     );
 
     try {
       await updateTask({ data: { id, updates: { status } } });
     } catch {
-      queryClient.setQueriesData<TaskListItem[]>(
-        { queryKey: crmQueryKeys.tasks.lists() },
-        (current) => (current ? replaceOnlyTaskStatus(current, id, previousStatus) : current),
+      queryClient.setQueriesData<QueueData>({ queryKey: crmQueryKeys.tasks.lists() }, (current) =>
+        current
+          ? mapQueueRows(current, (items) => replaceOnlyTaskStatus(items, id, previousStatus))
+          : current,
       );
       toast.error("Task move failed. Try again.");
       clearPending(id);
@@ -281,13 +341,6 @@ function TasksBoard() {
 
   const createAndRefresh = async (payload: CreateTaskPayload) => {
     const created = await createTask({ data: payload });
-    // A task the caller just created is never restricted for them — they hold `tasks.create`
-    // and the task's own ownership resolves to the assignee they just set (or nobody).
-    const createdListItem: TaskListItem = { ...created, restricted: false };
-    queryClient.setQueryData<TaskListItem[]>(tasksQueryKey, (current) => [
-      createdListItem,
-      ...(current ?? []),
-    ]);
     await queryClient.invalidateQueries({ queryKey: crmQueryKeys.tasks.lists() });
     toast.success("Task created");
   };
@@ -295,14 +348,13 @@ function TasksBoard() {
   const hasActiveFilters =
     filters.priority !== "all" || filters.assignee !== "all" || query.trim() !== "";
   const clearFilters = () => {
-    setQuery("");
-    setFilters({ priority: "all", assignee: "all" });
+    setFilters({ priority: "all", assignee: "all", search: "" });
   };
   const filterSummary = [
     filters.priority !== "all"
       ? `Priority: ${getStatusLabel("priority", filters.priority).label}`
       : null,
-    filters.assignee !== "all" ? `Owner: ${filters.assignee}` : null,
+    filters.assignee !== "all" ? "Owner filter active" : null,
     query.trim() !== "" ? `Search: ${query.trim()}` : null,
   ]
     .filter(Boolean)
@@ -361,12 +413,7 @@ function TasksBoard() {
       header: "Owner",
       priority: "tertiary",
       cell: (task) => (
-        // The owner id, not a name: there is no assignable-profiles read a salesperson can
-        // call, and the fixture roster that used to resolve names here matched nothing, so
-        // every genuinely-assigned task rendered blank.
-        <span className="truncate text-xs text-muted-foreground">
-          {task.assigned_to ?? "Unassigned"}
-        </span>
+        <span className="truncate text-xs text-muted-foreground">{taskOwnerName(task)}</span>
       ),
     },
     {
@@ -400,8 +447,8 @@ function TasksBoard() {
         title="Task Queue"
         description={
           query.trim() === ""
-            ? `${formatCount(rows.length)} tasks across follow-up, renewal and client success work.`
-            : `${formatCount(filtered.length)} of ${formatCount(rows.length)} tasks match this search.`
+            ? `${formatCount(total)} tasks across follow-up, renewal and client success work.`
+            : `${formatCount(total)} tasks match this search.`
         }
         status={
           <StaleDataIndicator
@@ -415,26 +462,26 @@ function TasksBoard() {
       <div className="space-y-6 px-4 py-6 md:px-6">
         <MetricStrip
           metrics={[
-            { id: "open", label: "Open", value: metrics.open, hint: "not completed" },
+            { id: "open", label: "Open", value: metrics.open, hint: "in loaded pages" },
             {
               id: "overdue",
               label: OVERDUE_LABEL,
               value: metrics.overdue,
-              hint: "past due date",
+              hint: "in loaded pages",
               tone: metrics.overdue > 0 ? "destructive" : "neutral",
             },
             {
               id: "due-today",
               label: "Due today",
               value: metrics.dueToday,
-              hint: "needs action today",
+              hint: "in loaded pages",
               tone: metrics.dueToday > 0 ? "warning" : "neutral",
             },
             {
               id: "high",
               label: "High priority",
               value: metrics.highPriority,
-              hint: "open high priority",
+              hint: "in loaded pages",
             },
           ]}
           columns={4}
@@ -459,7 +506,7 @@ function TasksBoard() {
         <FilterToolbar
           search={{
             value: query,
-            onChange: setQuery,
+            onChange: (search) => setFilters({ search }),
             placeholder: "Search tasks by title or description",
           }}
           filters={[
@@ -475,16 +522,15 @@ function TasksBoard() {
                 { value: "low", label: getStatusLabel("priority", "low").label },
               ],
             },
-            {
-              id: "assignee",
-              label: "Owner",
-              value: filters.assignee,
-              onChange: (assignee) => setFilters({ assignee }),
-              options: assigneeOptions,
-            },
           ]}
           onClear={clearFilters}
-          resultCount={filtered.length}
+          resultCount={total}
+        />
+        <ProfileSearchCombobox
+          purpose="task_filter"
+          label="Owner"
+          value={filters.assignee}
+          onChange={(assignee) => setFilters({ assignee })}
         />
 
         <section className="space-y-3">
@@ -493,7 +539,7 @@ function TasksBoard() {
             description={
               filters.view === "board"
                 ? "Drag a card between columns, or focus it and press ← / →."
-                : "Every matching task in one table. Use the row menu to change a status."
+                : "Matching tasks in pages. Use the row menu to change a status."
             }
             action={
               <div
@@ -527,35 +573,46 @@ function TasksBoard() {
               />
             )
           ) : filters.view === "list" ? (
-            <ResponsiveRecordList
-              caption="Tasks"
-              columns={listColumns}
-              rows={filtered}
-              rowKey={(task) => task.id}
-              rowActions={taskRowActions}
-              renderCard={(task) => (
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge domain="tasks" value={task.status} />
-                    <StatusBadge domain="priority" value={task.priority} />
-                  </div>
-                  <p className="text-sm font-medium">{taskTitle(task)}</p>
-                  {taskDescription(task) && (
-                    <p className="text-xs text-muted-foreground">{taskDescription(task)}</p>
-                  )}
-                  <p
-                    className={cn(
-                      "text-xs tabular-nums text-muted-foreground",
-                      isOverdue(task.due_date, today) &&
-                        task.status !== "done" &&
-                        "font-medium text-destructive",
+            <>
+              <ResponsiveRecordList
+                caption="Tasks"
+                columns={listColumns}
+                rows={filtered}
+                rowKey={(task) => task.id}
+                rowActions={taskRowActions}
+                renderCard={(task) => (
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusBadge domain="tasks" value={task.status} />
+                      <StatusBadge domain="priority" value={task.priority} />
+                    </div>
+                    <p className="text-sm font-medium">{taskTitle(task)}</p>
+                    {taskDescription(task) && (
+                      <p className="text-xs text-muted-foreground">{taskDescription(task)}</p>
                     )}
-                  >
-                    Due {formatDate(task.due_date)} · {task.assigned_to ?? "Unassigned"}
-                  </p>
-                </div>
+                    <p
+                      className={cn(
+                        "text-xs tabular-nums text-muted-foreground",
+                        isOverdue(task.due_date, today) &&
+                          task.status !== "done" &&
+                          "font-medium text-destructive",
+                      )}
+                    >
+                      Due {formatDate(task.due_date)} · {taskOwnerName(task)}
+                    </p>
+                  </div>
+                )}
+              />
+              {tasksQuery.data.view === "list" && tasksQuery.data.page.nextCursor && (
+                <Button
+                  type="button"
+                  disabled={Boolean(loadingMore)}
+                  onClick={() => void loadMore()}
+                >
+                  Load more tasks
+                </Button>
               )}
-            />
+            </>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {COLUMNS.map((col) => {
@@ -627,7 +684,7 @@ function TasksBoard() {
                                 {overdue && ` · ${OVERDUE_LABEL}`}
                               </span>
                               <span className="truncate text-muted-foreground">
-                                {t.assigned_to ?? "Unassigned"}
+                                {taskOwnerName(t)}
                               </span>
                             </div>
                             {t.created_by_agent && (
@@ -638,6 +695,16 @@ function TasksBoard() {
                           </Card>
                         );
                       })}
+                      {tasksQuery.data.view === "board" &&
+                        tasksQuery.data.lanes[col.id].nextCursor && (
+                          <Button
+                            type="button"
+                            disabled={Boolean(loadingMore)}
+                            onClick={() => void loadMore(col.id)}
+                          >
+                            Load more {col.label.toLowerCase()} tasks
+                          </Button>
+                        )}
                       {colTasks.length === 0 && (
                         <EmptyWorkspaceState
                           title={`No ${col.label.toLowerCase()} tasks`}
@@ -669,15 +736,6 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [pri, setPri] = useState<Task["priority"]>("medium");
-  /**
-   * Blank by default, which is the bug fix hiding in this input.
-   *
-   * The Select this replaces defaulted to `APP_USERS[0].id` — a placeholder UUID present in
-   * no seed — and `tasks.assigned_to` is `text references profiles(id)`, so every task
-   * created from this dialog was writing an id the foreign key could not resolve. Blank
-   * means unassigned, which the column allows, and a real owner id can be pasted until
-   * there is an assignable-profiles read a salesperson is allowed to call.
-   */
   const [assignee, setAssignee] = useState("");
   const [due, setDue] = useState(() =>
     getBusinessDateKey(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)),
@@ -781,18 +839,11 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
               </Select>
             </div>
             <div>
-              <Label htmlFor="new-task-assignee" className="text-xs">
-                Owner user ID
-              </Label>
-              <Input
-                id="new-task-assignee"
-                name="assignee"
-                autoComplete="off"
-                spellCheck={false}
-                className="mt-1"
-                placeholder="Leave blank for unassigned"
+              <ProfileSearchCombobox
+                purpose="task_assign"
+                label="Owner"
                 value={assignee}
-                onChange={(e) => setAssignee(e.target.value)}
+                onChange={setAssignee}
               />
             </div>
             <div>

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -41,6 +41,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -50,13 +51,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useClientNow } from "@/hooks/use-client-now";
 import { slaChip } from "@/lib/approval-sla";
@@ -70,8 +64,8 @@ import {
   assignApprovalFn,
   claimApprovalFn,
   decideApproval,
-  getApprovals,
-  getAssignableApproversFn,
+  getApprovalsPage,
+  getApprovalDetailFn,
   getMessageHandoffFn,
   recordManualMessageSentFn,
 } from "@/server-functions/approvals";
@@ -79,8 +73,17 @@ import type { SerializableHumanApproval } from "@/lib/serializable";
 import { approveQuote, rejectQuote } from "@/server-functions/quotes";
 import type { ApprovalType } from "@/lib/types";
 
-type ApprovalRead = SerializableHumanApproval[];
-type Approval = SerializableHumanApproval;
+type Approval = Omit<SerializableHumanApproval, "context_data"> & {
+  context_data?: SerializableHumanApproval["context_data"];
+  quote_id: string | null;
+};
+type ApprovalRead = Approval[];
+type ApprovalPage = {
+  items: ApprovalRead;
+  nextCursor: string | null;
+  total: number;
+  counts: { pending: number; escalated: number; quoteSends: number };
+};
 type ApprovalDecision = "approved" | "rejected" | "escalated";
 
 /**
@@ -128,9 +131,9 @@ const approvalSearchSchema = z.object({
   type: z.enum(APPROVAL_TYPE_FILTER_VALUES).default("all").catch("all"),
 });
 
-const approvalsQueryKey = crmQueryKeys.approvals.list({});
+const approvalPageKey = (group: "pending" | "history", type: ApprovalTypeFilter) =>
+  crmQueryKeys.approvals.list({ group, type });
 /** Kept off `approvals.list` so decisions invalidating the queue do not refetch the roster. */
-const assignableApproversQueryKey = [...crmQueryKeys.approvals.all(), "assignable-approvers"];
 
 /**
  * The value the reviewer Select uses for "nobody".
@@ -140,9 +143,6 @@ const assignableApproversQueryKey = [...crmQueryKeys.approvals.all(), "assignabl
  * which is a deliberate action rather than an error.
  */
 const UNASSIGNED_VALUE = "__unassigned__";
-
-/** How many decided approvals the history list shows. `listApprovals` returns every one. */
-const DECIDED_HISTORY_LIMIT = 10;
 
 /**
  * Whether this approval can still be decided from this screen.
@@ -160,16 +160,24 @@ function isDecidable(approval: Approval): boolean {
 function getQuoteId(approval: Approval): string | null {
   if (approval.approval_type !== "quote_send") return null;
   const data = approval.context_data as { quote_id?: string } | null;
-  return data?.quote_id ?? null;
+  return approval.quote_id ?? data?.quote_id ?? null;
 }
 
 export const Route = createFileRoute("/approvals")({
   validateSearch: approvalSearchSchema,
-  loader: ({ context }) =>
+  loaderDeps: ({ search }) => ({ type: search.type }),
+  loader: ({ context, deps }) =>
     context.queryClient.ensureQueryData(
       routeQueryOptions({
-        queryKey: approvalsQueryKey,
-        queryFn: () => getApprovals({}),
+        queryKey: approvalPageKey("pending", deps.type),
+        queryFn: () =>
+          getApprovalsPage({
+            data: {
+              group: "pending",
+              type: deps.type === "all" ? undefined : deps.type,
+              limit: 50,
+            },
+          }),
       }),
     ),
   head: () => ({
@@ -205,18 +213,63 @@ function ApprovalsErrorState({ error }: { error: unknown }) {
 
 function ApprovalsInbox() {
   const clientNow = useClientNow();
-  const loadedApprovals = Route.useLoaderData() as ApprovalRead;
+  const loadedApprovals = Route.useLoaderData() as ApprovalPage;
   const queryClient = useQueryClient();
+  const { type: typeFilter } = Route.useSearch();
+  const approvalsQueryKey = approvalPageKey("pending", typeFilter);
+  const historyQueryKey = approvalPageKey("history", typeFilter);
+  const pageInput = (group: "pending" | "history", cursor?: string) => ({
+    group,
+    type: typeFilter === "all" ? undefined : typeFilter,
+    cursor,
+    limit: 50,
+  });
   const approvalsQuery = useQuery({
     ...routeQueryOptions({
       queryKey: approvalsQueryKey,
-      queryFn: () => getApprovals({}),
+      queryFn: () => getApprovalsPage({ data: pageInput("pending") }),
     }),
     initialData: loadedApprovals,
-    refetchInterval: 12_000,
+    refetchInterval: () =>
+      typeof document !== "undefined" && document.visibilityState === "visible" ? 30_000 : false,
+    refetchIntervalInBackground: false,
   });
-  const allApprovals = approvalsQuery.data;
-  const { type: typeFilter } = Route.useSearch();
+  const historyQuery = useQuery({
+    ...routeQueryOptions({
+      queryKey: historyQueryKey,
+      queryFn: () => getApprovalsPage({ data: pageInput("history") }),
+    }),
+  });
+  const [loadingMore, setLoadingMore] = useState<"pending" | "history" | null>(null);
+  const loadMore = async (group: "pending" | "history") => {
+    const key = group === "pending" ? approvalsQueryKey : historyQueryKey;
+    const current = queryClient.getQueryData<ApprovalPage>(key);
+    if (!current?.nextCursor || loadingMore) return;
+    setLoadingMore(group);
+    try {
+      const next = await getApprovalsPage({ data: pageInput(group, current.nextCursor) });
+      queryClient.setQueryData<ApprovalPage>(key, (existing) =>
+        existing ? { ...next, items: [...existing.items, ...next.items] } : next,
+      );
+    } catch (error) {
+      toast.error(toSafeErrorMessage(error));
+    } finally {
+      setLoadingMore(null);
+    }
+  };
+  const [recentDecisions, setRecentDecisions] = useState<ApprovalRead>([]);
+  useEffect(() => {
+    const confirmed = new Set(historyQuery.data?.items.map((item) => item.id) ?? []);
+    if (confirmed.size === 0) return;
+    setRecentDecisions((current) => current.filter((item) => !confirmed.has(item.id)));
+  }, [historyQuery.data?.items]);
+  const allApprovals = useMemo(() => {
+    const merged = new Map<string, Approval>();
+    for (const item of approvalsQuery.data.items) merged.set(item.id, item);
+    for (const item of historyQuery.data?.items ?? []) merged.set(item.id, item);
+    for (const item of recentDecisions) merged.set(item.id, item);
+    return [...merged.values()];
+  }, [approvalsQuery.data.items, historyQuery.data?.items, recentDecisions]);
   const navigate = useNavigate({ from: Route.fullPath });
   const setTypeFilter = (value: string) => {
     // FilterToolbar hands back a plain string; the search schema only accepts the eight
@@ -234,23 +287,6 @@ function ApprovalsInbox() {
   const approvalMutationTokensRef = useRef(new Map<string, symbol>());
   const [assigningId, setAssigningId] = useState<string | null>(null);
 
-  /**
-   * Who this approval may be routed to: the profiles holding `approvals.decide`, which is the
-   * same roster already used to decide who is notified that an approval is waiting. Offering
-   * anyone else would let a reviewer be assigned who cannot act on what they were given.
-   */
-  const approversQuery = useQuery({
-    ...routeQueryOptions({
-      queryKey: assignableApproversQueryKey,
-      queryFn: () => getAssignableApproversFn(),
-    }),
-  });
-  const approvers = useMemo(() => approversQuery.data ?? [], [approversQuery.data]);
-  const approverLabel = (id: string) => {
-    const approver = approvers.find((candidate) => candidate.id === id);
-    return approver?.name ?? approver?.email ?? id;
-  };
-
   const assignReviewer = async (approval: Approval, value: string) => {
     const assignedTo = value === UNASSIGNED_VALUE ? null : value;
     if ((approval.assigned_to ?? null) === assignedTo) return;
@@ -260,14 +296,19 @@ function ApprovalsInbox() {
       const updated = await assignApprovalFn({
         data: { id: approval.id, assignedTo, expectedVersion: approval.row_version },
       });
-      queryClient.setQueryData<ApprovalRead>(approvalsQueryKey, (current) =>
-        current?.map((entry) =>
-          entry.id === updated.id
-            ? { ...entry, assigned_to: updated.assigned_to, row_version: updated.row_version }
-            : entry,
-        ),
+      queryClient.setQueryData<ApprovalPage>(approvalsQueryKey, (current) =>
+        current
+          ? {
+              ...current,
+              items: current.items.map((entry) =>
+                entry.id === updated.id
+                  ? { ...entry, assigned_to: updated.assigned_to, row_version: updated.row_version }
+                  : entry,
+              ),
+            }
+          : current,
       );
-      toast.success(assignedTo ? `Assigned to ${approverLabel(assignedTo)}` : "Reviewer cleared");
+      toast.success(assignedTo ? "Reviewer assigned" : "Reviewer cleared");
       await queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true });
     } catch (error) {
       // The row is written from the server response, so a failure leaves the cache as it was.
@@ -287,12 +328,17 @@ function ApprovalsInbox() {
           idempotencyKey: crypto.randomUUID(),
         },
       });
-      queryClient.setQueryData<ApprovalRead>(approvalsQueryKey, (current) =>
-        current?.map((entry) =>
-          entry.id === updated.id
-            ? { ...entry, assigned_to: updated.assigned_to, row_version: updated.row_version }
-            : entry,
-        ),
+      queryClient.setQueryData<ApprovalPage>(approvalsQueryKey, (current) =>
+        current
+          ? {
+              ...current,
+              items: current.items.map((entry) =>
+                entry.id === updated.id
+                  ? { ...entry, assigned_to: updated.assigned_to, row_version: updated.row_version }
+                  : entry,
+              ),
+            }
+          : current,
       );
       toast.success("Claimed for review");
       await queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true });
@@ -303,24 +349,12 @@ function ApprovalsInbox() {
     }
   };
 
-  /** Workspace-wide counts. Never the type-filtered subset — the strip reads as a total. */
-  const totals = useMemo(() => {
-    let pending = 0;
-    let escalated = 0;
-    let quoteSends = 0;
-    let decided = 0;
-    for (const approval of allApprovals) {
-      if (approval.status === "pending") {
-        pending += 1;
-        if (approval.approval_type === "quote_send") quoteSends += 1;
-      } else if (approval.status === "escalated") {
-        escalated += 1;
-      } else {
-        decided += 1;
-      }
-    }
-    return { pending, escalated, quoteSends, decided };
-  }, [allApprovals]);
+  const totals = {
+    pending: approvalsQuery.data.counts.pending,
+    escalated: approvalsQuery.data.counts.escalated,
+    quoteSends: approvalsQuery.data.counts.quoteSends,
+    decided: historyQuery.data?.total ?? 0,
+  };
 
   const pending = useMemo(
     () =>
@@ -365,6 +399,17 @@ function ApprovalsInbox() {
     decided[0] ??
     null;
   const nextPendingId = pending.find((approval) => approval.id !== selected?.id)?.id ?? null;
+  const detailQuery = useQuery({
+    ...routeQueryOptions({
+      queryKey: [...crmQueryKeys.approvals.all(), "detail", selected?.id],
+      queryFn: () => getApprovalDetailFn({ data: { id: selected!.id } }),
+    }),
+    enabled: Boolean(selected),
+  });
+  const detailApproval = selected
+    ? { ...selected, context_data: detailQuery.data?.context_data }
+    : null;
+
   const messageHandoffQuery = useQuery({
     ...routeQueryOptions({
       queryKey: [...crmQueryKeys.approvals.all(), "message-handoff", selected?.id],
@@ -460,7 +505,7 @@ function ApprovalsInbox() {
     await queryClient.cancelQueries({ queryKey: approvalsQueryKey, exact: true });
 
     const previousById = new Map(
-      (queryClient.getQueryData<ApprovalRead>(approvalsQueryKey) ?? [])
+      (queryClient.getQueryData<ApprovalPage>(approvalsQueryKey)?.items ?? [])
         .filter((approval) => ids.includes(approval.id))
         .map((approval) => [approval.id, approval] as const),
     );
@@ -469,20 +514,25 @@ function ApprovalsInbox() {
     const mutationToken = Symbol("approval-decision");
     ids.forEach((id) => approvalMutationTokensRef.current.set(id, mutationToken));
 
-    queryClient.setQueryData<ApprovalRead>(approvalsQueryKey, (current) =>
-      current?.map((approval) =>
-        targetIds.has(approval.id)
-          ? {
-              ...approval,
-              status,
-              // `decideApproval` writes `reviewer_notes = $3` unconditionally, so deciding
-              // without a note clears whatever was stored. Showing the old note preserved was
-              // an optimistic row that contradicted the write it stood in for.
-              reviewer_notes: notes ?? null,
-              decided_at: decidedAt,
-            }
-          : approval,
-      ),
+    queryClient.setQueryData<ApprovalPage>(approvalsQueryKey, (current) =>
+      current
+        ? {
+            ...current,
+            items: current.items.map((approval) =>
+              targetIds.has(approval.id)
+                ? {
+                    ...approval,
+                    status,
+                    // `decideApproval` writes `reviewer_notes = $3` unconditionally, so deciding
+                    // without a note clears whatever was stored. Showing the old note preserved was
+                    // an optimistic row that contradicted the write it stood in for.
+                    reviewer_notes: notes ?? null,
+                    decided_at: decidedAt,
+                  }
+                : approval,
+            ),
+          }
+        : current,
     );
 
     const settled = await Promise.allSettled(targets.map((target) => target.run()));
@@ -494,17 +544,43 @@ function ApprovalsInbox() {
       else failed.push({ id, error: result.reason });
     });
 
+    if (succeeded.length > 0) {
+      const succeededRows = succeeded.flatMap((id) => {
+        const previous = previousById.get(id);
+        return previous
+          ? [
+              {
+                ...previous,
+                status,
+                reviewer_notes: notes ?? null,
+                decided_at: decidedAt,
+              },
+            ]
+          : [];
+      });
+      setRecentDecisions((current) => {
+        const byId = new Map(current.map((entry) => [entry.id, entry]));
+        for (const entry of succeededRows) byId.set(entry.id, entry);
+        return [...byId.values()];
+      });
+    }
+
     if (failed.length > 0) {
       const failedIds = new Set(failed.map((entry) => entry.id));
-      queryClient.setQueryData<ApprovalRead>(approvalsQueryKey, (current) =>
-        current?.map((approval) => {
-          const previous = previousById.get(approval.id);
-          return previous &&
-            failedIds.has(approval.id) &&
-            approvalMutationTokensRef.current.get(approval.id) === mutationToken
-            ? previous
-            : approval;
-        }),
+      queryClient.setQueryData<ApprovalPage>(approvalsQueryKey, (current) =>
+        current
+          ? {
+              ...current,
+              items: current.items.map((approval) => {
+                const previous = previousById.get(approval.id);
+                return previous &&
+                  failedIds.has(approval.id) &&
+                  approvalMutationTokensRef.current.get(approval.id) === mutationToken
+                  ? previous
+                  : approval;
+              }),
+            }
+          : current,
       );
     }
 
@@ -517,6 +593,7 @@ function ApprovalsInbox() {
 
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true }),
+      queryClient.invalidateQueries({ queryKey: historyQueryKey, exact: true }),
       queryClient.invalidateQueries({ queryKey: crmQueryKeys.aiReview.all() }),
     ]);
 
@@ -688,21 +765,13 @@ function ApprovalsInbox() {
 
   const refreshBusy = refreshing || approvalsQuery.isFetching;
 
-  const typeOptions: FilterOption[] = useMemo(() => {
-    const present = new Set<string>();
-    for (const approval of allApprovals) {
-      if (approval.approval_type) present.add(approval.approval_type);
-    }
-    // The active filter stays listed even when nothing matches it, otherwise the Select
-    // renders blank against a URL the reader can still see.
-    if (typeFilter !== "all") present.add(typeFilter);
-    return [
-      { value: "all", label: "All types" },
-      ...[...present]
-        .sort((left, right) => approvalTypeLabel(left).localeCompare(approvalTypeLabel(right)))
-        .map((value) => ({ value, label: approvalTypeLabel(value) })),
-    ];
-  }, [allApprovals, typeFilter]);
+  const typeOptions: FilterOption[] = [
+    { value: "all", label: "All types" },
+    ...APPROVAL_TYPE_FILTER_VALUES.filter((value) => value !== "all").map((value) => ({
+      value,
+      label: approvalTypeLabel(value),
+    })),
+  ];
 
   const queueColumns: ColumnDef<Approval>[] = [
     {
@@ -901,12 +970,6 @@ function ApprovalsInbox() {
   };
 
   const detailSections = (approval: Approval, surface: "inline" | "panel") => {
-    // An assignee whose role changed is no longer in the roster, but is still the assignee.
-    // Keeping them as an option is what stops the Select rendering blank over a real value.
-    const reviewerOptions =
-      approval.assigned_to && !approvers.some((one) => one.id === approval.assigned_to)
-        ? [{ id: approval.assigned_to, name: null, email: null }, ...approvers]
-        : approvers;
     const sections: RecordSummarySection[] = [
       {
         id: "summary",
@@ -938,32 +1001,17 @@ function ApprovalsInbox() {
                       Claim for review
                     </Button>
                   )}
-                  <Select
-                    value={approval.assigned_to ?? UNASSIGNED_VALUE}
-                    disabled={isBusy || assigningId === approval.id || approversQuery.isPending}
-                    onValueChange={(value) => void assignReviewer(approval, value)}
-                  >
-                    {/* aria-label rather than a <label for>: this panel renders twice — inline
-                        above `lg` and in the sheet below it — so ids would collide. */}
-                    <SelectTrigger
-                      aria-label={`Assign reviewer (${surface})`}
-                      className="w-full sm:w-72"
-                    >
-                      <SelectValue placeholder="Unassigned" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={UNASSIGNED_VALUE}>Unassigned</SelectItem>
-                      {reviewerOptions.map((approver) => (
-                        <SelectItem key={approver.id} value={approver.id}>
-                          {approver.name ?? approver.email ?? approver.id}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ProfileSearchCombobox
+                    purpose="approval_reviewer"
+                    label={`Assign reviewer (${surface})`}
+                    resourceId={approval.id}
+                    value={approval.assigned_to ?? ""}
+                    onChange={(value) => void assignReviewer(approval, value || UNASSIGNED_VALUE)}
+                  />
                   <p className="text-xs text-muted-foreground">
                     <UserPlus className="mr-1 inline h-3 w-3" />
                     {approval.assigned_to
-                      ? `Routed to ${approverLabel(approval.assigned_to)}. Anyone who can decide approvals still can.`
+                      ? "Routed to a reviewer. Anyone who can decide approvals still can."
                       : "Unassigned. Eligible reviewers can claim it when the linked subject is in scope."}
                   </p>
                 </div>
@@ -1069,8 +1117,9 @@ function ApprovalsInbox() {
     return sections;
   };
 
-  const hasAnyApproval = allApprovals.length > 0;
-  const queueHiddenByFilter = typeFilter !== "all" && totals.pending + totals.escalated > 0;
+  const hasAnyApproval =
+    typeFilter !== "all" || approvalsQuery.data.total + (historyQuery.data?.total ?? 0) > 0;
+  const queueHiddenByFilter = typeFilter !== "all";
 
   return (
     <>
@@ -1101,7 +1150,7 @@ function ApprovalsInbox() {
               id: "pending",
               label: "Waiting approval",
               value: totals.pending,
-              hint: "across every type",
+              hint: "matching filter",
               tone: totals.pending > 0 ? "warning" : "neutral",
             },
             {
@@ -1155,7 +1204,7 @@ function ApprovalsInbox() {
                 },
               ]}
               onClear={() => setTypeFilter("all")}
-              resultCount={pending.length + escalated.length}
+              resultCount={approvalsQuery.data.total}
             />
 
             {bulk.size > 0 && (
@@ -1227,6 +1276,16 @@ function ApprovalsInbox() {
                       selection={{ selected: bulk, onChange: setBulk }}
                     />
                   )}
+                  {approvalsQuery.data.nextCursor && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={Boolean(loadingMore)}
+                      onClick={() => void loadMore("pending")}
+                    >
+                      Load more pending
+                    </Button>
+                  )}
                 </div>
 
                 {escalated.length > 0 && (
@@ -1270,7 +1329,8 @@ function ApprovalsInbox() {
                           {decidedNote(selected)}
                         </p>
                       )}
-                      {detailSections(selected, "inline").map((section) => (
+                      {detailQuery.isLoading && <p className="text-sm">Loading request details…</p>}
+                      {detailSections(detailApproval ?? selected, "inline").map((section) => (
                         <div key={section.id}>
                           <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                             {section.title}
@@ -1293,11 +1353,7 @@ function ApprovalsInbox() {
             <section className="space-y-3">
               <SectionHeader
                 title="Recently decided"
-                description={
-                  decided.length > DECIDED_HISTORY_LIMIT
-                    ? `Last ${DECIDED_HISTORY_LIMIT} of ${decided.length} decided requests.`
-                    : `${decided.length} decided request${decided.length === 1 ? "" : "s"}.`
-                }
+                description={`${historyQuery.data?.total ?? 0} decided requests.`}
               />
               <Card>
                 {decided.length === 0 ? (
@@ -1309,7 +1365,7 @@ function ApprovalsInbox() {
                   </div>
                 ) : (
                   <ul className="divide-y divide-border">
-                    {decided.slice(0, DECIDED_HISTORY_LIMIT).map((approval) => (
+                    {decided.map((approval) => (
                       <li key={approval.id}>
                         <button
                           type="button"
@@ -1330,6 +1386,16 @@ function ApprovalsInbox() {
                   </ul>
                 )}
               </Card>
+              {historyQuery.data?.nextCursor && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={Boolean(loadingMore)}
+                  onClick={() => void loadMore("history")}
+                >
+                  Load more history
+                </Button>
+              )}
             </section>
           </>
         )}
@@ -1354,7 +1420,7 @@ function ApprovalsInbox() {
                 </div>
               ),
             },
-            ...detailSections(selected, "panel"),
+            ...detailSections(detailApproval ?? selected, "panel"),
           ]}
           primaryAction={decisionActions(selected)}
         />
