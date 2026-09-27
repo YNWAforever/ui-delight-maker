@@ -13,12 +13,14 @@
 - The CI JSON summary gate accepted a valid 2/2 report and rejected a report with one skipped or failed test. Both workflows parse with PR and main-push triggers. The DB workflow checks the test database variable and rejects any failed or skipped full-suite result.
 - First PR #100 remote head `2d0e886`: Database contract passed in 4m12s; Types/lint failed after the pure Vite build because the bundle gate picked `dist/server/.vite/manifest.json` on Linux. Two focused regression tests failed before the fix: client manifest must win when both exist, and server-only output must be rejected. Commit `665b32a` makes the gate select only known browser manifest paths; the five focused tests, TypeScript, lint, pure client/SSR Vite build and emitted bundle gate pass locally. The Vercel deployment also failed; no matching preview runtime SHA is available. Recheck both remote gates on the revised PR head.
 
+- Revised PR #100 head `9b5c73b`: remote Types/lint passed; Vercel failed again at automatic seed with `Quote version is immutable`. The repository's `vercel.json` had `bun run build`, which applies migration and seed before compiling. The preview target's isolation is unverified. The safety test failed RED against that command. Commit `876ddef` changes the build command to pure Vite and static output packaging; the safety regression and manifest tests pass 6/6. Local output packaging succeeds, TypeScript and lint pass; migration/seed remain a separate gated operation. Preview deployment and matching SHA still require fresh remote evidence.
+
 ## Local verification
 
 - Fresh serial isolated PostgreSQL full-suite outcome at code SHA `a4abea78ecd511cf2151b3e0c5308cb26d5bb62f`: **304 files, 2,161 passed, 0 failed, 0 skipped**. The disposable database was `clientops_t22_release_final`; no production connection or data.
 - `bunx tsc --noEmit`: pass after generated route tree update.
 - `bun run lint`: pass, 0 errors and one pre-existing Fast Refresh warning in `data-table-shell.tsx`.
-- Pure `bunx vite build`: client and SSR pass. `bun run performance:bundles`: pass; login initial emitted static JS is 165,496 gzip bytes at this build. This is transfer size, not route latency.
+- Pure `bunx vite build`: client and SSR pass. Local `node scripts/vercel-build.mjs` packaged that output successfully at `876ddef` without any database command. `bun run performance:bundles`: pass; login initial emitted static JS is 165,496 gzip bytes at this build. This is transfer size, not route latency.
 - `bun run build` was not used because it applies migration and seed. The full suite itself migrates/validates the disposable PostgreSQL fixture through `pg`. The production migration CLI uses Neon's WebSocket driver and has not been proven against this plain local PostgreSQL container; a wrapper rehearsal needs a separate disposable Neon-compatible target.
 - `git diff --check`: pass for code commits; final document diff checked before publication; remote PR head and checks must be read live.
 
@@ -27,9 +29,9 @@
 | Gate | State | Reason / closure |
 |---|---|---|
 | Remote final PR CI | pending | First head: contract passed; Types/lint failed on server-manifest selection, repaired locally. Require both green on revised head |
-| Vercel preview and runtime SHA | blocked | PR #99 Vercel failed; no final candidate preview with matching SHA |
+| Vercel preview and runtime SHA | blocked | PR #100 first two previews failed at seed; source-only build awaits remote verification and matching SHA |
 | Seven-role UI/network UAT | blocked | no authenticated disposable sessions; [15-case matrix](uat-results.md) records no invented passes |
 | Full route p95 before/after | blocked | no authenticated route runtime; [T19](t19-evidence.md) only has emitted bundle and actual isolated SQL component measurements |
 | Legacy data parity | blocked | user will provide isolated snapshots later; [T20](t20-evidence.md) has no cross-database result |
 | Provider/n8n sandbox | blocked | no sandbox workflow/credential; no real token/cost or callback claim |
-| Production backup, rehearsal, release | blocked | operator evidence and explicit release scope absent; no deployment, production mutation, provider call or customer message |
+| Production backup, rehearsal, release | blocked | operator evidence and explicit release scope absent; no successful deployment, provider call or customer message. Database effects of the failed preview builds are unverified |

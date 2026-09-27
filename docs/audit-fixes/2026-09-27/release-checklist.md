@@ -1,6 +1,6 @@
 # ClientOps audit release candidate — 2026-09-28
 
-**State: reviewable source candidate; not released or deployed.** Source baseline is main/audit SHA `2904faa502f7494173f48f412875c1d0a3aba674`. T00–T21 are in stacked draft PRs #82–#99. T22 is [cumulative draft PR #100](https://github.com/YNWAforever/ui-delight-maker/pull/100) against main, so all fixes and release gates can be reviewed together. Use its head SHA and compare it to GET `/api/build` on its preview. A null or different response blocks release. The 30 finding states and task commits are in [status](status.md); task-level proof is in `t00`–`t22` evidence files where present. A passing local test never upgrades a blocked browser, data-parity or provider gate.
+**State: reviewable source candidate; not released and no successful preview deployment.** Source baseline is main/audit SHA `2904faa502f7494173f48f412875c1d0a3aba674`. T00–T21 are in stacked draft PRs #82–#99. T22 is [cumulative draft PR #100](https://github.com/YNWAforever/ui-delight-maker/pull/100) against main, so all fixes and release gates can be reviewed together. Use its head SHA and compare it to GET `/api/build` on its preview. A null or different response blocks release. The 30 finding states and task commits are in [status](status.md); task-level proof is in `t00`–`t22` evidence files where present. A passing local test never upgrades a blocked browser, data-parity or provider gate.
 
 ## Feature status and evidence map
 
@@ -36,6 +36,7 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 
 ## Migration and data reconciliation
 
+- Commit `876ddef` makes Vercel's automatic PR/production build command source-only (`bunx vite build` plus output packaging). The first two PR #100 previews used the former wrapper and failed during seed with `Quote version is immutable`; its database isolation was not verified. Do not use an automatic build to apply migration or seed. Before a future release, rehearse and separately authorize the schema/data operation on an identified target, then deploy the source.
 - Migrations 001–009 predate this remediation. New additive changes are 010 command versions/receipts; 011 immutable quote version guard; 012 one open quote approval; 013 Xero transitions; 014 locked Job Sheet portions; 015 agent recovery metadata; 016 queue indexes; 017–018 bulk receipts and row versions; 019 import sessions/identity keys; 020 handoff fields; 021 AI invocation telemetry.
 - The isolated PostgreSQL contract and full suite are recorded in [T22 evidence](t22-evidence.md). The normal `bun run build` wrapper includes migration and seed; do not invoke it on a database whose identity and disposability are unverified.
 - Read-only inventory and reconciliation precede any production schema write. Quote legacy anomalies (missing issued versions, conflicting acceptance, unverified Xero notes) remain uncounted on real data. Preserve them for an operator decision; never manufacture a snapshot or acceptance timestamp.
@@ -56,7 +57,7 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 | Provider/n8n callbacks and actual usage | blocked; sandbox contract/credential unavailable | integration owner supplies sandbox workflow and safe test credential |
 | Authenticated full route p95 before/after | blocked; no sessions/local app fixture | performance owner runs same-environment 30 warm/10 cold route and browser samples |
 | Backup/PITR, migration rehearsal, change window | blocked; operator evidence unavailable | production operator |
-| Release approval | not requested; no deployment | user/owner after all gates |
+| Release approval | not requested; no successful deployment | user/owner after all gates |
 
 ## Rollforward and rollback sequence
 
