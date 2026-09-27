@@ -45,6 +45,18 @@ describe("bulk partial result UI", () => {
     expect(html).toContain("Resume");
     expect(html).toContain("Download failures");
   });
+  it("offers recovery when a disconnected request still has a running lease", () => {
+    const html = renderToStaticMarkup(
+      <BulkActionBar
+        selectedCount={1}
+        busy={false}
+        result={{ ...result, state: "running" }}
+        onResume={() => {}}
+        onClear={() => {}}
+      />,
+    );
+    expect(html).toContain("Check or resume");
+  });
   it("exports formula-shaped error text through the typed safe CSV writer", () => {
     const csv = bulkFailuresCsv(result);
     expect(csv).toContain("'=1+1");

@@ -372,6 +372,7 @@ function AdminTeamsIndex() {
           result={teamBulk.result}
           onResume={() => void teamBulk.resume()}
           onClear={teamBulk.dismiss}
+          clearLabel="Dismiss result"
         />
       )}
       <BulkPreviewDialog

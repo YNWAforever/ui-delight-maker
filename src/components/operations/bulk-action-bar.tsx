@@ -22,6 +22,7 @@ export function BulkActionBar({
   result,
   onResume,
   onClear,
+  clearLabel = "Clear selection",
   children,
 }: {
   selectedCount: number;
@@ -29,6 +30,7 @@ export function BulkActionBar({
   result: BulkResult | null;
   onResume: () => void;
   onClear: () => void;
+  clearLabel?: string;
   children?: ReactNode;
 }) {
   const failures = result?.results.filter((item) => item.status !== "succeeded").length ?? 0;
@@ -47,9 +49,9 @@ export function BulkActionBar({
             {result.processed} of {result.total} processed; {successes} succeeded; {failures} need
             review
           </span>
-          {result.state === "paused" && (
+          {result.state !== "completed" && (
             <Button type="button" size="sm" variant="outline" disabled={busy} onClick={onResume}>
-              Resume
+              {result.state === "running" ? "Check or resume" : "Resume"}
             </Button>
           )}
           {failures > 0 && (
@@ -66,7 +68,7 @@ export function BulkActionBar({
         </>
       )}
       <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={onClear}>
-        Clear selection
+        {clearLabel}
       </Button>
     </div>
   );

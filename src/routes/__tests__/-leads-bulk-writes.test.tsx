@@ -137,12 +137,12 @@ function renderLeads() {
   });
   const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
   const Component = Route.options.component as ComponentType;
-  render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <Component />
     </QueryClientProvider>,
   );
-  return { invalidateQueries };
+  return { invalidateQueries, unmount: view.unmount };
 }
 const rowCheckbox = (id: string) =>
   screen.getAllByRole("checkbox", { name: "Select row " + id, hidden: true })[0];
@@ -198,6 +198,33 @@ describe("Leads bulk preview and durable partial results", () => {
     );
     await waitFor(() => expect(rowCheckbox("lead-2").getAttribute("aria-checked")).toBe("false"));
     expect(previewBulkMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("replays the same commit key after a lost response and page reload", async () => {
+    commitBulkMock
+      .mockRejectedValueOnce(new Error("Connection lost"))
+      .mockResolvedValueOnce(completedResult);
+    const view = renderLeads();
+    selectEveryLead();
+    await prepareQualified();
+    await commitPreview();
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledOnce());
+    const stored = JSON.parse(sessionStorage.getItem("clientops:bulk:leads") || "{}");
+    expect(stored).toMatchObject({
+      kind: "pending_commit",
+      operationId: "operation-1",
+      previewToken: "preview-1",
+      idempotencyKey: expect.any(String),
+    });
+
+    view.unmount();
+    renderLeads();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Resume" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    await waitFor(() => expect(commitBulkMock).toHaveBeenCalledTimes(2));
+    expect(commitBulkMock.mock.calls[1][0].data).toEqual(commitBulkMock.mock.calls[0][0].data);
+    expect(resumeBulkMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(sessionStorage.getItem("clientops:bulk:leads")).toBe("operation-1"));
   });
 
   it("restores the failed selection after a page refresh", async () => {
