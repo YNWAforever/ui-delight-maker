@@ -15,6 +15,8 @@
 
 - Revised PR #100 head `9b5c73b`: remote Types/lint passed; Vercel failed again at automatic seed with `Quote version is immutable`. The repository's `vercel.json` had `bun run build`, which applies migration and seed before compiling. The preview target's isolation is unverified. The safety test failed RED against that command. Commit `876ddef` changes the build command to pure Vite and static output packaging; the safety regression and manifest tests pass 6/6. Local output packaging succeeds, TypeScript and lint pass; migration/seed remain a separate gated operation. Preview deployment and matching SHA still require fresh remote evidence.
 
+- Source checkpoint `cf57a87ae43859cbbe20a94e59075f26b5ba0663`: GitHub Types/lint and Database contract passed; Vercel preview completed. Its build log showed client/SSR Vite and output packaging, with no migration or seed command. The protected preview at [https://ui-delight-maker-lmoq96knw-ynwaforevers-projects.vercel.app](https://ui-delight-maker-lmoq96knw-ynwaforevers-projects.vercel.app) returned a single `commitSha` value equal to this checkpoint when read through the authenticated Vercel CLI. Anonymous requests reached the Vercel login page. This confirms source-to-preview identity, not seven-role application acceptance. Recheck the live PR head after documentation-only commits.
+
 ## Local verification
 
 - Fresh serial isolated PostgreSQL full-suite outcome at code SHA `a4abea78ecd511cf2151b3e0c5308cb26d5bb62f`: **304 files, 2,161 passed, 0 failed, 0 skipped**. The disposable database was `clientops_t22_release_final`; no production connection or data.
@@ -28,10 +30,10 @@
 
 | Gate | State | Reason / closure |
 |---|---|---|
-| Remote final PR CI | pending | First head: contract passed; Types/lint failed on server-manifest selection, repaired locally. Require both green on revised head |
-| Vercel preview and runtime SHA | blocked | PR #100 first two previews failed at seed; source-only build awaits remote verification and matching SHA |
+| Remote final PR CI | checkpoint pass | Both GitHub checks passed at source checkpoint `cf57a87ae43859cbbe20a94e59075f26b5ba0663`; final docs-only head must be checked live |
+| Vercel preview and runtime SHA | checkpoint pass | Protected preview matched `cf57a87ae43859cbbe20a94e59075f26b5ba0663`; recheck final docs-only head. Role UAT remains blocked |
 | Seven-role UI/network UAT | blocked | no authenticated disposable sessions; [15-case matrix](uat-results.md) records no invented passes |
 | Full route p95 before/after | blocked | no authenticated route runtime; [T19](t19-evidence.md) only has emitted bundle and actual isolated SQL component measurements |
 | Legacy data parity | blocked | user will provide isolated snapshots later; [T20](t20-evidence.md) has no cross-database result |
 | Provider/n8n sandbox | blocked | no sandbox workflow/credential; no real token/cost or callback claim |
-| Production backup, rehearsal, release | blocked | operator evidence and explicit release scope absent; no successful deployment, provider call or customer message. Database effects of the failed preview builds are unverified |
+| Production backup, rehearsal, release | blocked | operator evidence and explicit release scope absent; no production deployment, provider call or customer message. Database effects of the failed preview builds are unverified |
