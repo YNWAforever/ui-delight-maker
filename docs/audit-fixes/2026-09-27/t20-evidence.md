@@ -1,6 +1,6 @@
 # T20 — legacy data-source reconciliation
 
-Code commit: `27bbb00`. Review PR: pending at evidence capture. No production migration, backfill, read cutover, write cutover or deployment occurred.
+Code commit: `27bbb00`. Review PR: [draft #98](https://github.com/YNWAforever/ui-delight-maker/pull/98). No production migration, backfill, read cutover, write cutover or deployment occurred.
 
 ## Reachable source inventory
 
