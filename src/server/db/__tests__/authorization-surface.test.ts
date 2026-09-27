@@ -186,7 +186,13 @@ import { describe, expect, it } from "vitest";
  * under src/server/imports and is covered by real PostgreSQL denial/rollback
  * tests, so this textual entrypoint counter intentionally does not count it.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 218;
+/*
+ * 218 -> 220 in T06: createQuoteRevision adds two explicit server-function
+ * gates (quotes.create and quotes.view). The existing updateQuote gate remains;
+ * both endpoints also recheck current actor/row scope inside the transaction.
+ * Measured across top-level server-function files after this change.
+ */
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 220;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

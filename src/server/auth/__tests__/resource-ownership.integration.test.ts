@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const holder = vi.hoisted(() => ({
   pool: null as InstanceType<typeof import("pg").Pool> | null,
+  client: null as import("pg").PoolClient | null,
 }));
 
 // Same seam and same reason as route-loader-contract.integration.test.ts: redirect query()
@@ -11,8 +12,8 @@ const holder = vi.hoisted(() => ({
 // identical either way, which is the whole point of the check.
 vi.mock("@/server/db/neon.server", () => ({
   query: async (text: string, values: readonly unknown[] = []) => {
-    if (!holder.pool) throw new Error("test pool not initialised");
-    const result = await holder.pool.query(text, values as unknown[]);
+    if (!holder.client) throw new Error("test client not initialised");
+    const result = await holder.client.query(text, values as unknown[]);
     return result.rows;
   },
 }));
@@ -53,9 +54,19 @@ describe("resource ownership resolves against the migrated schema", () => {
       CLIENTOPS_MIGRATION_PATHS.map(async (path) => ({ path, sql: await readFile(path, "utf8") })),
     );
     await runClientOpsMigrations(holder.pool, migrations);
+    holder.client = await holder.pool.connect();
+    await holder.client.query("begin");
   }, 60_000);
 
   afterAll(async () => {
+    if (holder.client) {
+      try {
+        await holder.client.query("rollback");
+      } finally {
+        holder.client.release();
+        holder.client = null;
+      }
+    }
     await holder.pool?.end();
     holder.pool = null;
   });
@@ -128,30 +139,9 @@ describe("resource ownership resolves against the migrated schema", () => {
     const TOUCHPOINT_ID = "eeeeeeee-0000-0000-0000-000000000009";
     const RELATIONSHIP_SIGNAL_ID = "eeeeeeee-0000-0000-0000-00000000000a";
 
-    // Deletes children before parents. Run at both the start and end of the fixture's life:
-    // at the start so a prior crashed run can't leave rows that collide with these fixed
-    // ids, and at the end so this file leaves nothing behind for the wider suite, which
-    // shares this database.
-    async function cleanupFixtureRows() {
-      if (!holder.pool) return;
-      const pool = holder.pool;
-      await pool.query("delete from relationship_signals where id = $1", [RELATIONSHIP_SIGNAL_ID]);
-      await pool.query("delete from touchpoints where id = $1", [TOUCHPOINT_ID]);
-      await pool.query("delete from client_contacts where id = $1", [CLIENT_CONTACT_ID]);
-      await pool.query("delete from account_contacts where id = $1", [ACCOUNT_CONTACT_ID]);
-      await pool.query("delete from job_sheet_portions where id = $1", [JOB_SHEET_PORTION_ID]);
-      await pool.query("delete from job_sheets where id = $1", [JOB_SHEET_ID]);
-      await pool.query("delete from quote_versions where id = $1", [QUOTE_VERSION_ID]);
-      await pool.query("delete from quotes where id = $1", [QUOTE_ID]);
-      await pool.query("delete from clients where id = $1", [CLIENT_ID]);
-      await pool.query("delete from accounts where id = $1", [ACCOUNT_ID]);
-      await pool.query("delete from profiles where id = $1", [OWNER_PROFILE_ID]);
-    }
-
     beforeAll(async () => {
       if (!hasDatabase) return;
-      await cleanupFixtureRows();
-      const pool = holder.pool!;
+      const pool = holder.client!;
 
       await pool.query(
         "insert into profiles (id, email, name, role) values ($1, $2, $3, 'sales')",
@@ -221,11 +211,6 @@ describe("resource ownership resolves against the migrated schema", () => {
         ],
       );
     }, 30_000);
-
-    afterAll(async () => {
-      if (!hasDatabase) return;
-      await cleanupFixtureRows();
-    });
 
     const CASES: ReadonlyArray<{ resourceType: NeonOwnedResourceType; realId: string }> = [
       { resourceType: "quote", realId: QUOTE_ID },

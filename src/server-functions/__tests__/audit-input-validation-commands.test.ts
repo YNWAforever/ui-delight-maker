@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   requireNeonAuthSession: vi.fn(),
   createQuote: vi.fn(),
   updateQuote: vi.fn(),
+  updateQuoteCommercial: vi.fn(),
+  loadRequestAuthorization: vi.fn(),
   decideApproval: vi.fn(),
   replaceJobSheetPortions: vi.fn(),
   updateJobSheetXeroReference: vi.fn(),
@@ -28,9 +30,14 @@ vi.mock("@tanstack/react-start", () => ({
 
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapability: mocks.requireCapability,
+  loadRequestAuthorization: mocks.loadRequestAuthorization,
 }));
 vi.mock("@/lib/auth/neon-auth.server", () => ({
   requireNeonAuthSession: mocks.requireNeonAuthSession,
+}));
+vi.mock("@/server/commands/quote-revision.server", () => ({
+  updateQuoteCommercial: mocks.updateQuoteCommercial,
+  createQuoteRevision: vi.fn(),
 }));
 vi.mock("@/server/repositories/quotes", () => ({
   createQuote: mocks.createQuote,
@@ -89,6 +96,8 @@ beforeEach(() => {
   mocks.requireNeonAuthSession.mockResolvedValue({ profile: { id: ID } });
   mocks.createQuote.mockResolvedValue({ id: ID });
   mocks.updateQuote.mockResolvedValue({ id: ID });
+  mocks.updateQuoteCommercial.mockResolvedValue({ id: ID });
+  mocks.loadRequestAuthorization.mockResolvedValue({ actor: { profileId: ID } });
   mocks.decideApproval.mockResolvedValue({ id: ID, status: "approved" });
   mocks.replaceJobSheetPortions.mockResolvedValue([]);
   mocks.updateJobSheetXeroReference.mockResolvedValue({ id: ID });
@@ -197,7 +206,7 @@ describe("existing quote editor payloads", () => {
 
   it("allows a draft copy to record its parent quote ID", async () => {
     await updateQuote({ data: { id: ID, updates: { parent_quote_id: ID } } });
-    expect(mocks.updateQuote).toHaveBeenCalledOnce();
+    expect(mocks.updateQuoteCommercial).toHaveBeenCalledOnce();
   });
 });
 it("rejects quote fields the current repository cannot persist", async () => {
