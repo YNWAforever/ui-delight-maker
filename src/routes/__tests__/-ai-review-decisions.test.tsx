@@ -87,6 +87,8 @@ const approval = (
   requested_by: "Reply Draft Agent",
   assigned_to: null,
   status: "pending",
+  row_version: 0,
+  superseded_by: null,
   context_data: { lead_id: "lead-1", confidence_score: 0.82, risk_notes: ["Unverified budget"] },
   context_summary: "Reply drafted for Northstar",
   reviewer_notes: null,

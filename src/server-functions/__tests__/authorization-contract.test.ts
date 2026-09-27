@@ -169,7 +169,10 @@ describe("server-function authorization contract", () => {
     for (const [file, name, expected] of expectations) {
       const source = readFileSync(resolve(process.cwd(), "src/server-functions", file), "utf8");
       const handler = serverFunctionBlocks(source).find((entry) => entry.name === name);
-      if (!handler?.source.includes(expected)) failures.push(file + ":" + name);
+      if (
+        !handler?.source.replace(/requireCapability\(\s+/g, "requireCapability(").includes(expected)
+      )
+        failures.push(file + ":" + name);
     }
 
     expect(failures).toEqual([]);

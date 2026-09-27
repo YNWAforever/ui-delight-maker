@@ -1,4 +1,6 @@
 import { buildFilters } from "@/server/db/query-builders";
+import { AdminError } from "@/lib/admin/errors";
+import { evaluateAuthorization } from "@/lib/admin/policy";
 import type { RequestAuthorization } from "@/server/auth/authorization.server";
 import { buildVisibilityScope } from "@/server/auth/visibility-scope.server";
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
@@ -18,7 +20,7 @@ export async function listApprovals(
   const clause = where.sql ? where.sql + " and " + predicate : "where " + predicate;
   return query<HumanApproval>(
     `select ha.id, ha.agent_run_id, ha.approval_type, ha.requested_by,
-            ha.assigned_to, ha.status,
+            ha.assigned_to, ha.status, ha.row_version, ha.superseded_by,
             jsonb_strip_nulls(jsonb_build_object('quote_id', ha.context_data->>'quote_id')) as context_data,
             left(ha.context_summary, 300) as context_summary,
             ha.reviewer_notes, ha.decided_at, ha.created_at
@@ -128,101 +130,134 @@ export async function createApproval(
   return approval;
 }
 
-export async function decideApproval(input: {
+export type ApprovalDecisionWrite = {
   id: string;
   decision: "approved" | "rejected" | "escalated";
   notes?: string;
-  actorId: string;
-}) {
-  return transaction(async (client) => {
-    const approvalResult = await client.query<HumanApproval>(
-      `
-        update human_approvals
-        set status = $2,
-            reviewer_notes = $3,
-            decided_at = now()
-        where id = $1
-        returning *
-      `,
-      [input.id, input.decision, input.notes ?? null],
-    );
-    const approval = approvalResult.rows[0];
-    if (!approval) throw new Error("Approval not found");
+  expectedVersion?: number;
+};
 
-    /**
-     * A decided approval releases the agent run that is waiting on it.
-     *
-     * Runs are parked in `waiting_approval` while a human decides, and `agent_runs_active_idx`
-     * (001_clientops_runtime.sql) is a partial unique index over exactly
-     * ('running','waiting_approval') for (subject_type, subject_id, workflow_type). A run left
-     * parked after its approval is decided therefore blocks every future run of that workflow
-     * for that subject — permanently, and for rejections just as much as approvals. This is
-     * done here rather than in a per-approval-type handler so that quote_send, message_send
-     * and cs_risk_review all release, not just the one that had a handler.
-     *
-     * `escalated` is not a decision yet, so it keeps the hold. The status predicate keeps this
-     * idempotent and stops it overwriting a run that already finished on its own.
-     */
-    if (approval.agent_run_id && input.decision !== "escalated") {
-      await client.query(
-        `
-          update agent_runs
-          set status = 'completed',
-              human_review_required = false
-          where id = $1 and status = 'waiting_approval'
-        `,
-        [approval.agent_run_id],
-      );
-    }
-
-    await client.query(
-      `
-        insert into activity_logs
-          (actor_type, actor_id, action, object_type, object_id)
-        values
-          ('user', $1, $2, 'approval', $3)
-      `,
-      [input.actorId, `${input.decision} approval`, input.id],
-    );
-
-    return approval;
+/** One locked transition, deliberately without its own begin/commit for command composition. */
+export async function decideApprovalInTransaction(
+  db: Queryable,
+  context: RequestAuthorization,
+  input: ApprovalDecisionWrite,
+): Promise<HumanApproval> {
+  const current = (
+    await db.query<HumanApproval>("select * from human_approvals where id=$1 for update", [
+      input.id,
+    ])
+  ).rows[0];
+  if (!current) throw new AdminError("CONFLICT", "Approval is unavailable");
+  if (input.expectedVersion !== undefined && current.row_version !== input.expectedVersion) {
+    throw new AdminError("STALE_ADMIN_STATE", "Approval changed since it was opened");
+  }
+  if (current.status !== "pending" && current.status !== "escalated") {
+    throw new AdminError("CONFLICT", "Approval already has a terminal decision");
+  }
+  const decision = evaluateAuthorization({
+    actor: context.actor,
+    capability: "approvals.decide",
+    target: {
+      resourceType: "human_approval",
+      resourceId: current.id,
+      ...(current.assigned_to ? { ownerProfileId: current.assigned_to } : {}),
+    },
+    overrides: context.overrides,
+    now: new Date(),
   });
+  if (!decision.allowed) {
+    throw new AdminError(
+      decision.reason === "outside_scope" ? "OUTSIDE_SCOPE" : "FORBIDDEN",
+      "Approval decision is not authorized",
+    );
+  }
+
+  const updated = (
+    await db.query<HumanApproval>(
+      `update human_approvals
+     set status=$2, reviewer_notes=$3,
+         decided_at=case when $2='escalated' then null else now() end
+     where id=$1 and row_version=$4 and status in ('pending','escalated')
+     returning *`,
+      [input.id, input.decision, input.notes ?? null, current.row_version],
+    )
+  ).rows[0];
+  if (!updated) throw new AdminError("STALE_ADMIN_STATE", "Approval changed during decision");
+
+  if (updated.agent_run_id && input.decision !== "escalated") {
+    await db.query(
+      `update agent_runs
+       set status='completed', human_review_required=false
+       where id=$1 and status='waiting_approval'`,
+      [updated.agent_run_id],
+    );
+  }
+  await db.query(
+    `insert into activity_logs (actor_type,actor_id,action,object_type,object_id)
+     values ('user',$1,$2,'approval',$3)`,
+    [context.actor.profileId, `${input.decision} approval`, input.id],
+  );
+  return updated;
 }
 
 /**
  * Route a pending approval to a reviewer, or clear the assignment.
  *
- * A decided approval cannot be reassigned: its status is no longer `pending`, and changing the
- * reviewer on a closed decision would misrepresent who made it. The guard is `status !==
- * "pending"`, so an `escalated` approval is refused too — it is waiting on a fresh request from
- * the record itself, not on a reviewer.
+ * A terminal approval cannot be reassigned. Pending and escalated records remain open and
+ * may be routed, but a closed decision retains its historical reviewer.
  *
  * `assignedTo: null` unassigns. That is a real action — an approval routed to the wrong person
  * needs a way back to the unassigned pool — not an error.
  */
-export async function assignApproval(input: {
-  id: string;
-  assignedTo: string | null;
-}): Promise<HumanApproval> {
-  // `getApproval` throws "Approval not found" itself, so there is no missing-row branch here.
-  const existing = await getApproval(input.id);
-  if (existing.status !== "pending") {
-    throw new Error("A decided approval cannot be reassigned");
-  }
+export async function assignApproval(
+  input: { id: string; assignedTo: string | null; expectedVersion?: number },
+  context: RequestAuthorization,
+): Promise<HumanApproval> {
+  return transaction(async (db) => {
+    const current = (
+      await db.query<HumanApproval>("select * from human_approvals where id=$1 for update", [
+        input.id,
+      ])
+    ).rows[0];
+    if (!current) throw new AdminError("CONFLICT", "Approval is unavailable");
+    if (input.expectedVersion !== undefined && current.row_version !== input.expectedVersion) {
+      throw new AdminError("STALE_ADMIN_STATE", "Approval changed since it was opened");
+    }
+    if (current.status !== "pending" && current.status !== "escalated") {
+      throw new AdminError("CONFLICT", "A decided approval cannot be reassigned");
+    }
+    const permission = evaluateAuthorization({
+      actor: context.actor,
+      capability: "approvals.decide",
+      target: {
+        resourceType: "human_approval",
+        resourceId: current.id,
+        ...(current.assigned_to ? { ownerProfileId: current.assigned_to } : {}),
+      },
+      overrides: context.overrides,
+      now: new Date(),
+    });
+    if (!permission.allowed)
+      throw new AdminError("FORBIDDEN", "Approval routing is not authorized");
 
-  if (input.assignedTo) {
-    const profile = await queryOne<{ id: string }>("select id from profiles where id = $1", [
-      input.assignedTo,
-    ]);
-    // Rejected rather than stored: the column is FK-constrained, so a bad id would fail at the
-    // database anyway — but failing here gives a message a user can act on.
-    if (!profile) throw new Error("Assignee not found");
-  }
-
-  const approval = await queryOne<HumanApproval>(
-    "update human_approvals set assigned_to = $2 where id = $1 returning *",
-    [input.id, input.assignedTo],
-  );
-  if (!approval) throw new Error("Approval not found");
-  return approval;
+    if (input.assignedTo) {
+      const profile = (
+        await db.query<{ id: string }>("select id from profiles where id=$1 and status='active'", [
+          input.assignedTo,
+        ])
+      ).rows[0];
+      if (!profile) throw new AdminError("VALIDATION_FAILED", "Assignee is unavailable");
+    }
+    const updated = (
+      await db.query<HumanApproval>(
+        `update human_approvals set assigned_to=$2
+       where id=$1 and row_version=$3 and status in ('pending','escalated')
+       returning *`,
+        [input.id, input.assignedTo, current.row_version],
+      )
+    ).rows[0];
+    if (!updated) throw new AdminError("STALE_ADMIN_STATE", "Approval changed during routing");
+    return updated;
+  });
 }

@@ -87,7 +87,10 @@ import { CLIENTOPS_MIGRATION_PATHS } from "@/lib/clientops-relationship-schema";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
 import { assignApprovalFn } from "@/server-functions/approvals";
 import { requestQuoteApproval } from "@/server-functions/quotes";
-import { decideApproval } from "@/server/repositories/approvals";
+import { randomUUID } from "node:crypto";
+import { decideApprovalCommand } from "@/server/commands/approval-decision.server";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import type { AppSession } from "@/lib/auth/neon-auth.server";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 
@@ -260,7 +263,24 @@ describe("requesting approval on a quote", () => {
     expect(unassigned.assigned_to).toBeNull();
     expect(await storedAssignee(approval.id), "unassigning must reach the database").toBeNull();
 
-    await decideApproval({ id: approval.id, decision: "approved", actorId: ACTOR });
+    const context: RequestAuthorization = {
+      session: holder.session as AppSession,
+      actor: {
+        profileId: ACTOR,
+        role: "admin",
+        status: "active",
+        managedDepartmentIds: [],
+        managedTeamIds: [],
+        directReportIds: [],
+      },
+      overrides: [],
+      now: new Date(),
+    };
+    await decideApprovalCommand(context, {
+      id: approval.id,
+      decision: "approved",
+      idempotencyKey: randomUUID(),
+    });
 
     await expect(assign({ data: { id: approval.id, assignedTo: REVIEWER } })).rejects.toThrow(
       "A decided approval cannot be reassigned",
