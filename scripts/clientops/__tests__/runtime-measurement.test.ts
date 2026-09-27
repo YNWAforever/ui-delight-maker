@@ -1,7 +1,17 @@
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const requestHolder = vi.hoisted(() => ({
+  request: null as Request | null,
+  responseHeaders: new Map<string, string>(),
+}));
+vi.mock("@tanstack/react-start/server", () => ({
+  getRequest: () => requestHolder.request,
+  setResponseHeader: (name: string, value: string) =>
+    requestHolder.responseHeaders.set(name, value),
+}));
 import { measureQuery, withQueryMetrics } from "@/server/db/query-metrics.server";
 import { readInitialJsTransfer } from "../check-route-bundles";
 import { runRoutePerformanceMeasurement } from "../measure-route-performance";
@@ -9,6 +19,9 @@ import { verifyRuntimeEvidence } from "../measure-runtime";
 
 const temporaryDirectories: string[] = [];
 afterEach(() => {
+  delete process.env.CLIENTOPS_PERF_TOKEN;
+  requestHolder.request = null;
+  requestHolder.responseHeaders.clear();
   for (const path of temporaryDirectories.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 
@@ -38,6 +51,26 @@ describe("runtime measurement evidence", () => {
     expect(first.metrics.dbDurationMs).toBeGreaterThan(0);
     expect(second.metrics.queryCount).toBe(1);
     expect(second.metrics.failedQueryCount).toBe(0);
+  });
+
+  it("exports aggregate auth and failed-query counts only for a matching request token", async () => {
+    process.env.CLIENTOPS_PERF_TOKEN = "local-test-token";
+    requestHolder.request = new Request("http://127.0.0.1/login", {
+      headers: { "x-clientops-perf-token": "local-test-token" },
+    });
+    await measureQuery(async () => "auth profile");
+    await expect(
+      measureQuery(async () => {
+        throw new Error("failed SQL");
+      }),
+    ).rejects.toThrow();
+    expect(requestHolder.responseHeaders.get("x-clientops-db-scope")).toBe("http-request");
+    expect(requestHolder.responseHeaders.get("x-clientops-db-count")).toBe("2");
+    expect(requestHolder.responseHeaders.get("x-clientops-db-failed")).toBe("1");
+    requestHolder.request = new Request("http://127.0.0.1/login");
+    requestHolder.responseHeaders.clear();
+    await measureQuery(async () => "no diagnostic token");
+    expect(requestHolder.responseHeaders.size).toBe(0);
   });
 
   it("includes bootstrap and transitive static chunks but excludes lazy auth UI from initial transfer", () => {

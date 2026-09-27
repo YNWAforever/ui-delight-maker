@@ -71,6 +71,7 @@ type Sample = {
   payloadBytes: number;
   dbCount: number | null;
   dbDurationMs: number | null;
+  metricScope: string | null;
 };
 
 async function takeSample(
@@ -96,6 +97,7 @@ async function takeSample(
   if (response.status !== 200 || response.headers.get("location")?.includes("/login")) {
     throw new Error("Authenticated route response was unavailable");
   }
+  const metricScope = response.headers.get("x-clientops-db-scope");
   const countHeader = response.headers.get("x-clientops-db-count");
   const durationHeader = response.headers.get("x-clientops-db-duration-ms");
   const parsedCount = countHeader === null ? null : Number(countHeader);
