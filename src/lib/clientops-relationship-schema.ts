@@ -21,6 +21,8 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/014_locked_job_sheet_portions.sql",
   "neon/migrations/015_agent_recovery_metadata.sql",
   "neon/migrations/016_work_queue_pagination_indexes.sql",
+  "neon/migrations/017_bulk_operations.sql",
+  "neon/migrations/018_bulk_row_versions.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
@@ -63,6 +65,8 @@ export const CLIENTOPS_REQUIRED_TABLES = [
   "admin_audit_logs",
   "command_receipts",
   "approval_message_handoffs",
+  "bulk_operations",
+  "bulk_operation_items",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_COLUMNS = [
@@ -71,6 +75,8 @@ export const CLIENTOPS_REQUIRED_COLUMNS = [
   "profiles.manager_profile_id",
   "profiles.session_invalid_before",
   "leads.contact_id",
+  "leads.row_version",
+  "tasks.row_version",
   "leads.account_id",
   "leads.source_campaign_id",
   "leads.campaign_member_id",
