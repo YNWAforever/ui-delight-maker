@@ -2,6 +2,8 @@ name: Database contract
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 # Least privilege: these jobs only ever read the checked-out tree. Without an explicit
 # block the workflow inherits the repository default, which can be read-write — a token
@@ -32,9 +34,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      # The whole suite, not just src/server/db/__tests__/. DATABASE_TEST_URL is set above, so
-      # the integration tests that self-skip locally execute here instead of being silently
-      # skipped. That makes this one command a superset of the previous step, and picks up any
-      # future test without another workflow edit. (The exact pass/skip counts that used to be
-      # quoted here went stale within a few PRs; `bun run test` prints the current ones.)
-      - run: bun run test
+      # A JSON summary makes skips a hard failure, including self-skipped DB tests.
+      # The Postgres service and DATABASE_TEST_URL above are required for this gate.
+      - run: test -n "$DATABASE_TEST_URL"
+      - run: bunx vitest run --no-file-parallelism --reporter=json --outputFile="$RUNNER_TEMP/vitest-results.json"
+      - run: bun scripts/clientops/assert-vitest-no-skips.ts "$RUNNER_TEMP/vitest-results.json"

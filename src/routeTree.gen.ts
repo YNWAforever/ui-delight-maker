@@ -39,6 +39,7 @@ import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as ClientsImportRouteImport } from './routes/clients.import'
 import { Route as ClientsIdRouteImport } from './routes/clients.$id'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
+import { Route as ApiBuildRouteImport } from './routes/api/build'
 import { Route as AgentsNameRouteImport } from './routes/agents.$name'
 import { Route as AdminTeamsRouteImport } from './routes/admin.teams'
 import { Route as AdminPeopleRouteImport } from './routes/admin.people'
@@ -210,6 +211,11 @@ const CampaignsIdRoute = CampaignsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => CampaignsRoute,
 } as any)
+const ApiBuildRoute = ApiBuildRouteImport.update({
+  id: '/api/build',
+  path: '/api/build',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AgentsNameRoute = AgentsNameRouteImport.update({
   id: '/$name',
   path: '/$name',
@@ -342,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/admin/people': typeof AdminPeopleRouteWithChildren
   '/admin/teams': typeof AdminTeamsRouteWithChildren
   '/agents/$name': typeof AgentsNameRoute
+  '/api/build': typeof ApiBuildRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
@@ -393,6 +400,7 @@ export interface FileRoutesByTo {
   '/admin/people': typeof AdminPeopleRouteWithChildren
   '/admin/teams': typeof AdminTeamsRouteWithChildren
   '/agents/$name': typeof AgentsNameRoute
+  '/api/build': typeof ApiBuildRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
@@ -446,6 +454,7 @@ export interface FileRoutesById {
   '/admin/people': typeof AdminPeopleRouteWithChildren
   '/admin/teams': typeof AdminTeamsRouteWithChildren
   '/agents/$name': typeof AgentsNameRoute
+  '/api/build': typeof ApiBuildRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/clients/$id': typeof ClientsIdRoute
   '/clients/import': typeof ClientsImportRoute
@@ -500,6 +509,7 @@ export interface FileRouteTypes {
     | '/admin/people'
     | '/admin/teams'
     | '/agents/$name'
+    | '/api/build'
     | '/campaigns/$id'
     | '/clients/$id'
     | '/clients/import'
@@ -551,6 +561,7 @@ export interface FileRouteTypes {
     | '/admin/people'
     | '/admin/teams'
     | '/agents/$name'
+    | '/api/build'
     | '/campaigns/$id'
     | '/clients/$id'
     | '/clients/import'
@@ -603,6 +614,7 @@ export interface FileRouteTypes {
     | '/admin/people'
     | '/admin/teams'
     | '/agents/$name'
+    | '/api/build'
     | '/campaigns/$id'
     | '/clients/$id'
     | '/clients/import'
@@ -650,6 +662,7 @@ export interface RootRouteChildren {
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
   TasksRoute: typeof TasksRoute
+  ApiBuildRoute: typeof ApiBuildRoute
   InviteTokenRoute: typeof InviteTokenRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiWorkflowsDraftQuoteRoute: typeof ApiWorkflowsDraftQuoteRoute
@@ -874,6 +887,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/campaigns/$id'
       preLoaderRoute: typeof CampaignsIdRouteImport
       parentRoute: typeof CampaignsRoute
+    }
+    '/api/build': {
+      id: '/api/build'
+      path: '/api/build'
+      fullPath: '/api/build'
+      preLoaderRoute: typeof ApiBuildRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/agents/$name': {
       id: '/agents/$name'
@@ -1189,6 +1209,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
   TasksRoute: TasksRoute,
+  ApiBuildRoute: ApiBuildRoute,
   InviteTokenRoute: InviteTokenRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiWorkflowsDraftQuoteRoute: ApiWorkflowsDraftQuoteRoute,
