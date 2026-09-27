@@ -16,6 +16,7 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/009_agent_policy_versions.sql",
   "neon/migrations/010_command_versions_and_receipts.sql",
   "neon/migrations/011_quote_version_integrity.sql",
+  "neon/migrations/012_quote_open_approval_constraint.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [

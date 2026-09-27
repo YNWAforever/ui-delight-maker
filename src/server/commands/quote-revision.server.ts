@@ -26,7 +26,7 @@ type OverrideRow = {
   revoked_at: string | null;
 };
 
-async function lockQuoteAndAuthorize(
+export async function lockQuoteAndAuthorize(
   db: Queryable,
   context: RequestAuthorization,
   id: string,

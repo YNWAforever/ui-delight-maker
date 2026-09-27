@@ -7,6 +7,7 @@ import {
 } from "@/server/auth/authorization.server";
 import { randomUUID } from "node:crypto";
 import { decideApprovalCommand } from "@/server/commands/approval-decision.server";
+import { requestQuoteApprovalCommand } from "@/server/commands/quote-lifecycle.server";
 import {
   createQuoteRevision as createQuoteRevisionCommand,
   updateQuoteCommercial,
@@ -19,11 +20,7 @@ import { buildQuoteDraftPayload } from "@/lib/workflows/payloads";
 import { createJobSheetFromAcceptedQuote } from "@/server/repositories/job-sheets";
 import { listPdfTemplates, listQuoteTemplates } from "@/server/repositories/quote-templates";
 import { createQuoteVersion, listQuoteVersions } from "@/server/repositories/quote-versions";
-import {
-  createApproval,
-  findPendingApprovalForQuote,
-  getApproval as getApprovalFromNeon,
-} from "@/server/repositories/approvals";
+import { getApproval as getApprovalFromNeon } from "@/server/repositories/approvals";
 import {
   createAgentRun,
   findActiveRun,
@@ -41,7 +38,6 @@ import {
   updateQuoteLifecycle as updateQuoteLifecycleInNeon,
 } from "@/server/repositories/quotes";
 import { serializeAgentRun, serializeHumanApproval } from "@/lib/serializable";
-import { transaction } from "@/server/db/neon.server";
 import type { HumanApproval, JsonValue, PricingTemplate, Quote, QuoteVersion } from "@/lib/types";
 import {
   ApproveAndIssueQuoteSchema,
@@ -246,40 +242,13 @@ export const createQuoteRevision = createServerFn({ method: "POST" })
 export const requestQuoteApproval = createServerFn({ method: "POST" })
   .validator((data: unknown) => parseOperationInput(RequestQuoteApprovalSchema, data))
   .handler(async ({ data }) => {
-    await requireCapability("quotes.request_approval", {
-      resourceType: "quote",
-      resourceId: data.id,
-    });
-    const session = await requireNeonAuthSession();
-
-    // Requesting twice must not queue twice: a reviewer would decide one and the other would
-    // linger. Returning the existing approval makes re-requesting idempotent.
-    const existing = await findPendingApprovalForQuote(data.id);
-    if (existing) return serializeHumanApproval(existing);
-
-    const quote = await getQuoteFromNeon(data.id);
-
-    // One transaction. A quote must never reach `pending_approval` with nothing in the queue —
-    // that is the state that made this invisible in the first place.
-    return transaction(async (db) => {
-      const approval = await createApproval(
-        {
-          approval_type: "quote_send",
-          requested_by: session.profile.id,
-          assigned_to: data.assignedTo ?? null,
-          context_summary: `Quote ${quote.number ?? quote.id} for approval`,
-          context_data: {
-            quote_id: quote.id,
-            quote_number: quote.number,
-            total_value: quote.total_value,
-            currency: quote.currency,
-          },
-        },
-        db,
-      );
-      await updateQuoteLifecycleInNeon(data.id, { status: "pending_approval" }, db);
-      return serializeHumanApproval(approval);
-    });
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "quotes.request_approval",
+      { resourceType: "quote", resourceId: data.id },
+      context,
+    );
+    return serializeHumanApproval(await requestQuoteApprovalCommand(context, data));
   });
 
 export const triggerQuoteAgent = createServerFn({ method: "POST" })
