@@ -1,6 +1,6 @@
 # T12 queue pagination and purpose-scoped people search
 
-Scope: CO-14, CO-15 and the shared CO-20 directory search contract. Branch: codex/clientops-queue-pagination, stacked on T11. Code commit: cb038cd. Audit baseline: 2904faa502f7494173f48f412875c1d0a3aba674.
+Scope: CO-14, CO-15 and the shared CO-20 directory search contract. Branch: codex/clientops-queue-pagination, stacked on T11. Code commit: cb038cd. Draft PR: https://github.com/YNWAforever/ui-delight-maker/pull/90. Audit baseline: 2904faa502f7494173f48f412875c1d0a3aba674.
 
 ## Baseline and red evidence
 
