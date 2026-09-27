@@ -15,7 +15,6 @@ import {
   type EventImportRow,
 } from "@/lib/relationship/event-import";
 import {
-  commitEventImport,
   listEventImportAccountCandidates,
   listEventImportAccountContacts,
 } from "@/server/repositories/event-import";
@@ -85,35 +84,7 @@ export const validateEventImportRowsFn = createServerFn({ method: "POST" })
 
 export const commitEventImportFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => parseOperationInput(EventImportCommitSchema, data))
-  .handler(async ({ data }) => {
-    const session = await requireNeonAuthSession();
-    const authorization = await loadRequestAuthorization(session);
-    await requireCapability(
-      "engagements.create",
-      {
-        resourceType: "campaign",
-        resourceId: data.campaignId,
-      },
-      authorization,
-    );
-    await requireCapability(
-      "campaigns.manage",
-      {
-        resourceType: "campaign",
-        resourceId: data.campaignId,
-      },
-      authorization,
-    );
-    const validation = await validateVisibleEventRows(data.rows, authorization);
-
-    if (validation.errors.length > 0) {
-      return { ok: false as const, errors: validation.errors };
-    }
-
-    return commitEventImport({
-      campaignId: data.campaignId,
-      rows: validation.valid,
-      owner: session.profile.id,
-      authorization,
-    });
+  .handler(async () => {
+    await requireNeonAuthSession();
+    throw new Error("Direct CSV commit is retired. Preview the file again.");
   });

@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { crmQueryKeys } from "@/lib/query-keys";
 
 const followUpTasksMock = vi.hoisted(() => vi.fn());
+const previewImportMock = vi.hoisted(() => vi.fn());
 const updateCampaignMock = vi.hoisted(() => vi.fn());
 const workspaceReadMock = vi.hoisted(() => vi.fn());
 const workspaceSectionMock = vi.hoisted(() => vi.fn());
@@ -38,9 +39,11 @@ vi.mock("@/server-functions/campaigns", () => ({
   createCampaignFollowUpTasksFn: followUpTasksMock,
   updateCampaign: updateCampaignMock,
 }));
-vi.mock("@/server-functions/event-import", () => ({
-  commitEventImportFn: vi.fn(),
-  validateEventImportRowsFn: vi.fn(),
+vi.mock("@/server-functions/import-sessions", () => ({
+  previewImportFn: previewImportMock,
+  commitImportFn: vi.fn(),
+  resumeImportFn: vi.fn(),
+  getImportResultFn: vi.fn(),
 }));
 vi.mock("@/server-functions/relationship-workspaces", () => ({
   getCampaignWorkspaceRead: workspaceReadMock,
@@ -156,6 +159,27 @@ function deferred<T>() {
 }
 
 beforeEach(() => {
+  localStorage.clear();
+  previewImportMock.mockReset();
+  previewImportMock.mockResolvedValue({
+    sessionId: "11111111-1111-4111-8111-111111111111",
+    previewHash: "a".repeat(64),
+    previewExpiresAt: "2026-09-28T00:00:00.000Z",
+    state: "preview",
+    processed: 0,
+    total: 1,
+    rows: [
+      {
+        recordIndex: 1,
+        sourceLine: 2,
+        action: "create",
+        status: null,
+        errors: [],
+        id: null,
+        retryable: false,
+      },
+    ],
+  });
   followUpTasksMock.mockReset();
   updateCampaignMock.mockReset();
   workspaceReadMock.mockReset();
@@ -212,6 +236,23 @@ const invalidatedRouteIds = () =>
       filter({ routeId }),
     );
   });
+
+describe("attendee import session entry", () => {
+  it("sends the full CSV and campaign ID to durable preview", async () => {
+    await renderDetail();
+    const input = screen.getByLabelText(/CSV file \(up to 5 MiB/) as HTMLInputElement;
+    const csv = "external_id,company_name,contact_name\nattendee-1,Northstar,Pat";
+    fireEvent.change(input, {
+      target: { files: [{ name: "attendees.csv", text: async () => csv }] },
+    });
+    await waitFor(() =>
+      expect(previewImportMock).toHaveBeenCalledWith({
+        data: { kind: "event", csvText: csv, campaignId: CAMPAIGN.id },
+      }),
+    );
+    expect(await screen.findByRole("button", { name: "Commit next 20" })).toBeTruthy();
+  });
+});
 
 describe("attendee data quality is stated, not implied", () => {
   it("says Unmatched for an attendee that resolved to no account", async () => {

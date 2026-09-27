@@ -71,56 +71,29 @@ describe("event import server functions", () => {
     });
   });
 
-  it("revalidates raw rows on commit and returns errors without writing invalid data", async () => {
-    listEventImportAccountCandidatesMock.mockResolvedValue([]);
-    listEventImportAccountContactsMock.mockResolvedValue([]);
+  it("retires the old direct-write endpoint after authentication", async () => {
     const { commitEventImportFn } = await import("../event-import");
-
-    const result = await commitEventImportFn({
-      data: {
-        campaignId: "campaign-1",
-        rows: [
-          {
-            company_name: "Fimmick",
-            contact_name: "Ada Wong",
-            email: "ada@example.com",
-            phone: "",
-            attendee_status: "registered",
-            interests: [],
-            notes: "",
-          },
-        ],
-      },
-    });
-
-    expect(requireCapabilityMock).toHaveBeenCalledWith(
-      "engagements.create",
-      {
-        resourceType: "campaign",
-        resourceId: "campaign-1",
-      },
-      expect.anything(),
-    );
-    expect(requireCapabilityMock).toHaveBeenCalledWith(
-      "campaigns.manage",
-      {
-        resourceType: "campaign",
-        resourceId: "campaign-1",
-      },
-      expect.anything(),
-    );
-    expect(requireCapabilityMock).not.toHaveBeenCalledWith("accounts.create");
-    expect(requireCapabilityMock).not.toHaveBeenCalledWith("contacts.create");
+    await expect(
+      commitEventImportFn({
+        data: {
+          campaignId: "campaign-1",
+          rows: [
+            {
+              company_name: "Fimmick",
+              contact_name: "Ada Wong",
+              email: "ada@example.com",
+              phone: "",
+              attendee_status: "registered",
+              interests: [],
+              notes: "",
+            },
+          ],
+        },
+      }),
+    ).rejects.toThrow(/Direct CSV commit is retired/);
     expect(requireNeonAuthSessionMock).toHaveBeenCalled();
-    expect(listEventImportAccountCandidatesMock).toHaveBeenCalled();
-    expect(listEventImportAccountContactsMock).toHaveBeenCalled();
     expect(commitEventImportMock).not.toHaveBeenCalled();
-    expect(result).toEqual({
-      ok: false,
-      errors: [
-        { index: 0, reason: "Attendee status must be attended, met, high_intent, or unknown." },
-      ],
-    });
+    expect(listEventImportAccountCandidatesMock).not.toHaveBeenCalled();
   });
 
   it("validates rows with uncapped account candidates and account contacts", async () => {
