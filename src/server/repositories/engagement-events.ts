@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/legacy-supabase/server";
+import { createLegacyDomainClient } from "./legacy-domain-source.server";
 import type { ChannelIdentity, EngagementEvent } from "@/lib/types";
 import { pickColumns, supabaseOperationFailed } from "./supabase-writes";
 
@@ -100,7 +100,7 @@ export type UpsertChannelIdentityInput = Pick<ChannelIdentity, "channel"> &
 export async function listEngagementEvents(
   filters: EngagementEventFilters = {},
 ): Promise<EngagementEvent[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("engagement_events");
   let query = supabase
     .from("engagement_events")
     .select("*")
@@ -130,7 +130,7 @@ export async function listEngagementEvents(
 export async function createEngagementEvent(
   input: CreateEngagementEventInput,
 ): Promise<EngagementEvent> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("engagement_events");
   const { data: event, error } = await supabase
     .from("engagement_events")
     .insert(pickColumns(input, EVENT_CREATE_COLUMNS))
@@ -161,7 +161,7 @@ export async function createEngagementEvent(
 export async function upsertChannelIdentity(
   input: UpsertChannelIdentityInput,
 ): Promise<ChannelIdentity> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("engagement_events");
 
   if (input.external_id) {
     const { data: existing, error } = await supabase
