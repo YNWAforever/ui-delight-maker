@@ -1,6 +1,6 @@
 # T19 Runtime measurement and bundle evidence
 
-Branch: `codex/clientops-runtime-measurement`, stacked on T18 evidence commit `2c87787`. Code commits: `d71737e` and `32fc89b`. No deployment, production data change, or customer message was performed.
+Branch: `codex/clientops-runtime-measurement`, stacked on T18 evidence commit `2c87787`. Code commits: `d71737e` and `32fc89b`; [draft PR #97](https://github.com/YNWAforever/ui-delight-maker/pull/97). No deployment, production data change, or customer message was performed.
 
 ## Actual bundle transfer
 
