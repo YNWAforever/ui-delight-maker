@@ -23,6 +23,8 @@ git diff --check
 `bunx vite build` is the local, source-only build. `bun run build` also applies
 migrations, verifies the database, and runs the deploy seed script; run it only
 against a verified disposable database or in an explicitly approved deployment.
+Vercel's configured build uses only `bunx vite build` and the static output packager;
+migration and seed require a separate, verified database operation before release.
 The GitHub `Checks` and `Database contract` workflows run for PRs and
 pushes to `main`. The database gate requires every test to execute with zero skips.
 
