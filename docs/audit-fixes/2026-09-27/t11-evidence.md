@@ -1,6 +1,6 @@
 # T11 approval, run recovery, and manual message handoff
 
-Scope: CO-12 and CO-13. Branch: codex/clientops-agent-recovery, stacked on T10. Code commit: 6dd4b81. Audit baseline: 2904faa502f7494173f48f412875c1d0a3aba674.
+Scope: CO-12 and CO-13. Branch: codex/clientops-agent-recovery, stacked on T10. Code commit: 6dd4b81. Draft PR: https://github.com/YNWAforever/ui-delight-maker/pull/89. Audit baseline: 2904faa502f7494173f48f412875c1d0a3aba674.
 
 ## Baseline and red evidence
 
