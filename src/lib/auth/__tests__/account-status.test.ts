@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getProfileByEmailMock, getProfileByIdMock, requestState } = vi.hoisted(() => ({
-  getProfileByEmailMock: vi.fn(),
-  getProfileByIdMock: vi.fn(),
-  requestState: { cookie: "__Secure-neon-auth.session_token=abc" as string | null },
-}));
+const { getProfileByEmailMock, getProfileByIdMock, getCurrentInvitationMock, requestState } =
+  vi.hoisted(() => ({
+    getProfileByEmailMock: vi.fn(),
+    getProfileByIdMock: vi.fn(),
+    getCurrentInvitationMock: vi.fn(),
+    requestState: { cookie: "__Secure-neon-auth.session_token=abc" as string | null },
+  }));
 
 vi.mock("@tanstack/react-start/server", () => ({
   getRequest: () => ({
@@ -15,11 +17,13 @@ vi.mock("@tanstack/react-start/server", () => ({
 vi.mock("@/server/repositories/profiles", () => ({
   getProfileByEmail: getProfileByEmailMock,
   getProfileById: getProfileByIdMock,
+  getCurrentInvitationForEmail: getCurrentInvitationMock,
 }));
 
 import {
   getNeonAuthIdentity,
   getNeonAuthSession,
+  resolveWorkspaceAccess,
   requireNeonAuthIdentity,
 } from "../neon-auth.server";
 
@@ -85,6 +89,33 @@ describe("ClientOps account status at sign in", () => {
     neonSession();
     getProfileByEmailMock.mockResolvedValue(null);
     getProfileByIdMock.mockResolvedValue(profile());
+    getCurrentInvitationMock.mockResolvedValue(null);
+  });
+
+  it("distinguishes no profile from a pending invitation using only the current identity", async () => {
+    getProfileByIdMock.mockResolvedValue(null);
+    getCurrentInvitationMock.mockResolvedValue({
+      status: "pending",
+      expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+    });
+    await expect(resolveWorkspaceAccess()).resolves.toMatchObject({ state: "invited" });
+    expect(getCurrentInvitationMock).toHaveBeenCalledWith("ada@example.com");
+
+    getCurrentInvitationMock.mockResolvedValue(null);
+    await expect(resolveWorkspaceAccess()).resolves.toMatchObject({ state: "no_profile" });
+  });
+
+  it("does not query profile or invitation records for an anonymous request", async () => {
+    requestState.cookie = null;
+    await expect(resolveWorkspaceAccess()).resolves.toEqual({ state: "anonymous" });
+    expect(getProfileByIdMock).not.toHaveBeenCalled();
+    expect(getCurrentInvitationMock).not.toHaveBeenCalled();
+  });
+
+  it("denies suspended workspace access while preserving the state for guidance", async () => {
+    getProfileByIdMock.mockResolvedValue(profile({ status: "suspended" }));
+    await expect(resolveWorkspaceAccess()).resolves.toMatchObject({ state: "suspended" });
+    await expect(getNeonAuthSession()).resolves.toBeNull();
   });
 
   it("returns upstream identity without creating or requiring an app profile", async () => {

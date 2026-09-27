@@ -27,6 +27,7 @@ describe("admin invitation repository", () => {
     const db = fakeDatabase([
       [],
       [],
+      [],
       [
         {
           id: "invite-1",
@@ -72,7 +73,7 @@ describe("admin invitation repository", () => {
   });
 
   it("rejects a second pending invitation for the normalized email", async () => {
-    const db = fakeDatabase([[], [{ id: "existing" }]]);
+    const db = fakeDatabase([[], [], [{ id: "existing" }]]);
     const repo = createInvitationRepository({ transaction: async (work) => work(db) });
 
     await expect(
@@ -82,6 +83,23 @@ describe("admin invitation repository", () => {
       ),
     ).rejects.toThrow("pending invitation already exists");
     expect(db.calls[0]).toContain("user_invitations");
+  });
+
+  it("rejects an invitation to an existing workspace account before token delivery", async () => {
+    const db = fakeDatabase([[], [{ id: "existing-profile" }]]);
+    const repo = createInvitationRepository({ transaction: async (work) => work(db) });
+    await expect(
+      repo.createInvitation(
+        {
+          email: "existing@example.com",
+          intendedRole: "sales",
+        },
+        "actor-1",
+      ),
+    ).rejects.toThrow("administrator action");
+    expect(db.calls.some((sql) => sql.toLowerCase().includes("insert into user_invitations"))).toBe(
+      false,
+    );
   });
 
   it("previews only safe pending invitation fields and supports revoke", async () => {
@@ -114,6 +132,32 @@ describe("admin invitation repository", () => {
     expect(db.values.flat()).not.toContain("raw-token");
   });
 
+  it.each([
+    ["pending", "2026-07-23T00:00:00.000Z", "ready"],
+    ["pending", "2026-07-15T00:00:00.000Z", "expired"],
+    ["accepted", "2026-07-23T00:00:00.000Z", "used"],
+    ["revoked", "2026-07-23T00:00:00.000Z", "unavailable"],
+  ])(
+    "classifies a %s invitation without exposing email in %s state",
+    async (status, expiresAt, state) => {
+      const db = fakeDatabase([
+        [{ email: "person@example.com", intended_role: "sales", expires_at: expiresAt, status }],
+      ]);
+      const repo = createInvitationRepository({
+        transaction: async (work) => work(db),
+        now: () => new Date("2026-07-16T00:00:00.000Z"),
+      });
+      const result = await repo.getInvitationLandingState("raw-token");
+      expect(result.state).toBe(state);
+      expect(db.values.flat()).not.toContain("raw-token");
+      if (state === "ready") {
+        expect(result).toMatchObject({ preview: { email: "person@example.com" } });
+      } else {
+        expect(result).not.toHaveProperty("preview");
+      }
+    },
+  );
+
   it("accepts once, matches identity email, activates the profile, memberships, and audit atomically", async () => {
     const profile = {
       id: "profile-1",
@@ -134,6 +178,7 @@ describe("admin invitation repository", () => {
           expires_at: "2026-07-23T00:00:00.000Z",
         },
       ],
+      [],
       [profile],
       [{ id: "membership-1" }, { id: "membership-2" }],
       [{ id: "invite-1", status: "accepted" }],
@@ -158,6 +203,31 @@ describe("admin invitation repository", () => {
     expect(db.calls.some((sql) => sql.toLowerCase().includes("admin_audit_logs"))).toBe(true);
     expect(db.values.flat()).not.toContain("raw-token");
     expect(db.values.flat()).toContain(hashInvitationToken("raw-token"));
+  });
+
+  it("does not reactivate or change an existing workspace profile through an invitation", async () => {
+    const db = fakeDatabase([
+      [
+        {
+          id: "invite-1",
+          email: "person@example.com",
+          status: "pending",
+          expires_at: "2026-07-23T00:00:00.000Z",
+        },
+      ],
+      [{ id: "profile-1", status: "suspended" }],
+    ]);
+    const repo = createInvitationRepository({
+      transaction: async (work) => work(db),
+      now: () => new Date("2026-07-16T00:00:00.000Z"),
+    });
+    await expect(
+      repo.acceptInvitation("raw-token", {
+        id: "profile-1",
+        email: "person@example.com",
+      }),
+    ).rejects.toThrow("administrator action");
+    expect(db.calls.some((sql) => sql.toLowerCase().includes("insert into profiles"))).toBe(false);
   });
 
   it("rejects a mismatched email and already accepted invitation", async () => {
