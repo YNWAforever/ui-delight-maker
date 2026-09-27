@@ -44,6 +44,8 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/010_command_versions_and_receipts.sql",
       "neon/migrations/011_quote_version_integrity.sql",
       "neon/migrations/012_quote_open_approval_constraint.sql",
+      "neon/migrations/013_xero_entry_transitions.sql",
+      "neon/migrations/014_locked_job_sheet_portions.sql",
     ]);
   });
 

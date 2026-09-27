@@ -342,6 +342,12 @@ export interface JobSheetPortion {
   target_invoice_date: string | null;
   billing_type: JobSheetBillingType;
   status: JobSheetPortionStatus;
+  row_version: number;
+  xero_confirmed_at: string | null;
+  xero_confirmed_by: string | null;
+  xero_corrected_at: string | null;
+  xero_corrected_by: string | null;
+  xero_correction_reason: string | null;
   xero_invoice_number: string | null;
   xero_invoice_reference: string | null;
   xero_invoice_date: string | null;

@@ -17,6 +17,8 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/010_command_versions_and_receipts.sql",
   "neon/migrations/011_quote_version_integrity.sql",
   "neon/migrations/012_quote_open_approval_constraint.sql",
+  "neon/migrations/013_xero_entry_transitions.sql",
+  "neon/migrations/014_locked_job_sheet_portions.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
@@ -90,6 +92,12 @@ export const CLIENTOPS_REQUIRED_COLUMNS = [
   "job_sheets.quote_id",
   "job_sheets.accepted_quote_version_id",
   "job_sheet_portions.job_sheet_id",
+  "job_sheet_portions.row_version",
+  "job_sheet_portions.xero_confirmed_at",
+  "job_sheet_portions.xero_confirmed_by",
+  "job_sheet_portions.xero_corrected_at",
+  "job_sheet_portions.xero_corrected_by",
+  "job_sheet_portions.xero_correction_reason",
   "job_sheet_activity.job_sheet_id",
   "tasks.contact_id",
   "tasks.account_id",

@@ -176,12 +176,33 @@ export const JobSheetMutationSchema = z.strictObject({
   portions: z.array(JobSheetPortionSchema).max(500),
 });
 
-export const XeroReferenceSchema = z.strictObject({
-  portion_id: UuidSchema,
-  xero_invoice_number: z.string().trim().max(255).nullable().optional(),
-  xero_invoice_reference: z.string().trim().max(255).nullable().optional(),
-  xero_invoice_date: DateOnlySchema.nullable().optional(),
-  xero_notes: NotesSchema.nullable().optional(),
+export const XeroNotesSchema = z.strictObject({
+  portionId: UuidSchema,
+  notes: NotesSchema.nullable(),
+  expectedVersion: z.number().int().nonnegative(),
+  idempotencyKey: UuidSchema,
+});
+
+export const XeroConfirmSchema = z.strictObject({
+  portionId: UuidSchema,
+  invoiceNumber: z.string().trim().max(255).nullable().optional(),
+  reference: z.string().trim().max(255).nullable().optional(),
+  invoiceDate: DateOnlySchema,
+  expectedVersion: z.number().int().nonnegative(),
+  idempotencyKey: UuidSchema,
+});
+
+export const XeroCorrectSchema = z.strictObject({
+  portionId: UuidSchema,
+  expectedVersion: z.number().int().nonnegative(),
+  idempotencyKey: UuidSchema,
+  reason: z.string().trim().min(1).max(1000),
+  patch: z.strictObject({
+    status: z.enum(["planned", "entered_in_xero"]),
+    invoiceNumber: z.string().trim().max(255).nullable().optional(),
+    reference: z.string().trim().max(255).nullable().optional(),
+    invoiceDate: DateOnlySchema.nullable().optional(),
+  }),
 });
 
 export type QuoteCommercialPatchInput = z.infer<typeof QuoteCommercialPatchSchema>;

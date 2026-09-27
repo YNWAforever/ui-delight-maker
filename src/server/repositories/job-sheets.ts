@@ -36,14 +36,6 @@ export type AcceptJobSheetInput = {
   accepted_by: string;
 };
 
-export type UpdateJobSheetXeroReferenceInput = {
-  portion_id: string;
-  xero_invoice_number?: string | null;
-  xero_invoice_reference?: string | null;
-  xero_invoice_date?: string | null;
-  xero_notes?: string | null;
-};
-
 export type JobSheetDetail = {
   jobSheet: JobSheet;
   portions: JobSheetPortion[];
@@ -64,15 +56,6 @@ function readQuoteVersionLineItems(snapshot: JsonValue): QuoteLineItemRecord[] {
 
   const { line_items } = snapshot as { line_items?: JsonValue };
   return Array.isArray(line_items) ? (line_items as unknown as QuoteLineItemRecord[]) : [];
-}
-
-function normalizeOptionalText(value?: string | null): string | null {
-  if (typeof value !== "string") {
-    return value ?? null;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
 }
 
 async function listJobSheetPortions(
@@ -487,33 +470,6 @@ export async function acceptJobSheet(id: string, input: AcceptJobSheetInput): Pr
 
     return acceptedJobSheet;
   });
-}
-
-export async function updateJobSheetXeroReference(
-  input: UpdateJobSheetXeroReferenceInput,
-): Promise<JobSheetPortion> {
-  const xeroInvoiceNumber = normalizeOptionalText(input.xero_invoice_number);
-  const xeroInvoiceReference = normalizeOptionalText(input.xero_invoice_reference);
-  const xeroInvoiceDate = normalizeOptionalText(input.xero_invoice_date);
-  const xeroNotes = normalizeOptionalText(input.xero_notes);
-  const portion = await queryOne<JobSheetPortion>(
-    `
-      update job_sheet_portions
-      set xero_invoice_number = $1,
-          xero_invoice_reference = $2,
-          xero_invoice_date = $3,
-          xero_notes = $4
-      where id = $5
-      returning *
-    `,
-    [xeroInvoiceNumber, xeroInvoiceReference, xeroInvoiceDate, xeroNotes, input.portion_id],
-  );
-
-  if (!portion) {
-    throw new Error("Job sheet portion not found");
-  }
-
-  return portion;
 }
 
 type JobSheetOperationsRow = JobSheet & {

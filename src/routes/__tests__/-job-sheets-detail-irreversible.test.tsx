@@ -9,7 +9,9 @@ import type { JobSheet, JobSheetPortion } from "@/lib/types";
 
 const acceptJobSheetMock = vi.hoisted(() => vi.fn());
 const updatePortionsMock = vi.hoisted(() => vi.fn());
-const updateXeroReferenceMock = vi.hoisted(() => vi.fn());
+const updateXeroNotesMock = vi.hoisted(() => vi.fn());
+const confirmXeroEntryMock = vi.hoisted(() => vi.fn());
+const correctXeroEntryMock = vi.hoisted(() => vi.fn());
 const invalidateRouterMock = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -26,7 +28,9 @@ vi.mock("sonner", () => ({
 vi.mock("@/server-functions/job-sheets", () => ({
   acceptJobSheetForAccounting: acceptJobSheetMock,
   updateJobSheetPortions: updatePortionsMock,
-  updatePortionXeroReference: updateXeroReferenceMock,
+  updateXeroNotes: updateXeroNotesMock,
+  confirmXeroEntry: confirmXeroEntryMock,
+  correctXeroEntry: correctXeroEntryMock,
 }));
 vi.mock("@/server-functions/operations", () => ({ getJobSheetRead: vi.fn() }));
 // The reconciliation table is a read-only summary of the same portions; rendering it here
@@ -77,6 +81,12 @@ const portion = (overrides: Partial<JobSheetPortion>): JobSheetPortion => ({
   target_invoice_date: "2026-09-01",
   billing_type: "deposit",
   status: "planned",
+  row_version: 0,
+  xero_confirmed_at: null,
+  xero_confirmed_by: null,
+  xero_corrected_at: null,
+  xero_corrected_by: null,
+  xero_correction_reason: null,
   xero_invoice_number: null,
   xero_invoice_reference: null,
   xero_invoice_date: null,
@@ -111,7 +121,9 @@ function renderDetail(portions: JobSheetPortion[]) {
 beforeEach(() => {
   acceptJobSheetMock.mockReset().mockResolvedValue(undefined);
   updatePortionsMock.mockReset();
-  updateXeroReferenceMock.mockReset();
+  updateXeroNotesMock.mockReset();
+  confirmXeroEntryMock.mockReset();
+  correctXeroEntryMock.mockReset();
   invalidateRouterMock.mockClear();
 });
 
@@ -166,28 +178,91 @@ describe("Accept & lock is confirmed, and the confirmation says what is lost", (
     expect(acceptJobSheetMock).not.toHaveBeenCalled();
   });
 
-  it("confirms clearing the last Xero reference, because that quietly unlocks the money", async () => {
-    // Clearing all four fields flips the portion from Entered in Xero back to Planned, which
-    // re-opens its amount for editing. Same shape of loss as accepting, opposite direction —
-    // so it gets the same gate rather than a silent save.
+  it("saves accounting notes without confirming an invoice", async () => {
+    updateXeroNotesMock.mockResolvedValue(portion({ xero_notes: "Awaiting PO", row_version: 1 }));
+    renderDetail([portion({})]);
+    fireEvent.change(screen.getByLabelText("Accounting notes"), {
+      target: { value: "Awaiting PO" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save note" }));
+    await waitFor(() => expect(updateXeroNotesMock).toHaveBeenCalledTimes(1));
+    expect(updateXeroNotesMock).toHaveBeenCalledWith({
+      data: {
+        portionId: "p-1",
+        notes: "Awaiting PO",
+        expectedVersion: 0,
+        idempotencyKey: expect.any(String),
+      },
+    });
+    expect(confirmXeroEntryMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("records invoice evidence only after explicit confirmation", async () => {
+    confirmXeroEntryMock.mockResolvedValue(
+      portion({
+        status: "entered_in_xero",
+        xero_invoice_number: "INV-77",
+        xero_invoice_date: "2026-09-27",
+        row_version: 1,
+      }),
+    );
+    renderDetail([portion({})]);
+    fireEvent.change(screen.getByLabelText("Invoice number"), {
+      target: { value: "INV-77" },
+    });
+    fireEvent.change(screen.getByLabelText("Invoice date"), {
+      target: { value: "2026-09-27" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Record manual entry" }));
+    expect(confirmXeroEntryMock).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog.textContent).toMatch(/does not contact Xero/i);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Record manual entry" }));
+    await waitFor(() => expect(confirmXeroEntryMock).toHaveBeenCalledTimes(1));
+    expect(confirmXeroEntryMock).toHaveBeenCalledWith({
+      data: {
+        portionId: "p-1",
+        invoiceNumber: "INV-77",
+        reference: "",
+        invoiceDate: "2026-09-27",
+        expectedVersion: 0,
+        idempotencyKey: expect.any(String),
+      },
+    });
+  });
+
+  it("requires a reason and confirmation before reopening recorded evidence", async () => {
+    correctXeroEntryMock.mockResolvedValue(portion({ status: "planned", row_version: 2 }));
     renderDetail([
       portion({
         status: "entered_in_xero",
         xero_invoice_number: "INV-77",
-        xero_invoice_reference: "REF-77",
+        xero_invoice_date: "2026-09-27",
+        row_version: 1,
       }),
     ]);
-
-    fireEvent.change(screen.getByLabelText("Invoice number"), { target: { value: "" } });
-    fireEvent.change(screen.getByLabelText("Reference"), { target: { value: "" } });
-
-    fireEvent.click(screen.getByRole("button", { name: /Save Xero reference/i }));
-
-    expect(updateXeroReferenceMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Reopen after void" }));
+    expect(correctXeroEntryMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/Enter a correction reason/i)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Correction or void reason"), {
+      target: { value: "Voided in Xero" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reopen after void" }));
     const dialog = await screen.findByRole("alertdialog");
-    const text = dialog.textContent ?? "";
-    expect(text).toMatch(/returns to Planned/i);
-    expect(text).toMatch(/editable again/i);
+    expect(dialog.textContent).toMatch(/does not void anything in Xero/i);
+    expect(correctXeroEntryMock).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Reopen with reason" }));
+    await waitFor(() => expect(correctXeroEntryMock).toHaveBeenCalledTimes(1));
+    expect(correctXeroEntryMock).toHaveBeenCalledWith({
+      data: {
+        portionId: "p-1",
+        expectedVersion: 1,
+        idempotencyKey: expect.any(String),
+        reason: "Voided in Xero",
+        patch: { status: "planned" },
+      },
+    });
   });
 });
 
@@ -208,7 +283,9 @@ describe("Xero-entered portions are commercially read-only, with the reason on s
     // Disabled without a reason is its own defect: the reader sees a dead field and no
     // account of who settled it or where to change it.
     expect(
-      screen.getByText(/Amount, billing type and target invoice date are settled in Xero/i),
+      screen.getByText(
+        /Recorded invoice entries lock the amount, billing type and target invoice date here/i,
+      ),
     ).toBeTruthy();
   });
 
@@ -228,7 +305,9 @@ describe("Xero-entered portions are commercially read-only, with the reason on s
 
     expect((screen.getByLabelText("Amount") as HTMLInputElement).disabled).toBe(false);
     expect(
-      screen.queryByText(/Amount, billing type and target invoice date are settled in Xero/i),
+      screen.queryByText(
+        /Recorded invoice entries lock the amount, billing type and target invoice date here/i,
+      ),
     ).toBeNull();
   });
 
