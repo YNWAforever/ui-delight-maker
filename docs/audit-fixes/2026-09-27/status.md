@@ -1,6 +1,6 @@
 # ClientOps audit remediation status
 
-Baseline: fetched `origin/main` = audit SHA `2904faa502f7494173f48f412875c1d0a3aba674` on 2026-09-27 (HKT), reconfirmed before PR creation. Work branch: `codex/clientops-audit-fixes`; [draft Wave 1 PR #82](https://github.com/YNWAforever/ui-delight-maker/pull/82). See [baseline](baseline.md) and the preserved [source plan](source/ClientOps_Codex_GPT6_Sol_Implementation_Plan_2026-09-27_zhHK.md).
+Baseline: fetched `origin/main` = audit SHA `2904faa502f7494173f48f412875c1d0a3aba674` on 2026-09-27 (HKT), reconfirmed before PR creation. Work branches: `codex/clientops-audit-fixes` (Wave 1) and `codex/clientops-approval-state` (T05); [draft Wave 1 PR #82](https://github.com/YNWAforever/ui-delight-maker/pull/82). See [baseline](baseline.md) and the preserved [source plan](source/ClientOps_Codex_GPT6_Sol_Implementation_Plan_2026-09-27_zhHK.md).
 
 Allowed finding states: `open`, `in_progress`, `verified_fixed`, `already_fixed_with_evidence`, `blocked_external`. A code change alone does not qualify for `verified_fixed`; use positive behavior, real PostgreSQL when applicable, and role UI evidence when applicable.
 
@@ -13,7 +13,7 @@ Allowed finding states: `open`, `in_progress`, `verified_fixed`, `already_fixed_
 | T02 Request authorization context | complete | `93047f8` | 82/82 affected tests on disposable PostgreSQL, including 7-role SQL/evaluator parity and 14 migrated resource predicates; TypeScript, lint, pure Vite build exit 0; [T02 evidence](t02-evidence.md) | Authenticated role UI and true runtime auth-query timing unavailable |
 | T03 Read surface visibility | in_progress | `8f9d672`, `1db2945`, `e0c92b2`, `8b8d65e`, `e70ca82` | Real PostgreSQL cross-surface 7/7; full suite 276 files/1,970 tests, 0 skip; TypeScript, lint, pure Vite build exit 0; [T03 evidence](t03-evidence.md) | Seven-role authenticated UI/network smoke unavailable; CO-03 pagination remains T12 |
 | T04 Import row authorization | complete | `47d20af` | Red before-fix Lead update leak; 9/9 migrated PostgreSQL row authorization cases; focused imports 35/35; full suite 277 files/1,980 tests, 0 skip at 2 workers; TypeScript, touched-file lint and pure Vite build exit 0; [T04 evidence](t04-evidence.md) | Authenticated multi-role UI smoke unavailable; build wrapper migration/seed blocked on isolated Neon WebSocket compatibility |
-| T05 Approval terminal state and receipts | open | — | — | — |
+| T05 Approval terminal state and receipts | complete | `fe181bf` | Red two-connection overwrite reproduced; 9/9 new real PostgreSQL cases; full suite 278 files/1,989 tests, 0 skip; TypeScript, lint, pure Vite build exit 0; [T05 evidence](t05-evidence.md) | Seven-role browser UAT unavailable; T07 quote lifecycle remains separate |
 | T06 Quote immutability | open | — | — | — |
 | T07 Atomic quote lifecycle | open | — | — | — |
 | T08 Xero state | open | — | — | — |
@@ -43,8 +43,8 @@ The latest main is identical to the audited commit. The audit's code findings th
 | CO-03 Approval and sheet lists | P1 | T03, T12 | in_progress | `1db2945`, `e0c92b2`; real PostgreSQL list/count/approval context redaction pass; route loader 35/35; [evidence](t03-evidence.md) | Authenticated role UI and T12 pagination pending |
 | CO-04 Import write authorization | P1 | T04 | in_progress | `47d20af`; real PostgreSQL Lead/Client/Event side-effect denial, stale owner/status, rollback, repeat import and preview revocation cases pass; [evidence](t04-evidence.md) | Authenticated role UI/network smoke pending |
 | CO-05 Quote commercial immutability | P1 | T06 | open | audit probe 4; real DB pending | role UI pending |
-| CO-06 Approval terminal state | P1 | T05 | open | audit probe 3; real DB pending | role UI pending |
-| CO-07 Quote lifecycle atomicity | P1 | T07 | open | audit code path; real DB pending | role UI pending |
+| CO-06 Approval terminal state | P1 | T05 | in_progress | `fe181bf`; real PostgreSQL two-connection decision, retry, rollback, terminal SQL guard and agent-run release pass; [evidence](t05-evidence.md) | Authenticated role UI pending |
+| CO-07 Quote lifecycle atomicity | P1 | T05, T07 | in_progress | `fe181bf` provides versioned approval command/receipt; quote lifecycle transaction remains T07 | Real quote issue/accept rollback and role UI pending |
 | CO-08 Manager approve versus issue | P1 | T07 | open | audit probe 2; real DB pending | two-role UI pending |
 | CO-09 Xero note and state | P1 | T08 | open | audit probe 5; real DB pending | accounting UI pending |
 | CO-10 Currency and period | P1 | T09 | open | audit code path; real DB pending | role UI pending |
