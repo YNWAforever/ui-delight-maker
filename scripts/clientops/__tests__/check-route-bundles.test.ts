@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   assertLoginInitialJsBudget,
+  findClientManifest,
   assertRouteChunkBudgets,
   readRouteChunkMeasurements,
 } from "../check-route-bundles";
@@ -69,6 +70,27 @@ afterEach(() => {
 });
 
 describe("route bundle budgets", () => {
+  it("selects the client manifest when a server manifest is present", () => {
+    const root = mkdtempSync(join(tmpdir(), "clientops-dual-manifest-"));
+    temporaryDirectories.push(root);
+    const server = join(root, "dist", "server", ".vite", "manifest.json");
+    const client = join(root, "dist", "client", ".vite", "manifest.json");
+    mkdirSync(join(root, "dist", "server", ".vite"), { recursive: true });
+    mkdirSync(join(root, "dist", "client", ".vite"), { recursive: true });
+    writeFileSync(server, "{}");
+    writeFileSync(client, "{}");
+    expect(findClientManifest(root)).toBe(client);
+  });
+
+  it("does not treat a server-only manifest as browser transfer evidence", () => {
+    const root = mkdtempSync(join(tmpdir(), "clientops-server-only-"));
+    temporaryDirectories.push(root);
+    const serverDirectory = join(root, "dist", "server", ".vite");
+    mkdirSync(serverDirectory, { recursive: true });
+    writeFileSync(join(serverDirectory, "manifest.json"), "{}");
+    expect(() => findClientManifest(root)).toThrow(/client manifest/i);
+  });
+
   it("reads emitted route chunk sizes and accepts a route below budget", () => {
     const measurements = readRouteChunkMeasurements(createManifestFixture());
 
