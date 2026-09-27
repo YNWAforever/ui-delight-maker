@@ -13,19 +13,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * consistency bug rather than a missing feature.
  */
 
-const { createTouchpointMock, toastErrorMock, toastSuccessMock } = vi.hoisted(() => ({
-  createTouchpointMock: vi.fn(),
-  toastErrorMock: vi.fn(),
-  toastSuccessMock: vi.fn(),
-}));
+const { createTouchpointMock, tidyTouchpointNoteMock, toastErrorMock, toastSuccessMock } =
+  vi.hoisted(() => ({
+    createTouchpointMock: vi.fn(),
+    tidyTouchpointNoteMock: vi.fn(),
+    toastErrorMock: vi.fn(),
+    toastSuccessMock: vi.fn(),
+  }));
 
 vi.mock("sonner", () => ({
   toast: { error: toastErrorMock, success: toastSuccessMock, message: vi.fn() },
 }));
 vi.mock("@/server-functions/touchpoints", () => ({ createTouchpoint: createTouchpointMock }));
 vi.mock("@/server-functions/ai-note-tidy", () => ({
-  isAiNoteTidyAvailable: () => Promise.resolve({ available: false }),
-  tidyTouchpointNote: vi.fn(),
+  isAiNoteTidyAvailable: () => Promise.resolve({ available: true }),
+  tidyTouchpointNote: tidyTouchpointNoteMock,
 }));
 
 import { TouchpointLogger } from "../touchpoint-logger";
@@ -56,6 +58,7 @@ function renderLogger(onLogged = vi.fn()) {
 
 beforeEach(() => {
   createTouchpointMock.mockReset();
+  tidyTouchpointNoteMock.mockReset();
   toastErrorMock.mockReset();
   toastSuccessMock.mockReset();
 });
@@ -63,6 +66,30 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("touchpoint logger", () => {
+  it("retries the same note with the same idempotency key and changes key after an edit", async () => {
+    tidyTouchpointNoteMock
+      .mockRejectedValueOnce(new Error("temporary provider error"))
+      .mockResolvedValueOnce({ tidied: "Tidied note." })
+      .mockResolvedValueOnce({ tidied: "Tidied new note." });
+    renderLogger();
+    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "Original note" } });
+    const button = await screen.findByRole("button", { name: "Tidy with AI" });
+    fireEvent.click(button);
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledTimes(1));
+    fireEvent.click(button);
+    await waitFor(() => expect(tidyTouchpointNoteMock).toHaveBeenCalledTimes(2));
+    const first = tidyTouchpointNoteMock.mock.calls[0][0].data;
+    const second = tidyTouchpointNoteMock.mock.calls[1][0].data;
+    expect(first.idempotencyKey).toBeTruthy();
+    expect(second.idempotencyKey).toBe(first.idempotencyKey);
+    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "New note" } });
+    fireEvent.click(button);
+    await waitFor(() => expect(tidyTouchpointNoteMock).toHaveBeenCalledTimes(3));
+    expect(tidyTouchpointNoteMock.mock.calls[2][0].data.idempotencyKey).not.toBe(
+      first.idempotencyKey,
+    );
+  });
+
   it("writes one touchpoint however many times Save is clicked", async () => {
     const request = deferred<unknown>();
     createTouchpointMock.mockReturnValue(request.promise);

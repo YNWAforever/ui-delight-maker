@@ -423,6 +423,16 @@ export interface AgentRun {
   status: AgentRunStatus;
   duration_ms: number | null;
   tokens_used: number | null;
+  usage_data?: {
+    inputTokens: number | null;
+    outputTokens: number | null;
+    totalTokens: number | null;
+    cost: number | null;
+    currency: string | null;
+    source: string | null;
+  } | null;
+  idempotency_key?: string | null;
+  policy_version_id?: string | null;
   model_used: string;
   confidence_score: number | null;
   human_review_required: boolean;

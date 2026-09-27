@@ -1,6 +1,7 @@
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
 import { AdminError } from "@/lib/admin/errors";
 import type { AgentRun, AgentToolCall } from "@/lib/types";
+import type { AIUsage } from "@/server/workflows/ai-invocation.server";
 
 export type WorkflowType =
   | "qualify_lead"
@@ -152,6 +153,8 @@ export async function updateAgentRunResult(
     confidence_score?: number | null;
     human_review_required?: boolean;
     tokens_used?: number | null;
+    usage_data?: AIUsage | null;
+    outcome_code?: string | null;
     model_used?: string | null;
   },
   db?: Queryable,
@@ -174,7 +177,9 @@ export async function updateAgentRunResult(
         -- back.
         duration_ms = greatest(0, round(extract(epoch from (now() - created_at)) * 1000))::integer,
         tokens_used = $7,
-        model_used = coalesce($8, model_used)
+        model_used = coalesce($8, model_used),
+        usage_data = coalesce($9::jsonb, usage_data),
+        outcome_code = coalesce($10, outcome_code)
       where id = $1 and status in ('running','waiting_approval')
       returning *
     `,
@@ -187,6 +192,8 @@ export async function updateAgentRunResult(
       input.human_review_required ?? false,
       input.tokens_used ?? null,
       input.model_used ?? null,
+      input.usage_data ? JSON.stringify(input.usage_data) : null,
+      input.outcome_code ?? null,
     ],
     db,
   );

@@ -41,7 +41,7 @@ describe("updateAgentRunResult", () => {
   it("passes the remaining values in the renumbered positions", async () => {
     // The UPDATE uses positional parameters and the values array is unknown[], so TypeScript
     // cannot catch a shuffle here. Removing duration_ms moved tokens_used to $7 and
-    // model_used to $8.
+    // model_used to $8; optional provider usage/outcome occupy $9/$10.
     await updateAgentRunResult("run-1", {
       status: "completed",
       output_summary: "done",
@@ -61,6 +61,8 @@ describe("updateAgentRunResult", () => {
       false,
       1234,
       "anthropic/claude-sonnet-4-6",
+      null,
+      null,
     ]);
   });
 });

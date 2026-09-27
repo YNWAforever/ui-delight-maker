@@ -89,6 +89,16 @@ export type WorkflowRequestPayload = {
   agent_run_id: string;
 };
 
+/** Provider-reported usage only; missing fields stay unknown. */
+export type ProviderUsage = {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  cost?: number;
+  currency?: string;
+  source: string;
+};
+
 export type QualificationWritebackPayload = {
   lead_id: string;
   agent_run_id: string;
@@ -97,6 +107,7 @@ export type QualificationWritebackPayload = {
   output_summary: string;
   confidence_score: number;
   tokens_used?: number;
+  usage?: ProviderUsage;
   model_used?: string;
 };
 
@@ -108,6 +119,7 @@ export type ReplyDraftWritebackPayload = {
   confidence_score: number;
   risk_notes?: string[];
   tokens_used?: number;
+  usage?: ProviderUsage;
   model_used?: string;
 };
 
@@ -131,6 +143,7 @@ export type QuoteDraftWritebackPayload = {
   context_summary?: string | null;
   confidence_score: number;
   tokens_used?: number;
+  usage?: ProviderUsage;
   model_used?: string;
 };
 
@@ -175,6 +188,7 @@ export type ScoreRenewalRiskWritebackPayload = {
   confidence: number;
   output_summary: string;
   tokens_used?: number;
+  usage?: ProviderUsage;
   model_used?: string;
 };
 
@@ -212,5 +226,6 @@ export type RelationshipIntelligenceWritebackPayload = {
   }>;
   confidence_score: number;
   tokens_used?: number;
+  usage?: ProviderUsage;
   model_used?: string;
 };

@@ -20,6 +20,14 @@ import type {
  */
 
 const id = z.string().trim().min(1);
+const providerUsage = z.object({
+  inputTokens: z.number().finite().nonnegative().optional(),
+  outputTokens: z.number().finite().nonnegative().optional(),
+  totalTokens: z.number().finite().nonnegative().optional(),
+  cost: z.number().finite().nonnegative().optional(),
+  currency: z.string().trim().min(1).optional(),
+  source: z.string().trim().min(1),
+});
 
 export const qualificationWritebackSchema = z.object({
   lead_id: id,
@@ -29,6 +37,7 @@ export const qualificationWritebackSchema = z.object({
   output_summary: z.string(),
   confidence_score: z.number().finite(),
   tokens_used: z.number().finite().optional(),
+  usage: providerUsage.optional(),
   model_used: z.string().optional(),
 });
 
@@ -40,6 +49,7 @@ export const replyDraftWritebackSchema = z.object({
   confidence_score: z.number().finite(),
   risk_notes: z.array(z.string()).optional(),
   tokens_used: z.number().finite().optional(),
+  usage: providerUsage.optional(),
   model_used: z.string().optional(),
 });
 
@@ -65,6 +75,7 @@ export const quoteDraftWritebackSchema = z.object({
   context_summary: z.string().nullable().optional(),
   confidence_score: z.number().finite(),
   tokens_used: z.number().finite().optional(),
+  usage: providerUsage.optional(),
   model_used: z.string().optional(),
 });
 
@@ -78,6 +89,7 @@ export const scoreRenewalRiskWritebackSchema = z.object({
   confidence: z.number().finite(),
   output_summary: z.string(),
   tokens_used: z.number().finite().optional(),
+  usage: providerUsage.optional(),
   model_used: z.string().optional(),
 });
 

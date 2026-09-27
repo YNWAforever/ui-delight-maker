@@ -1052,6 +1052,44 @@ describe("workflow writebacks", () => {
         mocks.fakeDb,
       );
     });
+    it("stores provider-reported usage without inventing cost when absent", async () => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "run-usage",
+        status: "running",
+        output_data: null,
+        subject_type: "account",
+        subject_id: "account-usage",
+      });
+      mocks.upsertRelationshipSignalsMock.mockResolvedValue([]);
+      await writeRelationshipIntelligenceResult({
+        account_id: "account-usage",
+        agent_run_id: "run-usage",
+        output_summary: "Analyzed relationship health.",
+        next_action: null,
+        signals: [],
+        confidence_score: 0.81,
+        usage: {
+          inputTokens: 17,
+          outputTokens: 8,
+          totalTokens: 25,
+          source: "openrouter",
+        },
+      });
+      expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
+        "run-usage",
+        expect.objectContaining({
+          tokens_used: 25,
+          usage_data: expect.objectContaining({
+            inputTokens: 17,
+            outputTokens: 8,
+            totalTokens: 25,
+            cost: null,
+            source: "openrouter",
+          }),
+        }),
+        mocks.fakeDb,
+      );
+    });
   });
 
   // Two agents have no parking path at all, so `human_approval` has nothing to gate for them
