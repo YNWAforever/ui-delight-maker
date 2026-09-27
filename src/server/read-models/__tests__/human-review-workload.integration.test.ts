@@ -297,7 +297,12 @@ describe("human_review_workload, proven against a real database", () => {
       const reviewer = await seedProfile(`Longest Wait ${randomUUID().slice(0, 8)}`);
       await seedApproval({ assignedTo: reviewer, status: "pending", createdAt: daysAgo(2) });
       await seedApproval({ assignedTo: reviewer, status: "pending", createdAt: daysAgo(9) });
-      await seedApproval({ assignedTo: reviewer, status: "pending", createdAt: daysAgo(40) });
+      // Use the database clock for an exact day boundary. The host/container clocks can
+      // differ by milliseconds, which otherwise floors 40 days to 39.
+      const oldestAt = (
+        await db().query<{ created_at: Date }>("select now() - interval '40 days' as created_at")
+      ).rows[0].created_at.toISOString();
+      await seedApproval({ assignedTo: reviewer, status: "pending", createdAt: oldestAt });
 
       const rows = await loadRows();
       const name = await profileName(reviewer);
