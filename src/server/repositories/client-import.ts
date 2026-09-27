@@ -1,5 +1,8 @@
 // src/server/repositories/client-import.ts
 import { transaction } from "@/server/db/neon.server";
+import { AdminError } from "@/lib/admin/errors";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import { authorizeImportRow, type ImportWriteEffect } from "@/server/imports/authorize-row.server";
 import { createClient } from "@/server/repositories/clients";
 import { createClientContact } from "@/server/repositories/client-contacts";
 import { createEngagement } from "@/server/repositories/engagements";
@@ -26,6 +29,7 @@ function normalizeBillingPeriod(value: string | undefined): EngagementBillingPer
 export async function commitClientImport(
   rows: ImportRow[],
   actorId: string,
+  ctx: RequestAuthorization,
 ): Promise<ImportCommitResult> {
   return transaction(async (db) => {
     const result: ImportCommitResult = { created: 0, updated: 0, skipped: 0 };
@@ -33,86 +37,130 @@ export async function commitClientImport(
 
     for (const row of rows) {
       const key = buildClientDedupeKey(row.company_name);
-      let clientId = clientIdByKey.get(key);
+      const firstOccurrence = !clientIdByKey.has(key);
+      const matched = await db.query<{ id: string; industry: string | null; tier: string | null }>(
+        firstOccurrence
+          ? "select id, industry, tier from clients where trim(lower(company_name)) = $1 limit 2 for update"
+          : "select id, industry, tier from clients where id = $1 for update",
+        [firstOccurrence ? key : clientIdByKey.get(key)],
+      );
+      if (matched.rows.length > 1) throw new AdminError("CONFLICT", "Ambiguous import match");
+      const existing = matched.rows[0];
+      if (!existing && !firstOccurrence) {
+        throw new AdminError("STALE_ADMIN_STATE", "Import target changed");
+      }
+      const clientId = existing?.id;
+      const nextIndustry = row.industry?.trim() || null;
+      const nextTier = row.tier?.trim() || null;
+      const changeClient =
+        firstOccurrence &&
+        Boolean(existing) &&
+        ((nextIndustry !== null && nextIndustry !== existing?.industry) ||
+          (nextTier !== null && nextTier !== existing?.tier));
+      const target = clientId ? { type: "client" as const, id: clientId } : undefined;
 
-      if (!clientId) {
-        // Match on trim(lower(...)) on both sides so a client whose stored
-        // company_name has stray leading/trailing whitespace (a real
-        // possibility elsewhere in this app — see the whitespace-trim fix in
-        // convertWonLeadToEngagement) still matches instead of creating a
-        // duplicate client.
-        const existing = await db.query<{ id: string }>(
-          "select id from clients where trim(lower(company_name)) = $1",
-          [key],
-        );
-        if (existing.rows[0]) {
-          clientId = existing.rows[0].id;
-          await db.query(
-            "update clients set industry = coalesce(nullif($2, ''), industry), tier = coalesce(nullif($3, ''), tier) where id = $1",
-            [clientId, row.industry ?? "", row.tier ?? ""],
-          );
-          result.updated += 1;
-        } else {
-          const created = await createClient(
-            {
-              company_name: row.company_name,
-              industry: row.industry || undefined,
-              tier: (row.tier || undefined) as Client["tier"] | undefined,
-            },
-            db,
-          );
-          clientId = created.id;
-          result.created += 1;
-        }
-        clientIdByKey.set(key, clientId);
+      const existingContact =
+        clientId && row.contact_email
+          ? (
+              await db.query<{ id: string }>(
+                "select id from client_contacts where client_id = $1 and lower(email) = lower($2) for update",
+                [clientId, row.contact_email],
+              )
+            ).rows[0]
+          : null;
+      const addContact = Boolean(row.contact_email && !existingContact);
+
+      const product = row.product_name
+        ? (
+            await db.query<{ id: string; default_term_months: number | null }>(
+              "select id, default_term_months from products where name = $1 and active = true",
+              [row.product_name],
+            )
+          ).rows[0]
+        : null;
+      if (row.product_name && !product) {
+        throw new AdminError("STALE_ADMIN_STATE", "Import product changed");
+      }
+      const existingEngagement =
+        clientId && product && row.start_date
+          ? (
+              await db.query<{ id: string }>(
+                "select id from engagements where client_id = $1 and product_id = $2 and start_date = $3 for update",
+                [clientId, product.id, row.start_date],
+              )
+            ).rows[0]
+          : null;
+      const addEngagement = Boolean(product && row.start_date && !existingEngagement);
+      const owner =
+        addEngagement && row.owner_email
+          ? (
+              await db.query<{ id: string }>(
+                "select id from profiles where email = $1 and status = 'active'",
+                [row.owner_email],
+              )
+            ).rows[0]
+          : null;
+      if (addEngagement && row.owner_email && !owner) {
+        throw new AdminError("STALE_ADMIN_STATE", "Import owner changed");
       }
 
-      if (row.contact_email) {
-        const existingContact = await db.query<{ id: string }>(
-          "select id from client_contacts where client_id = $1 and lower(email) = lower($2)",
-          [clientId, row.contact_email],
-        );
-        if (!existingContact.rows[0]) {
-          await createClientContact(
-            { client_id: clientId, name: row.contact_name || "Unnamed", email: row.contact_email },
-            db,
-          );
-        }
-      }
+      const effects: ImportWriteEffect[] = clientId
+        ? [{ capability: "accounts.view", resource: target }]
+        : [{ capability: "accounts.create" }];
+      if (changeClient && target) effects.push({ capability: "accounts.update", resource: target });
+      if (addContact) effects.push({ capability: "contacts.create", resource: target });
+      if (addEngagement) effects.push({ capability: "engagements.create", resource: target });
+      const authorization = await authorizeImportRow(ctx, { effects }, db);
+      if (!authorization.allowed) throw new AdminError("FORBIDDEN", "Import row is not authorized");
 
-      if (row.product_name) {
-        const product = await db.query<{ id: string; default_term_months: number | null }>(
-          "select id, default_term_months from products where name = $1",
-          [row.product_name],
+      let resolvedClientId = clientId;
+      if (!resolvedClientId) {
+        const created = await createClient(
+          {
+            company_name: row.company_name,
+            industry: row.industry || undefined,
+            tier: (row.tier || undefined) as Client["tier"] | undefined,
+          },
+          db,
         );
-        const productId = product.rows[0]?.id;
-        if (productId && row.start_date) {
-          const owner = row.owner_email
-            ? await db.query<{ id: string }>("select id from profiles where email = $1", [
-                row.owner_email,
-              ])
-            : { rows: [] };
-          const existingEngagement = await db.query<{ id: string }>(
-            "select id from engagements where client_id = $1 and product_id = $2 and start_date = $3",
-            [clientId, productId, row.start_date],
-          );
-          if (!existingEngagement.rows[0]) {
-            const termMonths = product.rows[0]?.default_term_months ?? DEFAULT_TERM_MONTHS;
-            const renewalDate = addMonthsToDateString(row.start_date, termMonths);
-            await createEngagement(
-              {
-                client_id: clientId,
-                product_id: productId,
-                owner: owner.rows[0]?.id,
-                value: row.value ? Number(row.value) : undefined,
-                billing_period: normalizeBillingPeriod(row.billing_period),
-                start_date: row.start_date,
-                renewal_date: renewalDate,
-              },
-              db,
-            );
-          }
-        }
+        resolvedClientId = created.id;
+        result.created += 1;
+      } else if (changeClient) {
+        await db.query(
+          "update clients set industry = coalesce($2, industry), tier = coalesce($3, tier) where id = $1",
+          [resolvedClientId, nextIndustry, nextTier],
+        );
+        if (firstOccurrence) result.updated += 1;
+      } else if (firstOccurrence) {
+        if (addContact || addEngagement) result.updated += 1;
+        else result.skipped += 1;
+      }
+      clientIdByKey.set(key, resolvedClientId);
+
+      if (addContact) {
+        await createClientContact(
+          {
+            client_id: resolvedClientId,
+            name: row.contact_name || "Unnamed",
+            email: row.contact_email,
+          },
+          db,
+        );
+      }
+      if (addEngagement && product && row.start_date) {
+        const termMonths = product.default_term_months ?? DEFAULT_TERM_MONTHS;
+        await createEngagement(
+          {
+            client_id: resolvedClientId,
+            product_id: product.id,
+            owner: owner?.id,
+            value: row.value ? Number(row.value) : undefined,
+            billing_period: normalizeBillingPeriod(row.billing_period),
+            start_date: row.start_date,
+            renewal_date: addMonthsToDateString(row.start_date, termMonths),
+          },
+          db,
+        );
       }
     }
 
@@ -123,7 +171,6 @@ export async function commitClientImport(
       `,
       [actorId, JSON.stringify(result)],
     );
-
     return result;
   });
 }

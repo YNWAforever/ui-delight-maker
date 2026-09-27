@@ -1,5 +1,9 @@
 import { parseOperationInput } from "@/lib/operations/errors";
-import { requireCapability } from "@/server/auth/authorization.server";
+import {
+  loadRequestAuthorization,
+  requireAnyCapability,
+  requireCapability,
+} from "@/server/auth/authorization.server";
 // src/server-functions/client-import.ts
 import { createServerFn } from "@tanstack/react-start";
 import { ImportRowsSchema } from "@/lib/operations/input-schemas";
@@ -32,8 +36,13 @@ export const validateClientImportRows = createServerFn({ method: "POST" })
 export const commitClientImportFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => parseOperationInput(ImportRowsSchema, data))
   .handler(async ({ data }) => {
-    await requireCapability("accounts.create");
     const session = await requireNeonAuthSession();
+    const authorization = await loadRequestAuthorization(session);
+    await requireAnyCapability(
+      ["accounts.create", "accounts.update", "contacts.create", "engagements.create"],
+      {},
+      authorization,
+    );
     // Defense in depth: this endpoint is gated behind an authenticated
     // session, and the wizard UI only ever sends the `valid` subset from an
     // earlier validateClientImportRows call — but re-validating here is cheap
@@ -42,5 +51,5 @@ export const commitClientImportFn = createServerFn({ method: "POST" })
     // steps) without trusting whatever rows the client happens to send.
     const context = await loadValidationContext();
     const { valid } = validateImportRows(data.rows, context);
-    return commitClientImport(valid, session.profile.id);
+    return commitClientImport(valid, session.profile.id, authorization);
   });

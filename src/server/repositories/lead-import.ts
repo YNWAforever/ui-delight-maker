@@ -1,4 +1,7 @@
 import { transaction } from "@/server/db/neon.server";
+import { AdminError } from "@/lib/admin/errors";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import { authorizeImportRow, type ImportWriteEffect } from "@/server/imports/authorize-row.server";
 import { normalizeKeyPart, type ImportRow } from "@/lib/csv-import";
 import type { ImportCommitResult } from "@/server/repositories/client-import";
 
@@ -19,6 +22,7 @@ type ExistingLead = { id: string } & Record<FillableColumn, string | null>;
 export async function commitLeadImport(
   rows: ImportRow[],
   actorId: string,
+  ctx: RequestAuthorization,
 ): Promise<ImportCommitResult> {
   return transaction(async (db) => {
     const result: ImportCommitResult = { created: 0, updated: 0, skipped: 0 };
@@ -38,13 +42,22 @@ export async function commitLeadImport(
           from leads
           where trim(lower(company_name)) = $1
             and trim(lower(coalesce(contact_email, ''))) = $2
-          limit 1
+          limit 1 for update
         `,
         [normalizeKeyPart(company), normalizeKeyPart(email)],
       );
 
       const found = existing.rows[0];
       if (!found) {
+        const authorization = await authorizeImportRow(
+          ctx,
+          {
+            effects: [{ capability: "leads.create" }],
+          },
+          db,
+        );
+        if (!authorization.allowed)
+          throw new AdminError("FORBIDDEN", "Import row is not authorized");
         const ownerId = row.owner_email
           ? (
               await db.query<{ id: string }>("select id from profiles where email = $1", [
@@ -79,6 +92,20 @@ export async function commitLeadImport(
       const fills = FILLABLE_COLUMNS.filter(
         (column) => !found[column] && (row[column] ?? "").trim() !== "",
       );
+
+      const effects: ImportWriteEffect[] = [
+        { capability: "leads.view", resource: { type: "lead", id: found.id } },
+        ...(fills.length > 0
+          ? [
+              {
+                capability: "leads.update" as const,
+                resource: { type: "lead" as const, id: found.id },
+              },
+            ]
+          : []),
+      ];
+      const authorization = await authorizeImportRow(ctx, { effects }, db);
+      if (!authorization.allowed) throw new AdminError("FORBIDDEN", "Import row is not authorized");
 
       if (fills.length === 0) {
         result.skipped += 1;

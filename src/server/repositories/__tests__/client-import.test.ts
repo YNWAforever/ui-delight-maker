@@ -1,3 +1,4 @@
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -28,7 +29,12 @@ vi.mock("@/server/repositories/engagements", () => ({
   createEngagement: mocks.createEngagementMock,
 }));
 
+vi.mock("@/server/imports/authorize-row.server", () => ({
+  authorizeImportRow: async () => ({ allowed: true }),
+}));
+
 import { commitClientImport } from "@/server/repositories/client-import";
+const context = {} as RequestAuthorization;
 import type { ImportRow } from "@/lib/csv-import";
 
 /**
@@ -45,7 +51,13 @@ function stubDatabase(world: {
   mocks.fakeDb.query.mockImplementation(async (text: string, values: readonly unknown[] = []) => {
     if (text.includes("from clients")) {
       const match = (world.clients ?? []).find((client) => client.key === values[0]);
-      return { rows: match ? [{ id: match.id }] : [] };
+      return {
+        rows: match
+          ? [{ id: match.id }]
+          : String(values[0]).startsWith("client-")
+            ? [{ id: values[0] }]
+            : [],
+      };
     }
     if (text.includes("update clients")) return { rows: [] };
     if (text.includes("from client_contacts")) {
@@ -97,6 +109,7 @@ describe("commitClientImport", () => {
     const result = await commitClientImport(
       [row({ company_name: "Apex CRM" }), row({ company_name: "  apex crm  " })],
       "user-1",
+      context,
     );
 
     expect(mocks.createClientMock).toHaveBeenCalledTimes(1);
@@ -108,7 +121,11 @@ describe("commitClientImport", () => {
     // trim+lower, so this must update rather than insert a duplicate.
     stubDatabase({ clients: [{ id: "client-existing", key: "apex crm" }] });
 
-    const result = await commitClientImport([row({ company_name: " Apex CRM " })], "user-1");
+    const result = await commitClientImport(
+      [row({ company_name: " Apex CRM ", industry: "New" })],
+      "user-1",
+      context,
+    );
 
     expect(mocks.createClientMock).not.toHaveBeenCalled();
     expect(result).toMatchObject({ created: 0, updated: 1 });
@@ -120,7 +137,7 @@ describe("commitClientImport", () => {
       contacts: [{ clientId: "client-existing", email: "ada@apex.example" }],
     });
 
-    await commitClientImport([row({ contact_email: "ADA@apex.example" })], "user-1");
+    await commitClientImport([row({ contact_email: "ADA@apex.example" })], "user-1", context);
 
     expect(mocks.createClientContactMock).not.toHaveBeenCalled();
   });
@@ -142,6 +159,7 @@ describe("commitClientImport", () => {
         }),
       ],
       "user-1",
+      context,
     );
 
     expect(mocks.createEngagementMock).toHaveBeenCalledWith(
@@ -169,6 +187,7 @@ describe("commitClientImport", () => {
         }),
       ],
       "user-1",
+      context,
     );
 
     expect(mocks.createEngagementMock).toHaveBeenCalledWith(
@@ -189,6 +208,7 @@ describe("commitClientImport", () => {
     await commitClientImport(
       [row({ product_name: "Retention Suite", start_date: "2026-01-15" })],
       "user-1",
+      context,
     );
 
     expect(mocks.createEngagementMock).not.toHaveBeenCalled();
@@ -206,6 +226,7 @@ describe("commitClientImport", () => {
         }),
       ],
       "user-1",
+      context,
     );
 
     expect(mocks.transactionMock).toHaveBeenCalledTimes(1);
@@ -228,7 +249,7 @@ describe("commitClientImport", () => {
     stubDatabase({});
     mocks.createClientMock.mockRejectedValueOnce(new Error("insert failed"));
 
-    await expect(commitClientImport([row()], "user-1")).rejects.toThrow("insert failed");
+    await expect(commitClientImport([row()], "user-1", context)).rejects.toThrow("insert failed");
 
     const auditCalls = mocks.fakeDb.query.mock.calls.filter(([text]) =>
       String(text).includes("insert into activity_logs"),
