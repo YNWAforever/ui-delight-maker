@@ -1,4 +1,5 @@
 import type { ActivityLog, AgentRun, HumanApproval, Lead, Product, Quote, Task } from "@/lib/types";
+import type { CurrencyTotal } from "@/lib/money";
 import { query } from "@/server/db/neon.server";
 import { evaluateAuthorization } from "@/lib/admin/policy";
 import type { RequestAuthorization } from "@/server/auth/authorization.server";
@@ -22,7 +23,7 @@ const DASHBOARD_LIMITS = {
 
 type PipelineTotalsRow = {
   open_leads: number | string;
-  active_quote_value: number | string;
+  active_quote_totals: CurrencyTotal[] | null;
   open_tasks: number | string;
   pending_approvals: number | string;
 };
@@ -39,7 +40,7 @@ export interface DashboardReadModel {
   access: { leads: boolean; jobSheets: boolean };
   pipelineTotals: {
     openLeads: number;
-    activeQuoteValue: number;
+    activeQuoteTotals: CurrencyTotal[];
     openTasks: number;
     pendingApprovals: number;
   };
@@ -147,9 +148,15 @@ async function visibleTotals(
     `select
       (select count(*) from leads l
         where l.status not in ('won','lost') and ${leadScope}) as open_leads,
-      (select coalesce(sum(q.total_value),0) from quotes q
-        where q.status in ('pending_approval','sent','viewed')
-          and ${quoteScope}) as active_quote_value,
+      (select coalesce(jsonb_agg(jsonb_build_object('currency',currency,'amount',amount)
+                                  order by currency), '[]'::jsonb)
+       from (
+         select q.currency as currency, sum(q.total_value)::text as amount
+         from quotes q
+         where q.status in ('pending_approval','approved','sent','viewed')
+           and ${quoteScope}
+         group by q.currency
+       ) currency_values) as active_quote_totals,
       (select count(*) from tasks t where t.status <> 'done'
         and ${taskScope}) as open_tasks,
       (select count(*) from human_approvals ha where ha.status = 'pending'
@@ -243,7 +250,7 @@ export async function getDashboardReadModel(
 
   const pipelineTotals = {
     openLeads: Number(totals?.open_leads ?? 0),
-    activeQuoteValue: Number(totals?.active_quote_value ?? 0),
+    activeQuoteTotals: Array.isArray(totals?.active_quote_totals) ? totals.active_quote_totals : [],
     openTasks: Number(totals?.open_tasks ?? 0),
     pendingApprovals: Number(totals?.pending_approvals ?? 0),
   };

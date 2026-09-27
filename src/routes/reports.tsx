@@ -19,7 +19,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { csvFileName, toCsv } from "@/lib/csv";
 import { toSafeErrorMessage } from "@/lib/errors";
-import { formatCompactHKD, formatCount, formatPercentPoints } from "@/lib/format";
+import { formatCount, formatPercentPoints } from "@/lib/format";
+import { formatCurrencyTotals } from "@/lib/money";
 import { crmQueryKeys } from "@/lib/query-keys";
 import {
   DEFAULT_RANGE,
@@ -263,14 +264,14 @@ function ReportsPage() {
           metrics={[
             {
               id: "revenue",
-              label: "Accepted revenue",
-              value: formatCompactHKD(metrics.revenue),
-              hint: `accepted in ${RANGE_LABELS[range]}`,
+              label: "Accepted quote value",
+              value: formatCurrencyTotals(metrics.revenueTotals),
+              hint: `accepted in ${RANGE_LABELS[range]}; ${formatCount(metrics.unverifiedAcceptedCount)} accepted quote(s) need date or version verification`,
             },
             {
               id: "pipeline",
               label: "Pipeline value",
-              value: formatCompactHKD(metrics.pipelineValue),
+              value: formatCurrencyTotals(metrics.pipelineTotals),
               hint: "quotes awaiting a decision",
             },
             {
@@ -404,14 +405,21 @@ function ReportTable({
     header: field.header,
     priority: index < 2 ? "primary" : "secondary",
     numeric: field.kind === "count" || field.kind === "currency" || field.kind === "percent",
-    cell: (row: ReportRow) => formatReportCell(field, row[field.key]),
+    cell: (row: ReportRow) =>
+      formatReportCell(field, row[field.key], {
+        currency: typeof row.currency === "string" ? row.currency : undefined,
+      }),
   }));
 
   return (
     <DataTableShell
       columns={columns}
       rows={rows}
-      rowKey={(row) => String(row[REPORT_SPECS[report].fields[0].key] ?? "")}
+      rowKey={(row) =>
+        report === "revenue"
+          ? `${row.week ?? ""}:${row.currency ?? ""}`
+          : String(row[REPORT_SPECS[report].fields[0].key] ?? "")
+      }
       caption={caption}
       allowHorizontalScroll
     />

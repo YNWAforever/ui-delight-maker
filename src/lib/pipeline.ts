@@ -167,10 +167,14 @@ export function getLeadNextAction(lead: Lead, tasks: Task[]): string {
 export function getLeadQuoteSummary(
   lead: Lead,
   quotes: Quote[],
-): { value: number | null; status: string | null } {
+): { value: number | null; currency: string | null; status: string | null } {
   const quote = quotes.find((item) => item.lead_id === lead.id);
 
-  return { value: quote?.total_value ?? null, status: quote?.status ?? null };
+  return {
+    value: quote?.total_value ?? null,
+    currency: quote?.currency ?? null,
+    status: quote?.status ?? null,
+  };
 }
 
 export function filterPipelineLeads(input: {

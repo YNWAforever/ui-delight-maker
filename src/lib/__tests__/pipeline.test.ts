@@ -5,6 +5,7 @@ import {
   filterPipelineLeads,
   getLeadAiState,
   getLeadNextAction,
+  getLeadQuoteSummary,
   getLeadSlaState,
   getPipelineSummary,
   groupLeadsByPipelineStage,
@@ -281,8 +282,11 @@ describe("getPipelineSummary", () => {
 });
 
 describe("quote values", () => {
-  it("exposes quote value for cards through related quotes", () => {
-    const q = quote({ total_value: 120000, status: "pending_approval" });
-    expect(q.total_value).toBe(120000);
+  it("carries the quote currency with its value to lead cards", () => {
+    expect(
+      getLeadQuoteSummary(baseLead({}), [
+        quote({ total_value: 100.25, currency: "USD", status: "pending_approval" }),
+      ]),
+    ).toEqual({ value: 100.25, currency: "USD", status: "pending_approval" });
   });
 });

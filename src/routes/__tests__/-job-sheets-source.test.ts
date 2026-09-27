@@ -133,9 +133,9 @@ describe("job sheet accounting workspace behavior", () => {
       clientOrderNumber: null,
     });
 
-    expect(markup).toContain("Reconciliation delta: HKD 100");
+    expect(markup).toContain("Reconciliation delta: HKD 100.00");
     expect(acceptance.ok).toBe(false);
-    expect(acceptance.reasons).toContain("Billing portions are short by HKD 100.");
+    expect(acceptance.reasons).toContain("Billing portions are short by HKD 100.00.");
   });
 
   it("preserves entered-in-xero drafts and reflects accepted-or-locked commercial immutability", () => {
@@ -236,7 +236,7 @@ describe("job sheet accounting workspace behavior", () => {
     });
 
     expect(acceptance.ok).toBe(false);
-    expect(acceptance.reasons).toContain("Billing portions are short by HKD 100.");
+    expect(acceptance.reasons).toContain("Billing portions are short by HKD 100.00.");
   });
 
   it("builds the save payload with target invoice dates and without downgrading entered rows", () => {
@@ -561,6 +561,6 @@ describe("job sheet accounting workspace behavior", () => {
           currency: "EUR",
         }),
       ]),
-    ).toBe("HKD 1,250 / USD 500");
+    ).toBe("HKD 1,250.00 / USD 500.00");
   });
 });

@@ -38,3 +38,26 @@ export function sumAmounts<T>(
 export function roundToMoney(value: number | string | null | undefined): number {
   return Math.round((toAmount(value) + Number.EPSILON) * 100) / 100;
 }
+
+/** Decimal strings from PostgreSQL remain strings until display. No FX conversion. */
+export type CurrencyTotal = { currency: string; amount: string };
+
+export function formatCommercialMoney(
+  amount: string | number | null | undefined,
+  currency: string | null | undefined = "HKD",
+): string {
+  const code = currency?.trim() || "HKD";
+  if (amount == null) return `${code} 0.00`;
+  const raw =
+    typeof amount === "number" ? (Number.isFinite(amount) ? amount.toFixed(2) : "") : amount.trim();
+  const match = /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(raw);
+  if (!match) return "—";
+  const integer = match[2].replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const decimals = (match[3] ?? "").padEnd(2, "0");
+  return `${code} ${match[1]}${integer}.${decimals}`;
+}
+
+export function formatCurrencyTotals(totals: readonly CurrencyTotal[]): string {
+  if (totals.length === 0) return "—";
+  return totals.map((total) => formatCommercialMoney(total.amount, total.currency)).join(" · ");
+}

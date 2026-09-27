@@ -191,8 +191,9 @@ describe("operations read models", () => {
   it("returns lightweight report summary metrics and definitions without datasets", async () => {
     const { loadReportSummary } = await import("../operations");
     queryOneMock.mockResolvedValueOnce({
-      revenue: "1200",
-      pipeline_value: "4000",
+      revenue_totals: [{ currency: "HKD", amount: "1200.25" }],
+      pipeline_totals: [{ currency: "USD", amount: "4000.00" }],
+      unverified_accepted_count: "2",
       leads: "8",
       won_leads: "2",
       agent_runs: "5",
@@ -203,8 +204,9 @@ describe("operations read models", () => {
     const result = await loadReportSummary({ range: "30d" }, reportContext);
 
     expect(result.metrics).toEqual({
-      revenue: 1200,
-      pipelineValue: 4000,
+      revenueTotals: [{ currency: "HKD", amount: "1200.25" }],
+      pipelineTotals: [{ currency: "USD", amount: "4000.00" }],
+      unverifiedAcceptedCount: 2,
       leads: 8,
       wonLeads: 2,
       conversionRate: 25,

@@ -148,7 +148,7 @@ describe("canAcceptJobSheet", () => {
         portions: [{ amount: 100000 }],
         requirePoNumber: false,
       }),
-    ).toEqual({ ok: false, reasons: ["Billing portions are short by HKD 20,000."] });
+    ).toEqual({ ok: false, reasons: ["Billing portions are short by HKD 20,000.00."] });
   });
 
   it("reports over-by deltas when portions exceed the total", () => {
@@ -158,7 +158,7 @@ describe("canAcceptJobSheet", () => {
         portions: [{ amount: 120000 }],
         requirePoNumber: false,
       }),
-    ).toEqual({ ok: false, reasons: ["Billing portions are over by HKD 20,000."] });
+    ).toEqual({ ok: false, reasons: ["Billing portions are over by HKD 20,000.00."] });
   });
 
   it("blocks acceptance when PO/order info is required but missing", () => {

@@ -40,7 +40,7 @@ describe("AdminAuditTable", () => {
     // one screen where timestamps are the point, while every sibling admin component already
     // used the SSR-safe formatter that `CLAUDE.md` requires.
     expect(screen.queryByText("2026-07-18T09:30:00.000Z")).toBeNull();
-    expect(screen.getAllByText(/18 Jul 2026, 09:30/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/18 Jul 2026, 17:30/).length).toBeGreaterThan(0);
   });
 
   it("renders severity as a labelled badge rather than a bare word", () => {

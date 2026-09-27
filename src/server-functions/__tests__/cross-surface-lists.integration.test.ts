@@ -100,7 +100,11 @@ describe("job-sheet queue SQL visibility", () => {
       id text, number text, lead_id text, client_id text, contact_id text,
       account_id text, deal_id text, status text, total_value numeric,
       currency text, valid_until date, created_by text,
+      accepted_at timestamptz, accepted_version_id text,
       created_at timestamptz, updated_at timestamptz
+    ) on commit drop`);
+    await holder.client.query(`create temp table quote_versions (
+      id text, quote_id text, reason text, snapshot jsonb
     ) on commit drop`);
     await holder.client.query(`insert into quotes
       (id, number, lead_id, status, total_value, currency, created_by, created_at, updated_at)

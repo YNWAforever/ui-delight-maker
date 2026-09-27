@@ -1,18 +1,28 @@
-// SSR-safe formatters. Fixed locale + UTC so server and client render identically.
+// SSR-safe formatters. Fixed locale and explicit business time zone on both server and client.
+import { formatCommercialMoney } from "@/lib/money";
+export { formatCommercialMoney, formatCurrencyTotals } from "@/lib/money";
 
-const DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
+const BUSINESS_TIME_ZONE = "Asia/Hong_Kong";
 
-const TIME = new Intl.DateTimeFormat("en-GB", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-  timeZone: "UTC",
-});
+const dateFormatter = (timeZone: string) =>
+  new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone,
+  });
+
+const timeFormatter = (timeZone: string) =>
+  new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone,
+  });
+
+const DATE = dateFormatter(BUSINESS_TIME_ZONE);
+const TIME = timeFormatter(BUSINESS_TIME_ZONE);
+const DATE_ONLY = dateFormatter("UTC");
 
 const COUNT = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
@@ -30,17 +40,39 @@ const parseDate = (value: string | Date | null | undefined): Date | null => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-export const formatDateTime = (value: string | Date | null | undefined) => {
+export const formatDateTime = (
+  value: string | Date | null | undefined,
+  options: { timeZone?: string } = {},
+) => {
   const date = parseDate(value);
-  return date ? `${DATE.format(date)}, ${TIME.format(date)}` : "—";
+  if (!date) return "—";
+  const datePart = options.timeZone
+    ? dateFormatter(options.timeZone).format(date)
+    : DATE.format(date);
+  const timePart = options.timeZone
+    ? timeFormatter(options.timeZone).format(date)
+    : TIME.format(date);
+  return `${datePart}, ${timePart}`;
+};
+
+/** A YYYY-MM-DD calendar value is never converted to an instant in the business zone. */
+export const formatDateOnly = (value: string | null | undefined) => {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "—";
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) return "—";
+  return DATE_ONLY.format(date);
 };
 
 export const formatDate = (value: string | Date | null | undefined) => {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return formatDateOnly(value);
+  }
   const date = parseDate(value);
   return date ? DATE.format(date) : "—";
 };
 
 export const formatTime = (value: string | Date | null | undefined) => {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return "—";
   const date = parseDate(value);
   return date ? TIME.format(date) : "—";
 };
@@ -64,9 +96,9 @@ export const formatPercentPoints = (value: number | null | undefined) =>
 export const formatCount = (value: number | null | undefined) => COUNT.format(value ?? 0);
 
 export const formatCurrencyAmount = (
-  value: number | null | undefined,
+  value: number | string | null | undefined,
   currency: string | null | undefined = "HKD",
-) => `${currency ?? "HKD"} ${COUNT.format(value ?? 0)}`;
+) => formatCommercialMoney(value, currency);
 
 export const formatHKD = (n: number | null | undefined) => formatCurrencyAmount(n, "HKD");
 
