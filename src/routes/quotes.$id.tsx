@@ -49,7 +49,6 @@ import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
 import { calculateTotal, newLineItem } from "@/lib/quote-utils";
 import {
   acceptQuoteAndCreateJobSheet,
-  approveAndIssueQuote,
   approveQuote,
   createQuoteRevision,
   issueQuoteVersion,
@@ -241,7 +240,7 @@ const LIFECYCLE_ACTIONS: readonly LifecycleAction[] = [
     variant: "default",
     capability: "quotes.request_approval",
     capabilityReason: "Submitting quotes for approval is not part of your role.",
-    allowedStatuses: ["draft"],
+    allowedStatuses: ["draft", "revised"],
   },
   {
     key: "reject",
@@ -266,7 +265,7 @@ const LIFECYCLE_ACTIONS: readonly LifecycleAction[] = [
   {
     key: "issue",
     label: "Issue quote",
-    hint: "Freezes an immutable snapshot and sends the quote to the client.",
+    hint: "Freezes an immutable version for the formal quote handoff.",
     icon: Send,
     variant: "default",
     capability: "quotes.issue",
@@ -384,6 +383,8 @@ function QuoteDetail() {
   }));
   const [saving, setSaving] = useState(false);
   const revisionKeysRef = useRef(new Map<string, string>());
+  const lifecycleKeysRef = useRef(new Map<string, string>());
+  const [acceptanceReference, setAcceptanceReference] = useState("");
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const editItems = editorDrafts[quote.id] ?? quote.line_items ?? [];
 
@@ -436,18 +437,6 @@ function QuoteDetail() {
     });
   };
 
-  const approveAndIssueReviewedQuote = async () => {
-    if (!approvalId) {
-      throw new Error("Approval context missing");
-    }
-
-    // The reviewed quote is already frozen; issue exactly the stored commercial content.
-    await approveAndIssueQuote({ data: { id: quote.id, approvalId } });
-    await invalidateQuoteMutation(queryClient, quote, "approval_issue");
-    toast.success("Quote approved and issued");
-    navigate({ to: "/approvals" });
-  };
-
   const handleCreateRevision = async () => {
     const baseVersionId = currentPreviewVersionId;
     if (!baseVersionId) return;
@@ -485,16 +474,10 @@ function QuoteDetail() {
   const handleSubmitForApproval = async () => {
     setSaving(true);
     try {
-      if (approvalId) {
-        // Coming from the Approvals "Review & Edit" flow.
-        await approveAndIssueReviewedQuote();
-      } else {
-        // Plain draft edit: save, then request approval.
-        await saveEditableQuoteFields();
-        await requestQuoteApproval({ data: { id: quote.id } });
-        await invalidateQuoteMutation(queryClient, quote, "approval");
-        toast.success("Quote submitted for approval");
-      }
+      await saveEditableQuoteFields();
+      await requestQuoteApproval({ data: { id: quote.id } });
+      await invalidateQuoteMutation(queryClient, quote, "approval");
+      toast.success("Quote submitted for approval");
     } catch (err) {
       toast.error(toSafeErrorMessage(err));
     } finally {
@@ -545,16 +528,16 @@ function QuoteDetail() {
   };
 
   const handleApproveQuote = async () => {
+    const keyName = `approve:${quote.id}:${approvalId ?? "current"}`;
+    const idempotencyKey = lifecycleKeysRef.current.get(keyName) ?? crypto.randomUUID();
+    lifecycleKeysRef.current.set(keyName, idempotencyKey);
     setSaving(true);
     try {
-      if (approvalId) {
-        await approveAndIssueReviewedQuote();
-        return;
-      }
-
-      await approveQuote({ data: { id: quote.id } });
+      await approveQuote({ data: { id: quote.id, approvalId, idempotencyKey } });
+      lifecycleKeysRef.current.delete(keyName);
       await invalidateQuoteMutation(queryClient, quote, "approval");
-      toast.success("Quote approved");
+      toast.success("Quote approved. Issuance is a separate action.");
+      if (approvalId) navigate({ to: "/approvals" });
     } catch (err) {
       toast.error(toSafeErrorMessage(err));
     } finally {
@@ -565,7 +548,11 @@ function QuoteDetail() {
   const handleIssueQuote = async () => {
     setSaving(true);
     try {
-      await issueQuoteVersion({ data: { id: quote.id } });
+      const keyName = `issue:${quote.id}`;
+      const idempotencyKey = lifecycleKeysRef.current.get(keyName) ?? crypto.randomUUID();
+      lifecycleKeysRef.current.set(keyName, idempotencyKey);
+      await issueQuoteVersion({ data: { id: quote.id, idempotencyKey } });
+      lifecycleKeysRef.current.delete(keyName);
       await invalidateQuoteMutation(queryClient, quote, "issue");
       toast.success("Quote issued and PDF version created");
     } catch (err) {
@@ -578,7 +565,22 @@ function QuoteDetail() {
   const handleAcceptQuote = async () => {
     setSaving(true);
     try {
-      const result = await acceptQuoteAndCreateJobSheet({ data: { id: quote.id } });
+      const reference = acceptanceReference.trim();
+      if (!reference || !currentPreviewVersionId) {
+        throw new Error("Acceptance reference and issued version are required");
+      }
+      const keyName = `accept:${quote.id}:${currentPreviewVersionId}:${reference}`;
+      const idempotencyKey = lifecycleKeysRef.current.get(keyName) ?? crypto.randomUUID();
+      lifecycleKeysRef.current.set(keyName, idempotencyKey);
+      const result = await acceptQuoteAndCreateJobSheet({
+        data: {
+          id: quote.id,
+          issuedVersionId: currentPreviewVersionId,
+          acceptanceEvidence: { reference },
+          idempotencyKey,
+        },
+      });
+      lifecycleKeysRef.current.delete(keyName);
       await Promise.all([
         invalidateQuoteMutation(queryClient, quote, "accept"),
         quote.client_id
@@ -624,7 +626,16 @@ function QuoteDetail() {
     LIFECYCLE_ACTIONS.find(
       (action) => action.key !== "reject" && action.allowedStatuses.includes(status),
     ) ?? null;
-  const nextActionReason = nextAction ? blockedReasonFor(nextAction) : null;
+  const nextActionReason = nextAction
+    ? (blockedReasonFor(nextAction) ??
+      (nextAction.key === "accept"
+        ? !currentPreviewVersionId
+          ? "Issued version needs reconciliation before acceptance."
+          : !acceptanceReference.trim()
+            ? "Enter the customer email or signed document reference."
+            : null
+        : null))
+    : null;
   const NextActionIcon = nextAction?.icon;
 
   const versionEvents: ActivityEvent[] = versions.map((version) => ({
@@ -687,6 +698,16 @@ function QuoteDetail() {
         primaryAction={
           nextAction && NextActionIcon ? (
             <div className="flex flex-col items-start gap-1 md:items-end">
+              {nextAction.key === "accept" && (
+                <Input
+                  aria-label="Customer acceptance reference"
+                  placeholder="Customer email or signed document reference"
+                  value={acceptanceReference}
+                  onChange={(event) => setAcceptanceReference(event.target.value)}
+                  maxLength={255}
+                  className="w-full min-w-[280px]"
+                />
+              )}
               <Button
                 type="button"
                 size="sm"
@@ -866,7 +887,7 @@ function QuoteDetail() {
                           }
                         >
                           <CheckCircle2 aria-hidden="true" className="mr-2 h-4 w-4" />
-                          {approvalId ? "Approve & Issue" : "Save & Request Approval"}
+                          Save & Request Approval
                         </Button>
                       </StickyActionBar>
                       {/* IF-C2-27: the disabled state used to grey out with nothing said. */}

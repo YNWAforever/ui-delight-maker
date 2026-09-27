@@ -72,7 +72,7 @@ import {
   getAssignableApproversFn,
 } from "@/server-functions/approvals";
 import type { SerializableHumanApproval } from "@/lib/serializable";
-import { approveAndIssueQuote, rejectQuote } from "@/server-functions/quotes";
+import { approveQuote, rejectQuote } from "@/server-functions/quotes";
 import type { ApprovalType } from "@/lib/types";
 
 type ApprovalRead = SerializableHumanApproval[];
@@ -468,8 +468,14 @@ function ApprovalsInbox() {
       const quoteId = getQuoteId(approval);
       if (!quoteId) throw new Error("Quote approval is missing quote context");
 
-      await approveAndIssueQuote({
-        data: { id: quoteId, approvalId: approval.id, ...(notes ? { notes } : {}) },
+      await approveQuote({
+        data: {
+          id: quoteId,
+          approvalId: approval.id,
+          expectedVersion: approval.row_version,
+          idempotencyKey: crypto.randomUUID(),
+          ...(notes ? { notes } : {}),
+        },
       });
       return;
     }
@@ -530,7 +536,7 @@ function ApprovalsInbox() {
       outcome,
       decision === "approved"
         ? approval.approval_type === "quote_send"
-          ? "Quote approved and issued"
+          ? "Quote approved. Issuance is a separate step."
           : "Approved — the agent will proceed"
         : decision === "rejected"
           ? "Approval rejected"
@@ -790,13 +796,13 @@ function ApprovalsInbox() {
             setConfirm({
               title:
                 approval.approval_type === "quote_send"
-                  ? "Approve and issue this quote?"
+                  ? "Approve this quote?"
                   : "Approve this request?",
               description:
                 approval.approval_type === "quote_send"
-                  ? "Approving issues a quote version immediately and closes this approval. There is no un-issue action — a change after this needs a new revision."
+                  ? "Approving closes this request and marks the quote approved. Issuing its version is a separate action for an authorized issuer."
                   : "The agent proceeds immediately with the proposed action. There is no undo.",
-              label: approval.approval_type === "quote_send" ? "Approve and issue" : "Approve",
+              label: "Approve",
               action: () => runDecision(() => decideOne(approval, "approved")),
             })
           }
@@ -948,7 +954,7 @@ function ApprovalsInbox() {
               id: "quote-sends",
               label: "Quote sends",
               value: totals.quoteSends,
-              hint: "waiting, issued on approval",
+              hint: "waiting for approval; issuance is separate",
             },
             {
               id: "decided",

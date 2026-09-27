@@ -49,7 +49,7 @@ import { cn } from "@/lib/utils";
 import type { AgentDirectoryRunSummary, AiReviewRead } from "@/server-functions/agent-runs";
 import { getAiReviewRead } from "@/server-functions/agent-runs";
 import { decideApproval, getApprovals } from "@/server-functions/approvals";
-import { approveAndIssueQuote, rejectQuote } from "@/server-functions/quotes";
+import { approveQuote, rejectQuote } from "@/server-functions/quotes";
 
 /**
  * The redacted shape `loadAiReviewRead` returns — `SerializableHumanApproval` plus
@@ -142,7 +142,7 @@ type LinkedRecord =
  * The record this decision is about.
  *
  * Quote first: a `quote_send` payload carries both `quote_id` and `lead_id`, and the quote is
- * the thing being issued. There is no per-engagement route in the product, so an engagement
+ * the record under approval. There is no per-engagement route in the product, so an engagement
  * resolves to a labelled id and a link to the board that lists it rather than a link that
  * claims to open the record.
  */
@@ -310,14 +310,7 @@ function AiReviewPage() {
 
   const refreshBusy = refreshing || queueQuery.isFetching;
 
-  /**
-   * The write, routed the same way `/approvals` routes it.
-   *
-   * A `quote_send` approval decided through bare `decideApproval` closes the approval and
-   * leaves the quote in `pending_approval` — approved on one screen and unissued on the other.
-   * `approveAndIssueQuote` and `rejectQuote` are the paths that move both, and they are the
-   * paths the sibling screen already uses.
-   */
+  /** Quote-send decisions update the approval and quote in one server transaction. */
   const runDecision = async (approval: Approval, decision: Decision) => {
     const trimmed = notes.trim() || undefined;
     const quoteId = approval.approval_type === "quote_send" ? linkedRecord(approval) : null;
@@ -328,8 +321,14 @@ function AiReviewPage() {
 
     if (approval.approval_type === "quote_send" && quoteId?.kind === "quote") {
       if (decision === "approved") {
-        await approveAndIssueQuote({
-          data: { id: quoteId.id, approvalId: approval.id, ...(trimmed ? { notes: trimmed } : {}) },
+        await approveQuote({
+          data: {
+            id: quoteId.id,
+            approvalId: approval.id,
+            expectedVersion: approval.row_version,
+            idempotencyKey: crypto.randomUUID(),
+            ...(trimmed ? { notes: trimmed } : {}),
+          },
         });
         return;
       }
@@ -394,7 +393,7 @@ function AiReviewPage() {
         toast.success(
           decision === "approved"
             ? approval.approval_type === "quote_send"
-              ? "Quote approved and issued"
+              ? "Quote approved. Issuance is a separate step."
               : "Approved — recorded and the agent run released"
             : decision === "rejected"
               ? "Rejected — recorded and the agent run released"
@@ -665,7 +664,9 @@ function AiReviewPage() {
     const isQuoteSend = approval.approval_type === "quote_send";
     const approveBlocked =
       decideDenied ??
-      (isQuoteSend && !holds("quotes.issue") ? "Issuing quotes is not part of your role." : null);
+      (isQuoteSend && !holds("quotes.approve")
+        ? "Approving quotes is not part of your role."
+        : null);
     const rejectBlocked =
       decideDenied ??
       (isQuoteSend && !holds("quotes.approve")
@@ -716,9 +717,9 @@ function AiReviewPage() {
             aria-describedby={approveBlocked ? DECIDE_DENIED_ID : undefined}
             onClick={() =>
               setConfirm({
-                title: isQuoteSend ? "Approve and issue this quote?" : "Approve this request?",
+                title: isQuoteSend ? "Approve this quote?" : "Approve this request?",
                 description: approvalProposedAction(approval.approval_type),
-                label: isQuoteSend ? "Approve and issue" : "Approve",
+                label: "Approve",
                 action: () => decide(approval, "approved"),
               })
             }

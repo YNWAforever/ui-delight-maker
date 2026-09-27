@@ -9,7 +9,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import type { SerializableHumanApproval } from "@/lib/serializable";
 
 const decideApprovalMock = vi.hoisted(() => vi.fn());
-const approveAndIssueQuoteMock = vi.hoisted(() => vi.fn());
+const approveQuoteMock = vi.hoisted(() => vi.fn());
 const rejectQuoteMock = vi.hoisted(() => vi.fn());
 const navigateMock = vi.hoisted(() => vi.fn());
 
@@ -37,7 +37,7 @@ vi.mock("@/server-functions/approvals", () => ({
   getAssignableApproversFn: getAssignableApproversFnMock,
 }));
 vi.mock("@/server-functions/quotes", () => ({
-  approveAndIssueQuote: approveAndIssueQuoteMock,
+  approveQuote: approveQuoteMock,
   rejectQuote: rejectQuoteMock,
 }));
 
@@ -93,7 +93,7 @@ const decisionButton = (name: RegExp | string) =>
 
 beforeEach(() => {
   decideApprovalMock.mockReset().mockResolvedValue(undefined);
-  approveAndIssueQuoteMock.mockReset().mockResolvedValue(undefined);
+  approveQuoteMock.mockReset().mockResolvedValue(undefined);
   rejectQuoteMock.mockReset().mockResolvedValue(undefined);
   navigateMock.mockReset();
   getAssignableApproversFnMock.mockReset().mockResolvedValue([
@@ -130,18 +130,17 @@ describe("Every approval decision is confirmed, and the confirmation names the c
     expect(text).toMatch(/no undo/i);
   });
 
-  it("approving a quote send says a version is issued and cannot be un-issued", async () => {
-    // Different consequence, different sentence. A quote send leaves the building — the
-    // shared "There is no undo" would understate what the reader is agreeing to.
+  it("approving a quote send confirms approval without claiming issuance", async () => {
     renderInbox([quoteSend()]);
 
-    fireEvent.click(decisionButton(/Approve and issue|^Approve$/));
+    fireEvent.click(decisionButton(/^Approve$/));
 
     const dialog = await screen.findByRole("alertdialog");
     const text = dialog.textContent ?? "";
-    expect(text).toMatch(/issues a quote version immediately/i);
-    expect(text).toMatch(/no un-issue action/i);
-    expect(approveAndIssueQuoteMock).not.toHaveBeenCalled();
+    expect(text).toMatch(/marks the quote approved/i);
+    expect(text).toMatch(/separate action for an authorized issuer/i);
+    expect(text).not.toMatch(/issues a quote version immediately/i);
+    expect(approveQuoteMock).not.toHaveBeenCalled();
   });
 
   it("rejecting a quote send says the quote has to be revised and resubmitted", async () => {
