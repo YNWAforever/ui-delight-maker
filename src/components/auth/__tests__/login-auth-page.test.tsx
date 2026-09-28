@@ -52,4 +52,11 @@ describe("LoginAuthPage", () => {
     expect(screen.getByRole("heading", { name: "Join Fimmick ClientOps" })).toBeTruthy();
     expect(screen.getByText("Invitation for person@example.com")).toBeTruthy();
   });
+  it("gives the public skip link one focusable main target", () => {
+    render(<LoginAuthPage />);
+    const main = screen.getByRole("main");
+    expect(main.id).toBe("main-content");
+    main.focus();
+    expect(document.activeElement).toBe(main);
+  });
 });

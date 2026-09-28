@@ -15,13 +15,14 @@ vi.mock("@tanstack/react-start/server", () => ({
 import { measureQuery, withQueryMetrics } from "@/server/db/query-metrics.server";
 import { readInitialJsTransfer } from "../check-route-bundles";
 import { runRoutePerformanceMeasurement } from "../measure-route-performance";
-import { verifyRuntimeEvidence } from "../measure-runtime";
+import { measureRuntimeHttp, verifyRuntimeEvidence } from "../measure-runtime";
 
 const temporaryDirectories: string[] = [];
 afterEach(() => {
   delete process.env.CLIENTOPS_PERF_TOKEN;
   requestHolder.request = null;
   requestHolder.responseHeaders.clear();
+  vi.unstubAllGlobals();
   for (const path of temporaryDirectories.splice(0)) rmSync(path, { recursive: true, force: true });
 });
 
@@ -69,6 +70,7 @@ describe("runtime measurement evidence", () => {
     expect(requestHolder.responseHeaders.get("x-clientops-db-failed")).toBe("1");
     requestHolder.request = new Request("http://127.0.0.1/login");
     requestHolder.responseHeaders.clear();
+    vi.unstubAllGlobals();
     await measureQuery(async () => "no diagnostic token");
     expect(requestHolder.responseHeaders.size).toBe(0);
   });
@@ -120,6 +122,66 @@ describe("runtime measurement evidence", () => {
     expect(JSON.parse(text).evidenceType).toBe("synthetic");
     expect(verifyRuntimeEvidence({ evidenceType: "synthetic" })).toEqual(
       expect.arrayContaining([expect.stringMatching(/runtime/i)]),
+    );
+  });
+  it("preserves request metric scope from every local HTTP sample", async () => {
+    const root = mkdtempSync(join(tmpdir(), "clientops-http-scope-"));
+    temporaryDirectories.push(root);
+    mkdirSync(join(root, ".vite"));
+    mkdirSync(join(root, "assets"));
+    writeFileSync(join(root, "assets", "entry.js"), "const entry = true;");
+    writeFileSync(join(root, "assets", "login.js"), "const login = true;");
+    const manifestPath = join(root, ".vite", "manifest.json");
+    writeFileSync(
+      manifestPath,
+      JSON.stringify({
+        "node_modules/app/client.ts": { file: "assets/entry.js" },
+        "src/routes/login.tsx?tsr-split=component": { file: "assets/login.js" },
+      }),
+    );
+    const fetchMock = vi.fn(
+      async () =>
+        new Response("ok", {
+          status: 200,
+          headers: {
+            "x-clientops-db-scope": "http-request",
+            "x-clientops-db-count": "1",
+            "x-clientops-db-duration-ms": "0.5",
+          },
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const measurement = await measureRuntimeHttp({
+      baseUrl: "http://127.0.0.1:5173",
+      route: "/tasks",
+      role: "synthetic-test",
+      cookie: "synthetic-test-only",
+      manifestPath,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(40);
+    expect(measurement).toHaveProperty("metricScope", "http-request");
+    expect(measurement.queryMetricsCoverage).toBe(1);
+    expect(measurement.coldNavigationType).toBe("http-no-cache");
+    expect(verifyRuntimeEvidence(measurement)).toContain(
+      "Ten cold browser navigations are required; no-cache HTTP is insufficient.",
+    );
+  });
+
+  it("rejects DB counts without complete request-scoped metrics", () => {
+    const sample = {
+      evidenceType: "runtime_http",
+      samples: 30,
+      coldSamples: 10,
+      coldNavigationType: "browser-navigation",
+      dataset: { tasks: 10_000, approvals: 100_000, source: "isolated-postgresql-query" },
+      dbCount: 1,
+      queryMetricsCoverage: 1,
+      p95Ms: 100,
+      payloadBytes: 1000,
+      initialJsGzipBytes: 1000,
+    };
+    expect(verifyRuntimeEvidence(sample)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/request-scoped/i)]),
     );
   });
 });

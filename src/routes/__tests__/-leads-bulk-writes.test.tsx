@@ -291,4 +291,38 @@ describe("Leads bulk preview and durable partial results", () => {
     expect(rowCheckbox("lead-1").getAttribute("aria-checked")).toBe("true");
     expect(rowCheckbox("lead-2").getAttribute("aria-checked")).toBe("true");
   });
+  it("keeps a pending receipt through a transient reload failure and retries the result read", async () => {
+    const pending = JSON.stringify({
+      kind: "pending_commit",
+      operationId: "operation-1",
+      previewToken: "preview-1",
+      idempotencyKey: "same-logical-key",
+    });
+    sessionStorage.setItem("clientops:bulk:leads", pending);
+    getBulkResultMock.mockRejectedValueOnce(new TypeError("Network unavailable"));
+    renderLeads();
+
+    const retry = await screen.findByRole("button", { name: "Retry loading result" });
+    expect(sessionStorage.getItem("clientops:bulk:leads")).toBe(pending);
+    expect(commitBulkMock).not.toHaveBeenCalled();
+
+    fireEvent.click(retry);
+    await waitFor(() => expect(getBulkResultMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Resume" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    await waitFor(() =>
+      expect(commitBulkMock).toHaveBeenCalledWith({
+        data: { previewToken: "preview-1", idempotencyKey: "same-logical-key" },
+      }),
+    );
+  });
+
+  it("clears an inaccessible receipt without showing its operation details", async () => {
+    sessionStorage.setItem("clientops:bulk:leads", "operation-from-another-actor");
+    getBulkResultMock.mockRejectedValueOnce(new Error("Bulk operation owner access denied"));
+    renderLeads();
+    await waitFor(() => expect(sessionStorage.getItem("clientops:bulk:leads")).toBeNull());
+    expect(screen.queryByRole("button", { name: "Retry loading result" })).toBeNull();
+    expect(document.body.textContent).not.toContain("operation-from-another-actor");
+  });
 });

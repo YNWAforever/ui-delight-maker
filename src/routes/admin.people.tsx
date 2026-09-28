@@ -182,6 +182,7 @@ function AdminPeopleIndex() {
   const lifecycleRequest = useRef(0);
   const writeLock = useRef(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const inviteTriggerRef = useRef<HTMLButtonElement>(null);
   const [roleUser, setRoleUser] = useState(selectedUser);
   const [lifecycleUser, setLifecycleUser] = useState(selectedUser);
   const [lifecycleInventory, setLifecycleInventory] = useState<ReassignmentInventory>();
@@ -384,7 +385,7 @@ function AdminPeopleIndex() {
         }
         primaryAction={
           access.invite ? (
-            <Button size="sm" onClick={() => setInviteOpen(true)}>
+            <Button ref={inviteTriggerRef} size="sm" onClick={() => setInviteOpen(true)}>
               <UserPlus className="mr-2 h-4 w-4" aria-hidden="true" />
               Invite users
             </Button>
@@ -432,6 +433,7 @@ function AdminPeopleIndex() {
       <InviteUsersDialog
         open={inviteOpen}
         onOpenChange={setInviteOpen}
+        triggerRef={inviteTriggerRef}
         departments={departments}
         teams={teams}
         onSubmit={async (invitations) => {

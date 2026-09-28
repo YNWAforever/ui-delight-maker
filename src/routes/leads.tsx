@@ -370,11 +370,13 @@ function LeadsPage() {
               onClear={() => setSelected(new Set())}
             />
           )}
-          {bulkOperation.result && (
+          {(bulkOperation.result || bulkOperation.recoveryState) && (
             <BulkActionBar
               selectedCount={selected.size}
               busy={bulkOperation.busy}
               result={bulkOperation.result}
+              recoveryState={bulkOperation.recoveryState}
+              onRetryResult={bulkOperation.retryLoadResult}
               onResume={() => void bulkOperation.resume()}
               onClear={() => {
                 setSelected(new Set());

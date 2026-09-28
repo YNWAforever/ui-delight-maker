@@ -91,3 +91,21 @@ describe("the root error boundary never prints what the driver said", () => {
     expect(screen.getByRole("link", { name: "Go home" }).getAttribute("href")).toBe("/");
   });
 });
+
+describe("root fallback skip target", () => {
+  it("keeps one focusable main landmark when a route errors", () => {
+    renderBoundary(new Error("This quote is already approved."));
+    const main = screen.getByRole("main");
+    expect(main.id).toBe("main-content");
+    main.focus();
+    expect(document.activeElement).toBe(main);
+  });
+
+  it("keeps one focusable main landmark for a missing route", () => {
+    const NotFound = Route.options.notFoundComponent as ComponentType;
+    render(<NotFound />);
+    const main = screen.getByRole("main");
+    expect(main.id).toBe("main-content");
+    expect(document.querySelectorAll("main").length).toBe(1);
+  });
+});

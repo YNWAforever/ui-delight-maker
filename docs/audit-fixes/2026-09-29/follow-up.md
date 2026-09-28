@@ -1,0 +1,31 @@
+# 2026-09-29 audit follow-up — candidate source
+
+Audit baseline: main `46dd6107e7c08582ae6b626f1af4afc1e451cdac` (#110). User-supplied SHA256SUMS verified all 34 files. CSVs contain 718 action candidates, 751 test scenarios, 51 routes and 214 server functions. Those counts describe the audit inventory; they are not newly executed UI coverage. The audit's 0/18 cross-role business journeys remains 0/18 here.
+
+## Backlog disposition
+
+| Package / findings | Source result | Acceptance still required |
+| --- | --- | --- |
+| R00 / CF-01 | Base pinned; local checkout clean before branch. Production build hold confirmed active; latest READY still audited SHA `2904faa`. | Seven isolated role sessions, target IDs, synthetic fixtures, runtime worker/flags identity. |
+| R01 / CF-01, CO-05–11/19/27 | Existing command and reconciliation fixes retained. Four historical anomalies have no new owner provenance. | Disposable copy compatibility rehearsal, record-level dispositions and cross-role handoff. No historical values invented. |
+| R02 / CF-04, CO-16 | `53b942c`: transient GET failure retains the same pending receipt and key; Leads/Tasks show `Retry loading result`; new preview is blocked while result is unresolved. Owner-denied pointer is cleared. | Real actor browser retry/offline/reconnect. Existing isolated PostgreSQL bulk suite covers 100 mixed outcomes, owner denial, rollback and idempotency; new PR CI must rerun it. |
+| R03 / CF-02/03 | `4467ae3`, `e4e6c17`, `48673e4`: public/auth and root fallback skip targets; the Radix invitation dialog has focus entry, Escape, focus return, disabled close while submitting and the prior overlay tone. | Actual browser keyboard, 390/768/1280/1440, 200% zoom and screen reader. |
+| R04 / CO-02/08/14/19/20/21 | Existing routes and controls inspected; no unproven role or commercial workflow changes. | Seven-role, same-record handoff and state/scope browser evidence. |
+| R05 / CO-17/18/29 | Existing import/export and real PostgreSQL gates retained. | Authenticated upload through independent read, retention owner and target-specific dry run. |
+| R06 / CO-22/23/24 | `1c9f0ce`: HTTP collector now returns request metric scope; verifier requires complete scoped count and duration. Mocked collector test is a contract test, not performance evidence. | Actual authenticated 10 cold browser navigations and 30 warm runs, same data/machine before/after, 10k/100k isolated dataset. Existing HTTP no-cache mode correctly fails browser gate. |
+| R07 / CO-12/13/25/28 | Existing source guards and governed AI remain. | Legacy plus Neon snapshots, five-domain parity, provider sandbox receipts and scoped actor UI. |
+| R08 / all | This ledger and existing release checklist retain NO-GO. | Every required matrix case must have case-specific browser/network/provider/data proof before release. |
+
+## Verification of source changes
+
+- R02 audit probe reproduced red, then Leads/shared bulk tests 14/14 green; TypeScript, changed-file lint and diff check passed.
+- R03 skip and invitation focus/Escape probes reproduced red; after fixes, six affected files/27 tests green. Submitting-close assertion reproduced red then invite suite 5/5 green. After the final overlay composition, invite tests 5/5, TypeScript, changed-file lint and pure `bunx vite build` client/SSR passed; final exact-head CI remains pending. Repo lint had one pre-existing Fast Refresh warning.
+- R06 two metric-scope assertions reproduced red then measurement suite 6/6 green; script-specific TypeScript and lint passed.
+- Local Docker engine query hung and was stopped; no local full PostgreSQL result is claimed. PR isolated DB CI is the required next gate. No `bun run build`, migration or seed touched an unverified target.
+- Browser tool initialization failed with Windows sandbox ACL error; no screenshot or viewport/role verification is claimed.
+
+## Data, UAT, performance and release
+
+No schema change, data repair or cutover in this branch. Existing [production reconciliation disposition](../2026-09-27/production-reconciliation-disposition.md) records four anomalies; each needs provenance and owner decision before a data plan. Existing [UAT matrix](../2026-09-27/uat-results.md) stays blocked for seven roles. Existing [performance report](../2026-09-27/t19-evidence.md) has static bundle and isolated SQL component measurements; this branch adds no full-route before/after result. Use the [release checklist](../2026-09-27/release-checklist.md) for compatibility, PITR, flags, worker, provider, promotion and rollback checks. A source merge is not permission to release. The Vercel production hold is active; latest READY production remains audited SHA `2904faa`.
+
+Rollback of these source-only changes is a source revert; do not erase durable bulk operations or their receipts. A future production rollback also needs new-code/old-code compatibility with already applied migrations 010–021 and data reconciliation, not just a prior bundle. No customer message, provider call or production write was made.

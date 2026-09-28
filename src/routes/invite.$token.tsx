@@ -32,7 +32,11 @@ function InvitationUnavailable({ state }: { state: "expired" | "used" | "unavail
       "This invitation is invalid or revoked. Ask your administrator for a new invitation.",
   }[state];
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="flex min-h-screen items-center justify-center bg-background px-4"
+    >
       <section className="w-full max-w-md text-center">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-destructive/10 text-destructive">
           <AlertTriangle className="h-6 w-6" aria-hidden="true" />

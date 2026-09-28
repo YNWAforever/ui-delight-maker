@@ -36,7 +36,11 @@ export function LoginAuthPage({
       : "Sign in with your administrator-invited account.");
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="flex min-h-screen items-center justify-center bg-background px-4"
+    >
       <div className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-2 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -67,7 +71,7 @@ export function LoginAuthPage({
           </Suspense>
         )}
       </div>
-    </div>
+    </main>
   );
 }
 

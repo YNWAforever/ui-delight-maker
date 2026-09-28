@@ -20,6 +20,8 @@ export function BulkActionBar({
   selectedCount,
   busy,
   result,
+  recoveryState,
+  onRetryResult,
   onResume,
   onClear,
   clearLabel = "Clear selection",
@@ -28,6 +30,8 @@ export function BulkActionBar({
   selectedCount: number;
   busy: boolean;
   result: BulkResult | null;
+  recoveryState?: "loading" | "retry" | null;
+  onRetryResult?: () => void;
   onResume: () => void;
   onClear: () => void;
   clearLabel?: string;
@@ -43,6 +47,15 @@ export function BulkActionBar({
     >
       <span className="font-medium">{selectedCount} selected</span>
       {children}
+      {recoveryState === "loading" && <span>Checking previous bulk result…</span>}
+      {recoveryState === "retry" && (
+        <>
+          <span>Previous bulk result could not be loaded. The receipt is saved in this tab.</span>
+          <Button type="button" size="sm" variant="outline" disabled={busy} onClick={onRetryResult}>
+            Retry loading result
+          </Button>
+        </>
+      )}
       {result && (
         <>
           <span>
