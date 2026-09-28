@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, render as rtlRender, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AdminError } from "@/lib/admin/errors";
 import {
@@ -9,6 +10,23 @@ import {
   type ReassignmentInventory,
 } from "@/server/admin/reassignment.server";
 import { UserLifecycleDialog } from "../user-lifecycle-dialog";
+
+vi.mock("@/components/people/profile-search-combobox", () => ({
+  ProfileSearchCombobox: ({
+    label,
+    value,
+    onChange,
+  }: {
+    label: string;
+    value: string;
+    onChange: (id: string) => void;
+  }) => (
+    <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+      <option value="">Choose successor</option>
+      <option value="successor">Grace Hopper</option>
+    </select>
+  ),
+}));
 
 const user = {
   id: "target",
@@ -22,17 +40,29 @@ function inventory(counts: Record<string, number>): ReassignmentInventory {
   const buckets = REASSIGNMENT_BUCKETS.map((bucket) => ({
     ...bucket,
     count: counts[bucket.key] ?? 0,
+    historyCount: 0,
   }));
   return {
     profileId: "target",
     buckets,
     totalCount: buckets.reduce((sum, bucket) => sum + bucket.count, 0),
+    totalHistoryCount: 0,
   };
 }
 
 const successors = [
   { id: "successor", name: "Grace Hopper", email: "grace@example.com", status: "active" as const },
 ];
+
+function render(content: React.ReactNode) {
+  return rtlRender(
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      {content}
+    </QueryClientProvider>,
+  );
+}
 
 describe("UserLifecycleDialog", () => {
   afterEach(() => cleanup());

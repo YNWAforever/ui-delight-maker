@@ -451,10 +451,25 @@ beforeEach(() => {
   mocks.getReassignmentInventory.mockResolvedValue({
     profileId: "profile-sales",
     buckets: [
-      { key: "leads.assigned_to", table: "leads", column: "assigned_to", label: "Leads", count: 2 },
-      { key: "tasks.assigned_to", table: "tasks", column: "assigned_to", label: "Tasks", count: 1 },
+      {
+        key: "leads.assigned_to",
+        table: "leads",
+        column: "assigned_to",
+        label: "Leads",
+        count: 2,
+        historyCount: 0,
+      },
+      {
+        key: "tasks.assigned_to",
+        table: "tasks",
+        column: "assigned_to",
+        label: "Tasks",
+        count: 1,
+        historyCount: 0,
+      },
     ],
     totalCount: 3,
+    totalHistoryCount: 0,
   });
   mocks.deactivateUserWithReassignment.mockImplementation(
     async (
@@ -660,6 +675,7 @@ describe("admin account management user stories", () => {
             profileId: "final-super-admin",
             buckets: [],
             totalCount: 0,
+            totalHistoryCount: 0,
           },
           successors: {},
         },

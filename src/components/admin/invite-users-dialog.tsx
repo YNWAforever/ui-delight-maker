@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
 import { X } from "lucide-react";
 import { invitationInputSchema } from "@/lib/admin/schemas";
 import type { UserRole } from "@/lib/admin/types";
@@ -19,7 +20,6 @@ type InviteUsersDialogProps = {
   onOpenChange: (open: boolean) => void;
   onSubmit: (invitations: InviteInput[]) => Promise<unknown> | unknown;
   departments?: readonly { id: string; name: string }[];
-  managers?: readonly { id: string; name: string | null; email: string | null }[];
   teams?: readonly { id: string; name: string }[];
 };
 
@@ -39,7 +39,6 @@ export function InviteUsersDialog({
   onOpenChange,
   onSubmit,
   departments = [],
-  managers = [],
   teams = [],
 }: InviteUsersDialogProps) {
   const [emailText, setEmailText] = useState("");
@@ -204,32 +203,12 @@ export function InviteUsersDialog({
             </label>
           </div>
 
-          <label className="block text-sm font-medium text-foreground">
-            Manager
-            {managers.length > 0 ? (
-              <select
-                aria-label="Invitation manager"
-                value={managerProfileId}
-                onChange={(event) => setManagerProfileId(event.target.value)}
-                className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">No manager</option>
-                {managers.map((manager) => (
-                  <option key={manager.id} value={manager.id}>
-                    {manager.name || manager.email || manager.id}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                aria-label="Invitation manager"
-                value={managerProfileId}
-                onChange={(event) => setManagerProfileId(event.target.value)}
-                placeholder="Manager profile ID (optional)"
-                className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            )}
-          </label>
+          <ProfileSearchCombobox
+            purpose="admin_directory"
+            label="Invitation manager"
+            value={managerProfileId}
+            onChange={setManagerProfileId}
+          />
 
           {teams.length > 0 ? (
             <fieldset>

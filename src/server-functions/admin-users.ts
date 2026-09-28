@@ -86,9 +86,11 @@ const reassignmentInventorySchema = z
         column: z.string().min(1),
         label: z.string().min(1),
         count: z.coerce.number().int().nonnegative(),
+        historyCount: z.coerce.number().int().nonnegative(),
       }),
     ),
     totalCount: z.coerce.number().int().nonnegative(),
+    totalHistoryCount: z.coerce.number().int().nonnegative(),
   })
   .transform((inventory): ReassignmentInventory => inventory as ReassignmentInventory);
 const reassignmentLifecycleSchema = z.object({

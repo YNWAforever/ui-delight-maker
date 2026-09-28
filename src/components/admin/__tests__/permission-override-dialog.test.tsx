@@ -151,7 +151,7 @@ describe("PermissionOverrideDialog", () => {
     );
 
     expect(screen.getByText("Team team-1")).toBeTruthy();
-    expect(screen.getByText("Allowed")).toBeTruthy();
+    expect(screen.getByText("Varies by scope")).toBeTruthy();
   });
 
   it("offers a revoke control only when the actor may override permissions", () => {

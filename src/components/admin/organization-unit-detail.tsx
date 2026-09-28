@@ -101,9 +101,17 @@ export function OrganizationUnitDetail({
     const user = users.find((candidate) => candidate.id === membership.profileId);
     return {
       ...membership,
-      name: user?.name || user?.email || membership.profileId,
-      email: user?.email ?? null,
-      profileStatus: user?.status ?? "active",
+      name:
+        membership.profileName ||
+        membership.profileEmail ||
+        user?.name ||
+        user?.email ||
+        membership.profileId,
+      email: membership.profileEmail ?? user?.email ?? null,
+      profileStatus:
+        (membership.profileStatus as TeamMemberUser["status"] | undefined) ??
+        user?.status ??
+        "active",
     };
   });
 

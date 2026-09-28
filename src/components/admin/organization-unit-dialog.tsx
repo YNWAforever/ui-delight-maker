@@ -6,6 +6,7 @@ import type {
   TeamInput,
 } from "@/server/repositories/admin-teams";
 import type { TeamMemberUser } from "./team-member-table";
+import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
 
 export type OrganizationUnitKind = "department" | "team";
 export type OrganizationUnitSubmit = {
@@ -32,7 +33,6 @@ export function OrganizationUnitDialog({
   open,
   kind,
   unit,
-  users,
   openOwnedWorkCount = 0,
   onOpenChange,
   onSubmit,
@@ -175,24 +175,24 @@ export function OrganizationUnitDialog({
             />
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
-            <ProfileSelect
+            <ProfileSearchCombobox
+              purpose="admin_directory"
               label={isDepartment ? "Department head" : "Team lead"}
               value={headProfileId}
-              users={users}
               onChange={setHeadProfileId}
             />
-            <ProfileSelect
+            <ProfileSearchCombobox
+              purpose="admin_directory"
               label={isDepartment ? "Department deputy" : "Team deputy"}
               value={deputyProfileId}
-              users={users}
               onChange={setDeputyProfileId}
             />
           </div>
           {!isDepartment ? (
-            <ProfileSelect
+            <ProfileSearchCombobox
+              purpose="admin_directory"
               label="Default owner"
               value={defaultOwnerProfileId}
-              users={users}
               onChange={setDefaultOwnerProfileId}
             />
           ) : null}
@@ -253,38 +253,5 @@ export function OrganizationUnitDialog({
         </form>
       </div>
     </div>
-  );
-}
-
-function ProfileSelect({
-  label,
-  value,
-  users,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  users: readonly TeamMemberUser[];
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="block">
-      <span className="text-sm font-medium text-foreground">{label}</span>
-      <select
-        aria-label={label}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <option value="">Unassigned</option>
-        {users
-          .filter((user) => user.status === "active")
-          .map((user) => (
-            <option key={user.id} value={user.id}>
-              {user.name || user.email || user.id}
-            </option>
-          ))}
-      </select>
-    </label>
   );
 }

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TeamMemberTable } from "../team-member-table";
@@ -28,13 +29,17 @@ const members = [
   },
 ];
 
+function renderWithQueries(content: React.ReactNode) {
+  return render(<QueryClientProvider client={new QueryClient()}>{content}</QueryClientProvider>);
+}
+
 afterEach(() => cleanup());
 
 describe("TeamMemberTable", () => {
   it("supports bulk member selection and inline role changes", () => {
     const onAddMembers = vi.fn();
     const onUpdateMember = vi.fn();
-    render(
+    renderWithQueries(
       <TeamMemberTable
         members={members}
         availableMembers={users.filter((user) => user.id !== "profile-1")}
@@ -63,7 +68,7 @@ describe("TeamMemberTable", () => {
     // confirmation. Combined with the missing catch, a refused add wiped the selection with
     // no message and no way to recover what had been chosen.
     const onAddMembers = vi.fn().mockRejectedValue(new Error("Team management is outside scope"));
-    render(
+    renderWithQueries(
       <TeamMemberTable
         members={members}
         availableMembers={users.filter((user) => user.id !== "profile-1")}
@@ -87,7 +92,7 @@ describe("TeamMemberTable", () => {
   it("puts ending a membership behind a confirmation that states the consequence", async () => {
     const onEndMember = vi.fn().mockResolvedValue(undefined);
     const actor = userEvent.setup();
-    render(
+    renderWithQueries(
       <TeamMemberTable
         members={members}
         availableMembers={[]}
@@ -115,7 +120,7 @@ describe("TeamMemberTable", () => {
   });
 
   it("does not offer a write control to a role that cannot manage the team", () => {
-    render(
+    renderWithQueries(
       <TeamMemberTable
         members={members}
         availableMembers={users}
@@ -131,9 +136,46 @@ describe("TeamMemberTable", () => {
     expect(screen.queryByRole("combobox", { name: /Role for/ })).toBeNull();
   });
 
+  it("keeps only failed member IDs after a partial bulk result", async () => {
+    const onAddMembers = vi.fn().mockResolvedValue(false);
+    renderWithQueries(
+      <TeamMemberTable
+        members={members}
+        availableMembers={users.filter((user) => user.id !== "profile-1")}
+        canManage
+        bulkResult={{
+          operationId: "operation-1",
+          state: "completed",
+          processed: 2,
+          total: 2,
+          remainingIds: ["profile-2"],
+          results: [
+            { id: "profile-1", status: "succeeded", retryable: false },
+            { id: "profile-2", status: "forbidden", retryable: false },
+          ],
+        }}
+        onAddMembers={onAddMembers}
+        onUpdateMember={vi.fn()}
+        onEndMember={vi.fn()}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(
+        Array.from(
+          (screen.getByRole("listbox", { name: "Add members" }) as HTMLSelectElement)
+            .selectedOptions,
+          (option) => option.value,
+        ),
+      ).toEqual(["profile-2"]),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Add selected members" }));
+    await waitFor(() => expect(onAddMembers).toHaveBeenCalledWith(["profile-2"], null, null));
+  });
+
   it("rejects a temporary membership whose end is not after its start", () => {
     const onAddMembers = vi.fn();
-    render(
+    renderWithQueries(
       <TeamMemberTable
         members={members}
         availableMembers={users.filter((user) => user.id !== "profile-1")}
