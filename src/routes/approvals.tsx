@@ -60,6 +60,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useClientNow } from "@/hooks/use-client-now";
 import { slaChip } from "@/lib/approval-sla";
+import { approvalProposedAction } from "@/lib/approval-types";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import { crmQueryKeys } from "@/lib/query-keys";
@@ -67,9 +68,12 @@ import { routeQueryOptions } from "@/lib/route-query";
 import { formatDateTime } from "@/lib/format";
 import {
   assignApprovalFn,
+  claimApprovalFn,
   decideApproval,
   getApprovals,
   getAssignableApproversFn,
+  getMessageHandoffFn,
+  recordManualMessageSentFn,
 } from "@/server-functions/approvals";
 import type { SerializableHumanApproval } from "@/lib/serializable";
 import { approveQuote, rejectQuote } from "@/server-functions/quotes";
@@ -223,6 +227,7 @@ function ApprovalsInbox() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [manualReference, setManualReference] = useState("");
   const [bulk, setBulk] = useState<Set<string>>(new Set());
   const [decidingIds, setDecidingIds] = useState<ReadonlySet<string>>(() => new Set<string>());
   const [refreshing, setRefreshing] = useState(false);
@@ -266,6 +271,32 @@ function ApprovalsInbox() {
       await queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true });
     } catch (error) {
       // The row is written from the server response, so a failure leaves the cache as it was.
+      toast.error(toSafeErrorMessage(error));
+    } finally {
+      setAssigningId(null);
+    }
+  };
+
+  const claimForReview = async (approval: Approval) => {
+    setAssigningId(approval.id);
+    try {
+      const updated = await claimApprovalFn({
+        data: {
+          id: approval.id,
+          expectedVersion: approval.row_version,
+          idempotencyKey: crypto.randomUUID(),
+        },
+      });
+      queryClient.setQueryData<ApprovalRead>(approvalsQueryKey, (current) =>
+        current?.map((entry) =>
+          entry.id === updated.id
+            ? { ...entry, assigned_to: updated.assigned_to, row_version: updated.row_version }
+            : entry,
+        ),
+      );
+      toast.success("Claimed for review");
+      await queryClient.invalidateQueries({ queryKey: approvalsQueryKey, exact: true });
+    } catch (error) {
       toast.error(toSafeErrorMessage(error));
     } finally {
       setAssigningId(null);
@@ -328,8 +359,19 @@ function ApprovalsInbox() {
    * vanishing the instant the optimistic write lands — which read as "did that work?".
    */
   const selected =
-    allApprovals.find((approval) => approval.id === selectedId) ?? pending[0] ?? null;
+    allApprovals.find((approval) => approval.id === selectedId) ??
+    pending[0] ??
+    escalated[0] ??
+    decided[0] ??
+    null;
   const nextPendingId = pending.find((approval) => approval.id !== selected?.id)?.id ?? null;
+  const messageHandoffQuery = useQuery({
+    ...routeQueryOptions({
+      queryKey: [...crmQueryKeys.approvals.all(), "message-handoff", selected?.id],
+      queryFn: () => getMessageHandoffFn({ data: { id: selected!.id } }),
+    }),
+    enabled: selected?.approval_type === "message_send" && selected.status === "approved",
+  });
 
   /**
    * Selecting is separate from opening the sheet on purpose.
@@ -342,10 +384,45 @@ function ApprovalsInbox() {
   const selectApproval = (id: string) => {
     setSelectedId(id);
     setReason("");
+    setManualReference("");
   };
   const openApprovalPanel = (id: string) => {
     selectApproval(id);
     setDetailOpen(true);
+  };
+
+  const copyApprovedDraft = async () => {
+    const draft = messageHandoffQuery.data?.draftMessage;
+    if (!draft) {
+      toast.error("Approved draft text is unavailable");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(draft);
+      toast.success("Approved draft copied");
+    } catch {
+      toast.error("Could not copy the approved draft");
+    }
+  };
+
+  const recordManualSend = async () => {
+    if (!selected || selected.approval_type !== "message_send") return;
+    try {
+      await recordManualMessageSentFn({
+        data: {
+          approvalId: selected.id,
+          reference: manualReference.trim(),
+          idempotencyKey: crypto.randomUUID(),
+        },
+      });
+      await queryClient.invalidateQueries({
+        queryKey: [...crmQueryKeys.approvals.all(), "message-handoff", selected.id],
+      });
+      setManualReference("");
+      toast.success("Manual send statement recorded; delivery is not verified by ClientOps");
+    } catch (error) {
+      toast.error(toSafeErrorMessage(error));
+    }
   };
 
   const isBusy = decidingIds.size > 0;
@@ -537,7 +614,9 @@ function ApprovalsInbox() {
       decision === "approved"
         ? approval.approval_type === "quote_send"
           ? "Quote approved. Issuance is a separate step."
-          : "Approved — the agent will proceed"
+          : approval.approval_type === "message_send"
+            ? "Draft approved; awaiting manual send"
+            : "Approval recorded"
         : decision === "rejected"
           ? "Approval rejected"
           : "Changes requested",
@@ -707,6 +786,12 @@ function ApprovalsInbox() {
   };
 
   const decidedNote = (approval: Approval): string | null => {
+    if (
+      approval.recovery_outcome_code === "expired" ||
+      approval.recovery_outcome_code === "cancelled"
+    ) {
+      return `Agent run ${approval.recovery_outcome_code} by an operator. Reason: ${approval.recovery_reason ?? "not recorded"}. No customer message was sent by ClientOps.`;
+    }
     if (approval.status === "superseded") {
       return "Superseded by a newer approval. This record cannot be decided.";
     }
@@ -801,7 +886,9 @@ function ApprovalsInbox() {
               description:
                 approval.approval_type === "quote_send"
                   ? "Approving closes this request and marks the quote approved. Issuing its version is a separate action for an authorized issuer."
-                  : "The agent proceeds immediately with the proposed action. There is no undo.",
+                  : approval.approval_type === "message_send"
+                    ? "The draft will be approved and await manual send. ClientOps does not send it."
+                    : approvalProposedAction(approval.approval_type) + " There is no undo.",
               label: "Approve",
               action: () => runDecision(() => decideOne(approval, "approved")),
             })
@@ -841,6 +928,16 @@ function ApprovalsInbox() {
               title: "Reviewer",
               content: (
                 <div className="space-y-2">
+                  {!approval.assigned_to && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={isBusy || assigningId === approval.id}
+                      onClick={() => void claimForReview(approval)}
+                    >
+                      Claim for review
+                    </Button>
+                  )}
                   <Select
                     value={approval.assigned_to ?? UNASSIGNED_VALUE}
                     disabled={isBusy || assigningId === approval.id || approversQuery.isPending}
@@ -867,7 +964,7 @@ function ApprovalsInbox() {
                     <UserPlus className="mr-1 inline h-3 w-3" />
                     {approval.assigned_to
                       ? `Routed to ${approverLabel(approval.assigned_to)}. Anyone who can decide approvals still can.`
-                      : "Unassigned. Everyone who can decide approvals sees it."}
+                      : "Unassigned. Eligible reviewers can claim it when the linked subject is in scope."}
                   </p>
                 </div>
               ),
@@ -885,6 +982,70 @@ function ApprovalsInbox() {
           </pre>
         ),
       },
+      ...(approval.approval_type === "message_send" && approval.status === "approved"
+        ? [
+            {
+              id: "manual-handoff",
+              title: "Manual send handoff",
+              content: (
+                <div className="space-y-3 text-sm">
+                  <p>
+                    The draft is approved and awaits a person to send it. ClientOps has no platform
+                    delivery receipt.
+                  </p>
+                  {messageHandoffQuery.isPending ? (
+                    <p className="text-muted-foreground">Loading approved draft…</p>
+                  ) : messageHandoffQuery.isError ? (
+                    <p className="text-destructive">The approved draft could not be loaded.</p>
+                  ) : (
+                    <>
+                      <p className="whitespace-pre-wrap rounded-md bg-muted/50 p-3">
+                        {messageHandoffQuery.data?.draftMessage ??
+                          "Approved draft text is unavailable."}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!messageHandoffQuery.data?.draftMessage}
+                        onClick={() => void copyApprovedDraft()}
+                      >
+                        Copy approved draft
+                      </Button>
+                      {messageHandoffQuery.data?.handoff.handoff_status ===
+                      "manual_send_recorded" ? (
+                        <p className="text-muted-foreground">
+                          Manual send recorded: {messageHandoffQuery.data.handoff.sent_reference}.
+                          This is an operator statement, not a delivery receipt.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          <input
+                            aria-label="Manual send reference"
+                            className="w-full rounded-md border border-input bg-background px-3 py-2"
+                            value={manualReference}
+                            onChange={(event) => setManualReference(event.target.value)}
+                            placeholder="Channel and message reference"
+                          />
+                          <Button
+                            size="sm"
+                            disabled={manualReference.trim().length < 3}
+                            onClick={() => void recordManualSend()}
+                          >
+                            Record manual send
+                          </Button>
+                          <p className="text-xs text-muted-foreground">
+                            Recording confirms your statement only; it does not send or verify
+                            delivery.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ),
+            } satisfies RecordSummarySection,
+          ]
+        : []),
       {
         id: "notes",
         title: "Reviewer notes",
@@ -1007,7 +1168,7 @@ function ApprovalsInbox() {
                     setConfirm({
                       title: `Approve ${bulk.size} request${bulk.size > 1 ? "s" : ""}?`,
                       description:
-                        "Each agent proceeds immediately, and every quote send in the selection is issued. There is no undo.",
+                        "Each request records its own approval. Quote approval does not issue a version; message drafts await manual sending. There is no undo.",
                       label: "Approve all",
                       action: () => runDecision(bulkApprove),
                     })
@@ -1149,18 +1310,21 @@ function ApprovalsInbox() {
                 ) : (
                   <ul className="divide-y divide-border">
                     {decided.slice(0, DECIDED_HISTORY_LIMIT).map((approval) => (
-                      <li
-                        key={approval.id}
-                        className="flex flex-wrap items-center gap-3 p-4 text-sm"
-                      >
-                        <Bot className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span className="font-medium">
-                          {approvalTypeLabel(approval.approval_type)}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                          {approval.context_summary ?? "No summary provided"}
-                        </span>
-                        <StatusBadge domain="approvals" value={approval.status} />
+                      <li key={approval.id}>
+                        <button
+                          type="button"
+                          className="flex w-full flex-wrap items-center gap-3 p-4 text-left text-sm"
+                          onClick={() => openApprovalPanel(approval.id)}
+                        >
+                          <Bot className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span className="font-medium">
+                            {approvalTypeLabel(approval.approval_type)}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                            {approval.context_summary ?? "No summary provided"}
+                          </span>
+                          <StatusBadge domain="approvals" value={approval.status} />
+                        </button>
                       </li>
                     ))}
                   </ul>

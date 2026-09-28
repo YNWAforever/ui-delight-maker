@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 import { Bot, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   EmptyWorkspaceState,
@@ -17,10 +18,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { agentDetailSearchSchema } from "@/lib/admin-ux-search";
+import { AGENT_RUN_STUCK_MINUTES } from "@/lib/agents";
+import { toSafeErrorMessage } from "@/lib/errors";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { formatCount, formatDateTime, formatPercent } from "@/lib/format";
-import { getAgentHistoryPage } from "@/server-functions/agent-runs";
+import { getAgentHistoryPage, recoverAgentRunFn } from "@/server-functions/agent-runs";
 import { getEffectiveAgentCatalogue } from "@/server-functions/agents-catalogue";
 
 /**
@@ -38,8 +41,9 @@ import { getEffectiveAgentCatalogue } from "@/server-functions/agents-catalogue"
  * `status` and `human_approval` now come from `loadEffectiveAgentCatalogue` — the policy store
  * laid over the code catalogue — because those two fields are exactly what the dispatch path
  * and the writeback obey; every other field (model, capabilities, description, workflow type)
- * still comes straight from the code catalogue, since nothing overrides them. Nothing on this
- * page writes. BD-3 records what has to exist before any of it can become editable, and the
+ * still comes straight from the code catalogue, since nothing overrides them. The Governance
+ * tab does not write policy; the Runs tab now supports an audited local recovery command. BD-3
+ * records what has to exist before catalogue settings can become editable, and the
  * Governance tab states it on the page rather than leaving a reader to assume the controls
  * were merely misbehaving.
  *
@@ -168,6 +172,43 @@ function AgentDetail() {
   const runs = history.items;
   const navigate = useNavigate({ from: Route.fullPath });
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [recovery, setRecovery] = useState<{
+    runId: string;
+    action: "expire" | "cancel" | "retry";
+    reason: string;
+  } | null>(null);
+  const [recovering, setRecovering] = useState(false);
+  const queryClient = useQueryClient();
+
+  async function confirmRecovery() {
+    if (!recovery || recovering || recovery.reason.trim().length < 10) return;
+    setRecovering(true);
+    try {
+      await recoverAgentRunFn({
+        data: {
+          runId: recovery.runId,
+          action: recovery.action,
+          reason: recovery.reason.trim(),
+        },
+      });
+      setRecovery(null);
+      await queryClient.invalidateQueries({
+        queryKey: crmQueryKeys.agents.section(agent.display_name, "history", {
+          page: search.page,
+          limit: HISTORY_PAGE_SIZE,
+        }),
+      });
+      toast.success(
+        recovery.action === "retry"
+          ? "Old run closed. Verify the external outcome, then start a new attempt from its record."
+          : "Local run closed. Check the external provider separately if it may still be working.",
+      );
+    } catch (error) {
+      toast.error(toSafeErrorMessage(error));
+    } finally {
+      setRecovering(false);
+    }
+  }
 
   const { runs_24h, avg_confidence } = history.summary;
   const lastPage = Math.max(1, Math.ceil(history.total / history.limit));
@@ -242,6 +283,11 @@ function AgentDetail() {
                     <ul className="divide-y divide-border">
                       {runs.map((run) => {
                         const open = expanded === run.id;
+                        const active =
+                          run.status === "running" || run.status === "waiting_approval";
+                        const oldEnough =
+                          Date.now() - new Date(run.created_at).getTime() >=
+                          AGENT_RUN_STUCK_MINUTES * 60_000;
                         return (
                           <li key={run.id} className="py-3">
                             <button
@@ -291,6 +337,114 @@ function AgentDetail() {
                                       ? JSON.stringify(run.input_data, null, 2)
                                       : "—"}
                                 </pre>
+                                {run.outcome_code && (
+                                  <div className="rounded-md border border-border p-3 text-xs">
+                                    <p>Recovery outcome: {run.outcome_code}</p>
+                                    {run.recovery_reason && <p>Reason: {run.recovery_reason}</p>}
+                                    {run.retry_of && <p>Previous attempt: {run.retry_of}</p>}
+                                  </div>
+                                )}
+                                {active && !run.subject_restricted && (
+                                  <div className="space-y-2 rounded-md border border-border p-3 text-sm">
+                                    <p className="font-medium">Local run recovery</p>
+                                    <p className="text-muted-foreground">
+                                      Closing this record does not cancel work already sent to an
+                                      external provider. Confirm its outcome before starting another
+                                      attempt. No recovery action sends a customer message.
+                                    </p>
+                                    {run.status === "waiting_approval" && (
+                                      <p className="text-muted-foreground">
+                                        This run has an approval in progress. Retry is unavailable
+                                        until that review is resolved.
+                                      </p>
+                                    )}
+                                    <div className="flex flex-wrap gap-2">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() =>
+                                          setRecovery({
+                                            runId: run.id,
+                                            action: "cancel",
+                                            reason: "",
+                                          })
+                                        }
+                                      >
+                                        Cancel local run
+                                      </Button>
+                                      {oldEnough && (
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          onClick={() =>
+                                            setRecovery({
+                                              runId: run.id,
+                                              action: "expire",
+                                              reason: "",
+                                            })
+                                          }
+                                        >
+                                          Mark expired
+                                        </Button>
+                                      )}
+                                      {oldEnough && run.status === "running" && (
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          onClick={() =>
+                                            setRecovery({
+                                              runId: run.id,
+                                              action: "retry",
+                                              reason: "",
+                                            })
+                                          }
+                                        >
+                                          Prepare retry
+                                        </Button>
+                                      )}
+                                    </div>
+                                    {recovery?.runId === run.id && (
+                                      <div className="space-y-2 rounded-md bg-muted/30 p-3">
+                                        <p>
+                                          Confirm {recovery.action} for this local run. A retry only
+                                          closes the old attempt; verify the provider outcome and
+                                          dispatch again from the subject record.
+                                        </p>
+                                        <label className="block" htmlFor="agent-recovery-reason">
+                                          Recovery reason
+                                        </label>
+                                        <textarea
+                                          id="agent-recovery-reason"
+                                          className="min-h-20 w-full rounded-md border border-input bg-background p-2"
+                                          maxLength={1000}
+                                          value={recovery.reason}
+                                          onChange={(event) =>
+                                            setRecovery({ ...recovery, reason: event.target.value })
+                                          }
+                                        />
+                                        <div className="flex gap-2">
+                                          <Button
+                                            type="button"
+                                            disabled={
+                                              recovering || recovery.reason.trim().length < 10
+                                            }
+                                            onClick={() => void confirmRecovery()}
+                                          >
+                                            Confirm local recovery
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            disabled={recovering}
+                                            onClick={() => setRecovery(null)}
+                                          >
+                                            Keep run open
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </li>

@@ -424,6 +424,12 @@ export interface AgentRun {
   model_used: string;
   confidence_score: number | null;
   human_review_required: boolean;
+  outcome_code?: string | null;
+  attempt_id?: string;
+  retry_of?: string | null;
+  recovery_reason?: string | null;
+  recovered_by?: string | null;
+  recovered_at?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -449,6 +455,8 @@ export interface HumanApproval {
   status: ApprovalStatus;
   row_version: number;
   superseded_by: string | null;
+  recovery_outcome_code?: string | null;
+  recovery_reason?: string | null;
   context_data: unknown;
   context_summary: string | null;
   reviewer_notes: string | null;

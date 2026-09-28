@@ -1,4 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
+import { parseOperationInput } from "@/lib/operations/errors";
+import { AgentRecoverySchema } from "@/lib/operations/input-schemas";
+import { loadRequestAuthorization } from "@/server/auth/authorization.server";
+import { recoverAgentRunCommand } from "@/server/commands/agent-recovery.server";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import { requirePageAuthorization } from "@/server/auth/authorization.server";
 import {
@@ -89,3 +94,14 @@ export const getAiReviewRead = createServerFn({ method: "GET" }).handler(async (
   });
   return loadAiReviewRead(access, rows);
 });
+
+export const recoverAgentRunFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parseOperationInput(AgentRecoverySchema, data))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    const run = await recoverAgentRunCommand(context, {
+      ...data,
+      idempotencyKey: data.idempotencyKey ?? randomUUID(),
+    });
+    return serializeAgentRun(run);
+  });

@@ -176,11 +176,16 @@ describe("AI Ops ships no ungoverned control", () => {
       expect(source).not.toMatch(/from "@\/components\/ui\/slider"/);
     });
 
-    it(`${file} never reports success for work it did not do`, () => {
+    it(`${file} reports success only after a real server recovery`, () => {
       const source = executableSource(file);
-      // toast.error survives: a refresh that genuinely failed should say so. What may not
-      // survive is an assertion that something happened.
-      expect(source).not.toMatch(/toast\s*\.\s*success/);
+      if (file === "agents.$name.tsx") {
+        expect(source).toContain("await recoverAgentRunFn");
+        expect(source.indexOf("await recoverAgentRunFn")).toBeLessThan(
+          source.indexOf("toast.success"),
+        );
+      } else {
+        expect(source).not.toMatch(/toast\s*\.\s*success/);
+      }
       expect(source).not.toMatch(/toast\s*\.\s*message/);
     });
 

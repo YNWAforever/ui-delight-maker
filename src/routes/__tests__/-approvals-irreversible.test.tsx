@@ -15,6 +15,9 @@ const navigateMock = vi.hoisted(() => vi.fn());
 
 const assignApprovalFnMock = vi.hoisted(() => vi.fn());
 const getAssignableApproversFnMock = vi.hoisted(() => vi.fn());
+const getMessageHandoffFnMock = vi.hoisted(() => vi.fn());
+const claimApprovalFnMock = vi.hoisted(() => vi.fn());
+const recordManualMessageSentFnMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
@@ -35,6 +38,9 @@ vi.mock("@/server-functions/approvals", () => ({
   decideApproval: decideApprovalMock,
   assignApprovalFn: assignApprovalFnMock,
   getAssignableApproversFn: getAssignableApproversFnMock,
+  getMessageHandoffFn: getMessageHandoffFnMock,
+  claimApprovalFn: claimApprovalFnMock,
+  recordManualMessageSentFn: recordManualMessageSentFnMock,
 }));
 vi.mock("@/server-functions/quotes", () => ({
   approveQuote: approveQuoteMock,
@@ -63,6 +69,13 @@ const approval = (
   created_at: now,
   ...overrides,
 });
+
+const messageSend = (overrides: Partial<SerializableHumanApproval> = {}) =>
+  approval({
+    approval_type: "message_send",
+    context_summary: "Reply draft for customer",
+    ...overrides,
+  });
 
 const quoteSend = (overrides: Partial<SerializableHumanApproval> = {}) =>
   approval({
@@ -96,6 +109,17 @@ beforeEach(() => {
   approveQuoteMock.mockReset().mockResolvedValue(undefined);
   rejectQuoteMock.mockReset().mockResolvedValue(undefined);
   navigateMock.mockReset();
+  getMessageHandoffFnMock.mockReset().mockResolvedValue({
+    approvalId: "ap-1",
+    draftMessage: "Draft only",
+    handoff: { handoff_status: "awaiting_manual_send", sent_reference: null },
+  });
+  claimApprovalFnMock
+    .mockReset()
+    .mockResolvedValue(approval({ assigned_to: "profile-1", row_version: 1 }));
+  recordManualMessageSentFnMock
+    .mockReset()
+    .mockResolvedValue({ handoff_status: "manual_send_recorded", sent_reference: "ref" });
   getAssignableApproversFnMock.mockReset().mockResolvedValue([
     { id: "profile-1", name: "Ada Wong", email: "ada@fimmick.test" },
     { id: "profile-2", name: "Bea Chan", email: "bea@fimmick.test" },
@@ -118,16 +142,42 @@ describe("Every approval decision is confirmed, and the confirmation names the c
 
     fireEvent.click(decisionButton(/^Approve$/));
 
-    // A decision writes to an agent run that starts work the moment it is approved. The
-    // dialog is the only thing standing between a misclick and that.
+    // The confirmation must describe the stored decision without inventing a downstream action.
     expect(decideApprovalMock).not.toHaveBeenCalled();
 
     const dialog = await screen.findByRole("alertdialog");
     const text = dialog.textContent ?? "";
     expect(text).toContain("Approve this request?");
     // The consequence, not a restatement of the question: the agent acts, and nothing undoes it.
-    expect(text).toMatch(/proceeds immediately/i);
-    expect(text).toMatch(/no undo/i);
+    expect(text).toMatch(/records the decision/i);
+    expect(text).not.toMatch(/proceeds immediately/i);
+  });
+
+  it("approving a message draft says it awaits human sending", async () => {
+    renderInbox([messageSend()]);
+    fireEvent.click(decisionButton(/^Approve$/));
+    const text = (await screen.findByRole("alertdialog")).textContent ?? "";
+    expect(text).toMatch(/draft.*approved.*manual send/i);
+    expect(text).not.toMatch(/agent proceeds immediately/i);
+  });
+
+  it("offers an unassigned review claim through the scoped command", async () => {
+    renderInbox([approval()]);
+    fireEvent.click(decisionButton(/Claim for review/));
+    await waitFor(() => expect(claimApprovalFnMock).toHaveBeenCalledTimes(1));
+    expect(claimApprovalFnMock).toHaveBeenCalledWith({
+      data: expect.objectContaining({ id: "ap-1", expectedVersion: 0 }),
+    });
+  });
+
+  it("shows an approved draft with manual send controls and no delivery claim", async () => {
+    renderInbox([messageSend({ status: "approved", assigned_to: "profile-1", decided_at: now })]);
+    expect((await screen.findAllByText("Draft only")).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Copy approved draft" }).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getAllByRole("button", { name: "Record manual send" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/no platform delivery receipt/i).length).toBeGreaterThan(0);
   });
 
   it("approving a quote send confirms approval without claiming issuance", async () => {

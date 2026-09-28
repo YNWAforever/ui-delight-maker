@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ReactNode } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -48,8 +48,10 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
 
+const recoverAgentRunFnMock = vi.hoisted(() => vi.fn());
 vi.mock("@/server-functions/agent-runs", () => ({
   getAgentHistoryPage: vi.fn(),
+  recoverAgentRunFn: recoverAgentRunFnMock,
 }));
 
 vi.mock("@/server-functions/agents-catalogue", () => ({
@@ -188,5 +190,40 @@ describe("/agents/$name renders the redaction copy subject_restricted implies", 
 
     expect(screen.getByText("Qualified: strong ICP match, routed to sales.")).toBeTruthy();
     expect(screen.queryByText("Summary restricted.")).toBeNull();
+  });
+  it("shows a reasoned local recovery without claiming external cancellation or delivery", async () => {
+    recoverAgentRunFnMock.mockResolvedValue({ id: "run-stuck", status: "failed" });
+    renderDetail([
+      historyItem({
+        id: "run-stuck",
+        status: "running",
+        created_at: "2026-08-27T10:00:00.000Z",
+      }),
+    ]);
+    fireEvent.click(screen.getByRole("button", { expanded: false }));
+    expect(screen.getByText(/does not cancel work already sent/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Prepare retry" }));
+    fireEvent.change(screen.getByLabelText("Recovery reason"), {
+      target: { value: "Provider callback missing; external state checked" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm local recovery" }));
+    await waitFor(() =>
+      expect(recoverAgentRunFnMock).toHaveBeenCalledWith({
+        data: {
+          runId: "run-stuck",
+          action: "retry",
+          reason: "Provider callback missing; external state checked",
+        },
+      }),
+    );
+  });
+
+  it("does not offer recovery for a restricted subject", () => {
+    renderDetail([
+      historyItem({ id: "run-restricted", status: "running", subject_restricted: true }),
+    ]);
+    fireEvent.click(screen.getByRole("button", { expanded: false }));
+    expect(screen.queryByRole("button", { name: "Prepare retry" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cancel local run" })).toBeNull();
   });
 });
