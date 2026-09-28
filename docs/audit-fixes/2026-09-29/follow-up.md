@@ -46,3 +46,7 @@ Rollback of these source-only changes is a source revert; do not erase durable b
 
 - [PR #115](https://github.com/YNWAforever/ui-delight-maker/pull/115) merged at `8f773f1`. Exact-head and post-merge main Checks, real isolated PostgreSQL contract (2,187 tests, 0 skipped) and two-run migration/seed replay passed. Protected preview `/api/build` matched head `c66642d`. Production build hold remains active.
 - Narrow People card source commit `4b7d50d` passed 19 focused/adjacent tests, TypeScript, changed-file lint and pure Vite client/SSR build. It still needs real narrow-viewport and role browser acceptance. No schema, production data or provider operation occurred.
+
+## Final audit delta
+
+[Acceptance delta](acceptance-delta.md) reconciles the supplied 751-case baseline with current source proof. [PR #116](https://github.com/YNWAforever/ui-delight-maker/pull/116) merged at `8b62413` after exact-head and post-merge main Checks, real isolated PostgreSQL contract (2,188 tests, 0 skipped), two-run migration/seed replay and matching protected preview SHA. Four old audit FAIL probes have positive source regressions, but their browser acceptance is blocked. Seven-role, legacy/Neon snapshot, provider sandbox, historical data provenance and authenticated runtime before/after gates remain open; production release stays NO-GO.
