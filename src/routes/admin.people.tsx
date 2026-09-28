@@ -397,6 +397,9 @@ function AdminPeopleIndex() {
         <PeopleDirectory
           data={directory}
           search={search}
+          loading={directoryQuery.isPending}
+          error={directoryQuery.isError ? toSafeErrorMessage(directoryQuery.error) : null}
+          onRetry={() => void directoryQuery.refetch()}
           selectedUserId={search.user}
           onSearchChange={updateSearch}
           onSelectUser={(profileId) => updateSearch({ ...search, user: profileId })}

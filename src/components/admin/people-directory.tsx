@@ -26,6 +26,7 @@ export type PeopleDirectoryProps = {
   onSelectUser: (profileId: string) => void;
   loading?: boolean;
   error?: string | null;
+  onRetry?: () => void;
   /** Real department rows from the organization directory. Empty hides the control. */
   departments?: readonly FilterOption[];
   /** Real team rows from the organization directory. Empty hides the control. */
@@ -84,6 +85,7 @@ export function PeopleDirectory({
   onSelectUser,
   loading = false,
   error = null,
+  onRetry,
   departments = [],
   teams = [],
 }: PeopleDirectoryProps) {
@@ -323,7 +325,12 @@ export function PeopleDirectory({
           role="alert"
           className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive"
         >
-          {error}
+          <span>{error}</span>
+          {onRetry ? (
+            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+              Retry loading people
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -333,7 +340,7 @@ export function PeopleDirectory({
           label="people"
           priorities={columns.map((column) => column.priority)}
         />
-      ) : rows.length === 0 ? (
+      ) : error && rows.length === 0 ? null : rows.length === 0 ? (
         hasFilters ? (
           <FilteredEmptyState onClear={clearFilters} filterSummary={filterSummary} />
         ) : (
@@ -355,35 +362,37 @@ export function PeopleDirectory({
         />
       )}
 
-      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span className={cn(total === 0 && "sr-only")}>
-          {total === 0
-            ? "0 people"
-            : `Showing ${formatCount((page - 1) * limit + 1)}–${formatCount(
-                Math.min(page * limit, total),
-              )} of ${formatCount(total)}`}
-        </span>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="Previous page"
-            disabled={!hasPrevious}
-            onClick={() => onSearchChange({ ...search, page: page - 1 })}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border disabled:opacity-40"
-          >
-            <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="Next page"
-            disabled={!hasNext}
-            onClick={() => onSearchChange({ ...search, page: page + 1 })}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border disabled:opacity-40"
-          >
-            <ChevronRight aria-hidden="true" className="h-4 w-4" />
-          </button>
+      {data ? (
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span className={cn(total === 0 && "sr-only")}>
+            {total === 0
+              ? "0 people"
+              : `Showing ${formatCount((page - 1) * limit + 1)}–${formatCount(
+                  Math.min(page * limit, total),
+                )} of ${formatCount(total)}`}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              aria-label="Previous page"
+              disabled={!hasPrevious}
+              onClick={() => onSearchChange({ ...search, page: page - 1 })}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border disabled:opacity-40"
+            >
+              <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Next page"
+              disabled={!hasNext}
+              onClick={() => onSearchChange({ ...search, page: page + 1 })}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border disabled:opacity-40"
+            >
+              <ChevronRight aria-hidden="true" className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }
