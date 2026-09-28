@@ -1,0 +1,65 @@
+{
+  "project": "delicate-cake-75532180",
+  "branch": "br-young-rice-aoyk6gjz",
+  "database": "neondb",
+  "scope": "User-authorized production read-only aggregates; not UAT or historical parity proof",
+  "results": [
+    [],
+    [],
+    [],
+    [
+      {
+        "checked_at": "2026-09-28T07:43:30.437Z",
+        "read_only": "on"
+      }
+    ],
+    [
+      {
+        "issue": "duplicate_open_approval_groups",
+        "rows": "0"
+      },
+      {
+        "issue": "open_quote_approval_missing_quote_id",
+        "rows": "1"
+      },
+      {
+        "issue": "duplicate_job_sheet_groups",
+        "rows": "0"
+      }
+    ],
+    [
+      {
+        "issued_or_accepted_quotes": "1",
+        "missing_issued_pointer": "1",
+        "invalid_issued_version": "0",
+        "missing_accepted_pointer": "0",
+        "invalid_accepted_version": "0",
+        "missing_accepted_at": "0"
+      }
+    ],
+    [
+      {
+        "accepted_quotes": "1",
+        "invalid_snapshot_money": "0"
+      }
+    ],
+    [
+      {
+        "total_portions": "2",
+        "entered_missing_identity": "0",
+        "entered_missing_date": "0",
+        "entered_missing_confirmation_metadata": "0",
+        "planned_with_invoice_evidence": "0",
+        "planned_with_notes_only": "0"
+      }
+    ]
+  ],
+  "followup": {
+    "orphan_open_quote_approvals": 1,
+    "explicitly_demo": 1,
+    "run_subject_is_quote": 0,
+    "run_has_existing_quote": 0,
+    "retained_issued_versions": 0,
+    "retained_accepted_versions": 1
+  }
+}
