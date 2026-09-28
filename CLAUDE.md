@@ -29,11 +29,12 @@ bun run test           # Vitest
 bun run lint           # ESLint
 bun run format         # Prettier
 bunx tsc --noEmit      # Type check
-bun run build          # migrate schema → verify schema → vite build → seed on deploy
+bunx vite build        # local source-only build
+# bun run build        # migration → verification → Vite → seed; isolated DB/approved deploy only
 ```
 
 Full verification gate before merging: `bun run test`, `bun run lint`, `bunx tsc --noEmit`,
-`bun run build`, `git diff --check`.
+`bunx vite build`, `git diff --check`; use an isolated PostgreSQL database and require zero skipped tests. `bun run build` includes migration and seed and requires a verified disposable database or approved deployment.
 
 ## Architecture — Request Lifecycle
 
@@ -59,7 +60,7 @@ src/server-functions/  BFF layer — every client data call goes through here
 src/server/            Server-only: repositories, read-models, auth, db, workflows
 src/components/        Feature components; components/ui/ = shadcn primitives
 src/lib/               types.ts (source of truth), format.ts, query-keys.ts, n8n.ts
-neon/migrations/       Active SQL migrations (001–007)
+neon/migrations/       Registered SQL migrations (001–021)
 scripts/clientops/     Migrate, verify, seed, perf-budget, bootstrap scripts
 n8n/workflows/         Agent workflow JSON definitions
 ```
@@ -72,7 +73,9 @@ n8n/workflows/         Agent workflow JSON definitions
   by default — component tests need `// @vitest-environment jsdom` at the top of the file.
 - **Query keys** always via `crmQueryKeys` in `src/lib/query-keys.ts`; route loaders use
   `routeQueryOptions` so stale time stays consistent.
-- **Dates** must use `src/lib/format.ts` (fixed `en-GB` + UTC) to avoid SSR hydration mismatch.
+- **Dates** use `src/lib/format.ts`: fixed `en-GB` and `Asia/Hong_Kong` for instants;
+  YYYY-MM-DD calendar fields use `formatDateOnly` without time-zone conversion. The explicit
+  zone keeps SSR and browser output consistent.
 - **Prettier** 100 cols, double quotes, semicolons, trailing commas. Path alias `@/*` → `src/*`.
 - **Commits** Conventional Commits, lowercase imperative: `feat:`, `fix:`, `perf:`, `test:`,
   `docs:`. Branches `codex/<slug>` (also `fix/<slug>`, `feat/<slug>`). PRs land as merge
@@ -93,7 +96,7 @@ n8n/workflows/         Agent workflow JSON definitions
 
 ## Migration In Progress: Supabase → Neon
 
-Neon is the target. Supabase runtime code is quarantined in `src/legacy-supabase/`.
+Neon is the target. Five legacy domains still use Supabase behind explicit source guards. No cutover has been approved or proven; see `docs/audit-fixes/2026-09-27/t20-evidence.md`.
 Still importing it (do not add more):
 
 - `src/server/repositories/` — `automation-playbooks`, `customer-success`, `deals`,
@@ -111,3 +114,7 @@ Still importing it (do not add more):
 `src/lib/__tests__/clientops-relationship-schema.test.ts` reads it off disk with `readFileSync`
 to assert the stale `role: "cs"` value never reappears. Deleting the file means dropping that
 assertion in the same change, or the test throws.
+
+## 2026-09-27 audit remediation
+
+The task and CO-01–CO-30 matrix lives in `docs/audit-fixes/2026-09-27/status.md`. Release and rollback steps, blocked external gates, and role UAT are in the adjacent `release-checklist.md`, `operations-runbook.md`, and `uat-results.md`. `/api/build` returns only a validated deployment commit SHA or null. Do not treat a local pure Vite build as migration, preview, or production evidence.

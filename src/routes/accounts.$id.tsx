@@ -872,7 +872,7 @@ function AccountDetailRoute() {
                                         {formatCurrencyAmount(sheet.total_amount, sheet.currency)}
                                       </span>
                                       <span>
-                                        {sheet.xero_customer_reference
+                                        {sheet.has_xero_customer_reference
                                           ? "Xero customer linked"
                                           : "Xero customer not linked"}
                                       </span>

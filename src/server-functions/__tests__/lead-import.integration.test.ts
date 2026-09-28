@@ -66,7 +66,9 @@ vi.mock("@/server/db/neon.server", () => {
 
 import { CLIENTOPS_MIGRATION_PATHS } from "@/lib/clientops-relationship-schema";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
-import { commitLeadImportFn } from "../lead-import";
+import { commitLeadImport } from "@/server/repositories/lead-import";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import type { AppSession } from "@/lib/auth/neon-auth.server";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 
@@ -107,13 +109,22 @@ async function readLead(company: string, email: string): Promise<LeadRow> {
   return result.rows[0];
 }
 
-type CommitCounts = { created: number; updated: number; skipped: number };
-type CommitHandler = (input: { data: { rows: Record<string, string>[] } }) => Promise<CommitCounts>;
-
-// commitLeadImportFn is the server function's handler once createServerFn is stubbed to a
-// passthrough, so this calls the real validate -> commit path.
+// Preserve the legacy repository's field-fill regression coverage while the public
+// whole-file server function is retired in favour of durable import sessions.
 const commit = (rows: Record<string, string>[]) =>
-  (commitLeadImportFn as unknown as CommitHandler)({ data: { rows } });
+  commitLeadImport(rows, ACTOR_ID, {
+    session: { profile: { id: ACTOR_ID, role: "sales", status: "active" } } as AppSession,
+    actor: {
+      profileId: ACTOR_ID,
+      role: "sales",
+      status: "active",
+      managedDepartmentIds: [],
+      managedTeamIds: [],
+      directReportIds: [],
+    },
+    overrides: [],
+    now: new Date(),
+  } as RequestAuthorization);
 
 describe("lead CSV import against Postgres", () => {
   beforeAll(async () => {

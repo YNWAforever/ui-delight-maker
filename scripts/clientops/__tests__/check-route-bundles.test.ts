@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { assertRouteChunkBudgets, readRouteChunkMeasurements } from "../check-route-bundles";
+import {
+  assertLoginInitialJsBudget,
+  findClientManifest,
+  assertRouteChunkBudgets,
+  readRouteChunkMeasurements,
+} from "../check-route-bundles";
 
 const temporaryDirectories: string[] = [];
 
@@ -65,6 +70,27 @@ afterEach(() => {
 });
 
 describe("route bundle budgets", () => {
+  it("selects the client manifest when a server manifest is present", () => {
+    const root = mkdtempSync(join(tmpdir(), "clientops-dual-manifest-"));
+    temporaryDirectories.push(root);
+    const server = join(root, "dist", "server", ".vite", "manifest.json");
+    const client = join(root, "dist", "client", ".vite", "manifest.json");
+    mkdirSync(join(root, "dist", "server", ".vite"), { recursive: true });
+    mkdirSync(join(root, "dist", "client", ".vite"), { recursive: true });
+    writeFileSync(server, "{}");
+    writeFileSync(client, "{}");
+    expect(findClientManifest(root)).toBe(client);
+  });
+
+  it("does not treat a server-only manifest as browser transfer evidence", () => {
+    const root = mkdtempSync(join(tmpdir(), "clientops-server-only-"));
+    temporaryDirectories.push(root);
+    const serverDirectory = join(root, "dist", "server", ".vite");
+    mkdirSync(serverDirectory, { recursive: true });
+    writeFileSync(join(serverDirectory, "manifest.json"), "{}");
+    expect(() => findClientManifest(root)).toThrow(/client manifest/i);
+  });
+
   it("reads emitted route chunk sizes and accepts a route below budget", () => {
     const measurements = readRouteChunkMeasurements(createManifestFixture());
 
@@ -87,6 +113,17 @@ describe("route bundle budgets", () => {
     expect(() =>
       assertRouteChunkBudgets(measurements.routes.filter(({ route }) => route === "dashboard")),
     ).not.toThrow();
+  });
+
+  it("enforces the actual initial JS gzip budget including shared chunks", () => {
+    expect(() =>
+      assertLoginInitialJsBudget({
+        routeSource: "login",
+        files: [],
+        bytes: 1_000_000,
+        gzipBytes: 307_201,
+      }),
+    ).toThrow(/Login initial JS/);
   });
 
   it("rejects an oversized route and identifies its owner and budget", () => {

@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/legacy-supabase/server";
+import { createLegacyDomainClient, loadWorkspaceTaskRows } from "./legacy-domain-source.server";
 import type { CustomerSuccessProfile, Project, SuccessTouchpoint, Task } from "@/lib/types";
 import { pickColumns, supabaseOperationFailed } from "./supabase-writes";
 
@@ -115,7 +115,7 @@ export type RenewalRiskOverride = Pick<
 export async function listCustomerSuccessProfiles(
   filters: CustomerSuccessProfileFilters = {},
 ): Promise<CustomerSuccessProfile[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("customer_success");
   let query = supabase
     .from("customer_success_profiles")
     .select("*")
@@ -134,7 +134,7 @@ export async function listCustomerSuccessProfiles(
 
 /** Every profile, renewal-soonest first, for the dashboard's aggregates. */
 export async function listCustomerSuccessProfilesForDashboard(): Promise<CustomerSuccessProfile[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("customer_success");
   const { data, error } = await supabase
     .from("customer_success_profiles")
     .select("*")
@@ -153,7 +153,7 @@ export async function listCustomerSuccessProfilesForDashboard(): Promise<Custome
 export async function getCustomerSuccessAccountWorkspace(
   accountId: string,
 ): Promise<CustomerSuccessAccountWorkspace> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("customer_success");
   const [profileResult, touchpointsResult, projectsResult, tasksResult] = await Promise.all([
     supabase
       .from("customer_success_profiles")
@@ -171,11 +171,13 @@ export async function getCustomerSuccessAccountWorkspace(
       .select("*")
       .eq("account_id", accountId)
       .order("created_at", { ascending: false }),
-    supabase
-      .from("tasks")
-      .select("*")
-      .eq("account_id", accountId)
-      .order("created_at", { ascending: false }),
+    loadWorkspaceTaskRows("account_id", accountId, () =>
+      supabase
+        .from("tasks")
+        .select("*")
+        .eq("account_id", accountId)
+        .order("created_at", { ascending: false }),
+    ),
   ]);
 
   if (profileResult.error) {
@@ -212,7 +214,7 @@ export async function upsertCustomerSuccessProfile(
     next_best_action: CustomerSuccessProfile["next_best_action"];
   },
 ): Promise<CustomerSuccessProfile> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("customer_success");
   const { data, error } = await supabase
     .from("customer_success_profiles")
     .upsert(pickColumns(input, PROFILE_UPSERT_COLUMNS), { onConflict: "account_id" })
@@ -229,7 +231,7 @@ export async function upsertCustomerSuccessProfile(
  * anyway, and failing here keeps the message about the profile rather than the patch.
  */
 export async function getCustomerSuccessRiskInputs(id: string): Promise<CustomerSuccessRiskInputs> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("customer_success");
   const { data, error } = await supabase
     .from("customer_success_profiles")
     .select("health_score, renewal_date")
@@ -251,7 +253,7 @@ export async function updateCustomerSuccessProfile(
   updates: Partial<Omit<CustomerSuccessProfile, "id" | "account_id">>,
   riskOverride: RenewalRiskOverride = null,
 ): Promise<CustomerSuccessProfile> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("customer_success");
   const { data, error } = await supabase
     .from("customer_success_profiles")
     .update({
@@ -276,7 +278,7 @@ export async function updateCustomerSuccessProfile(
 export async function createSuccessTouchpoint(
   input: CreateSuccessTouchpointInput,
 ): Promise<SuccessTouchpoint> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("customer_success");
   const { data: touchpoint, error } = await supabase
     .from("success_touchpoints")
     .insert(pickColumns(input, TOUCHPOINT_CREATE_COLUMNS))

@@ -242,6 +242,8 @@ beforeEach(() => {
   captures.recordList = null;
   captures.tabs = null;
   vi.mocked(Route.useLoaderData).mockReturnValue({
+    access: { leads: true, jobSheets: true },
+    jobSheets: [],
     leads,
     quotes: [],
     tasks: [],
@@ -251,7 +253,7 @@ beforeEach(() => {
     products: [],
     pipelineTotals: {
       openLeads: 2,
-      activeQuoteValue: 0,
+      activeQuoteTotals: [],
       openTasks: 0,
       pendingApprovals: 0,
     },

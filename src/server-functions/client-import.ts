@@ -1,9 +1,10 @@
+import { parseOperationInput } from "@/lib/operations/errors";
 import { requireCapability } from "@/server/auth/authorization.server";
 // src/server-functions/client-import.ts
 import { createServerFn } from "@tanstack/react-start";
+import { ImportRowsSchema } from "@/lib/operations/input-schemas";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { validateImportRows, type ImportRow } from "@/lib/csv-import";
-import { commitClientImport } from "@/server/repositories/client-import";
+import { validateImportRows } from "@/lib/csv-import";
 import { listProducts } from "@/server/repositories/products";
 import { query } from "@/server/db/neon.server";
 
@@ -19,7 +20,7 @@ async function loadValidationContext() {
 }
 
 export const validateClientImportRows = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { rows: ImportRow[] })
+  .validator((data: unknown) => parseOperationInput(ImportRowsSchema, data))
   .handler(async ({ data }) => {
     await requireCapability("accounts.view");
     await requireNeonAuthSession();
@@ -28,17 +29,8 @@ export const validateClientImportRows = createServerFn({ method: "POST" })
   });
 
 export const commitClientImportFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { rows: ImportRow[] })
-  .handler(async ({ data }) => {
-    await requireCapability("accounts.create");
-    const session = await requireNeonAuthSession();
-    // Defense in depth: this endpoint is gated behind an authenticated
-    // session, and the wizard UI only ever sends the `valid` subset from an
-    // earlier validateClientImportRows call — but re-validating here is cheap
-    // and guards against a stale client-side "valid" set (e.g. a product
-    // deactivated, or an owner removed, between the validate and commit
-    // steps) without trusting whatever rows the client happens to send.
-    const context = await loadValidationContext();
-    const { valid } = validateImportRows(data.rows, context);
-    return commitClientImport(valid, session.profile.id);
+  .validator((data: unknown) => parseOperationInput(ImportRowsSchema, data))
+  .handler(async () => {
+    await requireNeonAuthSession();
+    throw new Error("Direct CSV commit is retired. Preview the file again.");
   });

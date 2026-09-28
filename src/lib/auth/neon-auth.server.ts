@@ -1,6 +1,10 @@
 import { getRequest } from "@tanstack/react-start/server";
 import type { Profile } from "@/lib/types";
-import { getProfileByEmail, getProfileById } from "@/server/repositories/profiles";
+import {
+  getCurrentInvitationForEmail,
+  getProfileByEmail,
+  getProfileById,
+} from "@/server/repositories/profiles";
 
 export type NeonAuthUser = {
   id: string;
@@ -131,19 +135,47 @@ function sessionIsRevoked(identity: AuthIdentity, profile: Profile) {
   return createdAt < invalidBefore;
 }
 
-export async function getNeonAuthSession(): Promise<AppSession | null> {
+export type WorkspaceAccessDecision =
+  | { state: "anonymous" }
+  | { state: "active"; session: AppSession }
+  | { state: "invited" }
+  | { state: "suspended" }
+  | { state: "deactivated" }
+  | { state: "no_profile" };
+
+/** Resolve only the current signed-in identity; no arbitrary email input is accepted. */
+export async function resolveWorkspaceAccess(): Promise<WorkspaceAccessDecision> {
   const identity = await getNeonAuthIdentity();
-  if (!identity) return null;
+  if (!identity) return { state: "anonymous" };
 
   const normalizedEmail = identity.user.email?.trim().toLowerCase();
   const profile =
     (await getProfileById(identity.user.id)) ??
     (normalizedEmail ? await getProfileByEmail(normalizedEmail) : null);
-  if (!profile || profile.status !== "active" || sessionIsRevoked(identity, profile)) {
-    return null;
+
+  if (profile?.status === "suspended") return { state: "suspended" };
+  if (profile?.status === "deactivated") return { state: "deactivated" };
+  if (profile?.status === "active") {
+    if (sessionIsRevoked(identity, profile)) return { state: "anonymous" };
+    return { state: "active", session: { ...identity, profile } };
   }
 
-  return { ...identity, profile };
+  if (normalizedEmail) {
+    const invitation = await getCurrentInvitationForEmail(normalizedEmail);
+    if (
+      invitation?.status === "pending" &&
+      Number.isFinite(Date.parse(invitation.expiresAt)) &&
+      Date.parse(invitation.expiresAt) > Date.now()
+    ) {
+      return { state: "invited" };
+    }
+  }
+  return { state: "no_profile" };
+}
+
+export async function getNeonAuthSession(): Promise<AppSession | null> {
+  const access = await resolveWorkspaceAccess();
+  return access.state === "active" ? access.session : null;
 }
 
 export async function requireNeonAuthSession() {

@@ -8,6 +8,7 @@ import type {
 import type { AgentPolicy, AgentWorkflowType } from "@/lib/agents";
 import { normalizeQualificationData } from "@/lib/workflows/qualification";
 import { transaction } from "@/server/db/neon.server";
+import { normalizeAIUsage } from "@/server/workflows/ai-invocation.server";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createActivityLog } from "@/server/repositories/activity-logs";
 import { getAgentRunForUpdate, updateAgentRunResult } from "@/server/repositories/agent-runs";
@@ -164,7 +165,8 @@ export async function writeQualificationResult(payload: QualificationWritebackPa
         output_summary: payload.output_summary,
         confidence_score: payload.confidence_score,
         human_review_required: getHumanReviewRequired(qualificationData, payload.confidence_score),
-        tokens_used: payload.tokens_used ?? null,
+        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
+        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
         model_used: payload.model_used ?? null,
       },
       db,
@@ -241,7 +243,8 @@ export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload)
         output_summary: payload.context_summary,
         confidence_score: payload.confidence_score,
         human_review_required: Boolean(approval),
-        tokens_used: payload.tokens_used ?? null,
+        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
+        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
         model_used: payload.model_used ?? null,
       },
       db,
@@ -322,7 +325,8 @@ export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWrite
         output_summary: payload.output_summary,
         confidence_score: payload.confidence,
         human_review_required: parksForApproval,
-        tokens_used: payload.tokens_used ?? null,
+        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
+        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
         model_used: payload.model_used ?? null,
       },
       db,
@@ -433,7 +437,8 @@ export async function writeQuoteDraftResult(payload: QuoteDraftWritebackPayload)
         output_summary: payload.context_summary ?? "Draft quote created.",
         confidence_score: payload.confidence_score,
         human_review_required: Boolean(approval),
-        tokens_used: payload.tokens_used ?? null,
+        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
+        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
         model_used: payload.model_used ?? null,
       },
       db,
@@ -507,7 +512,8 @@ export async function writeRelationshipIntelligenceResult(
         output_summary: payload.output_summary,
         confidence_score: payload.confidence_score,
         human_review_required: false,
-        tokens_used: payload.tokens_used ?? null,
+        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
+        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
         model_used: payload.model_used ?? null,
       },
       db,

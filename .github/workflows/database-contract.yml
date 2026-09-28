@@ -2,6 +2,8 @@ name: Database contract
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 # Least privilege: these jobs only ever read the checked-out tree. Without an explicit
 # block the workflow inherits the repository default, which can be read-write — a token
@@ -32,9 +34,49 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      # The whole suite, not just src/server/db/__tests__/. DATABASE_TEST_URL is set above, so
-      # the integration tests that self-skip locally execute here instead of being silently
-      # skipped. That makes this one command a superset of the previous step, and picks up any
-      # future test without another workflow edit. (The exact pass/skip counts that used to be
-      # quoted here went stale within a few PRs; `bun run test` prints the current ones.)
-      - run: bun run test
+      # A JSON summary makes skips a hard failure, including self-skipped DB tests.
+      # The Postgres service and DATABASE_TEST_URL above are required for this gate.
+      - run: test -n "$DATABASE_TEST_URL"
+      - run: bunx vitest run --no-file-parallelism --testTimeout=30000 --reporter=json --outputFile="$RUNNER_TEMP/vitest-results.json"
+      - run: bun scripts/clientops/assert-vitest-no-skips.ts "$RUNNER_TEMP/vitest-results.json"
+
+  # The normal build wrapper mutates a database. Rehearse it only against this
+  # job's fresh pgvector service, with an explicit loopback driver override.
+  seed-rehearsal:
+    name: Isolated migration and seed replay
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: clientops
+          POSTGRES_PASSWORD: clientops
+          POSTGRES_DB: clientops_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U clientops"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgres://clientops:clientops@127.0.0.1:5432/clientops_test
+      DATABASE_TEST_URL: postgres://clientops:clientops@127.0.0.1:5432/clientops_test
+      CLIENTOPS_SCRIPT_LOCAL_PG: "1"
+      CLIENTOPS_SEED_ON_DEPLOY: "1"
+      CLIENTOPS_ALLOW_STAGING_SEED: "1"
+      CLIENTOPS_SEED_MODE: staging-demo
+      CLIENTOPS_SEED_TARGET: staging
+      CLIENTOPS_SEED_TODAY: "2026-09-28"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Build, migrate and seed twice on the isolated service
+        run: |
+          bun run build
+          before="$(bun scripts/clientops/demo-seed-counts.ts)"
+          bun run build
+          after="$(bun scripts/clientops/demo-seed-counts.ts)"
+          test "$before" = "$after"
+          echo "$after"

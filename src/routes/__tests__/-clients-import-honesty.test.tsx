@@ -1,194 +1,190 @@
 // @vitest-environment jsdom
-
 import type { ComponentType, ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 import { crmQueryKeys } from "@/lib/query-keys";
 
-const validateMock = vi.hoisted(() => vi.fn());
-const commitMock = vi.hoisted(() => vi.fn());
-const navigateMock = vi.hoisted(() => vi.fn());
-const routerInvalidateMock = vi.hoisted(() => vi.fn());
-const toastErrorMock = vi.hoisted(() => vi.fn());
-const toastSuccessMock = vi.hoisted(() => vi.fn());
-
+const mocks = vi.hoisted(() => ({
+  preview: vi.fn(),
+  commit: vi.fn(),
+  resume: vi.fn(),
+  get: vi.fn(),
+  routerInvalidate: vi.fn(),
+}));
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
     options,
     fullPath: "/clients/import",
     useLoaderData: vi.fn(),
-    useSearch: vi.fn(),
   }),
-  useNavigate: () => navigateMock,
-  useRouter: () => ({ invalidate: routerInvalidateMock }),
+  useRouter: () => ({ invalidate: mocks.routerInvalidate }),
   Link: ({ to, children }: { to: string; children?: ReactNode }) => <a href={to}>{children}</a>,
 }));
-vi.mock("sonner", () => ({
-  toast: { error: toastErrorMock, success: toastSuccessMock, message: vi.fn() },
-}));
-vi.mock("@/server-functions/client-import", () => ({
-  validateClientImportRows: validateMock,
-  commitClientImportFn: commitMock,
+vi.mock("@/server-functions/import-sessions", () => ({
+  previewImportFn: mocks.preview,
+  commitImportFn: mocks.commit,
+  resumeImportFn: mocks.resume,
+  getImportResultFn: mocks.get,
 }));
 vi.mock("@/server-functions/products", () => ({ getProducts: vi.fn() }));
-
 import { Route } from "../clients.import";
 
-const HEADER = "company_name,owner_email,product_name,start_date,value";
-const CSV = [HEADER, "Northstar,ops@fimmick.com,Retainer,2026-01-01,5000", "  ,,,,"].join("\n");
-
-/** Only `name` and `text()` are read, and jsdom's File/Blob pair is not reliable here. */
-const csvFile = (text: string, name = "clients.csv") =>
-  ({ name, text: () => Promise.resolve(text) }) as unknown as File;
-
+const ID = "11111111-1111-4111-8111-111111111111";
+const HASH = "a".repeat(64);
+const CSV = "external_id,company_name\nlegacy-1,Northstar";
+const file = (text: string) => ({ name: "clients.csv", text: async () => text }) as File;
+const row = (status: string | null, action = "create") => ({
+  recordIndex: 1,
+  sourceLine: 2,
+  action,
+  status,
+  errors: [],
+  id: status === "succeeded" ? ID : null,
+  retryable: false,
+});
+const preview = () => ({
+  sessionId: ID,
+  previewHash: HASH,
+  previewExpiresAt: "2026-09-28T00:00:00.000Z",
+  state: "preview",
+  processed: 0,
+  total: 1,
+  rows: [row(null)],
+});
+const completed = () => ({
+  sessionId: ID,
+  state: "completed",
+  processed: 1,
+  total: 1,
+  rows: [row("succeeded", "created")],
+});
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
+  const promise = new Promise<T>((res) => {
     resolve = res;
-    reject = rej;
   });
-  return { promise, resolve, reject };
+  return { promise, resolve };
 }
-
-beforeEach(() => {
-  validateMock.mockReset();
-  commitMock.mockReset();
-  navigateMock.mockReset();
-  routerInvalidateMock.mockReset();
-  routerInvalidateMock.mockResolvedValue(undefined);
-  toastErrorMock.mockReset();
-  toastSuccessMock.mockReset();
-  vi.mocked(Route.useLoaderData).mockReturnValue([{ id: "product-1", name: "Retainer" }] as never);
-  vi.mocked(Route.useSearch).mockReturnValue({ show: "all" } as never);
-});
-
-afterEach(cleanup);
-
 function renderImport() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
-  const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
   const Component = Route.options.component as ComponentType;
-  render(
+  const screenResult = render(
     <QueryClientProvider client={queryClient}>
       <Component />
     </QueryClientProvider>,
   );
-  return { invalidateQueries };
+  return { ...screenResult, invalidate };
 }
-
-const fileInput = () => document.querySelector('input[type="file"]') as HTMLInputElement;
-
-async function uploadValidCsv() {
-  validateMock.mockResolvedValue({
-    valid: [
-      { company_name: "Northstar", owner_email: "ops@fimmick.com", product_name: "Retainer" },
-    ],
-    errors: [{ row: { company_name: "Ghost Ltd" }, reason: "Unknown product: Nope" }],
+async function upload() {
+  fireEvent.change(document.querySelector('input[type="file"]')!, {
+    target: { files: [file(CSV)] },
   });
-  fireEvent.change(fileInput(), { target: { files: [csvFile(CSV)] } });
-  await screen.findByRole("button", { name: /^Commit 1 row$/ });
+  await screen.findByRole("button", { name: "Commit next 20" });
 }
-
-describe("/clients/import file step", () => {
-  it("says so when a file has no data rows instead of silently doing nothing", async () => {
-    renderImport();
-    fireEvent.change(fileInput(), { target: { files: [csvFile(HEADER)] } });
-
-    expect(await screen.findByText("No data rows found in that file")).toBeTruthy();
-    // A headers-only file never reaches the server, and no commit control appears.
-    expect(validateMock).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: /^Commit/ })).toBeNull();
-  });
-
-  it("sanitises a validation failure rather than printing the driver's text", async () => {
-    validateMock.mockRejectedValue(new Error('relation "profiles" does not exist at character 21'));
-    renderImport();
-
-    fireEvent.change(fileInput(), { target: { files: [csvFile(CSV)] } });
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledTimes(1));
-
-    expect(toastErrorMock.mock.calls[0][0]).toBe("Something went wrong. Please try again.");
-  });
-
-  it("names every row that will be skipped, and why", async () => {
-    renderImport();
-    await uploadValidCsv();
-
-    expect(screen.getAllByText(/Will be imported/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Skipped — Unknown product: Nope/).length).toBeGreaterThan(0);
-    expect(screen.getByText("Will be skipped")).toBeTruthy();
-  });
+beforeEach(() => {
+  localStorage.clear();
+  vi.clearAllMocks();
+  vi.mocked(Route.useLoaderData).mockReturnValue([{ id: "product-1", name: "Retainer" }] as never);
+  mocks.preview.mockResolvedValue(preview());
+  mocks.commit.mockResolvedValue(completed());
+  mocks.resume.mockResolvedValue(completed());
+  mocks.get.mockResolvedValue(completed());
 });
+afterEach(cleanup);
 
-describe("/clients/import commit step", () => {
-  it("commits once however many times the button is clicked", async () => {
-    const pending = deferred<{ created: number; updated: number; skipped: number }>();
-    commitMock.mockReturnValue(pending.promise);
+describe("/clients/import durable session", () => {
+  it("rejects an empty file before creating a server session", async () => {
     renderImport();
-    await uploadValidCsv();
-
-    const commit = screen.getByRole("button", { name: "Commit 1 row" });
-    fireEvent.click(commit);
-    await waitFor(() => expect(commitMock).toHaveBeenCalledTimes(1));
-
-    const busy = screen.getByRole("button", { name: "Committing…" });
-    expect((busy as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(busy);
-    expect(commitMock).toHaveBeenCalledTimes(1);
-
-    pending.resolve({ created: 1, updated: 0, skipped: 1 });
-    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalled());
-  });
-
-  it("makes step 3 terminal, so the same rows cannot be committed a second time", async () => {
-    commitMock.mockResolvedValue({ created: 1, updated: 0, skipped: 1 });
-    renderImport();
-    await uploadValidCsv();
-
-    fireEvent.click(screen.getByRole("button", { name: "Commit 1 row" }));
-    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalled());
-
-    // The preview and its commit control are gone. Re-running the same rows does not duplicate
-    // them, but it appends another activity_logs entry and flips "created" to "updated" — which
-    // reads exactly like a second successful import.
-    await waitFor(() => expect(screen.queryByRole("button", { name: /^Commit/ })).toBeNull());
-    expect(screen.getByText(/1 client created, 0 updated, 1 skipped/)).toBeTruthy();
-  });
-
-  it("invalidates the lists a successful import changed", async () => {
-    commitMock.mockResolvedValue({ created: 2, updated: 1, skipped: 0 });
-    const { invalidateQueries } = renderImport();
-    await uploadValidCsv();
-
-    fireEvent.click(screen.getByRole("button", { name: "Commit 1 row" }));
-    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalled());
-
-    // `/clients` is a cached list route with a 30s stale time and this file invalidated nothing,
-    // so "All clients" returned the user to the pre-import list for up to half a minute.
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: crmQueryKeys.clients.lists() });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: crmQueryKeys.accounts.lists() });
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: crmQueryKeys.engagements.lists() });
-  });
-
-  it("sanitises a failed commit and leaves the rows loaded for a retry", async () => {
-    commitMock.mockRejectedValue(
-      new Error('duplicate key value violates unique constraint "clients_company_name_key"'),
+    fireEvent.change(document.querySelector('input[type="file"]')!, {
+      target: { files: [file("company_name")] },
+    });
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      "No data rows found in that file",
     );
+    expect(mocks.preview).not.toHaveBeenCalled();
+  });
+
+  it("shows the server's full-row preview and source line before commit", async () => {
+    mocks.preview.mockResolvedValue({
+      ...preview(),
+      total: 2,
+      processed: 1,
+      rows: [
+        row(null),
+        {
+          ...row("invalid"),
+          recordIndex: 2,
+          sourceLine: 3,
+          action: "review",
+          errors: ["Owner is unavailable"],
+        },
+      ],
+    });
     renderImport();
-    await uploadValidCsv();
+    await upload();
+    expect(screen.getByText("1 / 2")).toBeTruthy();
+    expect(screen.getByText("2 / 3")).toBeTruthy();
+    expect(screen.getByText("Owner is unavailable")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Download issues CSV" })).toHaveProperty(
+      "disabled",
+      false,
+    );
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: "Commit 1 row" }));
-    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledTimes(1));
+  it("persists the idempotency key before one write and refreshes affected lists", async () => {
+    const pending = deferred<ReturnType<typeof completed>>();
+    mocks.commit.mockReturnValue(pending.promise);
+    const { invalidate } = renderImport();
+    await upload();
+    fireEvent.click(screen.getByRole("button", { name: "Commit next 20" }));
+    await waitFor(() => expect(mocks.commit).toHaveBeenCalledTimes(1));
+    const key = JSON.parse(localStorage.getItem("clientops-import:client:")!).idempotencyKey;
+    expect(key).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Working…" }));
+    expect(mocks.commit).toHaveBeenCalledTimes(1);
+    pending.resolve(completed());
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: crmQueryKeys.clients.lists() }),
+    );
+    expect(screen.queryByRole("button", { name: "Commit next 20" })).toBeNull();
+  });
 
-    const message = toastErrorMock.mock.calls[0][0] as string;
-    expect(message).toBe("Something went wrong. Please try again.");
-    expect(message).not.toMatch(/duplicate key|constraint/i);
-    expect(toastSuccessMock).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Commit 1 row" })).toBeTruthy();
+  it("replays the same key after an ambiguous network response", async () => {
+    mocks.commit.mockRejectedValueOnce(new Error("Network interrupted"));
+    renderImport();
+    await upload();
+    fireEvent.click(screen.getByRole("button", { name: "Commit next 20" }));
+    await screen.findByRole("alert");
+    const key = JSON.parse(localStorage.getItem("clientops-import:client:")!).idempotencyKey;
+    fireEvent.click(screen.getByRole("button", { name: "Commit next 20" }));
+    await waitFor(() => expect(mocks.commit).toHaveBeenCalledTimes(2));
+    expect(mocks.commit.mock.calls[0][0].data.idempotencyKey).toBe(key);
+    expect(mocks.commit.mock.calls[1][0].data.idempotencyKey).toBe(key);
+  });
+
+  it("recovers a paused session after reload and continues it", async () => {
+    localStorage.setItem(
+      "clientops-import:client:",
+      JSON.stringify({
+        sessionId: ID,
+        previewHash: HASH,
+        previewExpiresAt: "2026-09-28T00:00:00.000Z",
+        idempotencyKey: "same-key",
+      }),
+    );
+    mocks.get.mockResolvedValue({
+      sessionId: ID,
+      state: "paused",
+      processed: 0,
+      total: 1,
+      rows: [row(null)],
+    });
+    renderImport();
+    const continueButton = await screen.findByRole("button", { name: "Continue next 20" });
+    fireEvent.click(continueButton);
+    await waitFor(() => expect(mocks.resume).toHaveBeenCalledWith({ data: { sessionId: ID } }));
   });
 });

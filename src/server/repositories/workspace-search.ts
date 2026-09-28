@@ -1,4 +1,9 @@
 import { query } from "@/server/db/neon.server";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import {
+  buildVisibilityScope,
+  type VisibleResourceType,
+} from "@/server/auth/visibility-scope.server";
 
 export type WorkspaceSearchResult = {
   id: string;
@@ -16,58 +21,74 @@ type WorkspaceSearchRow = Omit<WorkspaceSearchResult, "matchedOn"> & {
 
 export async function searchWorkspace(
   rawQuery: string,
-  requestedLimit = 20,
+  requestedLimit: number,
+  context: RequestAuthorization,
 ): Promise<WorkspaceSearchResult[]> {
   const searchTerm = rawQuery.trim();
   if (searchTerm.length < 3) return [];
   const limit = Math.max(1, Math.min(20, Math.trunc(requestedLimit) || 20));
+  const values: unknown[] = [`%${searchTerm}%`, limit];
+  const scope = (resourceType: VisibleResourceType, alias: string) => {
+    const predicate = buildVisibilityScope(context, resourceType, alias);
+    const offset = values.length;
+    values.push(...predicate.values);
+    return predicate.sql.replace(/\$(\d+)/g, (_, index: string) => `$${Number(index) + offset}`);
+  };
+
+  const accountScope = scope("account", "a");
+  const contactScope = scope("account_contact", "p");
+  const leadScope = scope("lead", "l");
+  const quoteScope = scope("quote", "q");
+  const clientScope = scope("client", "c");
+  const taskScope = scope("task", "t");
+
   const rows = await query<WorkspaceSearchRow>(
     `select * from (
        select a.id::text as id, 'Company'::text as type, a.name as title,
               replace(a.lifecycle_stage, '_', ' ') as subtitle,
               '/accounts/' || a.id::text as href, 'name'::text as matched_on, 1 as type_order
        from accounts a
-       where a.name ilike $1 or coalesce(a.domain, '') ilike $1
+       where (a.name ilike $1 or coalesce(a.domain, '') ilike $1) and ${accountScope}
 
        union all
        select p.id::text, 'Person', p.name,
               coalesce(p.title, p.email, 'Company contact'),
               '/accounts/' || p.account_id::text, 'contact', 2
        from account_contacts p
-       where p.name ilike $1 or coalesce(p.email, '') ilike $1
+       where (p.name ilike $1 or coalesce(p.email, '') ilike $1) and ${contactScope}
 
        union all
        select l.id::text, 'Lead', l.company_name,
               coalesce(l.contact_name, replace(l.status, '_', ' ')),
               '/leads/' || l.id::text, 'lead', 3
        from leads l
-       where l.company_name ilike $1 or coalesce(l.contact_name, '') ilike $1
-          or coalesce(l.contact_email, '') ilike $1
+       where (l.company_name ilike $1 or coalesce(l.contact_name, '') ilike $1
+          or coalesce(l.contact_email, '') ilike $1) and ${leadScope}
 
        union all
        select q.id::text, 'Quote', coalesce(q.number, 'Draft quote'),
               replace(q.status, '_', ' ') || ' - ' || q.currency,
               '/quotes/' || q.id::text, 'quote', 4
        from quotes q
-       where coalesce(q.number, '') ilike $1 or q.id::text ilike $1
+       where (coalesce(q.number, '') ilike $1 or q.id::text ilike $1) and ${quoteScope}
 
        union all
        select c.id::text, 'Client', c.company_name,
               coalesce(c.industry, c.tier, 'Client'),
               '/clients/' || c.id::text, 'client', 5
        from clients c
-       where c.company_name ilike $1 or coalesce(c.industry, '') ilike $1
+       where (c.company_name ilike $1 or coalesce(c.industry, '') ilike $1) and ${clientScope}
 
        union all
        select t.id::text, 'Task', t.title,
               replace(t.status, '_', ' ') || ' - ' || t.priority,
               '/tasks', 'task', 6
        from tasks t
-       where t.title ilike $1 or coalesce(t.description, '') ilike $1
+       where (t.title ilike $1 or coalesce(t.description, '') ilike $1) and ${taskScope}
      ) results
      order by type_order, lower(title)
      limit $2`,
-    [`%${searchTerm}%`, limit],
+    values,
   );
 
   return rows.map(({ matched_on, type_order: _typeOrder, ...row }) => ({

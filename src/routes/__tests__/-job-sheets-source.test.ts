@@ -40,6 +40,12 @@ const makePortion = (overrides: Partial<JobSheetPortion>): JobSheetPortion => ({
   target_invoice_date: "2026-07-10",
   billing_type: "progress",
   status: "planned",
+  row_version: 0,
+  xero_confirmed_at: null,
+  xero_confirmed_by: null,
+  xero_corrected_at: null,
+  xero_corrected_by: null,
+  xero_correction_reason: null,
   xero_invoice_number: null,
   xero_invoice_reference: null,
   xero_invoice_date: null,
@@ -64,6 +70,8 @@ const makeJobSheet = (overrides: Partial<JobSheet>): JobSheet => ({
   status: "accepted",
   accepted_scope_summary: null,
   po_number: null,
+  no_po_reason: null,
+  row_version: 0,
   client_order_number: null,
   xero_customer_reference: null,
   accounting_notes: null,
@@ -104,7 +112,7 @@ describe("job sheet accounting workspace behavior", () => {
     expect(markup).toContain("HKD 1,000");
     expect(markup).toContain("Billing plan reconciles with the accepted quote total.");
     expect(markup).toContain("No billing note");
-    expect(markup).toContain("Not entered in Xero");
+    expect(markup).toContain("No invoice reference");
     expect(markup).toContain("Progress");
     expect(markup).toContain("10 Jul 2026");
     expect(markup).toContain("01 Aug 2026");
@@ -127,9 +135,9 @@ describe("job sheet accounting workspace behavior", () => {
       clientOrderNumber: null,
     });
 
-    expect(markup).toContain("Reconciliation delta: HKD 100");
+    expect(markup).toContain("Reconciliation delta: HKD 100.00");
     expect(acceptance.ok).toBe(false);
-    expect(acceptance.reasons).toContain("Billing portions are short by HKD 100.");
+    expect(acceptance.reasons).toContain("Billing portions are short by HKD 100.00.");
   });
 
   it("preserves entered-in-xero drafts and reflects accepted-or-locked commercial immutability", () => {
@@ -230,7 +238,7 @@ describe("job sheet accounting workspace behavior", () => {
     });
 
     expect(acceptance.ok).toBe(false);
-    expect(acceptance.reasons).toContain("Billing portions are short by HKD 100.");
+    expect(acceptance.reasons).toContain("Billing portions are short by HKD 100.00.");
   });
 
   it("builds the save payload with target invoice dates and without downgrading entered rows", () => {
@@ -555,6 +563,6 @@ describe("job sheet accounting workspace behavior", () => {
           currency: "EUR",
         }),
       ]),
-    ).toBe("HKD 1,250 / USD 500");
+    ).toBe("HKD 1,250.00 / USD 500.00");
   });
 });

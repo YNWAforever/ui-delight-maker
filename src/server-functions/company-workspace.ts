@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireCapability } from "@/server/auth/authorization.server";
+import { loadRequestAuthorization, requireCapability } from "@/server/auth/authorization.server";
 import {
   loadCompanyWorkspaceCore,
   loadCompanyWorkspaceRead,
@@ -69,11 +69,16 @@ export const getCompanyWorkspaceRead = createServerFn({ method: "GET" })
     // permission-override deny, and the manager scope check — so a manager barred from an
     // account could still read it here, which is the primary account screen.
     // requireCapability loads the session itself, so no separate session check is needed.
-    await requireCapability("accounts.view", {
-      resourceType: "account",
-      resourceId: data.accountId,
-    });
-    return loadCompanyWorkspaceRead(data.accountId, data.sections);
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "accounts.view",
+      {
+        resourceType: "account",
+        resourceId: data.accountId,
+      },
+      context,
+    );
+    return loadCompanyWorkspaceRead(data.accountId, data.sections, undefined, undefined, context);
   });
 
 export const getCompanyWorkspaceCore = createServerFn({ method: "GET" })
@@ -99,9 +104,14 @@ export const getCompanyWorkspaceSection = createServerFn({ method: "GET" })
     // permission-override deny, and the manager scope check — so a manager barred from an
     // account could still read it here, which is the primary account screen.
     // requireCapability loads the session itself, so no separate session check is needed.
-    await requireCapability("accounts.view", {
-      resourceType: "account",
-      resourceId: data.accountId,
-    });
-    return loadCompanyWorkspaceSection(data.accountId, data.section);
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "accounts.view",
+      {
+        resourceType: "account",
+        resourceId: data.accountId,
+      },
+      context,
+    );
+    return loadCompanyWorkspaceSection(data.accountId, data.section, undefined, context);
   });

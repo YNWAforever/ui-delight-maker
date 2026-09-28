@@ -1,5 +1,15 @@
 import type { AssertEveryReportId, ReportId } from "@/lib/reports";
+import type { CurrencyTotal } from "@/lib/money";
 import { query, queryOne } from "@/server/db/neon.server";
+import { AdminError } from "@/lib/admin/errors";
+import { evaluateAuthorization } from "@/lib/admin/policy";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import {
+  buildSubjectVisibility,
+  buildVisibilityScope,
+  hasPotentialVisibility,
+  type VisibleResourceType,
+} from "@/server/auth/visibility-scope.server";
 import { listRenewalsRead, type RenewalsReadFilters } from "@/server/repositories/engagements";
 
 export type ReportRange = "7d" | "30d" | "90d";
@@ -38,7 +48,11 @@ export type ReportDefinition = {
  * is not a well-formed `ReportDefinition`.
  */
 export const REPORT_DEFINITIONS = [
-  { id: "revenue", title: "Revenue trend", description: "Accepted quote value by week." },
+  {
+    id: "revenue",
+    title: "Accepted quote value",
+    description: "Accepted quote value by week and currency.",
+  },
   { id: "pipeline", title: "Pipeline funnel", description: "Lead volume by stage." },
   { id: "conversion", title: "Lead conversion", description: "Created and won leads by week." },
   { id: "agents", title: "Agent performance", description: "Runs and successful outcomes." },
@@ -74,8 +88,9 @@ const RANGE_DAYS: Record<ReportRange, number> = {
 };
 
 type ReportSummaryRow = {
-  revenue: number | string | null;
-  pipeline_value: number | string | null;
+  revenue_totals: CurrencyTotal[] | null;
+  pipeline_totals: CurrencyTotal[] | null;
+  unverified_accepted_count: number | string | null;
   leads: number | string | null;
   won_leads: number | string | null;
   agent_runs: number | string | null;
@@ -86,6 +101,17 @@ type ReportSummaryRow = {
 function numeric(value: number | string | null | undefined) {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+const HK_TODAY = "(now() at time zone 'Asia/Hong_Kong')::date";
+const HK_START = `((${HK_TODAY} - ($1::integer - 1))::timestamp at time zone 'Asia/Hong_Kong')`;
+const HK_END = `((${HK_TODAY} + 1)::timestamp at time zone 'Asia/Hong_Kong')`;
+const ACCEPTED_SNAPSHOT_VALID = `av.quote_id=q.id and av.reason='accepted'
+  and av.snapshot->>'currency' ~ '^[A-Z]{3}$'
+  and av.snapshot->>'total_value' ~ '^[0-9]+([.][0-9]{1,2})?$'`;
+
+function currencyTotals(value: CurrencyTotal[] | null | undefined): CurrencyTotal[] {
+  return Array.isArray(value) ? value : [];
 }
 
 export async function loadRenewalsRead(input: RenewalsReadFilters) {
@@ -101,53 +127,93 @@ export async function loadRenewalsRead(input: RenewalsReadFilters) {
   };
 }
 
-export async function loadReportSummary(input: { range: ReportRange }) {
+export async function loadReportSummary(
+  input: { range: ReportRange },
+  context: RequestAuthorization,
+) {
   const days = RANGE_DAYS[input.range];
+  const values: unknown[] = [days];
+  const access = {
+    quotes: hasPotentialVisibility(context, "quote"),
+    leads: hasPotentialVisibility(context, "lead"),
+    tasks: hasPotentialVisibility(context, "task"),
+    agents: evaluateAuthorization({
+      actor: context.actor,
+      capability: "agents.view",
+      target: {},
+      overrides: context.overrides,
+      now: context.now,
+    }).allowed,
+  };
+  const scope = (resource: VisibleResourceType, alias: string) => {
+    if (!hasPotentialVisibility(context, resource)) return "false";
+    const built = buildVisibilityScope(context, resource, alias);
+    const sql = built.sql.replace(
+      /\$(\d+)/g,
+      (_, index: string) => "$" + (Number(index) + values.length),
+    );
+    values.push(...built.values);
+    return sql;
+  };
+  const quoteScope = scope("quote", "q");
+  const leadScope = scope("lead", "l");
+  const taskScope = scope("task", "t");
+  const subjects = access.agents
+    ? buildSubjectVisibility(context, "ar", "subject_type", "subject_id")
+    : { sql: "false", values: [] as readonly unknown[] };
+  const agentScope = subjects.sql.replace(
+    /\$(\d+)/g,
+    (_, index: string) => "$" + (Number(index) + values.length),
+  );
+  values.push(...subjects.values);
   const row = await queryOne<ReportSummaryRow>(
-    `
-      select
-        (
-          select coalesce(sum(total_value), 0)
-          from quotes
-          where status = 'accepted'
-            and updated_at >= now() - ($1::integer * interval '1 day')
-        ) as revenue,
-        (
-          select coalesce(sum(total_value), 0)
-          from quotes
-          where status in ('pending_approval', 'approved', 'sent', 'viewed')
-            and updated_at >= now() - ($1::integer * interval '1 day')
-        ) as pipeline_value,
-        (
-          select count(*)
-          from leads
-          where created_at >= now() - ($1::integer * interval '1 day')
-        ) as leads,
-        (
-          select count(*)
-          from leads
-          where status = 'won'
-            and created_at >= now() - ($1::integer * interval '1 day')
-        ) as won_leads,
-        (
-          select count(*)
-          from agent_runs
-          where created_at >= now() - ($1::integer * interval '1 day')
-        ) as agent_runs,
-        (
-          select count(*)
-          from agent_runs
-          where status = 'completed'
-            and created_at >= now() - ($1::integer * interval '1 day')
-        ) as successful_agent_runs,
-        (
-          select count(*)
-          from tasks
-          where status <> 'done'
-            and created_at >= now() - ($1::integer * interval '1 day')
-        ) as open_tasks
-    `,
-    [days],
+    `select
+      (select coalesce(jsonb_agg(jsonb_build_object('currency',currency,'amount',amount)
+                                  order by currency), '[]'::jsonb)
+       from (
+         select av.snapshot->>'currency' as currency,
+                sum((av.snapshot->>'total_value')::numeric)::text as amount
+         from quotes q
+         join quote_versions av on av.id=q.accepted_version_id
+         where q.status='accepted' and ${ACCEPTED_SNAPSHOT_VALID}
+           and q.accepted_at >= ${HK_START} and q.accepted_at < ${HK_END}
+           and ${quoteScope}
+         group by av.snapshot->>'currency'
+       ) accepted_values) as revenue_totals,
+      (select coalesce(jsonb_agg(jsonb_build_object('currency',currency,'amount',amount)
+                                  order by currency), '[]'::jsonb)
+       from (
+         select q.currency as currency, sum(q.total_value)::text as amount
+         from quotes q
+         where q.status in ('pending_approval','approved','sent','viewed')
+           and q.updated_at >= now() - ($1::integer * interval '1 day')
+           and ${quoteScope}
+         group by q.currency
+       ) pipeline_values) as pipeline_totals,
+      (select count(*) from quotes q
+         left join quote_versions av on av.id=q.accepted_version_id
+         where q.status='accepted' and ${quoteScope}
+           and not coalesce((q.accepted_at is not null
+             and ${ACCEPTED_SNAPSHOT_VALID}),false)) as unverified_accepted_count,
+      (select count(*) from leads l
+        where l.created_at >= now() - ($1::integer * interval '1 day')
+          and ${leadScope}) as leads,
+      (select count(*) from leads l
+        where l.status = 'won'
+          and l.created_at >= now() - ($1::integer * interval '1 day')
+          and ${leadScope}) as won_leads,
+      (select count(*) from agent_runs ar
+        where ar.created_at >= now() - ($1::integer * interval '1 day')
+          and ${agentScope}) as agent_runs,
+      (select count(*) from agent_runs ar
+        where ar.status = 'completed'
+          and ar.created_at >= now() - ($1::integer * interval '1 day')
+          and ${agentScope}) as successful_agent_runs,
+      (select count(*) from tasks t
+        where t.status <> 'done'
+          and t.created_at >= now() - ($1::integer * interval '1 day')
+          and ${taskScope}) as open_tasks`,
+    values,
   );
 
   const leads = numeric(row?.leads);
@@ -155,8 +221,9 @@ export async function loadReportSummary(input: { range: ReportRange }) {
   return {
     range: input.range,
     metrics: {
-      revenue: numeric(row?.revenue),
-      pipelineValue: numeric(row?.pipeline_value),
+      revenueTotals: currencyTotals(row?.revenue_totals),
+      pipelineTotals: currencyTotals(row?.pipeline_totals),
+      unverifiedAcceptedCount: numeric(row?.unverified_accepted_count),
       leads,
       wonLeads,
       conversionRate: leads === 0 ? 0 : Math.round((wonLeads / leads) * 1000) / 10,
@@ -164,24 +231,37 @@ export async function loadReportSummary(input: { range: ReportRange }) {
       successfulAgentRuns: numeric(row?.successful_agent_runs),
       openTasks: numeric(row?.open_tasks),
     },
-    reports: REPORT_DEFINITIONS.map((definition) => ({ ...definition })),
+    access,
+    reports: REPORT_DEFINITIONS.filter((definition) => {
+      if (definition.id === "agents") return access.agents;
+      if (definition.id === "renewal_expansion") {
+        return (
+          hasPotentialVisibility(context, "client") && hasPotentialVisibility(context, "engagement")
+        );
+      }
+      const resource = REPORT_RESOURCE[definition.id];
+      return resource ? hasPotentialVisibility(context, resource) : false;
+    }).map((definition) => ({ ...definition })),
   };
 }
 
 export const reportQueries: Record<ReportId, string> = {
   revenue: `
     select
-      date_trunc('week', updated_at)::date::text as week,
-      coalesce(sum(total_value), 0)::float8 as revenue
-    from quotes
-    where status = 'accepted'
-      and updated_at >= now() - ($1::integer * interval '1 day')
-    group by date_trunc('week', updated_at)
-    order by date_trunc('week', updated_at) asc
+      date_trunc('week', q.accepted_at at time zone 'Asia/Hong_Kong')::date::text as week,
+      av.snapshot->>'currency' as currency,
+      sum((av.snapshot->>'total_value')::numeric)::text as amount
+    from quotes q
+    join quote_versions av on av.id=q.accepted_version_id
+    where q.status='accepted' and ${ACCEPTED_SNAPSHOT_VALID}
+      and q.accepted_at >= ${HK_START} and q.accepted_at < ${HK_END}
+    group by date_trunc('week', q.accepted_at at time zone 'Asia/Hong_Kong'),
+             av.snapshot->>'currency'
+    order by week asc, currency asc
   `,
   pipeline: `
     select status as stage, count(*)::integer as count
-    from leads
+    from leads l
     where created_at >= now() - ($1::integer * interval '1 day')
     group by status
     order by status asc
@@ -191,7 +271,7 @@ export const reportQueries: Record<ReportId, string> = {
       date_trunc('week', created_at)::date::text as week,
       count(*)::integer as leads,
       count(*) filter (where status = 'won')::integer as won
-    from leads
+    from leads l
     where created_at >= now() - ($1::integer * interval '1 day')
     group by date_trunc('week', created_at)
     order by date_trunc('week', created_at) asc
@@ -205,7 +285,7 @@ export const reportQueries: Record<ReportId, string> = {
         100.0 * count(*) filter (where status = 'completed') / nullif(count(*), 0),
         1
       )::float8 as success
-    from agent_runs
+    from agent_runs ar
     where created_at >= now() - ($1::integer * interval '1 day')
     group by agent_name
     order by runs desc, agent_name asc
@@ -215,7 +295,7 @@ export const reportQueries: Record<ReportId, string> = {
       created_at::date::text as day,
       count(*)::integer as created,
       count(*) filter (where status = 'done')::integer as completed
-    from tasks
+    from tasks t
     where created_at >= now() - ($1::integer * interval '1 day')
     group by created_at::date
     order by created_at::date asc
@@ -252,8 +332,8 @@ export const reportQueries: Record<ReportId, string> = {
       ) filter (where a.status = 'pending')::integer as oldest_pending_days
     from human_approvals a
     left join profiles p on p.id = a.assigned_to
-    where a.status = 'pending'
-       or a.decided_at >= now() - ($1::integer * interval '1 day')
+    where (a.status = 'pending'
+       or a.decided_at >= now() - ($1::integer * interval '1 day'))
     group by coalesce(p.name, 'Unassigned')
     order by pending desc, decided desc, reviewer asc
   `,
@@ -311,9 +391,70 @@ export const reportQueries: Record<ReportId, string> = {
   `,
 };
 
-export async function loadReportDataset(input: { report: ReportId; range: ReportRange }) {
-  const data = await query<Record<string, string | number | null>>(reportQueries[input.report], [
-    RANGE_DAYS[input.range],
-  ]);
+const REPORT_RESOURCE: Partial<Record<ReportId, VisibleResourceType>> = {
+  revenue: "quote",
+  pipeline: "lead",
+  conversion: "lead",
+  tasks: "task",
+  human_review_workload: "human_approval",
+  renewal_expansion: "client",
+};
+
+const REPORT_ALIAS: Partial<Record<ReportId, string>> = {
+  revenue: "q",
+  pipeline: "l",
+  conversion: "l",
+  tasks: "t",
+  human_review_workload: "a",
+  renewal_expansion: "c",
+};
+
+function shiftReportScope(sql: string, offset: number) {
+  return sql.replace(/\$(\d+)/g, (_, index: string) => "$" + (Number(index) + offset));
+}
+
+export async function loadReportDataset(
+  input: { report: ReportId; range: ReportRange },
+  context: RequestAuthorization,
+) {
+  const values: unknown[] = [RANGE_DAYS[input.range]];
+  const resource = REPORT_RESOURCE[input.report];
+  if (resource && !hasPotentialVisibility(context, resource)) {
+    throw new AdminError("FORBIDDEN", "Report data is outside your access");
+  }
+  let predicate: string;
+  if (input.report === "agents") {
+    const access = evaluateAuthorization({
+      actor: context.actor,
+      capability: "agents.view",
+      target: {},
+      overrides: context.overrides,
+      now: context.now,
+    });
+    if (!access.allowed) throw new AdminError("FORBIDDEN", "Report data is outside your access");
+    const subjects = buildSubjectVisibility(context, "ar", "subject_type", "subject_id");
+    predicate = shiftReportScope(subjects.sql, values.length);
+    values.push(...subjects.values);
+  } else {
+    const alias = REPORT_ALIAS[input.report];
+    if (!resource || !alias) throw new AdminError("FORBIDDEN", "Unknown report scope");
+    const scope = buildVisibilityScope(context, resource, alias);
+    predicate = shiftReportScope(scope.sql, values.length);
+    values.push(...scope.values);
+    if (input.report === "renewal_expansion") {
+      if (!hasPotentialVisibility(context, "engagement")) {
+        throw new AdminError("FORBIDDEN", "Report data is outside your access");
+      }
+      const engagements = buildVisibilityScope(context, "engagement", "e");
+      predicate += " and " + shiftReportScope(engagements.sql, values.length);
+      values.push(...engagements.values);
+    }
+  }
+  const sql = reportQueries[input.report];
+  const groupBy = sql.indexOf("\n    group by");
+  if (groupBy < 0) throw new Error("Report query is missing its aggregation boundary");
+  const conjunction = input.report === "renewal_expansion" ? " where " : " and ";
+  const scopedSql = sql.slice(0, groupBy) + conjunction + predicate + sql.slice(groupBy);
+  const data = await query<Record<string, string | number | null>>(scopedSql, values);
   return { report: input.report, range: input.range, data };
 }

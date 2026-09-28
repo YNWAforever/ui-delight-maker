@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   requireAnyCapabilityMock,
   requireCapabilityMock,
+  loadRequestAuthorizationMock,
+  getAdminNavigationForContextMock,
   listAdminUsersMock,
   getAdminOverviewMock,
   getAdminUserMock,
@@ -27,6 +29,8 @@ const {
   return {
     requireAnyCapabilityMock: vi.fn(),
     requireCapabilityMock: vi.fn(),
+    loadRequestAuthorizationMock: vi.fn(),
+    getAdminNavigationForContextMock: vi.fn(),
     listAdminUsersMock: vi.fn(),
     getAdminOverviewMock: vi.fn(),
     getAdminUserMock: vi.fn(),
@@ -48,6 +52,11 @@ vi.mock("@tanstack/react-start", () => ({
 vi.mock("@/server/auth/authorization.server", () => ({
   requireAnyCapability: requireAnyCapabilityMock,
   requireCapability: requireCapabilityMock,
+  loadRequestAuthorization: loadRequestAuthorizationMock,
+}));
+
+vi.mock("@/server/admin/navigation.server", () => ({
+  getAdminNavigationForContext: getAdminNavigationForContextMock,
 }));
 
 vi.mock("@/server/repositories/admin-users", () => ({
@@ -96,6 +105,11 @@ function session(role: "super_admin" | "admin" | "manager" = "admin") {
 describe("admin user server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    loadRequestAuthorizationMock.mockResolvedValue({
+      actor: { profileId: "admin-1" },
+      overrides: [],
+    });
+    getAdminNavigationForContextMock.mockReturnValue([]);
     requireAnyCapabilityMock.mockResolvedValue(session());
     requireCapabilityMock.mockResolvedValue(session());
     listAdminUsersMock.mockResolvedValue({ items: [], total: 0, page: 1, limit: 50 });
@@ -108,6 +122,7 @@ describe("admin user server functions", () => {
       profileId: "profile-1",
       buckets: [],
       totalCount: 0,
+      totalHistoryCount: 0,
     });
     deactivateUserWithReassignmentMock.mockResolvedValue({
       profileId: "profile-1",
@@ -226,6 +241,7 @@ describe("admin user server functions", () => {
       profileId: "profile-1",
       buckets: [],
       totalCount: 0,
+      totalHistoryCount: 0,
     };
     await deactivateAdminUserWithReassignmentFn({
       data: {
@@ -258,6 +274,7 @@ describe("admin user server functions", () => {
       "permissions.view",
       "audit.view",
     ]);
+    expect(getAdminNavigationForContextMock).toHaveBeenCalledWith(expect.anything());
     expect(getAdminOverviewMock).toHaveBeenCalled();
   });
 });

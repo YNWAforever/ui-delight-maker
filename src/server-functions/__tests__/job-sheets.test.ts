@@ -2,12 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   requireCapabilityMock,
+  loadRequestAuthorizationMock,
   requireNeonAuthSessionMock,
   getJobSheetRepositoryMock,
   listJobSheetsMock,
   replaceJobSheetPortionsMock,
   acceptJobSheetMock,
-  updateJobSheetXeroReferenceMock,
+  updateXeroNotesCommandMock,
+  confirmXeroEntryCommandMock,
+  correctXeroEntryCommandMock,
   createServerFnChain,
 } = vi.hoisted(() => {
   const createServerFnChain = {
@@ -21,12 +24,15 @@ const {
 
   return {
     requireCapabilityMock: vi.fn(),
+    loadRequestAuthorizationMock: vi.fn(),
     requireNeonAuthSessionMock: vi.fn(),
     getJobSheetRepositoryMock: vi.fn(),
     listJobSheetsMock: vi.fn(),
     replaceJobSheetPortionsMock: vi.fn(),
     acceptJobSheetMock: vi.fn(),
-    updateJobSheetXeroReferenceMock: vi.fn(),
+    updateXeroNotesCommandMock: vi.fn(),
+    confirmXeroEntryCommandMock: vi.fn(),
+    correctXeroEntryCommandMock: vi.fn(),
     createServerFnChain,
   };
 });
@@ -37,10 +43,17 @@ vi.mock("@tanstack/react-start", () => ({
 
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapability: requireCapabilityMock,
+  loadRequestAuthorization: loadRequestAuthorizationMock,
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
   requireNeonAuthSession: requireNeonAuthSessionMock,
+}));
+
+vi.mock("@/server/commands/billing-portion.server", () => ({
+  updateXeroNotesCommand: updateXeroNotesCommandMock,
+  confirmXeroEntryCommand: confirmXeroEntryCommandMock,
+  correctXeroEntryCommand: correctXeroEntryCommandMock,
 }));
 
 vi.mock("@/server/repositories/job-sheets", () => ({
@@ -48,12 +61,14 @@ vi.mock("@/server/repositories/job-sheets", () => ({
   listJobSheets: listJobSheetsMock,
   replaceJobSheetPortions: replaceJobSheetPortionsMock,
   acceptJobSheet: acceptJobSheetMock,
-  updateJobSheetXeroReference: updateJobSheetXeroReferenceMock,
 }));
 
 describe("job sheet server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    loadRequestAuthorizationMock
+      .mockReset()
+      .mockResolvedValue({ actor: { profileId: "acct-1" }, overrides: [] });
     requireCapabilityMock.mockResolvedValue({
       user: { id: "user-1" },
       profile: { id: "user-1", role: "sales", status: "active" },
@@ -69,23 +84,25 @@ describe("job sheet server functions", () => {
     listJobSheetsMock.mockResolvedValue([]);
     replaceJobSheetPortionsMock.mockResolvedValue([]);
     acceptJobSheetMock.mockResolvedValue({ id: "job-1", status: "accepted" });
-    updateJobSheetXeroReferenceMock.mockResolvedValue({
-      id: "portion-1",
-      status: "entered_in_xero",
-    });
+    updateXeroNotesCommandMock.mockResolvedValue({ id: "portion-1", status: "planned" });
+    confirmXeroEntryCommandMock.mockResolvedValue({ id: "portion-1", status: "entered_in_xero" });
+    correctXeroEntryCommandMock.mockResolvedValue({ id: "portion-1", status: "planned" });
   });
 
-  it("requires Neon auth before listing job sheets", async () => {
+  it("loads authorization before listing job sheets", async () => {
     const { getJobSheets } = await import("../job-sheets");
 
     await getJobSheets({ data: { status: "accounting_review" } });
 
-    expect(requireNeonAuthSessionMock).toHaveBeenCalled();
-    expect(listJobSheetsMock).toHaveBeenCalledWith({ status: "accounting_review" });
+    expect(loadRequestAuthorizationMock).toHaveBeenCalled();
+    expect(listJobSheetsMock).toHaveBeenCalledWith(
+      { status: "accounting_review" },
+      expect.anything(),
+    );
   });
 
   it("stops before repository access when Neon auth fails", async () => {
-    requireNeonAuthSessionMock.mockRejectedValueOnce(new Error("Unauthorized"));
+    loadRequestAuthorizationMock.mockRejectedValueOnce(new Error("Unauthorized"));
     const { getJobSheets } = await import("../job-sheets");
 
     await expect(getJobSheets({ data: { status: "accounting_review" } })).rejects.toThrow(
@@ -154,26 +171,53 @@ describe("job sheet server functions", () => {
     expect(acceptJobSheetMock).toHaveBeenCalledWith("job-1", { accepted_by: "acct-1" });
   });
 
-  it("requires Neon auth before updating Xero references", async () => {
-    const { updatePortionXeroReference } = await import("../job-sheets");
+  it("authorizes a scoped note save without confirming an invoice", async () => {
+    const { updateXeroNotes } = await import("../job-sheets");
+    const data = {
+      portionId: "portion-1",
+      notes: "Awaiting PO",
+      expectedVersion: 0,
+      idempotencyKey: "11111111-1111-4111-8111-111111111111",
+    };
+    await updateXeroNotes({ data });
 
-    await updatePortionXeroReference({
-      data: {
-        portion_id: "portion-1",
-        xero_invoice_number: "INV-001",
-        xero_invoice_reference: "XERO-REF-001",
-        xero_invoice_date: "2026-07-09",
-        xero_notes: "Manually entered in Xero",
-      },
-    });
+    expect(loadRequestAuthorizationMock).toHaveBeenCalled();
+    expect(requireCapabilityMock).toHaveBeenCalledWith(
+      "job_sheets.update_billing",
+      { resourceType: "job_sheet_portion", resourceId: "portion-1" },
+      expect.anything(),
+    );
+    expect(updateXeroNotesCommandMock).toHaveBeenCalledWith(expect.anything(), data);
+    expect(confirmXeroEntryCommandMock).not.toHaveBeenCalled();
+  });
 
-    expect(requireNeonAuthSessionMock).toHaveBeenCalled();
-    expect(updateJobSheetXeroReferenceMock).toHaveBeenCalledWith({
-      portion_id: "portion-1",
-      xero_invoice_number: "INV-001",
-      xero_invoice_reference: "XERO-REF-001",
-      xero_invoice_date: "2026-07-09",
-      xero_notes: "Manually entered in Xero",
-    });
+  it("blocks manual confirmation before the command if authorization fails", async () => {
+    requireCapabilityMock.mockRejectedValueOnce(new Error("Forbidden"));
+    const { confirmXeroEntry } = await import("../job-sheets");
+    await expect(
+      confirmXeroEntry({
+        data: {
+          portionId: "portion-1",
+          invoiceNumber: "INV-001",
+          invoiceDate: "2026-09-27",
+          expectedVersion: 0,
+          idempotencyKey: "22222222-2222-4222-8222-222222222222",
+        },
+      }),
+    ).rejects.toThrow("Forbidden");
+    expect(confirmXeroEntryCommandMock).not.toHaveBeenCalled();
+  });
+
+  it("passes the correction reason and version into the guarded command", async () => {
+    const { correctXeroEntry } = await import("../job-sheets");
+    const data = {
+      portionId: "portion-1",
+      expectedVersion: 1,
+      idempotencyKey: "33333333-3333-4333-8333-333333333333",
+      reason: "Voided in Xero",
+      patch: { status: "planned" as const },
+    };
+    await correctXeroEntry({ data });
+    expect(correctXeroEntryCommandMock).toHaveBeenCalledWith(expect.anything(), data);
   });
 });

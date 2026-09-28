@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, LogIn } from "lucide-react";
 import { LoginAuthPage } from "@/components/auth/login-auth-page";
-import { getInvitationPreview } from "@/server-functions/admin-invitations";
+import { getInvitationLandingState } from "@/server-functions/admin-invitations";
 
 export const Route = createFileRoute("/invite/$token")({
   head: () => ({
@@ -9,8 +9,7 @@ export const Route = createFileRoute("/invite/$token")({
   }),
   loader: async ({ params }) => {
     try {
-      const preview = await getInvitationPreview({ data: { token: params.token } });
-      return { state: "ready" as const, preview };
+      return await getInvitationLandingState({ data: { token: params.token } });
     } catch {
       return { state: "unavailable" as const };
     }
@@ -25,7 +24,13 @@ function roleLabel(role: string) {
     .join(" ");
 }
 
-function InvitationUnavailable() {
+function InvitationUnavailable({ state }: { state: "expired" | "used" | "unavailable" }) {
+  const message = {
+    expired: "This invitation has expired. Ask your administrator for a new invitation.",
+    used: "This invitation has already been used. Sign in with your account or ask your administrator for help.",
+    unavailable:
+      "This invitation is invalid or revoked. Ask your administrator for a new invitation.",
+  }[state];
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <section className="w-full max-w-md text-center">
@@ -33,10 +38,7 @@ function InvitationUnavailable() {
           <AlertTriangle className="h-6 w-6" aria-hidden="true" />
         </div>
         <h1 className="mt-5 text-2xl font-semibold">Invitation unavailable</h1>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          This invitation is invalid, expired, revoked, or already used. Ask your administrator for
-          a new invitation.
-        </p>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">{message}</p>
         <Link
           to="/login"
           className="mt-6 inline-flex items-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
@@ -53,8 +55,8 @@ function InvitationPage() {
   const data = Route.useLoaderData();
   const { token } = Route.useParams();
 
-  if (data.state === "unavailable") {
-    return <InvitationUnavailable />;
+  if (data.state !== "ready") {
+    return <InvitationUnavailable state={data.state} />;
   }
 
   return (

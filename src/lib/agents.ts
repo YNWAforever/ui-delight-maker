@@ -14,6 +14,9 @@
  * five agents that had just run. Dispatch now takes the name from `agentNameFor` rather than
  * repeating a literal, so the two cannot diverge again.
  */
+/** Governed auxiliary workflows share run storage but have no agent page or n8n callback. */
+export const AUXILIARY_AI_WORKFLOW_TYPES = ["note_tidy"] as const;
+
 export type AgentWorkflowType =
   | "qualify_lead"
   | "draft_reply"

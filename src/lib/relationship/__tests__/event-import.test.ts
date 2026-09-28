@@ -25,6 +25,20 @@ describe("event import", () => {
     ]);
   });
 
+  it("uses the shared parser for multiline and doubled quotes", () => {
+    expect(parseEventAttendeeCsv('company_name,notes\r\n"香港\r\n""客戶""","line\nnext"')).toEqual([
+      {
+        company_name: '香港\r\n"客戶"',
+        contact_name: "",
+        email: "",
+        phone: "",
+        attendee_status: "attended",
+        interests: [],
+        notes: "line\nnext",
+      },
+    ]);
+  });
+
   it("rejects rows without company or contact name", () => {
     const result = validateEventImportRows({
       rows: [

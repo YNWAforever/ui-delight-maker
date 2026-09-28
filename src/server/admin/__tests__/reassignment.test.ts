@@ -26,11 +26,13 @@ function inventoryWithCounts(counts: Record<string, number>): ReassignmentInvent
   const buckets = REASSIGNMENT_BUCKETS.map((bucket) => ({
     ...bucket,
     count: counts[bucket.key] ?? 0,
+    historyCount: 0,
   }));
   return {
     profileId: "target",
     buckets,
     totalCount: buckets.reduce((sum, bucket) => sum + bucket.count, 0),
+    totalHistoryCount: 0,
   };
 }
 

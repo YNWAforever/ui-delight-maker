@@ -5,6 +5,11 @@ import { AlertCircle, CheckCircle2, Lock, Plus, RotateCcw, Save, Trash2 } from "
 import { toast } from "sonner";
 
 import { BillingPortionsTable } from "@/components/job-sheets/billing-portions-table";
+import { BulkActionBar } from "@/components/operations/bulk-action-bar";
+import { BulkPreviewDialog } from "@/components/operations/bulk-preview-dialog";
+import { remainingBulkSelection } from "@/components/operations/bulk-results";
+import { useBulkOperation } from "@/components/operations/use-bulk-operation";
+import { HandoffHeaderForm } from "@/components/job-sheets/handoff-header-form";
 import { JobSheetStatusBadge } from "@/components/job-sheets/job-sheet-status-badge";
 import { ErrorState, StickyActionBar, WorkspaceHeader } from "@/components/sales";
 import {
@@ -19,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +42,7 @@ import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
 import {
   buildPortionSavePayload,
   buildPreviewPortions,
-  buildXeroSavePayload,
+  getXeroEvidenceState,
   canShowAcceptAndLockAction,
   createPortionDraft,
   describeBillingProgress,
@@ -65,8 +71,11 @@ import { canAcceptJobSheet } from "@/lib/quote-to-cash";
 import type { JobSheetBillingType, JobSheetPortion, JobSheetPortionStatus } from "@/lib/types";
 import {
   acceptJobSheetForAccounting,
+  updateJobSheetHeader,
   updateJobSheetPortions,
-  updatePortionXeroReference,
+  updateXeroNotes,
+  confirmXeroEntry,
+  correctXeroEntry,
 } from "@/server-functions/job-sheets";
 import { getJobSheetRead } from "@/server-functions/operations";
 
@@ -95,7 +104,7 @@ const PORTION_STATUS_OPTIONS: Array<{ value: JobSheetPortionStatus; label: strin
  * a total the database was never going to hold.
  */
 const XERO_LOCKED_REASON =
-  "Entered in Xero. Amount, billing type and target invoice date are settled in Xero and are not editable here.";
+  "Recorded invoice entries lock the amount, billing type and target invoice date here. Xero itself is not changed by ClientOps.";
 
 type ConfirmState = {
   title: string;
@@ -157,7 +166,8 @@ function JobSheetDetailPage() {
     initialData: initialRead,
     staleTime: 30_000,
   });
-  const { jobSheet, portions, quote, client } = jobSheetQuery.data;
+  const { jobSheet, portions, quote, client, companyName, salesOwnerName, accountingOwnerName } =
+    jobSheetQuery.data;
   const [billingDraftsByJobSheetId, setBillingDraftsByJobSheetId] = useState<
     Record<string, PortionDraft[]>
   >(() => ({ [jobSheet.id]: toPortionDrafts(portions) }));
@@ -173,6 +183,7 @@ function JobSheetDetailPage() {
   const [billingError, setBillingError] = useState<string | null>(null);
   const [portionErrors, setPortionErrors] = useState<Record<string, string>>({});
   const [xeroErrors, setXeroErrors] = useState<Record<string, string>>({});
+  const [xeroCorrectionReasons, setXeroCorrectionReasons] = useState<Record<string, string>>({});
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const portionDrafts = billingDraftsByJobSheetId[jobSheet.id] ?? toPortionDrafts(portions);
   const xeroDrafts = xeroDraftsByJobSheetId[jobSheet.id] ?? toXeroDrafts(portions);
@@ -227,6 +238,18 @@ function JobSheetDetailPage() {
     await router.invalidate({ filter: (match) => match.routeId === "/job-sheets/$id" });
   };
 
+  const [bulkPortionSelected, setBulkPortionSelected] = useState<Set<string>>(() => new Set());
+  const [bulkInvoiceDate, setBulkInvoiceDate] = useState("");
+  const bulkPortionOperation = useBulkOperation(
+    `clientops:bulk:job-sheet-portions:${jobSheet.id}`,
+    async (result) => {
+      setBulkPortionSelected(
+        (current) => new Set(remainingBulkSelection(Array.from(current), result)),
+      );
+      await invalidateJobSheetReads("billing");
+    },
+  );
+
   const commercialLocked = isJobSheetCommercialLocked(jobSheet.status, jobSheet.locked_at);
   const hasUnsavedBillingChanges = useMemo(
     () => hasUnsavedBillingDraftChanges(portionDrafts, portions),
@@ -250,24 +273,32 @@ function JobSheetDetailPage() {
     [jobSheet.created_at, jobSheet.id, jobSheet.updated_at, portionDrafts, portions],
   );
 
-  const acceptance = useMemo(
-    () =>
-      canAcceptJobSheet({
-        totalAmount: jobSheet.total_amount,
-        portions: previewPortions,
-        requirePoNumber: false,
-        poNumber: jobSheet.po_number,
-        clientOrderNumber: jobSheet.client_order_number,
-        currency: jobSheet.currency,
-      }),
-    [
-      jobSheet.client_order_number,
-      jobSheet.currency,
-      jobSheet.po_number,
-      jobSheet.total_amount,
-      previewPortions,
-    ],
-  );
+  const acceptance = useMemo(() => {
+    const gate = canAcceptJobSheet({
+      totalAmount: jobSheet.total_amount,
+      portions: previewPortions,
+      requirePoNumber: false,
+      requirePoOrReason: true,
+      poNumber: jobSheet.po_number,
+      noPoReason: jobSheet.no_po_reason,
+      clientOrderNumber: jobSheet.client_order_number,
+      currency: jobSheet.currency,
+    });
+    return jobSheet.accounting_owner
+      ? gate
+      : {
+          ok: false,
+          reasons: [...gate.reasons, "Assign an active accounting owner before acceptance."],
+        };
+  }, [
+    jobSheet.accounting_owner,
+    jobSheet.client_order_number,
+    jobSheet.currency,
+    jobSheet.no_po_reason,
+    jobSheet.po_number,
+    jobSheet.total_amount,
+    previewPortions,
+  ]);
 
   const updateDraft = <K extends keyof PortionDraft>(
     id: string,
@@ -398,74 +429,157 @@ function JobSheetDetailPage() {
       },
     });
 
-  const saveXeroReference = async (portionId: string) => {
-    const draft = xeroDrafts[portionId];
-    if (!draft) return;
-
+  const runXeroMutation = async (
+    portionId: string,
+    action: () => Promise<JobSheetPortion>,
+    successMessage: string,
+    noteOnly = false,
+  ) => {
     setXeroErrors((current) => {
       const next = { ...current };
       delete next[portionId];
       return next;
     });
-
     if (hasUnsavedBillingChanges) {
       setXeroErrors((current) => ({
         ...current,
-        [portionId]: "Save the billing plan before saving Xero references.",
+        [portionId]: "Save the billing plan before recording Xero information.",
       }));
-      return;
+      return false;
     }
-
     setSavingXeroFor(portionId);
     try {
-      const savedPortion = await updatePortionXeroReference({
-        data: { portion_id: portionId, ...buildXeroSavePayload(draft) },
-      });
+      const saved = await action();
       setXeroDrafts((current) => ({
         ...current,
-        [portionId]: toXeroDrafts([savedPortion])[portionId],
+        [portionId]: noteOnly
+          ? { ...current[portionId], xero_notes: saved.xero_notes ?? "" }
+          : toXeroDrafts([saved])[portionId],
       }));
-      toast.success("Manual Xero reference saved");
+      toast.success(successMessage);
       await invalidateJobSheetReads("xero");
+      return true;
     } catch (error) {
       const message = toSafeErrorMessage(error);
       setXeroErrors((current) => ({ ...current, [portionId]: message }));
       toast.error(message);
+      return false;
     } finally {
       setSavingXeroFor(null);
     }
   };
 
-  /**
-   * Clearing all four Xero fields is not a save, it is an unlock.
-   *
-   * `updateJobSheetXeroReference` flips the portion from `entered_in_xero` back to `planned`
-   * when every field lands null, which also removes the guard that was protecting that
-   * portion's amount — on an accepted, locked job sheet, with nothing on screen saying so.
-   */
-  const requestSaveXero = (portionId: string) => {
-    const draft = xeroDrafts[portionId];
-    if (!draft) return;
-
-    const payload = buildXeroSavePayload(draft);
-    const clearsEverything = Object.values(payload).every((value) => value === null);
+  const saveXeroNote = (portionId: string) => {
     const persisted = portions.find((portion) => portion.id === portionId);
+    const draft = xeroDrafts[portionId];
+    if (!persisted || !draft) return;
+    const idempotencyKey = crypto.randomUUID();
+    void runXeroMutation(
+      portionId,
+      () =>
+        updateXeroNotes({
+          data: {
+            portionId,
+            notes: draft.xero_notes,
+            expectedVersion: persisted.row_version,
+            idempotencyKey,
+          },
+        }),
+      "Accounting note saved",
+      true,
+    );
+  };
 
-    if (clearsEverything && persisted?.status === "entered_in_xero") {
-      setConfirm({
-        title: "Remove every Xero reference from this portion?",
-        description: `"${persisted.name}" returns to Planned. ClientOps stops recording that an invoice exists for it in Xero, and its amount, currency, billing type and target invoice date become editable again${
-          commercialLocked ? " even though this job sheet is accepted and locked" : ""
-        }.`,
-        label: "Remove references",
-        action: () => {
-          void saveXeroReference(portionId);
-        },
-      });
+  const requestConfirmXeroEntry = (portionId: string) => {
+    const persisted = portions.find((portion) => portion.id === portionId);
+    const draft = xeroDrafts[portionId];
+    if (!persisted || !draft || persisted.status !== "planned") return;
+    const invoiceNumber = draft.xero_invoice_number.trim();
+    const reference = draft.xero_invoice_reference.trim();
+    if ((!invoiceNumber && !reference) || !draft.xero_invoice_date) {
+      setXeroErrors((current) => ({
+        ...current,
+        [portionId]: "Enter an invoice number or reference and its invoice date.",
+      }));
       return;
     }
+    const idempotencyKey = crypto.randomUUID();
+    setConfirm({
+      title: "Record this manual Xero entry?",
+      description:
+        "ClientOps will record the invoice identity and date you entered. This action does not contact Xero or verify delivery there.",
+      label: "Record manual entry",
+      action: () => {
+        void runXeroMutation(
+          portionId,
+          () =>
+            confirmXeroEntry({
+              data: {
+                portionId,
+                invoiceNumber,
+                reference,
+                invoiceDate: draft.xero_invoice_date,
+                expectedVersion: persisted.row_version,
+                idempotencyKey,
+              },
+            }),
+          "Manual invoice entry recorded",
+        );
+      },
+    });
+  };
 
-    void saveXeroReference(portionId);
+  const requestCorrectXeroEntry = (
+    portionId: string,
+    nextStatus: "planned" | "entered_in_xero",
+  ) => {
+    const persisted = portions.find((portion) => portion.id === portionId);
+    const draft = xeroDrafts[portionId];
+    const reason = xeroCorrectionReasons[portionId]?.trim() ?? "";
+    if (!persisted || !draft || persisted.status !== "entered_in_xero") return;
+    if (!reason) {
+      setXeroErrors((current) => ({
+        ...current,
+        [portionId]: "Enter a correction reason before changing recorded invoice evidence.",
+      }));
+      return;
+    }
+    const idempotencyKey = crypto.randomUUID();
+    setConfirm({
+      title: nextStatus === "planned" ? "Reopen this invoice entry?" : "Correct invoice evidence?",
+      description:
+        nextStatus === "planned"
+          ? "This records a reasoned correction and returns the portion to Planned. It does not void anything in Xero."
+          : "This changes the manually recorded invoice identity in ClientOps. It does not change Xero.",
+      label: nextStatus === "planned" ? "Reopen with reason" : "Save correction",
+      action: () => {
+        void runXeroMutation(
+          portionId,
+          () =>
+            correctXeroEntry({
+              data: {
+                portionId,
+                expectedVersion: persisted.row_version,
+                idempotencyKey,
+                reason,
+                patch: {
+                  status: nextStatus,
+                  ...(nextStatus === "entered_in_xero"
+                    ? {
+                        invoiceNumber: draft.xero_invoice_number,
+                        reference: draft.xero_invoice_reference,
+                        invoiceDate: draft.xero_invoice_date,
+                      }
+                    : {}),
+                },
+              },
+            }),
+          "Manual invoice evidence corrected",
+        ).then((saved) => {
+          if (saved) setXeroCorrectionReasons((current) => ({ ...current, [portionId]: "" }));
+        });
+      },
+    });
   };
 
   const acceptanceGateAlert = getAcceptanceGateAlertConfig({
@@ -497,7 +611,9 @@ function JobSheetDetailPage() {
         hasUnsavedXeroChanges,
       }) ?? (acceptance.ok ? null : acceptance.reasons.join(" ")));
 
-  const showAcceptAction = canShowAcceptAndLockAction(jobSheet.status, jobSheet.locked_at);
+  const showAcceptAction =
+    jobSheetQuery.data.canAcceptJobSheet &&
+    canShowAcceptAndLockAction(jobSheet.status, jobSheet.locked_at);
   const savedPortionIds = useMemo(() => new Set(portions.map((portion) => portion.id)), [portions]);
 
   return (
@@ -542,6 +658,62 @@ function JobSheetDetailPage() {
                 portions={previewPortions}
               />
 
+              {jobSheetQuery.data.canUpdateHeader &&
+                (bulkPortionSelected.size > 0 || bulkPortionOperation.result) && (
+                  <BulkActionBar
+                    selectedCount={bulkPortionSelected.size}
+                    busy={bulkPortionOperation.busy}
+                    result={bulkPortionOperation.result}
+                    onResume={() => void bulkPortionOperation.resume()}
+                    onClear={() => {
+                      setBulkPortionSelected(new Set());
+                      bulkPortionOperation.dismiss();
+                    }}
+                  >
+                    {bulkPortionSelected.size > 0 && (
+                      <>
+                        <Label className="flex items-center gap-2 text-xs">
+                          Target invoice date
+                          <Input
+                            type="date"
+                            value={bulkInvoiceDate}
+                            onChange={(event) => setBulkInvoiceDate(event.target.value)}
+                            className="w-40"
+                          />
+                        </Label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            bulkPortionOperation.busy ||
+                            editorBusy ||
+                            hasUnsavedBillingChanges ||
+                            hasUnsavedXeroChanges
+                          }
+                          onClick={() =>
+                            void bulkPortionOperation.prepare(
+                              {
+                                type: "job_sheet.invoice_date",
+                                targetInvoiceDate: bulkInvoiceDate || null,
+                              },
+                              Array.from(bulkPortionSelected),
+                            )
+                          }
+                        >
+                          Set invoice date
+                        </Button>
+                      </>
+                    )}
+                  </BulkActionBar>
+                )}
+              <BulkPreviewDialog
+                preview={bulkPortionOperation.preview}
+                busy={bulkPortionOperation.busy}
+                onCancel={bulkPortionOperation.cancelPreview}
+                onCommit={() => void bulkPortionOperation.commit()}
+              />
+
               <Alert variant={acceptanceGateAlert.variant}>
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>{acceptanceGateAlert.title}</AlertTitle>
@@ -560,6 +732,8 @@ function JobSheetDetailPage() {
                 {portionDrafts.map((portion, index) => {
                   const persisted = portions.find((row) => row.id === portion.id) ?? null;
                   const enteredInXero = portion.status === "entered_in_xero";
+                  const legacyEvidenceReview =
+                    persisted && getXeroEvidenceState(persisted) === "needs_review";
                   const commercialFieldsDisabled = commercialLocked || editorBusy || enteredInXero;
                   const removalBlockedReason = persisted
                     ? getPortionRemovalBlockedReason(persisted)
@@ -570,6 +744,27 @@ function JobSheetDetailPage() {
 
                   return (
                     <div key={portion.id} className="rounded-md border border-border p-4">
+                      {persisted && jobSheetQuery.data.canUpdateHeader && (
+                        <Label className="mb-3 flex items-center gap-2 text-xs">
+                          <Checkbox
+                            checked={bulkPortionSelected.has(persisted.id)}
+                            onCheckedChange={(checked) => {
+                              setBulkPortionSelected((current) => {
+                                const next = new Set(current);
+                                if (checked === true) next.add(persisted.id);
+                                else next.delete(persisted.id);
+                                if (next.size > 100) {
+                                  toast.error("Select at most 100 portions per bulk operation.");
+                                  return current;
+                                }
+                                return next;
+                              });
+                            }}
+                            aria-label={`Select portion ${portion.name} for bulk date change`}
+                          />
+                          Select for bulk invoice date
+                        </Label>
+                      )}
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                         <div className="space-y-1.5 xl:col-span-2">
                           <Label htmlFor={`portion-name-${portion.id}`}>
@@ -633,7 +828,9 @@ function JobSheetDetailPage() {
                           <Label>Status</Label>
                           {enteredInXero ? (
                             <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
-                              Entered in Xero
+                              {legacyEvidenceReview
+                                ? "Needs invoice evidence review"
+                                : "Manual entry recorded"}
                             </div>
                           ) : (
                             <Select
@@ -771,7 +968,7 @@ function JobSheetDetailPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-              <CardTitle className="text-base">Manual Xero references</CardTitle>
+              <CardTitle className="text-base">Manual invoice evidence</CardTitle>
               {hasUnsavedXeroChanges && (
                 <Button
                   variant="ghost"
@@ -788,8 +985,8 @@ function JobSheetDetailPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                ClientOps stores manual reference metadata only. Xero remains the official invoicing
-                and accounting system.
+                ClientOps records what accounting staff enter here. It does not sync, send, or
+                verify an invoice in Xero; Xero remains the official accounting system.
               </p>
               {hasUnsavedBillingChanges && (
                 <p className="text-sm text-destructive">
@@ -806,13 +1003,17 @@ function JobSheetDetailPage() {
                     xero_notes: "",
                   };
                   const rowError = xeroErrors[portion.id];
-                  const persistedDraft = toXeroDrafts(
-                    portions.filter((row) => row.id === portion.id),
-                  )[portion.id];
-                  const rowDirty =
-                    persistedDraft !== undefined &&
-                    JSON.stringify(buildXeroSavePayload(draft)) !==
-                      JSON.stringify(buildXeroSavePayload(persistedDraft));
+                  const persisted = portions.find((row) => row.id === portion.id);
+                  const persistedDraft = persisted ? toXeroDrafts([persisted])[portion.id] : null;
+                  const noteDirty =
+                    persistedDraft !== null && draft.xero_notes !== persistedDraft.xero_notes;
+                  const evidenceDirty =
+                    persistedDraft !== null &&
+                    (draft.xero_invoice_number !== persistedDraft.xero_invoice_number ||
+                      draft.xero_invoice_reference !== persistedDraft.xero_invoice_reference ||
+                      draft.xero_invoice_date !== persistedDraft.xero_invoice_date);
+                  const needsReview =
+                    persisted && getXeroEvidenceState(persisted) === "needs_review";
 
                   return (
                     <div key={portion.id} className="rounded-md border border-border p-4">
@@ -823,15 +1024,47 @@ function JobSheetDetailPage() {
                             {formatCurrencyAmount(portion.amount, portion.currency)}
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => requestSaveXero(portion.id)}
-                          disabled={editorBusy || hasUnsavedBillingChanges || !rowDirty}
-                        >
-                          <Save className="mr-2 h-4 w-4" />
-                          {savingXeroFor === portion.id ? "Saving…" : "Save Xero reference"}
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => saveXeroNote(portion.id)}
+                            disabled={editorBusy || hasUnsavedBillingChanges || !noteDirty}
+                          >
+                            <Save className="mr-2 h-4 w-4" /> Save note
+                          </Button>
+                          {persisted?.status === "planned" && (
+                            <Button
+                              size="sm"
+                              onClick={() => requestConfirmXeroEntry(portion.id)}
+                              disabled={editorBusy || hasUnsavedBillingChanges}
+                            >
+                              Record manual entry
+                            </Button>
+                          )}
+                          {persisted?.status === "entered_in_xero" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  requestCorrectXeroEntry(portion.id, "entered_in_xero")
+                                }
+                                disabled={editorBusy || hasUnsavedBillingChanges || !evidenceDirty}
+                              >
+                                Correct invoice details
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => requestCorrectXeroEntry(portion.id, "planned")}
+                                disabled={editorBusy || hasUnsavedBillingChanges}
+                              >
+                                Reopen after void
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
                       <div className="mt-4 grid gap-3 md:grid-cols-2">
                         <div className="space-y-1.5">
@@ -845,7 +1078,7 @@ function JobSheetDetailPage() {
                                 [portion.id]: { ...draft, xero_invoice_number: event.target.value },
                               }))
                             }
-                            disabled={editorBusy}
+                            disabled={editorBusy || persisted?.status === "cancelled"}
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -862,7 +1095,7 @@ function JobSheetDetailPage() {
                                 },
                               }))
                             }
-                            disabled={editorBusy}
+                            disabled={editorBusy || persisted?.status === "cancelled"}
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -877,7 +1110,7 @@ function JobSheetDetailPage() {
                                 [portion.id]: { ...draft, xero_invoice_date: event.target.value },
                               }))
                             }
-                            disabled={editorBusy}
+                            disabled={editorBusy || persisted?.status === "cancelled"}
                           />
                         </div>
                         <div className="space-y-1.5 md:col-span-2">
@@ -896,6 +1129,31 @@ function JobSheetDetailPage() {
                           />
                         </div>
                       </div>
+                      {needsReview && (
+                        <p className="mt-3 text-xs text-warning-foreground">
+                          Legacy entry needs invoice evidence review. No Xero confirmation is
+                          inferred.
+                        </p>
+                      )}
+                      {persisted?.status === "entered_in_xero" && (
+                        <div className="mt-3 space-y-1.5">
+                          <Label htmlFor={`xero-correction-reason-${portion.id}`}>
+                            Correction or void reason
+                          </Label>
+                          <Textarea
+                            id={`xero-correction-reason-${portion.id}`}
+                            value={xeroCorrectionReasons[portion.id] ?? ""}
+                            onChange={(event) =>
+                              setXeroCorrectionReasons((current) => ({
+                                ...current,
+                                [portion.id]: event.target.value,
+                              }))
+                            }
+                            disabled={editorBusy}
+                            className="min-h-[64px]"
+                          />
+                        </div>
+                      )}
                       {rowError && (
                         <p role="alert" className="mt-3 text-xs text-destructive">
                           {rowError}
@@ -915,6 +1173,15 @@ function JobSheetDetailPage() {
         </div>
 
         <div className="space-y-6">
+          <HandoffHeaderForm
+            jobSheet={jobSheet}
+            editable={jobSheetQuery.data.canUpdateHeader}
+            onSave={async (input) => {
+              await updateJobSheetHeader({ data: { id: jobSheet.id, ...input } });
+              await invalidateJobSheetReads("header");
+              toast.success("Handoff header saved");
+            }}
+          />
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Handoff details</CardTitle>
@@ -931,11 +1198,13 @@ function JobSheetDetailPage() {
                     className="rounded-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {quote.number ?? "Open quote"}
+                    {quote.versionNumber ? ` · version ${quote.versionNumber}` : ""}
                   </Link>
                 ) : (
                   "Not available with your access"
                 )}
               </DetailRow>
+              <DetailRow label="Company">{companyName ?? "Not linked"}</DetailRow>
               <DetailRow label="Client">
                 {client
                   ? client.company_name
@@ -944,14 +1213,31 @@ function JobSheetDetailPage() {
                     : "Not linked"}
               </DetailRow>
               <DetailRow label="PO number">{jobSheet.po_number ?? "Not supplied"}</DetailRow>
+              <DetailRow label="No PO reason">{jobSheet.no_po_reason ?? "Not supplied"}</DetailRow>
               <DetailRow label="Client order">
                 {jobSheet.client_order_number ?? "Not supplied"}
               </DetailRow>
               <DetailRow label="Xero customer">
                 {jobSheet.xero_customer_reference ?? "Not set"}
               </DetailRow>
+              <DetailRow label="Sales owner">
+                {jobSheet.sales_owner ? (salesOwnerName ?? "Name unavailable") : "Unassigned"}
+              </DetailRow>
               <DetailRow label="Accounting owner">
-                {jobSheet.accounting_owner ?? "Unassigned"}
+                {jobSheet.accounting_owner
+                  ? (accountingOwnerName ?? "Name unavailable")
+                  : "Unassigned"}
+              </DetailRow>
+              <DetailRow label="Next action">
+                {!jobSheet.accounting_owner
+                  ? "Assign an active accounting owner"
+                  : !jobSheet.po_number && !jobSheet.no_po_reason
+                    ? "Record a PO or no-PO reason"
+                    : jobSheet.status === "accounting_review"
+                      ? "Reconcile portions, then accept"
+                      : jobSheet.status === "accepted"
+                        ? "Record manual Xero evidence"
+                        : "Review status"}
               </DetailRow>
               <Separator />
               <DetailRow label="Created">{formatDateTime(jobSheet.created_at)}</DetailRow>

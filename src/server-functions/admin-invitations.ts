@@ -11,6 +11,7 @@ import {
   createInvitation,
   getInvitationById,
   getInvitationPreview as getInvitationPreviewFromRepository,
+  getInvitationLandingState as getInvitationLandingStateFromRepository,
   resendInvitation,
   revokeInvitation,
   type UserInvitation,
@@ -137,6 +138,11 @@ export const inviteUsers = createServerFn({ method: "POST" })
 export const getInvitationPreview = createServerFn({ method: "GET" })
   .validator((data: unknown) => tokenSchema.parse(data))
   .handler(async ({ data }) => getInvitationPreviewFromRepository(data.token));
+
+/** The token is a bearer secret; only a matching token reveals a pending invitation preview. */
+export const getInvitationLandingState = createServerFn({ method: "GET" })
+  .validator((data: unknown) => tokenSchema.parse(data))
+  .handler(async ({ data }) => getInvitationLandingStateFromRepository(data.token));
 
 export const acceptUserInvitation = createServerFn({ method: "POST" })
   .validator((data: unknown) => tokenSchema.parse(data))

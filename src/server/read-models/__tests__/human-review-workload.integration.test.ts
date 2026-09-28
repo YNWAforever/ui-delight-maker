@@ -2,6 +2,18 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { Pool } from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+const reportContext = {
+  actor: {
+    profileId: "fixture-report-admin",
+    role: "admin",
+    status: "active",
+    directReportIds: [],
+  },
+  overrides: [],
+  now: new Date("2026-09-27T00:00:00Z"),
+  session: { profile: { id: "fixture-report-admin" } },
+} as unknown as RequestAuthorization;
 
 /**
  * Human-Review Workload report, Task 3: the one place `reportQueries.human_review_workload`
@@ -126,7 +138,10 @@ function minutesAgo(minutes: number) {
 }
 
 async function loadRows() {
-  const { data } = await loadReportDataset({ report: "human_review_workload", range: "7d" });
+  const { data } = await loadReportDataset(
+    { report: "human_review_workload", range: "7d" },
+    reportContext,
+  );
   return data as unknown as Row[];
 }
 
@@ -282,7 +297,12 @@ describe("human_review_workload, proven against a real database", () => {
       const reviewer = await seedProfile(`Longest Wait ${randomUUID().slice(0, 8)}`);
       await seedApproval({ assignedTo: reviewer, status: "pending", createdAt: daysAgo(2) });
       await seedApproval({ assignedTo: reviewer, status: "pending", createdAt: daysAgo(9) });
-      await seedApproval({ assignedTo: reviewer, status: "pending", createdAt: daysAgo(40) });
+      // Use the database clock for an exact day boundary. The host/container clocks can
+      // differ by milliseconds, which otherwise floors 40 days to 39.
+      const oldestAt = (
+        await db().query<{ created_at: Date }>("select now() - interval '40 days' as created_at")
+      ).rows[0].created_at.toISOString();
+      await seedApproval({ assignedTo: reviewer, status: "pending", createdAt: oldestAt });
 
       const rows = await loadRows();
       const name = await profileName(reviewer);

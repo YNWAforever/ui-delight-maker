@@ -49,7 +49,39 @@ const ACKNOWLEDGED_UNGUARDED: Record<string, string> = {
   "auth.ts::signIn": "establishes a session",
   "auth.ts::signOut": "ends a session",
   "admin-invitations.ts::getInvitationPreview": "must work for a signed-out invitee",
-  "app-shell.ts::getAppShellRead": "fans out to server functions that each guard themselves",
+  "admin-invitations.ts::getInvitationLandingState":
+    "bearer-token-scoped invitation state for signed-out invitee; token is validated and hashed",
+  "auth.ts::getCurrentWorkspaceAccess":
+    "returns only the requesting identity workspace state; public login must handle no session",
+  "approvals.ts::claimApprovalFn":
+    "command checks approvals.decide against the locked approval and linked subject owner",
+  "approvals.ts::recordManualMessageSentFn":
+    "command checks approvals.decide against the locked approved message handoff",
+  "bulk-operations.ts::previewBulkFn":
+    "the allowlisted action handler checks capability per item before exposing any summary",
+  "bulk-operations.ts::commitBulkFn":
+    "the actor-owned token is checked and every item rechecks capability inside its transaction",
+  "bulk-operations.ts::resumeBulkFn":
+    "the actor-owned operation is checked and every resumed item rechecks capability",
+  "bulk-operations.ts::getBulkResultFn":
+    "returns only this actor's receipt statuses and IDs, without preview summaries",
+  "lead-import.ts::commitLeadImportFn":
+    "retired endpoint authenticates then rejects every write; new session endpoint owns commits",
+  "client-import.ts::commitClientImportFn":
+    "retired endpoint authenticates then rejects every write; new session endpoint owns commits",
+  "event-import.ts::commitEventImportFn":
+    "retired endpoint authenticates then rejects every write; new session endpoint owns commits",
+  "import-sessions.ts::commitImportFn":
+    "actor-owned session and each row rechecks current capability before any write",
+  "import-sessions.ts::resumeImportFn":
+    "actor-owned session and each resumed row rechecks current capability before any write",
+  "import-sessions.ts::getImportResultFn":
+    "returns only this actor's receipt statuses and IDs, without raw CSV fields",
+
+  "agent-runs.ts::recoverAgentRunFn":
+    "command checks agents.run and approvals.decide against the locked run and approval",
+  "app-shell.ts::getAppShellRead":
+    "reads only the actor's favorites and builds navigation/capabilities from one server-loaded authorization context",
   ...Object.fromEntries(
     [
       "account.ts::getMyAccount",
@@ -138,11 +170,9 @@ describe("server-function authorization contract", () => {
       ["quotes.ts", "acceptQuoteAndCreateJobSheet", 'requireCapability("job_sheets.accept"'],
       ["job-sheets.ts", "acceptJobSheetForAccounting", 'requireCapability("job_sheets.accept"'],
       ["job-sheets.ts", "updateJobSheetPortions", 'requireCapability("job_sheets.update_billing"'],
-      [
-        "job-sheets.ts",
-        "updatePortionXeroReference",
-        'requireCapability("job_sheets.update_billing"',
-      ],
+      ["job-sheets.ts", "updateXeroNotes", 'requireCapability("job_sheets.update_billing"'],
+      ["job-sheets.ts", "confirmXeroEntry", 'requireCapability("job_sheets.update_billing"'],
+      ["job-sheets.ts", "correctXeroEntry", 'requireCapability("job_sheets.update_billing"'],
       ["products.ts", "createProduct", 'requireCapability("products.manage"'],
       ["products.ts", "updateProduct", 'requireCapability("products.manage"'],
       ["products.ts", "deactivateProductFn", 'requireCapability("products.manage"'],
@@ -168,7 +198,10 @@ describe("server-function authorization contract", () => {
     for (const [file, name, expected] of expectations) {
       const source = readFileSync(resolve(process.cwd(), "src/server-functions", file), "utf8");
       const handler = serverFunctionBlocks(source).find((entry) => entry.name === name);
-      if (!handler?.source.includes(expected)) failures.push(file + ":" + name);
+      if (
+        !handler?.source.replace(/requireCapability\(\s+/g, "requireCapability(").includes(expected)
+      )
+        failures.push(file + ":" + name);
     }
 
     expect(failures).toEqual([]);

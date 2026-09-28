@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { AGENT_DEFINITIONS, agentNameFor } from "@/lib/agents";
+import { AGENT_DEFINITIONS, AUXILIARY_AI_WORKFLOW_TYPES, agentNameFor } from "@/lib/agents";
 
 /**
  * The Agents section is a join between a hand-written catalogue and the `agent_runs` table.
@@ -55,7 +55,10 @@ function workflowTypesAllowedBySchema(): string[] {
 describe("agent catalogue", () => {
   it("lists exactly the workflow types the database accepts", () => {
     const fromSchema = workflowTypesAllowedBySchema();
-    const fromCatalogue = AGENT_DEFINITIONS.map((agent) => agent.workflow_type).sort();
+    const fromCatalogue = [
+      ...AGENT_DEFINITIONS.map((agent) => agent.workflow_type),
+      ...AUXILIARY_AI_WORKFLOW_TYPES,
+    ].sort();
 
     expect(
       fromCatalogue,

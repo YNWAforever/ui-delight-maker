@@ -2,12 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { nonEmptyReasonSchema, profileStatusSchema, userRoleSchema } from "@/lib/admin/schemas";
 import { AdminError } from "@/lib/admin/errors";
-import type { AdminNavigationItem, Capability, UserRole } from "@/lib/admin/types";
+import type { Capability, UserRole } from "@/lib/admin/types";
 import type {
   ReassignmentBucketKey,
   ReassignmentInventory,
 } from "@/server/admin/reassignment.server";
-import { requireAnyCapability, requireCapability } from "@/server/auth/authorization.server";
+import {
+  loadRequestAuthorization,
+  requireAnyCapability,
+  requireCapability,
+} from "@/server/auth/authorization.server";
+import { getAdminNavigationForContext } from "@/server/admin/navigation.server";
 import {
   changeUserRole,
   getAdminOverview,
@@ -81,9 +86,11 @@ const reassignmentInventorySchema = z
         column: z.string().min(1),
         label: z.string().min(1),
         count: z.coerce.number().int().nonnegative(),
+        historyCount: z.coerce.number().int().nonnegative(),
       }),
     ),
     totalCount: z.coerce.number().int().nonnegative(),
+    totalHistoryCount: z.coerce.number().int().nonnegative(),
   })
   .transform((inventory): ReassignmentInventory => inventory as ReassignmentInventory);
 const reassignmentLifecycleSchema = z.object({
@@ -108,34 +115,11 @@ function idOf(session: Awaited<ReturnType<typeof requireCapability>>) {
   return session.profile.id;
 }
 
-const adminNavigationItems = [
-  { key: "overview", label: "Overview", capability: "users.view", href: "/admin" },
-  { key: "people", label: "People", capability: "users.view", href: "/admin/people" },
-  { key: "teams", label: "Teams", capability: "teams.view", href: "/admin/teams" },
-  { key: "access", label: "Access", capability: "permissions.view", href: "/admin/access" },
-  { key: "audit", label: "Audit", capability: "audit.view", href: "/admin/audit" },
-] as const satisfies readonly AdminNavigationItem[];
-
 export const getAdminNavigationFn = createServerFn({ method: "GET" }).handler(async () => {
-  await requireAnyCapability(adminNavigationCapabilities);
-  const visibleItems = await Promise.all(
-    adminNavigationItems.map(async (item) => {
-      try {
-        await requireCapability(item.capability);
-        return item;
-      } catch (error) {
-        if (error instanceof AdminError && ["FORBIDDEN", "OUTSIDE_SCOPE"].includes(error.code)) {
-          return null;
-        }
-        throw error;
-      }
-    }),
-  );
-  return visibleItems.filter(
-    (item): item is (typeof adminNavigationItems)[number] => item !== null,
-  );
+  const context = await loadRequestAuthorization();
+  await requireAnyCapability(adminNavigationCapabilities, {}, context);
+  return getAdminNavigationForContext(context);
 });
-
 export const getAdminOverviewFn = createServerFn({ method: "GET" }).handler(async () => {
   await requireAnyCapability(adminNavigationCapabilities);
   return getAdminOverview();

@@ -3,7 +3,7 @@ import { requireCapability } from "@/server/auth/authorization.server";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { getN8nDispatchConfig, triggerN8n } from "@/lib/n8n";
+import { getN8nDispatchConfig, n8nFailureOutcome, triggerN8n } from "@/lib/n8n";
 import { buildQualificationPayload, buildReplyDraftPayload } from "@/lib/workflows/payloads";
 import {
   createAgentRun,
@@ -204,6 +204,7 @@ export const triggerLeadAgent = createServerFn({ method: "POST" })
     } catch (error) {
       await updateAgentRunResult(run.id, {
         status: "failed",
+        outcome_code: n8nFailureOutcome(error),
         output_data: {
           dispatch_error: error instanceof Error ? error.message : "Unknown n8n dispatch error",
         },
@@ -270,6 +271,7 @@ export const triggerLeadReplyDraft = createServerFn({ method: "POST" })
     } catch (error) {
       await updateAgentRunResult(run.id, {
         status: "failed",
+        outcome_code: n8nFailureOutcome(error),
         output_data: {
           dispatch_error: error instanceof Error ? error.message : "Unknown n8n dispatch error",
         },

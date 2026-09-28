@@ -8,13 +8,26 @@ import {
 } from "@/server/db/neon.server";
 
 export const REASSIGNMENT_BUCKETS = [
-  { key: "leads.assigned_to", table: "leads", column: "assigned_to", label: "Leads" },
-  { key: "tasks.assigned_to", table: "tasks", column: "assigned_to", label: "Tasks" },
+  {
+    key: "leads.assigned_to",
+    table: "leads",
+    column: "assigned_to",
+    label: "Leads",
+    livePredicate: "status not in ('won','lost')",
+  },
+  {
+    key: "tasks.assigned_to",
+    table: "tasks",
+    column: "assigned_to",
+    label: "Tasks",
+    livePredicate: "status <> 'done'",
+  },
   {
     key: "human_approvals.assigned_to",
     table: "human_approvals",
     column: "assigned_to",
     label: "Approval queue",
+    livePredicate: "status in ('pending','escalated')",
   },
   {
     key: "clients.account_owner",
@@ -39,19 +52,28 @@ export const REASSIGNMENT_BUCKETS = [
     table: "engagements",
     column: "owner",
     label: "Retention engagements",
+    livePredicate: "status in ('active','paused')",
   },
-  { key: "campaigns.owner", table: "campaigns", column: "owner", label: "Campaigns" },
+  {
+    key: "campaigns.owner",
+    table: "campaigns",
+    column: "owner",
+    label: "Campaigns",
+    livePredicate: "status in ('draft','planned','active')",
+  },
   {
     key: "job_sheets.sales_owner",
     table: "job_sheets",
     column: "sales_owner",
     label: "Job sheets - sales",
+    livePredicate: "status in ('draft','accounting_review','change_required')",
   },
   {
     key: "job_sheets.accounting_owner",
     table: "job_sheets",
     column: "accounting_owner",
     label: "Job sheets - accounting",
+    livePredicate: "status in ('draft','accounting_review','change_required')",
   },
 ] as const;
 
@@ -59,12 +81,14 @@ export type ReassignmentBucketKey = (typeof REASSIGNMENT_BUCKETS)[number]["key"]
 
 export type ReassignmentInventoryBucket = (typeof REASSIGNMENT_BUCKETS)[number] & {
   count: number;
+  historyCount: number;
 };
 
 export type ReassignmentInventory = {
   profileId: string;
   buckets: ReassignmentInventoryBucket[];
   totalCount: number;
+  totalHistoryCount: number;
 };
 
 export type DeactivateUserWithReassignmentInput = {
@@ -104,20 +128,44 @@ async function readInventory(
   query: QueryFunction,
   db?: Queryable,
 ): Promise<ReassignmentInventory> {
-  const buckets = await Promise.all(
-    REASSIGNMENT_BUCKETS.map(async (bucket) => {
-      const rows = await query<{ count: number | string }>(
-        "select count(*)::int as count from " + bucket.table + " where " + bucket.column + " = $1",
-        [profileId],
-        db,
-      );
-      return { ...bucket, count: countValue(rows[0]?.count) };
-    }),
-  );
+  const readBucket = async (bucket: (typeof REASSIGNMENT_BUCKETS)[number]) => {
+    const predicate = "livePredicate" in bucket ? bucket.livePredicate : null;
+    const rows = await query<{ count: number | string; history_count: number | string }>(
+      "select " +
+        (predicate
+          ? "count(*) filter (where " +
+            predicate +
+            ")::int as count, " +
+            "count(*) filter (where not (" +
+            predicate +
+            "))::int as history_count"
+          : "count(*)::int as count, 0::int as history_count") +
+        " from " +
+        bucket.table +
+        " where " +
+        bucket.column +
+        " = $1",
+      [profileId],
+      db,
+    );
+    return {
+      ...bucket,
+      count: countValue(rows[0]?.count),
+      historyCount: countValue(rows[0]?.history_count),
+    };
+  };
+  const buckets: ReassignmentInventoryBucket[] = [];
+  if (db) {
+    // A transaction owns one connection; keep its queries in sequence.
+    for (const bucket of REASSIGNMENT_BUCKETS) buckets.push(await readBucket(bucket));
+  } else {
+    buckets.push(...(await Promise.all(REASSIGNMENT_BUCKETS.map(readBucket))));
+  }
   return {
     profileId,
     buckets,
     totalCount: buckets.reduce((sum, bucket) => sum + bucket.count, 0),
+    totalHistoryCount: buckets.reduce((sum, bucket) => sum + bucket.historyCount, 0),
   };
 }
 
@@ -126,11 +174,18 @@ function assertInventoryMatches(reviewed: ReassignmentInventory, current: Reassi
     throw new AdminError("STALE_ADMIN_STATE", "The reassignment review belongs to another user");
   }
 
-  const reviewedCounts = new Map(reviewed.buckets.map((bucket) => [bucket.key, bucket.count]));
-  const changed = current.buckets.some(
-    (bucket) => Number(reviewedCounts.get(bucket.key) ?? -1) !== bucket.count,
+  const reviewedCounts = new Map(
+    reviewed.buckets.map((bucket) => [bucket.key, [bucket.count, bucket.historyCount]]),
   );
-  if (changed || reviewed.totalCount !== current.totalCount) {
+  const changed = current.buckets.some((bucket) => {
+    const counts = reviewedCounts.get(bucket.key);
+    return !counts || counts[0] !== bucket.count || counts[1] !== bucket.historyCount;
+  });
+  if (
+    changed ||
+    reviewed.totalCount !== current.totalCount ||
+    reviewed.totalHistoryCount !== current.totalHistoryCount
+  ) {
     throw new AdminError(
       "STALE_ADMIN_STATE",
       "Ownership changed after the reassignment review. Refresh the inventory and try again.",
@@ -200,6 +255,7 @@ function auditSnapshot(profile: ProfileRow, inventory: ReassignmentInventory, st
     reassignment: inventory.buckets.map((bucket) => ({
       key: bucket.key,
       count: bucket.count,
+      historyCount: bucket.historyCount,
     })),
   });
 }
@@ -250,7 +306,8 @@ export function createReassignmentService(dependencies: ReassignmentDependencies
             bucket.column +
             " = $2 where " +
             bucket.column +
-            " = $1",
+            " = $1" +
+            ("livePredicate" in bucket ? " and " + bucket.livePredicate : ""),
           [input.profileId, successorId],
         );
       }

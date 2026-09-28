@@ -3,6 +3,7 @@ import {
   formatCompactHKD,
   formatCount,
   formatCurrencyAmount,
+  formatCommercialMoney,
   formatDate,
   formatPercentPoints,
 } from "@/lib/format";
@@ -123,12 +124,13 @@ export const REPORT_SPECS: Record<ReportId, ReportSpec> = {
   revenue: {
     fields: [
       { key: "week", header: "Week starting", kind: "period" },
-      { key: "revenue", header: "Accepted quote value (HKD)", kind: "currency" },
+      { key: "currency", header: "Currency", kind: "label" },
+      { key: "amount", header: "Accepted quote value", kind: "currency" },
     ],
-    shape: "chart",
-    periodStepDays: 7,
-    // Charted: the shape of the trend over weeks is the decision, not any one week's figure.
-    periodNoun: "week",
+    shape: "table",
+    periodStepDays: 0,
+    // Each week can have multiple currencies; a single chart series would imply FX conversion.
+    periodNoun: "week/currency row",
   },
   pipeline: {
     fields: [
@@ -241,7 +243,7 @@ function toNumber(value: unknown): number | null {
 export function formatReportCell(
   field: ReportField,
   value: unknown,
-  options: { compact?: boolean } = {},
+  options: { compact?: boolean; currency?: string } = {},
 ): string {
   switch (field.kind) {
     case "period":
@@ -255,9 +257,17 @@ export function formatReportCell(
       return parsed === null ? "—" : formatCount(parsed);
     }
     case "currency": {
+      if (value === null || value === undefined || value === "") return "—";
+      if (field.key === "amount") {
+        return options.currency
+          ? formatCommercialMoney(value as string | number, options.currency)
+          : "—";
+      }
       const parsed = toNumber(value);
       if (parsed === null) return "—";
-      return options.compact ? formatCompactHKD(parsed) : formatCurrencyAmount(parsed, "HKD");
+      return options.compact
+        ? formatCompactHKD(parsed)
+        : formatCurrencyAmount(value as string | number, "HKD");
     }
     case "percent":
       return formatPercentPoints(toNumber(value));
@@ -282,8 +292,9 @@ export function reportCsvValue(field: ReportField, value: unknown): string | num
       return typeof value === "string" && value ? value : null;
     case "status":
       return getStatusLabel(field.statusDomain, typeof value === "string" ? value : null).label;
-    case "count":
     case "currency":
+      return field.key === "amount" && typeof value === "string" ? value : toNumber(value);
+    case "count":
     case "percent":
       return toNumber(value);
   }
@@ -292,6 +303,12 @@ export function reportCsvValue(field: ReportField, value: unknown): string | num
 export function reportCsvColumns(report: ReportId): CsvColumn<ReportRow>[] {
   return REPORT_SPECS[report].fields.map((field) => ({
     header: field.header,
+    kind:
+      field.kind === "period"
+        ? "date"
+        : field.kind === "label" || field.kind === "status"
+          ? "text"
+          : "number",
     value: (row: ReportRow) => reportCsvValue(field, row[field.key]),
   }));
 }
@@ -428,6 +445,22 @@ export function describeReportData(report: ReportId, rows: readonly ReportRow[])
   const valueFields = reportValueFields(report);
 
   if (rows.length === 0) return "No rows were recorded for this range.";
+
+  if (report === "revenue") {
+    const listed = rows
+      .slice(0, 12)
+      .map(
+        (row) =>
+          `${formatReportCell(dimension, row.week)}: ${formatReportCell(
+            spec.fields[2],
+            row.amount,
+            { currency: typeof row.currency === "string" ? row.currency : undefined },
+          )}`,
+      )
+      .join("; ");
+    const remainder = rows.length > 12 ? `; and ${rows.length - 12} more` : "";
+    return `${rows.length} week/currency rows. ${listed}${remainder}.`;
+  }
 
   if (dimension.kind !== "period") {
     const listed = rows

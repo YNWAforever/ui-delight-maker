@@ -35,7 +35,11 @@ export function parseRelationshipIntelligenceWritebackPayload(
     !Array.isArray(candidate.signals) ||
     !candidate.signals.every(isSignal) ||
     typeof candidate.confidence_score !== "number" ||
-    (candidate.model_used !== undefined && typeof candidate.model_used !== "string")
+    (candidate.model_used !== undefined && typeof candidate.model_used !== "string") ||
+    (candidate.usage !== undefined &&
+      (!candidate.usage ||
+        typeof candidate.usage !== "object" ||
+        typeof (candidate.usage as Record<string, unknown>).source !== "string"))
   ) {
     return null;
   }

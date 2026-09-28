@@ -25,6 +25,15 @@ afterEach(() => {
 });
 
 describe("LoginAuthPage", () => {
+  it("does not offer self signup from the normal login route", async () => {
+    render(<LoginAuthPage authPath="sign-up" />);
+    await waitFor(() =>
+      expect(providerPropsMock).toHaveBeenCalledWith(expect.objectContaining({ signUp: false })),
+    );
+    expect(await screen.findByText("Auth view: sign-in")).toBeTruthy();
+    expect(screen.getByText(/administrator-invited account/i)).toBeTruthy();
+  });
+
   it("forwards an invitation completion redirect to Neon Auth", async () => {
     render(
       <LoginAuthPage
@@ -37,7 +46,7 @@ describe("LoginAuthPage", () => {
 
     await waitFor(() =>
       expect(providerPropsMock).toHaveBeenCalledWith(
-        expect.objectContaining({ redirectTo: "/invite/raw-token/complete" }),
+        expect.objectContaining({ redirectTo: "/invite/raw-token/complete", signUp: true }),
       ),
     );
     expect(screen.getByRole("heading", { name: "Join Fimmick ClientOps" })).toBeTruthy();

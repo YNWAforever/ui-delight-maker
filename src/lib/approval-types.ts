@@ -33,23 +33,22 @@ export function approvalTypeLabel(type: string | null | undefined): string {
  * code that does it. This is the one piece of copy on the review screen a reader is entitled
  * to trust literally, so each line was written against the write path rather than the label.
  *
- * - `quote_send` → `approveAndIssueQuote` (src/server-functions/quotes.ts): approves the
- *   quote, issues a version, then closes the approval.
- * - `cs_risk_review` → `applyRiskReviewDecision`
+ * - Quote-send approval closes the request and approves the quote; issuance is a separate
+ *   privileged action.
+ * - `cs_risk_review` → `applyRiskReviewDecisionInTransaction`
  *   (src/server/workflows/decide-risk-review.server.ts): writes the held health score, risk
  *   and next action onto the engagement.
- * - `message_send` → `decideApproval` only. **Nothing sends the message.** The draft lives in
- *   `context_data.draft_message` and has no consumer anywhere in the repository — a grep for
- *   `draft_message` returns the writeback that stored it and nothing that reads it. Saying
- *   "the reply will be sent" would be the same class of lie this revision exists to remove.
+ * - `message_send` → approval decision creates a manual handoff. The approved draft is
+ *   readable in the Approvals workbench for copying and an operator may record a send
+ *   reference. Neither action is a platform delivery receipt or an automatic send.
  * - The remaining four have no writeback that creates them today and no handler that acts on
  *   them, so they say exactly that.
  */
 export const APPROVAL_PROPOSED_ACTION: Record<ApprovalType, string> = {
   quote_send:
-    "Approving marks the quote approved, issues a quote version immediately, and closes this request. There is no un-issue action.",
+    "Approving marks the quote approved and closes this request. Issuing an immutable version is a separate authorized action.",
   message_send:
-    "Approving records that the drafted reply is cleared and releases the agent run. ClientOps does not send the message — a person still sends it from the lead.",
+    "Approving clears the draft and creates a manual handoff in Approvals. A person must send it and record a reference; ClientOps does not send or confirm delivery.",
   discount:
     "Approving records the decision and releases the agent run. No pricing change is applied automatically.",
   qualification_review:

@@ -5,6 +5,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { OrganizationUnitDetail } from "@/components/admin/organization-unit-detail";
+import { BulkActionBar } from "@/components/operations/bulk-action-bar";
+import { BulkPreviewDialog } from "@/components/operations/bulk-preview-dialog";
+import { useBulkOperation } from "@/components/operations/use-bulk-operation";
 import {
   OrganizationUnitDialog,
   type OrganizationUnitKind,
@@ -219,29 +222,27 @@ function AdminTeamDetailRoute() {
     await refreshOrganization(value.kind, value.id, profileIds, true);
   }
 
+  const teamBulk = useBulkOperation(
+    "clientops:bulk:team:" + (detail?.kind === "team" ? detail.unit.id : "none"),
+    async (result) => {
+      if (detail?.kind === "team") {
+        await refreshOrganization(
+          "team",
+          detail.unit.id,
+          result.results.map((item) => item.id),
+          true,
+        );
+      }
+    },
+  );
+
   async function addMembers(profileIds: string[], startsAt: string | null, endsAt: string | null) {
     if (!detail || detail.kind !== "team") return;
-    await runWrite(async () => {
-      await Promise.all(
-        profileIds.map((profileId) =>
-          upsertAdminTeamMembershipFn({
-            data: {
-              teamId: detail.unit.id,
-              profileId,
-              membershipRole: "member",
-              ...(startsAt ? { startsAt } : {}),
-              ...(endsAt ? { endsAt } : {}),
-            },
-          }),
-        ),
-      );
-      toast.success(
-        profileIds.length === 1
-          ? "Member added"
-          : `${formatCount(profileIds.length)} members added`,
-      );
-      await refreshOrganization("team", detail.unit.id, profileIds, true);
-    });
+    await teamBulk.prepare(
+      { type: "team.add_member", teamId: detail.unit.id, startsAt, endsAt },
+      profileIds,
+    );
+    return false;
   }
 
   // Both of these used to be byte-identical to the `/admin/teams` copies except that their
@@ -315,9 +316,26 @@ function AdminTeamDetailRoute() {
           navigate({ search: (current) => ({ ...current, tab }), replace: true })
         }
         onEdit={(unit) => setDialog({ kind: detail.kind, unit })}
+        bulkResult={teamBulk.result}
         onAddMembers={canManage ? addMembers : undefined}
         onUpdateMember={canManage ? updateMember : undefined}
         onEndMember={canManage ? endMember : undefined}
+      />
+      {teamBulk.result && (
+        <BulkActionBar
+          selectedCount={teamBulk.result.remainingIds.length}
+          busy={teamBulk.busy}
+          result={teamBulk.result}
+          onResume={() => void teamBulk.resume()}
+          onClear={teamBulk.dismiss}
+          clearLabel="Dismiss result"
+        />
+      )}
+      <BulkPreviewDialog
+        preview={teamBulk.preview}
+        busy={teamBulk.busy}
+        onCancel={teamBulk.cancelPreview}
+        onCommit={() => void teamBulk.commit()}
       />
       {dialog ? (
         <OrganizationUnitDialog

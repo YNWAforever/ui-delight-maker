@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { formatCompactHKD, formatDate, formatDateTime } from "@/lib/format";
+import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
 import {
   getLeadNextAction,
   getLeadOpenTasks,
@@ -81,7 +81,7 @@ export function LeadPreviewPanel({
             </span>
             {quote.value != null && (
               <span className="rounded-md bg-success/10 px-2 py-0.5 font-medium text-success">
-                {formatCompactHKD(quote.value)}
+                {formatCurrencyAmount(quote.value, quote.currency)}
               </span>
             )}
           </div>

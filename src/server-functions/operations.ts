@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
+  loadRequestAuthorization,
   requireCapability,
   requireCapabilityChecks,
   requireCapabilitySet,
@@ -99,22 +100,39 @@ export function parseDatasetInput(data: unknown): { report: ReportId; range: Rep
 export const getJobSheetRead = createServerFn({ method: "GET" })
   .validator(parseJobSheetInput)
   .handler(async ({ data }) => {
-    await requireCapability("job_sheets.view", {
-      resourceType: "job_sheet",
-      resourceId: data.id,
-    });
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "job_sheets.view",
+      { resourceType: "job_sheet", resourceId: data.id },
+      context,
+    );
     const read = await getJobSheetOperationsRead(data.id);
+    const handoffAccess = await requireCapabilitySet([], {
+      optional: ["job_sheets.update_billing", "job_sheets.accept"],
+      target: { resourceType: "job_sheet", resourceId: data.id },
+      context,
+    });
 
     const quoteAccess = read.quote
       ? await requireCapabilitySet([], {
           optional: ["quotes.view"],
           target: { resourceType: "quote", resourceId: read.quote.id },
+          context,
         })
       : {};
     const clientAccess = read.client
       ? await requireCapabilitySet([], {
           optional: ["accounts.view"],
           target: { resourceType: "client", resourceId: read.client.id },
+          context,
+        })
+      : {};
+
+    const accountAccess = read.jobSheet.account_id
+      ? await requireCapabilitySet([], {
+          optional: ["accounts.view"],
+          target: { resourceType: "account", resourceId: read.jobSheet.account_id },
+          context,
         })
       : {};
 
@@ -122,6 +140,19 @@ export const getJobSheetRead = createServerFn({ method: "GET" })
       ...read,
       quote: quoteAccess["quotes.view"] ? read.quote : null,
       client: clientAccess["accounts.view"] ? read.client : null,
+      companyName: read.jobSheet.client_id
+        ? clientAccess["accounts.view"]
+          ? read.companyName
+          : null
+        : read.jobSheet.account_id
+          ? accountAccess["accounts.view"]
+            ? read.companyName
+            : null
+          : quoteAccess["quotes.view"]
+            ? read.companyName
+            : null,
+      canUpdateHeader: Boolean(handoffAccess["job_sheets.update_billing"]),
+      canAcceptJobSheet: Boolean(handoffAccess["job_sheets.accept"]),
     };
   });
 export const getRenewalsRead = createServerFn({ method: "GET" })
@@ -137,13 +168,15 @@ export const getRenewalsRead = createServerFn({ method: "GET" })
 export const getReportSummary = createServerFn({ method: "GET" })
   .validator(parseRange)
   .handler(async ({ data }) => {
-    await requireCapability("reports.view");
-    return loadReportSummary(data);
+    const context = await loadRequestAuthorization();
+    await requireCapability("reports.view", {}, context);
+    return loadReportSummary(data, context);
   });
 
 export const getReportDataset = createServerFn({ method: "GET" })
   .validator(parseDatasetInput)
   .handler(async ({ data }) => {
-    await requireCapability("reports.view");
-    return loadReportDataset(data);
+    const context = await loadRequestAuthorization();
+    await requireCapability("reports.view", {}, context);
+    return loadReportDataset(data, context);
   });

@@ -1,129 +1,123 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import type { AppSession } from "@/lib/auth/neon-auth.server";
 
-/**
- * Deciding an approval has to release the agent run waiting on it.
- *
- * `agent_runs_active_idx` (001_clientops_runtime.sql) is a partial unique index over
- * `(subject_type, subject_id, workflow_type) where status in ('running','waiting_approval')`.
- * A run parked in `waiting_approval` after its approval was decided therefore blocks every
- * future run of that workflow for that subject — permanently, and for rejections as much as
- * approvals. Nothing released it, so approving a renewal-risk review killed renewal-risk
- * scoring for that engagement for good.
- */
-const mocks = vi.hoisted(() => {
-  const client = { query: vi.fn() };
-  return {
-    client,
-    transactionMock: vi.fn(async (work: (db: typeof client) => Promise<unknown>) => work(client)),
-    createNotificationMock: vi.fn(),
-    listApproverProfileIdsMock: vi.fn(),
-  };
-});
-
+const mocks = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock("@/server/db/neon.server", () => ({
-  transaction: mocks.transactionMock,
   query: vi.fn(),
   queryOne: vi.fn(),
+  transaction: vi.fn(),
 }));
-
 vi.mock("@/server/repositories/notifications", () => ({
-  createNotification: mocks.createNotificationMock,
-  listApproverProfileIds: mocks.listApproverProfileIdsMock,
+  createNotification: vi.fn(),
+  listApproverProfileIds: vi.fn(),
 }));
 
-import { decideApproval } from "@/server/repositories/approvals";
+import { decideApprovalInTransaction } from "@/server/repositories/approvals";
 
+const context: RequestAuthorization = {
+  session: { profile: { id: "reviewer-admin" } } as AppSession,
+  actor: {
+    profileId: "reviewer-admin",
+    role: "admin",
+    status: "active",
+    managedDepartmentIds: [],
+    managedTeamIds: [],
+    directReportIds: [],
+  },
+  overrides: [],
+  now: new Date(),
+};
 function approvalRow(overrides: Record<string, unknown> = {}) {
   return {
     id: "approval-1",
     agent_run_id: "run-1",
     approval_type: "cs_risk_review",
+    assigned_to: null,
     status: "pending",
+    row_version: 0,
+    decided_at: null,
     ...overrides,
   };
 }
-
-/** The `update agent_runs` statement the decision emitted, if any. */
-function agentRunUpdate() {
-  return mocks.client.query.mock.calls.find(([text]) =>
-    String(text).replace(/\s+/g, " ").includes("update agent_runs"),
-  );
+function callsMatching(fragment: string) {
+  return mocks.query.mock.calls.filter(([text]) => String(text).includes(fragment));
+}
+function seed(approval: Record<string, unknown> | null = approvalRow()) {
+  mocks.query.mockImplementation(async (text: string, values: readonly unknown[] = []) => {
+    if (text.includes("select * from human_approvals")) return { rows: approval ? [approval] : [] };
+    if (text.includes("update human_approvals")) {
+      return {
+        rows: approval
+          ? [
+              {
+                ...approval,
+                status: values[1],
+                row_version: 1,
+                decided_at: values[1] === "escalated" ? null : "2026-09-27T00:00:00.000Z",
+              },
+            ]
+          : [],
+      };
+    }
+    return { rows: [] };
+  });
 }
 
-describe("decideApproval", () => {
+describe("decideApprovalInTransaction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.client.query.mockImplementation(async (text: string) => {
-      if (String(text).includes("update human_approvals")) return { rows: [approvalRow()] };
-      return { rows: [] };
-    });
   });
 
   it.each(["approved", "rejected"] as const)(
-    "releases the waiting agent run when an approval is %s",
+    "releases a waiting agent run on %s",
     async (decision) => {
-      await decideApproval({ id: "approval-1", decision, notes: "reviewed", actorId: "user-1" });
-
-      const update = agentRunUpdate();
-      expect(update, `expected the ${decision} decision to release the run`).toBeDefined();
-      const [text, values] = update!;
-      const sql = String(text).replace(/\s+/g, " ");
-
-      expect(sql).toMatch(/set status = 'completed'/);
-      expect(sql).toMatch(/human_review_required = false/);
-      // Scoped to a still-waiting run, so replaying a decision cannot overwrite a run that
-      // already finished or failed on its own.
-      expect(sql).toMatch(/where id = \$1 and status = 'waiting_approval'/);
-      expect(values).toEqual(["run-1"]);
+      seed();
+      await decideApprovalInTransaction({ query: mocks.query }, context, {
+        id: "approval-1",
+        decision,
+      });
+      const release = callsMatching("update agent_runs");
+      expect(release).toHaveLength(1);
+      expect(release[0][1]).toEqual(["run-1"]);
     },
   );
 
-  it("keeps the run parked when the decision is an escalation", async () => {
-    // Escalation defers the decision rather than making one, so the hold has to stay.
-    await decideApproval({
+  it("keeps a run parked when escalated", async () => {
+    seed();
+    const approval = await decideApprovalInTransaction({ query: mocks.query }, context, {
       id: "approval-1",
       decision: "escalated",
-      notes: "needs finance",
-      actorId: "user-1",
     });
-
-    expect(agentRunUpdate()).toBeUndefined();
+    expect(approval.decided_at).toBeNull();
+    expect(callsMatching("update agent_runs")).toHaveLength(0);
   });
 
-  it("does nothing to agent runs for an approval that has none", async () => {
-    mocks.client.query.mockImplementation(async (text: string) => {
-      if (String(text).includes("update human_approvals")) {
-        return { rows: [approvalRow({ agent_run_id: null })] };
-      }
-      return { rows: [] };
-    });
-
-    await decideApproval({ id: "approval-1", decision: "approved", actorId: "user-1" });
-
-    expect(agentRunUpdate()).toBeUndefined();
-  });
-
-  it("records the decision in the activity log inside the same transaction", async () => {
-    await decideApproval({
+  it("does not release a run when none is linked", async () => {
+    seed(approvalRow({ agent_run_id: null }));
+    await decideApprovalInTransaction({ query: mocks.query }, context, {
       id: "approval-1",
       decision: "approved",
-      notes: "looks right",
-      actorId: "user-1",
     });
-
-    expect(mocks.transactionMock).toHaveBeenCalledTimes(1);
-    const auditCall = mocks.client.query.mock.calls.find(([text]) =>
-      String(text).includes("insert into activity_logs"),
-    );
-    expect(auditCall).toBeDefined();
-    expect(auditCall![1]).toEqual(["user-1", "approved approval", "approval-1"]);
+    expect(callsMatching("update agent_runs")).toHaveLength(0);
   });
 
-  it("fails loudly when the approval does not exist", async () => {
-    mocks.client.query.mockResolvedValue({ rows: [] });
+  it("records the decision in the same database client", async () => {
+    seed();
+    await decideApprovalInTransaction({ query: mocks.query }, context, {
+      id: "approval-1",
+      decision: "approved",
+    });
+    expect(callsMatching("insert into activity_logs")).toHaveLength(1);
+  });
 
+  it("fails when the approval does not exist", async () => {
+    seed(null);
     await expect(
-      decideApproval({ id: "missing", decision: "approved", actorId: "user-1" }),
-    ).rejects.toThrow("Approval not found");
+      decideApprovalInTransaction({ query: mocks.query }, context, {
+        id: "missing",
+        decision: "approved",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
   });
 });

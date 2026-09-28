@@ -48,8 +48,8 @@ import { getStatusLabel } from "@/lib/status-labels";
 import { cn } from "@/lib/utils";
 import type { AgentDirectoryRunSummary, AiReviewRead } from "@/server-functions/agent-runs";
 import { getAiReviewRead } from "@/server-functions/agent-runs";
-import { decideApproval, getApprovals } from "@/server-functions/approvals";
-import { approveAndIssueQuote, rejectQuote } from "@/server-functions/quotes";
+import { decideApproval, getLastReviewedAtFn } from "@/server-functions/approvals";
+import { approveQuote, rejectQuote } from "@/server-functions/quotes";
 
 /**
  * The redacted shape `loadAiReviewRead` returns — `SerializableHumanApproval` plus
@@ -68,19 +68,11 @@ const aiReviewQuery = () =>
     queryFn: () => getAiReviewRead(),
   });
 
-/**
- * The decided-approval history, read only when the queue is empty.
- *
- * `loadAiReviewRead` selects `where status = 'pending'`, so it can never answer "when was the
- * last thing reviewed?" — the empty state needs a decided row, which by definition is not in
- * that result. `getApprovals` returns every approval and requires `approvals.view`, which this
- * route already holds, so this is the same authorization, not a wider one. It is gated on the
- * queue actually being empty so the common case pays nothing for it.
- */
+/** A scoped aggregate, requested only for the empty queue. */
 const approvalHistoryQuery = () =>
   routeQueryOptions({
-    queryKey: crmQueryKeys.approvals.list({}),
-    queryFn: () => getApprovals({}),
+    queryKey: [...crmQueryKeys.approvals.all(), "last-reviewed-at"],
+    queryFn: () => getLastReviewedAtFn(),
   });
 
 export const Route = createFileRoute("/ai-review")({
@@ -142,7 +134,7 @@ type LinkedRecord =
  * The record this decision is about.
  *
  * Quote first: a `quote_send` payload carries both `quote_id` and `lead_id`, and the quote is
- * the thing being issued. There is no per-engagement route in the product, so an engagement
+ * the record under approval. There is no per-engagement route in the product, so an engagement
  * resolves to a labelled id and a link to the board that lists it rather than a link that
  * claims to open the record.
  */
@@ -277,14 +269,7 @@ function AiReviewPage() {
     enabled: queue.length === 0,
   });
 
-  const lastReviewedAt = useMemo(() => {
-    const history = lastReviewedQuery.data;
-    if (!history) return null;
-    return history.reduce<string | null>((latest, approval) => {
-      if (!approval.decided_at) return latest;
-      return latest === null || approval.decided_at > latest ? approval.decided_at : latest;
-    }, null);
-  }, [lastReviewedQuery.data]);
+  const lastReviewedAt = lastReviewedQuery.data ?? null;
 
   const selectApproval = (id: string) => {
     setSelectedId(id);
@@ -310,14 +295,7 @@ function AiReviewPage() {
 
   const refreshBusy = refreshing || queueQuery.isFetching;
 
-  /**
-   * The write, routed the same way `/approvals` routes it.
-   *
-   * A `quote_send` approval decided through bare `decideApproval` closes the approval and
-   * leaves the quote in `pending_approval` — approved on one screen and unissued on the other.
-   * `approveAndIssueQuote` and `rejectQuote` are the paths that move both, and they are the
-   * paths the sibling screen already uses.
-   */
+  /** Quote-send decisions update the approval and quote in one server transaction. */
   const runDecision = async (approval: Approval, decision: Decision) => {
     const trimmed = notes.trim() || undefined;
     const quoteId = approval.approval_type === "quote_send" ? linkedRecord(approval) : null;
@@ -328,8 +306,14 @@ function AiReviewPage() {
 
     if (approval.approval_type === "quote_send" && quoteId?.kind === "quote") {
       if (decision === "approved") {
-        await approveAndIssueQuote({
-          data: { id: quoteId.id, approvalId: approval.id, ...(trimmed ? { notes: trimmed } : {}) },
+        await approveQuote({
+          data: {
+            id: quoteId.id,
+            approvalId: approval.id,
+            expectedVersion: approval.row_version,
+            idempotencyKey: crypto.randomUUID(),
+            ...(trimmed ? { notes: trimmed } : {}),
+          },
         });
         return;
       }
@@ -341,7 +325,15 @@ function AiReviewPage() {
       }
     }
 
-    await decideApproval({ data: { id: approval.id, decision, notes: trimmed } });
+    await decideApproval({
+      data: {
+        id: approval.id,
+        decision,
+        notes: trimmed,
+        expectedVersion: approval.row_version,
+        idempotencyKey: crypto.randomUUID(),
+      },
+    });
   };
 
   const decide = (approval: Approval, decision: Decision) => {
@@ -386,8 +378,10 @@ function AiReviewPage() {
         toast.success(
           decision === "approved"
             ? approval.approval_type === "quote_send"
-              ? "Quote approved and issued"
-              : "Approved — recorded and the agent run released"
+              ? "Quote approved. Issuance is a separate step."
+              : approval.approval_type === "message_send"
+                ? "Draft approved. Copy it in Approvals for manual sending; no delivery is confirmed."
+                : "Approved — recorded and the agent run released"
             : decision === "rejected"
               ? "Rejected — recorded and the agent run released"
               : "Changes requested",
@@ -645,6 +639,11 @@ function AiReviewPage() {
             Decided {formatDateTime(approval.decided_at)}. This decision cannot be undone from
             ClientOps.
           </p>
+          {approval.approval_type === "message_send" && approval.status === "approved" && (
+            <Link to="/approvals" className="text-xs text-primary underline">
+              Open manual message handoff
+            </Link>
+          )}
           {nextPending && (
             <Button size="sm" onClick={() => selectApproval(nextPending.id)}>
               <ClipboardCheck className="mr-2 h-4 w-4" aria-hidden="true" /> Review next
@@ -657,7 +656,9 @@ function AiReviewPage() {
     const isQuoteSend = approval.approval_type === "quote_send";
     const approveBlocked =
       decideDenied ??
-      (isQuoteSend && !holds("quotes.issue") ? "Issuing quotes is not part of your role." : null);
+      (isQuoteSend && !holds("quotes.approve")
+        ? "Approving quotes is not part of your role."
+        : null);
     const rejectBlocked =
       decideDenied ??
       (isQuoteSend && !holds("quotes.approve")
@@ -708,9 +709,9 @@ function AiReviewPage() {
             aria-describedby={approveBlocked ? DECIDE_DENIED_ID : undefined}
             onClick={() =>
               setConfirm({
-                title: isQuoteSend ? "Approve and issue this quote?" : "Approve this request?",
+                title: isQuoteSend ? "Approve this quote?" : "Approve this request?",
                 description: approvalProposedAction(approval.approval_type),
-                label: isQuoteSend ? "Approve and issue" : "Approve",
+                label: "Approve",
                 action: () => decide(approval, "approved"),
               })
             }

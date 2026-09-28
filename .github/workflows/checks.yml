@@ -2,6 +2,8 @@ name: Checks
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 # Least privilege: these jobs only ever read the checked-out tree. Without an explicit
 # block the workflow inherits the repository default, which can be read-write — a token
@@ -22,3 +24,5 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
       - run: bun run lint
+      - run: bunx vite build
+      - run: bun run performance:bundles

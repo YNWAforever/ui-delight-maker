@@ -145,6 +145,8 @@ const lead: Lead = {
 };
 
 const loaderData = {
+  access: { leads: true, jobSheets: true },
+  jobSheets: [],
   leads: [lead],
   quotes: [],
   tasks: [],
@@ -153,7 +155,7 @@ const loaderData = {
   activityLogs: [],
   products: [],
   pipelineTotals: {
-    activeQuoteValue: 0,
+    activeQuoteTotals: [],
     openLeads: 1,
     openTasks: 0,
     pendingApprovals: 0,

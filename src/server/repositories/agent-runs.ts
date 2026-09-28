@@ -1,5 +1,7 @@
-import { query, queryOne, type Queryable } from "@/server/db/neon.server";
+import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
+import { AdminError } from "@/lib/admin/errors";
 import type { AgentRun, AgentToolCall } from "@/lib/types";
+import type { AIUsage } from "@/server/workflows/ai-invocation.server";
 
 export type WorkflowType =
   | "qualify_lead"
@@ -88,36 +90,57 @@ export async function createAgentRun(input: {
 }) {
   const subjectType = input.subject_type ?? "lead";
   const triggerType = input.trigger_type ?? "manual";
-  const run = await queryOne<AgentRun>(
-    `
-      insert into agent_runs
-        (agent_name, workflow_type, trigger_type, subject_type, subject_id, input_data, status, created_by)
-      values ($1, $2, $3, $4, $5, $6::jsonb, 'running', $7)
-      on conflict (subject_type, subject_id, workflow_type)
-        where status in ('running','waiting_approval')
-        do nothing
-      returning *
-    `,
-    [
-      input.agent_name,
-      input.workflow_type,
-      triggerType,
-      subjectType,
-      input.subject_id,
-      JSON.stringify(input.input_data),
-      input.created_by,
-    ],
-  );
+  const run = await transaction(async (db) => {
+    // A retry request is only a local recovery marker. The existing dispatch caller
+    // creates this new attempt after checking its webhook and policy.
+    const retry = (
+      await db.query<{ id: string }>(
+        `select old.id from agent_runs old
+         where old.subject_type=$1 and old.subject_id=$2 and old.workflow_type=$3
+           and old.status='failed' and old.outcome_code='retry_requested'
+           and not exists (select 1 from agent_runs child where child.retry_of=old.id)
+         order by old.recovered_at desc,old.id desc
+         limit 1 for update of old`,
+        [subjectType, input.subject_id, input.workflow_type],
+      )
+    ).rows[0];
+    const inserted = (
+      await db.query<AgentRun>(
+        `insert into agent_runs
+           (agent_name,workflow_type,trigger_type,subject_type,subject_id,input_data,status,created_by,retry_of)
+         values ($1,$2,$3,$4,$5,$6::jsonb,'running',$7,$8)
+         on conflict (subject_type,subject_id,workflow_type)
+           where status in ('running','waiting_approval')
+           do nothing
+         returning *`,
+        [
+          input.agent_name,
+          input.workflow_type,
+          triggerType,
+          subjectType,
+          input.subject_id,
+          JSON.stringify(input.input_data),
+          input.created_by,
+          retry?.id ?? null,
+        ],
+      )
+    ).rows[0];
+    if (inserted && retry) {
+      await db.query(
+        "update agent_runs set outcome_code='superseded' where id=$1 and outcome_code='retry_requested'",
+        [retry.id],
+      );
+    }
+    return inserted;
+  });
 
   if (run) {
     return { run, created: true as const };
   }
-
   const activeRun = await findActiveRun(input.subject_id, input.workflow_type, subjectType);
   if (activeRun) {
     return { run: activeRun, created: false as const };
   }
-
   throw new Error("Failed to create agent run");
 }
 
@@ -130,6 +153,8 @@ export async function updateAgentRunResult(
     confidence_score?: number | null;
     human_review_required?: boolean;
     tokens_used?: number | null;
+    usage_data?: AIUsage | null;
+    outcome_code?: string | null;
     model_used?: string | null;
   },
   db?: Queryable,
@@ -152,8 +177,10 @@ export async function updateAgentRunResult(
         -- back.
         duration_ms = greatest(0, round(extract(epoch from (now() - created_at)) * 1000))::integer,
         tokens_used = $7,
-        model_used = coalesce($8, model_used)
-      where id = $1
+        model_used = coalesce($8, model_used),
+        usage_data = coalesce($9::jsonb, usage_data),
+        outcome_code = coalesce($10, outcome_code)
+      where id = $1 and status in ('running','waiting_approval')
       returning *
     `,
     [
@@ -165,10 +192,20 @@ export async function updateAgentRunResult(
       input.human_review_required ?? false,
       input.tokens_used ?? null,
       input.model_used ?? null,
+      input.usage_data ? JSON.stringify(input.usage_data) : null,
+      input.outcome_code ?? null,
     ],
     db,
   );
 
-  if (!run) throw new Error("Agent run not found");
+  if (!run) {
+    const existing = await queryOne<{ status: string }>(
+      "select status from agent_runs where id=$1",
+      [id],
+      db,
+    );
+    if (existing) throw new AdminError("CONFLICT", "Agent run is no longer active");
+    throw new Error("Agent run not found");
+  }
   return run;
 }

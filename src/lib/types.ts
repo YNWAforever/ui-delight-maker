@@ -35,7 +35,7 @@ export type JobSheetBillingType =
 export type JobSheetPortionStatus = "planned" | "entered_in_xero" | "cancelled";
 export type TaskStatus = "open" | "in_progress" | "done";
 export type TaskPriority = "low" | "medium" | "high";
-export type ApprovalStatus = "pending" | "approved" | "rejected" | "escalated";
+export type ApprovalStatus = "pending" | "approved" | "rejected" | "escalated" | "superseded";
 export type ApprovalType =
   | "quote_send"
   | "message_send"
@@ -317,6 +317,8 @@ export interface JobSheet {
   status: JobSheetStatus;
   accepted_scope_summary: string | null;
   po_number: string | null;
+  no_po_reason: string | null;
+  row_version: number;
   client_order_number: string | null;
   xero_customer_reference: string | null;
   accounting_notes: string | null;
@@ -342,6 +344,12 @@ export interface JobSheetPortion {
   target_invoice_date: string | null;
   billing_type: JobSheetBillingType;
   status: JobSheetPortionStatus;
+  row_version: number;
+  xero_confirmed_at: string | null;
+  xero_confirmed_by: string | null;
+  xero_corrected_at: string | null;
+  xero_corrected_by: string | null;
+  xero_correction_reason: string | null;
   xero_invoice_number: string | null;
   xero_invoice_reference: string | null;
   xero_invoice_date: string | null;
@@ -415,9 +423,25 @@ export interface AgentRun {
   status: AgentRunStatus;
   duration_ms: number | null;
   tokens_used: number | null;
+  usage_data?: {
+    inputTokens: number | null;
+    outputTokens: number | null;
+    totalTokens: number | null;
+    cost: number | null;
+    currency: string | null;
+    source: string | null;
+  } | null;
+  idempotency_key?: string | null;
+  policy_version_id?: string | null;
   model_used: string;
   confidence_score: number | null;
   human_review_required: boolean;
+  outcome_code?: string | null;
+  attempt_id?: string;
+  retry_of?: string | null;
+  recovery_reason?: string | null;
+  recovered_by?: string | null;
+  recovered_at?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -441,6 +465,10 @@ export interface HumanApproval {
   requested_by: string | null;
   assigned_to: string | null;
   status: ApprovalStatus;
+  row_version: number;
+  superseded_by: string | null;
+  recovery_outcome_code?: string | null;
+  recovery_reason?: string | null;
   context_data: unknown;
   context_summary: string | null;
   reviewer_notes: string | null;

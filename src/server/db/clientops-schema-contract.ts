@@ -19,11 +19,11 @@ export type DatabaseContractMismatch = {
 };
 
 export type DatabaseReadinessResult =
-  | { ready: true; checkedAt: string; contractVersion: "2026-07-15" }
+  | { ready: true; checkedAt: string; contractVersion: "2026-09-27" }
   | {
       ready: false;
       checkedAt: string;
-      contractVersion: "2026-07-15";
+      contractVersion: "2026-09-27";
       mismatches: DatabaseContractMismatch[];
     };
 
@@ -133,6 +133,9 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "tasks",
     "activity_logs",
     "human_approvals",
+    "command_receipts",
+    "quote_versions",
+    "quote_line_items",
     "agent_runs",
     "campaign_members",
     "relationship_signals",
@@ -159,6 +162,15 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "activity_logs.object_id": { type: "uuid", nullable: true },
     "activity_logs.diff_data": { type: "jsonb", nullable: true },
     "human_approvals.context_data": { type: "jsonb", nullable: true },
+    "human_approvals.row_version": { type: "integer", nullable: false },
+    "human_approvals.superseded_by": { type: "uuid", nullable: true },
+    "command_receipts.id": { type: "uuid", nullable: false },
+    "command_receipts.scope": { type: "text", nullable: false },
+    "command_receipts.actor_id": { type: "text", nullable: false },
+    "command_receipts.idempotency_key": { type: "text", nullable: false },
+    "command_receipts.request_hash": { type: "text", nullable: false },
+    "command_receipts.result": { type: "jsonb", nullable: true },
+    "quote_versions.snapshot": { type: "jsonb", nullable: false },
     "job_sheets.account_id": { type: "uuid", nullable: true },
     "profiles.status": { type: "text", nullable: false },
     "profiles.primary_department_id": { type: "uuid", nullable: true },
@@ -236,6 +248,9 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "admin_audit_logs_actor_profile_id_fkey",
     "agent_policy_versions_status_check",
     "agent_policy_versions_changed_by_fkey",
+    "human_approvals_status_check",
+    "human_approvals_row_version_check",
+    "human_approvals_superseded_link_check",
   ] as const,
   indexes: [
     "accounts_last_activity_idx",
@@ -260,10 +275,16 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "team_memberships_active_uidx",
     "user_invitations_pending_email_uidx",
     "agent_policy_versions_current_idx",
+    "human_approvals_quote_send_open_uidx",
+    "job_sheets_quote_id_uidx",
   ] as const,
   triggers: {
     admin_audit_logs_immutable: ["DELETE", "UPDATE"],
     agent_policy_versions_immutable: ["DELETE", "UPDATE"],
+    human_approvals_transition_guard: ["UPDATE"],
+    quote_commercial_integrity_guard: ["UPDATE"],
+    quote_line_item_integrity_guard: ["INSERT", "UPDATE", "DELETE"],
+    quote_version_integrity_guard: ["UPDATE", "DELETE"],
   } as const,
 } as const;
 
@@ -403,6 +424,6 @@ export async function verifyClientOpsDatabase(db: Queryable): Promise<DatabaseRe
   const mismatches = await inspectContract(db, CLIENTOPS_SCHEMA_CONTRACT);
 
   return mismatches.length === 0
-    ? { ready: true, checkedAt, contractVersion: "2026-07-15" }
-    : { ready: false, checkedAt, contractVersion: "2026-07-15", mismatches };
+    ? { ready: true, checkedAt, contractVersion: "2026-09-27" }
+    : { ready: false, checkedAt, contractVersion: "2026-09-27", mismatches };
 }

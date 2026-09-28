@@ -69,8 +69,9 @@ import { Route } from "../reports";
 const summary = {
   range: "30d" as const,
   metrics: {
-    revenue: 1240000,
-    pipelineValue: 800000,
+    revenueTotals: [{ currency: "HKD", amount: "1240000.25" }],
+    pipelineTotals: [{ currency: "USD", amount: "800000.00" }],
+    unverifiedAcceptedCount: 0,
     leads: 40,
     wonLeads: 5,
     conversionRate: 12.5,
@@ -78,19 +79,20 @@ const summary = {
     successfulAgentRuns: 16,
     openTasks: 7,
   },
+  access: { quotes: true, leads: true, tasks: true, agents: true },
   reports: [
     {
       id: "revenue" as const,
-      title: "Revenue trend",
-      description: "Accepted quote value by week.",
+      title: "Accepted quote value",
+      description: "Accepted quote value by week and currency.",
     },
     { id: "pipeline" as const, title: "Pipeline funnel", description: "Lead volume by stage." },
   ],
 };
 
 const rows = [
-  { week: "2026-01-05", revenue: 1240000 },
-  { week: "2026-01-19", revenue: 60000 },
+  { week: "2026-01-05", currency: "HKD", amount: "1240000.25" },
+  { week: "2026-01-19", currency: "USD", amount: "60000.50" },
 ];
 
 function renderReports(datasetRows: Array<Record<string, string | number | null>>) {
@@ -163,10 +165,10 @@ describe("the reports export produces a real file", () => {
     expect([bytes[0], bytes[1], bytes[2]]).toEqual([0xef, 0xbb, 0xbf]);
 
     const text = new TextDecoder().decode(bytes);
-    expect(text).toContain("Week starting,Accepted quote value (HKD)");
+    expect(text).toContain("Week starting,Currency,Accepted quote value");
     // Every loaded row, with machine-readable values.
-    expect(text).toContain("2026-01-05,1240000");
-    expect(text).toContain("2026-01-19,60000");
+    expect(text).toContain("2026-01-05,HKD,1240000.25");
+    expect(text).toContain("2026-01-19,USD,60000.50");
   });
 
   it("never claims a queue, and names the file it actually wrote", async () => {
@@ -202,23 +204,19 @@ describe("the reports export produces a real file", () => {
     renderReports(rows);
 
     // §9.23: select a meaningful default report instead of rendering an empty report area.
-    expect(screen.getByRole("tab", { name: "Revenue trend" }).getAttribute("data-state")).toBe(
-      "active",
-    );
-    expect(screen.getAllByText("Revenue trend").length).toBeGreaterThan(1);
+    expect(
+      screen.getByRole("tab", { name: "Accepted quote value" }).getAttribute("data-state"),
+    ).toBe("active");
+    expect(screen.getAllByText("Accepted quote value").length).toBeGreaterThan(1);
   });
 
-  it("describes the chart in words for a reader who cannot see it", async () => {
+  it("shows the currency and exact accepted quote value in the revenue table", () => {
     renderReports(rows);
 
-    await screen.findByTestId("report-chart");
-    const caption = document.querySelector("figcaption");
-    expect(caption?.textContent).toContain("05 Jan 2026");
-    expect(caption?.textContent).toContain("HKD 1,240,000");
-    // Two weeks of data three weeks apart: the missing week is named, not smoothed over.
-    expect(caption?.textContent).toMatch(/gaps/i);
-    // Once in the visible note under the chart, once inside the caption above.
-    expect(screen.getAllByText(/No value is inferred for them/i).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId("report-chart")).toBeNull();
+    expect(screen.getByRole("table")).toBeTruthy();
+    expect(screen.getAllByText("HKD 1,240,000.25").length).toBeGreaterThan(0);
+    expect(screen.getByText("USD 60,000.50")).toBeTruthy();
   });
 });
 
@@ -266,11 +264,11 @@ describe("a report's shape decides whether a chart is drawn at all", () => {
     expect(screen.getAllByRole("table")).toHaveLength(1);
   });
 
-  it.each(chartReports)("still renders a chart for %s", (report) => {
+  it.each(chartReports)("still renders a chart for %s", async (report) => {
     search.report = report;
     renderReports([rowFor(report)]);
 
-    expect(screen.queryByTestId("report-chart")).not.toBeNull();
+    expect(await screen.findByTestId("report-chart")).not.toBeNull();
   });
 });
 
@@ -311,7 +309,7 @@ describe("the export label matches what the read model returns", () => {
     );
     const reportQueries = source.slice(
       source.indexOf("const reportQueries"),
-      source.indexOf("export async function loadReportDataset"),
+      source.indexOf("const REPORT_RESOURCE"),
     );
 
     expect(reportQueries.length).toBeGreaterThan(200);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -63,6 +63,7 @@ export function TouchpointLogger({
   const [engagementId, setEngagementId] = useState<string>(defaultEngagementId ?? "none");
   const [contactId, setContactId] = useState<string>("none");
   const [notes, setNotes] = useState("");
+  const tidyRequestRef = useRef<{ notes: string; key: string } | null>(null);
   const [aiAvailable, setAiAvailable] = useState(false);
   const [tidying, setTidying] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -73,9 +74,14 @@ export function TouchpointLogger({
 
   const tidy = async () => {
     if (!notes.trim()) return;
+    const key =
+      tidyRequestRef.current?.notes === notes
+        ? tidyRequestRef.current.key
+        : globalThis.crypto.randomUUID();
+    tidyRequestRef.current = { notes, key };
     setTidying(true);
     try {
-      const result = await tidyTouchpointNote({ data: { notes } });
+      const result = await tidyTouchpointNote({ data: { notes, idempotencyKey: key } });
       setNotes(result.tidied);
     } catch {
       toast.error("Couldn't tidy notes right now.");
@@ -106,6 +112,7 @@ export function TouchpointLogger({
       });
       toast.success("Touchpoint logged");
       setNotes("");
+      tidyRequestRef.current = null;
       setOpen(false);
       await onLogged?.();
     } catch (error) {

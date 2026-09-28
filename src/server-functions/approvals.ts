@@ -1,55 +1,107 @@
-import { requireCapability } from "@/server/auth/authorization.server";
+import { randomUUID } from "node:crypto";
+import { parseOperationInput } from "@/lib/operations/errors";
+import { loadRequestAuthorization, requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
   assignApproval,
-  decideApproval as decideApprovalInNeon,
-  listApprovals,
+  listApprovalQueuePage,
+  getLatestDecidedApprovalAt,
 } from "@/server/repositories/approvals";
 import { serializeHumanApproval } from "@/lib/serializable";
-import { applyRiskReviewDecision } from "@/server/workflows/decide-risk-review.server";
+import { decideApprovalCommand } from "@/server/commands/approval-decision.server";
+import { claimApprovalCommand } from "@/server/commands/agent-recovery.server";
+import {
+  recordManualMessageSentCommand,
+  type MessageHandoff,
+} from "@/server/commands/message-handoff.server";
+import { AdminError } from "@/lib/admin/errors";
+import { getApproval } from "@/server/repositories/approvals";
+import { queryOne } from "@/server/db/neon.server";
 import { listApproverProfiles } from "@/server/repositories/notifications";
+import {
+  ApprovalAssignmentSchema,
+  ApprovalQueuePageSchema,
+  ApprovalClaimSchema,
+  ApprovalDecisionSchema,
+  IdSchema,
+  ManualMessageHandoffSchema,
+} from "@/lib/operations/input-schemas";
 
-export const getApprovals = createServerFn({ method: "GET" })
-  .validator((data: unknown) => (data ?? {}) as { status?: string })
+/** Bounded list responses omit context_data; the selected detail is a separate authorized read. */
+export const getApprovalsPage = createServerFn({ method: "GET" })
+  .validator((data: unknown) => parseOperationInput(ApprovalQueuePageSchema, data))
   .handler(async ({ data }) => {
-    await requireCapability("approvals.view");
-    await requireNeonAuthSession();
-    const approvals = await listApprovals(data);
-    return approvals.map(serializeHumanApproval);
+    const context = await loadRequestAuthorization();
+    await requireCapability("approvals.view", {}, context);
+    const page = await listApprovalQueuePage(data, context);
+    return {
+      ...page,
+      items: page.items.map((item) => ({
+        ...item,
+        created_at: new Date(item.created_at).toISOString(),
+        decided_at: item.decided_at ? new Date(item.decided_at).toISOString() : null,
+      })),
+    };
+  });
+
+export const getLastReviewedAtFn = createServerFn({ method: "GET" }).handler(async () => {
+  const context = await loadRequestAuthorization();
+  await requireCapability("approvals.view", {}, context);
+  return getLatestDecidedApprovalAt(context);
+});
+
+export const getApprovalDetailFn = createServerFn({ method: "GET" })
+  .validator((data: unknown) => parseOperationInput(IdSchema, data))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "approvals.view",
+      {
+        resourceType: "human_approval",
+        resourceId: data.id,
+      },
+      context,
+    );
+    return serializeHumanApproval(await getApproval(data.id));
   });
 
 export const decideApproval = createServerFn({ method: "POST" })
-  .validator(
-    (data: unknown) =>
-      data as { id: string; decision: "approved" | "rejected" | "escalated"; notes?: string },
-  )
+  .validator((data: unknown) => parseOperationInput(ApprovalDecisionSchema, data))
   .handler(async ({ data }) => {
-    await requireCapability("approvals.decide", {
-      resourceType: "human_approval",
-      resourceId: data.id,
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "approvals.decide",
+      {
+        resourceType: "human_approval",
+        resourceId: data.id,
+      },
+      context,
+    );
+    const approval = await decideApprovalCommand(context, {
+      ...data,
+      idempotencyKey: data.idempotencyKey ?? randomUUID(),
     });
-    const session = await requireNeonAuthSession();
-    const approval = await decideApprovalInNeon({ ...data, actorId: session.profile.id });
-
-    await applyRiskReviewDecision(approval, session.profile.id);
-
     return serializeHumanApproval(approval);
   });
 
 export const assignApprovalFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { id: string; assignedTo: string | null })
+  .validator((data: unknown) => parseOperationInput(ApprovalAssignmentSchema, data))
   .handler(async ({ data }) => {
     // `approvals.decide`, not a new `approvals.assign`. Routing an approval is strictly weaker
     // than deciding it, and every role holding `decide` is already trusted with the outcome.
     // Adding a capability would be an authorization change needing sign-off, to express a
     // permission already implied.
-    await requireCapability("approvals.decide", {
-      resourceType: "human_approval",
-      resourceId: data.id,
-    });
-    await requireNeonAuthSession();
-    const approval = await assignApproval(data);
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "approvals.decide",
+      {
+        resourceType: "human_approval",
+        resourceId: data.id,
+      },
+      context,
+    );
+    const approval = await assignApproval(data, context);
     return serializeHumanApproval(approval);
   });
 
@@ -67,3 +119,55 @@ export const getAssignableApproversFn = createServerFn({ method: "GET" }).handle
   await requireNeonAuthSession();
   return listApproverProfiles();
 });
+
+/** Claim is scoped to the persisted linked subject inside one locked command. */
+export const claimApprovalFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parseOperationInput(ApprovalClaimSchema, data))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    const approval = await claimApprovalCommand(context, {
+      ...data,
+      idempotencyKey: data.idempotencyKey ?? randomUUID(),
+    });
+    return serializeHumanApproval(approval);
+  });
+
+/** Draft text is fetched only for the selected, authorized approved message request. */
+export const getMessageHandoffFn = createServerFn({ method: "GET" })
+  .validator((data: unknown) => parseOperationInput(IdSchema, data))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "approvals.view",
+      {
+        resourceType: "human_approval",
+        resourceId: data.id,
+      },
+      context,
+    );
+    const approval = await getApproval(data.id);
+    if (approval.approval_type !== "message_send" || approval.status !== "approved") {
+      throw new AdminError("CONFLICT", "Approved message draft is unavailable");
+    }
+    const handoff = await queryOne<MessageHandoff>(
+      "select * from approval_message_handoffs where approval_id=$1",
+      [approval.id],
+    );
+    if (!handoff) throw new AdminError("CONFLICT", "Manual handoff is unavailable");
+    const payload = approval.context_data as { draft_message?: unknown } | null;
+    return {
+      approvalId: approval.id,
+      draftMessage: typeof payload?.draft_message === "string" ? payload.draft_message : null,
+      handoff,
+    };
+  });
+
+export const recordManualMessageSentFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parseOperationInput(ManualMessageHandoffSchema, data))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    return recordManualMessageSentCommand(context, {
+      ...data,
+      idempotencyKey: data.idempotencyKey ?? randomUUID(),
+    });
+  });

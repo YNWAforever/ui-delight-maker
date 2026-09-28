@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireCapability } from "@/server/auth/authorization.server";
+import { loadRequestAuthorization, requireAnyCapability } from "@/server/auth/authorization.server";
 import { getDashboardReadModel } from "@/server/read-models/dashboard";
 import {
   serializeActivityLog,
@@ -8,8 +8,13 @@ import {
 } from "@/lib/serializable";
 
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
-  await requireCapability("leads.view");
-  const dashboard = await getDashboardReadModel();
+  const context = await loadRequestAuthorization();
+  await requireAnyCapability(
+    ["leads.view", "job_sheets.view", "quotes.view", "tasks.view", "approvals.view"],
+    {},
+    context,
+  );
+  const dashboard = await getDashboardReadModel(context);
 
   return {
     ...dashboard,

@@ -152,7 +152,7 @@ describe("route performance review regressions", () => {
     expect(browserMeasurements).toHaveLength(80);
   });
 
-  it("keeps baseline evidence while verify accepts the final measurements", () => {
+  it("labels fixture evidence synthetic and blocks it from runtime verification", () => {
     const baseline = runMeasurementMode("baseline");
     const verify = runMeasurementMode("verify");
 
@@ -167,10 +167,12 @@ describe("route performance review regressions", () => {
         (measurement: { failures: string[] }) => measurement.failures.length > 0,
       ),
     ).toBe(true);
-    expect(verify.exitCode).toBe(0);
+    expect(verify.exitCode).toBe(2);
     expect(verify.output).toMatchObject({
       mode: "verify",
       phase: "final",
+      evidenceType: "synthetic",
+      runtimeGate: "blocked_runtime_evidence",
       routeFamilyCount: 20,
       measurementCount: 60,
       browserMeasurementCount: 80,

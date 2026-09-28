@@ -1,12 +1,23 @@
-import { requireCapability, requirePageAuthorization } from "@/server/auth/authorization.server";
+import { parseOperationInput } from "@/lib/operations/errors";
+import {
+  loadRequestAuthorization,
+  requireCapability,
+  requirePageAuthorization,
+} from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
   createTask as createTaskInNeon,
   listTasks,
+  listTaskQueuePage,
   updateTask as updateTaskInNeon,
 } from "@/server/repositories/tasks";
 import type { Task } from "@/lib/types";
+import {
+  TaskCreateSchema,
+  TaskMutationSchema,
+  TaskQueuePageSchema,
+} from "@/lib/operations/input-schemas";
 
 type GetTasksInput = {
   status?: string;
@@ -34,23 +45,6 @@ export type TaskListItem = Omit<Task, "title" | "description"> & {
   description: string | null;
   restricted: boolean;
 };
-
-type CreateTaskInput = Pick<Task, "title"> &
-  Partial<
-    Pick<
-      Task,
-      | "description"
-      | "assigned_to"
-      | "lead_id"
-      | "client_id"
-      | "contact_id"
-      | "account_id"
-      | "deal_id"
-      | "project_id"
-      | "due_date"
-      | "priority"
-    >
-  >;
 
 export const getTasks = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as GetTasksInput)
@@ -92,8 +86,17 @@ export const getTasks = createServerFn({ method: "GET" })
     });
   });
 
+export const getTasksPage = createServerFn({ method: "GET" })
+  .validator((data: unknown) => parseOperationInput(TaskQueuePageSchema, data ?? {}))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    await requireCapability("tasks.view", {}, context);
+    const page = await listTaskQueuePage(data, context);
+    return { ...page, items: page.items.map((task) => ({ ...task, restricted: false })) };
+  });
+
 export const createTask = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as CreateTaskInput)
+  .validator((data: unknown) => parseOperationInput(TaskCreateSchema, data))
   .handler(async ({ data }) => {
     await requireCapability("tasks.create");
     await requireNeonAuthSession();
@@ -101,7 +104,7 @@ export const createTask = createServerFn({ method: "POST" })
   });
 
 export const updateTask = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { id: string; updates: Partial<Task> })
+  .validator((data: unknown) => parseOperationInput(TaskMutationSchema, data))
   .handler(async ({ data }) => {
     await requireCapability("tasks.update", { resourceType: "task", resourceId: data.id });
     await requireNeonAuthSession();

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import type { BulkResult } from "@/lib/operations/bulk-contract";
 import { ExternalLink, ScrollText } from "lucide-react";
 
 import { StatusBadge } from "@/components/sales";
@@ -48,6 +49,7 @@ type OrganizationUnitDetailProps = {
   users: readonly TeamMemberUser[];
   activeTab: AdminOrganizationSearch["tab"];
   canManage: boolean;
+  bulkResult?: BulkResult | null;
   /** Renders the link through to `/admin/teams/$id`. Off on the record page itself. */
   showFullRecordLink?: boolean;
   onTabChange: (tab: AdminOrganizationSearch["tab"]) => void;
@@ -75,6 +77,7 @@ export function OrganizationUnitDetail({
   users,
   activeTab,
   canManage,
+  bulkResult,
   showFullRecordLink = false,
   onTabChange,
   onEdit,
@@ -98,9 +101,17 @@ export function OrganizationUnitDetail({
     const user = users.find((candidate) => candidate.id === membership.profileId);
     return {
       ...membership,
-      name: user?.name || user?.email || membership.profileId,
-      email: user?.email ?? null,
-      profileStatus: user?.status ?? "active",
+      name:
+        membership.profileName ||
+        membership.profileEmail ||
+        user?.name ||
+        user?.email ||
+        membership.profileId,
+      email: membership.profileEmail ?? user?.email ?? null,
+      profileStatus:
+        (membership.profileStatus as TeamMemberUser["status"] | undefined) ??
+        user?.status ??
+        "active",
     };
   });
 
@@ -234,6 +245,7 @@ export function OrganizationUnitDetail({
               members={members}
               availableMembers={users}
               canManage={canManage}
+              bulkResult={bulkResult}
               onAddMembers={onAddMembers ?? (() => undefined)}
               onUpdateMember={onUpdateMember ?? (() => undefined)}
               onEndMember={onEndMember ?? (() => undefined)}

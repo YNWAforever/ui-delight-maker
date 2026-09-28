@@ -120,6 +120,7 @@ export function UserLifecycleDialog({
           profileId: user.id,
           buckets: [],
           totalCount: 0,
+          totalHistoryCount: 0,
         },
         successors: selected,
       });

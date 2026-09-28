@@ -1,3 +1,6 @@
+import { AdminError } from "@/lib/admin/errors";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import { authorizeImportRow, type ImportWriteEffect } from "@/server/imports/authorize-row.server";
 import { accountNamePrefilterToken, normalizeAccountName } from "@/lib/relationship/matching";
 import type { EventImportValidRow } from "@/lib/relationship/event-import";
 import { query, transaction } from "@/server/db/neon.server";
@@ -9,6 +12,7 @@ export type CommitEventImportInput = {
   campaignId: string;
   rows: EventImportValidRow[];
   owner: string | null;
+  authorization: RequestAuthorization;
 };
 
 export type EventImportCommitResult = {
@@ -98,6 +102,51 @@ export async function commitEventImport(
         row.account_match.kind === "matched"
           ? row.account_match.accountId
           : (createdAccountIdsByCompany.get(normalizedCompanyName) ?? null);
+
+      const matchedExistingAccount = row.account_match.kind === "matched";
+      if (matchedExistingAccount) {
+        const currentAccount = await db.query<{ id: string }>(
+          "select id from accounts where id = $1 for update",
+          [accountId],
+        );
+        if (!currentAccount.rows[0])
+          throw new AdminError("STALE_ADMIN_STATE", "Import target changed");
+      }
+      const existingContactId =
+        row.contact_match?.kind === "matched" ? row.contact_match.contactId : null;
+      if (existingContactId) {
+        const currentContact = await db.query<{ id: string }>(
+          "select id from account_contacts where id = $1 and account_id = $2 for update",
+          [existingContactId, accountId],
+        );
+        if (!currentContact.rows[0])
+          throw new AdminError("STALE_ADMIN_STATE", "Import contact changed");
+      }
+      const effects: ImportWriteEffect[] = [
+        { capability: "campaigns.manage", resource: { type: "campaign", id: input.campaignId } },
+        { capability: "engagements.create", resource: { type: "campaign", id: input.campaignId } },
+      ];
+      if (matchedExistingAccount && accountId) {
+        effects.push({ capability: "accounts.view", resource: { type: "account", id: accountId } });
+      }
+      if (!accountId && row.company_name.trim()) {
+        effects.push({ capability: "accounts.create" });
+      }
+      if (!existingContactId && row.contact_name.trim()) {
+        effects.push({
+          capability: "contacts.create",
+          resource:
+            matchedExistingAccount && accountId ? { type: "account", id: accountId } : undefined,
+        });
+      }
+      if (existingContactId) {
+        effects.push({
+          capability: "contacts.view",
+          resource: { type: "account_contact", id: existingContactId },
+        });
+      }
+      const authorization = await authorizeImportRow(input.authorization, { effects }, db);
+      if (!authorization.allowed) throw new AdminError("FORBIDDEN", "Import row is not authorized");
 
       if (!accountId && row.company_name.trim()) {
         const account = await createAccount(

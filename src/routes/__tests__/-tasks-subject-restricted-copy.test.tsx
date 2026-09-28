@@ -26,10 +26,11 @@ const { navigateMock, routerInvalidateMock, getTasksMock } = vi.hoisted(() => ({
   getTasksMock: vi.fn(),
 }));
 
-const search: { view: "board" | "list"; priority: string; assignee: string } = {
+const search: { view: "board" | "list"; priority: string; assignee: string; search: string } = {
   view: "board",
   priority: "all",
   assignee: "all",
+  search: "",
 };
 
 vi.mock("@tanstack/react-router", () => ({
@@ -48,7 +49,7 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@/server-functions/tasks", () => ({
-  getTasks: getTasksMock,
+  getTasksPage: getTasksMock,
   createTask: vi.fn(),
   updateTask: vi.fn(),
 }));
@@ -94,6 +95,10 @@ vi.mock("@/components/sales", () => ({
       </tbody>
     </table>
   ),
+}));
+
+vi.mock("@/components/people/profile-search-combobox", () => ({
+  ProfileSearchCombobox: () => null,
 }));
 
 import { Route } from "../tasks";
@@ -147,7 +152,27 @@ beforeEach(() => {
   navigateMock.mockReset();
   routerInvalidateMock.mockReset();
   getTasksMock.mockReset();
-  vi.mocked(Route.useLoaderData).mockReturnValue(tasks as never);
+  vi.mocked(Route.useLoaderData).mockImplementation(
+    () =>
+      (search.view === "list"
+        ? { view: "list", page: { items: tasks, total: tasks.length, nextCursor: null } }
+        : {
+            view: "board",
+            lanes: {
+              open: {
+                items: tasks.filter((task) => task.status === "open"),
+                total: tasks.filter((task) => task.status === "open").length,
+                nextCursor: null,
+              },
+              in_progress: {
+                items: tasks.filter((task) => task.status === "in_progress"),
+                total: tasks.filter((task) => task.status === "in_progress").length,
+                nextCursor: null,
+              },
+              done: { items: [], total: 0, nextCursor: null },
+            },
+          }) as never,
+  );
 });
 
 afterEach(cleanup);

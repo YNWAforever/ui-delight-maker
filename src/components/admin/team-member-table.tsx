@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { BulkResult } from "@/lib/operations/bulk-contract";
 
 import {
   AlertDialog,
@@ -11,6 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
 import { formatDate } from "@/lib/format";
 import type { ProfileStatus } from "@/lib/admin/types";
 import type { TeamMembership } from "@/server/repositories/admin-teams";
@@ -32,6 +34,7 @@ type TeamMemberTableProps = {
   members: readonly TeamMemberRow[];
   availableMembers: readonly TeamMemberUser[];
   canManage: boolean;
+  bulkResult?: BulkResult | null;
   /**
    * Every handler may return a promise, and this table awaits it.
    *
@@ -70,11 +73,16 @@ export function TeamMemberTable({
   members,
   availableMembers,
   canManage,
+  bulkResult,
   onAddMembers,
   onUpdateMember,
   onEndMember,
 }: TeamMemberTableProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedNames, setSelectedNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (bulkResult) setSelectedIds(bulkResult.remainingIds);
+  }, [bulkResult]);
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +116,8 @@ export function TeamMemberTable({
     setError(null);
     setAdding(true);
     try {
-      await onAddMembers(selectedIds, isoDate(startsAt), isoDate(endsAt));
+      const completed = await onAddMembers(selectedIds, isoDate(startsAt), isoDate(endsAt));
+      if (completed === false) return;
       // Cleared only after the write settles. Clearing on click read as confirmation, and
       // when the write was refused it wiped the selection with no message and no way to
       // recover what had been chosen.
@@ -155,37 +164,78 @@ export function TeamMemberTable({
         <div>
           <h3 className="text-sm font-medium text-foreground">Team members</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Active memberships retain their history when roles or dates change.
+            Active memberships retain their history when roles or dates change. Select up to 100
+            members per operation.
           </p>
         </div>
         <span className="text-xs tabular-nums text-muted-foreground">{members.length} active</span>
       </div>
 
-      {canManage && candidates.length > 0 ? (
+      {canManage ? (
         <div className="border-b border-border px-4 py-4">
+          <ProfileSearchCombobox
+            purpose="admin_directory"
+            label="Add members"
+            value={selectedIds.at(-1) ?? ""}
+            onChange={(profileId) => {
+              if (!profileId || currentIds.has(profileId)) return;
+              setSelectedIds((current) =>
+                current.includes(profileId) || current.length >= 100
+                  ? current
+                  : [...current, profileId],
+              );
+            }}
+            onSelected={(person) =>
+              setSelectedNames((current) => ({ ...current, [person.id]: person.displayName }))
+            }
+          />
+          {selectedIds.length > 0 ? (
+            <div className="flex flex-wrap gap-2" aria-label="Selected members">
+              {selectedIds.map((id) => (
+                <Button
+                  key={id}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setSelectedIds((current) => current.filter((entry) => entry !== id))
+                  }
+                >
+                  {selectedNames[id] ?? candidates.find((person) => person.id === id)?.name ?? id} ×
+                </Button>
+              ))}
+            </div>
+          ) : null}
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_10rem_10rem_auto] md:items-end">
-            <label className="block min-w-0">
-              <span className="text-xs font-medium text-foreground">Add members</span>
-              <select
-                multiple
-                aria-label="Add members"
-                value={selectedIds}
-                disabled={adding}
-                onChange={(event) =>
-                  setSelectedIds(
-                    Array.from(event.currentTarget.selectedOptions, (option) => option.value),
-                  )
-                }
-                size={Math.min(4, Math.max(2, candidates.length))}
-                className="mt-1 min-h-20 w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-              >
-                {candidates.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.name || member.email || member.id}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {candidates.length > 0 ? (
+              <label className="block min-w-0">
+                <span className="text-xs font-medium text-foreground">Add members</span>
+                <select
+                  multiple
+                  aria-label="Add members"
+                  value={selectedIds}
+                  disabled={adding}
+                  onChange={(event) => {
+                    const selectedPage = Array.from(
+                      event.currentTarget.selectedOptions,
+                      (option) => option.value,
+                    );
+                    const pageIds = new Set(candidates.map((person) => person.id));
+                    setSelectedIds((current) =>
+                      [...current.filter((id) => !pageIds.has(id)), ...selectedPage].slice(0, 100),
+                    );
+                  }}
+                  size={Math.min(4, Math.max(2, candidates.length))}
+                  className="mt-1 min-h-20 w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+                >
+                  {candidates.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name || member.email || member.id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label className="block">
               <span className="text-xs font-medium text-foreground">Starts</span>
               <input

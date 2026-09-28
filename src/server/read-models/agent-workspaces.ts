@@ -162,6 +162,10 @@ type AgentHistoryRow = Pick<
   | "tokens_used"
   | "confidence_score"
   | "human_review_required"
+  | "outcome_code"
+  | "retry_of"
+  | "recovery_reason"
+  | "recovered_at"
   | "created_at"
   | "updated_at"
 >;
@@ -438,7 +442,8 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
         select
           id, agent_name, workflow_type, trigger_type, subject_type, subject_id,
           input_data, output_summary, status, duration_ms, tokens_used, confidence_score,
-          human_review_required, created_at, updated_at
+          human_review_required, outcome_code, retry_of, recovery_reason, recovered_at,
+          created_at, updated_at
         from agent_runs
         where agent_name = $1
         order by created_at desc

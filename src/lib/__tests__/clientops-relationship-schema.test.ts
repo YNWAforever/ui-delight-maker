@@ -41,6 +41,18 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/007_admin_team_user_management.sql",
       "neon/migrations/008_read_path_indexes.sql",
       "neon/migrations/009_agent_policy_versions.sql",
+      "neon/migrations/010_command_versions_and_receipts.sql",
+      "neon/migrations/011_quote_version_integrity.sql",
+      "neon/migrations/012_quote_open_approval_constraint.sql",
+      "neon/migrations/013_xero_entry_transitions.sql",
+      "neon/migrations/014_locked_job_sheet_portions.sql",
+      "neon/migrations/015_agent_recovery_metadata.sql",
+      "neon/migrations/016_work_queue_pagination_indexes.sql",
+      "neon/migrations/017_bulk_operations.sql",
+      "neon/migrations/018_bulk_row_versions.sql",
+      "neon/migrations/019_import_sessions_and_identity_keys.sql",
+      "neon/migrations/020_job_sheet_handoff_fields.sql",
+      "neon/migrations/021_ai_invocation_telemetry.sql",
     ]);
   });
 

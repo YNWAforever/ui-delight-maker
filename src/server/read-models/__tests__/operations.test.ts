@@ -1,6 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { REPORT_IDS, type ReportId } from "@/lib/reports";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+const reportContext = {
+  actor: {
+    profileId: "fixture-report-admin",
+    role: "admin",
+    status: "active",
+    directReportIds: [],
+  },
+  overrides: [],
+  now: new Date("2026-09-27T00:00:00Z"),
+  session: { profile: { id: "fixture-report-admin" } },
+} as unknown as RequestAuthorization;
 
 const {
   queryMock,
@@ -8,6 +20,7 @@ const {
   requireCapabilityChecksMock,
   requireCapabilityMock,
   requireCapabilitySetMock,
+  loadRequestAuthorizationMock,
   createServerFnChain,
 } = vi.hoisted(() => {
   const createServerFnChain = {
@@ -25,6 +38,7 @@ const {
     requireCapabilityChecksMock: vi.fn(),
     requireCapabilityMock: vi.fn(),
     requireCapabilitySetMock: vi.fn(),
+    loadRequestAuthorizationMock: vi.fn(),
     createServerFnChain,
   };
 });
@@ -34,6 +48,7 @@ vi.mock("@/server/auth/authorization.server", () => ({
   requireCapabilityChecks: requireCapabilityChecksMock,
   requireCapability: requireCapabilityMock,
   requireCapabilitySet: requireCapabilitySetMock,
+  loadRequestAuthorization: loadRequestAuthorizationMock,
 }));
 vi.mock("@/server/db/neon.server", () => ({ query: queryMock, queryOne: queryOneMock }));
 
@@ -44,6 +59,7 @@ describe("operations read models", () => {
     vi.clearAllMocks();
     queryMock.mockResolvedValue([]);
     queryOneMock.mockResolvedValue(null);
+    loadRequestAuthorizationMock.mockResolvedValue(reportContext);
     requireCapabilityChecksMock.mockResolvedValue({
       user: { id: "user-1" },
       profile: { id: "user-1", role: "sales", status: "active" },
@@ -67,6 +83,7 @@ describe("operations read models", () => {
       quote_number: "Q-001",
       quote_status: "accepted",
       client_company_name: "Acme",
+      company_name: "Acme",
     });
     queryMock.mockResolvedValueOnce([{ id: "portion-1", job_sheet_id: "job-1" }]);
 
@@ -175,8 +192,9 @@ describe("operations read models", () => {
   it("returns lightweight report summary metrics and definitions without datasets", async () => {
     const { loadReportSummary } = await import("../operations");
     queryOneMock.mockResolvedValueOnce({
-      revenue: "1200",
-      pipeline_value: "4000",
+      revenue_totals: [{ currency: "HKD", amount: "1200.25" }],
+      pipeline_totals: [{ currency: "USD", amount: "4000.00" }],
+      unverified_accepted_count: "2",
       leads: "8",
       won_leads: "2",
       agent_runs: "5",
@@ -184,11 +202,12 @@ describe("operations read models", () => {
       open_tasks: "3",
     });
 
-    const result = await loadReportSummary({ range: "30d" });
+    const result = await loadReportSummary({ range: "30d" }, reportContext);
 
     expect(result.metrics).toEqual({
-      revenue: 1200,
-      pipelineValue: 4000,
+      revenueTotals: [{ currency: "HKD", amount: "1200.25" }],
+      pipelineTotals: [{ currency: "USD", amount: "4000.00" }],
+      unverifiedAcceptedCount: 2,
       leads: 8,
       wonLeads: 2,
       conversionRate: 25,
@@ -227,7 +246,7 @@ describe("operations read models", () => {
     "queries only the selected %s report dataset",
     async (report, table) => {
       const { loadReportDataset } = await import("../operations");
-      await loadReportDataset({ report, range: "30d" });
+      await loadReportDataset({ report, range: "30d" }, reportContext);
       expect(queryMock).toHaveBeenCalledTimes(1);
       const sql = sqlText(queryMock.mock.calls[0]?.[0]);
       expect(sql).toContain(table);
@@ -370,31 +389,74 @@ describe("operations server functions", () => {
       quote_number: "Q-001",
       quote_status: "accepted",
       client_company_name: "Acme",
+      company_name: "Acme",
     });
   });
 
   it("grants the core job sheet while redacting denied linked summaries by actual ID", async () => {
     requireCapabilitySetMock
+      .mockResolvedValueOnce({
+        "job_sheets.update_billing": false,
+        "job_sheets.accept": false,
+      })
       .mockResolvedValueOnce({ "quotes.view": false })
       .mockResolvedValueOnce({ "accounts.view": false });
     const { getJobSheetRead } = await import("@/server-functions/operations");
 
     const result = await getJobSheetRead({ data: { id: "job-1" } });
 
-    expect(requireCapabilityMock).toHaveBeenCalledWith("job_sheets.view", {
-      resourceType: "job_sheet",
-      resourceId: "job-1",
-    });
+    expect(requireCapabilityMock).toHaveBeenCalledWith(
+      "job_sheets.view",
+      {
+        resourceType: "job_sheet",
+        resourceId: "job-1",
+      },
+      reportContext,
+    );
     expect(requireCapabilitySetMock).toHaveBeenNthCalledWith(1, [], {
-      optional: ["quotes.view"],
-      target: { resourceType: "quote", resourceId: "quote-1" },
+      optional: ["job_sheets.update_billing", "job_sheets.accept"],
+      target: { resourceType: "job_sheet", resourceId: "job-1" },
+      context: reportContext,
     });
     expect(requireCapabilitySetMock).toHaveBeenNthCalledWith(2, [], {
+      optional: ["quotes.view"],
+      target: { resourceType: "quote", resourceId: "quote-1" },
+      context: reportContext,
+    });
+    expect(requireCapabilitySetMock).toHaveBeenNthCalledWith(3, [], {
       optional: ["accounts.view"],
       target: { resourceType: "client", resourceId: "client-1" },
+      context: reportContext,
     });
     expect(result.quote).toBeNull();
     expect(result.client).toBeNull();
+    expect(result.companyName).toBeNull();
+    expect(result.canAcceptJobSheet).toBe(false);
+  });
+
+  it("does not reveal an account company through quote access when account access is denied", async () => {
+    queryOneMock.mockResolvedValueOnce({
+      id: "job-1",
+      quote_id: "quote-1",
+      client_id: null,
+      account_id: "account-1",
+      quote_number: "Q-001",
+      quote_status: "accepted",
+      company_name: "Private account",
+    });
+    requireCapabilitySetMock
+      .mockResolvedValueOnce({ "job_sheets.update_billing": false, "job_sheets.accept": false })
+      .mockResolvedValueOnce({ "quotes.view": true })
+      .mockResolvedValueOnce({ "accounts.view": false });
+    const { getJobSheetRead } = await import("@/server-functions/operations");
+    const result = await getJobSheetRead({ data: { id: "job-1" } });
+    expect(result.quote?.id).toBe("quote-1");
+    expect(result.companyName).toBeNull();
+    expect(requireCapabilitySetMock).toHaveBeenNthCalledWith(3, [], {
+      optional: ["accounts.view"],
+      target: { resourceType: "account", resourceId: "account-1" },
+      context: reportContext,
+    });
   });
 
   it("does not swallow linked authorization infrastructure failures", async () => {
@@ -418,7 +480,7 @@ describe("operations server functions", () => {
     const { getReportDataset, getReportSummary } = await import("@/server-functions/operations");
     await getReportSummary({ data: { range: "7d" } });
     await getReportDataset({ data: { report: "tasks", range: "90d" } });
-    expect(requireCapabilityMock).toHaveBeenNthCalledWith(1, "reports.view");
-    expect(requireCapabilityMock).toHaveBeenNthCalledWith(2, "reports.view");
+    expect(requireCapabilityMock).toHaveBeenNthCalledWith(1, "reports.view", {}, reportContext);
+    expect(requireCapabilityMock).toHaveBeenNthCalledWith(2, "reports.view", {}, reportContext);
   });
 });

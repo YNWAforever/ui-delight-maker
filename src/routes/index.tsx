@@ -14,7 +14,8 @@ import {
   WorkspaceHeader,
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
-import { formatCompactHKD, formatCount } from "@/lib/format";
+import { formatCount } from "@/lib/format";
+import { formatCurrencyTotals } from "@/lib/money";
 import { getBusinessDateKey } from "@/lib/business-date";
 import { describeTriggerFailure, toSafeErrorMessage } from "@/lib/errors";
 import { filterPipelineLeads, getPipelineSummary } from "@/lib/pipeline";
@@ -66,8 +67,51 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
-  component: PipelineCommandCenter,
+  component: DashboardLanding,
 });
+
+function DashboardLanding() {
+  const dashboard = Route.useLoaderData();
+  if (dashboard.access.leads) return <PipelineCommandCenter />;
+  return (
+    <div className="space-y-6 px-4 py-6 md:px-6">
+      <WorkspaceHeader
+        context="Operations"
+        title="Operations desk"
+        description="Your current job-sheet queue"
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button asChild variant="outline">
+          <Link to="/job-sheets">All job sheets</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/tasks">Tasks</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/approvals">Approvals</Link>
+        </Button>
+      </div>
+      {dashboard.jobSheets.length === 0 ? (
+        <EmptyWorkspaceState title="No visible job sheets" description="Your queue is clear." />
+      ) : (
+        <ul className="space-y-2">
+          {dashboard.jobSheets.map((sheet) => (
+            <li key={sheet.id}>
+              <Link
+                to="/job-sheets/$id"
+                params={{ id: sheet.id }}
+                className="flex items-center justify-between rounded-md border border-border p-4 hover:bg-muted/50"
+              >
+                <span className="font-medium">{sheet.number}</span>
+                <span className="text-sm text-muted-foreground">{sheet.status}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function PipelineCommandCenter() {
   const { leads, quotes, tasks, approvals, agentRuns, activityLogs, products, pipelineTotals } =
@@ -338,10 +382,10 @@ function PipelineCommandCenter() {
               // The server aggregate, not a sum of the loaded page: `pipelineTotals` counts
               // every pending/sent/viewed quote, so this tile is a workspace figure and the
               // three beside it are explicitly board-scoped.
-              label: "Quote value",
-              value: formatCompactHKD(pipelineTotals.activeQuoteValue),
+              label: "Quote value by currency",
+              value: formatCurrencyTotals(pipelineTotals.activeQuoteTotals),
               icon: ShieldCheck,
-              hint: "pending + sent + viewed, all quotes",
+              hint: "pending approval + approved + sent + viewed, all quotes",
             },
           ]}
           supporting={[

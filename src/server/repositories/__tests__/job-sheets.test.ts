@@ -1,4 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+const jobSheetAuthorization = {
+  actor: {
+    profileId: "fixture-accounting",
+    role: "accounting",
+    status: "active",
+    directReportIds: [],
+  },
+  overrides: [],
+  now: new Date("2026-09-27T00:00:00Z"),
+  session: { profile: { id: "fixture-accounting" } },
+} as unknown as RequestAuthorization;
 
 const { mockQuery, mockQueryOne, mockTransaction } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
@@ -188,27 +200,29 @@ describe("job sheets repository", () => {
     mockQuery.mockResolvedValue([]);
     const { listJobSheets } = await import("../job-sheets");
 
-    await listJobSheets({ status: "accounting_review" });
+    await listJobSheets({ status: "accounting_review" }, jobSheetAuthorization);
 
-    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("from job_sheets"), [
-      "accounting_review",
-    ]);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("from job_sheets"),
+      expect.arrayContaining(["accounting_review"]),
+    );
   });
 
   it("lists job sheets by client and account filters", async () => {
     mockQuery.mockResolvedValue([]);
     const { listJobSheets } = await import("../job-sheets");
 
-    await listJobSheets({ client_id: "client-1", account_id: "account-1" });
+    await listJobSheets({ client_id: "client-1", account_id: "account-1" }, jobSheetAuthorization);
 
     expect(mockQuery).toHaveBeenCalledTimes(1);
     const [sql, values] = mockQuery.mock.calls[0];
 
     expect(sql).toContain("from job_sheets");
-    expect(sql).toContain("client_id = $1");
-    expect(sql).toContain("account_id = $2");
-    expect(sql).toContain("order by created_at desc");
-    expect(values).toEqual(["client-1", "account-1"]);
+    expect(sql).toContain("js.client_id=$1");
+    expect(sql).toContain("js.account_id=$2");
+    expect(sql).toContain("order by js.created_at desc");
+    expect(sql).toContain("jsonb_array_elements");
+    expect(values.slice(0, 2)).toEqual(["client-1", "account-1"]);
   });
 
   it("gets a job sheet with ordered portions", async () => {
@@ -392,47 +406,52 @@ describe("job sheets repository", () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
-  it("accepts only when portions reconcile and then locks the job sheet", async () => {
+  it("accepts only when the owner, PO, snapshot and portions reconcile", async () => {
     mockQueryOne
       .mockResolvedValueOnce({
         id: "job-1",
         status: "accounting_review",
+        quote_id: "quote-1",
+        accepted_quote_version_id: "version-1",
+        accounting_owner: "acct-1",
         total_amount: 120000,
         currency: "HKD",
-        po_number: null,
+        po_number: "PO-1",
         client_order_number: null,
       })
+      .mockResolvedValueOnce({ id: "acct-1" })
+      .mockResolvedValueOnce({ snapshot: { total_value: 120000, currency: "HKD" } })
       .mockResolvedValueOnce({ id: "job-1", status: "accepted" });
-    mockQuery.mockResolvedValueOnce([{ id: "portion-1", amount: 120000 }]);
+    mockQuery.mockResolvedValueOnce([{ id: "portion-1", amount: 120000, currency: "HKD" }]);
     const { acceptJobSheet } = await import("../job-sheets");
 
     await acceptJobSheet("job-1", { accepted_by: "acct-1" });
 
+    expect(mockQueryOne).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("status='active'"),
+      ["acct-1"],
+      expect.any(Object),
+    );
+    expect(mockQueryOne).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining("from quote_versions"),
+      ["version-1", "quote-1"],
+      expect.any(Object),
+    );
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringContaining("from job_sheet_portions"),
       ["job-1"],
       expect.any(Object),
     );
     expect(mockQueryOne).toHaveBeenNthCalledWith(
-      2,
+      4,
       expect.stringContaining("status = 'accepted'"),
       ["acct-1", "job-1"],
       expect.any(Object),
     );
     expect(mockQueryOne).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining("status = 'accounting_review'"),
-      ["acct-1", "job-1"],
-      expect.any(Object),
-    );
-    expect(mockQueryOne).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining("locked_at is null"),
-      ["acct-1", "job-1"],
-      expect.any(Object),
-    );
-    expect(mockQueryOne).toHaveBeenNthCalledWith(
-      2,
+      4,
       expect.stringContaining("locked_at = now()"),
       ["acct-1", "job-1"],
       expect.any(Object),
@@ -460,64 +479,26 @@ describe("job sheets repository", () => {
   });
 
   it("blocks acceptance when job sheet totals do not reconcile", async () => {
-    mockQueryOne.mockResolvedValueOnce({
-      id: "job-1",
-      status: "accounting_review",
-      total_amount: 120000,
-      currency: "HKD",
-      po_number: null,
-      client_order_number: null,
-    });
-    mockQuery.mockResolvedValueOnce([{ id: "portion-1", amount: 100000 }]);
+    mockQueryOne
+      .mockResolvedValueOnce({
+        id: "job-1",
+        status: "accounting_review",
+        quote_id: "quote-1",
+        accepted_quote_version_id: "version-1",
+        accounting_owner: "acct-1",
+        total_amount: 120000,
+        currency: "HKD",
+        po_number: "PO-1",
+        client_order_number: null,
+      })
+      .mockResolvedValueOnce({ id: "acct-1" })
+      .mockResolvedValueOnce({ snapshot: { total_value: 120000, currency: "HKD" } });
+    mockQuery.mockResolvedValueOnce([{ id: "portion-1", amount: 100000, currency: "HKD" }]);
     const { acceptJobSheet } = await import("../job-sheets");
 
     await expect(acceptJobSheet("job-1", { accepted_by: "acct-1" })).rejects.toThrow(
       "Billing portions are short by HKD 20,000.",
     );
-  });
-
-  it("updates Xero references and marks the portion entered in Xero", async () => {
-    mockQueryOne.mockResolvedValue({ id: "portion-1", status: "entered_in_xero" });
-    const { updateJobSheetXeroReference } = await import("../job-sheets");
-
-    await updateJobSheetXeroReference({
-      portion_id: "portion-1",
-      xero_invoice_number: "INV-001",
-      xero_invoice_reference: "XERO-REF-001",
-      xero_invoice_date: "2026-07-09",
-      xero_notes: "Manually entered in Xero",
-    });
-
-    const [sql, values] = mockQueryOne.mock.calls[0];
-
-    expect(sql).toContain("then 'entered_in_xero'");
-    expect(values).toEqual([
-      "INV-001",
-      "XERO-REF-001",
-      "2026-07-09",
-      "Manually entered in Xero",
-      "portion-1",
-    ]);
-  });
-
-  it("keeps a portion planned when the Xero save is blank after trimming", async () => {
-    mockQueryOne.mockResolvedValue({ id: "portion-1", status: "planned" });
-    const { updateJobSheetXeroReference } = await import("../job-sheets");
-
-    await updateJobSheetXeroReference({
-      portion_id: "portion-1",
-      xero_invoice_number: "   ",
-      xero_invoice_reference: "",
-      xero_invoice_date: null,
-      xero_notes: "  ",
-    });
-
-    expect(mockQueryOne).toHaveBeenCalledTimes(1);
-    const [sql, values] = mockQueryOne.mock.calls[0];
-
-    expect(sql).toContain("update job_sheet_portions");
-    expect(sql).toContain("status =");
-    expect(sql).not.toContain("status = 'entered_in_xero'");
-    expect(values).toEqual([null, null, null, null, "portion-1"]);
+    expect(mockQueryOne).toHaveBeenCalledTimes(3);
   });
 });

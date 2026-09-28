@@ -1,24 +1,7 @@
 /**
- * CSV *serialization*. The repository already has two parsers and no writer.
- *
- * `src/lib/csv-import.ts` and `src/server/repositories/event-import.ts` both read CSV, and
- * they disagree with each other about trimming and about blank lines. Neither of them can
- * write one, which is why `/reports` shipped an "Export CSV" button that produced a toast
- * and no file. This module is the missing half — a writer only. It deliberately does not
- * export a `parse` function: a third parser with a third opinion would make the existing
- * disagreement worse rather than better.
- *
- * The output follows RFC 4180:
- *
- * - fields are separated by commas and records by CRLF (§2.1, §2.4);
- * - a field containing a comma, a double quote, CR or LF is wrapped in double quotes (§2.6);
- * - a double quote inside a quoted field is written twice (§2.7).
- *
- * It is prefixed with a UTF-8 byte-order mark. That is not part of RFC 4180, and it is here
- * for one concrete reason: Excel on Windows decodes a BOM-less file as the system ANSI code
- * page, so a Chinese company name or a curly apostrophe in an exported row arrives as
- * mojibake. Every other consumer we care about skips the BOM. Callers that need a byte-exact
- * RFC file can pass `{ bom: false }`.
+ * RFC 4180 CSV writer. Text cells are escaped for spreadsheet formulas before
+ * ordinary CSV quoting; numeric cells retain their machine-readable values.
+ * The default UTF-8 BOM lets Excel on Windows read Chinese text correctly.
  */
 
 /** The value kinds a cell may be given. Anything else is a caller bug, not a runtime case. */
@@ -29,6 +12,8 @@ export type CsvColumn<T> = {
   header: string;
   /** The cell for one row. Return the machine-readable value; format for display elsewhere. */
   value: (row: T) => CsvValue;
+  /** Text is spreadsheet-escaped; number remains machine-readable. Defaults to text. */
+  kind?: "text" | "number" | "date";
 };
 
 /** RFC 4180 §2.1 — records are terminated by CRLF. */
@@ -58,6 +43,33 @@ export function escapeCsvValue(value: CsvValue): string {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
+/**
+ * Spreadsheet applications may evaluate an untrusted CSV cell as a formula. Prefix text
+ * with an apostrophe before RFC quoting; the original bytes remain after that prefix.
+ * Import deliberately does not strip it, since it cannot distinguish an original apostrophe.
+ */
+export function escapeSpreadsheetText(value: string): string {
+  let index = 0;
+  while (index < value.length) {
+    const code = value.charCodeAt(index);
+    if (code > 32 && code !== 0xfeff) break;
+    index++;
+  }
+  return "=+-@".includes(value[index] ?? "") && index < value.length ? "'" + value : value;
+}
+
+function serializeCsvCell(value: CsvValue, kind: NonNullable<CsvColumn<unknown>["kind"]>): string {
+  if (value === null || value === undefined) return "";
+  if (kind === "number") {
+    if (typeof value === "number") return escapeCsvValue(value);
+    if (typeof value === "string" && /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/.test(value)) {
+      return escapeCsvValue(value);
+    }
+    throw new Error("Invalid numeric CSV value");
+  }
+  return escapeCsvValue(escapeSpreadsheetText(String(value)));
+}
+
 export type ToCsvOptions = {
   /** Prefix the UTF-8 BOM. Default true — see the module comment. */
   bom?: boolean;
@@ -80,8 +92,10 @@ export function toCsv<T>(
   if (columns.length === 0) return "";
 
   const records = [
-    columns.map((column) => escapeCsvValue(column.header)).join(","),
-    ...rows.map((row) => columns.map((column) => escapeCsvValue(column.value(row))).join(",")),
+    columns.map((column) => escapeCsvValue(escapeSpreadsheetText(column.header))).join(","),
+    ...rows.map((row) =>
+      columns.map((column) => serializeCsvCell(column.value(row), column.kind ?? "text")).join(","),
+    ),
   ];
 
   const body = records.join(CSV_RECORD_SEPARATOR) + CSV_RECORD_SEPARATOR;

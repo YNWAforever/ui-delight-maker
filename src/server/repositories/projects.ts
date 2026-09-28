@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/legacy-supabase/server";
+import { createLegacyDomainClient, loadWorkspaceTaskRows } from "./legacy-domain-source.server";
 import type { CustomerSuccessProfile, Deal, EngagementEvent, Project, Task } from "@/lib/types";
 import { pickColumns, supabaseOperationFailed } from "./supabase-writes";
 
@@ -61,7 +61,7 @@ export type ProjectWorkspace = {
 };
 
 export async function listProjects(filters: ProjectFilters = {}): Promise<Project[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("projects");
   let query = supabase.from("projects").select("*").order("created_at", { ascending: false });
 
   if (filters.status) query = query.eq("status", filters.status);
@@ -83,7 +83,7 @@ export async function listProjects(filters: ProjectFilters = {}): Promise<Projec
  * error; the project itself uses `single()`, so a missing project *is* one.
  */
 export async function getProjectWorkspace(id: string): Promise<ProjectWorkspace> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("projects");
   const [projectResult, eventsResult, tasksResult, csResult] = await Promise.all([
     supabase.from("projects").select("*").eq("id", id).single(),
     supabase
@@ -92,7 +92,9 @@ export async function getProjectWorkspace(id: string): Promise<ProjectWorkspace>
       .eq("project_id", id)
       .order("occurred_at", { ascending: false })
       .limit(50),
-    supabase.from("tasks").select("*").eq("project_id", id),
+    loadWorkspaceTaskRows("project_id", id, () =>
+      supabase.from("tasks").select("*").eq("project_id", id),
+    ),
     supabase.from("customer_success_profiles").select("*").eq("project_id", id).maybeSingle(),
   ]);
 
@@ -116,7 +118,7 @@ export async function getProjectWorkspace(id: string): Promise<ProjectWorkspace>
 }
 
 export async function createProject(input: CreateProjectInput): Promise<Project> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("projects");
   const { data, error } = await supabase
     .from("projects")
     .insert(pickColumns(input, PROJECT_WRITE_COLUMNS))
@@ -128,7 +130,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
 
 /** Updates a project through a fixed column list — see the note in `./deals.ts`. */
 export async function updateProject(id: string, updates: Partial<Project>): Promise<Project> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("projects");
   const { data, error } = await supabase
     .from("projects")
     .update(pickColumns(updates, PROJECT_WRITE_COLUMNS))
@@ -146,7 +148,7 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
  * caller relies on that to distinguish "no such deal" from "deal is not won".
  */
 export async function getDealForProject(dealId: string): Promise<Deal> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("projects");
   const { data, error } = await supabase.from("deals").select("*").eq("id", dealId).single();
   if (error) throw supabaseOperationFailed("load the deal for this project", error);
   return data as Deal;

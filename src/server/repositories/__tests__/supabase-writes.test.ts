@@ -78,13 +78,18 @@ describe("no Supabase repository leaks the driver message", () => {
 
   it("covers every Supabase-backed repository", () => {
     // Guards the guard: an empty list would make the check below vacuous.
-    expect(supabaseBacked.sort()).toEqual([
+    expect(supabaseBacked.sort()).toEqual(["legacy-domain-source.server.ts"]);
+    for (const file of [
       "automation-playbooks.ts",
       "customer-success.ts",
       "deals.ts",
       "engagement-events.ts",
       "projects.ts",
-    ]);
+    ]) {
+      expect(readFileSync(new URL(file, repositories), "utf8")).toContain(
+        "createLegacyDomainClient",
+      );
+    }
   });
 
   it.each(supabaseBacked)("%s throws no raw driver message", (file) => {

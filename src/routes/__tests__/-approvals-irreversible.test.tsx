@@ -9,12 +9,18 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import type { SerializableHumanApproval } from "@/lib/serializable";
 
 const decideApprovalMock = vi.hoisted(() => vi.fn());
-const approveAndIssueQuoteMock = vi.hoisted(() => vi.fn());
+const getApprovalsPageMock = vi.hoisted(() => vi.fn());
+const getApprovalDetailFnMock = vi.hoisted(() => vi.fn());
+const approveQuoteMock = vi.hoisted(() => vi.fn());
 const rejectQuoteMock = vi.hoisted(() => vi.fn());
 const navigateMock = vi.hoisted(() => vi.fn());
 
 const assignApprovalFnMock = vi.hoisted(() => vi.fn());
-const getAssignableApproversFnMock = vi.hoisted(() => vi.fn());
+const listAssignableProfilesFnMock = vi.hoisted(() => vi.fn());
+const resolveAssignableProfileFnMock = vi.hoisted(() => vi.fn());
+const getMessageHandoffFnMock = vi.hoisted(() => vi.fn());
+const claimApprovalFnMock = vi.hoisted(() => vi.fn());
+const recordManualMessageSentFnMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
@@ -31,13 +37,21 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() },
 }));
 vi.mock("@/server-functions/approvals", () => ({
-  getApprovals: vi.fn(),
+  getApprovalsPage: getApprovalsPageMock,
+  getApprovalDetailFn: getApprovalDetailFnMock,
   decideApproval: decideApprovalMock,
   assignApprovalFn: assignApprovalFnMock,
-  getAssignableApproversFn: getAssignableApproversFnMock,
+  getMessageHandoffFn: getMessageHandoffFnMock,
+  claimApprovalFn: claimApprovalFnMock,
+  recordManualMessageSentFn: recordManualMessageSentFnMock,
 }));
+vi.mock("@/server-functions/assignable-profiles", () => ({
+  listAssignableProfilesFn: listAssignableProfilesFnMock,
+  resolveAssignableProfileFn: resolveAssignableProfileFnMock,
+}));
+
 vi.mock("@/server-functions/quotes", () => ({
-  approveAndIssueQuote: approveAndIssueQuoteMock,
+  approveQuote: approveQuoteMock,
   rejectQuote: rejectQuoteMock,
 }));
 
@@ -54,6 +68,8 @@ const approval = (
   requested_by: "agent",
   assigned_to: null,
   status: "pending",
+  row_version: 0,
+  superseded_by: null,
   context_data: null,
   context_summary: "Discount of 15% on renewal",
   reviewer_notes: null,
@@ -61,6 +77,13 @@ const approval = (
   created_at: now,
   ...overrides,
 });
+
+const messageSend = (overrides: Partial<SerializableHumanApproval> = {}) =>
+  approval({
+    approval_type: "message_send",
+    context_summary: "Reply draft for customer",
+    ...overrides,
+  });
 
 const quoteSend = (overrides: Partial<SerializableHumanApproval> = {}) =>
   approval({
@@ -72,11 +95,54 @@ const quoteSend = (overrides: Partial<SerializableHumanApproval> = {}) =>
   });
 
 function renderInbox(approvals: SerializableHumanApproval[]) {
-  vi.mocked(Route.useLoaderData).mockReturnValue(approvals as never);
+  const toList = (record: SerializableHumanApproval) => {
+    const { context_data, ...list } = record;
+    const quote_id =
+      context_data &&
+      typeof context_data === "object" &&
+      !Array.isArray(context_data) &&
+      "quote_id" in context_data &&
+      typeof context_data.quote_id === "string"
+        ? context_data.quote_id
+        : null;
+    return { ...list, quote_id };
+  };
+  const pending = approvals.filter(
+    (item) => item.status === "pending" || item.status === "escalated",
+  );
+  const history = approvals.filter(
+    (item) => item.status !== "pending" && item.status !== "escalated",
+  );
+  const makePage = (items: SerializableHumanApproval[]) => ({
+    items: items.map(toList),
+    nextCursor: null,
+    total: items.length,
+    counts: {
+      pending: items.filter((item) => item.status === "pending").length,
+      escalated: items.filter((item) => item.status === "escalated").length,
+      quoteSends: items.filter(
+        (item) => item.status === "pending" && item.approval_type === "quote_send",
+      ).length,
+    },
+  });
+  getApprovalsPageMock.mockImplementation(({ data }: { data: { group: string } }) =>
+    Promise.resolve(makePage(data.group === "pending" ? pending : history)),
+  );
+  getApprovalDetailFnMock.mockImplementation(({ data }: { data: { id: string } }) =>
+    Promise.resolve(approvals.find((item) => item.id === data.id)),
+  );
+  vi.mocked(Route.useLoaderData).mockReturnValue(makePage(pending) as never);
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  queryClient.setQueryData(["approvals", "list", {}], approvals);
+  queryClient.setQueryData(
+    ["approvals", "list", { group: "pending", type: "all" }],
+    makePage(pending),
+  );
+  queryClient.setQueryData(
+    ["approvals", "list", { group: "history", type: "all" }],
+    makePage(history),
+  );
   const Component = Route.options.component as ComponentType;
   return render(
     <QueryClientProvider client={queryClient}>
@@ -91,17 +157,42 @@ const decisionButton = (name: RegExp | string) =>
 
 beforeEach(() => {
   decideApprovalMock.mockReset().mockResolvedValue(undefined);
-  approveAndIssueQuoteMock.mockReset().mockResolvedValue(undefined);
+  getApprovalsPageMock.mockReset();
+  getApprovalDetailFnMock.mockReset();
+  approveQuoteMock.mockReset().mockResolvedValue(undefined);
   rejectQuoteMock.mockReset().mockResolvedValue(undefined);
   navigateMock.mockReset();
-  getAssignableApproversFnMock.mockReset().mockResolvedValue([
-    { id: "profile-1", name: "Ada Wong", email: "ada@fimmick.test" },
-    { id: "profile-2", name: "Bea Chan", email: "bea@fimmick.test" },
-  ]);
+  getMessageHandoffFnMock.mockReset().mockResolvedValue({
+    approvalId: "ap-1",
+    draftMessage: "Draft only",
+    handoff: { handoff_status: "awaiting_manual_send", sent_reference: null },
+  });
+  claimApprovalFnMock
+    .mockReset()
+    .mockResolvedValue(approval({ assigned_to: "profile-1", row_version: 1 }));
+  recordManualMessageSentFnMock
+    .mockReset()
+    .mockResolvedValue({ handoff_status: "manual_send_recorded", sent_reference: "ref" });
+  listAssignableProfilesFnMock.mockReset().mockImplementation(async () => ({
+    items: [
+      { id: "profile-1", displayName: "Ada Wong", isEligible: true, reason: null },
+      { id: "profile-2", displayName: "Bea Chan", isEligible: true, reason: null },
+    ],
+    nextCursor: null,
+    total: 2,
+  }));
+  resolveAssignableProfileFnMock
+    .mockReset()
+    .mockImplementation(async ({ data }: { data: { id: string } }) => ({
+      id: data.id,
+      displayName: data.id === "profile-2" ? "Bea Chan" : "Ada Wong",
+      isEligible: true,
+      reason: null,
+    }));
   assignApprovalFnMock
     .mockReset()
     .mockImplementation(async ({ data }: { data: { id: string; assignedTo: string | null } }) =>
-      approval({ id: data.id, assigned_to: data.assignedTo }),
+      approval({ id: data.id, assigned_to: data.assignedTo, row_version: 1 }),
     );
 });
 
@@ -116,30 +207,55 @@ describe("Every approval decision is confirmed, and the confirmation names the c
 
     fireEvent.click(decisionButton(/^Approve$/));
 
-    // A decision writes to an agent run that starts work the moment it is approved. The
-    // dialog is the only thing standing between a misclick and that.
+    // The confirmation must describe the stored decision without inventing a downstream action.
     expect(decideApprovalMock).not.toHaveBeenCalled();
 
     const dialog = await screen.findByRole("alertdialog");
     const text = dialog.textContent ?? "";
     expect(text).toContain("Approve this request?");
     // The consequence, not a restatement of the question: the agent acts, and nothing undoes it.
-    expect(text).toMatch(/proceeds immediately/i);
-    expect(text).toMatch(/no undo/i);
+    expect(text).toMatch(/records the decision/i);
+    expect(text).not.toMatch(/proceeds immediately/i);
   });
 
-  it("approving a quote send says a version is issued and cannot be un-issued", async () => {
-    // Different consequence, different sentence. A quote send leaves the building — the
-    // shared "There is no undo" would understate what the reader is agreeing to.
+  it("approving a message draft says it awaits human sending", async () => {
+    renderInbox([messageSend()]);
+    fireEvent.click(decisionButton(/^Approve$/));
+    const text = (await screen.findByRole("alertdialog")).textContent ?? "";
+    expect(text).toMatch(/draft.*approved.*manual send/i);
+    expect(text).not.toMatch(/agent proceeds immediately/i);
+  });
+
+  it("offers an unassigned review claim through the scoped command", async () => {
+    renderInbox([approval()]);
+    fireEvent.click(decisionButton(/Claim for review/));
+    await waitFor(() => expect(claimApprovalFnMock).toHaveBeenCalledTimes(1));
+    expect(claimApprovalFnMock).toHaveBeenCalledWith({
+      data: expect.objectContaining({ id: "ap-1", expectedVersion: 0 }),
+    });
+  });
+
+  it("shows an approved draft with manual send controls and no delivery claim", async () => {
+    renderInbox([messageSend({ status: "approved", assigned_to: "profile-1", decided_at: now })]);
+    expect((await screen.findAllByText("Draft only")).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Copy approved draft" }).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getAllByRole("button", { name: "Record manual send" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/no platform delivery receipt/i).length).toBeGreaterThan(0);
+  });
+
+  it("approving a quote send confirms approval without claiming issuance", async () => {
     renderInbox([quoteSend()]);
 
-    fireEvent.click(decisionButton(/Approve and issue|^Approve$/));
+    fireEvent.click(decisionButton(/^Approve$/));
 
     const dialog = await screen.findByRole("alertdialog");
     const text = dialog.textContent ?? "";
-    expect(text).toMatch(/issues a quote version immediately/i);
-    expect(text).toMatch(/no un-issue action/i);
-    expect(approveAndIssueQuoteMock).not.toHaveBeenCalled();
+    expect(text).toMatch(/marks the quote approved/i);
+    expect(text).toMatch(/separate action for an authorized issuer/i);
+    expect(text).not.toMatch(/issues a quote version immediately/i);
+    expect(approveQuoteMock).not.toHaveBeenCalled();
   });
 
   it("rejecting a quote send says the quote has to be revised and resubmitted", async () => {
@@ -208,20 +324,21 @@ describe("Assigning a reviewer", () => {
     Element.prototype.scrollIntoView = () => {};
   });
 
-  const reviewerSelect = () => screen.findByRole("combobox", { name: "Assign reviewer (inline)" });
+  const reviewerSelect = () =>
+    screen.findByRole("combobox", { name: "Assign reviewer (inline) search" });
 
   it("routes a pending approval to the reviewer chosen from the assignable roster", async () => {
     renderInbox([approval()]);
 
     const trigger = await reviewerSelect();
-    expect(trigger.textContent).toContain("Unassigned");
+    expect(screen.getAllByText(/Selected: Unassigned/).length).toBeGreaterThan(0);
 
-    await userEvent.click(trigger);
-    await userEvent.click(await screen.findByRole("option", { name: "Bea Chan" }));
+    fireEvent.change(trigger, { target: { value: "Bea" } });
+    await userEvent.click((await screen.findAllByRole("button", { name: "Bea Chan" }))[0]);
 
     await waitFor(() =>
       expect(assignApprovalFnMock).toHaveBeenCalledWith({
-        data: { id: "ap-1", assignedTo: "profile-2" },
+        data: { id: "ap-1", assignedTo: "profile-2", expectedVersion: 0 },
       }),
     );
   });
@@ -232,16 +349,16 @@ describe("Assigning a reviewer", () => {
     renderInbox([approval({ assigned_to: "profile-2" })]);
 
     const trigger = await reviewerSelect();
-    // The trigger shows the assignee's id until the roster that names them arrives, which is
-    // the honest intermediate state — it never shows a name it has not been told.
-    await waitFor(() => expect(trigger.textContent).toContain("Bea Chan"));
+    await waitFor(() =>
+      expect(screen.getAllByText(/Selected: Bea Chan/).length).toBeGreaterThan(0),
+    );
+    expect(trigger).toBeTruthy();
 
-    await userEvent.click(trigger);
-    await userEvent.click(await screen.findByRole("option", { name: "Unassigned" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Unassigned" })[0]);
 
     await waitFor(() =>
       expect(assignApprovalFnMock).toHaveBeenCalledWith({
-        data: { id: "ap-1", assignedTo: null },
+        data: { id: "ap-1", assignedTo: null, expectedVersion: 0 },
       }),
     );
   });

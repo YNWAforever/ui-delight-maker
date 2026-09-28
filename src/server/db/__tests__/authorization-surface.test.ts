@@ -168,7 +168,63 @@ import { describe, expect, it } from "vitest";
  * for weeks rather than minutes. If you are about to write either identifier in a comment under
  * src/server-functions/: don't.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 225;
+/*
+ * 225 -> 222 in T02/T03: the Admin navigation loop's per-item gate moved into the
+ * request-context policy evaluator (-1). The dashboard's imported/called single-domain
+ * gate became a multi-domain gate so accounting can enter through job sheets (-2).
+ * The same authorization is still checked before querying, with row scopes in SQL.
+ * Measured each top-level server-function file against audited origin/main before updating.
+ */
+/*
+ * 222 -> 218 in T04, measured per top-level server-function file against the
+ * previous commit: lead-import -1 and client-import -1 because their broad
+ * create-only commit gates became a create-or-update admission check followed
+ * by mandatory transaction-local authorization of every row effect. Event
+ * import -2 because global account/contact create gates were removed; the
+ * campaign gates remain and each actual account/contact create is now checked
+ * against its current target before any row write. The new row authorizer is
+ * under src/server/imports and is covered by real PostgreSQL denial/rollback
+ * tests, so this textual entrypoint counter intentionally does not count it.
+ */
+/*
+ * 218 -> 220 in T06: createQuoteRevision adds two explicit server-function
+ * gates (quotes.create and quotes.view). The existing updateQuote gate remains;
+ * both endpoints also recheck current actor/row scope inside the transaction.
+ * Measured across top-level server-function files after this change.
+ */
+/*
+ * 220 -> 222 in T07: the retained combined quote endpoint now checks
+ * quotes.issue and approvals.decide in addition to quotes.approve before the
+ * transaction command. The separate approve, issue and accept gates remain;
+ * each command rechecks current actor and locked quote scope in PostgreSQL.
+ * Measured across top-level server-function files after the change.
+ */
+/*
+ * 222 -> 224 in T08: one former Xero write gate was replaced by three
+ * separate note, manual confirmation and correction gates (+2). Each scopes
+ * to the portion, then the command rechecks current actor and row permission
+ * after locking the portion in PostgreSQL.
+ */
+/*
+ * 224 -> 225 in T11: getMessageHandoffFn adds one approvals.view check for the
+ * selected approved draft. Claim, recovery and manual-send mutations perform
+ * their scoped checks inside the locked PostgreSQL command; a targetless precheck
+ * would deny a legitimate resource-scoped allow and cannot replace those checks.
+ */
+/*
+ * 225 -> 231 in T12. The paged Tasks read adds one tasks.view gate.
+ * Approvals replaces the old unbounded read's one gate with three scoped
+ * page/detail/last-reviewed gates (+2). The new purpose-scoped people search
+ * file contributes an import and two gates for assignment and other purposes
+ * (+3). No existing mutation gate was removed.
+ */
+// T15: net +3 lexical matches after retiring direct import writes and adding
+// the new kind-specific preview gates. Commit/resume recheck per row in the
+// import service; the contract test accounts for those delegated handlers.
+// T16: +3 counted calls. The explicit Job Sheet header mutation has its own
+// resource-scoped write gate. The detail read adds optional update/accept controls
+// and a linked-account visibility check for the company label; required gates remain.
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 237;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

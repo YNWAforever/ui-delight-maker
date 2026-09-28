@@ -22,10 +22,17 @@ function effectiveState(
   roleDefault: boolean,
   overrides: readonly PermissionOverrideRecord[],
 ): { label: string; source: string } {
-  const deny = overrides.find((override) => override.effect === "deny");
-  if (deny) return { label: "Denied", source: "Explicit deny" };
-  const allow = overrides.find((override) => override.effect === "allow");
-  if (allow) return { label: "Allowed", source: "Explicit allow" };
+  const globalOverrides = overrides.filter(
+    (override) =>
+      !override.departmentId && !override.teamId && !override.resourceType && !override.resourceId,
+  );
+  const deny = globalOverrides.find((override) => override.effect === "deny");
+  if (deny) return { label: "Denied", source: "Explicit deny everywhere" };
+  const scopedOverrides = overrides.filter((override) => !globalOverrides.includes(override));
+  if (scopedOverrides.length > 0)
+    return { label: "Varies by scope", source: "Role default + scoped overrides" };
+  const allow = globalOverrides.find((override) => override.effect === "allow");
+  if (allow) return { label: "Allowed", source: "Explicit allow everywhere" };
   return roleDefault
     ? { label: "Allowed", source: "Role default" }
     : { label: "Denied", source: "Role default" };
@@ -106,6 +113,13 @@ export function EffectiveAccessTable({
                               {entry.effect === "deny" ? "Explicit deny" : "Explicit allow"}
                             </span>
                             <span className="ml-2 text-xs">{scopeLabel(entry)}</span>
+                            {entry.expiresAt ? (
+                              <time className="ml-2 text-xs" dateTime={entry.expiresAt}>
+                                Expires {entry.expiresAt.slice(0, 10)}
+                              </time>
+                            ) : (
+                              <span className="ml-2 text-xs">No expiry</span>
+                            )}
                           </li>
                         ))}
                       </ul>

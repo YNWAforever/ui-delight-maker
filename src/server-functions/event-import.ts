@@ -1,6 +1,13 @@
-import { requireCapability } from "@/server/auth/authorization.server";
+import { parseOperationInput } from "@/lib/operations/errors";
+import {
+  checkWithContext,
+  loadRequestAuthorization,
+  requireCapability,
+  type RequestAuthorization,
+} from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 
+import { EventImportCommitSchema, EventImportRowsSchema } from "@/lib/operations/input-schemas";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
   resolveMatchedAccountIds,
@@ -8,7 +15,6 @@ import {
   type EventImportRow,
 } from "@/lib/relationship/event-import";
 import {
-  commitEventImport,
   listEventImportAccountCandidates,
   listEventImportAccountContacts,
 } from "@/server/repositories/event-import";
@@ -29,45 +35,56 @@ async function loadEventImportValidationContext(rows: EventImportRow[]) {
   return { accounts, accountContacts };
 }
 
+/** Hide matches to records the actor cannot view without turning them into new accounts. */
+async function validateVisibleEventRows(rows: EventImportRow[], ctx: RequestAuthorization) {
+  const validation = validateEventImportRows({
+    rows,
+    ...(await loadEventImportValidationContext(rows)),
+  });
+  const valid: typeof validation.valid = [];
+  const errors = [...validation.errors];
+  const invalidIndexes = new Set(errors.map(({ index }) => index));
+  let validIndex = 0;
+  for (let index = 0; index < rows.length; index += 1) {
+    if (invalidIndexes.has(index)) continue;
+    const row = validation.valid[validIndex++];
+    const checks = [];
+    if (row.account_match.kind === "matched") {
+      checks.push({
+        capability: "accounts.view" as const,
+        target: { resourceType: "account", resourceId: row.account_match.accountId },
+      });
+    }
+    if (row.contact_match.kind === "matched") {
+      checks.push({
+        capability: "contacts.view" as const,
+        target: { resourceType: "account_contact", resourceId: row.contact_match.contactId },
+      });
+    }
+    const decisions = await checkWithContext(ctx, checks);
+    if (decisions.some((decision) => !decision.allowed)) {
+      errors.push({ index, reason: "Import row requires review." });
+    } else {
+      valid.push(row);
+    }
+  }
+  return { valid, errors: errors.sort((a, b) => a.index - b.index) };
+}
+
 export const validateEventImportRowsFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { rows: EventImportRow[] })
+  .validator((data: unknown) => parseOperationInput(EventImportRowsSchema, data))
   .handler(async ({ data }) => {
-    await requireCapability("engagements.view");
-    await requireCapability("accounts.view");
-    await requireCapability("contacts.view");
-    await requireNeonAuthSession();
-    return validateEventImportRows({
-      rows: data.rows,
-      ...(await loadEventImportValidationContext(data.rows)),
-    });
+    const session = await requireNeonAuthSession();
+    const authorization = await loadRequestAuthorization(session);
+    await requireCapability("engagements.view", {}, authorization);
+    await requireCapability("accounts.view", {}, authorization);
+    await requireCapability("contacts.view", {}, authorization);
+    return validateVisibleEventRows(data.rows, authorization);
   });
 
 export const commitEventImportFn = createServerFn({ method: "POST" })
-  .validator((data: unknown) => data as { campaignId: string; rows: EventImportRow[] })
-  .handler(async ({ data }) => {
-    await requireCapability("engagements.create", {
-      resourceType: "campaign",
-      resourceId: data.campaignId,
-    });
-    await requireCapability("campaigns.manage", {
-      resourceType: "campaign",
-      resourceId: data.campaignId,
-    });
-    await requireCapability("accounts.create");
-    await requireCapability("contacts.create");
-    const session = await requireNeonAuthSession();
-    const validation = validateEventImportRows({
-      rows: data.rows,
-      ...(await loadEventImportValidationContext(data.rows)),
-    });
-
-    if (validation.errors.length > 0) {
-      return { ok: false as const, errors: validation.errors };
-    }
-
-    return commitEventImport({
-      campaignId: data.campaignId,
-      rows: validation.valid,
-      owner: session.profile.id,
-    });
+  .validator((data: unknown) => parseOperationInput(EventImportCommitSchema, data))
+  .handler(async () => {
+    await requireNeonAuthSession();
+    throw new Error("Direct CSV commit is retired. Preview the file again.");
   });
