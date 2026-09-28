@@ -1,5 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireCapabilitySet } from "@/server/auth/authorization.server";
+import {
+  loadRequestAuthorization,
+  requireCapabilitySet,
+  type RequestAuthorization,
+} from "@/server/auth/authorization.server";
 import {
   clientWorkspaceSections,
   loadClientWorkspaceRead,
@@ -55,9 +59,14 @@ async function authorizeClientRead(clientId: string) {
   });
 }
 
-async function authorizeClientSection(clientId: string, section: ClientWorkspaceSection) {
+async function authorizeClientSection(
+  clientId: string,
+  section: ClientWorkspaceSection,
+  context: RequestAuthorization,
+) {
   await requireCapabilitySet(sectionCapabilities[section], {
     target: clientTarget(clientId),
+    context,
   });
 }
 export const getClientWorkspaceRead = createServerFn({ method: "GET" })
@@ -75,6 +84,7 @@ export const getClientWorkspaceRead = createServerFn({ method: "GET" })
 export const getClientWorkspaceSection = createServerFn({ method: "GET" })
   .validator(validateClientWorkspaceSectionInput)
   .handler(async ({ data }) => {
-    await authorizeClientSection(data.clientId, data.section);
-    return loadClientWorkspaceSection(data.clientId, data.section);
+    const context = await loadRequestAuthorization();
+    await authorizeClientSection(data.clientId, data.section, context);
+    return loadClientWorkspaceSection(data.clientId, data.section, undefined, context);
   });

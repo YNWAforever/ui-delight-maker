@@ -1,0 +1,3 @@
+# The original audit Markdown uses two trailing spaces as Markdown hard line breaks.
+# Preserve the user-supplied source bytes while keeping whitespace checks on product files.
+*.md whitespace=-blank-at-eol

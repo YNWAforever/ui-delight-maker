@@ -1,3 +1,5 @@
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import { buildVisibilityScope } from "@/server/auth/visibility-scope.server";
 import { buildDefaultPortionsFromLineItems, canAcceptJobSheet } from "@/lib/quote-to-cash";
 import type { NewJobSheetPortion } from "@/lib/quote-to-cash";
 import type { JobSheet, JobSheetPortion, JsonValue, QuoteLineItemRecord } from "@/lib/types";
@@ -134,53 +136,75 @@ async function createDefaultPortionsFromAcceptedVersion(
   await replaceJobSheetPortions(jobSheet.id, defaultPortions, db);
 }
 
-export async function listJobSheets(filters: JobSheetFilters = {}): Promise<JobSheet[]> {
+export type JobSheetListItem = Pick<
+  JobSheet,
+  | "id"
+  | "number"
+  | "quote_id"
+  | "status"
+  | "po_number"
+  | "client_order_number"
+  | "created_at"
+  | "total_amount"
+  | "currency"
+> & { has_xero_customer_reference: boolean };
+
+const JOB_SHEET_LIST_COLUMNS =
+  "js.id, js.number, js.quote_id, js.status, js.po_number, js.client_order_number, js.created_at, js.total_amount, js.currency, (js.xero_customer_reference is not null) as has_xero_customer_reference";
+
+function visibleJobSheetWhere(filters: JobSheetFilters, context: RequestAuthorization) {
   const where = buildFilters([
     ["status", filters.status],
     ["client_id", filters.client_id],
     ["account_id", filters.account_id],
   ]);
+  const scope = buildVisibilityScope(context, "job_sheet", "js");
+  const predicate = scope.sql.replace(
+    /\$(\d+)/g,
+    (_, index: string) => `$${Number(index) + where.values.length}`,
+  );
+  return {
+    sql: where.sql ? `${where.sql} and ${predicate}` : `where ${predicate}`,
+    values: [...where.values, ...scope.values],
+  };
+}
 
-  return query<JobSheet>(
-    `
-      select *
-      from job_sheets
-      ${where.sql}
-      order by created_at desc
-    `,
+export async function listJobSheets(
+  filters: JobSheetFilters = {},
+  context: RequestAuthorization,
+): Promise<JobSheetListItem[]> {
+  const where = visibleJobSheetWhere(filters, context);
+  return query<JobSheetListItem>(
+    `select ${JOB_SHEET_LIST_COLUMNS}
+     from job_sheets js
+     ${where.sql}
+     order by js.created_at desc, js.id desc`,
     where.values,
   );
 }
 
 export async function listJobSheetsPage(
   filters: JobSheetPageFilters = {},
-): Promise<PaginatedResult<JobSheet>> {
-  const where = buildFilters([
-    ["status", filters.status],
-    ["client_id", filters.client_id],
-    ["account_id", filters.account_id],
-  ]);
+  context: RequestAuthorization,
+): Promise<PaginatedResult<JobSheetListItem>> {
+  const where = visibleJobSheetWhere(filters, context);
   const { page, limit, offset } = normalizePagination(filters);
   const [items, count] = await Promise.all([
-    query<JobSheet>(
-      `
-        select *
-        from job_sheets
-        ${where.sql}
-        order by created_at desc, id desc
-        limit $${where.values.length + 1} offset $${where.values.length + 2}
-      `,
+    query<JobSheetListItem>(
+      `select ${JOB_SHEET_LIST_COLUMNS}
+       from job_sheets js
+       ${where.sql}
+       order by js.created_at desc, js.id desc
+       limit $${where.values.length + 1} offset $${where.values.length + 2}`,
       [...where.values, limit, offset],
     ),
     queryOne<{ total: number | string }>(
-      `select count(*) as total from job_sheets ${where.sql}`,
+      `select count(*) as total from job_sheets js ${where.sql}`,
       where.values,
     ),
   ]);
-
   return { items, total: parseCount(count), page, limit };
 }
-
 export async function getJobSheet(id: string): Promise<JobSheetDetail> {
   const jobSheet = await getJobSheetById(id);
   const portions = await listJobSheetPortions(id);

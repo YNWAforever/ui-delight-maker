@@ -78,6 +78,7 @@ const summary = {
     successfulAgentRuns: 16,
     openTasks: 7,
   },
+  access: { quotes: true, leads: true, tasks: true, agents: true },
   reports: [
     {
       id: "revenue" as const,
@@ -311,7 +312,7 @@ describe("the export label matches what the read model returns", () => {
     );
     const reportQueries = source.slice(
       source.indexOf("const reportQueries"),
-      source.indexOf("export async function loadReportDataset"),
+      source.indexOf("const REPORT_RESOURCE"),
     );
 
     expect(reportQueries.length).toBeGreaterThan(200);

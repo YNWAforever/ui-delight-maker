@@ -2,6 +2,18 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { Pool } from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+const reportContext = {
+  actor: {
+    profileId: "fixture-report-admin",
+    role: "admin",
+    status: "active",
+    directReportIds: [],
+  },
+  overrides: [],
+  now: new Date("2026-09-27T00:00:00Z"),
+  session: { profile: { id: "fixture-report-admin" } },
+} as unknown as RequestAuthorization;
 
 /**
  * Renewal and Expansion report, Task 3: the only place the annualisation arithmetic behind
@@ -156,7 +168,10 @@ async function seedEngagement(input: {
 }
 
 async function loadRows() {
-  const { data } = await loadReportDataset({ report: "renewal_expansion", range: RANGE });
+  const { data } = await loadReportDataset(
+    { report: "renewal_expansion", range: RANGE },
+    reportContext,
+  );
   return data as unknown as Row[];
 }
 

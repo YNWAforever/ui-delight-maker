@@ -21,7 +21,7 @@ import {
   loadAgentHistoryPage,
   loadAiReviewRead,
 } from "@/server/read-models/agent-workspaces";
-import type { RowAuthorizer } from "@/server/auth/authorization.server";
+import type { RequestAuthorization, RowAuthorizer } from "@/server/auth/authorization.server";
 import { resolveOwnerProfileIds } from "@/server/auth/resource-ownership";
 import { loadClientWorkspaceRead } from "@/server/read-models/client-workspace";
 import { getDashboardReadModel } from "@/server/read-models/dashboard";
@@ -58,6 +58,19 @@ export type RouteLoaderContractEntry = {
 // match this id — it only needs to be shaped like the real thing (profile ids look like the
 // ones in src/lib/users.ts) so every join/cast the query performs still executes.
 const FAKE_PROFILE_ID = "00000000-0000-0000-0000-000000000001";
+// Query-budget fixture only; authenticated role/UAT acceptance uses real sessions.
+const jobSheetAuthorization = {
+  actor: {
+    profileId: "fixture-accounting",
+    role: "accounting",
+    status: "active",
+    directReportIds: [],
+  },
+  overrides: [],
+  now: new Date("2026-09-27T00:00:00Z"),
+  session: { profile: { id: "fixture-accounting" } },
+} as unknown as RequestAuthorization;
+
 // Placeholder product id for /quotes/new, which is frequently reached from the Renewals
 // preview panel's "Draft renewal quote" action with a real productId query param. That path
 // exercises an extra `where id = $1` / `case when product_id = $1` branch that the plain
@@ -334,7 +347,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     route: "approvals",
-    run: () => listApprovals({}),
+    run: () => listApprovals({}, jobSheetAuthorization),
     maxQueries: 1,
   },
   {
@@ -381,7 +394,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     route: "index",
-    run: () => getDashboardReadModel(),
+    run: () => getDashboardReadModel(jobSheetAuthorization),
     maxQueries: 8,
   },
   {
@@ -400,7 +413,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     route: "job-sheets",
-    run: () => listJobSheetsPage({ page: 1, limit: 50 } as Parameters<typeof listJobSheetsPage>[0]),
+    run: () => listJobSheetsPage({ page: 1, limit: 50 }, jobSheetAuthorization),
     maxQueries: 2,
   },
   {
@@ -496,7 +509,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
   },
   {
     route: "reports",
-    run: () => loadReportSummary({ range: "30d" } as Parameters<typeof loadReportSummary>[0]),
+    run: () => loadReportSummary({ range: "30d" }, jobSheetAuthorization),
     maxQueries: 1,
   },
   {

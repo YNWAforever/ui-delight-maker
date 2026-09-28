@@ -285,7 +285,13 @@ function ReportsPage() {
               value: formatCount(metrics.agentRuns),
               hint: `${formatCount(metrics.successfulAgentRuns)} completed`,
             },
-          ]}
+          ].filter((metric) =>
+            metric.id === "conversion"
+              ? summary.access.leads
+              : metric.id === "agent-runs"
+                ? summary.access.agents
+                : summary.access.quotes,
+          )}
           supporting={[
             {
               id: "open-tasks",
@@ -293,7 +299,7 @@ function ReportsPage() {
               value: formatCount(metrics.openTasks),
               hint: `created in ${RANGE_LABELS[range]}`,
             },
-          ]}
+          ].filter(() => summary.access.tasks)}
           columns={4}
         />
 

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   requireCapabilityMock,
+  loadRequestAuthorizationMock,
   loadCompanyWorkspaceCoreMock,
   loadCompanyWorkspaceSectionMock,
   createServerFnChain,
@@ -22,6 +23,7 @@ const {
 
   return {
     requireCapabilityMock: vi.fn(),
+    loadRequestAuthorizationMock: vi.fn(),
     loadCompanyWorkspaceCoreMock: vi.fn(),
     loadCompanyWorkspaceSectionMock: vi.fn(),
     createServerFnChain,
@@ -31,6 +33,7 @@ const {
 vi.mock("@tanstack/react-start", () => ({ createServerFn: () => createServerFnChain() }));
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapability: requireCapabilityMock,
+  loadRequestAuthorization: loadRequestAuthorizationMock,
 }));
 vi.mock("@/server/company-workspace/loaders", () => ({
   loadCompanyWorkspaceCore: loadCompanyWorkspaceCoreMock,
@@ -40,6 +43,10 @@ vi.mock("@/server/company-workspace/loaders", () => ({
 describe("Company Workspace server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    loadRequestAuthorizationMock.mockResolvedValue({
+      actor: { profileId: "user-1" },
+      overrides: [],
+    });
     requireCapabilityMock.mockResolvedValue({
       user: { id: "user-1" },
       profile: { id: "user-1", role: "sales", status: "active" },
@@ -69,7 +76,12 @@ describe("Company Workspace server functions", () => {
     });
 
     expect(requireCapabilityMock).toHaveBeenCalled();
-    expect(loadCompanyWorkspaceSectionMock).toHaveBeenCalledWith("account-1", "activity");
+    expect(loadCompanyWorkspaceSectionMock).toHaveBeenCalledWith(
+      "account-1",
+      "activity",
+      undefined,
+      expect.anything(),
+    );
   });
 
   it("rejects a missing account ID for the core read before querying", async () => {

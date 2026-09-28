@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { requireAnyCapabilityMock, searchWorkspaceMock, createServerFnChain } = vi.hoisted(() => {
+const {
+  requireAnyCapabilityMock,
+  loadRequestAuthorizationMock,
+  searchWorkspaceMock,
+  createServerFnChain,
+} = vi.hoisted(() => {
   const createServerFnChain = {
     validator() {
       return createServerFnChain;
@@ -11,6 +16,7 @@ const { requireAnyCapabilityMock, searchWorkspaceMock, createServerFnChain } = v
   };
   return {
     requireAnyCapabilityMock: vi.fn(),
+    loadRequestAuthorizationMock: vi.fn(),
     searchWorkspaceMock: vi.fn(),
     createServerFnChain,
   };
@@ -19,6 +25,7 @@ const { requireAnyCapabilityMock, searchWorkspaceMock, createServerFnChain } = v
 vi.mock("@tanstack/react-start", () => ({ createServerFn: () => createServerFnChain }));
 vi.mock("@/server/auth/authorization.server", () => ({
   requireAnyCapability: requireAnyCapabilityMock,
+  loadRequestAuthorization: loadRequestAuthorizationMock,
 }));
 vi.mock("@/server/repositories/workspace-search", () => ({
   searchWorkspace: searchWorkspaceMock,
@@ -32,6 +39,10 @@ describe("workspace search server function", () => {
       profile: { id: "profile-1", role: "sales", status: "active" },
       session: {},
     });
+    loadRequestAuthorizationMock.mockResolvedValue({
+      actor: { profileId: "profile-1" },
+      overrides: [],
+    });
     searchWorkspaceMock.mockResolvedValue([]);
   });
 
@@ -42,12 +53,11 @@ describe("workspace search server function", () => {
     // The query spans accounts, contacts, leads and quotes, so any one view capability
     // suffices. A bare session check previously skipped permission overrides and manager
     // scope entirely.
-    expect(requireAnyCapabilityMock).toHaveBeenCalledWith([
-      "accounts.view",
-      "contacts.view",
-      "leads.view",
-      "quotes.view",
-    ]);
-    expect(searchWorkspaceMock).toHaveBeenCalledWith("Acme", 10);
+    expect(requireAnyCapabilityMock).toHaveBeenCalledWith(
+      ["accounts.view", "contacts.view", "leads.view", "quotes.view", "tasks.view"],
+      {},
+      expect.anything(),
+    );
+    expect(searchWorkspaceMock).toHaveBeenCalledWith("Acme", 10, expect.anything());
   });
 });

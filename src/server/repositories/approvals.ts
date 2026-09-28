@@ -1,18 +1,31 @@
 import { buildFilters } from "@/server/db/query-builders";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import { buildVisibilityScope } from "@/server/auth/visibility-scope.server";
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
 import type { ApprovalStatus, HumanApproval } from "@/lib/types";
 import { createNotification, listApproverProfileIds } from "@/server/repositories/notifications";
 
-export async function listApprovals(input: { status?: string } = {}) {
+export async function listApprovals(
+  input: { status?: string } = {},
+  context: RequestAuthorization,
+): Promise<HumanApproval[]> {
   const where = buildFilters([["status", input.status]]);
+  const scope = buildVisibilityScope(context, "human_approval", "ha");
+  const predicate = scope.sql.replace(
+    /\$(\d+)/g,
+    (_, index: string) => "$" + (Number(index) + where.values.length),
+  );
+  const clause = where.sql ? where.sql + " and " + predicate : "where " + predicate;
   return query<HumanApproval>(
-    `
-      select *
-      from human_approvals
-      ${where.sql}
-      order by created_at desc
-    `,
-    where.values,
+    `select ha.id, ha.agent_run_id, ha.approval_type, ha.requested_by,
+            ha.assigned_to, ha.status,
+            jsonb_strip_nulls(jsonb_build_object('quote_id', ha.context_data->>'quote_id')) as context_data,
+            left(ha.context_summary, 300) as context_summary,
+            ha.reviewer_notes, ha.decided_at, ha.created_at
+     from human_approvals ha
+     ${clause}
+     order by ha.created_at desc, ha.id desc`,
+    [...where.values, ...scope.values],
   );
 }
 

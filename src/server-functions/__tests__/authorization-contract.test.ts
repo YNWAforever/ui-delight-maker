@@ -49,7 +49,8 @@ const ACKNOWLEDGED_UNGUARDED: Record<string, string> = {
   "auth.ts::signIn": "establishes a session",
   "auth.ts::signOut": "ends a session",
   "admin-invitations.ts::getInvitationPreview": "must work for a signed-out invitee",
-  "app-shell.ts::getAppShellRead": "fans out to server functions that each guard themselves",
+  "app-shell.ts::getAppShellRead":
+    "reads only the actor's favorites and builds navigation/capabilities from one server-loaded authorization context",
   ...Object.fromEntries(
     [
       "account.ts::getMyAccount",

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   requireCapabilityMock,
+  loadRequestAuthorizationMock,
   requireNeonAuthSessionMock,
   getJobSheetRepositoryMock,
   listJobSheetsMock,
@@ -21,6 +22,7 @@ const {
 
   return {
     requireCapabilityMock: vi.fn(),
+    loadRequestAuthorizationMock: vi.fn(),
     requireNeonAuthSessionMock: vi.fn(),
     getJobSheetRepositoryMock: vi.fn(),
     listJobSheetsMock: vi.fn(),
@@ -37,6 +39,7 @@ vi.mock("@tanstack/react-start", () => ({
 
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapability: requireCapabilityMock,
+  loadRequestAuthorization: loadRequestAuthorizationMock,
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
@@ -54,6 +57,9 @@ vi.mock("@/server/repositories/job-sheets", () => ({
 describe("job sheet server functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    loadRequestAuthorizationMock
+      .mockReset()
+      .mockResolvedValue({ actor: { profileId: "acct-1" }, overrides: [] });
     requireCapabilityMock.mockResolvedValue({
       user: { id: "user-1" },
       profile: { id: "user-1", role: "sales", status: "active" },
@@ -75,17 +81,20 @@ describe("job sheet server functions", () => {
     });
   });
 
-  it("requires Neon auth before listing job sheets", async () => {
+  it("loads authorization before listing job sheets", async () => {
     const { getJobSheets } = await import("../job-sheets");
 
     await getJobSheets({ data: { status: "accounting_review" } });
 
-    expect(requireNeonAuthSessionMock).toHaveBeenCalled();
-    expect(listJobSheetsMock).toHaveBeenCalledWith({ status: "accounting_review" });
+    expect(loadRequestAuthorizationMock).toHaveBeenCalled();
+    expect(listJobSheetsMock).toHaveBeenCalledWith(
+      { status: "accounting_review" },
+      expect.anything(),
+    );
   });
 
   it("stops before repository access when Neon auth fails", async () => {
-    requireNeonAuthSessionMock.mockRejectedValueOnce(new Error("Unauthorized"));
+    loadRequestAuthorizationMock.mockRejectedValueOnce(new Error("Unauthorized"));
     const { getJobSheets } = await import("../job-sheets");
 
     await expect(getJobSheets({ data: { status: "accounting_review" } })).rejects.toThrow(

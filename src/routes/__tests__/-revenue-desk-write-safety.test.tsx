@@ -145,6 +145,8 @@ const lead: Lead = {
 };
 
 const loaderData = {
+  access: { leads: true, jobSheets: true },
+  jobSheets: [],
   leads: [lead],
   quotes: [],
   tasks: [],

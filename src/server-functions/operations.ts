@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
+  loadRequestAuthorization,
   requireCapability,
   requireCapabilityChecks,
   requireCapabilitySet,
@@ -137,13 +138,15 @@ export const getRenewalsRead = createServerFn({ method: "GET" })
 export const getReportSummary = createServerFn({ method: "GET" })
   .validator(parseRange)
   .handler(async ({ data }) => {
-    await requireCapability("reports.view");
-    return loadReportSummary(data);
+    const context = await loadRequestAuthorization();
+    await requireCapability("reports.view", {}, context);
+    return loadReportSummary(data, context);
   });
 
 export const getReportDataset = createServerFn({ method: "GET" })
   .validator(parseDatasetInput)
   .handler(async ({ data }) => {
-    await requireCapability("reports.view");
-    return loadReportDataset(data);
+    const context = await loadRequestAuthorization();
+    await requireCapability("reports.view", {}, context);
+    return loadReportDataset(data, context);
   });

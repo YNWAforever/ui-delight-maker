@@ -1,4 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+const jobSheetAuthorization = {
+  actor: {
+    profileId: "fixture-accounting",
+    role: "accounting",
+    status: "active",
+    directReportIds: [],
+  },
+  overrides: [],
+  now: new Date("2026-09-27T00:00:00Z"),
+  session: { profile: { id: "fixture-accounting" } },
+} as unknown as RequestAuthorization;
 
 const { mockQuery, mockQueryOne, mockTransaction } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
@@ -188,18 +200,19 @@ describe("job sheets repository", () => {
     mockQuery.mockResolvedValue([]);
     const { listJobSheets } = await import("../job-sheets");
 
-    await listJobSheets({ status: "accounting_review" });
+    await listJobSheets({ status: "accounting_review" }, jobSheetAuthorization);
 
-    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("from job_sheets"), [
-      "accounting_review",
-    ]);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("from job_sheets"),
+      expect.arrayContaining(["accounting_review"]),
+    );
   });
 
   it("lists job sheets by client and account filters", async () => {
     mockQuery.mockResolvedValue([]);
     const { listJobSheets } = await import("../job-sheets");
 
-    await listJobSheets({ client_id: "client-1", account_id: "account-1" });
+    await listJobSheets({ client_id: "client-1", account_id: "account-1" }, jobSheetAuthorization);
 
     expect(mockQuery).toHaveBeenCalledTimes(1);
     const [sql, values] = mockQuery.mock.calls[0];
@@ -207,8 +220,9 @@ describe("job sheets repository", () => {
     expect(sql).toContain("from job_sheets");
     expect(sql).toContain("client_id = $1");
     expect(sql).toContain("account_id = $2");
-    expect(sql).toContain("order by created_at desc");
-    expect(values).toEqual(["client-1", "account-1"]);
+    expect(sql).toContain("order by js.created_at desc");
+    expect(sql).toContain("jsonb_array_elements");
+    expect(values.slice(0, 2)).toEqual(["client-1", "account-1"]);
   });
 
   it("gets a job sheet with ordered portions", async () => {

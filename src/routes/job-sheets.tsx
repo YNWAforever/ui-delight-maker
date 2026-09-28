@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatCount, formatCurrencyAmount, formatDate } from "@/lib/format";
 import { useIsExactPath } from "@/lib/routing-utils";
-import type { JobSheet, JobSheetStatus } from "@/lib/types";
+import type { JobSheetStatus } from "@/lib/types";
 import {
   JOB_SHEET_STATUS_VALUES,
   formatAcceptedValueSummary,
@@ -135,7 +135,7 @@ function JobSheetsIndex() {
     })),
   ];
 
-  const columns: ColumnDef<JobSheet>[] = [
+  const columns: ColumnDef<(typeof rows)[number]>[] = [
     {
       id: "number",
       header: "Job sheet",

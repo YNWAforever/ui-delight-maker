@@ -1,3 +1,4 @@
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockTransaction, mockDbQuery } = vi.hoisted(() => ({
@@ -11,7 +12,12 @@ vi.mock("@/server/db/neon.server", () => ({
   transaction: mockTransaction,
 }));
 
+vi.mock("@/server/imports/authorize-row.server", () => ({
+  authorizeImportRow: async () => ({ allowed: true }),
+}));
+
 const { commitLeadImport } = await import("../lead-import");
+const context = {} as RequestAuthorization;
 
 /** Every SQL string the commit issued, whitespace-collapsed for matching. */
 function sqlIssued(): string[] {
@@ -30,6 +36,7 @@ describe("commitLeadImport", () => {
     const result = await commitLeadImport(
       [{ company_name: "Acme Ltd", contact_email: "ops@acme.example", contact_name: "Dana" }],
       "profile-1",
+      context,
     );
 
     expect(result).toEqual({ created: 1, updated: 0, skipped: 0 });
@@ -42,6 +49,7 @@ describe("commitLeadImport", () => {
     await commitLeadImport(
       [{ company_name: "Acme Ltd", contact_email: "ops@acme.example" }],
       "profile-1",
+      context,
     );
 
     expect(sqlIssued().some((sql) => sql.includes("insert into activity_logs"))).toBe(true);
@@ -67,6 +75,7 @@ describe("commitLeadImport", () => {
         },
       ],
       "profile-1",
+      context,
     );
 
     expect(result).toEqual({ created: 0, updated: 1, skipped: 0 });
@@ -99,6 +108,7 @@ describe("commitLeadImport", () => {
     const result = await commitLeadImport(
       [{ company_name: "Acme Ltd", contact_email: "ops@acme.example", contact_name: "Dana" }],
       "profile-1",
+      context,
     );
 
     // Asserted before the counts: the counts alone would throw first and leave this
@@ -131,6 +141,7 @@ describe("commitLeadImport", () => {
         },
       ],
       "profile-1",
+      context,
     );
 
     expect(result).toEqual({ created: 0, updated: 0, skipped: 1 });

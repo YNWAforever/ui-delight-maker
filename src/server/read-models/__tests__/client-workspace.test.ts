@@ -9,6 +9,7 @@ const {
   queryMock,
   queryOneMock,
   requireCapabilitySetMock,
+  loadRequestAuthorizationMock,
   createServerFnChain,
 } = vi.hoisted(() => {
   const createServerFnChain = {
@@ -29,6 +30,7 @@ const {
     queryMock: vi.fn(),
     queryOneMock: vi.fn(),
     requireCapabilitySetMock: vi.fn(),
+    loadRequestAuthorizationMock: vi.fn(),
     createServerFnChain,
   };
 });
@@ -39,6 +41,7 @@ vi.mock("@tanstack/react-start", () => ({
 
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapabilitySet: requireCapabilitySetMock,
+  loadRequestAuthorization: loadRequestAuthorizationMock,
 }));
 
 vi.mock("@/server/db/neon.server", () => ({
@@ -229,6 +232,10 @@ describe("client workspace read model", () => {
   it("authorizes both server reads before starting repository work", async () => {
     const authorization = deferred<Record<string, boolean>>();
     requireCapabilitySetMock.mockReturnValueOnce(authorization.promise);
+    loadRequestAuthorizationMock.mockResolvedValue({
+      actor: { profileId: "fixture" },
+      overrides: [],
+    });
     const { getClientWorkspaceRead, getClientWorkspaceSection } =
       await import("@/server-functions/client-workspace");
 
@@ -255,6 +262,7 @@ describe("client workspace read model", () => {
     });
     expect(requireCapabilitySetMock).toHaveBeenLastCalledWith(["accounts.view", "contacts.view"], {
       target: { resourceType: "client", resourceId: "client-1" },
+      context: expect.anything(),
     });
     expect(listClientContactsMock).toHaveBeenCalledWith("client-1");
 
@@ -263,7 +271,7 @@ describe("client workspace read model", () => {
     });
     expect(requireCapabilitySetMock).toHaveBeenLastCalledWith(
       ["accounts.view", "engagements.view"],
-      { target: { resourceType: "client", resourceId: "client-1" } },
+      { target: { resourceType: "client", resourceId: "client-1" }, context: expect.anything() },
     );
 
     await getClientWorkspaceSection({
@@ -271,7 +279,7 @@ describe("client workspace read model", () => {
     });
     expect(requireCapabilitySetMock).toHaveBeenLastCalledWith(
       ["accounts.view", "job_sheets.view"],
-      { target: { resourceType: "client", resourceId: "client-1" } },
+      { target: { resourceType: "client", resourceId: "client-1" }, context: expect.anything() },
     );
   });
 });

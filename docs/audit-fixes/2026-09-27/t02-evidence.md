@@ -1,0 +1,11 @@
+# T02 request authorization and visibility scope — evidence
+
+Implementation commit: `93047f8` (`fix: reuse request authorization context safely`).
+
+- `RequestAuthorization` is created once per handler invocation and passed explicitly to `checkWithContext`. It captures session, actor, overrides and evaluation time. No module-global auth cache was added. Tests verify two concurrent actors remain separate and a new request sees a revoked capability.
+- Admin navigation now evaluates all items from one context. The before-fix regression test observed six calls to session resolution for one navigation request. After the change it observes one session resolution and four authorization-context SQL calls. The four excludes the session lookup itself and is not a runtime latency measurement.
+- App shell uses one validated session to read only that actor's favorites, navigation, and effective capabilities. A missing session still redirects before any favorite or authorization read.
+- `buildVisibilityScope` returns a parameterized SQL predicate for 14 explicit Neon resource types. Unknown resource types fail closed; untrusted aliases are rejected. The predicate respects role grants, manager owner scope, explicit allow and deny, expiry, and inactive actors using the same request snapshot as the policy evaluator.
+- Real disposable PostgreSQL: seven-role account parity (including own/direct report/outside/unowned rows, explicit allow, deny and expired override) and SQL compilation for all 14 types against current migrations passed. The affected auth/shell suite passed 82/82 across 9 files, zero skips.
+- `bunx tsc --noEmit`: exit 0. `bun run lint`: exit 0 with one pre-existing Fast Refresh warning. Pure `bunx vite build`: exit 0. An initial Vite attempt correctly rejected an exported server-only helper from a server-function module; moving that helper into `src/server/admin/navigation.server.ts` resolved it without disabling import protection.
+- No authenticated role sessions or representative runtime request metrics were available. T03 must apply the scope to search/list/count before CO-01–03 can be evaluated. The full migration/seed `bun run build` remains unrun because the existing Neon WebSocket migration CLI cannot target the plain disposable local PostgreSQL service.

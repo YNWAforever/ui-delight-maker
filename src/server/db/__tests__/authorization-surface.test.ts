@@ -168,7 +168,25 @@ import { describe, expect, it } from "vitest";
  * for weeks rather than minutes. If you are about to write either identifier in a comment under
  * src/server-functions/: don't.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 225;
+/*
+ * 225 -> 222 in T02/T03: the Admin navigation loop's per-item gate moved into the
+ * request-context policy evaluator (-1). The dashboard's imported/called single-domain
+ * gate became a multi-domain gate so accounting can enter through job sheets (-2).
+ * The same authorization is still checked before querying, with row scopes in SQL.
+ * Measured each top-level server-function file against audited origin/main before updating.
+ */
+/*
+ * 222 -> 218 in T04, measured per top-level server-function file against the
+ * previous commit: lead-import -1 and client-import -1 because their broad
+ * create-only commit gates became a create-or-update admission check followed
+ * by mandatory transaction-local authorization of every row effect. Event
+ * import -2 because global account/contact create gates were removed; the
+ * campaign gates remain and each actual account/contact create is now checked
+ * against its current target before any row write. The new row authorizer is
+ * under src/server/imports and is covered by real PostgreSQL denial/rollback
+ * tests, so this textual entrypoint counter intentionally does not count it.
+ */
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 218;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

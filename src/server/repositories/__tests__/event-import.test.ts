@@ -1,3 +1,4 @@
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -12,6 +13,10 @@ const {
   createAccountMock: vi.fn(),
   createAccountContactMock: vi.fn(),
   createCampaignMemberMock: vi.fn(),
+}));
+
+vi.mock("@/server/imports/authorize-row.server", () => ({
+  authorizeImportRow: async () => ({ allowed: true }),
 }));
 
 vi.mock("@/server/db/neon.server", () => ({
@@ -34,7 +39,16 @@ vi.mock("@/server/repositories/campaigns", () => ({
 describe("event import repository", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    transactionMock.mockImplementation(async (work: (db: object) => Promise<unknown>) => work({}));
+    transactionMock.mockImplementation(async (work: (db: object) => Promise<unknown>) =>
+      work({
+        query: async (text: string, values: readonly unknown[] = []) => ({
+          rows:
+            text.includes("from accounts") || text.includes("from account_contacts")
+              ? [{ id: values[0] }]
+              : [],
+        }),
+      }),
+    );
     queryMock.mockResolvedValue([]);
     createCampaignMemberMock.mockResolvedValue({ id: "member-1" });
   });
@@ -99,6 +113,7 @@ describe("event import repository", () => {
     const { commitEventImport } = await import("../event-import");
 
     const result = await commitEventImport({
+      authorization: {} as RequestAuthorization,
       campaignId: "campaign-1",
       owner: "owner-1",
       rows: [
@@ -145,6 +160,7 @@ describe("event import repository", () => {
     const { commitEventImport } = await import("../event-import");
 
     const result = await commitEventImport({
+      authorization: {} as RequestAuthorization,
       campaignId: "campaign-1",
       owner: "owner-1",
       rows: [
