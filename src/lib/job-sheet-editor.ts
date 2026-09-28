@@ -104,6 +104,12 @@ export function buildPreviewPortions(input: {
         id: draft.id,
         job_sheet_id: input.jobSheetId,
         target_invoice_date: null,
+        row_version: 0,
+        xero_confirmed_at: null,
+        xero_confirmed_by: null,
+        xero_corrected_at: null,
+        xero_corrected_by: null,
+        xero_correction_reason: null,
         xero_invoice_number: null,
         xero_invoice_reference: null,
         xero_invoice_date: null,
@@ -452,15 +458,45 @@ export function getJobSheetStatusLabel(status: string | null | undefined): strin
  * means an invoice exists — `cancelled` portions are counted out of the denominator, since a
  * cancelled portion is never going to be invoiced.
  */
-export function describeBillingProgress(portions: Array<Pick<JobSheetPortion, "status">>): string {
+type XeroEvidencePortion = Pick<
+  JobSheetPortion,
+  | "status"
+  | "xero_invoice_number"
+  | "xero_invoice_reference"
+  | "xero_invoice_date"
+  | "xero_confirmed_at"
+  | "xero_confirmed_by"
+>;
+
+export function getXeroEvidenceState(
+  portion: XeroEvidencePortion,
+): "not_recorded" | "recorded" | "needs_review" {
+  if (portion.status !== "entered_in_xero") return "not_recorded";
+  const hasIdentity = Boolean(
+    portion.xero_invoice_number?.trim() || portion.xero_invoice_reference?.trim(),
+  );
+  return hasIdentity &&
+    portion.xero_invoice_date &&
+    portion.xero_confirmed_at &&
+    portion.xero_confirmed_by
+    ? "recorded"
+    : "needs_review";
+}
+
+export function describeBillingProgress(portions: XeroEvidencePortion[]): string {
   const billable = portions.filter((portion) => portion.status !== "cancelled");
   if (billable.length === 0) return "No billable portions planned yet";
 
-  const invoiced = billable.filter((portion) => portion.status === "entered_in_xero").length;
+  const recorded = billable.filter(
+    (portion) => getXeroEvidenceState(portion) === "recorded",
+  ).length;
+  const needsReview = billable.filter(
+    (portion) => getXeroEvidenceState(portion) === "needs_review",
+  ).length;
   const cancelled = portions.length - billable.length;
+  const reviewSuffix = needsReview > 0 ? `; ${needsReview} needs review` : "";
   const cancelledSuffix = cancelled > 0 ? `, ${cancelled} cancelled` : "";
-
-  return `${invoiced} of ${billable.length} portion${billable.length === 1 ? "" : "s"} invoiced in Xero${cancelledSuffix}`;
+  return `${recorded} of ${billable.length} portions with recorded invoice evidence${reviewSuffix}${cancelledSuffix}`;
 }
 
 /** Portion status labels. Same reasoning as `JOB_SHEET_STATUS_LABELS` above. */

@@ -1,6 +1,10 @@
 import { DataTableShell, type ColumnDef } from "@/components/sales";
 import { formatCurrencyAmount, formatDate } from "@/lib/format";
-import { describeBillingProgress, getJobSheetPortionStatusLabel } from "@/lib/job-sheet-editor";
+import {
+  describeBillingProgress,
+  getJobSheetPortionStatusLabel,
+  getXeroEvidenceState,
+} from "@/lib/job-sheet-editor";
 import { getPortionReconciliation } from "@/lib/quote-to-cash";
 import type { JobSheetPortion } from "@/lib/types";
 
@@ -64,13 +68,25 @@ export function BillingPortionsTable({
       id: "status",
       header: "Status",
       priority: "primary",
-      cell: (portion) => getJobSheetPortionStatusLabel(portion.status),
+      cell: (portion) => {
+        const evidence = getXeroEvidenceState(portion);
+        return evidence === "needs_review"
+          ? "Needs invoice evidence review"
+          : evidence === "recorded"
+            ? "Manually recorded"
+            : getJobSheetPortionStatusLabel(portion.status);
+      },
     },
     {
       id: "xero",
       header: "Xero reference",
       priority: "primary",
-      cell: (portion) => portion.xero_invoice_reference?.trim() || "Not entered in Xero",
+      cell: (portion) =>
+        portion.xero_invoice_reference?.trim() ||
+        portion.xero_invoice_number?.trim() ||
+        (getXeroEvidenceState(portion) === "needs_review"
+          ? "Needs review"
+          : "No invoice reference"),
     },
     {
       id: "amount",

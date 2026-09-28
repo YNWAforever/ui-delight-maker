@@ -36,7 +36,7 @@ import { formatCurrencyAmount, formatDateTime } from "@/lib/format";
 import {
   buildPortionSavePayload,
   buildPreviewPortions,
-  buildXeroSavePayload,
+  getXeroEvidenceState,
   canShowAcceptAndLockAction,
   createPortionDraft,
   describeBillingProgress,
@@ -66,7 +66,9 @@ import type { JobSheetBillingType, JobSheetPortion, JobSheetPortionStatus } from
 import {
   acceptJobSheetForAccounting,
   updateJobSheetPortions,
-  updatePortionXeroReference,
+  updateXeroNotes,
+  confirmXeroEntry,
+  correctXeroEntry,
 } from "@/server-functions/job-sheets";
 import { getJobSheetRead } from "@/server-functions/operations";
 
@@ -95,7 +97,7 @@ const PORTION_STATUS_OPTIONS: Array<{ value: JobSheetPortionStatus; label: strin
  * a total the database was never going to hold.
  */
 const XERO_LOCKED_REASON =
-  "Entered in Xero. Amount, billing type and target invoice date are settled in Xero and are not editable here.";
+  "Recorded invoice entries lock the amount, billing type and target invoice date here. Xero itself is not changed by ClientOps.";
 
 type ConfirmState = {
   title: string;
@@ -173,6 +175,7 @@ function JobSheetDetailPage() {
   const [billingError, setBillingError] = useState<string | null>(null);
   const [portionErrors, setPortionErrors] = useState<Record<string, string>>({});
   const [xeroErrors, setXeroErrors] = useState<Record<string, string>>({});
+  const [xeroCorrectionReasons, setXeroCorrectionReasons] = useState<Record<string, string>>({});
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const portionDrafts = billingDraftsByJobSheetId[jobSheet.id] ?? toPortionDrafts(portions);
   const xeroDrafts = xeroDraftsByJobSheetId[jobSheet.id] ?? toXeroDrafts(portions);
@@ -398,74 +401,157 @@ function JobSheetDetailPage() {
       },
     });
 
-  const saveXeroReference = async (portionId: string) => {
-    const draft = xeroDrafts[portionId];
-    if (!draft) return;
-
+  const runXeroMutation = async (
+    portionId: string,
+    action: () => Promise<JobSheetPortion>,
+    successMessage: string,
+    noteOnly = false,
+  ) => {
     setXeroErrors((current) => {
       const next = { ...current };
       delete next[portionId];
       return next;
     });
-
     if (hasUnsavedBillingChanges) {
       setXeroErrors((current) => ({
         ...current,
-        [portionId]: "Save the billing plan before saving Xero references.",
+        [portionId]: "Save the billing plan before recording Xero information.",
       }));
-      return;
+      return false;
     }
-
     setSavingXeroFor(portionId);
     try {
-      const savedPortion = await updatePortionXeroReference({
-        data: { portion_id: portionId, ...buildXeroSavePayload(draft) },
-      });
+      const saved = await action();
       setXeroDrafts((current) => ({
         ...current,
-        [portionId]: toXeroDrafts([savedPortion])[portionId],
+        [portionId]: noteOnly
+          ? { ...current[portionId], xero_notes: saved.xero_notes ?? "" }
+          : toXeroDrafts([saved])[portionId],
       }));
-      toast.success("Manual Xero reference saved");
+      toast.success(successMessage);
       await invalidateJobSheetReads("xero");
+      return true;
     } catch (error) {
       const message = toSafeErrorMessage(error);
       setXeroErrors((current) => ({ ...current, [portionId]: message }));
       toast.error(message);
+      return false;
     } finally {
       setSavingXeroFor(null);
     }
   };
 
-  /**
-   * Clearing all four Xero fields is not a save, it is an unlock.
-   *
-   * `updateJobSheetXeroReference` flips the portion from `entered_in_xero` back to `planned`
-   * when every field lands null, which also removes the guard that was protecting that
-   * portion's amount — on an accepted, locked job sheet, with nothing on screen saying so.
-   */
-  const requestSaveXero = (portionId: string) => {
-    const draft = xeroDrafts[portionId];
-    if (!draft) return;
-
-    const payload = buildXeroSavePayload(draft);
-    const clearsEverything = Object.values(payload).every((value) => value === null);
+  const saveXeroNote = (portionId: string) => {
     const persisted = portions.find((portion) => portion.id === portionId);
+    const draft = xeroDrafts[portionId];
+    if (!persisted || !draft) return;
+    const idempotencyKey = crypto.randomUUID();
+    void runXeroMutation(
+      portionId,
+      () =>
+        updateXeroNotes({
+          data: {
+            portionId,
+            notes: draft.xero_notes,
+            expectedVersion: persisted.row_version,
+            idempotencyKey,
+          },
+        }),
+      "Accounting note saved",
+      true,
+    );
+  };
 
-    if (clearsEverything && persisted?.status === "entered_in_xero") {
-      setConfirm({
-        title: "Remove every Xero reference from this portion?",
-        description: `"${persisted.name}" returns to Planned. ClientOps stops recording that an invoice exists for it in Xero, and its amount, currency, billing type and target invoice date become editable again${
-          commercialLocked ? " even though this job sheet is accepted and locked" : ""
-        }.`,
-        label: "Remove references",
-        action: () => {
-          void saveXeroReference(portionId);
-        },
-      });
+  const requestConfirmXeroEntry = (portionId: string) => {
+    const persisted = portions.find((portion) => portion.id === portionId);
+    const draft = xeroDrafts[portionId];
+    if (!persisted || !draft || persisted.status !== "planned") return;
+    const invoiceNumber = draft.xero_invoice_number.trim();
+    const reference = draft.xero_invoice_reference.trim();
+    if ((!invoiceNumber && !reference) || !draft.xero_invoice_date) {
+      setXeroErrors((current) => ({
+        ...current,
+        [portionId]: "Enter an invoice number or reference and its invoice date.",
+      }));
       return;
     }
+    const idempotencyKey = crypto.randomUUID();
+    setConfirm({
+      title: "Record this manual Xero entry?",
+      description:
+        "ClientOps will record the invoice identity and date you entered. This action does not contact Xero or verify delivery there.",
+      label: "Record manual entry",
+      action: () => {
+        void runXeroMutation(
+          portionId,
+          () =>
+            confirmXeroEntry({
+              data: {
+                portionId,
+                invoiceNumber,
+                reference,
+                invoiceDate: draft.xero_invoice_date,
+                expectedVersion: persisted.row_version,
+                idempotencyKey,
+              },
+            }),
+          "Manual invoice entry recorded",
+        );
+      },
+    });
+  };
 
-    void saveXeroReference(portionId);
+  const requestCorrectXeroEntry = (
+    portionId: string,
+    nextStatus: "planned" | "entered_in_xero",
+  ) => {
+    const persisted = portions.find((portion) => portion.id === portionId);
+    const draft = xeroDrafts[portionId];
+    const reason = xeroCorrectionReasons[portionId]?.trim() ?? "";
+    if (!persisted || !draft || persisted.status !== "entered_in_xero") return;
+    if (!reason) {
+      setXeroErrors((current) => ({
+        ...current,
+        [portionId]: "Enter a correction reason before changing recorded invoice evidence.",
+      }));
+      return;
+    }
+    const idempotencyKey = crypto.randomUUID();
+    setConfirm({
+      title: nextStatus === "planned" ? "Reopen this invoice entry?" : "Correct invoice evidence?",
+      description:
+        nextStatus === "planned"
+          ? "This records a reasoned correction and returns the portion to Planned. It does not void anything in Xero."
+          : "This changes the manually recorded invoice identity in ClientOps. It does not change Xero.",
+      label: nextStatus === "planned" ? "Reopen with reason" : "Save correction",
+      action: () => {
+        void runXeroMutation(
+          portionId,
+          () =>
+            correctXeroEntry({
+              data: {
+                portionId,
+                expectedVersion: persisted.row_version,
+                idempotencyKey,
+                reason,
+                patch: {
+                  status: nextStatus,
+                  ...(nextStatus === "entered_in_xero"
+                    ? {
+                        invoiceNumber: draft.xero_invoice_number,
+                        reference: draft.xero_invoice_reference,
+                        invoiceDate: draft.xero_invoice_date,
+                      }
+                    : {}),
+                },
+              },
+            }),
+          "Manual invoice evidence corrected",
+        ).then((saved) => {
+          if (saved) setXeroCorrectionReasons((current) => ({ ...current, [portionId]: "" }));
+        });
+      },
+    });
   };
 
   const acceptanceGateAlert = getAcceptanceGateAlertConfig({
@@ -560,6 +646,8 @@ function JobSheetDetailPage() {
                 {portionDrafts.map((portion, index) => {
                   const persisted = portions.find((row) => row.id === portion.id) ?? null;
                   const enteredInXero = portion.status === "entered_in_xero";
+                  const legacyEvidenceReview =
+                    persisted && getXeroEvidenceState(persisted) === "needs_review";
                   const commercialFieldsDisabled = commercialLocked || editorBusy || enteredInXero;
                   const removalBlockedReason = persisted
                     ? getPortionRemovalBlockedReason(persisted)
@@ -633,7 +721,9 @@ function JobSheetDetailPage() {
                           <Label>Status</Label>
                           {enteredInXero ? (
                             <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
-                              Entered in Xero
+                              {legacyEvidenceReview
+                                ? "Needs invoice evidence review"
+                                : "Manual entry recorded"}
                             </div>
                           ) : (
                             <Select
@@ -771,7 +861,7 @@ function JobSheetDetailPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-              <CardTitle className="text-base">Manual Xero references</CardTitle>
+              <CardTitle className="text-base">Manual invoice evidence</CardTitle>
               {hasUnsavedXeroChanges && (
                 <Button
                   variant="ghost"
@@ -788,8 +878,8 @@ function JobSheetDetailPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                ClientOps stores manual reference metadata only. Xero remains the official invoicing
-                and accounting system.
+                ClientOps records what accounting staff enter here. It does not sync, send, or
+                verify an invoice in Xero; Xero remains the official accounting system.
               </p>
               {hasUnsavedBillingChanges && (
                 <p className="text-sm text-destructive">
@@ -806,13 +896,17 @@ function JobSheetDetailPage() {
                     xero_notes: "",
                   };
                   const rowError = xeroErrors[portion.id];
-                  const persistedDraft = toXeroDrafts(
-                    portions.filter((row) => row.id === portion.id),
-                  )[portion.id];
-                  const rowDirty =
-                    persistedDraft !== undefined &&
-                    JSON.stringify(buildXeroSavePayload(draft)) !==
-                      JSON.stringify(buildXeroSavePayload(persistedDraft));
+                  const persisted = portions.find((row) => row.id === portion.id);
+                  const persistedDraft = persisted ? toXeroDrafts([persisted])[portion.id] : null;
+                  const noteDirty =
+                    persistedDraft !== null && draft.xero_notes !== persistedDraft.xero_notes;
+                  const evidenceDirty =
+                    persistedDraft !== null &&
+                    (draft.xero_invoice_number !== persistedDraft.xero_invoice_number ||
+                      draft.xero_invoice_reference !== persistedDraft.xero_invoice_reference ||
+                      draft.xero_invoice_date !== persistedDraft.xero_invoice_date);
+                  const needsReview =
+                    persisted && getXeroEvidenceState(persisted) === "needs_review";
 
                   return (
                     <div key={portion.id} className="rounded-md border border-border p-4">
@@ -823,15 +917,47 @@ function JobSheetDetailPage() {
                             {formatCurrencyAmount(portion.amount, portion.currency)}
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => requestSaveXero(portion.id)}
-                          disabled={editorBusy || hasUnsavedBillingChanges || !rowDirty}
-                        >
-                          <Save className="mr-2 h-4 w-4" />
-                          {savingXeroFor === portion.id ? "Saving…" : "Save Xero reference"}
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => saveXeroNote(portion.id)}
+                            disabled={editorBusy || hasUnsavedBillingChanges || !noteDirty}
+                          >
+                            <Save className="mr-2 h-4 w-4" /> Save note
+                          </Button>
+                          {persisted?.status === "planned" && (
+                            <Button
+                              size="sm"
+                              onClick={() => requestConfirmXeroEntry(portion.id)}
+                              disabled={editorBusy || hasUnsavedBillingChanges}
+                            >
+                              Record manual entry
+                            </Button>
+                          )}
+                          {persisted?.status === "entered_in_xero" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  requestCorrectXeroEntry(portion.id, "entered_in_xero")
+                                }
+                                disabled={editorBusy || hasUnsavedBillingChanges || !evidenceDirty}
+                              >
+                                Correct invoice details
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => requestCorrectXeroEntry(portion.id, "planned")}
+                                disabled={editorBusy || hasUnsavedBillingChanges}
+                              >
+                                Reopen after void
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
                       <div className="mt-4 grid gap-3 md:grid-cols-2">
                         <div className="space-y-1.5">
@@ -845,7 +971,7 @@ function JobSheetDetailPage() {
                                 [portion.id]: { ...draft, xero_invoice_number: event.target.value },
                               }))
                             }
-                            disabled={editorBusy}
+                            disabled={editorBusy || persisted?.status === "cancelled"}
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -862,7 +988,7 @@ function JobSheetDetailPage() {
                                 },
                               }))
                             }
-                            disabled={editorBusy}
+                            disabled={editorBusy || persisted?.status === "cancelled"}
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -877,7 +1003,7 @@ function JobSheetDetailPage() {
                                 [portion.id]: { ...draft, xero_invoice_date: event.target.value },
                               }))
                             }
-                            disabled={editorBusy}
+                            disabled={editorBusy || persisted?.status === "cancelled"}
                           />
                         </div>
                         <div className="space-y-1.5 md:col-span-2">
@@ -896,6 +1022,31 @@ function JobSheetDetailPage() {
                           />
                         </div>
                       </div>
+                      {needsReview && (
+                        <p className="mt-3 text-xs text-warning-foreground">
+                          Legacy entry needs invoice evidence review. No Xero confirmation is
+                          inferred.
+                        </p>
+                      )}
+                      {persisted?.status === "entered_in_xero" && (
+                        <div className="mt-3 space-y-1.5">
+                          <Label htmlFor={`xero-correction-reason-${portion.id}`}>
+                            Correction or void reason
+                          </Label>
+                          <Textarea
+                            id={`xero-correction-reason-${portion.id}`}
+                            value={xeroCorrectionReasons[portion.id] ?? ""}
+                            onChange={(event) =>
+                              setXeroCorrectionReasons((current) => ({
+                                ...current,
+                                [portion.id]: event.target.value,
+                              }))
+                            }
+                            disabled={editorBusy}
+                            className="min-h-[64px]"
+                          />
+                        </div>
+                      )}
                       {rowError && (
                         <p role="alert" className="mt-3 text-xs text-destructive">
                           {rowError}

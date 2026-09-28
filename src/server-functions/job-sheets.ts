@@ -5,7 +5,9 @@ import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
   IdSchema,
   JobSheetMutationSchema,
-  XeroReferenceSchema,
+  XeroConfirmSchema,
+  XeroCorrectSchema,
+  XeroNotesSchema,
 } from "@/lib/operations/input-schemas";
 import {
   acceptJobSheet as acceptJobSheetInRepository,
@@ -13,10 +15,14 @@ import {
   listJobSheets,
   listJobSheetsPage,
   replaceJobSheetPortions,
-  updateJobSheetXeroReference,
   type JobSheetFilters,
   type JobSheetPageFilters,
 } from "@/server/repositories/job-sheets";
+import {
+  confirmXeroEntryCommand,
+  correctXeroEntryCommand,
+  updateXeroNotesCommand,
+} from "@/server/commands/billing-portion.server";
 
 export const getJobSheets = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as JobSheetFilters)
@@ -64,13 +70,42 @@ export const acceptJobSheetForAccounting = createServerFn({ method: "POST" })
     return acceptJobSheetInRepository(data.id, { accepted_by: session.profile.id });
   });
 
-export const updatePortionXeroReference = createServerFn({ method: "POST" })
-  .validator((data: unknown) => parseOperationInput(XeroReferenceSchema, data))
+export const updateXeroNotes = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parseOperationInput(XeroNotesSchema, data))
   .handler(async ({ data }) => {
-    await requireCapability("job_sheets.update_billing", {
-      resourceType: "job_sheet_portion",
-      resourceId: data.portion_id,
-    });
-    await requireNeonAuthSession();
-    return updateJobSheetXeroReference(data);
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "job_sheets.update_billing",
+      { resourceType: "job_sheet_portion", resourceId: data.portionId },
+      context,
+    );
+    return updateXeroNotesCommand(context, data);
   });
+
+export const confirmXeroEntry = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parseOperationInput(XeroConfirmSchema, data))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "job_sheets.update_billing",
+      { resourceType: "job_sheet_portion", resourceId: data.portionId },
+      context,
+    );
+    return confirmXeroEntryCommand(context, data);
+  });
+
+export const correctXeroEntry = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parseOperationInput(XeroCorrectSchema, data))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "job_sheets.update_billing",
+      { resourceType: "job_sheet_portion", resourceId: data.portionId },
+      context,
+    );
+    return correctXeroEntryCommand(context, data);
+  });
+
+// A stale client may still import the old symbol, but its old invoice payload
+// fails the strict notes-only validator instead of silently changing state.
+export const updatePortionXeroReference = updateXeroNotes;

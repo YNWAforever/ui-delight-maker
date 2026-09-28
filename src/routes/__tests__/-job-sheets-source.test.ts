@@ -40,6 +40,12 @@ const makePortion = (overrides: Partial<JobSheetPortion>): JobSheetPortion => ({
   target_invoice_date: "2026-07-10",
   billing_type: "progress",
   status: "planned",
+  row_version: 0,
+  xero_confirmed_at: null,
+  xero_confirmed_by: null,
+  xero_corrected_at: null,
+  xero_corrected_by: null,
+  xero_correction_reason: null,
   xero_invoice_number: null,
   xero_invoice_reference: null,
   xero_invoice_date: null,
@@ -104,7 +110,7 @@ describe("job sheet accounting workspace behavior", () => {
     expect(markup).toContain("HKD 1,000");
     expect(markup).toContain("Billing plan reconciles with the accepted quote total.");
     expect(markup).toContain("No billing note");
-    expect(markup).toContain("Not entered in Xero");
+    expect(markup).toContain("No invoice reference");
     expect(markup).toContain("Progress");
     expect(markup).toContain("10 Jul 2026");
     expect(markup).toContain("01 Aug 2026");

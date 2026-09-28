@@ -199,7 +199,13 @@ import { describe, expect, it } from "vitest";
  * each command rechecks current actor and locked quote scope in PostgreSQL.
  * Measured across top-level server-function files after the change.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 222;
+/*
+ * 222 -> 224 in T08: one former Xero write gate was replaced by three
+ * separate note, manual confirmation and correction gates (+2). Each scopes
+ * to the portion, then the command rechecks current actor and row permission
+ * after locking the portion in PostgreSQL.
+ */
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 224;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {
