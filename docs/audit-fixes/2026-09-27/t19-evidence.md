@@ -34,3 +34,7 @@ These are direct SQL component timings. They omit request authentication, author
 ## Remaining gates
 
 Authenticated multi-role route timing, 30 warm plus 10 cold browser navigations, full request DB count/duration, route payload, and same-environment before/after runtime p95 remain **blocked** until isolated login sessions and a local app runtime are supplied. The 800 ms list p95 and 150 KiB page payload targets therefore have no pass claim. Production performance, LCP and INP were not measured.
+
+## Stacked PR contract repair
+
+After the T19 shell extraction, the sign-out cache source contract still inspected `src/routes/__root.tsx`. At merge head `ae48b9e`, the existing test failed 1/3 while the actual sign-out handler in `src/components/authenticated-app-shell.tsx` still cleared the query cache before route invalidation and login navigation. Commit `095471b` points the same contract at the actual handler; the focused tests passed 3/3 and deploy-safety passed 1/1. TypeScript and full lint passed (one existing Fast Refresh warning). This correction changes no runtime behavior or release gate. Exact-head GitHub checks are pending at this evidence commit.

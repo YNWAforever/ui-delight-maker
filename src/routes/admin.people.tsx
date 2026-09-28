@@ -228,7 +228,7 @@ function AdminPeopleIndex() {
         exact: true,
       }),
       queryClient.invalidateQueries({ queryKey: adminPeopleOptionsQueryKey(), exact: true }),
-      queryClient.invalidateQueries({ queryKey: ["people"] }),
+      queryClient.invalidateQueries({ queryKey: crmQueryKeys.people.all() }),
       queryClient.invalidateQueries({ queryKey: adminOrganizationQueryKey, exact: true }),
     ];
     if (profileId) {

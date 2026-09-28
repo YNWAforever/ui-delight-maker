@@ -25,3 +25,9 @@ Branch: `codex/clientops-workspace-access`, stacked on T17 evidence commit `714d
 - Full suite on a fresh isolated database is scheduled for T22; no T18 full-suite result is claimed.
 - No migration is required for T18. Production invitation data and status were not read or mutated.
 - Authenticated role UI, preview checks, and release review remain external gates.
+
+## PR #96 contract repair — 2026-09-28
+
+- The old PR #96 contract run had three failures. Its Admin people raw key failure was fixed in green parent PR #95. The remaining two were reproduced locally: `getInvitationLandingState` and `getCurrentWorkspaceAccess` were not accounted for in the handler authorization contract, and `login` / `login.$authPath` were missing from the loader inventory.
+- Read-only inspection confirmed the invitation endpoint validates and hashes the bearer token, discloses preview fields only for a ready matching invitation, and returns state-only results otherwise. The workspace endpoint accepts no subject parameter and returns only the requesting identity access state. Login loaders redirect active identities and reuse these server-side reads; T18 behavior tests cover states and redirects.
+- Commit `a1e9ab2` records those explicit reasons and inventories the two public login loaders without removing assertions. The two tests were RED before and passed after; 3 related files/8 tests, TypeScript and changed-file lint passed. The inherited source-only Vercel build safety test also passed. Remote contract and preview results remain a separate gate; authenticated multi-account UAT remains blocked.
