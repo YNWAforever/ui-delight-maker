@@ -20,6 +20,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "typecheck:runtime": "tsc --noEmit --strict --module esnext --moduleResolution bundler --target es2022 --types node --esModuleInterop --skipLibCheck scripts/clientops/measure-runtime.ts",
     "test": "vitest run --no-file-parallelism",
     "format": "prettier --write ."
   },
