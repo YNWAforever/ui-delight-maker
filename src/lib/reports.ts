@@ -303,6 +303,12 @@ export function reportCsvValue(field: ReportField, value: unknown): string | num
 export function reportCsvColumns(report: ReportId): CsvColumn<ReportRow>[] {
   return REPORT_SPECS[report].fields.map((field) => ({
     header: field.header,
+    kind:
+      field.kind === "period"
+        ? "date"
+        : field.kind === "label" || field.kind === "status"
+          ? "text"
+          : "number",
     value: (row: ReportRow) => reportCsvValue(field, row[field.key]),
   }));
 }

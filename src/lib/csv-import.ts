@@ -1,48 +1,125 @@
 export type ImportRow = Record<string, string>;
 
-/**
- * Split a CSV into header-keyed rows, honouring quoted fields and doubled quotes.
- *
- * Nothing here is specific to any one importer — it was named `parseClientImportCsv`
- * when the client import was the only caller.
- */
-export function parseImportCsv(raw: string): ImportRow[] {
-  const lines = raw.split(/\r?\n/).filter((line) => line.trim().length > 0);
-  if (lines.length <= 1) return [];
+export type ParsedImportRow = {
+  recordIndex: number;
+  startLine: number;
+  values: ImportRow;
+};
 
-  function splitLine(line: string): string[] {
-    const fields: string[] = [];
-    let current = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === "," && !inQuotes) {
-        fields.push(current);
-        current = "";
-      } else {
-        current += char;
-      }
+export type CsvParseError = {
+  recordIndex: number;
+  startLine: number;
+  reason: string;
+};
+
+export type ImportCsvParseResult = {
+  rows: ParsedImportRow[];
+  errors: CsvParseError[];
+};
+
+/**
+ * Parse the whole file as RFC-style records. A quoted field can span physical lines;
+ * line numbers refer to the first physical line of each logical record.
+ */
+export function parseImportCsvDetailed(raw: string): ImportCsvParseResult {
+  const text = raw.startsWith("\uFEFF") ? raw.slice(1) : raw;
+  const records: Array<{ fields: string[]; startLine: number }> = [];
+  const errors: CsvParseError[] = [];
+  let fields: string[] = [];
+  let field = "";
+  let state: "start" | "plain" | "quoted" | "closed" = "start";
+  let line = 1;
+  let startLine = 1;
+
+  const finish = () => {
+    fields.push(field);
+    if (!(fields.length === 1 && fields[0].trim() === "")) {
+      records.push({ fields, startLine });
     }
-    fields.push(current);
-    return fields;
+    fields = [];
+    field = "";
+    state = "start";
+  };
+
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index];
+    if (state === "quoted") {
+      if (char === '"') {
+        if (text[index + 1] === '"') {
+          field += '"';
+          index++;
+        } else {
+          state = "closed";
+        }
+      } else if (char === "\r" && text[index + 1] === "\n") {
+        field += "\r\n";
+        index++;
+        line++;
+      } else {
+        field += char;
+        if (char === "\r" || char === "\n") line++;
+      }
+      continue;
+    }
+
+    if (char === ",") {
+      fields.push(field);
+      field = "";
+      state = "start";
+      continue;
+    }
+    if (char === "\r" || char === "\n") {
+      if (char === "\r" && text[index + 1] === "\n") index++;
+      finish();
+      line++;
+      startLine = line;
+      continue;
+    }
+    if (char === '"' && state === "start") {
+      state = "quoted";
+      continue;
+    }
+    if (state === "closed" || char === '"') {
+      errors.push({
+        recordIndex: records.length,
+        startLine,
+        reason: "Unexpected character after quoted field",
+      });
+      break;
+    }
+    field += char;
+    state = "plain";
   }
 
-  const headers = splitLine(lines[0]).map((h) => h.trim());
-  return lines.slice(1).map((line) => {
-    const values = splitLine(line);
-    const row: ImportRow = {};
-    headers.forEach((header, i) => {
-      row[header] = (values[i] ?? "").trim();
-    });
-    return row;
-  });
+  if (errors.length === 0 && state === "quoted") {
+    errors.push({ recordIndex: records.length, startLine, reason: "Unclosed quoted field" });
+  } else if (errors.length === 0 && (fields.length > 0 || field !== "" || state === "closed")) {
+    finish();
+  }
+
+  const [header, ...data] = records;
+  if (!header) return { rows: [], errors };
+  const headers = header.fields.map((value) => value.trim());
+  return {
+    rows: data.map((record, index) => {
+      const values: ImportRow = {};
+      headers.forEach((name, column) => {
+        values[name] = (record.fields[column] ?? "").trim();
+      });
+      return { recordIndex: index + 1, startLine: record.startLine, values };
+    }),
+    errors,
+  };
+}
+
+/** Existing import wizards consume plain rows. Syntax errors stop preview and commit. */
+export function parseImportCsv(raw: string): ImportRow[] {
+  const result = parseImportCsvDetailed(raw);
+  if (result.errors.length > 0) {
+    const error = result.errors[0];
+    throw new Error("CSV line " + error.startLine + ": " + error.reason);
+  }
+  return result.rows.map((row) => row.values);
 }
 
 export type ImportRowError = { row: ImportRow; reason: string };

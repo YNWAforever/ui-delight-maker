@@ -1,3 +1,4 @@
+import { parseImportCsv } from "@/lib/csv-import";
 import type { AttendeeStatus } from "@/lib/types";
 
 import { findAccountMatch, normalizeContactEmail, type AccountMatchResult } from "./matching";
@@ -46,30 +47,6 @@ export type EventImportValidationResult = {
   valid: EventImportValidRow[];
   errors: EventImportError[];
 };
-
-function parseCsvLine(line: string) {
-  const values: string[] = [];
-  let current = "";
-  let quoted = false;
-
-  for (const char of line) {
-    if (char === '"') {
-      quoted = !quoted;
-      continue;
-    }
-
-    if (char === "," && !quoted) {
-      values.push(current);
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current);
-  return values.map((value) => value.trim());
-}
 
 function normalizeAttendeeStatus(value: string): AttendeeStatus | null {
   const normalized = value.trim().toLowerCase();
@@ -122,26 +99,21 @@ function findContactMatch(input: {
 }
 
 export function parseEventAttendeeCsv(csv: string): EventImportRow[] {
-  const [headerLine, ...lines] = csv.trim().split(/\r?\n/);
-  const headers = parseCsvLine(headerLine).map((header) => header.toLowerCase());
-
-  return lines.filter(Boolean).map((line) => {
-    const values = parseCsvLine(line);
-    const record = Object.fromEntries(
-      headers.map((header, index) => [header, values[index] ?? ""]),
+  return parseImportCsv(csv).map((record) => {
+    const values = Object.fromEntries(
+      Object.entries(record).map(([header, value]) => [header.toLowerCase(), value]),
     );
-
     return {
-      company_name: record.company_name ?? "",
-      contact_name: record.contact_name ?? "",
-      email: record.email ?? "",
-      phone: record.phone ?? "",
-      attendee_status: record.attendee_status || "attended",
-      interests: (record.interests ?? "")
+      company_name: values.company_name ?? "",
+      contact_name: values.contact_name ?? "",
+      email: values.email ?? "",
+      phone: values.phone ?? "",
+      attendee_status: values.attendee_status || "attended",
+      interests: (values.interests ?? "")
         .split(";")
         .map((interest) => interest.trim())
         .filter(Boolean),
-      notes: record.notes ?? "",
+      notes: values.notes ?? "",
     };
   });
 }

@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { parseImportCsv } from "@/lib/csv-import";
-import { CSV_RECORD_SEPARATOR, UTF8_BOM, csvFileName, escapeCsvValue, toCsv } from "@/lib/csv";
+import {
+  CSV_RECORD_SEPARATOR,
+  UTF8_BOM,
+  csvFileName,
+  escapeCsvValue,
+  escapeSpreadsheetText,
+  toCsv,
+} from "@/lib/csv";
 
 /**
  * The quoting rules, tested against the characters that break naive writers.
@@ -61,6 +68,41 @@ const columns = [
   { header: "Amount (HKD)", value: (row: Row) => row.amount },
 ];
 
+describe("spreadsheet text safety", () => {
+  it.each(["=1+1", "+cmd", "-cmd", "@SUM(1)", "  =1+1", "\t=1+1", "\r=1+1"])(
+    "prefixes dangerous text %j before CSV quoting",
+    (value) => {
+      expect(escapeSpreadsheetText(value)).toBe("'" + value);
+      const csv = toCsv(
+        [{ value }],
+        [{ header: "value", kind: "text", value: (row) => row.value }],
+      );
+      expect(parseImportCsv(csv)[0].value).toBe("'" + value);
+    },
+  );
+
+  it("preserves a typed decimal string without converting it to floating point", () => {
+    const csv = toCsv(
+      [{ amount: "-12.50" }],
+      [{ header: "amount", kind: "number", value: (row) => row.amount }],
+      { bom: false },
+    );
+    expect(csv).toBe("amount\r\n-12.50\r\n");
+  });
+
+  it("keeps numeric minus a number and quotes dangerous report text", () => {
+    const csv = toCsv(
+      [{ amount: -12.5, note: "=1+1" }],
+      [
+        { header: "amount", kind: "number", value: (row) => row.amount },
+        { header: "note", kind: "text", value: (row) => row.note },
+      ],
+      { bom: false },
+    );
+    expect(csv).toBe("amount,note\r\n-12.5,'=1+1\r\n");
+  });
+});
+
 describe("toCsv", () => {
   it("writes a header row and CRLF-terminated records with a BOM", () => {
     const csv = toCsv([{ company: "Acme", note: "ok", amount: 10 }], columns);
@@ -105,10 +147,7 @@ describe("toCsv", () => {
   });
 
   it("round-trips through the CSV reader this repository already ships", () => {
-    // Not a substitute for the assertions above — it is the compatibility claim. The import
-    // parser splits on line breaks before it splits on commas, so a field containing a newline
-    // is outside what it can read; that is a limitation of the reader, and the reason this
-    // case is written with single-line values.
+    // Not a substitute for the assertions above — it is the compatibility claim.
     const csv = toCsv(
       [
         { company: 'Acme, "The" Co', note: "renewal; upsell", amount: 1240000 },
@@ -121,7 +160,7 @@ describe("toCsv", () => {
       ],
     );
 
-    expect(parseImportCsv(csv.slice(UTF8_BOM.length))).toEqual([
+    expect(parseImportCsv(csv)).toEqual([
       { company_name: 'Acme, "The" Co', note: "renewal; upsell", amount: "1240000" },
       { company_name: "Northstar", note: "", amount: "0" },
     ]);

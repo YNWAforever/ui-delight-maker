@@ -131,8 +131,11 @@ function LeadImportWizard() {
       setValid(result.valid);
       setErrors(result.errors);
     } catch (error) {
+      setRows([]);
       setValid([]);
       setErrors([]);
+      setSummary(null);
+      setParsedEmpty(false);
       toast.error(toSafeErrorMessage(error));
     } finally {
       setIsValidating(false);
