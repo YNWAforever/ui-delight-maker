@@ -1,6 +1,13 @@
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from "react";
 import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogDescription,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { invitationInputSchema } from "@/lib/admin/schemas";
 import type { UserRole } from "@/lib/admin/types";
@@ -122,178 +129,182 @@ export function InviteUsersDialog({
         onOpenChange(nextOpen);
       }}
     >
-      <DialogContent
-        className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl gap-0 overflow-y-auto p-0 sm:rounded-md [&>button:last-child]:hidden"
-        onOpenAutoFocus={(event) => {
-          event.preventDefault();
-          emailRef.current?.focus();
-        }}
-        onCloseAutoFocus={(event) => {
-          if (!triggerRef?.current) return;
-          event.preventDefault();
-          triggerRef.current.focus();
-        }}
-        onEscapeKeyDown={(event) => {
-          if (submitting) event.preventDefault();
-        }}
-        onPointerDownOutside={(event) => {
-          if (submitting) event.preventDefault();
-        }}
-      >
-        <button
-          type="button"
-          aria-label="Close invitation dialog"
-          disabled={submitting}
-          onClick={() => onOpenChange(false)}
-          className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      <DialogPortal>
+        <DialogOverlay className="bg-black/40" />
+        <DialogPrimitive.Content
+          className="fixed left-1/2 top-4 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 overflow-y-auto rounded-md border border-border bg-background shadow-xl md:top-1/2 md:-translate-y-1/2"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            emailRef.current?.focus();
+          }}
+          onCloseAutoFocus={(event) => {
+            if (!triggerRef?.current) return;
+            event.preventDefault();
+            triggerRef.current.focus();
+          }}
+          onEscapeKeyDown={(event) => {
+            if (submitting) event.preventDefault();
+          }}
+          onPointerDownOutside={(event) => {
+            if (submitting) event.preventDefault();
+          }}
         >
-          <X className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <div className="border-b border-border px-5 py-4 pr-14">
-          <DialogTitle className="text-base font-semibold text-foreground">
-            Invite users
-          </DialogTitle>
-          <DialogDescription className="mt-1 text-xs text-muted-foreground">
-            Invitations expire in seven days and use the selected role as the initial access
-            baseline.
-          </DialogDescription>
-        </div>
-        <form onSubmit={submit} className="space-y-4 px-5 py-5">
-          <label className="block text-sm font-medium text-foreground">
-            Email addresses
-            <textarea
-              ref={emailRef}
-              aria-label="Email addresses"
-              name="invitation-emails"
-              rows={4}
-              value={emailText}
-              onChange={(event) => setEmailText(event.target.value)}
-              placeholder="person@fimmick.com"
-              className="mt-1 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <span className="mt-1 block text-xs font-normal text-muted-foreground">
-              Separate multiple addresses with commas or new lines.
-            </span>
-          </label>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm font-medium text-foreground">
-              Role
-              <select
-                aria-label="Invitation role"
-                value={role}
-                onChange={(event) => setRole(event.target.value as UserRole)}
-                className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="sales">Sales</option>
-                <option value="client_success">Client Success</option>
-                <option value="accounting">Accounting</option>
-                <option value="read_only">Read Only</option>
-                <option value="manager">Manager</option>
-                <option value="admin">Admin</option>
-                <option value="super_admin">Super Admin</option>
-              </select>
+          {" "}
+          <button
+            type="button"
+            aria-label="Close invitation dialog"
+            disabled={submitting}
+            onClick={() => onOpenChange(false)}
+            className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <div className="border-b border-border px-5 py-4 pr-14">
+            <DialogTitle className="text-base font-semibold text-foreground">
+              Invite users
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-xs text-muted-foreground">
+              Invitations expire in seven days and use the selected role as the initial access
+              baseline.
+            </DialogDescription>
+          </div>
+          <form onSubmit={submit} className="space-y-4 px-5 py-5">
+            <label className="block text-sm font-medium text-foreground">
+              Email addresses
+              <textarea
+                ref={emailRef}
+                aria-label="Email addresses"
+                name="invitation-emails"
+                rows={4}
+                value={emailText}
+                onChange={(event) => setEmailText(event.target.value)}
+                placeholder="person@fimmick.com"
+                className="mt-1 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                Separate multiple addresses with commas or new lines.
+              </span>
             </label>
-            <label className="text-sm font-medium text-foreground">
-              Department
-              {departments.length > 0 ? (
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-sm font-medium text-foreground">
+                Role
                 <select
-                  aria-label="Invitation department"
-                  value={departmentId}
-                  onChange={(event) => setDepartmentId(event.target.value)}
+                  aria-label="Invitation role"
+                  value={role}
+                  onChange={(event) => setRole(event.target.value as UserRole)}
                   className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <option value="">No department</option>
-                  {departments.map((department) => (
-                    <option key={department.id} value={department.id}>
-                      {department.name}
-                    </option>
-                  ))}
+                  <option value="sales">Sales</option>
+                  <option value="client_success">Client Success</option>
+                  <option value="accounting">Accounting</option>
+                  <option value="read_only">Read Only</option>
+                  <option value="manager">Manager</option>
+                  <option value="admin">Admin</option>
+                  <option value="super_admin">Super Admin</option>
                 </select>
-              ) : (
-                <input
-                  aria-label="Invitation department"
-                  value={departmentId}
-                  onChange={(event) => setDepartmentId(event.target.value)}
-                  placeholder="Department ID (optional)"
-                  className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-              )}
-            </label>
-          </div>
-
-          <ProfileSearchCombobox
-            purpose="admin_directory"
-            label="Invitation manager"
-            value={managerProfileId}
-            onChange={setManagerProfileId}
-          />
-
-          {teams.length > 0 ? (
-            <fieldset>
-              <legend className="text-sm font-medium text-foreground">Initial teams</legend>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                {teams.map((team) => (
-                  <label
-                    key={team.id}
-                    className="flex items-center gap-2 text-sm text-muted-foreground"
+              </label>
+              <label className="text-sm font-medium text-foreground">
+                Department
+                {departments.length > 0 ? (
+                  <select
+                    aria-label="Invitation department"
+                    value={departmentId}
+                    onChange={(event) => setDepartmentId(event.target.value)}
+                    className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <input
-                      type="checkbox"
-                      checked={teamIds.includes(team.id)}
-                      onChange={(event) =>
-                        setTeamIds((current) =>
-                          event.target.checked
-                            ? [...current, team.id]
-                            : current.filter((id) => id !== team.id),
-                        )
-                      }
-                    />
-                    {team.name}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          ) : null}
+                    <option value="">No department</option>
+                    {departments.map((department) => (
+                      <option key={department.id} value={department.id}>
+                        {department.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    aria-label="Invitation department"
+                    value={departmentId}
+                    onChange={(event) => setDepartmentId(event.target.value)}
+                    placeholder="Department ID (optional)"
+                    className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                )}
+              </label>
+            </div>
 
-          <div className="rounded-md border border-border bg-muted/20 px-3 py-3 text-sm">
-            <p className="font-medium text-foreground">Effective access preview</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              The invitee starts with the {getUserRoleLabel(role)} role, optional organization
-              scope, and any selected teams.
-            </p>
-          </div>
+            <ProfileSearchCombobox
+              purpose="admin_directory"
+              label="Invitation manager"
+              value={managerProfileId}
+              onChange={setManagerProfileId}
+            />
 
-          {error ? (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          ) : null}
-          {resultMessage ? (
-            <p role="status" className="text-sm text-muted-foreground">
-              {resultMessage}
-            </p>
-          ) : null}
+            {teams.length > 0 ? (
+              <fieldset>
+                <legend className="text-sm font-medium text-foreground">Initial teams</legend>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {teams.map((team) => (
+                    <label
+                      key={team.id}
+                      className="flex items-center gap-2 text-sm text-muted-foreground"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={teamIds.includes(team.id)}
+                        onChange={(event) =>
+                          setTeamIds((current) =>
+                            event.target.checked
+                              ? [...current, team.id]
+                              : current.filter((id) => id !== team.id),
+                          )
+                        }
+                      />
+                      {team.name}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ) : null}
 
-          <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              disabled={submitting}
-              className="min-h-9 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="min-h-9 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {submitting ? "Sending…" : "Send invitations"}
-            </button>
-          </div>
-        </form>
-      </DialogContent>
+            <div className="rounded-md border border-border bg-muted/20 px-3 py-3 text-sm">
+              <p className="font-medium text-foreground">Effective access preview</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                The invitee starts with the {getUserRoleLabel(role)} role, optional organization
+                scope, and any selected teams.
+              </p>
+            </div>
+
+            {error ? (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            ) : null}
+            {resultMessage ? (
+              <p role="status" className="text-sm text-muted-foreground">
+                {resultMessage}
+              </p>
+            ) : null}
+
+            <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                disabled={submitting}
+                className="min-h-9 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="min-h-9 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {submitting ? "Sending…" : "Send invitations"}
+              </button>
+            </div>
+          </form>
+        </DialogPrimitive.Content>
+      </DialogPortal>
     </Dialog>
   );
 }
