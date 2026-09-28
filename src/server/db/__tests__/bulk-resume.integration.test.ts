@@ -188,6 +188,8 @@ describe("persistent bulk receipts on isolated PostgreSQL", () => {
       );
       expect(Number(writes.rows[0].total)).toBe(70);
     },
+    // This exercises 100 real item transactions and is not an application latency gate.
+    60_000,
   );
 
   it.runIf(hasDatabase)("denies another actor and an expired preview", async () => {

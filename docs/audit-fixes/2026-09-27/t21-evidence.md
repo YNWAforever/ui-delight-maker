@@ -19,8 +19,14 @@ Ruling: note tidy runs before a touchpoint exists, so its `subject_type='note'` 
 - `bunx tsc --noEmit`, changed-file ESLint and pure `bunx vite build` passed. `bun run build` was not run because it includes migration and seed.
 - Blocked: no sandbox OpenRouter credential or authenticated note-tidy role session was supplied; real provider timeout/usage, live n8n callback payload and five deployed workflow templates remain unverified. No fake token or cost sample is reported.
 
+## Release-candidate follow-up
+
+Final branch review found a direct note-tidy replay that returned a generic duplicate state for a persisted failed run. Commit `195f8b0` now returns the prior failure outcome without contacting the provider again. The regression was RED in both unit and real PostgreSQL tests before the fix and GREEN in 2 files/13 tests after it. This does not close the provider sandbox or deployed n8n contract gates.
+
 ## Stacked PR policy fixture repair
 
 The migration graph now links `agent_runs` to `agent_policy_versions`. At PR #99's merged-parent head, all five policy integration cases failed on a fresh disposable PostgreSQL database because their `beforeEach` truncated only the referenced policy table. Commit `964f40f` explicitly truncates the dependent agent tables and policy versions together; it uses no `CASCADE` and remains test-only. The same five cases then passed 5/5 against a second fresh disposable PostgreSQL container. Deploy-safety, authorization and route contracts passed 8/8; TypeScript and full lint passed with one pre-existing Fast Refresh warning. Both containers were removed. Provider sandbox and role UI proof remain blocked; no production migration or paid provider call occurred. Exact-head remote checks were pending at this evidence commit.
 
 The first pushed PR #99 full contract run had one remaining failure: the ordered migration inventory expected 20 paths although T21 adds migration `021_ai_invocation_telemetry.sql`. The existing contract reproduced 1/24 failure locally. Commit `2dc8a54` adds the exact path to the expected list; schema, authorization and deploy-safety contracts then passed 29/29. This does not change migration execution. A fresh full GitHub contract rerun is required.
+
+The subsequent exact-head PR #99 run at `9edb34d` passed Types/lint, its full real-PostgreSQL contract job and Vercel. The cumulative PR #100 merged this green head at `c6474ab`; its own exact-head checks remain separate.

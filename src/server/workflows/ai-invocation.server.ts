@@ -42,7 +42,13 @@ export type AIInvocationContext = {
     inputLength: number;
     inputFingerprint: string;
     policyVersionId: string | null;
-  }) => Promise<{ runId: string; created: boolean; output?: string | null }>;
+  }) => Promise<{
+    runId: string;
+    created: boolean;
+    output?: string | null;
+    status?: string;
+    outcomeCode?: string | null;
+  }>;
   finishRun: (runId: string, result: RunFinish) => Promise<void>;
   execute: (input: unknown, signal: AbortSignal) => Promise<Execution>;
   /** Test seam; production remains capped at 15s n8n / 60s direct. */
@@ -124,6 +130,8 @@ export async function invokeGovernedAI(
     runId,
     created,
     output: previousOutput,
+    status: previousStatus,
+    outcomeCode: previousOutcomeCode,
   } = await ctx.beginRun({
     actorId: ctx.actorId,
     workflowType: request.workflowType,
@@ -134,7 +142,18 @@ export async function invokeGovernedAI(
     inputFingerprint: createHash("sha256").update(inputText).digest("hex"),
     policyVersionId: policy.versionId,
   });
-  if (!created) return { runId, outcome: "duplicate", output: previousOutput ?? null, usage: null };
+  if (!created) {
+    if (previousStatus === "failed") {
+      return {
+        runId,
+        outcome: previousOutcomeCode === "dispatch_ambiguous" ? "ambiguous" : "failed",
+        output: null,
+        usage: null,
+        reason: previousOutcomeCode === "timeout" ? "timeout" : "provider_error",
+      };
+    }
+    return { runId, outcome: "duplicate", output: previousOutput ?? null, usage: null };
+  }
   const maximum = ctx.kind === "n8n" ? 15_000 : 60_000;
   const deadlineMs = Math.min(ctx.deadlineMs ?? maximum, maximum);
   let execution: Execution;

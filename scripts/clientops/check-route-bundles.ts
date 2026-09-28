@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 
@@ -218,19 +218,23 @@ export function assertRouteChunkBudgets(measurements: RouteChunkMeasurement[]) {
   );
 }
 
+export function findClientManifest(root = process.cwd()) {
+  for (const relativePath of [
+    join("dist", "client", ".vite", "manifest.json"),
+    join(".output", "public", ".vite", "manifest.json"),
+    join(".output", "client", ".vite", "manifest.json"),
+  ]) {
+    const manifest = resolve(root, relativePath);
+    if (existsSync(manifest)) return manifest;
+  }
+  throw new Error(
+    "No Vite client manifest found under dist/client or .output. Run the Vite build first.",
+  );
+}
+
 function findBuiltManifest() {
   const explicitPath = process.argv[2];
-  if (explicitPath) return resolve(explicitPath);
-
-  for (const outputRoot of [".output", "dist"]) {
-    if (!existsSync(outputRoot)) continue;
-    const manifest = readdirSync(outputRoot, { recursive: true, withFileTypes: true }).find(
-      (entry) =>
-        entry.isFile() && entry.name === "manifest.json" && entry.parentPath.endsWith(".vite"),
-    );
-    if (manifest) return join(manifest.parentPath, manifest.name);
-  }
-  throw new Error("No Vite client manifest found under .output or dist. Run the Vite build first.");
+  return explicitPath ? resolve(explicitPath) : findClientManifest();
 }
 
 function main() {

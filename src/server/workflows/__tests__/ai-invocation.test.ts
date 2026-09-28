@@ -93,6 +93,23 @@ describe("governed AI invocation", () => {
     expect(ctx.execute).not.toHaveBeenCalled();
     expect(ctx.finishRun).not.toHaveBeenCalled();
   });
+  it("replays an earlier failed same-key run as failed without another provider call", async () => {
+    const ctx = context({
+      beginRun: vi.fn().mockResolvedValue({
+        runId: "failed-run",
+        created: false,
+        status: "failed",
+        outcomeCode: "timeout",
+      }),
+    });
+    expect(await invokeGovernedAI(ctx, request)).toMatchObject({
+      runId: "failed-run",
+      outcome: "failed",
+      reason: "timeout",
+    });
+    expect(ctx.execute).not.toHaveBeenCalled();
+  });
+
   it("does not relabel a persistence failure as a provider failure", async () => {
     const ctx = context({
       finishRun: vi.fn().mockRejectedValue(new Error("database unavailable")),

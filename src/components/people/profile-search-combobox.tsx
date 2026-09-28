@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { crmQueryKeys } from "@/lib/query-keys";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +43,7 @@ export function ProfileSearchCombobox({
   const [nextCursor, setNextCursor] = useState<string | null | undefined>(undefined);
   const selectedId = value && !["all", "mine", "unassigned"].includes(value) ? value : null;
   const selected = useQuery({
-    queryKey: ["people", "selected", purpose, resourceId ?? null, selectedId],
+    queryKey: [...crmQueryKeys.people.all(), "selected", purpose, resourceId ?? null, selectedId],
     queryFn: () =>
       resolveAssignableProfileFn({
         data: { purpose, id: selectedId!, resourceId },
@@ -50,7 +51,13 @@ export function ProfileSearchCombobox({
     enabled: Boolean(selectedId),
   });
   const matches = useQuery({
-    queryKey: ["people", "search", purpose, resourceId ?? null, debouncedSearch],
+    queryKey: [
+      ...crmQueryKeys.people.all(),
+      "search",
+      purpose,
+      resourceId ?? null,
+      debouncedSearch,
+    ],
     queryFn: () =>
       listAssignableProfilesFn({
         data: { purpose, query: debouncedSearch, limit: 50, resourceId },

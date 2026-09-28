@@ -147,6 +147,33 @@ describe("governed AI persistence and stale callbacks", () => {
     expect(row.model_used).toBe("test-model");
   });
 
+  it.runIf(hasDatabase)("returns persisted failure outcome on a same-key replay", async () => {
+    const input = {
+      actorId: actor,
+      workflowType: "note_tidy" as const,
+      subjectType: "note",
+      subjectId: randomUUID(),
+      idempotencyKey: randomUUID(),
+      inputLength: 4,
+      inputFingerprint: "d".repeat(64),
+      policyVersionId: null,
+    };
+    const first = await beginNoteTidyRun(input);
+    await finishNoteTidyRun(first.runId, {
+      status: "failed",
+      outcomeCode: "timeout",
+      output: null,
+      usage: null,
+      model: null,
+    });
+    await expect(beginNoteTidyRun(input)).resolves.toMatchObject({
+      runId: first.runId,
+      created: false,
+      status: "failed",
+      outcomeCode: "timeout",
+    });
+  });
+
   it.runIf(hasDatabase)(
     "rejects an old failed run callback without changing the newer run or lead",
     async () => {
