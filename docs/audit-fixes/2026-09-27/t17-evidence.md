@@ -24,3 +24,8 @@ Branch: `codex/clientops-admin-directory`, stacked on T16 commit `06137e1`; [dra
 - Seven authenticated role sessions were not supplied. Admin, manager, read-only, and successor browser UAT remains **blocked**; a super_admin session was not used to stand in for those roles.
 - Closed `assigned_to` records preserve the original person. Any business decision to transfer those historical fields belongs in a separately reviewed reconciliation/migration; T17 performs no migration.
 - No production migration, legacy-data reconciliation, or release action was performed. Remote PR checks and preview deployment must be reviewed separately from local verification.
+
+## PR #95 check repair — 2026-09-28
+
+- The rerun database contract failed the existing `admin.people.tsx takes its query keys from crmQueryKeys` case because T17 introduced a literal `["people"]` invalidation. Locally the full 44-case Admin write contract reproduced exactly one failure. Commit `8d6652b` adds the canonical `crmQueryKeys.people` namespace and uses its `all()` key for that invalidation. The same 44/44 contract then passed; TypeScript and changed-file lint passed.
+- The inherited PR #83 source-only Vercel build safety regression passed 1/1 on this branch. The old PR #95 Vercel failure was `Quote version is immutable` while running the automatic `bun run build` migration/seed wrapper; parent PR #94 carries the verified source-only command. Exact-head remote contract and Vercel checks remain pending after this repair. No production data or customer message was used.
