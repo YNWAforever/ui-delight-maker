@@ -1,5 +1,10 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Sparkles } from "lucide-react";
+import {
+  WorkspaceAccessState,
+  type WorkspaceAccessStateName,
+} from "@/components/auth/workspace-access-state";
+import { signOut } from "@/server-functions/auth";
 
 const LoginAuthForm = lazy(() =>
   import("@/components/auth/login-auth-form").then((module) => ({
@@ -12,6 +17,7 @@ type LoginAuthPageProps = {
   redirectTo?: string;
   title?: string;
   description?: string;
+  accessState?: "anonymous" | "active" | WorkspaceAccessStateName;
 };
 
 export function LoginAuthPage({
@@ -19,11 +25,15 @@ export function LoginAuthPage({
   redirectTo = "/",
   title = "Fimmick ClientOps",
   description,
+  accessState = "anonymous",
 }: LoginAuthPageProps) {
-  const isSignUp = authPath === "sign-up";
+  const [signOutError, setSignOutError] = useState(false);
+  const isSignUp = authPath === "sign-up" && redirectTo.startsWith("/invite/");
   const supportingCopy =
     description ??
-    (isSignUp ? "Create an account with your @fimmick.com email" : "Sign in to your workspace");
+    (isSignUp
+      ? "Use the invited email address to create your account. Access begins after invitation activation."
+      : "Sign in with your administrator-invited account.");
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -35,9 +45,27 @@ export function LoginAuthPage({
           <h1 className="text-xl font-semibold">{title}</h1>
           <p className="text-sm leading-6 text-muted-foreground">{supportingCopy}</p>
         </div>
-        <Suspense fallback={<LoginAuthFormSkeleton />}>
-          <LoginAuthForm authPath={authPath} redirectTo={redirectTo} />
-        </Suspense>
+        {accessState !== "anonymous" && accessState !== "active" ? (
+          <>
+            <WorkspaceAccessState
+              state={accessState}
+              onSignOut={() => {
+                void signOut()
+                  .then(() => window.location.replace("/login"))
+                  .catch(() => setSignOutError(true));
+              }}
+            />
+            {signOutError && (
+              <p role="alert" className="text-center text-sm text-destructive">
+                Sign out failed. Please try again.
+              </p>
+            )}
+          </>
+        ) : (
+          <Suspense fallback={<LoginAuthFormSkeleton />}>
+            <LoginAuthForm authPath={authPath} redirectTo={redirectTo} />
+          </Suspense>
+        )}
       </div>
     </div>
   );

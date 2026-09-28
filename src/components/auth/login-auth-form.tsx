@@ -8,9 +8,15 @@ type LoginAuthFormProps = {
 };
 
 export function LoginAuthForm({ authPath, redirectTo }: LoginAuthFormProps) {
+  const invitationSignUp = authPath === "sign-up" && /^\/invite\/[^/]+\/complete$/.test(redirectTo);
   return (
-    <NeonAuthProvider redirectTo={redirectTo} emailOTP={false} basePath="/login" signUp>
-      <AuthView path={authPath} cardFooter={false} />
+    <NeonAuthProvider
+      redirectTo={redirectTo}
+      emailOTP={false}
+      basePath="/login"
+      signUp={invitationSignUp}
+    >
+      <AuthView path={invitationSignUp ? "sign-up" : "sign-in"} cardFooter={false} />
     </NeonAuthProvider>
   );
 }

@@ -3,6 +3,7 @@ import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
 import {
   getNeonAuthCookieHeader,
   getNeonAuthSession,
+  resolveWorkspaceAccess,
   getNeonAuthUrl,
 } from "@/lib/auth/neon-auth.server";
 
@@ -27,6 +28,12 @@ async function readAuthError(response: Response, fallback: string) {
 
 export const getSession = createServerFn({ method: "GET" }).handler(async () => {
   return getNeonAuthSession();
+});
+
+/** Public route read with no email parameter; sensitive identity/profile data stays server-side. */
+export const getCurrentWorkspaceAccess = createServerFn({ method: "GET" }).handler(async () => {
+  const access = await resolveWorkspaceAccess();
+  return { state: access.state };
 });
 
 export const signIn = createServerFn({ method: "POST" })

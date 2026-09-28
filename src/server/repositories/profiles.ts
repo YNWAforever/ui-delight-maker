@@ -55,3 +55,16 @@ export async function getProfileByEmail(email: string) {
     normalizedEmail,
   ]);
 }
+
+/** Invitation lookup is only called with the email from the current Neon Auth identity. */
+export async function getCurrentInvitationForEmail(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) return null;
+  const row = await queryOne<{ status: string; expires_at: string }>(
+    `select status, expires_at from user_invitations
+     where lower(email) = $1
+     order by created_at desc, id desc limit 1`,
+    [normalizedEmail],
+  );
+  return row ? { status: row.status, expiresAt: row.expires_at } : null;
+}

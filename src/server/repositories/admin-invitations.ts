@@ -129,6 +129,16 @@ export function createInvitationRepository(dependencies: InvitationRepositoryDep
           [email, createdAt.toISOString()],
         );
 
+        const existingProfile = await db.query<{ id: string }>(
+          `
+            select id from profiles where lower(email) = $1 limit 1
+          `,
+          [email],
+        );
+        if (existingProfile.rows[0]) {
+          throw new Error("Existing workspace account requires administrator action");
+        }
+
         const existing = await db.query<{ id: string }>(
           `
             select id from user_invitations
@@ -215,6 +225,47 @@ export function createInvitationRepository(dependencies: InvitationRepositoryDep
     });
   }
 
+  async function getInvitationLandingState(
+    rawToken: string,
+  ): Promise<
+    { state: "ready"; preview: InvitationPreview } | { state: "expired" | "used" | "unavailable" }
+  > {
+    const tokenHash = hashInvitationToken(rawToken);
+    return transaction(async (db) => {
+      const result = await db.query<
+        Pick<UserInvitation, "email" | "intended_role" | "expires_at" | "status">
+      >(
+        `
+          select email, intended_role, expires_at, status
+          from user_invitations
+          where token_hash = $1
+          limit 1
+        `,
+        [tokenHash],
+      );
+      const invitation = result.rows[0];
+      if (!invitation || invitation.status === "revoked") return { state: "unavailable" };
+      if (invitation.status === "accepted") return { state: "used" };
+      const expiry = Date.parse(invitation.expires_at);
+      if (
+        invitation.status === "expired" ||
+        !Number.isFinite(expiry) ||
+        expiry <= now().getTime()
+      ) {
+        return { state: "expired" };
+      }
+      return {
+        state: "ready",
+        preview: {
+          email: invitation.email,
+          intendedRole: invitation.intended_role,
+          expiresAt: invitation.expires_at,
+          status: invitation.status,
+        },
+      };
+    });
+  }
+
   async function acceptInvitation(
     rawToken: string,
     identity: InvitationIdentity,
@@ -237,6 +288,18 @@ export function createInvitationRepository(dependencies: InvitationRepositoryDep
 
       if (!identityEmail || identityEmail !== normalizeInvitationEmail(invitation.email)) {
         throw new Error("Invitation email does not match the signed-in account");
+      }
+
+      const existingProfile = await db.query<Pick<Profile, "id" | "status">>(
+        `
+          select id, status from profiles
+          where id = $1 or lower(email) = $2
+          limit 1 for update
+        `,
+        [identity.id, identityEmail],
+      );
+      if (existingProfile.rows[0]) {
+        throw new Error("Existing workspace account requires administrator action");
       }
 
       const profileResult = await db.query<Profile>(
@@ -404,6 +467,7 @@ export function createInvitationRepository(dependencies: InvitationRepositoryDep
     createInvitation,
     getInvitationById,
     getInvitationPreview,
+    getInvitationLandingState,
     acceptInvitation,
     resendInvitation,
     revokeInvitation,
@@ -415,6 +479,7 @@ const invitationRepository = createInvitationRepository();
 export const createInvitation = invitationRepository.createInvitation;
 export const getInvitationById = invitationRepository.getInvitationById;
 export const getInvitationPreview = invitationRepository.getInvitationPreview;
+export const getInvitationLandingState = invitationRepository.getInvitationLandingState;
 export const acceptInvitation = invitationRepository.acceptInvitation;
 export const resendInvitation = invitationRepository.resendInvitation;
 export const revokeInvitation = invitationRepository.revokeInvitation;
