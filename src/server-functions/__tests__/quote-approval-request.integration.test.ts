@@ -237,6 +237,17 @@ describe("requesting approval on a quote", () => {
     ).toBe(1);
   });
 
+  it.runIf(hasDatabase)("serializes two simultaneous requests into one open approval", async () => {
+    const outcomes = await Promise.allSettled([
+      request({ data: { id: QUOTE_ID } }),
+      request({ data: { id: QUOTE_ID } }),
+    ]);
+    expect(outcomes.every((result) => result.status === "fulfilled")).toBe(true);
+    const ids = outcomes.map((result) => (result.status === "fulfilled" ? result.value.id : null));
+    expect(new Set(ids).size).toBe(1);
+    expect(await pendingApprovalsForQuote()).toBe(1);
+  });
+
   it.runIf(hasDatabase)("leaves the quote untouched when the approval insert fails", async () => {
     // A genuine failure of `createApproval` inside the transaction, forced without mocking it:
     // `human_approvals.assigned_to` is FK-constrained to `profiles`, so an unresolvable id makes

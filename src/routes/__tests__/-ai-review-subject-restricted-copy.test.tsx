@@ -44,7 +44,7 @@ vi.mock("@/server-functions/approvals", () => ({
   decideApproval: vi.fn(),
 }));
 vi.mock("@/server-functions/quotes", () => ({
-  approveAndIssueQuote: vi.fn(),
+  approveQuote: vi.fn(),
   rejectQuote: vi.fn(),
 }));
 

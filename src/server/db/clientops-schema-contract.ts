@@ -275,6 +275,8 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "team_memberships_active_uidx",
     "user_invitations_pending_email_uidx",
     "agent_policy_versions_current_idx",
+    "human_approvals_quote_send_open_uidx",
+    "job_sheets_quote_id_uidx",
   ] as const,
   triggers: {
     admin_audit_logs_immutable: ["DELETE", "UPDATE"],

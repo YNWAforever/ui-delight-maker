@@ -26,7 +26,7 @@ import type { SerializableHumanApproval } from "@/lib/serializable";
 const {
   decideApprovalMock,
   getApprovalsMock,
-  approveAndIssueQuoteMock,
+  approveQuoteMock,
   rejectQuoteMock,
   routerInvalidateMock,
   toastSuccessMock,
@@ -34,7 +34,7 @@ const {
 } = vi.hoisted(() => ({
   decideApprovalMock: vi.fn(),
   getApprovalsMock: vi.fn(),
-  approveAndIssueQuoteMock: vi.fn(),
+  approveQuoteMock: vi.fn(),
   rejectQuoteMock: vi.fn(),
   routerInvalidateMock: vi.fn(),
   toastSuccessMock: vi.fn(),
@@ -62,7 +62,7 @@ vi.mock("@/server-functions/approvals", () => ({
   decideApproval: decideApprovalMock,
 }));
 vi.mock("@/server-functions/quotes", () => ({
-  approveAndIssueQuote: approveAndIssueQuoteMock,
+  approveQuote: approveQuoteMock,
   rejectQuote: rejectQuoteMock,
 }));
 
@@ -170,7 +170,7 @@ const tableRowText = () =>
 
 beforeEach(() => {
   decideApprovalMock.mockReset().mockResolvedValue(undefined);
-  approveAndIssueQuoteMock.mockReset().mockResolvedValue(undefined);
+  approveQuoteMock.mockReset().mockResolvedValue(undefined);
   rejectQuoteMock.mockReset().mockResolvedValue(undefined);
   getApprovalsMock.mockReset().mockResolvedValue([]);
   routerInvalidateMock.mockReset().mockResolvedValue(undefined);
@@ -247,20 +247,21 @@ describe("one decision at a time", () => {
 });
 
 describe("a quote send is decided the same way it is on /approvals", () => {
-  it("approves and issues the quote instead of only closing the approval", async () => {
-    // `approveAndIssueQuote` requires `quotes.issue`, which the manager baseline does not
-    // hold — the advisory disables Approve for a manager on a quote send, which is the
-    // server's own rule made visible.
-    renderQueue([quoteSend], { role: "admin" });
+  it("lets a manager approve the quote without issuing it", async () => {
+    renderQueue([quoteSend], { role: "manager" });
 
-    await confirmDecision(/Approve/, /Approve and issue/);
+    await confirmDecision(/Approve/, /^Approve$/);
 
     await waitFor(() =>
-      expect(approveAndIssueQuoteMock).toHaveBeenCalledWith({
-        data: { id: "q-1", approvalId: "ap-quote" },
+      expect(approveQuoteMock).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          id: "q-1",
+          approvalId: "ap-quote",
+          expectedVersion: quoteSend.row_version,
+          idempotencyKey: expect.any(String),
+        }),
       }),
     );
-    // The bare decision would have left the quote in pending_approval.
     expect(decideApprovalMock).not.toHaveBeenCalled();
   });
 
@@ -314,15 +315,10 @@ describe("the write's aftermath", () => {
 });
 
 describe("the decision controls are honest about who may use them", () => {
-  it("also flags a capability the decision itself needs, not only approvals.decide", () => {
-    // A quote send is approved through `approveAndIssueQuote`, which requires `quotes.issue`.
-    // The manager baseline holds `approvals.decide` and `quotes.approve` but not that, so
-    // Approve is unavailable while Reject is not — a distinction the old screen never made.
+  it("keeps manager approval available while a sales role is blocked", () => {
     renderQueue([quoteSend], { role: "manager" });
-
-    expect(decisionButton(/^Approve$/).disabled).toBe(true);
+    expect(decisionButton(/^Approve$/).disabled).toBe(false);
     expect(decisionButton(/^Reject$/).disabled).toBe(false);
-    expect(screen.getByText(/Issuing quotes is not part of your role/)).toBeTruthy();
   });
 
   it("disables them with a reason for a role whose baseline cannot decide", () => {

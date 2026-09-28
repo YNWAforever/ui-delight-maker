@@ -18,6 +18,11 @@ const {
   decideApprovalMock,
   updateQuoteCommercialMock,
   createQuoteRevisionCommandMock,
+  requestQuoteApprovalCommandMock,
+  decideQuoteSendCommandMock,
+  issueQuoteCommandMock,
+  approveAndIssueQuoteCommandMock,
+  acceptQuoteCommandMock,
   createServerFnChain,
 } = vi.hoisted(() => {
   const createServerFnChain = {
@@ -47,6 +52,11 @@ const {
     decideApprovalMock: vi.fn(),
     updateQuoteCommercialMock: vi.fn(),
     createQuoteRevisionCommandMock: vi.fn(),
+    requestQuoteApprovalCommandMock: vi.fn(),
+    decideQuoteSendCommandMock: vi.fn(),
+    issueQuoteCommandMock: vi.fn(),
+    approveAndIssueQuoteCommandMock: vi.fn(),
+    acceptQuoteCommandMock: vi.fn(),
     createServerFnChain,
   };
 });
@@ -96,6 +106,13 @@ vi.mock("@/server/commands/approval-decision.server", () => ({
   decideApprovalCommand: decideApprovalMock,
 }));
 
+vi.mock("@/server/commands/quote-lifecycle.server", () => ({
+  requestQuoteApprovalCommand: requestQuoteApprovalCommandMock,
+  decideQuoteSendCommand: decideQuoteSendCommandMock,
+  issueQuoteCommand: issueQuoteCommandMock,
+  approveAndIssueQuoteCommand: approveAndIssueQuoteCommandMock,
+  acceptQuoteCommand: acceptQuoteCommandMock,
+}));
 vi.mock("@/server/commands/quote-revision.server", () => ({
   updateQuoteCommercial: updateQuoteCommercialMock,
   createQuoteRevision: createQuoteRevisionCommandMock,
@@ -117,6 +134,23 @@ describe("quote server functions", () => {
     createJobSheetFromAcceptedQuoteMock.mockReset();
     decideApprovalMock.mockReset();
     updateQuoteCommercialMock.mockReset().mockResolvedValue({ id: "quote-1", total_value: 120000 });
+    requestQuoteApprovalCommandMock.mockReset().mockResolvedValue({ id: "approval-1" });
+    decideQuoteSendCommandMock.mockReset().mockResolvedValue({
+      quote: { id: "quote-1", status: "approved" },
+      approval: { id: "approval-1", status: "approved" },
+    });
+    issueQuoteCommandMock.mockReset().mockResolvedValue({
+      quote: { id: "quote-1", status: "sent" },
+      version: { id: "issued-1" },
+    });
+    approveAndIssueQuoteCommandMock.mockReset().mockResolvedValue({
+      quote: { id: "quote-1", status: "sent" },
+      version: { id: "issued-1" },
+    });
+    acceptQuoteCommandMock.mockReset().mockResolvedValue({
+      quote: { id: "quote-1", status: "accepted" },
+      jobSheet: { id: "sheet-1" },
+    });
     createQuoteRevisionCommandMock.mockReset().mockResolvedValue({
       quote: { id: "revision-1", status: "revised" },
       version: { id: "version-2" },
@@ -125,7 +159,7 @@ describe("quote server functions", () => {
       session: { profile: { id: "user-1", role: "admin", status: "active" } },
       actor: { profileId: "user-1", role: "admin", status: "active" },
     });
-    requireCapabilityMock.mockResolvedValue({
+    requireCapabilityMock.mockReset().mockResolvedValue({
       user: { id: "user-1" },
       profile: { id: "user-1", role: "sales", status: "active" },
       session: {},
@@ -333,62 +367,6 @@ describe("quote server functions", () => {
     },
   );
 
-  it("approves a pending quote through the lifecycle helper", async () => {
-    getQuoteMock.mockResolvedValueOnce({
-      id: "quote-1",
-      status: "pending_approval",
-    });
-    updateQuoteLifecycleMock.mockResolvedValueOnce({
-      id: "quote-1",
-      status: "approved",
-      approved_by: "user-1",
-    });
-    const { approveQuote } = await import("../quotes");
-
-    const result = await approveQuote({ data: { id: "quote-1" } });
-
-    expect(requireCapabilityMock).toHaveBeenCalledWith("quotes.approve", {
-      resourceType: "quote",
-      resourceId: "quote-1",
-    });
-    expect(getQuoteMock).toHaveBeenCalledWith("quote-1");
-    expect(updateQuoteLifecycleMock).toHaveBeenCalledWith("quote-1", {
-      status: "approved",
-      approved_by: "user-1",
-    });
-    expect(updateQuoteMock).not.toHaveBeenCalled();
-    expect(result).toEqual({ id: "quote-1", status: "approved", approved_by: "user-1" });
-  });
-
-  it("rejects a pending quote and records the approval decision when provided", async () => {
-    getQuoteMock.mockResolvedValueOnce({
-      id: "quote-1",
-      status: "pending_approval",
-    });
-    updateQuoteLifecycleMock.mockResolvedValueOnce({
-      id: "quote-1",
-      status: "rejected",
-    });
-    const { rejectQuote } = await import("../quotes");
-
-    const result = await rejectQuote({
-      data: { id: "quote-1", approvalId: "approval-1", notes: "Scope needs revision" },
-    });
-
-    expect(decideApprovalMock).toHaveBeenCalledWith(
-      expect.objectContaining({ actor: expect.objectContaining({ profileId: "user-1" }) }),
-      expect.objectContaining({
-        id: "approval-1",
-        decision: "rejected",
-        notes: "Scope needs revision",
-        idempotencyKey: expect.any(String),
-      }),
-    );
-    expect(updateQuoteLifecycleMock).toHaveBeenCalledWith("quote-1", { status: "rejected" });
-    expect(updateQuoteMock).not.toHaveBeenCalled();
-    expect(result).toEqual({ id: "quote-1", status: "rejected" });
-  });
-
   it("lists quote pdf templates behind Neon auth", async () => {
     listPdfTemplatesMock.mockResolvedValue([]);
     const { getQuotePdfTemplates } = await import("../quotes");
@@ -415,505 +393,77 @@ describe("quote server functions", () => {
     );
   });
 
-  it("issues a quote by creating an issued version snapshot and updating the quote", async () => {
-    createQuoteVersionMock.mockResolvedValue({
-      id: "version-issued-1",
-      pdf_url: "/quotes/quote-1/pdf",
-    });
-    updateQuoteLifecycleMock.mockResolvedValue({
-      id: "quote-1",
-      status: "sent",
-      issued_version_id: "version-issued-1",
-      pdf_url: "/quotes/quote-1/pdf",
-    });
-    const { issueQuoteVersion } = await import("../quotes");
-
-    const result = await issueQuoteVersion({
-      data: { id: "quote-1", pdfTemplateId: "pdf-template-1" },
-    });
-
-    expect(requireNeonAuthSessionMock).toHaveBeenCalled();
-    expect(getQuoteMock).toHaveBeenCalledWith("quote-1");
-    expect(requireNeonAuthSessionMock.mock.invocationCallOrder[0]).toBeLessThan(
-      getQuoteMock.mock.invocationCallOrder[0],
-    );
-    expect(createQuoteVersionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        quote_id: "quote-1",
-        reason: "issued",
-        snapshot: expect.objectContaining({
-          id: "quote-1",
-          number: "Q-1",
-          line_items: [
-            expect.objectContaining({
-              id: "11111111-1111-4111-8111-111111111111",
-            }),
-          ],
-        }),
-        pdf_template_id: "pdf-template-1",
-        pdf_url: "/quotes/quote-1/pdf",
-        created_by: "user-1",
-      }),
-    );
-    expect(listQuoteLineItemsMock).toHaveBeenCalledWith("quote-1");
-    expect(updateQuoteLifecycleMock).toHaveBeenCalledWith(
-      "quote-1",
-      expect.objectContaining({
-        status: "sent",
-        issued_version_id: "version-issued-1",
-        pdf_url: "/quotes/quote-1/pdf",
-      }),
-    );
-    expect(result).toEqual({
-      quote: {
-        id: "quote-1",
-        status: "sent",
-        issued_version_id: "version-issued-1",
-        pdf_url: "/quotes/quote-1/pdf",
-      },
-      version: {
-        id: "version-issued-1",
-        pdf_url: "/quotes/quote-1/pdf",
-      },
-    });
-  });
-
-  it("approves a quote-send approval and issues the quote through lifecycle updates", async () => {
-    getQuoteMock.mockResolvedValueOnce({
-      id: "quote-1",
-      number: "Q-1",
-      status: "pending_approval",
-      account_id: "account-1",
-      client_id: "client-1",
-      contact_id: null,
-      created_by: "sales-1",
-      total_value: 120000,
-      currency: "HKD",
-      pdf_url: null,
-      line_items: [
-        {
-          id: "li-local-1",
-          service: "Strategy",
-          description: "Planning",
-          qty: 1,
-          unit_price: 120000,
-        },
-      ],
-    });
-    updateQuoteLifecycleMock
-      .mockResolvedValueOnce({
-        id: "quote-1",
-        number: "Q-1",
-        status: "approved",
-        account_id: "account-1",
-        client_id: "client-1",
-        contact_id: null,
-        created_by: "sales-1",
-        total_value: 120000,
-        currency: "HKD",
-        pdf_url: null,
-        approved_by: "user-1",
-        line_items: [],
-      })
-      .mockResolvedValueOnce({
-        id: "quote-1",
-        status: "sent",
-        issued_version_id: "version-issued-1",
-        pdf_url: "/quotes/quote-1/pdf",
-      });
-    createQuoteVersionMock.mockResolvedValue({
-      id: "version-issued-1",
-      pdf_url: "/quotes/quote-1/pdf",
-    });
-    const { approveAndIssueQuote } = await import("../quotes");
-
-    const result = await approveAndIssueQuote({
-      data: { id: "quote-1", approvalId: "approval-1", pdfTemplateId: "pdf-template-1" },
-    });
-
-    expect(decideApprovalMock).toHaveBeenCalledWith(
+  it("routes approval through the atomic decision command without issuing", async () => {
+    const { approveQuote } = await import("../quotes");
+    const result = await approveQuote({ data: { id: "quote-1", approvalId: "approval-1" } });
+    expect(decideQuoteSendCommandMock).toHaveBeenCalledWith(
       expect.objectContaining({ actor: expect.objectContaining({ profileId: "user-1" }) }),
-      expect.objectContaining({
-        id: "approval-1",
-        decision: "approved",
-        idempotencyKey: expect.any(String),
-      }),
+      expect.objectContaining({ id: "quote-1", approvalId: "approval-1", decision: "approved" }),
     );
-    expect(getApprovalMock).toHaveBeenCalledWith("approval-1");
-    expect(updateQuoteLifecycleMock).toHaveBeenNthCalledWith(1, "quote-1", {
-      status: "approved",
-      approved_by: "user-1",
-    });
-    expect(createQuoteVersionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        quote_id: "quote-1",
-        reason: "issued",
-        pdf_template_id: "pdf-template-1",
-        pdf_url: "/quotes/quote-1/pdf",
-        created_by: "user-1",
-      }),
-    );
-    expect(updateQuoteLifecycleMock).toHaveBeenNthCalledWith(
-      2,
-      "quote-1",
-      expect.objectContaining({
-        status: "sent",
-        issued_version_id: "version-issued-1",
-        pdf_url: "/quotes/quote-1/pdf",
-      }),
-    );
-    expect(updateQuoteMock).not.toHaveBeenCalled();
-    expect(result.quote).toEqual(
-      expect.objectContaining({
-        id: "quote-1",
-        status: "sent",
-        issued_version_id: "version-issued-1",
-      }),
-    );
+    expect(issueQuoteCommandMock).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ status: "approved" });
   });
 
-  it("validates quote-send approval ownership before deciding or issuing", async () => {
-    getApprovalMock.mockResolvedValueOnce({
-      id: "approval-1",
-      approval_type: "quote_send",
-      status: "pending",
-      context_data: { quote_id: "other-quote" },
-    });
-    decideApprovalMock.mockResolvedValueOnce({
-      id: "approval-1",
-      approval_type: "quote_send",
-      status: "approved",
-      context_data: { quote_id: "other-quote" },
-    });
-    const { approveAndIssueQuote } = await import("../quotes");
-
-    await expect(
-      approveAndIssueQuote({ data: { id: "quote-1", approvalId: "approval-1" } }),
-    ).rejects.toThrow("Approval does not match quote");
-
-    expect(getApprovalMock).toHaveBeenCalledWith("approval-1");
-    expect(decideApprovalMock).not.toHaveBeenCalled();
-    expect(updateQuoteLifecycleMock).not.toHaveBeenCalled();
-    expect(createQuoteVersionMock).not.toHaveBeenCalled();
-  });
-
-  it("requires quote-send approvals to reference the quote before issuing", async () => {
-    getApprovalMock.mockResolvedValueOnce({
-      id: "approval-1",
-      approval_type: "quote_send",
-      status: "pending",
-      context_data: {},
-    });
-    const { approveAndIssueQuote } = await import("../quotes");
-
-    await expect(
-      approveAndIssueQuote({ data: { id: "quote-1", approvalId: "approval-1" } }),
-    ).rejects.toThrow("Approval does not reference quote");
-
-    expect(decideApprovalMock).not.toHaveBeenCalled();
-    expect(updateQuoteLifecycleMock).not.toHaveBeenCalled();
-    expect(createQuoteVersionMock).not.toHaveBeenCalled();
-  });
-
-  it("rejects approving a quote from an already-decided quote-send approval", async () => {
-    getApprovalMock.mockResolvedValueOnce({
-      id: "approval-1",
-      approval_type: "quote_send",
-      status: "rejected",
-      context_data: { quote_id: "quote-1" },
-    });
-    const { approveAndIssueQuote } = await import("../quotes");
-
-    await expect(
-      approveAndIssueQuote({ data: { id: "quote-1", approvalId: "approval-1" } }),
-    ).rejects.toThrow("Only pending quote-send approvals can change quote lifecycle");
-
-    expect(decideApprovalMock).not.toHaveBeenCalled();
-    expect(updateQuoteLifecycleMock).not.toHaveBeenCalled();
-    expect(createQuoteVersionMock).not.toHaveBeenCalled();
-  });
-
-  it("rejects rejecting a quote from an already-decided quote-send approval", async () => {
-    getApprovalMock.mockResolvedValueOnce({
-      id: "approval-1",
-      approval_type: "quote_send",
-      status: "approved",
-      context_data: { quote_id: "quote-1" },
+  it("routes rejection through the same atomic decision command", async () => {
+    decideQuoteSendCommandMock.mockResolvedValueOnce({
+      quote: { id: "quote-1", status: "rejected" },
+      approval: { id: "approval-1", status: "rejected" },
     });
     const { rejectQuote } = await import("../quotes");
+    const result = await rejectQuote({ data: { id: "quote-1", approvalId: "approval-1" } });
+    expect(decideQuoteSendCommandMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ decision: "rejected" }),
+    );
+    expect(result).toMatchObject({ status: "rejected" });
+  });
 
+  it("routes issuance through the versioned transaction command", async () => {
+    const { issueQuoteVersion } = await import("../quotes");
+    const result = await issueQuoteVersion({ data: { id: "quote-1" } });
+    expect(requireCapabilityMock).toHaveBeenCalledWith(
+      "quotes.issue",
+      { resourceType: "quote", resourceId: "quote-1" },
+      expect.anything(),
+    );
+    expect(issueQuoteCommandMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: "quote-1" }),
+    );
+    expect(result.version.id).toBe("issued-1");
+  });
+
+  it("requires approve, issue and approval-decision gates for the legacy combined endpoint", async () => {
+    const { approveAndIssueQuote } = await import("../quotes");
+    await approveAndIssueQuote({ data: { id: "quote-1", approvalId: "approval-1" } });
+    expect(requireCapabilityMock.mock.calls.map((call) => call[0])).toEqual([
+      "quotes.approve",
+      "quotes.issue",
+      "approvals.decide",
+    ]);
+    expect(approveAndIssueQuoteCommandMock).toHaveBeenCalledOnce();
+  });
+
+  it("does not invoke combined issuance when the issue gate denies", async () => {
+    requireCapabilityMock.mockImplementation(async (capability: string) => {
+      if (capability === "quotes.issue") throw new Error("FORBIDDEN");
+    });
+    const { approveAndIssueQuote } = await import("../quotes");
     await expect(
-      rejectQuote({ data: { id: "quote-1", approvalId: "approval-1" } }),
-    ).rejects.toThrow("Only pending quote-send approvals can change quote lifecycle");
-
-    expect(getQuoteMock).not.toHaveBeenCalled();
-    expect(decideApprovalMock).not.toHaveBeenCalled();
-    expect(updateQuoteLifecycleMock).not.toHaveBeenCalled();
+      approveAndIssueQuote({ data: { id: "quote-1", approvalId: "approval-1" } }),
+    ).rejects.toThrow("FORBIDDEN");
+    expect(approveAndIssueQuoteCommandMock).not.toHaveBeenCalled();
   });
 
-  it("reuses an orphaned issued version on retry instead of creating a duplicate", async () => {
-    const existingVersion = {
-      id: "version-issued-1",
-      quote_id: "quote-1",
-      reason: "issued",
-      pdf_url: "/quotes/quote-1/pdf",
-    };
-    getQuoteMock.mockResolvedValue({
-      id: "quote-1",
-      number: "Q-1",
-      status: "sent",
-      account_id: "account-1",
-      client_id: "client-1",
-      contact_id: null,
-      created_by: "sales-1",
-      total_value: 120000,
-      currency: "HKD",
-      pdf_url: "/quotes/quote-1/pdf",
-      line_items: [
-        {
-          id: "li-local-1",
-          service: "Strategy",
-          description: "Planning",
-          qty: 1,
-          unit_price: 120000,
-        },
-      ],
-    });
-    listQuoteVersionsMock.mockResolvedValue([existingVersion]);
-    updateQuoteLifecycleMock.mockResolvedValue({
-      id: "quote-1",
-      status: "sent",
-      issued_version_id: "version-issued-1",
-      pdf_url: "/quotes/quote-1/pdf",
-    });
-    const { issueQuoteVersion } = await import("../quotes");
-
-    const result = await issueQuoteVersion({
-      data: { id: "quote-1", pdfTemplateId: "pdf-template-1" },
-    });
-
-    expect(requireNeonAuthSessionMock.mock.invocationCallOrder[0]).toBeLessThan(
-      getQuoteMock.mock.invocationCallOrder[0],
-    );
-    expect(listQuoteVersionsMock).toHaveBeenCalledWith("quote-1");
-    expect(createQuoteVersionMock).not.toHaveBeenCalled();
-    expect(updateQuoteLifecycleMock).toHaveBeenCalledWith(
-      "quote-1",
-      expect.objectContaining({
-        status: "sent",
-        issued_version_id: "version-issued-1",
-        pdf_url: "/quotes/quote-1/pdf",
-      }),
-    );
-    expect(result).toEqual({
-      quote: expect.objectContaining({
-        id: "quote-1",
-        issued_version_id: "version-issued-1",
-        status: "sent",
-      }),
-      version: existingVersion,
-    });
-  });
-
-  it("accepts a quote by creating an accepted version and draft job sheet", async () => {
-    getQuoteMock.mockResolvedValueOnce({
-      id: "quote-1",
-      number: "Q-1",
-      status: "sent",
-      account_id: "account-1",
-      client_id: "client-1",
-      contact_id: null,
-      created_by: "sales-1",
-      total_value: 120000,
-      currency: "HKD",
-      pdf_url: "/quotes/quote-1/pdf-existing",
-      line_items: [
-        {
-          id: "li-local-1",
-          service: "Strategy",
-          description: "Planning",
-          qty: 1,
-          unit_price: 120000,
-        },
-      ],
-    });
-    createQuoteVersionMock.mockResolvedValue({ id: "version-1" });
-    updateQuoteLifecycleMock.mockResolvedValue({
-      id: "quote-1",
-      status: "accepted",
-      accepted_version_id: "version-1",
-      accepted_at: "2026-07-09T10:00:00.000Z",
-    });
-    createJobSheetFromAcceptedQuoteMock.mockResolvedValue({ id: "job-1" });
+  it("passes explicit customer acceptance evidence to the transaction command", async () => {
     const { acceptQuoteAndCreateJobSheet } = await import("../quotes");
-
-    const result = await acceptQuoteAndCreateJobSheet({ data: { id: "quote-1" } });
-
-    expect(requireNeonAuthSessionMock).toHaveBeenCalled();
-    expect(getQuoteMock).toHaveBeenCalledWith("quote-1");
-    expect(createQuoteVersionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        quote_id: "quote-1",
-        reason: "accepted",
-        snapshot: expect.objectContaining({
-          id: "quote-1",
-          number: "Q-1",
-          pdf_url: "/quotes/quote-1/pdf-existing",
-          line_items: [
-            expect.objectContaining({
-              id: "11111111-1111-4111-8111-111111111111",
-            }),
-          ],
-        }),
-        created_by: "user-1",
-      }),
-    );
-    expect(listQuoteLineItemsMock).toHaveBeenCalledWith("quote-1");
-    expect(updateQuoteLifecycleMock).toHaveBeenCalledWith(
-      "quote-1",
-      expect.objectContaining({
-        status: "accepted",
-        accepted_version_id: "version-1",
-        accepted_at: expect.any(String),
-        accepted_by: "user-1",
-      }),
-    );
-    expect(createJobSheetFromAcceptedQuoteMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        quote_id: "quote-1",
-        accepted_quote_version_id: "version-1",
-        total_amount: 120000,
-      }),
-    );
-    expect(result).toEqual({
-      quote: {
-        id: "quote-1",
-        status: "accepted",
-        accepted_version_id: "version-1",
-        accepted_at: "2026-07-09T10:00:00.000Z",
-      },
-      jobSheet: { id: "job-1" },
-    });
-  });
-
-  it("reuses an orphaned accepted version on retry and keeps job-sheet creation idempotent", async () => {
-    const existingAcceptedVersion = {
-      id: "version-accepted-1",
-      quote_id: "quote-1",
-      reason: "accepted",
-      pdf_url: "/quotes/quote-1/pdf-existing",
+    const input = {
+      id: "quote-1",
+      issuedVersionId: "version-1",
+      acceptanceEvidence: { reference: "email:fixture" },
     };
-    getQuoteMock.mockResolvedValue({
-      id: "quote-1",
-      number: "Q-1",
-      status: "accepted",
-      accepted_at: "2026-07-09T08:30:00.000Z",
-      accepted_by: "user-1",
-      account_id: "account-1",
-      client_id: "client-1",
-      contact_id: null,
-      created_by: "sales-1",
-      total_value: 120000,
-      currency: "HKD",
-      pdf_url: "/quotes/quote-1/pdf-existing",
-      line_items: [
-        {
-          id: "li-local-1",
-          service: "Strategy",
-          description: "Planning",
-          qty: 1,
-          unit_price: 120000,
-        },
-      ],
-    });
-    listQuoteVersionsMock.mockResolvedValue([existingAcceptedVersion]);
-    updateQuoteLifecycleMock.mockResolvedValue({
-      id: "quote-1",
-      status: "accepted",
-      accepted_version_id: "version-accepted-1",
-      accepted_at: "2026-07-09T08:30:00.000Z",
-    });
-    createJobSheetFromAcceptedQuoteMock.mockResolvedValue({ id: "job-1" });
-    const { acceptQuoteAndCreateJobSheet } = await import("../quotes");
-
-    const result = await acceptQuoteAndCreateJobSheet({ data: { id: "quote-1" } });
-
-    expect(requireNeonAuthSessionMock.mock.invocationCallOrder[0]).toBeLessThan(
-      getQuoteMock.mock.invocationCallOrder[0],
-    );
-    expect(listQuoteVersionsMock).toHaveBeenCalledWith("quote-1");
-    expect(createQuoteVersionMock).not.toHaveBeenCalled();
-    expect(updateQuoteLifecycleMock).toHaveBeenCalledWith(
-      "quote-1",
-      expect.objectContaining({
-        status: "accepted",
-        accepted_version_id: "version-accepted-1",
-        accepted_at: "2026-07-09T08:30:00.000Z",
-        accepted_by: "user-1",
-      }),
-    );
-    expect(createJobSheetFromAcceptedQuoteMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        quote_id: "quote-1",
-        accepted_quote_version_id: "version-accepted-1",
-      }),
-    );
-    expect(result).toEqual({
-      quote: expect.objectContaining({
-        id: "quote-1",
-        accepted_version_id: "version-accepted-1",
-        accepted_at: "2026-07-09T08:30:00.000Z",
-        status: "accepted",
-      }),
-      jobSheet: { id: "job-1" },
-    });
+    const result = await acceptQuoteAndCreateJobSheet({ data: input });
+    expect(acceptQuoteCommandMock).toHaveBeenCalledWith(expect.anything(), input);
+    expect(result.jobSheet.id).toBe("sheet-1");
   });
-
-  it("rejects issuing a draft quote", async () => {
-    getQuoteMock.mockResolvedValueOnce({
-      id: "quote-1",
-      number: "Q-1",
-      status: "draft",
-      account_id: "account-1",
-      client_id: "client-1",
-      contact_id: null,
-      created_by: "sales-1",
-      total_value: 120000,
-      currency: "HKD",
-      pdf_url: "/quotes/quote-1/pdf-existing",
-      line_items: [],
-    });
-    const { issueQuoteVersion } = await import("../quotes");
-
-    await expect(issueQuoteVersion({ data: { id: "quote-1" } })).rejects.toThrow("approved");
-    expect(createQuoteVersionMock).not.toHaveBeenCalled();
-    expect(updateQuoteMock).not.toHaveBeenCalled();
-  });
-
-  it.each(["draft", "pending_approval"])(
-    "rejects accepting a %s quote before it has been issued",
-    async (status) => {
-      getQuoteMock.mockResolvedValueOnce({
-        id: "quote-1",
-        number: "Q-1",
-        status,
-        account_id: "account-1",
-        client_id: "client-1",
-        contact_id: null,
-        created_by: "sales-1",
-        total_value: 120000,
-        currency: "HKD",
-        pdf_url: "/quotes/quote-1/pdf-existing",
-        line_items: [],
-      });
-      const { acceptQuoteAndCreateJobSheet } = await import("../quotes");
-
-      await expect(acceptQuoteAndCreateJobSheet({ data: { id: "quote-1" } })).rejects.toThrow(
-        "sent or viewed",
-      );
-      expect(createQuoteVersionMock).not.toHaveBeenCalled();
-      expect(updateQuoteMock).not.toHaveBeenCalled();
-      expect(createJobSheetFromAcceptedQuoteMock).not.toHaveBeenCalled();
-    },
-  );
 });

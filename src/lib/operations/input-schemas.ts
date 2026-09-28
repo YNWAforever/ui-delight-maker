@@ -212,12 +212,26 @@ export const IdSchema = z.strictObject({ id: UuidSchema });
 export const QuoteVersionListSchema = z.strictObject({ quoteId: UuidSchema });
 export const LeadIdSchema = z.strictObject({ leadId: UuidSchema });
 export const RequestQuoteApprovalSchema = IdSchema.extend({ assignedTo: optionalId });
-export const RejectQuoteSchema = IdSchema.extend({
+export const ApproveQuoteSchema = IdSchema.extend({
   approvalId: UuidSchema.optional(),
   notes: NotesSchema.optional(),
+  expectedVersion: z.number().int().nonnegative().optional(),
+  idempotencyKey: UuidSchema.optional(),
 });
-export const IssueQuoteVersionSchema = IdSchema.extend({ pdfTemplateId: optionalId });
+export const RejectQuoteSchema = ApproveQuoteSchema;
+export const IssueQuoteVersionSchema = IdSchema.extend({
+  pdfTemplateId: optionalId,
+  idempotencyKey: UuidSchema.optional(),
+});
 export const ApproveAndIssueQuoteSchema = IssueQuoteVersionSchema.extend({
   approvalId: UuidSchema,
   notes: NotesSchema.optional(),
+});
+export const AcceptQuoteSchema = IdSchema.extend({
+  issuedVersionId: UuidSchema.optional(),
+  acceptanceEvidence: z.strictObject({
+    reference: z.string().trim().min(1).max(255),
+    note: NotesSchema.optional(),
+  }),
+  idempotencyKey: UuidSchema.optional(),
 });

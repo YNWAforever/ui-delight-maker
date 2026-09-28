@@ -33,8 +33,8 @@ export function approvalTypeLabel(type: string | null | undefined): string {
  * code that does it. This is the one piece of copy on the review screen a reader is entitled
  * to trust literally, so each line was written against the write path rather than the label.
  *
- * - `quote_send` → `approveAndIssueQuote` (src/server-functions/quotes.ts): approves the
- *   quote, issues a version, then closes the approval.
+ * - Quote-send approval closes the request and approves the quote; issuance is a separate
+ *   privileged action.
  * - `cs_risk_review` → `applyRiskReviewDecision`
  *   (src/server/workflows/decide-risk-review.server.ts): writes the held health score, risk
  *   and next action onto the engagement.
@@ -47,7 +47,7 @@ export function approvalTypeLabel(type: string | null | undefined): string {
  */
 export const APPROVAL_PROPOSED_ACTION: Record<ApprovalType, string> = {
   quote_send:
-    "Approving marks the quote approved, issues a quote version immediately, and closes this request. There is no un-issue action.",
+    "Approving marks the quote approved and closes this request. Issuing an immutable version is a separate authorized action.",
   message_send:
     "Approving records that the drafted reply is cleared and releases the agent run. ClientOps does not send the message — a person still sends it from the lead.",
   discount:

@@ -64,7 +64,9 @@ export async function findPendingApprovalForQuote(quoteId: string, db?: Queryabl
   return queryOne<HumanApproval>(
     `
       select * from human_approvals
-       where status = 'pending' and context_data->>'quote_id' = $1
+       where approval_type = 'quote_send'
+         and status in ('pending','escalated')
+         and context_data->>'quote_id' = $1
        limit 1
     `,
     [quoteId],

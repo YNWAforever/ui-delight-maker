@@ -192,7 +192,14 @@ import { describe, expect, it } from "vitest";
  * both endpoints also recheck current actor/row scope inside the transaction.
  * Measured across top-level server-function files after this change.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 220;
+/*
+ * 220 -> 222 in T07: the retained combined quote endpoint now checks
+ * quotes.issue and approvals.decide in addition to quotes.approve before the
+ * transaction command. The separate approve, issue and accept gates remain;
+ * each command rechecks current actor and locked quote scope in PostgreSQL.
+ * Measured across top-level server-function files after the change.
+ */
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 222;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {
