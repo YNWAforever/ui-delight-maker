@@ -127,11 +127,14 @@ export const ApprovalDecisionSchema = z.strictObject({
   id: UuidSchema,
   decision: z.enum(["approved", "rejected", "escalated"]),
   notes: NotesSchema.optional(),
+  expectedVersion: z.number().int().nonnegative().optional(),
+  idempotencyKey: UuidSchema.optional(),
 });
 
 export const ApprovalAssignmentSchema = z.strictObject({
   id: UuidSchema,
   assignedTo: UuidSchema.nullable(),
+  expectedVersion: z.number().int().nonnegative().optional(),
 });
 
 const JobSheetPortionSchema = z.strictObject({

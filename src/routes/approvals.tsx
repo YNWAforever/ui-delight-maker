@@ -252,10 +252,14 @@ function ApprovalsInbox() {
 
     setAssigningId(approval.id);
     try {
-      const updated = await assignApprovalFn({ data: { id: approval.id, assignedTo } });
+      const updated = await assignApprovalFn({
+        data: { id: approval.id, assignedTo, expectedVersion: approval.row_version },
+      });
       queryClient.setQueryData<ApprovalRead>(approvalsQueryKey, (current) =>
         current?.map((entry) =>
-          entry.id === updated.id ? { ...entry, assigned_to: updated.assigned_to } : entry,
+          entry.id === updated.id
+            ? { ...entry, assigned_to: updated.assigned_to, row_version: updated.row_version }
+            : entry,
         ),
       );
       toast.success(assignedTo ? `Assigned to ${approverLabel(assignedTo)}` : "Reviewer cleared");
@@ -309,7 +313,9 @@ function ApprovalsInbox() {
     () =>
       allApprovals.filter(
         (approval) =>
-          (approval.status === "approved" || approval.status === "rejected") &&
+          (approval.status === "approved" ||
+            approval.status === "rejected" ||
+            approval.status === "superseded") &&
           (typeFilter === "all" || approval.approval_type === typeFilter),
       ),
     [allApprovals, typeFilter],
@@ -468,7 +474,15 @@ function ApprovalsInbox() {
       return;
     }
 
-    await decideApproval({ data: { id: approval.id, decision: "approved", notes } });
+    await decideApproval({
+      data: {
+        id: approval.id,
+        decision: "approved",
+        notes,
+        expectedVersion: approval.row_version,
+        idempotencyKey: crypto.randomUUID(),
+      },
+    });
   };
 
   const rejectApproval = async (approval: Approval, notes?: string) => {
@@ -482,7 +496,15 @@ function ApprovalsInbox() {
       return;
     }
 
-    await decideApproval({ data: { id: approval.id, decision: "rejected", notes } });
+    await decideApproval({
+      data: {
+        id: approval.id,
+        decision: "rejected",
+        notes,
+        expectedVersion: approval.row_version,
+        idempotencyKey: crypto.randomUUID(),
+      },
+    });
   };
 
   const decideOne = async (approval: Approval, decision: ApprovalDecision) => {
@@ -492,7 +514,16 @@ function ApprovalsInbox() {
         ? () => approveApproval(approval, notes)
         : decision === "rejected"
           ? () => rejectApproval(approval, notes)
-          : () => decideApproval({ data: { id: approval.id, decision, notes } });
+          : () =>
+              decideApproval({
+                data: {
+                  id: approval.id,
+                  decision,
+                  notes,
+                  expectedVersion: approval.row_version,
+                  idempotencyKey: crypto.randomUUID(),
+                },
+              });
 
     const outcome = await applyDecisions([{ id: approval.id, run }], decision, notes);
     reportOutcome(
@@ -670,6 +701,9 @@ function ApprovalsInbox() {
   };
 
   const decidedNote = (approval: Approval): string | null => {
+    if (approval.status === "superseded") {
+      return "Superseded by a newer approval. This record cannot be decided.";
+    }
     if (approval.status === "escalated" && approval.approval_type === "quote_send") {
       return "Changes were requested on this quote send. It cannot be approved from here — open the quote, revise it, and request approval again.";
     }

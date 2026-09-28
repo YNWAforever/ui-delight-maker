@@ -35,7 +35,7 @@ export type JobSheetBillingType =
 export type JobSheetPortionStatus = "planned" | "entered_in_xero" | "cancelled";
 export type TaskStatus = "open" | "in_progress" | "done";
 export type TaskPriority = "low" | "medium" | "high";
-export type ApprovalStatus = "pending" | "approved" | "rejected" | "escalated";
+export type ApprovalStatus = "pending" | "approved" | "rejected" | "escalated" | "superseded";
 export type ApprovalType =
   | "quote_send"
   | "message_send"
@@ -441,6 +441,8 @@ export interface HumanApproval {
   requested_by: string | null;
   assigned_to: string | null;
   status: ApprovalStatus;
+  row_version: number;
+  superseded_by: string | null;
   context_data: unknown;
   context_summary: string | null;
   reviewer_notes: string | null;

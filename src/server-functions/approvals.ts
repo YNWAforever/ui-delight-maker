@@ -1,14 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { parseOperationInput } from "@/lib/operations/errors";
 import { loadRequestAuthorization, requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import {
-  assignApproval,
-  decideApproval as decideApprovalInNeon,
-  listApprovals,
-} from "@/server/repositories/approvals";
+import { assignApproval, listApprovals } from "@/server/repositories/approvals";
 import { serializeHumanApproval } from "@/lib/serializable";
-import { applyRiskReviewDecision } from "@/server/workflows/decide-risk-review.server";
+import { decideApprovalCommand } from "@/server/commands/approval-decision.server";
 import { listApproverProfiles } from "@/server/repositories/notifications";
 import { ApprovalAssignmentSchema, ApprovalDecisionSchema } from "@/lib/operations/input-schemas";
 
@@ -24,15 +21,19 @@ export const getApprovals = createServerFn({ method: "GET" })
 export const decideApproval = createServerFn({ method: "POST" })
   .validator((data: unknown) => parseOperationInput(ApprovalDecisionSchema, data))
   .handler(async ({ data }) => {
-    await requireCapability("approvals.decide", {
-      resourceType: "human_approval",
-      resourceId: data.id,
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "approvals.decide",
+      {
+        resourceType: "human_approval",
+        resourceId: data.id,
+      },
+      context,
+    );
+    const approval = await decideApprovalCommand(context, {
+      ...data,
+      idempotencyKey: data.idempotencyKey ?? randomUUID(),
     });
-    const session = await requireNeonAuthSession();
-    const approval = await decideApprovalInNeon({ ...data, actorId: session.profile.id });
-
-    await applyRiskReviewDecision(approval, session.profile.id);
-
     return serializeHumanApproval(approval);
   });
 
@@ -43,12 +44,16 @@ export const assignApprovalFn = createServerFn({ method: "POST" })
     // than deciding it, and every role holding `decide` is already trusted with the outcome.
     // Adding a capability would be an authorization change needing sign-off, to express a
     // permission already implied.
-    await requireCapability("approvals.decide", {
-      resourceType: "human_approval",
-      resourceId: data.id,
-    });
-    await requireNeonAuthSession();
-    const approval = await assignApproval(data);
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "approvals.decide",
+      {
+        resourceType: "human_approval",
+        resourceId: data.id,
+      },
+      context,
+    );
+    const approval = await assignApproval(data, context);
     return serializeHumanApproval(approval);
   });
 

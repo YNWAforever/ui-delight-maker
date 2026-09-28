@@ -90,6 +90,8 @@ const approval = (overrides: Partial<HumanApproval>): HumanApproval => ({
   requested_by: "Quotation Agent",
   assigned_to: "user-2",
   status: "pending",
+  row_version: 0,
+  superseded_by: null,
   context_data: { lead_id: "lead-1", quote_id: "quote-1" },
   context_summary: "Approve QT-2026-001 before sending.",
   reviewer_notes: null,

@@ -15,6 +15,7 @@ export const REASSIGNMENT_BUCKETS = [
     table: "human_approvals",
     column: "assigned_to",
     label: "Approval queue",
+    openOnly: true,
   },
   {
     key: "clients.account_owner",
@@ -107,7 +108,12 @@ async function readInventory(
   const buckets = await Promise.all(
     REASSIGNMENT_BUCKETS.map(async (bucket) => {
       const rows = await query<{ count: number | string }>(
-        "select count(*)::int as count from " + bucket.table + " where " + bucket.column + " = $1",
+        "select count(*)::int as count from " +
+          bucket.table +
+          " where " +
+          bucket.column +
+          " = $1" +
+          ("openOnly" in bucket ? " and status in ('pending','escalated')" : ""),
         [profileId],
         db,
       );
@@ -250,7 +256,8 @@ export function createReassignmentService(dependencies: ReassignmentDependencies
             bucket.column +
             " = $2 where " +
             bucket.column +
-            " = $1",
+            " = $1" +
+            ("openOnly" in bucket ? " and status in ('pending','escalated')" : ""),
           [input.profileId, successorId],
         );
       }

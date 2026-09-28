@@ -54,6 +54,8 @@ const approval = (
   requested_by: "agent",
   assigned_to: null,
   status: "pending",
+  row_version: 0,
+  superseded_by: null,
   context_data: null,
   context_summary: "Discount of 15% on renewal",
   reviewer_notes: null,
@@ -101,7 +103,7 @@ beforeEach(() => {
   assignApprovalFnMock
     .mockReset()
     .mockImplementation(async ({ data }: { data: { id: string; assignedTo: string | null } }) =>
-      approval({ id: data.id, assigned_to: data.assignedTo }),
+      approval({ id: data.id, assigned_to: data.assignedTo, row_version: 1 }),
     );
 });
 
@@ -221,7 +223,7 @@ describe("Assigning a reviewer", () => {
 
     await waitFor(() =>
       expect(assignApprovalFnMock).toHaveBeenCalledWith({
-        data: { id: "ap-1", assignedTo: "profile-2" },
+        data: { id: "ap-1", assignedTo: "profile-2", expectedVersion: 0 },
       }),
     );
   });
@@ -241,7 +243,7 @@ describe("Assigning a reviewer", () => {
 
     await waitFor(() =>
       expect(assignApprovalFnMock).toHaveBeenCalledWith({
-        data: { id: "ap-1", assignedTo: null },
+        data: { id: "ap-1", assignedTo: null, expectedVersion: 0 },
       }),
     );
   });

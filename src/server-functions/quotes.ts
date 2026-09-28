@@ -1,6 +1,12 @@
 import { parseOperationInput } from "@/lib/operations/errors";
 import { resolveDispatchableAgent } from "@/lib/agents";
-import { requireCapability, requirePageAuthorization } from "@/server/auth/authorization.server";
+import {
+  loadRequestAuthorization,
+  requireCapability,
+  requirePageAuthorization,
+} from "@/server/auth/authorization.server";
+import { randomUUID } from "node:crypto";
+import { decideApprovalCommand } from "@/server/commands/approval-decision.server";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -11,7 +17,6 @@ import { listPdfTemplates, listQuoteTemplates } from "@/server/repositories/quot
 import { createQuoteVersion, listQuoteVersions } from "@/server/repositories/quote-versions";
 import {
   createApproval,
-  decideApproval as decideApprovalInNeon,
   findPendingApprovalForQuote,
   getApproval as getApprovalFromNeon,
 } from "@/server/repositories/approvals";
@@ -495,8 +500,13 @@ export const approveQuote = createServerFn({ method: "POST" })
 export const rejectQuote = createServerFn({ method: "POST" })
   .validator((data: unknown) => parseOperationInput(RejectQuoteSchema, data))
   .handler(async ({ data }) => {
-    await requireCapability("quotes.approve", { resourceType: "quote", resourceId: data.id });
-    const session = await requireNeonAuthSession();
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "quotes.approve",
+      { resourceType: "quote", resourceId: data.id },
+      context,
+    );
+    const session = context.session;
     if (data.approvalId) {
       const approval = await getApprovalFromNeon(data.approvalId);
       assertQuoteSendApprovalMatchesQuote(approval, data.id);
@@ -512,11 +522,11 @@ export const rejectQuote = createServerFn({ method: "POST" })
         : await updateQuoteLifecycleInNeon(quote.id, { status: "rejected" });
 
     if (data.approvalId) {
-      await decideApprovalInNeon({
+      await decideApprovalCommand(context, {
         id: data.approvalId,
         decision: "rejected",
         notes: data.notes,
-        actorId: session.profile.id,
+        idempotencyKey: randomUUID(),
       });
     }
 
@@ -535,8 +545,13 @@ export const issueQuoteVersion = createServerFn({ method: "POST" })
 export const approveAndIssueQuote = createServerFn({ method: "POST" })
   .validator((data: unknown) => parseOperationInput(ApproveAndIssueQuoteSchema, data))
   .handler(async ({ data }) => {
-    await requireCapability("quotes.issue", { resourceType: "quote", resourceId: data.id });
-    const session = await requireNeonAuthSession();
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "quotes.issue",
+      { resourceType: "quote", resourceId: data.id },
+      context,
+    );
+    const session = context.session;
     const approval = await getApprovalFromNeon(data.approvalId);
     assertQuoteSendApprovalMatchesQuote(approval, data.id);
     assertPendingQuoteSendApproval(approval);
@@ -546,10 +561,10 @@ export const approveAndIssueQuote = createServerFn({ method: "POST" })
       session.profile.id,
       data.pdfTemplateId,
     );
-    await decideApprovalInNeon({
+    await decideApprovalCommand(context, {
       id: data.approvalId,
       decision: "approved",
-      actorId: session.profile.id,
+      idempotencyKey: randomUUID(),
       ...(data.notes ? { notes: data.notes } : {}),
     });
     return issued;

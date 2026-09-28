@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   requireCapabilityMock,
+  loadRequestAuthorizationMock,
   requireNeonAuthSessionMock,
   createQuoteMock,
   getQuoteMock,
@@ -28,6 +29,7 @@ const {
 
   return {
     requireCapabilityMock: vi.fn(),
+    loadRequestAuthorizationMock: vi.fn(),
     requireNeonAuthSessionMock: vi.fn(),
     createQuoteMock: vi.fn(),
     getQuoteMock: vi.fn(),
@@ -51,6 +53,7 @@ vi.mock("@tanstack/react-start", () => ({
 
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapability: requireCapabilityMock,
+  loadRequestAuthorization: loadRequestAuthorizationMock,
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
@@ -83,7 +86,10 @@ vi.mock("@/server/repositories/quotes", () => ({
 
 vi.mock("@/server/repositories/approvals", () => ({
   getApproval: getApprovalMock,
-  decideApproval: decideApprovalMock,
+}));
+
+vi.mock("@/server/commands/approval-decision.server", () => ({
+  decideApprovalCommand: decideApprovalMock,
 }));
 
 describe("quote server functions", () => {
@@ -101,6 +107,10 @@ describe("quote server functions", () => {
     createQuoteVersionMock.mockReset();
     createJobSheetFromAcceptedQuoteMock.mockReset();
     decideApprovalMock.mockReset();
+    loadRequestAuthorizationMock.mockReset().mockResolvedValue({
+      session: { profile: { id: "user-1", role: "admin", status: "active" } },
+      actor: { profileId: "user-1", role: "admin", status: "active" },
+    });
     requireCapabilityMock.mockResolvedValue({
       user: { id: "user-1" },
       profile: { id: "user-1", role: "sales", status: "active" },
@@ -323,12 +333,15 @@ describe("quote server functions", () => {
       data: { id: "quote-1", approvalId: "approval-1", notes: "Scope needs revision" },
     });
 
-    expect(decideApprovalMock).toHaveBeenCalledWith({
-      id: "approval-1",
-      decision: "rejected",
-      notes: "Scope needs revision",
-      actorId: "user-1",
-    });
+    expect(decideApprovalMock).toHaveBeenCalledWith(
+      expect.objectContaining({ actor: expect.objectContaining({ profileId: "user-1" }) }),
+      expect.objectContaining({
+        id: "approval-1",
+        decision: "rejected",
+        notes: "Scope needs revision",
+        idempotencyKey: expect.any(String),
+      }),
+    );
     expect(updateQuoteLifecycleMock).toHaveBeenCalledWith("quote-1", { status: "rejected" });
     expect(updateQuoteMock).not.toHaveBeenCalled();
     expect(result).toEqual({ id: "quote-1", status: "rejected" });
@@ -476,11 +489,14 @@ describe("quote server functions", () => {
       data: { id: "quote-1", approvalId: "approval-1", pdfTemplateId: "pdf-template-1" },
     });
 
-    expect(decideApprovalMock).toHaveBeenCalledWith({
-      id: "approval-1",
-      decision: "approved",
-      actorId: "user-1",
-    });
+    expect(decideApprovalMock).toHaveBeenCalledWith(
+      expect.objectContaining({ actor: expect.objectContaining({ profileId: "user-1" }) }),
+      expect.objectContaining({
+        id: "approval-1",
+        decision: "approved",
+        idempotencyKey: expect.any(String),
+      }),
+    );
     expect(getApprovalMock).toHaveBeenCalledWith("approval-1");
     expect(updateQuoteLifecycleMock).toHaveBeenNthCalledWith(1, "quote-1", {
       status: "approved",

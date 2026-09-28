@@ -341,7 +341,15 @@ function AiReviewPage() {
       }
     }
 
-    await decideApproval({ data: { id: approval.id, decision, notes: trimmed } });
+    await decideApproval({
+      data: {
+        id: approval.id,
+        decision,
+        notes: trimmed,
+        expectedVersion: approval.row_version,
+        idempotencyKey: crypto.randomUUID(),
+      },
+    });
   };
 
   const decide = (approval: Approval, decision: Decision) => {

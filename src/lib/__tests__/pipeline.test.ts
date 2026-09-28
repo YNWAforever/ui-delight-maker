@@ -92,6 +92,8 @@ const approval = (overrides: Partial<HumanApproval>): HumanApproval => ({
   requested_by: "Quotation Agent",
   assigned_to: null,
   status: "pending",
+  row_version: 0,
+  superseded_by: null,
   context_data: {},
   context_summary: "Review quote",
   reviewer_notes: null,

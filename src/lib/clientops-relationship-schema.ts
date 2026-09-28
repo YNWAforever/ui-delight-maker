@@ -14,6 +14,7 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/007_admin_team_user_management.sql",
   "neon/migrations/008_read_path_indexes.sql",
   "neon/migrations/009_agent_policy_versions.sql",
+  "neon/migrations/010_command_versions_and_receipts.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
@@ -54,6 +55,7 @@ export const CLIENTOPS_REQUIRED_TABLES = [
   "access_requests",
   "work_delegations",
   "admin_audit_logs",
+  "command_receipts",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_COLUMNS = [
@@ -94,6 +96,8 @@ export const CLIENTOPS_REQUIRED_COLUMNS = [
   "engagements.lead_id",
   "engagements.quote_id",
   "touchpoints.contact_id",
+  "human_approvals.row_version",
+  "human_approvals.superseded_by",
 ] as const;
 
 export type RelationshipSchemaMigrationDecision =
