@@ -29,3 +29,11 @@ The after-change instrumented seven-case test passed. Temporary instrumentation 
 TypeScript and lint passed (one pre-existing Fast Refresh warning). Full isolated PostgreSQL zero-skip tests and pure Vite build are recorded in the accompanying status checkpoint when complete. The original hook timeouts in other suites are not proven to share this cause. Today's renewal-expansion six-case suite passed during the full run.
 
 This change adds no migration, seed, production maintenance command or deployment. Seven-role UAT, T20 snapshots, production historical reconciliation, provider sandbox and operator release prerequisites remain open. Do not run this fixture maintenance against production or claim production query performance is verified.
+
+## Verification checkpoint
+
+PR #109 code head `36414e37b57320fed2e057a7ec580607850eb5e1` passed GitHub Checks `36432639736` and Database contract `36432639686`: **2,172 tests, zero skipped**, plus isolated two-wrapper seed replay and four rollback cases. Protected preview `dpl_E6qGShqkVLxw7twGaWR622ua9Do1` returned the exact head SHA. Supabase Preview was skipped. The approved production build hold was re-read from Vercel.
+
+The uninstrumented local full run passed the corrected cross-surface seven-case suite, renewal-expansion six-case suite, legacy-domain six-case suite, and all six import cases (the 5,000-row case took 326,614 ms). It also encountered four Quote approval request/setup timeouts. PostgreSQL logged a 67,054.458 ms Quote UPDATE, followed by fixture key collisions after timed-out operations; the original blocking cause was not captured and is not attributed to the temporary-table JIT issue.
+
+The run subsequently stopped advancing for over three minutes. A read-only container inspection returned Docker Desktop Linux engine API HTTP 500. The task's verified Vitest process tree was terminated; unrelated processes and containers were left alone and Docker was not restarted. The local full run is **incomplete/blocked**, not green, and its remaining approval failures are unresolved. No test timeout was increased or test skipped to turn it green. Independent GitHub real-Postgres results remain the successful full-suite evidence.
