@@ -1,8 +1,16 @@
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { createFileRoute, Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { FileText } from "lucide-react";
 import { z } from "zod";
 
 import { JobSheetStatusBadge } from "@/components/job-sheets/job-sheet-status-badge";
+import { BulkActionBar } from "@/components/operations/bulk-action-bar";
+import { BulkPreviewDialog } from "@/components/operations/bulk-preview-dialog";
+import { remainingBulkSelection } from "@/components/operations/bulk-results";
+import { useBulkOperation } from "@/components/operations/use-bulk-operation";
+import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
 import { ListPagination } from "@/components/list-pagination";
 import {
   EmptyWorkspaceState,
@@ -17,7 +25,11 @@ import {
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { formatCount, formatCurrencyAmount, formatDate } from "@/lib/format";
+import { csvFileName, toCsv, type CsvColumn } from "@/lib/csv";
+import type { JobSheetListItem } from "@/server/repositories/job-sheets";
 import { useIsExactPath } from "@/lib/routing-utils";
 import type { JobSheetStatus } from "@/lib/types";
 import {
@@ -48,6 +60,12 @@ const jobSheetListSearchSchema = z.object({
   page: z.coerce.number().int().min(1).default(1).catch(1),
   limit: z.coerce.number().int().min(1).max(100).default(50).catch(50),
   status: jobSheetStatusFilterSchema.default("all").catch("all"),
+  company: z.string().max(200).default("").catch(""),
+  quoteNumber: z.string().max(100).default("").catch(""),
+  accountingOwner: z.string().max(200).default("").catch(""),
+  po: z.string().max(100).default("").catch(""),
+  createdFrom: z.string().max(10).default("").catch(""),
+  createdTo: z.string().max(10).default("").catch(""),
 });
 
 type JobSheetListSearch = z.infer<typeof jobSheetListSearchSchema>;
@@ -59,8 +77,17 @@ function isJobSheetStatusFilter(value: string): value is JobSheetStatusFilter {
 
 /** The search params, narrowed to what `listJobSheetsPage` understands. */
 function toJobSheetPageFilters(search: Partial<JobSheetListSearch>) {
-  const { status, ...pagination } = search;
-  return status && status !== "all" ? { ...pagination, status } : pagination;
+  return {
+    page: search.page,
+    limit: search.limit,
+    ...(search.status && search.status !== "all" ? { status: search.status } : {}),
+    ...(search.company?.trim() ? { company: search.company.trim() } : {}),
+    ...(search.quoteNumber?.trim() ? { quoteNumber: search.quoteNumber.trim() } : {}),
+    ...(search.accountingOwner ? { accountingOwner: search.accountingOwner } : {}),
+    ...(search.po?.trim() ? { po: search.po.trim() } : {}),
+    ...(search.createdFrom ? { createdFrom: search.createdFrom } : {}),
+    ...(search.createdTo ? { createdTo: search.createdTo } : {}),
+  };
 }
 
 export const Route = createFileRoute("/job-sheets")({
@@ -111,11 +138,71 @@ function JobSheetsPage() {
   return <JobSheetsIndex />;
 }
 
+function downloadSelectedJobSheets(rows: JobSheetListItem[]) {
+  if (rows.length === 0) return;
+  const columns: CsvColumn<JobSheetListItem>[] = [
+    { header: "Job Sheet", value: (row) => row.number },
+    { header: "Company", value: (row) => row.company_name },
+    { header: "Quote", value: (row) => row.quote_number },
+    { header: "Status", value: (row) => row.status },
+    { header: "PO number", value: (row) => row.po_number },
+    { header: "Client order", value: (row) => row.client_order_number },
+    { header: "Accounting owner ID", value: (row) => row.accounting_owner },
+    { header: "Amount", value: (row) => row.total_amount, kind: "number" },
+    { header: "Currency", value: (row) => row.currency },
+    { header: "Created at", value: (row) => row.created_at, kind: "date" },
+  ];
+  const blob = new Blob([toCsv(rows, columns)], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = csvFileName("job-sheets", "selected-page");
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 function JobSheetsIndex() {
   const jobSheetPage = Route.useLoaderData();
-  const { status: statusFilter, limit } = Route.useSearch();
+  const search = Route.useSearch();
+  const { status: statusFilter, limit } = search;
+  const [draft, setDraft] = useState({
+    company: search.company,
+    quoteNumber: search.quoteNumber,
+    accountingOwner: search.accountingOwner,
+    po: search.po,
+    createdFrom: search.createdFrom,
+    createdTo: search.createdTo,
+  });
+  useEffect(() => {
+    setDraft({
+      company: search.company,
+      quoteNumber: search.quoteNumber,
+      accountingOwner: search.accountingOwner,
+      po: search.po,
+      createdFrom: search.createdFrom,
+      createdTo: search.createdTo,
+    });
+  }, [
+    search.company,
+    search.quoteNumber,
+    search.accountingOwner,
+    search.po,
+    search.createdFrom,
+    search.createdTo,
+  ]);
   const rows = jobSheetPage.items;
   const navigate = useNavigate({ from: Route.fullPath });
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(() => new Set());
+  const [bulkOwner, setBulkOwner] = useState("");
+  const bulkOperation = useBulkOperation("clientops:bulk:job-sheets", async (result) => {
+    setBulkSelected((current) => new Set(remainingBulkSelection(Array.from(current), result)));
+    await queryClient.invalidateQueries({ queryKey: crmQueryKeys.jobSheets.lists() });
+    await router.invalidate({ filter: (match) => match.routeId === "/job-sheets" });
+  });
 
   const setStatusFilter = (value: string) => {
     const status: JobSheetStatusFilter = isJobSheetStatusFilter(value) ? value : "all";
@@ -123,6 +210,32 @@ function JobSheetsIndex() {
     navigate({ search: (current) => ({ ...current, status, page: 1 }), replace: true });
   };
 
+  const clearFilters = () => {
+    const empty = {
+      company: "",
+      quoteNumber: "",
+      accountingOwner: "",
+      po: "",
+      createdFrom: "",
+      createdTo: "",
+    };
+    setDraft(empty);
+    navigate({
+      search: (current) => ({ ...current, ...empty, status: "all", page: 1 }),
+      replace: true,
+    });
+  };
+
+  const hasActiveFilters =
+    statusFilter !== "all" ||
+    Boolean(
+      search.company ||
+      search.quoteNumber ||
+      search.accountingOwner ||
+      search.po ||
+      search.createdFrom ||
+      search.createdTo,
+    );
   const awaitingReview = rows.filter((row) => row.status !== "accepted").length;
   const acceptedValue = formatAcceptedValueSummary(rows);
   const pageScope = `on this page of ${formatCount(rows.length)}`;
@@ -141,6 +254,12 @@ function JobSheetsIndex() {
       header: "Job sheet",
       priority: "primary",
       cell: (row) => row.number,
+    },
+    {
+      id: "company",
+      header: "Company",
+      priority: "secondary",
+      cell: (row) => row.company_name ?? "Not linked",
     },
     {
       id: "status",
@@ -166,7 +285,7 @@ function JobSheetsIndex() {
           className="inline-flex items-center gap-1 rounded-sm text-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-          Open quote
+          {row.quote_number ?? "Open quote"}
         </Link>
       ),
     },
@@ -238,12 +357,141 @@ function JobSheetsIndex() {
               onChange: setStatusFilter,
             },
           ]}
-          onClear={() => setStatusFilter("all")}
+          onClear={clearFilters}
           resultCount={jobSheetPage.total}
         />
 
+        <form
+          className="grid gap-3 rounded-md border p-4 md:grid-cols-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            navigate({ search: (current) => ({ ...current, ...draft, page: 1 }), replace: true });
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="job-sheet-company-filter">Company</Label>
+            <Input
+              id="job-sheet-company-filter"
+              value={draft.company}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, company: event.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="job-sheet-quote-filter">Quote number</Label>
+            <Input
+              id="job-sheet-quote-filter"
+              value={draft.quoteNumber}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, quoteNumber: event.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="job-sheet-po-filter">PO number</Label>
+            <Input
+              id="job-sheet-po-filter"
+              value={draft.po}
+              onChange={(event) => setDraft((current) => ({ ...current, po: event.target.value }))}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="job-sheet-from-filter">Created from (Hong Kong date)</Label>
+            <Input
+              id="job-sheet-from-filter"
+              type="date"
+              value={draft.createdFrom}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, createdFrom: event.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="job-sheet-to-filter">Created to (Hong Kong date)</Label>
+            <Input
+              id="job-sheet-to-filter"
+              type="date"
+              value={draft.createdTo}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, createdTo: event.target.value }))
+              }
+            />
+          </div>
+          <ProfileSearchCombobox
+            purpose="job_sheet_owner_filter"
+            label="Accounting owner"
+            value={draft.accountingOwner}
+            onChange={(accountingOwner) => {
+              setDraft((current) => ({ ...current, accountingOwner }));
+              navigate({
+                search: (current) => ({ ...current, accountingOwner, page: 1 }),
+                replace: true,
+              });
+            }}
+          />
+          <div className="md:col-span-3">
+            <Button type="submit">Apply filters</Button>
+          </div>
+        </form>
+
+        {(bulkSelected.size > 0 || bulkOperation.result) && (
+          <BulkActionBar
+            selectedCount={bulkSelected.size}
+            busy={bulkOperation.busy}
+            result={bulkOperation.result}
+            onResume={() => void bulkOperation.resume()}
+            onClear={() => {
+              setBulkSelected(new Set());
+              bulkOperation.dismiss();
+            }}
+          >
+            {bulkSelected.size > 0 && (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!rows.some((row) => bulkSelected.has(row.id))}
+                  onClick={() =>
+                    downloadSelectedJobSheets(rows.filter((row) => bulkSelected.has(row.id)))
+                  }
+                >
+                  Export selected on this page
+                </Button>
+                <ProfileSearchCombobox
+                  purpose="job_sheet_owner_filter"
+                  label="Bulk accounting owner"
+                  value={bulkOwner}
+                  onChange={setBulkOwner}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkOperation.busy || !bulkOwner}
+                  onClick={() =>
+                    void bulkOperation.prepare(
+                      { type: "job_sheet.assign", profileId: bulkOwner },
+                      Array.from(bulkSelected),
+                    )
+                  }
+                >
+                  Assign owner
+                </Button>
+              </>
+            )}
+          </BulkActionBar>
+        )}
+        <BulkPreviewDialog
+          preview={bulkOperation.preview}
+          busy={bulkOperation.busy}
+          onCancel={bulkOperation.cancelPreview}
+          onCommit={() => void bulkOperation.commit()}
+        />
+
         {rows.length === 0 ? (
-          statusFilter === "all" ? (
+          !hasActiveFilters ? (
             <EmptyWorkspaceState
               title="No accounting job sheets yet"
               description="Accepted quotes appear here for accounting review."
@@ -254,10 +502,7 @@ function JobSheetsIndex() {
               }
             />
           ) : (
-            <FilteredEmptyState
-              onClear={() => setStatusFilter("all")}
-              filterSummary={`Status: ${getJobSheetStatusLabel(statusFilter)}`}
-            />
+            <FilteredEmptyState onClear={clearFilters} filterSummary="Current Job Sheet filters" />
           )
         ) : (
           <>
@@ -267,6 +512,16 @@ function JobSheetsIndex() {
                 rows={rows}
                 rowKey={(row) => row.id}
                 rowHref={(row) => `/job-sheets/${row.id}`}
+                selection={{
+                  selected: bulkSelected,
+                  onChange: (next) => {
+                    if (next.size > 100) {
+                      toast.error("Select at most 100 job sheets per bulk operation.");
+                    } else {
+                      setBulkSelected(next);
+                    }
+                  },
+                }}
                 renderCard={(row) => (
                   <>
                     <span className="flex flex-wrap items-center gap-2">

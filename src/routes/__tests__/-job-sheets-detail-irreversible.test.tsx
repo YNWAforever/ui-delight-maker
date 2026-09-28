@@ -52,10 +52,12 @@ const jobSheet: JobSheet = {
   client_id: null,
   contact_id: null,
   sales_owner: null,
-  accounting_owner: null,
+  accounting_owner: "accounting-1",
   status: "accounting_review",
   accepted_scope_summary: null,
   po_number: "PO-9",
+  no_po_reason: null,
+  row_version: 0,
   client_order_number: null,
   xero_customer_reference: null,
   accounting_notes: null,
@@ -104,6 +106,8 @@ function renderDetail(portions: JobSheetPortion[]) {
     portions,
     quote: null,
     client: null,
+    canAcceptJobSheet: true,
+    canUpdateHeader: false,
   } as never);
 
   const queryClient = new QueryClient({

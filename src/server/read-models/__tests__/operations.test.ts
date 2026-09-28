@@ -83,6 +83,7 @@ describe("operations read models", () => {
       quote_number: "Q-001",
       quote_status: "accepted",
       client_company_name: "Acme",
+      company_name: "Acme",
     });
     queryMock.mockResolvedValueOnce([{ id: "portion-1", job_sheet_id: "job-1" }]);
 
@@ -388,31 +389,74 @@ describe("operations server functions", () => {
       quote_number: "Q-001",
       quote_status: "accepted",
       client_company_name: "Acme",
+      company_name: "Acme",
     });
   });
 
   it("grants the core job sheet while redacting denied linked summaries by actual ID", async () => {
     requireCapabilitySetMock
+      .mockResolvedValueOnce({
+        "job_sheets.update_billing": false,
+        "job_sheets.accept": false,
+      })
       .mockResolvedValueOnce({ "quotes.view": false })
       .mockResolvedValueOnce({ "accounts.view": false });
     const { getJobSheetRead } = await import("@/server-functions/operations");
 
     const result = await getJobSheetRead({ data: { id: "job-1" } });
 
-    expect(requireCapabilityMock).toHaveBeenCalledWith("job_sheets.view", {
-      resourceType: "job_sheet",
-      resourceId: "job-1",
-    });
+    expect(requireCapabilityMock).toHaveBeenCalledWith(
+      "job_sheets.view",
+      {
+        resourceType: "job_sheet",
+        resourceId: "job-1",
+      },
+      reportContext,
+    );
     expect(requireCapabilitySetMock).toHaveBeenNthCalledWith(1, [], {
-      optional: ["quotes.view"],
-      target: { resourceType: "quote", resourceId: "quote-1" },
+      optional: ["job_sheets.update_billing", "job_sheets.accept"],
+      target: { resourceType: "job_sheet", resourceId: "job-1" },
+      context: reportContext,
     });
     expect(requireCapabilitySetMock).toHaveBeenNthCalledWith(2, [], {
+      optional: ["quotes.view"],
+      target: { resourceType: "quote", resourceId: "quote-1" },
+      context: reportContext,
+    });
+    expect(requireCapabilitySetMock).toHaveBeenNthCalledWith(3, [], {
       optional: ["accounts.view"],
       target: { resourceType: "client", resourceId: "client-1" },
+      context: reportContext,
     });
     expect(result.quote).toBeNull();
     expect(result.client).toBeNull();
+    expect(result.companyName).toBeNull();
+    expect(result.canAcceptJobSheet).toBe(false);
+  });
+
+  it("does not reveal an account company through quote access when account access is denied", async () => {
+    queryOneMock.mockResolvedValueOnce({
+      id: "job-1",
+      quote_id: "quote-1",
+      client_id: null,
+      account_id: "account-1",
+      quote_number: "Q-001",
+      quote_status: "accepted",
+      company_name: "Private account",
+    });
+    requireCapabilitySetMock
+      .mockResolvedValueOnce({ "job_sheets.update_billing": false, "job_sheets.accept": false })
+      .mockResolvedValueOnce({ "quotes.view": true })
+      .mockResolvedValueOnce({ "accounts.view": false });
+    const { getJobSheetRead } = await import("@/server-functions/operations");
+    const result = await getJobSheetRead({ data: { id: "job-1" } });
+    expect(result.quote?.id).toBe("quote-1");
+    expect(result.companyName).toBeNull();
+    expect(requireCapabilitySetMock).toHaveBeenNthCalledWith(3, [], {
+      optional: ["accounts.view"],
+      target: { resourceType: "account", resourceId: "account-1" },
+      context: reportContext,
+    });
   });
 
   it("does not swallow linked authorization infrastructure failures", async () => {

@@ -101,7 +101,9 @@ export function ProfileSearchCombobox({
           ? (selected.data?.displayName ?? "Name unavailable")
           : purpose === "task_filter"
             ? (FILTER_PRESETS.find((preset) => preset.value === value)?.label ?? "All owners")
-            : "Unassigned"}
+            : purpose === "job_sheet_owner_filter"
+              ? "All owners"
+              : "Unassigned"}
       </p>
       <label htmlFor={"people-search-" + purpose + "-" + label} className="text-sm font-medium">
         {label} search

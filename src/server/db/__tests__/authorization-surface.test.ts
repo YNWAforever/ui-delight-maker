@@ -221,7 +221,10 @@ import { describe, expect, it } from "vitest";
 // T15: net +3 lexical matches after retiring direct import writes and adding
 // the new kind-specific preview gates. Commit/resume recheck per row in the
 // import service; the contract test accounts for those delegated handlers.
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 234;
+// T16: +3 counted calls. The explicit Job Sheet header mutation has its own
+// resource-scoped write gate. The detail read adds optional update/accept controls
+// and a linked-account visibility check for the company label; required gates remain.
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 237;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

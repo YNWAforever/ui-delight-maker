@@ -5,6 +5,11 @@ import { AlertCircle, CheckCircle2, Lock, Plus, RotateCcw, Save, Trash2 } from "
 import { toast } from "sonner";
 
 import { BillingPortionsTable } from "@/components/job-sheets/billing-portions-table";
+import { BulkActionBar } from "@/components/operations/bulk-action-bar";
+import { BulkPreviewDialog } from "@/components/operations/bulk-preview-dialog";
+import { remainingBulkSelection } from "@/components/operations/bulk-results";
+import { useBulkOperation } from "@/components/operations/use-bulk-operation";
+import { HandoffHeaderForm } from "@/components/job-sheets/handoff-header-form";
 import { JobSheetStatusBadge } from "@/components/job-sheets/job-sheet-status-badge";
 import { ErrorState, StickyActionBar, WorkspaceHeader } from "@/components/sales";
 import {
@@ -19,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,6 +71,7 @@ import { canAcceptJobSheet } from "@/lib/quote-to-cash";
 import type { JobSheetBillingType, JobSheetPortion, JobSheetPortionStatus } from "@/lib/types";
 import {
   acceptJobSheetForAccounting,
+  updateJobSheetHeader,
   updateJobSheetPortions,
   updateXeroNotes,
   confirmXeroEntry,
@@ -159,7 +166,8 @@ function JobSheetDetailPage() {
     initialData: initialRead,
     staleTime: 30_000,
   });
-  const { jobSheet, portions, quote, client } = jobSheetQuery.data;
+  const { jobSheet, portions, quote, client, companyName, salesOwnerName, accountingOwnerName } =
+    jobSheetQuery.data;
   const [billingDraftsByJobSheetId, setBillingDraftsByJobSheetId] = useState<
     Record<string, PortionDraft[]>
   >(() => ({ [jobSheet.id]: toPortionDrafts(portions) }));
@@ -230,6 +238,18 @@ function JobSheetDetailPage() {
     await router.invalidate({ filter: (match) => match.routeId === "/job-sheets/$id" });
   };
 
+  const [bulkPortionSelected, setBulkPortionSelected] = useState<Set<string>>(() => new Set());
+  const [bulkInvoiceDate, setBulkInvoiceDate] = useState("");
+  const bulkPortionOperation = useBulkOperation(
+    `clientops:bulk:job-sheet-portions:${jobSheet.id}`,
+    async (result) => {
+      setBulkPortionSelected(
+        (current) => new Set(remainingBulkSelection(Array.from(current), result)),
+      );
+      await invalidateJobSheetReads("billing");
+    },
+  );
+
   const commercialLocked = isJobSheetCommercialLocked(jobSheet.status, jobSheet.locked_at);
   const hasUnsavedBillingChanges = useMemo(
     () => hasUnsavedBillingDraftChanges(portionDrafts, portions),
@@ -253,24 +273,32 @@ function JobSheetDetailPage() {
     [jobSheet.created_at, jobSheet.id, jobSheet.updated_at, portionDrafts, portions],
   );
 
-  const acceptance = useMemo(
-    () =>
-      canAcceptJobSheet({
-        totalAmount: jobSheet.total_amount,
-        portions: previewPortions,
-        requirePoNumber: false,
-        poNumber: jobSheet.po_number,
-        clientOrderNumber: jobSheet.client_order_number,
-        currency: jobSheet.currency,
-      }),
-    [
-      jobSheet.client_order_number,
-      jobSheet.currency,
-      jobSheet.po_number,
-      jobSheet.total_amount,
-      previewPortions,
-    ],
-  );
+  const acceptance = useMemo(() => {
+    const gate = canAcceptJobSheet({
+      totalAmount: jobSheet.total_amount,
+      portions: previewPortions,
+      requirePoNumber: false,
+      requirePoOrReason: true,
+      poNumber: jobSheet.po_number,
+      noPoReason: jobSheet.no_po_reason,
+      clientOrderNumber: jobSheet.client_order_number,
+      currency: jobSheet.currency,
+    });
+    return jobSheet.accounting_owner
+      ? gate
+      : {
+          ok: false,
+          reasons: [...gate.reasons, "Assign an active accounting owner before acceptance."],
+        };
+  }, [
+    jobSheet.accounting_owner,
+    jobSheet.client_order_number,
+    jobSheet.currency,
+    jobSheet.no_po_reason,
+    jobSheet.po_number,
+    jobSheet.total_amount,
+    previewPortions,
+  ]);
 
   const updateDraft = <K extends keyof PortionDraft>(
     id: string,
@@ -583,7 +611,9 @@ function JobSheetDetailPage() {
         hasUnsavedXeroChanges,
       }) ?? (acceptance.ok ? null : acceptance.reasons.join(" ")));
 
-  const showAcceptAction = canShowAcceptAndLockAction(jobSheet.status, jobSheet.locked_at);
+  const showAcceptAction =
+    jobSheetQuery.data.canAcceptJobSheet &&
+    canShowAcceptAndLockAction(jobSheet.status, jobSheet.locked_at);
   const savedPortionIds = useMemo(() => new Set(portions.map((portion) => portion.id)), [portions]);
 
   return (
@@ -628,6 +658,62 @@ function JobSheetDetailPage() {
                 portions={previewPortions}
               />
 
+              {jobSheetQuery.data.canUpdateHeader &&
+                (bulkPortionSelected.size > 0 || bulkPortionOperation.result) && (
+                  <BulkActionBar
+                    selectedCount={bulkPortionSelected.size}
+                    busy={bulkPortionOperation.busy}
+                    result={bulkPortionOperation.result}
+                    onResume={() => void bulkPortionOperation.resume()}
+                    onClear={() => {
+                      setBulkPortionSelected(new Set());
+                      bulkPortionOperation.dismiss();
+                    }}
+                  >
+                    {bulkPortionSelected.size > 0 && (
+                      <>
+                        <Label className="flex items-center gap-2 text-xs">
+                          Target invoice date
+                          <Input
+                            type="date"
+                            value={bulkInvoiceDate}
+                            onChange={(event) => setBulkInvoiceDate(event.target.value)}
+                            className="w-40"
+                          />
+                        </Label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            bulkPortionOperation.busy ||
+                            editorBusy ||
+                            hasUnsavedBillingChanges ||
+                            hasUnsavedXeroChanges
+                          }
+                          onClick={() =>
+                            void bulkPortionOperation.prepare(
+                              {
+                                type: "job_sheet.invoice_date",
+                                targetInvoiceDate: bulkInvoiceDate || null,
+                              },
+                              Array.from(bulkPortionSelected),
+                            )
+                          }
+                        >
+                          Set invoice date
+                        </Button>
+                      </>
+                    )}
+                  </BulkActionBar>
+                )}
+              <BulkPreviewDialog
+                preview={bulkPortionOperation.preview}
+                busy={bulkPortionOperation.busy}
+                onCancel={bulkPortionOperation.cancelPreview}
+                onCommit={() => void bulkPortionOperation.commit()}
+              />
+
               <Alert variant={acceptanceGateAlert.variant}>
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>{acceptanceGateAlert.title}</AlertTitle>
@@ -658,6 +744,27 @@ function JobSheetDetailPage() {
 
                   return (
                     <div key={portion.id} className="rounded-md border border-border p-4">
+                      {persisted && jobSheetQuery.data.canUpdateHeader && (
+                        <Label className="mb-3 flex items-center gap-2 text-xs">
+                          <Checkbox
+                            checked={bulkPortionSelected.has(persisted.id)}
+                            onCheckedChange={(checked) => {
+                              setBulkPortionSelected((current) => {
+                                const next = new Set(current);
+                                if (checked === true) next.add(persisted.id);
+                                else next.delete(persisted.id);
+                                if (next.size > 100) {
+                                  toast.error("Select at most 100 portions per bulk operation.");
+                                  return current;
+                                }
+                                return next;
+                              });
+                            }}
+                            aria-label={`Select portion ${portion.name} for bulk date change`}
+                          />
+                          Select for bulk invoice date
+                        </Label>
+                      )}
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                         <div className="space-y-1.5 xl:col-span-2">
                           <Label htmlFor={`portion-name-${portion.id}`}>
@@ -1066,6 +1173,15 @@ function JobSheetDetailPage() {
         </div>
 
         <div className="space-y-6">
+          <HandoffHeaderForm
+            jobSheet={jobSheet}
+            editable={jobSheetQuery.data.canUpdateHeader}
+            onSave={async (input) => {
+              await updateJobSheetHeader({ data: { id: jobSheet.id, ...input } });
+              await invalidateJobSheetReads("header");
+              toast.success("Handoff header saved");
+            }}
+          />
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Handoff details</CardTitle>
@@ -1082,11 +1198,13 @@ function JobSheetDetailPage() {
                     className="rounded-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {quote.number ?? "Open quote"}
+                    {quote.versionNumber ? ` · version ${quote.versionNumber}` : ""}
                   </Link>
                 ) : (
                   "Not available with your access"
                 )}
               </DetailRow>
+              <DetailRow label="Company">{companyName ?? "Not linked"}</DetailRow>
               <DetailRow label="Client">
                 {client
                   ? client.company_name
@@ -1095,14 +1213,31 @@ function JobSheetDetailPage() {
                     : "Not linked"}
               </DetailRow>
               <DetailRow label="PO number">{jobSheet.po_number ?? "Not supplied"}</DetailRow>
+              <DetailRow label="No PO reason">{jobSheet.no_po_reason ?? "Not supplied"}</DetailRow>
               <DetailRow label="Client order">
                 {jobSheet.client_order_number ?? "Not supplied"}
               </DetailRow>
               <DetailRow label="Xero customer">
                 {jobSheet.xero_customer_reference ?? "Not set"}
               </DetailRow>
+              <DetailRow label="Sales owner">
+                {jobSheet.sales_owner ? (salesOwnerName ?? "Name unavailable") : "Unassigned"}
+              </DetailRow>
               <DetailRow label="Accounting owner">
-                {jobSheet.accounting_owner ?? "Unassigned"}
+                {jobSheet.accounting_owner
+                  ? (accountingOwnerName ?? "Name unavailable")
+                  : "Unassigned"}
+              </DetailRow>
+              <DetailRow label="Next action">
+                {!jobSheet.accounting_owner
+                  ? "Assign an active accounting owner"
+                  : !jobSheet.po_number && !jobSheet.no_po_reason
+                    ? "Record a PO or no-PO reason"
+                    : jobSheet.status === "accounting_review"
+                      ? "Reconcile portions, then accept"
+                      : jobSheet.status === "accepted"
+                        ? "Record manual Xero evidence"
+                        : "Review status"}
               </DetailRow>
               <Separator />
               <DetailRow label="Created">{formatDateTime(jobSheet.created_at)}</DetailRow>

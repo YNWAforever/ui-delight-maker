@@ -4,7 +4,6 @@ import { buildDefaultPortionsFromLineItems, canAcceptJobSheet } from "@/lib/quot
 import type { NewJobSheetPortion } from "@/lib/quote-to-cash";
 import type { JobSheet, JobSheetPortion, JsonValue, QuoteLineItemRecord } from "@/lib/types";
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
-import { buildFilters } from "@/server/db/query-builders";
 import {
   normalizePagination,
   parseCount,
@@ -16,6 +15,12 @@ export type JobSheetFilters = {
   status?: string;
   client_id?: string;
   account_id?: string;
+  company?: string;
+  quoteNumber?: string;
+  accountingOwner?: string;
+  po?: string;
+  createdFrom?: string;
+  createdTo?: string;
 };
 
 export type JobSheetPageFilters = JobSheetFilters & PaginationInput;
@@ -34,6 +39,15 @@ export type CreateJobSheetFromAcceptedQuoteInput = {
 
 export type AcceptJobSheetInput = {
   accepted_by: string;
+};
+
+export type UpdateJobSheetHeaderInput = {
+  accountingOwner: string;
+  poNumber: string | null;
+  noPoReason: string | null;
+  clientOrder: string | null;
+  billingInstructions: string | null;
+  acceptedScopeSummary?: string | null;
 };
 
 export type JobSheetDetail = {
@@ -130,26 +144,45 @@ export type JobSheetListItem = Pick<
   | "created_at"
   | "total_amount"
   | "currency"
-> & { has_xero_customer_reference: boolean };
+> & {
+  has_xero_customer_reference: boolean;
+  quote_number: string | null;
+  company_name: string | null;
+  accounting_owner: string | null;
+};
 
 const JOB_SHEET_LIST_COLUMNS =
-  "js.id, js.number, js.quote_id, js.status, js.po_number, js.client_order_number, js.created_at, js.total_amount, js.currency, (js.xero_customer_reference is not null) as has_xero_customer_reference";
+  "js.id, js.number, js.quote_id, js.status, js.po_number, js.client_order_number, js.created_at, js.total_amount, js.currency, js.accounting_owner, q.number as quote_number, coalesce(c.company_name,a.name,l.company_name) as company_name, (js.xero_customer_reference is not null) as has_xero_customer_reference";
+const JOB_SHEET_LIST_FROM =
+  "from job_sheets js left join quotes q on q.id=js.quote_id left join leads l on l.id=q.lead_id left join clients c on c.id=js.client_id left join accounts a on a.id=js.account_id";
 
 function visibleJobSheetWhere(filters: JobSheetFilters, context: RequestAuthorization) {
-  const where = buildFilters([
-    ["status", filters.status],
-    ["client_id", filters.client_id],
-    ["account_id", filters.account_id],
-  ]);
-  const scope = buildVisibilityScope(context, "job_sheet", "js");
-  const predicate = scope.sql.replace(
-    /\$(\d+)/g,
-    (_, index: string) => `$${Number(index) + where.values.length}`,
-  );
-  return {
-    sql: where.sql ? `${where.sql} and ${predicate}` : `where ${predicate}`,
-    values: [...where.values, ...scope.values],
+  const values: unknown[] = [];
+  const conditions: string[] = [];
+  const add = (sql: string, value: unknown) => {
+    values.push(value);
+    conditions.push(sql.replace("?", "$" + values.length));
   };
+  if (filters.status) add("js.status=?", filters.status);
+  if (filters.client_id) add("js.client_id=?", filters.client_id);
+  if (filters.account_id) add("js.account_id=?", filters.account_id);
+  if (filters.company?.trim())
+    add(
+      "coalesce(c.company_name,a.name,l.company_name) ilike ?",
+      "%" + filters.company.trim() + "%",
+    );
+  if (filters.quoteNumber?.trim()) add("q.number ilike ?", "%" + filters.quoteNumber.trim() + "%");
+  if (filters.accountingOwner) add("js.accounting_owner=?", filters.accountingOwner);
+  if (filters.po?.trim()) add("js.po_number ilike ?", "%" + filters.po.trim() + "%");
+  if (filters.createdFrom)
+    add("(js.created_at at time zone 'Asia/Hong_Kong')::date>=?::date", filters.createdFrom);
+  if (filters.createdTo)
+    add("(js.created_at at time zone 'Asia/Hong_Kong')::date<=?::date", filters.createdTo);
+  const scope = buildVisibilityScope(context, "job_sheet", "js");
+  conditions.push(
+    scope.sql.replace(/\$(\d+)/g, (_, index: string) => "$" + (Number(index) + values.length)),
+  );
+  return { sql: "where " + conditions.join(" and "), values: [...values, ...scope.values] };
 }
 
 export async function listJobSheets(
@@ -159,7 +192,7 @@ export async function listJobSheets(
   const where = visibleJobSheetWhere(filters, context);
   return query<JobSheetListItem>(
     `select ${JOB_SHEET_LIST_COLUMNS}
-     from job_sheets js
+     ${JOB_SHEET_LIST_FROM}
      ${where.sql}
      order by js.created_at desc, js.id desc`,
     where.values,
@@ -175,14 +208,14 @@ export async function listJobSheetsPage(
   const [items, count] = await Promise.all([
     query<JobSheetListItem>(
       `select ${JOB_SHEET_LIST_COLUMNS}
-       from job_sheets js
+       ${JOB_SHEET_LIST_FROM}
        ${where.sql}
        order by js.created_at desc, js.id desc
        limit $${where.values.length + 1} offset $${where.values.length + 2}`,
       [...where.values, limit, offset],
     ),
     queryOne<{ total: number | string }>(
-      `select count(*) as total from job_sheets js ${where.sql}`,
+      `select count(*) as total ${JOB_SHEET_LIST_FROM} ${where.sql}`,
       where.values,
     ),
   ]);
@@ -426,6 +459,84 @@ export async function replaceJobSheetPortions(
   if (db) return work(db);
   return transaction(work);
 }
+function trimmed(value: string | null | undefined, max: number): string | null {
+  const clean = value?.trim() || null;
+  if (clean && clean.length > max) throw new Error("Job Sheet header field is too long");
+  return clean;
+}
+
+async function requireActiveAccountingOwner(id: string, db: Queryable): Promise<void> {
+  const owner = await queryOne<{ id: string }>(
+    "select id from profiles where id=$1 and status='active' and role in ('accounting','admin','super_admin') for share",
+    [id],
+    db,
+  );
+  if (!owner) throw new Error("An active accounting owner is required");
+}
+
+export async function updateJobSheetHeader(
+  id: string,
+  input: UpdateJobSheetHeaderInput,
+  actorId: string,
+): Promise<JobSheet> {
+  return transaction(async (db) => {
+    const current = await getJobSheetByIdWithOptions(id, db, { forUpdate: true });
+    await requireActiveAccountingOwner(input.accountingOwner, db);
+    const poNumber = trimmed(input.poNumber, 100);
+    const noPoReason = poNumber ? null : trimmed(input.noPoReason, 500);
+    const clientOrder = trimmed(input.clientOrder, 100);
+    const billingInstructions = trimmed(input.billingInstructions, 2000);
+    const acceptedScopeSummary =
+      input.acceptedScopeSummary === undefined
+        ? current.accepted_scope_summary
+        : trimmed(input.acceptedScopeSummary, 2000);
+    const changes = {
+      accounting_owner: input.accountingOwner,
+      po_number: poNumber,
+      no_po_reason: noPoReason,
+      client_order_number: clientOrder,
+      special_billing_instructions: billingInstructions,
+      accepted_scope_summary: acceptedScopeSummary,
+    };
+    const changedFields = Object.entries(changes)
+      .filter(([key, value]) => current[key as keyof JobSheet] !== value)
+      .map(([key]) => key);
+    if (!changedFields.length) return current;
+    if (
+      (current.status === "accepted" || current.locked_at) &&
+      changedFields.some((field) =>
+        ["po_number", "no_po_reason", "client_order_number", "accepted_scope_summary"].includes(
+          field,
+        ),
+      )
+    ) {
+      throw new Error("Accepted Job Sheet commercial handoff fields are locked");
+    }
+    const updated = await queryOne<JobSheet>(
+      `update job_sheets set accounting_owner=$2,po_number=$3,no_po_reason=$4,
+       client_order_number=$5,special_billing_instructions=$6,accepted_scope_summary=$7,
+       updated_at=now() where id=$1 returning *`,
+      [
+        id,
+        changes.accounting_owner,
+        changes.po_number,
+        changes.no_po_reason,
+        changes.client_order_number,
+        changes.special_billing_instructions,
+        changes.accepted_scope_summary,
+      ],
+      db,
+    );
+    await queryOne(
+      `insert into job_sheet_activity(job_sheet_id,actor_id,action,diff_data)
+       values($1,$2,'header_updated',$3::jsonb) returning id`,
+      [id, actorId, JSON.stringify({ changed_fields: changedFields })],
+      db,
+    );
+    return getJobSheetOrThrow(updated);
+  });
+}
+
 export async function acceptJobSheet(id: string, input: AcceptJobSheetInput): Promise<JobSheet> {
   return transaction(async (client) => {
     const jobSheet = await getJobSheetByIdWithOptions(id, client, { forUpdate: true });
@@ -434,12 +545,39 @@ export async function acceptJobSheet(id: string, input: AcceptJobSheetInput): Pr
       throw new Error("Job sheet is already accepted or locked");
     }
 
+    if (!jobSheet.accounting_owner) {
+      throw new Error("An active accounting owner is required before acceptance");
+    }
+    await requireActiveAccountingOwner(jobSheet.accounting_owner, client);
+
+    const version = await queryOne<{ snapshot: JsonValue }>(
+      "select snapshot from quote_versions where id=$1 and quote_id=$2 and reason='accepted'",
+      [jobSheet.accepted_quote_version_id, jobSheet.quote_id],
+      client,
+    );
+    const snapshot = version?.snapshot;
+    if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+      throw new Error("Accepted quote snapshot needs reconciliation");
+    }
+    const acceptedAmount = (snapshot as Record<string, unknown>).total_value;
+    const acceptedCurrency = (snapshot as Record<string, unknown>).currency;
+    if (
+      typeof acceptedAmount !== "number" ||
+      !Number.isFinite(acceptedAmount) ||
+      acceptedAmount !== jobSheet.total_amount ||
+      acceptedCurrency !== jobSheet.currency
+    ) {
+      throw new Error("Job Sheet total and currency must match the accepted quote snapshot");
+    }
+
     const portions = await listJobSheetPortions(id, client);
     const acceptance = canAcceptJobSheet({
       totalAmount: jobSheet.total_amount,
       portions,
       requirePoNumber: false,
+      requirePoOrReason: true,
       poNumber: jobSheet.po_number,
+      noPoReason: jobSheet.no_po_reason,
       clientOrderNumber: jobSheet.client_order_number,
       currency: jobSheet.currency,
     });
@@ -475,12 +613,24 @@ export async function acceptJobSheet(id: string, input: AcceptJobSheetInput): Pr
 type JobSheetOperationsRow = JobSheet & {
   quote_number: string | null;
   quote_status: string | null;
+  accepted_version_number: number | null;
   client_company_name: string | null;
+  company_name: string | null;
+  sales_owner_name: string | null;
+  accounting_owner_name: string | null;
 };
 
 export type JobSheetOperationsRead = JobSheetDetail & {
-  quote: { id: string; number: string | null; status: string | null } | null;
+  quote: {
+    id: string;
+    number: string | null;
+    status: string | null;
+    versionNumber: number | null;
+  } | null;
   client: { id: string; company_name: string } | null;
+  companyName: string | null;
+  salesOwnerName: string | null;
+  accountingOwnerName: string | null;
 };
 
 export async function getJobSheetOperationsRead(id: string): Promise<JobSheetOperationsRead> {
@@ -489,28 +639,47 @@ export async function getJobSheetOperationsRead(id: string): Promise<JobSheetOpe
       select js.id, js.number, js.quote_id, js.accepted_quote_version_id,
              js.account_id, js.client_id, js.contact_id, js.sales_owner,
              js.accounting_owner, js.status, js.accepted_scope_summary,
-             js.po_number, js.client_order_number, js.xero_customer_reference,
+             js.po_number, js.no_po_reason, js.row_version, js.client_order_number, js.xero_customer_reference,
              js.accounting_notes, js.special_billing_instructions,
              js.total_amount, js.currency, js.accepted_at, js.accepted_by,
              js.locked_at, js.created_by, js.created_at, js.updated_at,
              q.number as quote_number, q.status as quote_status,
-             c.company_name as client_company_name
+             qv.version_number as accepted_version_number,
+             c.company_name as client_company_name,
+             coalesce(c.company_name,a.name,l.company_name) as company_name,
+             sp.name as sales_owner_name,ap.name as accounting_owner_name
       from job_sheets js
       left join quotes q on q.id = js.quote_id
+      left join quote_versions qv on qv.id = js.accepted_quote_version_id
       left join clients c on c.id = js.client_id
+      left join accounts a on a.id = js.account_id
+      left join leads l on l.id = q.lead_id
+      left join profiles sp on sp.id = js.sales_owner
+      left join profiles ap on ap.id = js.accounting_owner
       where js.id = $1
     `,
     [id],
   );
   if (!row) throw new Error("Job sheet not found");
 
-  const { quote_number, quote_status, client_company_name, ...jobSheet } = row;
+  const {
+    quote_number,
+    quote_status,
+    accepted_version_number,
+    client_company_name,
+    company_name,
+    sales_owner_name,
+    accounting_owner_name,
+    ...jobSheet
+  } = row;
   const portions = await query<JobSheetPortion>(
     `
       select id, job_sheet_id, name, source_quote_line_item_ids, description,
              amount, currency, target_invoice_date, billing_type, status,
              xero_invoice_number, xero_invoice_reference, xero_invoice_date,
-             xero_notes, internal_note, sort_order, created_at, updated_at
+             xero_confirmed_at, xero_confirmed_by, xero_corrected_at,
+             xero_corrected_by, xero_correction_reason,
+             xero_notes, internal_note, sort_order, row_version, created_at, updated_at
       from job_sheet_portions
       where job_sheet_id = $1
       order by sort_order asc, created_at asc, id asc
@@ -521,8 +690,16 @@ export async function getJobSheetOperationsRead(id: string): Promise<JobSheetOpe
   return {
     jobSheet,
     portions,
+    companyName: company_name,
+    salesOwnerName: sales_owner_name,
+    accountingOwnerName: accounting_owner_name,
     quote: jobSheet.quote_id
-      ? { id: jobSheet.quote_id, number: quote_number ?? null, status: quote_status ?? null }
+      ? {
+          id: jobSheet.quote_id,
+          number: quote_number ?? null,
+          status: quote_status ?? null,
+          versionNumber: accepted_version_number ?? null,
+        }
       : null,
     client:
       jobSheet.client_id && client_company_name

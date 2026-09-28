@@ -51,6 +51,7 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/017_bulk_operations.sql",
       "neon/migrations/018_bulk_row_versions.sql",
       "neon/migrations/019_import_sessions_and_identity_keys.sql",
+      "neon/migrations/020_job_sheet_handoff_fields.sql",
     ]);
   });
 

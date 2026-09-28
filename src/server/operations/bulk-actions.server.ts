@@ -20,10 +20,17 @@ type VersionedRow = {
   approval_type?: string;
   context_summary?: string | null;
   context_data?: Record<string, unknown> | null;
+  locked_at?: string | null;
+  job_sheet_status?: string;
+  job_sheet_id?: string;
 };
 type PersonRow = { id: string; name: string | null; status: string };
 
-function category(action: BulkAction): "task" | "lead" | "approval" | "team" | null {
+function category(
+  action: BulkAction,
+): "task" | "lead" | "approval" | "team" | "job_sheet" | "job_sheet_portion" | null {
+  if (action.type === "job_sheet.assign") return "job_sheet";
+  if (action.type === "job_sheet.invoice_date") return "job_sheet_portion";
   if (action.type.startsWith("task.")) return "task";
   if (action.type.startsWith("lead.")) return "lead";
   if (action.type.startsWith("approval.")) return "approval";
@@ -45,7 +52,13 @@ async function assertAllowed(
     } else {
       const resourceType = kind === "approval" ? "human_approval" : kind;
       const capability =
-        kind === "task" ? "tasks.update" : kind === "lead" ? "leads.update" : "approvals.decide";
+        kind === "task"
+          ? "tasks.update"
+          : kind === "lead"
+            ? "leads.update"
+            : kind === "approval"
+              ? "approvals.decide"
+              : "job_sheets.update_billing";
       await requireCapability(capability, { resourceType, resourceId: id }, context);
     }
   } catch {
@@ -61,6 +74,24 @@ async function currentRow(
 ): Promise<VersionedRow | null> {
   const kind = category(action);
   if (!kind || kind === "team") return null;
+  if (kind === "job_sheet") {
+    return queryOne<VersionedRow>(
+      "select id,row_version,status,accounting_owner as assigned_to,number as title,locked_at from job_sheets where id=$1" +
+        (lock ? " for update" : ""),
+      [id],
+      db,
+    );
+  }
+  if (kind === "job_sheet_portion") {
+    return queryOne<VersionedRow>(
+      `select p.id,p.row_version,p.status,null::text as assigned_to,p.name as title,
+              p.job_sheet_id,js.status as job_sheet_status,js.locked_at
+         from job_sheet_portions p join job_sheets js on js.id=p.job_sheet_id
+        where p.id=$1` + (lock ? " for update of p,js" : ""),
+      [id],
+      db,
+    );
+  }
   const table = kind === "task" ? "tasks" : kind === "lead" ? "leads" : "human_approvals";
   const extra =
     kind === "task"
@@ -119,6 +150,14 @@ export const productionBulkHandler: BulkActionHandler = {
       return { eligible: false, summary: null, version: row.row_version, status: "forbidden" };
     }
     if (category(action) === "approval" && row.status !== "pending" && row.status !== "escalated") {
+      return { eligible: false, summary: null, version: row.row_version, status: "stale" };
+    }
+    if (
+      (action.type === "job_sheet.assign" &&
+        (row.status !== "accounting_review" || Boolean(row.locked_at))) ||
+      (action.type === "job_sheet.invoice_date" &&
+        (row.status !== "planned" || row.job_sheet_status === "accepted" || Boolean(row.locked_at)))
+    ) {
       return { eligible: false, summary: null, version: row.row_version, status: "stale" };
     }
     return {
@@ -190,7 +229,50 @@ export const productionBulkHandler: BulkActionHandler = {
         throw new BulkItemError("failed", "INVALID_ASSIGNEE", "Assignee is unavailable", false);
     }
 
-    if (action.type === "task.assign") {
+    if (action.type === "job_sheet.assign") {
+      if (row.status !== "accounting_review" || row.locked_at)
+        throw new BulkItemError("stale", "LOCKED", "Job Sheet handoff is locked", false);
+      const owner = await queryOne<{ id: string }>(
+        "select id from profiles where id=$1 and status='active' and role in ('accounting','admin','super_admin') for share",
+        [action.profileId],
+        db,
+      );
+      if (!owner)
+        throw new BulkItemError(
+          "failed",
+          "INVALID_OWNER",
+          "Accounting owner is unavailable",
+          false,
+        );
+      const updated = await queryOne<{ id: string }>(
+        "update job_sheets set accounting_owner=$2,updated_at=now() where id=$1 and status='accounting_review' and locked_at is null returning id",
+        [id, action.profileId],
+        db,
+      );
+      if (!updated)
+        throw new BulkItemError("stale", "LOCKED", "Job Sheet handoff is locked", false);
+      await db.query(
+        "insert into job_sheet_activity(job_sheet_id,actor_id,action,diff_data) values($1,$2,'bulk_owner_assigned',$3::jsonb)",
+        [id, context.actor.profileId, JSON.stringify({ accounting_owner: action.profileId })],
+      );
+    } else if (action.type === "job_sheet.invoice_date") {
+      if (row.status !== "planned" || row.job_sheet_status === "accepted" || row.locked_at)
+        throw new BulkItemError("stale", "LOCKED", "Billing portion is locked", false);
+      const updated = await queryOne<{ id: string }>(
+        "update job_sheet_portions set target_invoice_date=$2,updated_at=now() where id=$1 and status='planned' returning id",
+        [id, action.targetInvoiceDate],
+        db,
+      );
+      if (!updated) throw new BulkItemError("stale", "LOCKED", "Billing portion is locked", false);
+      await db.query(
+        "insert into job_sheet_activity(job_sheet_id,actor_id,action,diff_data) values($1,$2,'bulk_invoice_date_updated',$3::jsonb)",
+        [
+          row.job_sheet_id,
+          context.actor.profileId,
+          JSON.stringify({ portion_id: id, target_invoice_date: action.targetInvoiceDate }),
+        ],
+      );
+    } else if (action.type === "task.assign") {
       await updateTask(id, { assigned_to: action.profileId }, db);
     } else if (action.type === "task.due") {
       await updateTask(id, { due_date: action.dueDate }, db);
