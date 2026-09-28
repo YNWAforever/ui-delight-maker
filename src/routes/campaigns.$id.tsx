@@ -1,7 +1,7 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
-import { AlertTriangle, Copy, FileUp, Pencil, Users } from "lucide-react";
+import { AlertTriangle, Copy, Pencil, Users } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -22,6 +22,7 @@ import {
 } from "@/components/sales";
 import { ListPagination } from "@/components/list-pagination";
 import { SummaryRow } from "@/components/summary-row";
+import { ImportSessionPanel } from "@/components/imports/import-session-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -54,23 +55,16 @@ import {
   rankAttendeeAttention,
   type AttendeeAttentionKind,
 } from "@/lib/relationship/campaign-attendees";
-import {
-  parseEventAttendeeCsv,
-  type EventImportError,
-  type EventImportRow,
-} from "@/lib/relationship/event-import";
 import { routeQueryOptions } from "@/lib/route-query";
 import { getStatusLabel } from "@/lib/status-labels";
 import type { CampaignStatus, CampaignType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { createCampaignFollowUpTasksFn, updateCampaign } from "@/server-functions/campaigns";
-import { commitEventImportFn, validateEventImportRowsFn } from "@/server-functions/event-import";
 import {
   getCampaignWorkspaceRead,
   getCampaignWorkspaceSection,
 } from "@/server-functions/relationship-workspaces";
 
-type CommitEventImportResponse = Awaited<ReturnType<typeof commitEventImportFn>>;
 type CampaignWorkspaceRead = Awaited<ReturnType<typeof getCampaignWorkspaceRead>>;
 type AttendeeSection = Awaited<ReturnType<typeof getCampaignWorkspaceSection>>;
 type Attendee = AttendeeSection["members"][number];
@@ -93,12 +87,6 @@ const ATTENTION_REASON: Record<AttendeeAttentionKind, (member: Attendee) => stri
 };
 /** The queue is a shortlist, not a second copy of the table below it. */
 const ATTENTION_LIMIT = 8;
-
-function isCommitValidationFailure(
-  result: CommitEventImportResponse,
-): result is Extract<CommitEventImportResponse, { ok: false }> {
-  return "ok" in result && result.ok === false;
-}
 
 /**
  * IF-D2-23. The attendee pager used `useState`, so a refresh, a shared link or the browser
@@ -271,86 +259,8 @@ function CampaignDetailRoute() {
   // override can widen access, so an unknown profile keeps the control enabled.
   const canManage = roleGrants ? roleGrants.has("campaigns.manage") : true;
 
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [rows, setRows] = useState<EventImportRow[]>([]);
-  const [errors, setErrors] = useState<EventImportError[]>([]);
-  const [isValidating, setIsValidating] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
   const [isCreatingTasks, setIsCreatingTasks] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const visibleErrors = errors.slice(0, 6);
-
-  const resetInput = () => {
-    if (inputRef.current) inputRef.current.value = "";
-  };
-
-  const onFile = async (file: File) => {
-    setIsValidating(true);
-    setRows([]);
-    setErrors([]);
-
-    try {
-      const parsedRows = parseEventAttendeeCsv(await file.text());
-      if (parsedRows.length === 0) {
-        toast.error("No attendee rows found in the CSV.");
-        resetInput();
-        return;
-      }
-
-      const result = await validateEventImportRowsFn({ data: { rows: parsedRows } });
-      setRows(parsedRows);
-      setErrors(result.errors);
-
-      if (result.errors.length > 0) {
-        toast.error(
-          `${formatCount(result.errors.length)} attendee row${result.errors.length === 1 ? "" : "s"} need review before import.`,
-        );
-        resetInput();
-        return;
-      }
-
-      toast.success(
-        `${formatCount(result.valid.length)} attendee row${result.valid.length === 1 ? "" : "s"} ready to import.`,
-      );
-    } catch (error) {
-      toast.error(toSafeErrorMessage(error));
-      resetInput();
-    } finally {
-      setIsValidating(false);
-    }
-  };
-
-  const importRows = async () => {
-    if (rows.length === 0 || errors.length > 0 || isImporting) return;
-
-    setIsImporting(true);
-    try {
-      const result = await commitEventImportFn({ data: { campaignId: campaign.id, rows } });
-
-      if (isCommitValidationFailure(result)) {
-        setErrors(result.errors);
-        toast.error(
-          `${formatCount(result.errors.length)} attendee row${result.errors.length === 1 ? "" : "s"} failed validation on import.`,
-        );
-        resetInput();
-        return;
-      }
-
-      setAttendeePage(1);
-      await invalidateCampaignMutation(queryClient, router, campaign.id, "attendee_import");
-      setRows([]);
-      setErrors([]);
-      resetInput();
-      toast.success(
-        `Imported ${formatCount(result.createdMembers)} attendee${result.createdMembers === 1 ? "" : "s"}, matching ${formatCount(result.createdAccounts)} new account${result.createdAccounts === 1 ? "" : "s"} and ${formatCount(result.createdContacts)} new contact${result.createdContacts === 1 ? "" : "s"}.`,
-      );
-    } catch (error) {
-      toast.error(toSafeErrorMessage(error));
-      resetInput();
-    } finally {
-      setIsImporting(false);
-    }
-  };
 
   const createFollowUpTasks = async () => {
     if (isCreatingTasks) return;
@@ -697,112 +607,21 @@ function CampaignDetailRoute() {
           </div>
 
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Import attendee CSV</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-md border border-dashed border-border p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 rounded-md bg-accent p-2 text-accent-foreground">
-                      <FileUp className="h-4 w-4" aria-hidden="true" />
-                    </div>
-                    <div className="min-w-0 flex-1 space-y-3">
-                      <div>
-                        <p className="text-sm font-medium">Upload attendee list</p>
-                        <p className="text-sm text-muted-foreground">
-                          Use CSV columns for company, contact, email, phone, attendee status,
-                          interests and notes.
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={isValidating || isImporting}
-                          onClick={() => inputRef.current?.click()}
-                        >
-                          {isValidating ? "Validating…" : "Choose CSV"}
-                        </Button>
-                        <input
-                          ref={inputRef}
-                          type="file"
-                          accept=".csv,text/csv"
-                          className="sr-only"
-                          aria-label="Attendee CSV file"
-                          disabled={isValidating || isImporting}
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            if (file) void onFile(file);
-                          }}
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          {rows.length === 0
-                            ? "No file loaded"
-                            : `${formatCount(rows.length)} row${rows.length === 1 ? "" : "s"} loaded`}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-md border border-border/70 p-3">
-                    <p className="text-xs uppercase text-muted-foreground">Ready</p>
-                    <p className="mt-2 text-2xl font-semibold tabular-nums">
-                      {formatCount(rows.length > 0 ? rows.length - errors.length : 0)}
-                    </p>
-                  </div>
-                  <div className="rounded-md border border-border/70 p-3">
-                    <p className="text-xs uppercase text-muted-foreground">Needs review</p>
-                    <p className="mt-2 text-2xl font-semibold tabular-nums">
-                      {formatCount(errors.length)}
-                    </p>
-                  </div>
-                </div>
-
-                {errors.length > 0 && (
-                  <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
-                    <p className="text-sm font-medium text-destructive">Validation issues</p>
-                    <ul className="mt-2 space-y-1 text-sm text-destructive">
-                      {visibleErrors.map((error) => (
-                        <li key={`${error.index}-${error.reason}`}>
-                          Row {error.index + 1}: {error.reason}
-                        </li>
-                      ))}
-                    </ul>
-                    {errors.length > 6 && (
-                      <p className="mt-2 text-xs text-destructive">{`+${formatCount(errors.length - 6)} more`}</p>
-                    )}
-                  </div>
-                )}
-
-                {/*
-                  IF-D2-21, stated rather than papered over. `commitEventImport` calls
-                  `createCampaignMember` for every row with no existing-member lookup and no
-                  unique constraint, and `validateEventImportRowsFn` is never given the
-                  campaign id, so it can only detect repeats *within* one file. Preventing
-                  this needs a dedupe key on `campaign_members`, which is a migration. Until
-                  then the honest thing is to warn before the click and mark the rows after.
-                */}
-                <p className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-                  Importing the same file twice adds every attendee again — nothing is matched
-                  against attendees already in this campaign. Repeats are marked{" "}
-                  <span className="font-medium text-foreground">Possible duplicate</span> in the
-                  list once imported.
-                </p>
-
-                <Button
-                  className="w-full"
-                  onClick={() => void importRows()}
-                  disabled={rows.length === 0 || errors.length > 0 || isImporting || isValidating}
-                >
-                  {isImporting
-                    ? "Importing attendees…"
-                    : `Import ${formatCount(rows.length)} attendee row${rows.length === 1 ? "" : "s"}`}
-                </Button>
-              </CardContent>
-            </Card>
+            <ImportSessionPanel
+              kind="event"
+              campaignId={campaign.id}
+              title="Import attendee CSV"
+              onProgress={async (result) => {
+                if (!result.rows.some((row) => row.status === "succeeded")) return;
+                setAttendeePage(1);
+                await invalidateCampaignMutation(
+                  queryClient,
+                  router,
+                  campaign.id,
+                  "attendee_import",
+                );
+              }}
+            />
 
             <Card>
               <CardHeader>

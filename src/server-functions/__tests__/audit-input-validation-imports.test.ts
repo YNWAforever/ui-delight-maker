@@ -65,6 +65,21 @@ beforeEach(() => {
 });
 
 describe("import write input boundaries", () => {
+  it("retires authenticated Lead and Client direct writes", async () => {
+    await expect(
+      commitLeadImportFn({
+        data: { rows: [{ company_name: "A", contact_email: "a@example.com" }] },
+      }),
+    ).rejects.toThrow(/Direct CSV commit is retired/);
+    await expect(
+      commitClientImportFn({
+        data: { rows: [{ company_name: "A" }] },
+      }),
+    ).rejects.toThrow(/Direct CSV commit is retired/);
+    expect(mocks.commitLeadImport).not.toHaveBeenCalled();
+    expect(mocks.commitClientImport).not.toHaveBeenCalled();
+  });
+
   it("rejects 5,001 lead rows before loading DB context", async () => {
     await expect(
       commitLeadImportFn({ data: { rows: Array.from({ length: 5_001 }, () => ({})) } }),

@@ -50,6 +50,7 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/016_work_queue_pagination_indexes.sql",
       "neon/migrations/017_bulk_operations.sql",
       "neon/migrations/018_bulk_row_versions.sql",
+      "neon/migrations/019_import_sessions_and_identity_keys.sql",
     ]);
   });
 

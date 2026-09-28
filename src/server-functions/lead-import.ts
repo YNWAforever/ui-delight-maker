@@ -3,13 +3,8 @@ import { parseOperationInput } from "@/lib/operations/errors";
 import { createServerFn } from "@tanstack/react-start";
 import { ImportRowsSchema } from "@/lib/operations/input-schemas";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import {
-  loadRequestAuthorization,
-  requireAnyCapability,
-  requireCapability,
-} from "@/server/auth/authorization.server";
+import { requireCapability } from "@/server/auth/authorization.server";
 import { validateLeadImportRows } from "@/lib/lead-import";
-import { commitLeadImport } from "@/server/repositories/lead-import";
 import { query } from "@/server/db/neon.server";
 
 async function loadValidationContext() {
@@ -30,15 +25,7 @@ export const validateLeadImportRowsFn = createServerFn({ method: "POST" })
 
 export const commitLeadImportFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => parseOperationInput(ImportRowsSchema, data))
-  .handler(async ({ data }) => {
-    const session = await requireNeonAuthSession();
-    const authorization = await loadRequestAuthorization(session);
-    await requireAnyCapability(["leads.create", "leads.update"], {}, authorization);
-    // Defence in depth, matching the client importer: the wizard only ever sends the
-    // `valid` subset from an earlier validate call, but an owner may have been removed
-    // between the two steps, and this endpoint must not trust whatever rows a client
-    // happens to send.
-    const context = await loadValidationContext();
-    const { valid } = validateLeadImportRows(data.rows, context);
-    return commitLeadImport(valid, session.profile.id, authorization);
+  .handler(async () => {
+    await requireNeonAuthSession();
+    throw new Error("Direct CSV commit is retired. Preview the file again.");
   });

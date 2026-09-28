@@ -218,7 +218,10 @@ import { describe, expect, it } from "vitest";
  * file contributes an import and two gates for assignment and other purposes
  * (+3). No existing mutation gate was removed.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 231;
+// T15: net +3 lexical matches after retiring direct import writes and adding
+// the new kind-specific preview gates. Commit/resume recheck per row in the
+// import service; the contract test accounts for those delegated handlers.
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 234;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {
