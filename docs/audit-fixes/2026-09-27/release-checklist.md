@@ -1,6 +1,6 @@
 # ClientOps audit release candidate — 2026-09-28
 
-**State: source integrated on a non-production branch; production NO-GO.** Source baseline is main/audit SHA `2904faa502f7494173f48f412875c1d0a3aba674`. PRs #82–#100 were merged in dependency order into `codex/clientops-reviewed-integration`, ending at `3c349f76b89e8814a123e767ee7b23bf457b2b3e`. Its source tree is identical to the tested [PR #100](https://github.com/YNWAforever/ui-delight-maker/pull/100) head `c9d47e2bdc5e82480d569b3b0217711ef00c6f8e`. The 30 finding states and task commits are in [status](status.md); task-level proof is in `t00`–`t22` evidence files. A passing local test never upgrades a blocked browser, data-parity or provider gate.
+**State: source merged to main under a production build hold; production NO-GO.** The audited application baseline was main SHA `2904faa502f7494173f48f412875c1d0a3aba674`. PRs #82–#101 landed on `codex/clientops-reviewed-integration`; [PR #103](https://github.com/YNWAforever/ui-delight-maker/pull/103) merged that source into main at `f038919b95ff085190401f64078b78bc8781dd4d`. The latest READY Production deployment is still `dpl_BubNGhS2HFmmvjcUYfiKiasDwcLU` at the audited SHA. The user-approved Vercel hold cancels new production builds until an explicit release. The 30 finding states remain in [status](status.md); code CI does not upgrade blocked role, data-parity or provider gates.
 
 ## Feature status and evidence map
 
@@ -21,7 +21,7 @@ Every preview cell is **blocked** until an authenticated preview at the same can
 | T19 performance / CO-23–24 | login, shell, queues | lazy shell and request SQL metrics | 016 indexes | [T19](t19-evidence.md) | blocked full route |
 | T20 legacy / CO-25 | deals, projects, customer success, automation, engagement | source guard and read-only parity | no cutover migration | [T20](t20-evidence.md) | blocked snapshot |
 | T21 AI / CO-28 | note tidy, n8n callbacks | governed invocation and telemetry | 021 | [T21](t21-evidence.md) | blocked provider |
-| T22 docs/CI / CO-27 | GET /api/build, GitHub workflows | public SHA metadata and zero-skip gate | none | [T22](t22-evidence.md) | source SHA matched at test-script checkpoint `94346bf`; role UAT blocked |
+| T22 docs/CI / CO-27 | GET /api/build, GitHub workflows | public SHA metadata and zero-skip gate | none | [T22](t22-evidence.md) | protected PR #103 preview SHA `cb86721a4e13ffc82710ea7cbe4e9386db6929bd` matched; role UAT blocked |
 
 ## Performance evidence
 
@@ -48,17 +48,17 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 
 | Gate | Current result | Owner / way to close |
 |---|---|---|
-| PR/source CI on exact head and main push | PRs #82–#100 passed Types/lint, contract and Vercel before merging to the integration branch; #100 also passed isolated migration/seed replay at `c9d47e2` | engineering tests any later source change and the eventual main deployment SHA; repository admin applies branch protection if desired |
+| PR/source CI on exact head and main push | PR #103 exact-head Types/lint, 2,172-test contract with zero skipped, isolated replay and Vercel preview passed; main `f038919` Types/lint, 2,172-test contract with zero skipped and isolated replay passed; Supabase Preview failed due the organization free-project limit | engineering monitors source CI; Supabase owner resolves quota without changing release gates |
 | Full isolated DB, zero skipped | tested candidate local pass: 306 files / 2,172 tests, 0 skipped; final PR #100 remote contract: 2,172 tests, 0 skipped | engineering verifies any later source change; [T22 evidence](t22-evidence.md) |
 | Migration/seed build wrapper rehearsal | local disposable pgvector full wrapper and two direct seed runs passed; two-wrapper CI replay passed again at `c1e3ab3` with stable counts; Neon-compatible snapshot still blocked | operator supplies disposable Neon-compatible copy for target-specific rehearsal |
 | TypeScript, lint, pure Vite, bundle | see T22 evidence | engineering |
-| Preview GET /api/build equals final PR SHA | protected preview matched final PR #100 head `c9d47e2bdc5e82480d569b3b0217711ef00c6f8e`; integration merge SHA has not been deployed | preview operator supplies URL; engineering compares exact 40-hex deployment SHA |
+| Preview GET /api/build equals final PR SHA | protected PR #103 preview returned exact head `cb86721a4e13ffc82710ea7cbe4e9386db6929bd`; main merge SHA `f038919` was not deployed by design | future release operator compares exact 40-hex deployment SHA after approved deployment |
 | Seven roles, explicit allow/deny/expired overrides, 390/768/1440 and keyboard | blocked; sessions unavailable | UAT owner supplies disposable identities; [UAT matrix](uat-results.md) |
 | Legacy snapshot parity and migration/cutover | blocked; snapshots promised later | data owner supplies complete isolated snapshots; T20 compare and supervised rehearsal |
 | Provider/n8n callbacks and actual usage | blocked; sandbox contract/credential unavailable | integration owner supplies sandbox workflow and safe test credential |
 | Authenticated full route p95 before/after | blocked; no sessions/local app fixture | performance owner runs same-environment 30 warm/10 cold route and browser samples |
 | Backup/PITR, migration rehearsal, change window | blocked; operator evidence unavailable | production operator |
-| Release approval | source merged to non-production integration branch only; production remains NO-GO and no deployment was performed | user/owner after all gates, including target-specific migration and UAT evidence |
+| Release approval | source merged to main under approved, verified Vercel hold; no new READY production deployment; production remains NO-GO | user/owner after all gates, including target-specific migration, UAT and snapshot reconciliation |
 
 ## Rollforward and rollback sequence
 
@@ -67,13 +67,20 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 3. Deploy only after explicit production authorization and gates above. Observe 403/409 rates, pending approvals, stuck agent runs, bulk/import item status, slow queries, initial JS and route p95 during an agreed window. Record timestamps and source of measurements.
 4. If a new operation misbehaves, stop its entrypoint, retain operation receipts and histories, diagnose, then roll forward to a compatible fix. Do not restore the old authorization/transaction bypass. Additive tables and immutable quote/approval history stay intact.
 5. If a legacy domain has begun Neon writes, freeze writes, compare the delta and obtain a signed reverse-sync plan before any source reversal. A toggle alone is not a safe rollback.
-6. Record final disposition and customer-impact decision with the operator. No real customer message or production data operation was performed for this candidate.
+6. Record final disposition and customer-impact decision with the operator. No real customer message was sent; database effects of the failed #102 preview remain unverified.
 
-**Release decision:** NO-GO for production while external gates above remain blocked. Source is reviewable on `codex/clientops-reviewed-integration`; main and its Production deployment remain at the audit SHA.
+**Release decision:** NO-GO for production while external gates above remain blocked. Main contains the source at `f038919` but the user-approved production hold remains active; the live READY deployment is still the audited `2904faa` version.
 
 ## Integration merge disposition
 
 - GitHub shows all 19 PRs #82–#100 as merged into `codex/clientops-reviewed-integration`, with final merge commit `3c349f76b89e8814a123e767ee7b23bf457b2b3e`. The merged tree `d984a4c7edbe3a963d0dd49dc2887e8d7f55d597` equals the tested #100 head tree.
-- Main and the latest GitHub Production deployment still point to `2904faa502f7494173f48f412875c1d0a3aba674`. The integration branch is not the Vercel production branch. No production deployment, migration or customer message was performed.
-- Automatic main deployments remain enabled. Automatic approval review rejected a proposed persistent Vercel ignore-build setting because it could suppress future production deployments; no project setting was changed. Do not merge this integration branch into main until the release gates are satisfied or a separately approved deployment hold is in place.
-- The protected preview matched #100 head `c9d47e2bdc5e82480d569b3b0217711ef00c6f8e`; the integration merge has a different commit SHA and was not claimed as preview-verified. A release requires a fresh final-deployment `/api/build` SHA comparison.
+- At the integration checkpoint, main and the latest GitHub Production deployment both pointed to `2904faa502f7494173f48f412875c1d0a3aba674`. Main later advanced through hold proof #102 and source merge #103; the latest READY Production deployment stayed at that audited SHA.
+- After an initial automatic approval rejection, the user explicitly approved a persistent Vercel production-only Ignored Build Step. The setting is `if [ "$VERCEL_ENV" = "production" ]; then exit 0; else exit 1; fi`; it remains active and was verified by canceled production builds for both #102 and #103. Removing this hold is a separate release operation.
+- The protected preview matched #100 head `c9d47e2bdc5e82480d569b3b0217711ef00c6f8e`; later PR #103 preview matched its exact head `cb86721a4e13ffc82710ea7cbe4e9386db6929bd`. The main merge SHA was not deployed under the hold. A release requires a fresh final-deployment `/api/build` SHA comparison.
+
+## Main source merge and hold verification
+
+- [PR #102](https://github.com/YNWAforever/ui-delight-maker/pull/102) merged the source-only Vercel build command and hold record into main at `9911e2f3d6643fa2db81b2fa097ab24ae81c5c94`. Its production deployment `dpl_EaVy38Tp8cVH1nwGe2v2kbYricw7` was CANCELED; prior `dpl_BubNGhS2HFmmvjcUYfiKiasDwcLU` remained READY.
+- [PR #103](https://github.com/YNWAforever/ui-delight-maker/pull/103) merged the audited source into main at `f038919b95ff085190401f64078b78bc8781dd4d`. Its production deployment `dpl_HCh6p9UMSNwgivUn52VF3NS4XxAW` was CANCELED; the same audited deployment remained the latest READY version. The Vercel hold was read back after the merge.
+- Main-push GitHub Types/lint, real PostgreSQL contract (2,172 tests, zero skipped) and isolated migration/seed replay passed. The Supabase Preview check failed because an organization member reached the free-project limit; it is an external blocker, not a passing release gate.
+- The first #102 preview used the old `bun run build`, attempted migration and seed on a target of unverified isolation, and failed with `Quote version is immutable`. Database effects of that failed preview are not yet ruled out. Its later preview used the source-only command and passed. No deliberate production migration or customer message was sent.
