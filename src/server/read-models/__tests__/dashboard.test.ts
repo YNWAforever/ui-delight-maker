@@ -86,7 +86,10 @@ describe("dashboard read model", () => {
       [
         {
           open_leads: "80",
-          active_quote_value: "120000",
+          active_quote_totals: [
+            { currency: "HKD", amount: "100000.25" },
+            { currency: "USD", amount: "20000.00" },
+          ],
           open_tasks: "25",
           pending_approvals: "4",
         },
@@ -106,7 +109,10 @@ describe("dashboard read model", () => {
       access: { leads: true, jobSheets: true },
       pipelineTotals: {
         openLeads: 80,
-        activeQuoteValue: 120000,
+        activeQuoteTotals: [
+          { currency: "HKD", amount: "100000.25" },
+          { currency: "USD", amount: "20000.00" },
+        ],
         openTasks: 25,
         pendingApprovals: 4,
       },
@@ -174,7 +180,12 @@ describe("dashboard read model", () => {
         })),
       )
       .mockResolvedValueOnce([
-        { open_leads: 500, active_quote_value: 1000000, open_tasks: 250, pending_approvals: 20 },
+        {
+          open_leads: 500,
+          active_quote_totals: [{ currency: "HKD", amount: "1000000.00" }],
+          open_tasks: 250,
+          pending_approvals: 20,
+        },
       ]);
     const { getDashboardRead } = await import("../dashboard");
 

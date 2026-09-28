@@ -26,7 +26,7 @@ const events: ActivityEvent[] = [
   },
   {
     id: "2",
-    at: "2026-05-20T16:05:00Z",
+    at: "2026-05-20T12:05:00Z",
     kind: "quote_approved",
     title: "Quote approved",
     actor: { name: "Ada Wong" },
@@ -70,11 +70,11 @@ describe("ActivityTimeline", () => {
   });
 
   it("formats timestamps through the shared SSR-safe formatter", () => {
-    // src/lib/format.ts pins en-GB and UTC. Formatting inline would render one string on
+    // src/lib/format.ts pins en-GB and Asia/Hong_Kong. Inline local formatting would render one string on
     // the server and another in the browser, which React reports as a hydration mismatch.
     render(<ActivityTimeline events={[events[0]]} />);
 
-    expect(screen.getByText("20 May 2026, 09:30")).toBeTruthy();
+    expect(screen.getByText("20 May 2026, 17:30")).toBeTruthy();
   });
 
   it("groups consecutive same-day events under one date and shows only the time per row", () => {
@@ -85,7 +85,7 @@ describe("ActivityTimeline", () => {
           ...events,
           {
             id: "3",
-            at: "2026-05-21T23:45:00Z",
+            at: "2026-05-21T09:45:00Z",
             kind: "quote_sent",
             title: "Quote sent",
             actor: { name: "Ada Wong" },
@@ -98,8 +98,8 @@ describe("ActivityTimeline", () => {
     expect(days.map((day) => day.textContent)).toEqual(["20 May 2026", "21 May 2026"]);
 
     // Once the day is a heading, repeating it on every row is noise.
-    expect(screen.getByText("09:30")).toBeTruthy();
-    expect(screen.queryByText("20 May 2026, 09:30")).toBeNull();
+    expect(screen.getByText("17:30")).toBeTruthy();
+    expect(screen.queryByText("20 May 2026, 17:30")).toBeNull();
   });
 
   it("starts a new day group when the caller's order revisits a day", () => {
@@ -111,7 +111,7 @@ describe("ActivityTimeline", () => {
         events={[
           { id: "1", at: "2026-05-20T09:30:00Z", kind: "note", title: "First" },
           { id: "2", at: "2026-05-21T09:30:00Z", kind: "note", title: "Second" },
-          { id: "3", at: "2026-05-20T18:00:00Z", kind: "note", title: "Third" },
+          { id: "3", at: "2026-05-20T08:00:00Z", kind: "note", title: "Third" },
         ]}
       />,
     );

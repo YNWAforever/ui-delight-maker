@@ -353,7 +353,7 @@ describe("an empty queue", () => {
     renderQueue([], { runs: [] });
 
     expect(screen.getByText("No work needs attention")).toBeTruthy();
-    await waitFor(() => expect(screen.getByText(/Last reviewed 01 Aug 2026, 08:15/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Last reviewed 01 Aug 2026, 16:15/)).toBeTruthy());
   });
 
   it("says nothing about a last review when nothing has been decided", async () => {

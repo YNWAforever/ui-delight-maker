@@ -253,7 +253,7 @@ beforeEach(() => {
     products: [],
     pipelineTotals: {
       openLeads: 2,
-      activeQuoteValue: 0,
+      activeQuoteTotals: [],
       openTasks: 0,
       pendingApprovals: 0,
     },

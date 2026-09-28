@@ -17,7 +17,7 @@ import {
   type ReportRow,
 } from "@/lib/reports";
 
-const week = (day: string, revenue: number): ReportRow => ({ week: day, revenue });
+const week = (day: string, leads: number): ReportRow => ({ week: day, leads, won: 0 });
 
 describe("report specifications", () => {
   it("describes every report the read model can return", () => {
@@ -42,7 +42,7 @@ describe("report specifications", () => {
     // Instruction §13. The bar chart it replaces plotted `runs` and dropped the completion
     // rate, which is the number the reader is actually deciding on.
     expect(REPORT_SPECS.agents.shape).toBe("table");
-    expect(REPORT_SPECS.revenue.shape).toBe("chart");
+    expect(REPORT_SPECS.revenue.shape).toBe("table");
     expect(REPORT_SPECS.conversion.shape).toBe("chart");
   });
 
@@ -117,16 +117,16 @@ describe("formatReportCell", () => {
     return found;
   };
 
-  it("renders dates through the shared UTC formatter", () => {
+  it("renders date-only periods without changing their calendar day", () => {
     expect(formatReportCell(field("revenue", "week"), "2026-01-05")).toBe("05 Jan 2026");
     expect(formatReportCell(field("revenue", "week"), null)).toBe("—");
   });
 
-  it("renders money with its currency, and compactly on an axis", () => {
-    expect(formatReportCell(field("revenue", "revenue"), 1240000)).toBe("HKD 1,240,000");
-    expect(formatReportCell(field("revenue", "revenue"), 1240000, { compact: true })).toBe(
-      "HKD 1.2M",
+  it("renders revenue money with its source currency", () => {
+    expect(formatReportCell(field("revenue", "amount"), "1240000.25", { currency: "USD" })).toBe(
+      "USD 1,240,000.25",
     );
+    expect(formatReportCell(field("revenue", "currency"), "USD")).toBe("USD");
   });
 
   it("renders counts and rates through format.ts", () => {
@@ -150,16 +150,18 @@ describe("formatReportCell", () => {
 describe("reportCsvColumns", () => {
   it("writes machine-readable values and carries the unit in the header", () => {
     const columns = reportCsvColumns("revenue");
-    const row: ReportRow = { week: "2026-01-05", revenue: 1240000 };
+    const row: ReportRow = { week: "2026-01-05", currency: "USD", amount: "1240000.25" };
 
     expect(columns.map((column) => column.header)).toEqual([
       "Week starting",
-      "Accepted quote value (HKD)",
+      "Currency",
+      "Accepted quote value",
     ]);
     // ISO date, not "05 Jan 2026": it sorts correctly in every tool that opens the file.
     expect(columns[0].value(row)).toBe("2026-01-05");
-    // A raw number, not "HKD 1,240,000": a spreadsheet must be able to sum the column.
-    expect(columns[1].value(row)).toBe(1240000);
+    expect(columns[1].value(row)).toBe("USD");
+    // Keep the PostgreSQL decimal text exact and pair it with its currency.
+    expect(columns[2].value(row)).toBe("1240000.25");
   });
 
   it("translates the stage enum, because its raw value is an internal word", () => {
@@ -178,15 +180,23 @@ describe("reportCsvColumns", () => {
 
 describe("buildReportSeries — missing periods are holes, never interpolated", () => {
   it("inserts an explicit gap for a week with no row", () => {
-    const series = buildReportSeries("revenue", [week("2026-01-05", 10), week("2026-01-19", 30)]);
+    const series = buildReportSeries("conversion", [
+      week("2026-01-05", 10),
+      week("2026-01-19", 30),
+    ]);
 
     expect(series.gapCount).toBe(1);
     expect(series.gapsUnknown).toBe(false);
     expect(series.data).toHaveLength(3);
-    expect(series.data[1]).toEqual({ label: "12 Jan 2026", present: false, revenue: null });
+    expect(series.data[1]).toEqual({
+      label: "12 Jan 2026",
+      present: false,
+      leads: null,
+      won: null,
+    });
     // The neighbours keep their real values — the hole is between them, not instead of them.
-    expect(series.data[0].revenue).toBe(10);
-    expect(series.data[2].revenue).toBe(30);
+    expect(series.data[0].leads).toBe(10);
+    expect(series.data[2].leads).toBe(30);
   });
 
   it("never substitutes zero, an average or the previous value for a gap", () => {
@@ -213,14 +223,14 @@ describe("buildReportSeries — missing periods are holes, never interpolated", 
   });
 
   it("reports no gaps for a contiguous run", () => {
-    const series = buildReportSeries("revenue", [week("2026-01-05", 1), week("2026-01-12", 2)]);
+    const series = buildReportSeries("conversion", [week("2026-01-05", 1), week("2026-01-12", 2)]);
 
     expect(series.gapCount).toBe(0);
-    expect(reportGapNote("revenue", series)).toBeNull();
+    expect(reportGapNote("conversion", series)).toBeNull();
   });
 
   it("does not guess when the periods are not on a regular grid", () => {
-    const series = buildReportSeries("revenue", [
+    const series = buildReportSeries("conversion", [
       week("2026-01-05", 1),
       week("2026-01-09", 2),
       week("2026-01-19", 3),
@@ -229,7 +239,7 @@ describe("buildReportSeries — missing periods are holes, never interpolated", 
     expect(series.gapsUnknown).toBe(true);
     expect(series.gapCount).toBe(0);
     expect(series.data).toHaveLength(3);
-    expect(reportGapNote("revenue", series)).toMatch(/not evenly spaced/i);
+    expect(reportGapNote("conversion", series)).toMatch(/not evenly spaced/i);
   });
 
   it("passes a categorical report through untouched", () => {
@@ -248,15 +258,15 @@ describe("buildReportSeries — missing periods are holes, never interpolated", 
   });
 
   it("handles an empty dataset without inventing a span", () => {
-    const series = buildReportSeries("revenue", []);
+    const series = buildReportSeries("conversion", []);
     expect(series).toEqual({ data: [], gapCount: 0, gapsUnknown: false });
   });
 });
 
 describe("reportGapNote", () => {
   it("says how many periods are empty and that nothing was inferred", () => {
-    const series = buildReportSeries("revenue", [week("2026-01-05", 1), week("2026-01-26", 2)]);
-    const note = reportGapNote("revenue", series);
+    const series = buildReportSeries("conversion", [week("2026-01-05", 1), week("2026-01-26", 2)]);
+    const note = reportGapNote("conversion", series);
 
     // 05, 12, 19, 26 Jan: four points on the grid, two of them with no row.
     expect(note).toContain("2 weeks");
@@ -275,13 +285,16 @@ describe("reportGapNote", () => {
 
 describe("describeReportData — the accessible summary carries the same facts", () => {
   it("gives the span, the extremes and the gaps for a time series", () => {
-    const summary = describeReportData("revenue", [week("2026-01-05", 10), week("2026-01-19", 40)]);
+    const summary = describeReportData("revenue", [
+      { week: "2026-01-05", currency: "HKD", amount: "10.25" },
+      { week: "2026-01-19", currency: "USD", amount: "40.50" },
+    ]);
 
     expect(summary).toContain("05 Jan 2026");
     expect(summary).toContain("19 Jan 2026");
-    expect(summary).toContain("HKD 40");
-    expect(summary).toContain("HKD 10");
-    expect(summary).toMatch(/gaps/i);
+    expect(summary).toContain("USD 40.50");
+    expect(summary).toContain("HKD 10.25");
+    expect(summary).not.toMatch(/total across currencies/i);
   });
 
   it("enumerates a categorical report", () => {

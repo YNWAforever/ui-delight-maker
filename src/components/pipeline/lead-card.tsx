@@ -1,7 +1,7 @@
 import { AlertTriangle, Bot, Clock, FileText, User } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
-import { formatCompactHKD } from "@/lib/format";
+import { formatCurrencyAmount } from "@/lib/format";
 import {
   getLeadAiState,
   getLeadNextAction,
@@ -114,7 +114,7 @@ export function LeadCard({
           {quote.value != null && (
             <span className="inline-flex items-center gap-1 font-medium text-foreground">
               <FileText className="h-3 w-3" />
-              {formatCompactHKD(quote.value)}
+              {formatCurrencyAmount(quote.value, quote.currency)}
             </span>
           )}
         </div>

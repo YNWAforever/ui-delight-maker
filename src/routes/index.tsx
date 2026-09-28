@@ -14,7 +14,8 @@ import {
   WorkspaceHeader,
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
-import { formatCompactHKD, formatCount } from "@/lib/format";
+import { formatCount } from "@/lib/format";
+import { formatCurrencyTotals } from "@/lib/money";
 import { getBusinessDateKey } from "@/lib/business-date";
 import { describeTriggerFailure, toSafeErrorMessage } from "@/lib/errors";
 import { filterPipelineLeads, getPipelineSummary } from "@/lib/pipeline";
@@ -381,10 +382,10 @@ function PipelineCommandCenter() {
               // The server aggregate, not a sum of the loaded page: `pipelineTotals` counts
               // every pending/sent/viewed quote, so this tile is a workspace figure and the
               // three beside it are explicitly board-scoped.
-              label: "Quote value",
-              value: formatCompactHKD(pipelineTotals.activeQuoteValue),
+              label: "Quote value by currency",
+              value: formatCurrencyTotals(pipelineTotals.activeQuoteTotals),
               icon: ShieldCheck,
-              hint: "pending + sent + viewed, all quotes",
+              hint: "pending approval + approved + sent + viewed, all quotes",
             },
           ]}
           supporting={[

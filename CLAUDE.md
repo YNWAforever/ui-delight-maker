@@ -72,7 +72,9 @@ n8n/workflows/         Agent workflow JSON definitions
   by default — component tests need `// @vitest-environment jsdom` at the top of the file.
 - **Query keys** always via `crmQueryKeys` in `src/lib/query-keys.ts`; route loaders use
   `routeQueryOptions` so stale time stays consistent.
-- **Dates** must use `src/lib/format.ts` (fixed `en-GB` + UTC) to avoid SSR hydration mismatch.
+- **Dates** use `src/lib/format.ts`: fixed `en-GB` and `Asia/Hong_Kong` for instants;
+  YYYY-MM-DD calendar fields use `formatDateOnly` without time-zone conversion. The explicit
+  zone keeps SSR and browser output consistent.
 - **Prettier** 100 cols, double quotes, semicolons, trailing commas. Path alias `@/*` → `src/*`.
 - **Commits** Conventional Commits, lowercase imperative: `feat:`, `fix:`, `perf:`, `test:`,
   `docs:`. Branches `codex/<slug>` (also `fix/<slug>`, `feat/<slug>`). PRs land as merge
