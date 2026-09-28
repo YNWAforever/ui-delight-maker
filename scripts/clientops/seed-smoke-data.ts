@@ -51,6 +51,7 @@ type SeedContext = {
   contactIds: Map<string, string>;
   engagementIds: Map<string, string>;
   quoteIds: Map<string, string>;
+  newQuoteIds: Set<string>;
   jobSheetIds: Map<string, string>;
   agentRunIds: Map<string, string>;
   approvalIds: Map<string, string>;
@@ -95,6 +96,7 @@ function makeSeedContext(mode: ClientOpsSeedMode): SeedContext {
     contactIds: new Map(),
     engagementIds: new Map(),
     quoteIds: new Map(),
+    newQuoteIds: new Set(),
     jobSheetIds: new Map(),
     agentRunIds: new Map(),
     approvalIds: new Map(),
@@ -1022,6 +1024,7 @@ async function seedQuotes(db: Queryable, ctx: SeedContext) {
         ],
       );
       id = inserted.rows[0].id;
+      ctx.newQuoteIds.add(id);
     }
 
     await db.query(
@@ -1081,6 +1084,28 @@ async function seedJobSheets(db: Queryable, ctx: SeedContext) {
       currency: "HKD",
       line_items: quote.line_items,
     });
+
+    // Existing incomplete records require reconciliation; only fresh synthetic Quotes get history.
+    const lifecycle = await db.query<{ valid: boolean }>(
+      "select q.accepted_at is not null and exists(select 1 from quote_versions v where v.id=q.issued_version_id and v.quote_id=q.id and v.reason='issued') and exists(select 1 from quote_versions v where v.id=q.accepted_version_id and v.quote_id=q.id and v.reason='accepted') as valid from quotes q where q.id=$1",
+      [quoteId],
+    );
+    if (!ctx.newQuoteIds.has(quoteId) && !lifecycle.rows[0]?.valid) {
+      throw new Error(
+        "Existing demo Quote lifecycle is incomplete; use a fresh disposable database",
+      );
+    }
+    if (ctx.newQuoteIds.has(quoteId)) {
+      await db.query(
+        "with issued as (insert into quote_versions (quote_id,version_number,reason,snapshot,pdf_url,created_by) values ($1,1,'issued',$2::jsonb,$3,$4) returning id) update quotes set issued_version_id=(select id from issued) where id=$1",
+        [
+          quoteId,
+          jsonb({ ...JSON.parse(versionSnapshot), status: "sent" }),
+          "/quotes/" + quoteId + "/pdf",
+          ctx.profileIds.get(jobSheet.salesOwnerKey) ?? null,
+        ],
+      );
+    }
     const existingVersion = await db.query<{ id: string; snapshot_matches: boolean }>(
       `
         select id, snapshot = $2::jsonb as snapshot_matches
@@ -1146,11 +1171,16 @@ async function seedJobSheets(db: Queryable, ctx: SeedContext) {
       ],
     );
 
-    const existingJobSheet = await db.query<{ id: string }>(
-      "select id from job_sheets where number = $1 limit 1",
+    const existingJobSheet = await db.query<{ id: string; valid: boolean }>(
+      "select j.id, j.accepted_at is not null and j.accepted_at=q.accepted_at and j.accepted_quote_version_id=q.accepted_version_id as valid from job_sheets j join quotes q on q.id=j.quote_id where j.number=$1 limit 1",
       [jobSheet.number],
     );
     let jobSheetId = existingJobSheet.rows[0]?.id;
+    if (jobSheetId && !existingJobSheet.rows[0].valid) {
+      throw new Error(
+        "Existing demo Job Sheet acceptance is incomplete; use a fresh disposable database",
+      );
+    }
 
     if (!jobSheetId) {
       const insertedJobSheet = await db.query<{ id: string }>(
@@ -1159,9 +1189,10 @@ async function seedJobSheets(db: Queryable, ctx: SeedContext) {
             (number, quote_id, accepted_quote_version_id, account_id, client_id, contact_id,
              sales_owner, accounting_owner, status, accepted_scope_summary, po_number,
              client_order_number, xero_customer_reference, accounting_notes,
-             special_billing_instructions, total_amount, currency, created_by)
+             special_billing_instructions, total_amount, currency, created_by, accepted_at)
           values
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'HKD', $17)
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'HKD', $17,
+             (select accepted_at from quotes where id=$2))
           returning id
         `,
         [
@@ -1405,12 +1436,26 @@ async function seedApprovals(db: Queryable, ctx: SeedContext) {
   for (const approval of DEMO_APPROVALS) {
     const agentRunId = ctx.agentRunIds.get(approval.runKey);
     if (!agentRunId) continue;
-    const contextData = jsonb({ demo: true, demo_key: approval.key, approval_key: approval.key });
+    const quoteId = approval.quoteKey ? ctx.quoteIds.get(approval.quoteKey) : undefined;
+    if (approval.approval_type === "quote_send" && !quoteId) {
+      throw new Error("Demo quote_send approval requires an explicit Quote fixture");
+    }
+    const contextData = jsonb({
+      demo: true,
+      demo_key: approval.key,
+      approval_key: approval.key,
+      ...(quoteId ? { quote_id: quoteId } : {}),
+    });
     const assignedTo = ctx.profileIds.get(approval.assignedToKey) ?? null;
 
-    const existing = await db.query<{ id: string; status: string }>(
+    const existing = await db.query<{
+      id: string;
+      status: string;
+      decided_at: string | null;
+      quote_id: string | null;
+    }>(
       `
-        select id, status
+        select id, status, decided_at, context_data->>'quote_id' as quote_id
         from human_approvals
         where context_data->>'demo_key' = $1
            or (
@@ -1428,9 +1473,10 @@ async function seedApprovals(db: Queryable, ctx: SeedContext) {
       const inserted = await db.query<{ id: string }>(
         `
           insert into human_approvals
-            (agent_run_id, approval_type, requested_by, assigned_to, status, context_data, context_summary)
+            (agent_run_id, approval_type, requested_by, assigned_to, status, context_data, context_summary, decided_at)
           values
-            ($1, $2, 'Demo Agent', $3, $4, $5::jsonb, $6)
+            ($1, $2, 'Demo Agent', $3, $4, $5::jsonb, $6,
+             case when $4 in ('approved','rejected') then now() else null end)
           returning id
         `,
         [
@@ -1443,6 +1489,17 @@ async function seedApprovals(db: Queryable, ctx: SeedContext) {
         ],
       );
       id = inserted.rows[0].id;
+    }
+
+    const prior = existing.rows[0];
+    if (
+      prior &&
+      ((["approved", "rejected"].includes(prior.status) && !prior.decided_at) ||
+        (approval.approval_type === "quote_send" && prior.quote_id !== quoteId))
+    ) {
+      throw new Error(
+        "Existing demo approval evidence is incomplete; use a fresh disposable database",
+      );
     }
 
     // A fresh insert already has its final values. The command trigger forbids
