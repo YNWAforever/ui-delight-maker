@@ -49,6 +49,10 @@ const ACKNOWLEDGED_UNGUARDED: Record<string, string> = {
   "auth.ts::signIn": "establishes a session",
   "auth.ts::signOut": "ends a session",
   "admin-invitations.ts::getInvitationPreview": "must work for a signed-out invitee",
+  "admin-invitations.ts::getInvitationLandingState":
+    "bearer-token-scoped invitation state for signed-out invitee; token is validated and hashed",
+  "auth.ts::getCurrentWorkspaceAccess":
+    "returns only the requesting identity workspace state; public login must handle no session",
   "approvals.ts::claimApprovalFn":
     "command checks approvals.decide against the locked approval and linked subject owner",
   "approvals.ts::recordManualMessageSentFn":
