@@ -106,7 +106,7 @@ describe("dashboard read model", () => {
       activityLogs: rows[5],
       products: rows[6],
       jobSheets: [],
-      access: { leads: true, jobSheets: true },
+      access: { leads: true, jobSheets: true, tasks: true, approvals: true, quotes: true },
       pipelineTotals: {
         openLeads: 80,
         activeQuoteTotals: [
@@ -118,6 +118,26 @@ describe("dashboard read model", () => {
       },
       productSummary: { CRM: 1 },
     });
+  });
+
+  it("does not advertise a queue with an active resource-wide deny", async () => {
+    queryMock.mockResolvedValue([]);
+    const { getDashboardRead } = await import("../dashboard");
+    const context = {
+      ...salesContext,
+      overrides: [
+        {
+          profileId: "sales-1",
+          capability: "tasks.view",
+          effect: "deny",
+          resourceType: "task",
+        },
+      ],
+    } as unknown as RequestAuthorization;
+
+    const result = await getDashboardRead(context);
+    expect(result.access.tasks).toBe(false);
+    expect(result.access.quotes).toBe(true);
   });
 
   it("stays within the initial payload budget for bounded high-activity data", async () => {
