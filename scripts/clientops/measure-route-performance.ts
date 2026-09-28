@@ -140,6 +140,8 @@ export function runRoutePerformanceMeasurement(
     `${JSON.stringify(
       {
         measurement: "deterministic local route fixture model",
+        evidenceType: "synthetic",
+        runtimeGate: "blocked_runtime_evidence",
         mode,
         phase: mode === "verify" ? "final" : "baseline",
         routeFamilyCount: APP_ROUTE_FAMILIES.length,
@@ -155,7 +157,8 @@ export function runRoutePerformanceMeasurement(
     )}\n`,
   );
 
-  return mode === "verify" && failingMeasurements.length > 0 ? 1 : 0;
+  // Fixture-derived values cannot certify production-like route runtime.
+  return mode === "verify" ? 2 : 0;
 }
 
 function main() {

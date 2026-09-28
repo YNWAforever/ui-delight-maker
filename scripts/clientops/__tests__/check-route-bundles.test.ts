@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { assertRouteChunkBudgets, readRouteChunkMeasurements } from "../check-route-bundles";
+import {
+  assertLoginInitialJsBudget,
+  assertRouteChunkBudgets,
+  readRouteChunkMeasurements,
+} from "../check-route-bundles";
 
 const temporaryDirectories: string[] = [];
 
@@ -87,6 +91,17 @@ describe("route bundle budgets", () => {
     expect(() =>
       assertRouteChunkBudgets(measurements.routes.filter(({ route }) => route === "dashboard")),
     ).not.toThrow();
+  });
+
+  it("enforces the actual initial JS gzip budget including shared chunks", () => {
+    expect(() =>
+      assertLoginInitialJsBudget({
+        routeSource: "login",
+        files: [],
+        bytes: 1_000_000,
+        gzipBytes: 307_201,
+      }),
+    ).toThrow(/Login initial JS/);
   });
 
   it("rejects an oversized route and identifies its owner and budget", () => {

@@ -1,4 +1,5 @@
 import { Pool, types as pgTypes } from "@neondatabase/serverless";
+import { measureQuery } from "@/server/db/query-metrics.server";
 
 export type Queryable = {
   query<T = unknown>(text: string, values?: readonly unknown[]): Promise<{ rows: T[] }>;
@@ -61,7 +62,7 @@ function normalizeRows<T>(rows: T[]) {
 function withNormalizedRows(db: Queryable): Queryable {
   return {
     async query<T = unknown>(text: string, values?: readonly unknown[]) {
-      const result = await db.query<T>(text, values);
+      const result = await measureQuery(() => db.query<T>(text, values));
       return { ...result, rows: normalizeRows(result.rows) };
     },
   };

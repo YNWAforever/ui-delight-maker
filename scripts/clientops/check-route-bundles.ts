@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
+import { gzipSync } from "node:zlib";
 
 import { ROUTE_PERFORMANCE_BUDGET } from "../../src/lib/performance/route-performance";
 
@@ -149,6 +150,58 @@ export function readRouteChunkMeasurements(manifestPath: string): RouteChunkMeas
   return { manifestPath: resolvedManifestPath, routes, shared };
 }
 
+export type InitialJsTransfer = {
+  routeSource: string;
+  bytes: number;
+  gzipBytes: number;
+  files: string[];
+};
+
+/** Browser initial JS graph: bootstrap plus route component and static imports only. */
+export function readInitialJsTransfer(
+  manifestPath: string,
+  routeSource: string,
+): InitialJsTransfer {
+  const resolvedManifestPath = resolve(manifestPath);
+  const manifest = JSON.parse(readFileSync(resolvedManifestPath, "utf8")) as ViteManifest;
+  const bootstrapKey =
+    Object.keys(manifest).find((key) =>
+      key.includes("@tanstack/react-start/dist/plugin/default-entry/client.tsx"),
+    ) ?? Object.keys(manifest).find((key) => key.endsWith("/client.ts"));
+  if (!bootstrapKey || !manifest[routeSource]) {
+    throw new Error("Client bootstrap or route entry is missing from the Vite manifest");
+  }
+  const outputDirectory = outputDirectoryForManifest(resolvedManifestPath);
+  const visited = new Set<string>();
+  const files = new Set<string>();
+  const visit = (key: string) => {
+    if (visited.has(key)) return;
+    visited.add(key);
+    const chunk = manifest[key];
+    if (!chunk) throw new Error(`Missing static manifest dependency: \${key}`);
+    if (chunk.file.endsWith(".js")) files.add(chunk.file);
+    for (const dependency of chunk.imports ?? []) visit(dependency);
+  };
+  visit(bootstrapKey);
+  visit(routeSource);
+  const sortedFiles = [...files].sort();
+  let bytes = 0;
+  let gzipBytes = 0;
+  for (const file of sortedFiles) {
+    const asset = readFileSync(resolve(outputDirectory, file));
+    bytes += asset.byteLength;
+    gzipBytes += gzipSync(asset).byteLength;
+  }
+  return { routeSource, bytes, gzipBytes, files: sortedFiles };
+}
+
+export function assertLoginInitialJsBudget(measurement: InitialJsTransfer) {
+  if (measurement.gzipBytes <= ROUTE_PERFORMANCE_BUDGET.maxLoginInitialJsGzipBytes) return;
+  throw new Error(
+    `Login initial JS is \${measurement.gzipBytes} gzip bytes; budget is \${ROUTE_PERFORMANCE_BUDGET.maxLoginInitialJsGzipBytes}`,
+  );
+}
+
 export function assertRouteChunkBudgets(measurements: RouteChunkMeasurement[]) {
   const oversized = measurements.filter(
     ({ bytes }) => bytes > ROUTE_PERFORMANCE_BUDGET.maxRouteChunkBytes,
@@ -182,6 +235,10 @@ function findBuiltManifest() {
 
 function main() {
   const measurements = readRouteChunkMeasurements(findBuiltManifest());
+  const loginInitialJs = readInitialJsTransfer(
+    measurements.manifestPath,
+    "src/routes/login.tsx?tsr-split=component",
+  );
   process.stdout.write(
     `${JSON.stringify(
       {
@@ -190,12 +247,14 @@ function main() {
         routes: measurements.routes.map(({ route, bytes }) => ({ route, bytes })),
         sharedChunkCount: measurements.shared.length,
         largestSharedChunks: measurements.shared.slice(0, 20),
+        loginInitialJs,
       },
       null,
       2,
     )}\n`,
   );
   assertRouteChunkBudgets(measurements.routes);
+  assertLoginInitialJsBudget(loginInitialJs);
 }
 
 if (process.argv[1]?.replaceAll("\\", "/").endsWith("scripts/clientops/check-route-bundles.ts")) {
