@@ -41,6 +41,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { BulkActionBar } from "@/components/operations/bulk-action-bar";
+import { remainingBulkSelection } from "@/components/operations/bulk-results";
+import { BulkPreviewDialog } from "@/components/operations/bulk-preview-dialog";
+import { useBulkOperation } from "@/components/operations/use-bulk-operation";
 import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -282,6 +286,10 @@ function ApprovalsInbox() {
   const [reason, setReason] = useState("");
   const [manualReference, setManualReference] = useState("");
   const [bulk, setBulk] = useState<Set<string>>(new Set());
+  const bulkOperation = useBulkOperation("clientops:bulk:approvals", async (result) => {
+    setBulk((current) => new Set(remainingBulkSelection(Array.from(current), result)));
+    await queryClient.invalidateQueries({ queryKey: crmQueryKeys.approvals.all() });
+  });
   const [decidingIds, setDecidingIds] = useState<ReadonlySet<string>>(() => new Set<string>());
   const [refreshing, setRefreshing] = useState(false);
   const approvalMutationTokensRef = useRef(new Map<string, symbol>());
@@ -720,36 +728,22 @@ function ApprovalsInbox() {
     allApprovals.filter((approval) => bulk.has(approval.id) && approval.status === "pending");
 
   const bulkApprove = async () => {
-    const targets = selectedForBulk().map((approval) => ({
-      id: approval.id,
-      run: () => approveApproval(approval),
-    }));
-    if (targets.length === 0) return;
-
-    const outcome = await applyDecisions(targets, "approved", undefined);
-    reportOutcome(
-      outcome,
-      `Approved ${outcome.succeeded.length} request${outcome.succeeded.length === 1 ? "" : "s"}`,
-    );
-    setBulk(new Set());
+    const ids = selectedForBulk().map((approval) => approval.id);
+    if (ids.length === 0) return;
+    await bulkOperation.prepare({ type: "approval.decide", decision: "approved" }, ids);
   };
 
   const bulkReject = async () => {
-    const notes = rejectReason.trim() || undefined;
-    const targets = selectedForBulk().map((approval) => ({
-      id: approval.id,
-      run: () => rejectApproval(approval, notes),
-    }));
-    if (targets.length === 0) return;
-
-    const outcome = await applyDecisions(targets, "rejected", notes);
-    reportOutcome(
-      outcome,
-      `Rejected ${outcome.succeeded.length} request${outcome.succeeded.length === 1 ? "" : "s"}`,
+    const ids = selectedForBulk().map((approval) => approval.id);
+    if (ids.length === 0) return;
+    const prepared = await bulkOperation.prepare(
+      { type: "approval.decide", decision: "rejected", notes: rejectReason.trim() || undefined },
+      ids,
     );
-    setBulk(new Set());
-    setRejectReason("");
-    setRejectOpen(false);
+    if (prepared) {
+      setRejectReason("");
+      setRejectOpen(false);
+    }
   };
 
   const refresh = async () => {
@@ -1207,12 +1201,20 @@ function ApprovalsInbox() {
               resultCount={approvalsQuery.data.total}
             />
 
-            {bulk.size > 0 && (
-              <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
-                <span className="font-medium">{bulk.size} selected</span>
+            {(bulk.size > 0 || bulkOperation.result) && (
+              <BulkActionBar
+                selectedCount={bulk.size}
+                busy={bulkOperation.busy}
+                result={bulkOperation.result}
+                onResume={() => void bulkOperation.resume()}
+                onClear={() => {
+                  setBulk(new Set());
+                  bulkOperation.dismiss();
+                }}
+              >
                 <Button
                   size="sm"
-                  disabled={isBusy}
+                  disabled={isBusy || bulkOperation.busy || bulk.size === 0}
                   onClick={() =>
                     setConfirm({
                       title: `Approve ${bulk.size} request${bulk.size > 1 ? "s" : ""}?`,
@@ -1228,21 +1230,19 @@ function ApprovalsInbox() {
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={isBusy}
+                  disabled={isBusy || bulkOperation.busy || bulk.size === 0}
                   onClick={() => setRejectOpen(true)}
                 >
                   <XCircle className="mr-2 h-4 w-4" /> Reject
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="ml-auto"
-                  onClick={() => setBulk(new Set())}
-                >
-                  Clear selection
-                </Button>
-              </div>
+              </BulkActionBar>
             )}
+            <BulkPreviewDialog
+              preview={bulkOperation.preview}
+              busy={bulkOperation.busy}
+              onCancel={bulkOperation.cancelPreview}
+              onCommit={() => void bulkOperation.commit()}
+            />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
               <div className="space-y-6 lg:col-span-2">
@@ -1273,7 +1273,16 @@ function ApprovalsInbox() {
                       breakpoint="lg"
                       caption="Approvals waiting on a human decision"
                       selectedRowKey={selected?.id}
-                      selection={{ selected: bulk, onChange: setBulk }}
+                      selection={{
+                        selected: bulk,
+                        onChange: (next) => {
+                          if (next.size > 100) {
+                            toast.error("Select at most 100 approvals per bulk operation.");
+                            return;
+                          }
+                          setBulk(next);
+                        },
+                      }}
                     />
                   )}
                   {approvalsQuery.data.nextCursor && (

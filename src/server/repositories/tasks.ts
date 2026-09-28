@@ -112,7 +112,7 @@ export async function createTask(input: CreateTaskInput, db?: Queryable) {
   return task;
 }
 
-export async function updateTask(id: string, updates: Partial<Task>) {
+export async function updateTask(id: string, updates: Partial<Task>, db?: Queryable) {
   const update = buildUpdate(updates, taskUpdateColumns, 1);
   const task = await queryOne<Task>(
     `
@@ -122,6 +122,7 @@ export async function updateTask(id: string, updates: Partial<Task>) {
       returning *
     `,
     [...update.values, id],
+    db,
   );
 
   if (!task) throw new Error("Task not found");

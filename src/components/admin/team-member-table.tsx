@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { BulkResult } from "@/lib/operations/bulk-contract";
 
 import {
   AlertDialog,
@@ -32,6 +33,7 @@ type TeamMemberTableProps = {
   members: readonly TeamMemberRow[];
   availableMembers: readonly TeamMemberUser[];
   canManage: boolean;
+  bulkResult?: BulkResult | null;
   /**
    * Every handler may return a promise, and this table awaits it.
    *
@@ -70,11 +72,15 @@ export function TeamMemberTable({
   members,
   availableMembers,
   canManage,
+  bulkResult,
   onAddMembers,
   onUpdateMember,
   onEndMember,
 }: TeamMemberTableProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  useEffect(() => {
+    if (bulkResult) setSelectedIds(bulkResult.remainingIds);
+  }, [bulkResult]);
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +114,8 @@ export function TeamMemberTable({
     setError(null);
     setAdding(true);
     try {
-      await onAddMembers(selectedIds, isoDate(startsAt), isoDate(endsAt));
+      const completed = await onAddMembers(selectedIds, isoDate(startsAt), isoDate(endsAt));
+      if (completed === false) return;
       // Cleared only after the write settles. Clearing on click read as confirmation, and
       // when the write was refused it wiped the selection with no message and no way to
       // recover what had been chosen.
@@ -155,7 +162,8 @@ export function TeamMemberTable({
         <div>
           <h3 className="text-sm font-medium text-foreground">Team members</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Active memberships retain their history when roles or dates change.
+            Active memberships retain their history when roles or dates change. Select up to 100
+            members per operation.
           </p>
         </div>
         <span className="text-xs tabular-nums text-muted-foreground">{members.length} active</span>
@@ -173,7 +181,10 @@ export function TeamMemberTable({
                 disabled={adding}
                 onChange={(event) =>
                   setSelectedIds(
-                    Array.from(event.currentTarget.selectedOptions, (option) => option.value),
+                    Array.from(event.currentTarget.selectedOptions, (option) => option.value).slice(
+                      0,
+                      100,
+                    ),
                   )
                 }
                 size={Math.min(4, Math.max(2, candidates.length))}

@@ -1,6 +1,6 @@
 import type { HumanApproval } from "@/lib/types";
 import type { RequestAuthorization } from "@/server/auth/authorization.server";
-import { transaction } from "@/server/db/neon.server";
+import { transaction, type Queryable } from "@/server/db/neon.server";
 import {
   decideApprovalInTransaction,
   type ApprovalDecisionWrite,
@@ -21,8 +21,9 @@ export type ApprovalDecisionCommandInput = ApprovalDecisionWrite & {
 export async function decideApprovalCommand(
   context: RequestAuthorization,
   input: ApprovalDecisionCommandInput,
+  existingDb?: Queryable,
 ): Promise<HumanApproval> {
-  return transaction(async (db) => {
+  const run = async (db: Queryable) => {
     const claim = await claimCommandReceipt<HumanApproval>(db, {
       scope: "approval.decision",
       actorId: context.actor.profileId,
@@ -45,5 +46,6 @@ export async function decideApprovalCommand(
     await createMessageHandoffInTransaction(db, approval);
     await completeCommandReceipt(db, claim.id, approval);
     return approval;
-  });
+  };
+  return existingDb ? run(existingDb) : transaction(run);
 }

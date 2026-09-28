@@ -480,8 +480,9 @@ export async function decideApprovalInTransaction(
 export async function assignApproval(
   input: { id: string; assignedTo: string | null; expectedVersion?: number },
   context: RequestAuthorization,
+  existingDb?: Queryable,
 ): Promise<HumanApproval> {
-  return transaction(async (db) => {
+  const run = async (db: Queryable) => {
     const current = (
       await db.query<HumanApproval>("select * from human_approvals where id=$1 for update", [
         input.id,
@@ -526,5 +527,6 @@ export async function assignApproval(
     ).rows[0];
     if (!updated) throw new AdminError("STALE_ADMIN_STATE", "Approval changed during routing");
     return updated;
-  });
+  };
+  return existingDb ? run(existingDb) : transaction(run);
 }

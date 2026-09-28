@@ -56,7 +56,12 @@ import type { Lead } from "@/lib/types";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { normalizeQualificationData } from "@/lib/workflows/qualification";
 import { routeQueryOptions } from "@/lib/route-query";
-import { getLeadsPage, createLead, updateLead } from "@/server-functions/leads";
+import { getLeadsPage, createLead } from "@/server-functions/leads";
+import { BulkActionBar } from "@/components/operations/bulk-action-bar";
+import { remainingBulkSelection } from "@/components/operations/bulk-results";
+import { BulkPreviewDialog } from "@/components/operations/bulk-preview-dialog";
+import { useBulkOperation } from "@/components/operations/use-bulk-operation";
+import type { BulkAction } from "@/lib/operations/bulk-contract";
 
 const leadListSearchSchema = z.object({
   page: z.coerce.number().int().min(1).default(1).catch(1),
@@ -134,57 +139,13 @@ function LeadsPage() {
   const [sort, setSort] = useState<"recent" | "score">("recent");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [newOpen, setNewOpen] = useState(false);
-  const [bulkBusy, setBulkBusy] = useState(false);
-
-  /**
-   * Runs a write against every selected lead, then refreshes from the server.
-   *
-   * `Promise.all` used to reject as a whole and return *before* the invalidation, so writes
-   * that had already landed stayed invisible and the table went on showing pre-write state
-   * next to an error toast. `allSettled` plus an unconditional refresh means the table is
-   * always what the database says afterwards; the failed ids stay selected so the batch can
-   * be retried against exactly them.
-   *
-   * Returns whether every write succeeded, so a caller's dialog knows to stay open.
-   */
-  const applyToSelected = async (
-    write: (id: string) => Promise<unknown>,
-    describe: (count: number) => string,
-  ): Promise<boolean> => {
-    const ids = Array.from(selected);
-    if (ids.length === 0 || bulkBusy) return false;
-
-    setBulkBusy(true);
-    try {
-      const results = await Promise.allSettled(ids.map(write));
-      const failedIds = ids.filter((_, index) => results[index].status === "rejected");
-      const succeeded = ids.length - failedIds.length;
-
-      await queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.lists() });
-      await router.invalidate({ filter: (match) => match.routeId === "/leads" });
-
-      if (failedIds.length === 0) {
-        setSelected(new Set());
-        toast.success(describe(ids.length));
-        return true;
-      }
-
-      const firstRejection = results.find(
-        (result): result is PromiseRejectedResult => result.status === "rejected",
-      );
-      setSelected(new Set(failedIds));
-      toast.error(
-        succeeded === 0
-          ? `No leads were updated. ${toSafeErrorMessage(firstRejection?.reason)}`
-          : `${describe(succeeded)}. ${formatCount(failedIds.length)} of ${formatCount(
-              ids.length,
-            )} failed — ${toSafeErrorMessage(firstRejection?.reason)}`,
-      );
-      return false;
-    } finally {
-      setBulkBusy(false);
-    }
-  };
+  const bulkOperation = useBulkOperation("clientops:bulk:leads", async (result) => {
+    setSelected((current) => new Set(remainingBulkSelection(Array.from(current), result)));
+    await queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.lists() });
+    await router.invalidate({ filter: (match) => match.routeId === "/leads" });
+  });
+  const applyToSelected = (action: BulkAction) =>
+    bulkOperation.prepare(action, Array.from(selected));
 
   const handleCreateLead = async (formData: {
     company_name: string;
@@ -401,25 +362,32 @@ function LeadsPage() {
           {selected.size > 0 && (
             <LeadsBulkBar
               count={selected.size}
-              busy={bulkBusy}
-              onAssign={(uid) =>
-                applyToSelected(
-                  (id) => updateLead({ data: { id, updates: { assigned_to: uid } } }),
-                  (count) => `Reassigned ${formatCount(count)} lead${count > 1 ? "s" : ""}`,
-                )
-              }
+              busy={bulkOperation.busy}
+              onAssign={(uid) => applyToSelected({ type: "lead.assign", profileId: uid })}
               onMarkStatus={(nextStatus) =>
-                applyToSelected(
-                  (id) => updateLead({ data: { id, updates: { status: nextStatus } } }),
-                  (count) =>
-                    `Marked ${formatCount(count)} lead${count > 1 ? "s" : ""} as ${
-                      getStatusLabel("leads", nextStatus).label
-                    }`,
-                )
+                applyToSelected({ type: "lead.status", status: nextStatus })
               }
               onClear={() => setSelected(new Set())}
             />
           )}
+          {bulkOperation.result && (
+            <BulkActionBar
+              selectedCount={selected.size}
+              busy={bulkOperation.busy}
+              result={bulkOperation.result}
+              onResume={() => void bulkOperation.resume()}
+              onClear={() => {
+                setSelected(new Set());
+                bulkOperation.dismiss();
+              }}
+            />
+          )}
+          <BulkPreviewDialog
+            preview={bulkOperation.preview}
+            busy={bulkOperation.busy}
+            onCancel={bulkOperation.cancelPreview}
+            onCommit={() => void bulkOperation.commit()}
+          />
 
           {filtered.length === 0 ? (
             hasActiveFilters ? (
@@ -442,7 +410,16 @@ function LeadsPage() {
               rows={filtered}
               rowKey={(lead) => lead.id}
               rowHref={(lead) => `/leads/${lead.id}`}
-              selection={{ selected, onChange: setSelected }}
+              selection={{
+                selected,
+                onChange: (next) => {
+                  if (next.size > 100) {
+                    toast.error("Select at most 100 leads per bulk operation.");
+                    return;
+                  }
+                  setSelected(next);
+                },
+              }}
               renderCard={(lead) => (
                 <div className="space-y-1">
                   <div className="flex items-start justify-between gap-2">
@@ -645,7 +622,7 @@ function LeadsBulkBar({
   count: number;
   busy: boolean;
   onAssign: (uid: string) => Promise<boolean>;
-  onMarkStatus: (s: Lead["status"]) => Promise<boolean>;
+  onMarkStatus: (s: "qualified" | "lost") => Promise<boolean>;
   onClear: () => void;
 }) {
   const [assignOpen, setAssignOpen] = useState(false);
@@ -663,7 +640,7 @@ function LeadsBulkBar({
    */
   const [confirm, setConfirm] = useState<null | {
     description: string;
-    status: Lead["status"];
+    status: "qualified" | "lost";
     label: string;
   }>(null);
 
@@ -699,7 +676,7 @@ function LeadsBulkBar({
 
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
-      <span className="font-medium">{formatCount(count)} selected</span>
+      <span className="font-medium">{formatCount(count)} selected (100 max)</span>
       <Button size="sm" variant="outline" disabled={busy} onClick={() => setAssignOpen(true)}>
         Assign owner
       </Button>
