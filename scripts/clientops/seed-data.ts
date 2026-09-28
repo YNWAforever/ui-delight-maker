@@ -223,6 +223,7 @@ export type DemoAgentRun = {
 
 export type DemoApproval = {
   key: string;
+  quoteKey?: string;
   runKey: string;
   approval_type: "quote_send" | "message_send" | "qualification_review" | "cs_risk_review";
   assignedToKey: DemoProfile["key"];
@@ -1357,6 +1358,7 @@ export const DEMO_APPROVALS: DemoApproval[] = [
   },
   {
     key: "approval-quote-fitness",
+    quoteKey: "quote-fitness",
     runKey: "run-quote-fitness",
     approval_type: "quote_send",
     assignedToKey: "manager",

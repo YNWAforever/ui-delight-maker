@@ -76,7 +76,12 @@ jobs:
         run: |
           bun run build
           before="$(bun scripts/clientops/demo-seed-counts.ts)"
+          integrity_before="$(bun scripts/clientops/verify-demo-seed-integrity.ts)"
           bun run build
           after="$(bun scripts/clientops/demo-seed-counts.ts)"
+          integrity_after="$(bun scripts/clientops/verify-demo-seed-integrity.ts)"
+          test "$integrity_before" = "$integrity_after"
+          echo "$integrity_after"
           test "$before" = "$after"
           echo "$after"
+          bun scripts/clientops/verify-demo-seed-rollback.ts
