@@ -54,3 +54,9 @@ One earlier fresh two-worker four-file focused run hit a PostgreSQL deadlock dur
 ## Exact code-head remote checkpoint after stacked repair
 
 At PR #100 code head `c1e3ab35e8ab1fccb1fc7e37e1789c61900ba04d`, GitHub Types/lint passed, the real PostgreSQL contract job reported 2,172 tests with zero skipped, and the separate isolated migration/seed two-wrapper replay passed. Vercel preview was Ready and authenticated read-only GET `/api/build` returned the exact 40-hex code SHA. This verifies source and preview identity for the code checkpoint; it does not prove seven-role UAT, legacy parity, provider behavior or production readiness. The document-only head created to record this evidence must be checked separately.
+
+## Standard local test isolation follow-up
+
+At documentation head `42aa152d42af7da8ecd5bd5d5868c78b929f916a`, GitHub Types/lint, the full real-PostgreSQL contract (2,172 tests, zero skipped), isolated two-wrapper migration/seed replay and Vercel all passed; the protected preview returned the same SHA.
+
+A prior local two-worker run had one intermittent policy-fixture `TRUNCATE` deadlock while different integration files shared a database. CI already runs contract files with `--no-file-parallelism`; the local `bun run test` script did not. Commit `ae436c8` aligns the standard local command with CI. It changes file scheduling only, leaving tests and within-test concurrent transaction assertions intact. On a fresh disposable loopback `pgvector/pgvector:pg17` database, `bun run test` passed 306 files / 2,172 tests with zero skipped (419.36 seconds on this Windows host). TypeScript, full lint (zero errors, one existing Fast Refresh warning) and pure Vite client/SSR build passed. The container was removed. The original deadlock cycle was not captured, so this is a scheduling mitigation rather than a claim about its exact lock graph. The new PR #100 head still requires remote checks and preview SHA verification.

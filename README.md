@@ -20,6 +20,10 @@ bunx vite build
 git diff --check
 ```
 
+`bun run test` runs files serially because the integration files share one disposable
+PostgreSQL database. Individual tests still exercise real concurrent transactions.
+Use an isolated `DATABASE_TEST_URL` and require zero skipped tests.
+
 `bunx vite build` is the local, source-only build. `bun run build` also applies
 migrations, verifies the database, and runs the deploy seed script; run it only
 against a verified disposable database or in an explicitly approved deployment.
