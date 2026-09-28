@@ -179,4 +179,42 @@ describe("PeopleDirectory", () => {
     );
     expect(screen.getByText("No people yet")).toBeTruthy();
   });
+  it("shows a recoverable failure without calling it an empty directory", () => {
+    const onRetry = vi.fn();
+    render(
+      <PeopleDirectory
+        data={undefined}
+        search={search}
+        error="The directory could not be refreshed."
+        onRetry={onRetry}
+        onSearchChange={vi.fn()}
+        onSelectUser={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain(
+      "The directory could not be refreshed.",
+    );
+    expect(screen.queryByText("No people yet")).toBeNull();
+    expect(screen.queryByText("0 people")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading people" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it("keeps cached rows visible while reporting a failed refresh", () => {
+    render(
+      <PeopleDirectory
+        data={data}
+        search={search}
+        error="The directory could not be refreshed."
+        onSearchChange={vi.fn()}
+        onSelectUser={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain(
+      "The directory could not be refreshed.",
+    );
+    expect(screen.getAllByRole("button", { name: /Ada Wong/ }).length).toBeGreaterThan(0);
+  });
 });
