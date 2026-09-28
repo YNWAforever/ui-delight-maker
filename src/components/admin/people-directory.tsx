@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Search, UserRound } from "lucide-react";
 
 import {
@@ -217,9 +218,10 @@ export function PeopleDirectory({
   ];
 
   const renderCard = (user: AdminUserSummary) => (
-    <button
-      type="button"
-      onClick={() => onSelectUser(user.id)}
+    <Link
+      to="/admin/people/$id"
+      params={{ id: user.id }}
+      aria-label={`Open ${displayName(user)} record`}
       className="block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span className="flex flex-wrap items-center gap-2">
@@ -232,7 +234,7 @@ export function PeopleDirectory({
       <span className="mt-1 block text-xs text-muted-foreground">
         {user.lastActiveAt ? `Last active ${formatDateTime(user.lastActiveAt)}` : "Never active"}
       </span>
-    </button>
+    </Link>
   );
 
   return (

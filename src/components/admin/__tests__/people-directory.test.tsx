@@ -5,8 +5,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ to, children, ...props }: { to: string; children?: ReactNode }) => (
-    <a href={to} {...props}>
+  Link: ({
+    to,
+    params,
+    children,
+    ...props
+  }: {
+    to: string;
+    params?: { id: string };
+    children?: ReactNode;
+  }) => (
+    <a href={params ? to.replace("$id", params.id) : to} {...props}>
       {children}
     </a>
   ),
@@ -216,5 +225,18 @@ describe("PeopleDirectory", () => {
       "The directory could not be refreshed.",
     );
     expect(screen.getAllByRole("button", { name: /Ada Wong/ }).length).toBeGreaterThan(0);
+  });
+  it("opens a person card as a full record instead of selecting an invisible panel", () => {
+    render(
+      <PeopleDirectory
+        data={data}
+        search={search}
+        onSearchChange={vi.fn()}
+        onSelectUser={vi.fn()}
+      />,
+    );
+
+    const cardLink = screen.getByRole("link", { name: "Open Ada Wong record" });
+    expect(cardLink.getAttribute("href")).toBe("/admin/people/profile-1");
   });
 });
