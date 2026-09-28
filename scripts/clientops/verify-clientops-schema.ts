@@ -1,4 +1,4 @@
-import { Pool } from "@neondatabase/serverless";
+import { createClientOpsScriptPool } from "../../src/lib/clientops-script-pool";
 import { verifyClientOpsDatabase } from "../../src/server/db/clientops-schema-contract";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -6,7 +6,7 @@ if (!databaseUrl) {
   throw new Error("DATABASE_URL is required for schema verification");
 }
 
-const pool = new Pool({ connectionString: databaseUrl });
+const pool = await createClientOpsScriptPool(databaseUrl);
 try {
   const result = await verifyClientOpsDatabase(pool);
   console.log(JSON.stringify(result, null, 2));

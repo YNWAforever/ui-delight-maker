@@ -1,4 +1,4 @@
-import { Pool } from "@neondatabase/serverless";
+import { createClientOpsScriptPool } from "../../src/lib/clientops-script-pool";
 import {
   addDaysToDateString,
   assertSeedAllowed,
@@ -1081,16 +1081,16 @@ async function seedJobSheets(db: Queryable, ctx: SeedContext) {
       currency: "HKD",
       line_items: quote.line_items,
     });
-    const existingVersion = await db.query<{ id: string }>(
+    const existingVersion = await db.query<{ id: string; snapshot_matches: boolean }>(
       `
-        select id
+        select id, snapshot = $2::jsonb as snapshot_matches
         from quote_versions
         where quote_id = $1
           and reason = 'accepted'
         order by version_number desc
         limit 1
       `,
-      [quoteId],
+      [quoteId, versionSnapshot],
     );
     let acceptedVersionId = existingVersion.rows[0]?.id;
 
@@ -1118,21 +1118,9 @@ async function seedJobSheets(db: Queryable, ctx: SeedContext) {
         ],
       );
       acceptedVersionId = insertedVersion.rows[0].id;
-    } else {
-      await db.query(
-        `
-          update quote_versions
-          set snapshot = $2::jsonb,
-              pdf_url = $3,
-              created_by = $4
-          where id = $1
-        `,
-        [
-          acceptedVersionId,
-          versionSnapshot,
-          `/quotes/${quoteId}/pdf`,
-          ctx.profileIds.get(jobSheet.salesOwnerKey) ?? null,
-        ],
+    } else if (!existingVersion.rows[0].snapshot_matches) {
+      throw new Error(
+        "Existing accepted demo Quote version differs from its immutable snapshot; use a fresh disposable database",
       );
     }
 
@@ -1420,9 +1408,9 @@ async function seedApprovals(db: Queryable, ctx: SeedContext) {
     const contextData = jsonb({ demo: true, demo_key: approval.key, approval_key: approval.key });
     const assignedTo = ctx.profileIds.get(approval.assignedToKey) ?? null;
 
-    const existing = await db.query<{ id: string }>(
+    const existing = await db.query<{ id: string; status: string }>(
       `
-        select id
+        select id, status
         from human_approvals
         where context_data->>'demo_key' = $1
            or (
@@ -1457,28 +1445,36 @@ async function seedApprovals(db: Queryable, ctx: SeedContext) {
       id = inserted.rows[0].id;
     }
 
-    await db.query(
-      `
-        update human_approvals
-        set agent_run_id = $2,
-            approval_type = $3,
-            requested_by = 'Demo Agent',
-            assigned_to = $4,
-            status = $5,
-            context_data = $6::jsonb,
-            context_summary = $7
-        where id = $1
-      `,
-      [
-        id,
-        agentRunId,
-        approval.approval_type,
-        assignedTo,
-        approval.status,
-        contextData,
-        approval.context_summary,
-      ],
-    );
+    // A fresh insert already has its final values. The command trigger forbids
+    // rewriting terminal approvals, including harmless-looking demo replays.
+    if (
+      id &&
+      existing.rows[0] &&
+      !["approved", "rejected", "superseded"].includes(existing.rows[0].status)
+    ) {
+      await db.query(
+        `
+          update human_approvals
+          set agent_run_id = $2,
+              approval_type = $3,
+              requested_by = 'Demo Agent',
+              assigned_to = $4,
+              status = $5,
+              context_data = $6::jsonb,
+              context_summary = $7
+          where id = $1
+        `,
+        [
+          id,
+          agentRunId,
+          approval.approval_type,
+          assignedTo,
+          approval.status,
+          contextData,
+          approval.context_summary,
+        ],
+      );
+    }
 
     ctx.approvalIds.set(approval.key, id);
   }
@@ -1843,7 +1839,7 @@ async function main() {
   assertSeedAllowed({ mode, databaseUrl, env: process.env });
   const ctx = makeSeedContext(mode);
 
-  const pool = new Pool({ connectionString: databaseUrl });
+  const pool = await createClientOpsScriptPool(databaseUrl);
   let client: ReleasableQueryable | undefined;
 
   try {
