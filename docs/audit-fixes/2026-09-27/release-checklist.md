@@ -21,7 +21,7 @@ Every preview cell is **blocked** until an authenticated preview at the same can
 | T19 performance / CO-23–24 | login, shell, queues | lazy shell and request SQL metrics | 016 indexes | [T19](t19-evidence.md) | blocked full route |
 | T20 legacy / CO-25 | deals, projects, customer success, automation, engagement | source guard and read-only parity | no cutover migration | [T20](t20-evidence.md) | blocked snapshot |
 | T21 AI / CO-28 | note tidy, n8n callbacks | governed invocation and telemetry | 021 | [T21](t21-evidence.md) | blocked provider |
-| T22 docs/CI / CO-27 | GET /api/build, GitHub workflows | public SHA metadata and zero-skip gate | none | [T22](t22-evidence.md) | source SHA matched at `69fe0fe`; role UAT blocked |
+| T22 docs/CI / CO-27 | GET /api/build, GitHub workflows | public SHA metadata and zero-skip gate | none | [T22](t22-evidence.md) | source SHA matched at code checkpoint `c1e3ab3`; role UAT blocked |
 
 ## Performance evidence
 
@@ -49,10 +49,10 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 | Gate | Current result | Owner / way to close |
 |---|---|---|
 | PR/source CI on exact head and main push | Types/lint, Database contract and isolated seed replay passed at checkpoint `69fe0fe375b8fd1d4fb11c3b9890baf711052fee`; recheck later docs-only head | engineering: require `Checks / Types and lint` and `Database contract / contract`; repository admin applies branch protection if desired |
-| Full isolated DB, zero skipped | local pass: 304 files / 2,161 tests, 0 skipped at `a4abea7`; remote checkpoint `69fe0fe`: 2,171 tests, 0 skipped | engineering verifies remote final PR CI at document head; [T22 evidence](t22-evidence.md) |
-| Migration/seed build wrapper rehearsal | local disposable pgvector full wrapper and two direct seed runs passed; two-wrapper CI replay passed at `69fe0fe` with stable counts; Neon-compatible snapshot still blocked | operator supplies disposable Neon-compatible copy for target-specific rehearsal |
+| Full isolated DB, zero skipped | merged candidate local pass: 306 files / 2,172 tests, 0 skipped; remote code checkpoint `c1e3ab3`: 2,172 tests, 0 skipped | engineering verifies remote final PR CI at document head; [T22 evidence](t22-evidence.md) |
+| Migration/seed build wrapper rehearsal | local disposable pgvector full wrapper and two direct seed runs passed; two-wrapper CI replay passed again at `c1e3ab3` with stable counts; Neon-compatible snapshot still blocked | operator supplies disposable Neon-compatible copy for target-specific rehearsal |
 | TypeScript, lint, pure Vite, bundle | see T22 evidence | engineering |
-| Preview GET /api/build equals final PR SHA | protected preview matched checkpoint `69fe0fe375b8fd1d4fb11c3b9890baf711052fee`; recheck later docs-only head | preview operator supplies URL; engineering compares exact 40-hex SHA |
+| Preview GET /api/build equals final PR SHA | protected preview matched code checkpoint `c1e3ab35e8ab1fccb1fc7e37e1789c61900ba04d`; recheck document-only head | preview operator supplies URL; engineering compares exact 40-hex SHA |
 | Seven roles, explicit allow/deny/expired overrides, 390/768/1440 and keyboard | blocked; sessions unavailable | UAT owner supplies disposable identities; [UAT matrix](uat-results.md) |
 | Legacy snapshot parity and migration/cutover | blocked; snapshots promised later | data owner supplies complete isolated snapshots; T20 compare and supervised rehearsal |
 | Provider/n8n callbacks and actual usage | blocked; sandbox contract/credential unavailable | integration owner supplies sandbox workflow and safe test credential |
