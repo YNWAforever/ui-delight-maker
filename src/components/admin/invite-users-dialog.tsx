@@ -1,6 +1,6 @@
-import { FormEvent, useEffect, useState } from "react";
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from "react";
 import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
-import { X } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { invitationInputSchema } from "@/lib/admin/schemas";
 import type { UserRole } from "@/lib/admin/types";
 import { toSafeErrorMessage } from "@/lib/errors";
@@ -19,6 +19,7 @@ type InviteUsersDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (invitations: InviteInput[]) => Promise<unknown> | unknown;
+  triggerRef?: RefObject<HTMLButtonElement | null>;
   departments?: readonly { id: string; name: string }[];
   teams?: readonly { id: string; name: string }[];
 };
@@ -38,9 +39,11 @@ export function InviteUsersDialog({
   open,
   onOpenChange,
   onSubmit,
+  triggerRef,
   departments = [],
   teams = [],
 }: InviteUsersDialogProps) {
+  const emailRef = useRef<HTMLTextAreaElement>(null);
   const [emailText, setEmailText] = useState("");
   const [role, setRole] = useState<UserRole>("sales");
   const [departmentId, setDepartmentId] = useState("");
@@ -57,8 +60,6 @@ export function InviteUsersDialog({
     setError(null);
     setResultMessage(null);
   }, [open]);
-
-  if (!open) return null;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -113,37 +114,45 @@ export function InviteUsersDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 md:items-center">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="invite-users-title"
-        className="my-8 w-full max-w-xl rounded-md border border-border bg-background shadow-xl"
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && submitting) return;
+        onOpenChange(nextOpen);
+      }}
+    >
+      <DialogContent
+        className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl gap-0 overflow-y-auto p-0 sm:rounded-md"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          emailRef.current?.focus();
+        }}
+        onCloseAutoFocus={(event) => {
+          if (!triggerRef?.current) return;
+          event.preventDefault();
+          triggerRef.current.focus();
+        }}
+        onEscapeKeyDown={(event) => {
+          if (submitting) event.preventDefault();
+        }}
+        onPointerDownOutside={(event) => {
+          if (submitting) event.preventDefault();
+        }}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-          <div>
-            <h2 id="invite-users-title" className="text-base font-semibold text-foreground">
-              Invite users
-            </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Invitations expire in seven days and use the selected role as the initial access
-              baseline.
-            </p>
-          </div>
-          <button
-            type="button"
-            aria-label="Close invitation dialog"
-            onClick={() => onOpenChange(false)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <X aria-hidden="true" className="h-4 w-4" />
-          </button>
+        <div className="border-b border-border px-5 py-4 pr-14">
+          <DialogTitle className="text-base font-semibold text-foreground">
+            Invite users
+          </DialogTitle>
+          <DialogDescription className="mt-1 text-xs text-muted-foreground">
+            Invitations expire in seven days and use the selected role as the initial access
+            baseline.
+          </DialogDescription>
         </div>
-
         <form onSubmit={submit} className="space-y-4 px-5 py-5">
           <label className="block text-sm font-medium text-foreground">
             Email addresses
             <textarea
+              ref={emailRef}
               aria-label="Email addresses"
               name="invitation-emails"
               rows={4}
@@ -260,6 +269,7 @@ export function InviteUsersDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
+              disabled={submitting}
               className="min-h-9 rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Cancel
@@ -273,7 +283,7 @@ export function InviteUsersDialog({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
