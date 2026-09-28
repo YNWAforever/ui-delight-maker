@@ -1,5 +1,9 @@
 import { createSupabaseServerClient } from "@/legacy-supabase/server";
 import { query } from "@/server/db/neon.server";
+import {
+  selectLegacyDomainSource,
+  type LegacyDomain,
+} from "@/server/repositories/legacy-domain-source.server";
 
 /**
  * Who owns a record, for the manager-scope half of an authorization decision.
@@ -130,6 +134,17 @@ async function supabaseOwnerProfileId(
   resourceType: string,
   resourceId: string,
 ): Promise<string | null> {
+  const domainByType: Record<string, LegacyDomain> = {
+    automation_playbook: "automation_playbooks",
+    automation_run: "automation_playbooks",
+    customer_success_profile: "customer_success",
+    engagement_event: "engagement_events",
+    channel_identity: "engagement_events",
+    deal: "deals",
+    project: "projects",
+  };
+  const domain = domainByType[resourceType];
+  if (domain) selectLegacyDomainSource(domain);
   const supabase = createSupabaseServerClient();
 
   if (resourceType === "supabase_account") {

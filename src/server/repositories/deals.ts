@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/legacy-supabase/server";
+import { createLegacyDomainClient, loadWorkspaceTaskRows } from "./legacy-domain-source.server";
 import type { Deal, EngagementEvent, Project, Task } from "@/lib/types";
 import { pickColumns, supabaseOperationFailed } from "./supabase-writes";
 
@@ -77,7 +77,7 @@ export type DealWorkspace = {
 };
 
 export async function listDeals(filters: DealFilters = {}): Promise<Deal[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("deals");
   let query = supabase.from("deals").select("*").order("created_at", { ascending: false });
 
   if (filters.status) query = query.eq("status", filters.status);
@@ -102,7 +102,7 @@ export async function listDeals(filters: DealFilters = {}): Promise<Deal[]> {
  * a different error surfaced for a deal whose events and projects both fail.
  */
 export async function getDealWorkspace(id: string): Promise<DealWorkspace> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("deals");
   const [dealResult, eventsResult, projectsResult, tasksResult] = await Promise.all([
     supabase.from("deals").select("*").eq("id", id).single(),
     supabase
@@ -112,7 +112,9 @@ export async function getDealWorkspace(id: string): Promise<DealWorkspace> {
       .order("occurred_at", { ascending: false })
       .limit(50),
     supabase.from("projects").select("*").eq("deal_id", id),
-    supabase.from("tasks").select("*").eq("deal_id", id),
+    loadWorkspaceTaskRows("deal_id", id, () =>
+      supabase.from("tasks").select("*").eq("deal_id", id),
+    ),
   ]);
 
   if (dealResult.error) throw supabaseOperationFailed("load this deal", dealResult.error);
@@ -133,7 +135,7 @@ export async function getDealWorkspace(id: string): Promise<DealWorkspace> {
 }
 
 export async function createDeal(input: CreateDealInput): Promise<Deal> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("deals");
   const { data, error } = await supabase
     .from("deals")
     .insert(pickColumns(input, DEAL_WRITE_COLUMNS))
@@ -152,7 +154,7 @@ export async function createDeal(input: CreateDealInput): Promise<Deal> {
  * `Deal` deliberately does not make it writable here.
  */
 export async function updateDeal(id: string, updates: Partial<Deal>): Promise<Deal> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("deals");
   const { data, error } = await supabase
     .from("deals")
     .update(pickColumns(updates, DEAL_WRITE_COLUMNS))
@@ -165,7 +167,7 @@ export async function updateDeal(id: string, updates: Partial<Deal>): Promise<De
 
 /** Open deals, which is the set the weighted forecast is computed over. */
 export async function listOpenDeals(filters: ForecastDealFilters = {}): Promise<Deal[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("deals");
   let query = supabase.from("deals").select("*").eq("status", "open");
 
   if (filters.owner) query = query.eq("owner", filters.owner);

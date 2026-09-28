@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/legacy-supabase/server";
+import { createLegacyDomainClient } from "./legacy-domain-source.server";
 import type { AutomationPlaybook, AutomationRun } from "@/lib/types";
 import { pickColumns, supabaseOperationFailed } from "./supabase-writes";
 
@@ -74,7 +74,7 @@ export type AutomationPlaybookDetail = {
 export async function listAutomationPlaybooks(
   filters: AutomationPlaybookFilters = {},
 ): Promise<AutomationPlaybook[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("automation_playbooks");
   let query = supabase
     .from("automation_playbooks")
     .select("*")
@@ -96,7 +96,7 @@ export async function listAutomationPlaybooks(
  * reports the playbook's message rather than whichever lost the race.
  */
 export async function getAutomationPlaybookDetail(id: string): Promise<AutomationPlaybookDetail> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("automation_playbooks");
   const [playbookResult, runsResult] = await Promise.all([
     supabase.from("automation_playbooks").select("*").eq("id", id).single(),
     supabase
@@ -123,7 +123,7 @@ export async function getAutomationPlaybookDetail(id: string): Promise<Automatio
 export async function createAutomationPlaybook(
   input: CreateAutomationPlaybookInput,
 ): Promise<AutomationPlaybook> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("automation_playbooks");
   const { data, error } = await supabase
     .from("automation_playbooks")
     .insert(pickColumns(input, PLAYBOOK_CREATE_COLUMNS))
@@ -138,7 +138,7 @@ export async function updateAutomationPlaybook(
   id: string,
   updates: Partial<AutomationPlaybook>,
 ): Promise<AutomationPlaybook> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("automation_playbooks");
   const { data, error } = await supabase
     .from("automation_playbooks")
     .update(pickColumns(updates, PLAYBOOK_UPDATE_COLUMNS))
@@ -150,7 +150,7 @@ export async function updateAutomationPlaybook(
 }
 
 export async function createAutomationRun(input: CreateAutomationRunInput): Promise<AutomationRun> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("automation_playbooks");
   const { data, error } = await supabase
     .from("automation_runs")
     .insert(pickColumns(input, RUN_CREATE_COLUMNS))
@@ -164,7 +164,7 @@ export async function updateAutomationRun(
   id: string,
   updates: Partial<AutomationRun>,
 ): Promise<AutomationRun> {
-  const supabase = createSupabaseServerClient();
+  const supabase = createLegacyDomainClient("automation_playbooks");
   const { data, error } = await supabase
     .from("automation_runs")
     .update(pickColumns(updates, RUN_UPDATE_COLUMNS))
