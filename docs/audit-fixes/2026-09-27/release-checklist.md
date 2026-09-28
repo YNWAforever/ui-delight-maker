@@ -1,6 +1,6 @@
 # ClientOps audit release candidate — 2026-09-28
 
-**State: reviewable source candidate with a protected preview; not released to production.** Source baseline is main/audit SHA `2904faa502f7494173f48f412875c1d0a3aba674`. T00–T21 are in stacked draft PRs #82–#99. T22 is [cumulative draft PR #100](https://github.com/YNWAforever/ui-delight-maker/pull/100) against main, so all fixes and release gates can be reviewed together. Use its head SHA and compare it to GET `/api/build` on its preview. A null or different response blocks release. The 30 finding states and task commits are in [status](status.md); task-level proof is in `t00`–`t22` evidence files where present. A passing local test never upgrades a blocked browser, data-parity or provider gate.
+**State: source integrated on a non-production branch; production NO-GO.** Source baseline is main/audit SHA `2904faa502f7494173f48f412875c1d0a3aba674`. PRs #82–#100 were merged in dependency order into `codex/clientops-reviewed-integration`, ending at `3c349f76b89e8814a123e767ee7b23bf457b2b3e`. Its source tree is identical to the tested [PR #100](https://github.com/YNWAforever/ui-delight-maker/pull/100) head `c9d47e2bdc5e82480d569b3b0217711ef00c6f8e`. The 30 finding states and task commits are in [status](status.md); task-level proof is in `t00`–`t22` evidence files. A passing local test never upgrades a blocked browser, data-parity or provider gate.
 
 ## Feature status and evidence map
 
@@ -48,17 +48,17 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 
 | Gate | Current result | Owner / way to close |
 |---|---|---|
-| PR/source CI on exact head and main push | Types/lint, Database contract and isolated seed replay passed at checkpoint `69fe0fe375b8fd1d4fb11c3b9890baf711052fee`; recheck later docs-only head | engineering: require `Checks / Types and lint` and `Database contract / contract`; repository admin applies branch protection if desired |
-| Full isolated DB, zero skipped | merged candidate local pass: 306 files / 2,172 tests, 0 skipped; remote test-script checkpoint `94346bf`: 2,172 tests, 0 skipped | engineering verifies remote final PR CI at document head; [T22 evidence](t22-evidence.md) |
+| PR/source CI on exact head and main push | PRs #82–#100 passed Types/lint, contract and Vercel before merging to the integration branch; #100 also passed isolated migration/seed replay at `c9d47e2` | engineering tests any later source change and the eventual main deployment SHA; repository admin applies branch protection if desired |
+| Full isolated DB, zero skipped | tested candidate local pass: 306 files / 2,172 tests, 0 skipped; final PR #100 remote contract: 2,172 tests, 0 skipped | engineering verifies any later source change; [T22 evidence](t22-evidence.md) |
 | Migration/seed build wrapper rehearsal | local disposable pgvector full wrapper and two direct seed runs passed; two-wrapper CI replay passed again at `c1e3ab3` with stable counts; Neon-compatible snapshot still blocked | operator supplies disposable Neon-compatible copy for target-specific rehearsal |
 | TypeScript, lint, pure Vite, bundle | see T22 evidence | engineering |
-| Preview GET /api/build equals final PR SHA | protected preview matched test-script checkpoint `94346bfea818bd1b3f96f96a3116fd9544a2b328`; recheck document-only head | preview operator supplies URL; engineering compares exact 40-hex SHA |
+| Preview GET /api/build equals final PR SHA | protected preview matched final PR #100 head `c9d47e2bdc5e82480d569b3b0217711ef00c6f8e`; integration merge SHA has not been deployed | preview operator supplies URL; engineering compares exact 40-hex deployment SHA |
 | Seven roles, explicit allow/deny/expired overrides, 390/768/1440 and keyboard | blocked; sessions unavailable | UAT owner supplies disposable identities; [UAT matrix](uat-results.md) |
 | Legacy snapshot parity and migration/cutover | blocked; snapshots promised later | data owner supplies complete isolated snapshots; T20 compare and supervised rehearsal |
 | Provider/n8n callbacks and actual usage | blocked; sandbox contract/credential unavailable | integration owner supplies sandbox workflow and safe test credential |
 | Authenticated full route p95 before/after | blocked; no sessions/local app fixture | performance owner runs same-environment 30 warm/10 cold route and browser samples |
 | Backup/PITR, migration rehearsal, change window | blocked; operator evidence unavailable | production operator |
-| Release approval | conditional source-merge request received; production remains NO-GO and no deployment was performed | user/owner after all gates, including target-specific migration and UAT evidence |
+| Release approval | source merged to non-production integration branch only; production remains NO-GO and no deployment was performed | user/owner after all gates, including target-specific migration and UAT evidence |
 
 ## Rollforward and rollback sequence
 
@@ -69,4 +69,11 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 5. If a legacy domain has begun Neon writes, freeze writes, compare the delta and obtain a signed reverse-sync plan before any source reversal. A toggle alone is not a safe rollback.
 6. Record final disposition and customer-impact decision with the operator. No real customer message or production data operation was performed for this candidate.
 
-**Release decision:** NO-GO for production while external gates above remain blocked. Source is reviewable as a draft stacked PR sequence.
+**Release decision:** NO-GO for production while external gates above remain blocked. Source is reviewable on `codex/clientops-reviewed-integration`; main and its Production deployment remain at the audit SHA.
+
+## Integration merge disposition
+
+- GitHub shows all 19 PRs #82–#100 as merged into `codex/clientops-reviewed-integration`, with final merge commit `3c349f76b89e8814a123e767ee7b23bf457b2b3e`. The merged tree `d984a4c7edbe3a963d0dd49dc2887e8d7f55d597` equals the tested #100 head tree.
+- Main and the latest GitHub Production deployment still point to `2904faa502f7494173f48f412875c1d0a3aba674`. The integration branch is not the Vercel production branch. No production deployment, migration or customer message was performed.
+- Automatic main deployments remain enabled. Automatic approval review rejected a proposed persistent Vercel ignore-build setting because it could suppress future production deployments; no project setting was changed. Do not merge this integration branch into main until the release gates are satisfied or a separately approved deployment hold is in place.
+- The protected preview matched #100 head `c9d47e2bdc5e82480d569b3b0217711ef00c6f8e`; the integration merge has a different commit SHA and was not claimed as preview-verified. A release requires a fresh final-deployment `/api/build` SHA comparison.
