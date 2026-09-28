@@ -81,6 +81,33 @@ describe("legacy domain reconciliation", () => {
     ).toThrow(/production/i);
   });
 
+  it("accepts only the matching disposable CI database in test mode", () => {
+    const localTestUrl = "postgresql://localhost/clientops_test";
+    const rehearsal = {
+      CLIENTOPS_LEGACY_TASK_READ_SOURCE: "neon",
+      CLIENTOPS_LEGACY_TASK_REHEARSAL: "1",
+      NODE_ENV: "test",
+      DATABASE_URL: localTestUrl,
+      DATABASE_TEST_URL: localTestUrl,
+    };
+    expect(selectLegacyTaskReadSource(rehearsal)).toBe("neon");
+    expect(() =>
+      selectLegacyTaskReadSource({
+        ...rehearsal,
+        DATABASE_TEST_URL: "postgresql://localhost/other",
+      }),
+    ).toThrow(/disposable local database/);
+    expect(() =>
+      selectLegacyTaskReadSource({
+        ...rehearsal,
+        DATABASE_URL: "postgresql://db.example/clientops_test",
+      }),
+    ).toThrow(/disposable local database/);
+    expect(() => selectLegacyTaskReadSource({ ...rehearsal, NODE_ENV: "production" })).toThrow(
+      /production/i,
+    );
+  });
+
   it.runIf(hasDatabase)(
     "reads the same task ID, owner, status, and scope from Neon as the main task list",
     async () => {
@@ -96,6 +123,7 @@ describe("legacy domain reconciliation", () => {
           CLIENTOPS_LEGACY_TASK_REHEARSAL: "1",
           NODE_ENV: "test",
           DATABASE_URL: process.env.DATABASE_TEST_URL,
+          DATABASE_TEST_URL: process.env.DATABASE_TEST_URL,
         },
       );
       expect(workspace.error).toBeNull();
