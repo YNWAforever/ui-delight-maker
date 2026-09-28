@@ -38,6 +38,7 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 
 - Commit `876ddef` makes Vercel's automatic PR/production build command source-only (`bunx vite build` plus output packaging). The first two PR #100 previews used the former wrapper and failed during seed with `Quote version is immutable`; its database isolation was not verified. Do not use an automatic build to apply migration or seed. Before a future release, rehearse and separately authorize the schema/data operation on an identified target, then deploy the source.
 - Migrations 001–009 predate this remediation. New additive changes are 010 command versions/receipts; 011 immutable quote version guard; 012 one open quote approval; 013 Xero transitions; 014 locked Job Sheet portions; 015 agent recovery metadata; 016 queue indexes; 017–018 bulk receipts and row versions; 019 import sessions/identity keys; 020 handoff fields; 021 AI invocation telemetry.
+- The local wrapper now uses a narrowly guarded `pg` adapter only for matching loopback disposable test URLs. The first full wrapper and two direct synthetic seed runs passed on isolated pgvector PostgreSQL; CI now runs the full wrapper twice on its own fresh service and compares migration/profile/Quote/version/approval counts. This does not replace a Neon-compatible disposable-copy rehearsal or operator sign-off.
 - The isolated PostgreSQL contract and full suite are recorded in [T22 evidence](t22-evidence.md). The normal `bun run build` wrapper includes migration and seed; do not invoke it on a database whose identity and disposability are unverified.
 - Read-only inventory and reconciliation precede any production schema write. Quote legacy anomalies (missing issued versions, conflicting acceptance, unverified Xero notes) remain uncounted on real data. Preserve them for an operator decision; never manufacture a snapshot or acceptance timestamp.
 - [T20](t20-evidence.md) cannot report cross-database row count, ID, owner, task or override parity until the promised isolated legacy and Neon snapshots arrive. All five domains stay on Supabase. There is no backfill, dual-write proof or cutover authorization.
@@ -49,7 +50,7 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 |---|---|---|
 | PR/source CI on exact head and main push | Types/lint and Database contract passed at checkpoint `e4db5ca2824300b885da500b7a9f8692aa3ad69f`; recheck later docs-only head | engineering: require `Checks / Types and lint` and `Database contract / contract`; repository admin applies branch protection if desired |
 | Full isolated DB, zero skipped | local pass: 304 files / 2,161 tests, 0 skipped at code SHA `a4abea7` | engineering verifies remote final PR CI at document head; [T22 evidence](t22-evidence.md) |
-| Migration/seed build wrapper rehearsal | blocked on an isolated Neon-compatible connection | operator supplies disposable Neon-compatible target; verify identity, then run migration, schema verify and wrapper in that environment |
+| Migration/seed build wrapper rehearsal | local disposable pgvector first full wrapper and two direct seed runs passed; two-wrapper CI replay pending, Neon-compatible snapshot still blocked | engineering verifies new isolated CI job; operator supplies disposable Neon-compatible copy for target-specific rehearsal |
 | TypeScript, lint, pure Vite, bundle | see T22 evidence | engineering |
 | Preview GET /api/build equals final PR SHA | protected preview matched checkpoint `e4db5ca2824300b885da500b7a9f8692aa3ad69f`; recheck later docs-only head | preview operator supplies URL; engineering compares exact 40-hex SHA |
 | Seven roles, explicit allow/deny/expired overrides, 390/768/1440 and keyboard | blocked; sessions unavailable | UAT owner supplies disposable identities; [UAT matrix](uat-results.md) |
@@ -57,7 +58,7 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 | Provider/n8n callbacks and actual usage | blocked; sandbox contract/credential unavailable | integration owner supplies sandbox workflow and safe test credential |
 | Authenticated full route p95 before/after | blocked; no sessions/local app fixture | performance owner runs same-environment 30 warm/10 cold route and browser samples |
 | Backup/PITR, migration rehearsal, change window | blocked; operator evidence unavailable | production operator |
-| Release approval | not requested; no production deployment | user/owner after all gates |
+| Release approval | conditional source-merge request received; production remains NO-GO and no deployment was performed | user/owner after all gates, including target-specific migration and UAT evidence |
 
 ## Rollforward and rollback sequence
 
