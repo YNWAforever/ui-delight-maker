@@ -71,44 +71,67 @@ export const Route = createFileRoute("/")({
 });
 
 function DashboardLanding() {
-  const dashboard = Route.useLoaderData();
-  if (dashboard.access.leads) return <PipelineCommandCenter />;
+  const { access, jobSheets } = Route.useLoaderData();
+  if (access.leads) return <PipelineCommandCenter />;
+
+  const hasQueue = access.jobSheets || access.tasks || access.approvals || access.quotes;
   return (
     <div className="space-y-6 px-4 py-6 md:px-6">
       <WorkspaceHeader
         context="Operations"
-        title="Operations desk"
-        description="Your current job-sheet queue"
+        title="Today"
+        description="Open an available queue to continue your work"
       />
       <div className="flex flex-wrap gap-2">
-        <Button asChild variant="outline">
-          <Link to="/job-sheets">All job sheets</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link to="/tasks">Tasks</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link to="/approvals">Approvals</Link>
-        </Button>
+        {access.jobSheets && (
+          <Button asChild variant="outline">
+            <Link to="/job-sheets">All job sheets</Link>
+          </Button>
+        )}
+        {access.tasks && (
+          <Button asChild variant="outline">
+            <Link to="/tasks">Tasks</Link>
+          </Button>
+        )}
+        {access.approvals && (
+          <Button asChild variant="outline">
+            <Link to="/approvals">Approvals</Link>
+          </Button>
+        )}
+        {access.quotes && (
+          <Button asChild variant="outline">
+            <Link to="/quotes">Quotes</Link>
+          </Button>
+        )}
       </div>
-      {dashboard.jobSheets.length === 0 ? (
-        <EmptyWorkspaceState title="No visible job sheets" description="Your queue is clear." />
-      ) : (
-        <ul className="space-y-2">
-          {dashboard.jobSheets.map((sheet) => (
-            <li key={sheet.id}>
-              <Link
-                to="/job-sheets/$id"
-                params={{ id: sheet.id }}
-                className="flex items-center justify-between rounded-md border border-border p-4 hover:bg-muted/50"
-              >
-                <span className="font-medium">{sheet.number}</span>
-                <span className="text-sm text-muted-foreground">{sheet.status}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+      {!hasQueue && (
+        <EmptyWorkspaceState
+          title="No available work queues"
+          description="Ask a workspace administrator to review your access."
+        />
       )}
+      {access.jobSheets &&
+        (jobSheets.length === 0 ? (
+          <EmptyWorkspaceState
+            title="No visible job sheets"
+            description="There are no job sheets in this view."
+          />
+        ) : (
+          <ul className="space-y-2">
+            {jobSheets.map((sheet) => (
+              <li key={sheet.id}>
+                <Link
+                  to="/job-sheets/$id"
+                  params={{ id: sheet.id }}
+                  className="flex items-center justify-between rounded-md border border-border p-4 hover:bg-muted/50"
+                >
+                  <span className="font-medium">{sheet.number}</span>
+                  <span className="text-sm text-muted-foreground">{sheet.status}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ))}
     </div>
   );
 }

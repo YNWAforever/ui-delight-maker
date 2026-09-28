@@ -2,6 +2,7 @@ import type { ActivityLog, AgentRun, HumanApproval, Lead, Product, Quote, Task }
 import type { CurrencyTotal } from "@/lib/money";
 import { query } from "@/server/db/neon.server";
 import { evaluateAuthorization } from "@/lib/admin/policy";
+import type { Capability } from "@/lib/admin/types";
 import type { RequestAuthorization } from "@/server/auth/authorization.server";
 import {
   buildVisibilityScope,
@@ -37,7 +38,13 @@ export interface DashboardReadModel {
   activityLogs: ActivityLog[];
   products: Product[];
   jobSheets: JobSheetListItem[];
-  access: { leads: boolean; jobSheets: boolean };
+  access: {
+    leads: boolean;
+    jobSheets: boolean;
+    tasks: boolean;
+    approvals: boolean;
+    quotes: boolean;
+  };
   pipelineTotals: {
     openLeads: number;
     activeQuoteTotals: CurrencyTotal[];
@@ -169,9 +176,23 @@ async function visibleTotals(
 export async function getDashboardReadModel(
   context: RequestAuthorization,
 ): Promise<DashboardReadModel> {
+  // Navigation is a hint, never an authorization boundary. Keep row-scoped allows
+  // discoverable, but do not advertise a queue under a resource-wide deny.
+  const canOfferQueue = (resource: VisibleResourceType, capability: Capability) =>
+    hasPotentialVisibility(context, resource) &&
+    evaluateAuthorization({
+      actor: context.actor,
+      capability,
+      target: { resourceType: resource },
+      overrides: context.overrides,
+      now: context.now,
+    }).reason !== "explicit_deny";
   const access = {
-    leads: hasPotentialVisibility(context, "lead"),
-    jobSheets: hasPotentialVisibility(context, "job_sheet"),
+    leads: canOfferQueue("lead", "leads.view"),
+    jobSheets: canOfferQueue("job_sheet", "job_sheets.view"),
+    tasks: canOfferQueue("task", "tasks.view"),
+    approvals: canOfferQueue("human_approval", "approvals.view"),
+    quotes: canOfferQueue("quote", "quotes.view"),
   };
   const productsAllowed = evaluateAuthorization({
     actor: context.actor,
