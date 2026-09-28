@@ -21,6 +21,7 @@ export type RuntimeMeasurement = {
   payloadBytes: number;
   initialJsGzipBytes: number;
   queryMetricsCoverage: number;
+  metricScope: "http-request" | null;
 };
 
 function percentile(values: number[], fraction: number) {
@@ -53,9 +54,10 @@ export function verifyRuntimeEvidence(value: { evidenceType?: string; [key: stri
   if (
     typeof value.dbCount !== "number" ||
     !Number.isFinite(value.dbCount) ||
-    value.queryMetricsCoverage !== 1
+    value.queryMetricsCoverage !== 1 ||
+    value.metricScope !== "http-request"
   ) {
-    failures.push("Complete request DB query metrics are required.");
+    failures.push("Complete request-scoped DB query metrics are required.");
   }
   if (typeof value.p95Ms !== "number" || value.p95Ms > 800)
     failures.push("Warm HTTP p95 exceeds 800ms or is missing.");
@@ -105,6 +107,7 @@ async function takeSample(
   return {
     durationMs,
     payloadBytes,
+    metricScope,
     dbCount: parsedCount !== null && Number.isFinite(parsedCount) ? parsedCount : null,
     dbDurationMs:
       parsedDuration !== null && Number.isFinite(parsedDuration) ? parsedDuration : null,
@@ -193,7 +196,16 @@ export async function measureRuntimeHttp(config: {
       : null,
     payloadBytes: Math.max(...all.map((sample) => sample.payloadBytes)),
     initialJsGzipBytes: loginTransfer.gzipBytes,
-    queryMetricsCoverage: countValues.filter((value) => value !== null).length / all.length,
+    queryMetricsCoverage:
+      all.filter(
+        (sample) =>
+          sample.metricScope === "http-request" &&
+          sample.dbCount !== null &&
+          sample.dbDurationMs !== null,
+      ).length / all.length,
+    metricScope: all.every((sample) => sample.metricScope === "http-request")
+      ? "http-request"
+      : null,
   };
 }
 
