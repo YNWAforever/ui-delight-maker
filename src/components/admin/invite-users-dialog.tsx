@@ -1,6 +1,7 @@
 import { type FormEvent, type RefObject, useEffect, useRef, useState } from "react";
 import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { X } from "lucide-react";
 import { invitationInputSchema } from "@/lib/admin/schemas";
 import type { UserRole } from "@/lib/admin/types";
 import { toSafeErrorMessage } from "@/lib/errors";
@@ -122,7 +123,7 @@ export function InviteUsersDialog({
       }}
     >
       <DialogContent
-        className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl gap-0 overflow-y-auto p-0 sm:rounded-md"
+        className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl gap-0 overflow-y-auto p-0 sm:rounded-md [&>button:last-child]:hidden"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           emailRef.current?.focus();
@@ -139,6 +140,15 @@ export function InviteUsersDialog({
           if (submitting) event.preventDefault();
         }}
       >
+        <button
+          type="button"
+          aria-label="Close invitation dialog"
+          disabled={submitting}
+          onClick={() => onOpenChange(false)}
+          className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
         <div className="border-b border-border px-5 py-4 pr-14">
           <DialogTitle className="text-base font-semibold text-foreground">
             Invite users

@@ -110,6 +110,9 @@ describe("InviteUsersDialog", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Send invitations" }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(
+      screen.getByRole("button", { name: "Close invitation dialog" }).hasAttribute("disabled"),
+    ).toBe(true);
     await userEvent.keyboard("{Escape}");
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
     expect(screen.getByRole("dialog")).toBeTruthy();
