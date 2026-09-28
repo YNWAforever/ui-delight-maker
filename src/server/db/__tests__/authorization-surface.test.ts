@@ -211,7 +211,14 @@ import { describe, expect, it } from "vitest";
  * their scoped checks inside the locked PostgreSQL command; a targetless precheck
  * would deny a legitimate resource-scoped allow and cannot replace those checks.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 225;
+/*
+ * 225 -> 231 in T12. The paged Tasks read adds one tasks.view gate.
+ * Approvals replaces the old unbounded read's one gate with three scoped
+ * page/detail/last-reviewed gates (+2). The new purpose-scoped people search
+ * file contributes an import and two gates for assignment and other purposes
+ * (+3). No existing mutation gate was removed.
+ */
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 231;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

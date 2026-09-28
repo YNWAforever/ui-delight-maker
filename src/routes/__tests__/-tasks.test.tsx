@@ -60,9 +60,13 @@ vi.mock("@/lib/sales-workspace", () => ({
   getTaskBoardMetrics: () => ({ open: 1, overdue: 0, dueToday: 0, highPriority: 0 }),
 }));
 vi.mock("@/server-functions/tasks", () => ({
-  getTasks: vi.fn(),
+  getTasksPage: vi.fn(),
   createTask: createTaskMock,
   updateTask: updateTaskMock,
+}));
+
+vi.mock("@/components/people/profile-search-combobox", () => ({
+  ProfileSearchCombobox: () => null,
 }));
 
 import { Route } from "../tasks";
@@ -105,7 +109,14 @@ beforeEach(() => {
   createTaskMock.mockReset();
   navigateMock.mockReset();
   toastErrorMock.mockReset();
-  vi.mocked(Route.useLoaderData).mockReturnValue(tasks as never);
+  vi.mocked(Route.useLoaderData).mockReturnValue({
+    view: "board",
+    lanes: {
+      open: { items: [tasks[0]], total: 1, nextCursor: null },
+      in_progress: { items: [tasks[1]], total: 1, nextCursor: null },
+      done: { items: [], total: 0, nextCursor: null },
+    },
+  } as never);
 });
 
 afterEach(cleanup);

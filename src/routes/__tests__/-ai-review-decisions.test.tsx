@@ -25,7 +25,7 @@ import type { SerializableHumanApproval } from "@/lib/serializable";
 
 const {
   decideApprovalMock,
-  getApprovalsMock,
+  getLastReviewedAtMock,
   approveQuoteMock,
   rejectQuoteMock,
   routerInvalidateMock,
@@ -33,7 +33,7 @@ const {
   toastErrorMock,
 } = vi.hoisted(() => ({
   decideApprovalMock: vi.fn(),
-  getApprovalsMock: vi.fn(),
+  getLastReviewedAtMock: vi.fn(),
   approveQuoteMock: vi.fn(),
   rejectQuoteMock: vi.fn(),
   routerInvalidateMock: vi.fn(),
@@ -58,7 +58,7 @@ vi.mock("sonner", () => ({
 
 vi.mock("@/server-functions/agent-runs", () => ({ getAiReviewRead: vi.fn() }));
 vi.mock("@/server-functions/approvals", () => ({
-  getApprovals: getApprovalsMock,
+  getLastReviewedAtFn: getLastReviewedAtMock,
   decideApproval: decideApprovalMock,
 }));
 vi.mock("@/server-functions/quotes", () => ({
@@ -172,7 +172,7 @@ beforeEach(() => {
   decideApprovalMock.mockReset().mockResolvedValue(undefined);
   approveQuoteMock.mockReset().mockResolvedValue(undefined);
   rejectQuoteMock.mockReset().mockResolvedValue(undefined);
-  getApprovalsMock.mockReset().mockResolvedValue([]);
+  getLastReviewedAtMock.mockReset().mockResolvedValue(null);
   routerInvalidateMock.mockReset().mockResolvedValue(undefined);
   toastSuccessMock.mockReset();
   toastErrorMock.mockReset();
@@ -350,10 +350,7 @@ describe("the decision controls are honest about who may use them", () => {
 
 describe("an empty queue", () => {
   it("says no work needs attention and when something was last reviewed", async () => {
-    getApprovalsMock.mockResolvedValue([
-      approval({ id: "old-1", status: "approved", decided_at: "2026-07-30T11:30:00.000Z" }),
-      approval({ id: "old-2", status: "rejected", decided_at: "2026-08-01T08:15:00.000Z" }),
-    ]);
+    getLastReviewedAtMock.mockResolvedValue("2026-08-01T08:15:00.000Z");
     renderQueue([], { runs: [] });
 
     expect(screen.getByText("No work needs attention")).toBeTruthy();
@@ -361,7 +358,7 @@ describe("an empty queue", () => {
   });
 
   it("says nothing about a last review when nothing has been decided", async () => {
-    getApprovalsMock.mockResolvedValue([]);
+    getLastReviewedAtMock.mockResolvedValue(null);
     renderQueue([], { runs: [] });
 
     await waitFor(() => expect(screen.getByText(/Nothing has been reviewed yet/)).toBeTruthy());

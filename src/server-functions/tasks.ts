@@ -1,14 +1,23 @@
 import { parseOperationInput } from "@/lib/operations/errors";
-import { requireCapability, requirePageAuthorization } from "@/server/auth/authorization.server";
+import {
+  loadRequestAuthorization,
+  requireCapability,
+  requirePageAuthorization,
+} from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import {
   createTask as createTaskInNeon,
   listTasks,
+  listTaskQueuePage,
   updateTask as updateTaskInNeon,
 } from "@/server/repositories/tasks";
 import type { Task } from "@/lib/types";
-import { TaskCreateSchema, TaskMutationSchema } from "@/lib/operations/input-schemas";
+import {
+  TaskCreateSchema,
+  TaskMutationSchema,
+  TaskQueuePageSchema,
+} from "@/lib/operations/input-schemas";
 
 type GetTasksInput = {
   status?: string;
@@ -75,6 +84,15 @@ export const getTasks = createServerFn({ method: "GET" })
       }
       return { ...task, title: null, description: null, restricted: true };
     });
+  });
+
+export const getTasksPage = createServerFn({ method: "GET" })
+  .validator((data: unknown) => parseOperationInput(TaskQueuePageSchema, data ?? {}))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    await requireCapability("tasks.view", {}, context);
+    const page = await listTaskQueuePage(data, context);
+    return { ...page, items: page.items.map((task) => ({ ...task, restricted: false })) };
   });
 
 export const createTask = createServerFn({ method: "POST" })

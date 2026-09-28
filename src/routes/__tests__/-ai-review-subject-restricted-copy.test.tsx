@@ -40,7 +40,7 @@ vi.mock("sonner", () => ({
 
 vi.mock("@/server-functions/agent-runs", () => ({ getAiReviewRead: vi.fn() }));
 vi.mock("@/server-functions/approvals", () => ({
-  getApprovals: vi.fn().mockResolvedValue([]),
+  getLastReviewedAtFn: vi.fn().mockResolvedValue(null),
   decideApproval: vi.fn(),
 }));
 vi.mock("@/server-functions/quotes", () => ({

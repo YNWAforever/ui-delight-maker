@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { buildFilters } from "@/server/db/query-builders";
 import { AdminError } from "@/lib/admin/errors";
 import { evaluateAuthorization } from "@/lib/admin/policy";
@@ -30,6 +31,198 @@ export async function listApprovals(
      order by ha.created_at desc, ha.id desc`,
     [...where.values, ...scope.values],
   );
+}
+
+export type ApprovalQueuePageInput = {
+  group: "pending" | "history";
+  type?: string;
+  cursor?: string;
+  limit?: number;
+};
+export type ApprovalQueueItem = Omit<HumanApproval, "context_data"> & {
+  quote_id: string | null;
+};
+export type ApprovalQueuePage = {
+  items: ApprovalQueueItem[];
+  nextCursor: string | null;
+  total: number;
+  counts: { pending: number; escalated: number; quoteSends: number };
+};
+
+function parseApprovalCursor(cursor: string | undefined, signature: string) {
+  if (!cursor) return null;
+  if (cursor.length > 2048) throw new AdminError("VALIDATION_FAILED", "Invalid approval cursor");
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+    if (
+      parsed.v !== 1 ||
+      parsed.signature !== signature ||
+      typeof parsed.createdAt !== "string" ||
+      !Number.isFinite(Date.parse(parsed.createdAt)) ||
+      typeof parsed.id !== "string" ||
+      !/^[0-9a-f-]{36}$/i.test(parsed.id)
+    )
+      throw new Error("cursor mismatch");
+    return { createdAt: parsed.createdAt, id: parsed.id };
+  } catch {
+    throw new AdminError("VALIDATION_FAILED", "Invalid approval cursor");
+  }
+}
+
+/** Pending and decided lists are scoped, counted, and limited in PostgreSQL. */
+export async function listApprovalQueuePage(
+  input: ApprovalQueuePageInput,
+  context: RequestAuthorization,
+): Promise<ApprovalQueuePage> {
+  if (!["pending", "history"].includes(input.group)) {
+    throw new AdminError("VALIDATION_FAILED", "Invalid approval group");
+  }
+  const limit = Math.min(100, Math.max(1, Math.trunc(input.limit ?? 50)));
+  const type = input.type || null;
+  const signature = createHash("sha256")
+    .update(
+      JSON.stringify({
+        actor: context.actor.profileId,
+        group: input.group,
+        type,
+        sort: "created_at_desc_id_desc",
+      }),
+    )
+    .digest("hex");
+  const after = parseApprovalCursor(input.cursor, signature);
+  const scope = buildVisibilityScope(context, "human_approval", "ha");
+  const values: unknown[] = [...scope.values];
+  const shifted = (sql: string, offset: number) =>
+    sql.replace(/\$(\d+)/g, (_, index: string) => "$" + (Number(index) + offset));
+  const clauses = [scope.sql];
+  let from = "human_approvals ha";
+  if (context.actor.role === "manager") {
+    // Match the linked-subject ownership used by listClaimableApprovals, while applying
+    // both view and decide overrides before counting or paging.
+    from += ` left join agent_runs ar on ar.id=ha.agent_run_id
+      cross join lateral (select case
+        when ar.status='waiting_approval' and ar.subject_type='lead'
+          then (select l.assigned_to from leads l where l.id=ar.subject_id)
+        when ar.status='waiting_approval' and ar.subject_type='engagement'
+          then (select e.owner from engagements e where e.id=ar.subject_id)
+        when ar.status='waiting_approval' and ar.subject_type='account'
+          then (select a.account_owner from accounts a where a.id=ar.subject_id)
+        when ar.status='waiting_approval' and ar.subject_type='campaign'
+          then (select c.owner from campaigns c where c.id=ar.subject_id)
+        when ar.status='waiting_approval' and ar.subject_type='client'
+          then (select c.account_owner from clients c where c.id=ar.subject_id)
+        when ar.status='waiting_approval' and ar.subject_type='task'
+          then (select t.assigned_to from tasks t where t.id=ar.subject_id)
+        when ar.status='waiting_approval' and ar.subject_type='quote'
+          then (select coalesce(q.created_by,a.account_owner) from quotes q
+                left join accounts a on a.id=q.account_id where q.id=ar.subject_id)
+        when ha.agent_run_id is null and ha.approval_type='quote_send'
+          then (select coalesce(q.created_by,a.account_owner) from quotes q
+                left join accounts a on a.id=q.account_id
+                where q.id::text=ha.context_data->>'quote_id')
+      end as claim_owner) subject`;
+    const claimView = buildVisibilityScope(context, "human_approval", "ha", {
+      ownerSql: "subject.claim_owner",
+    });
+    const claimDecide = buildVisibilityScope(context, "human_approval", "ha", {
+      ownerSql: "subject.claim_owner",
+      capability: "approvals.decide",
+    });
+    const viewSql = shifted(claimView.sql, values.length);
+    values.push(...claimView.values);
+    const decideSql = shifted(claimDecide.sql, values.length);
+    values.push(...claimDecide.values);
+    clauses[0] = `(${scope.sql} or (ha.assigned_to is null
+      and ha.status in ('pending','escalated')
+      and subject.claim_owner is not null
+      and ${viewSql} and ${decideSql}))`;
+  }
+  const add = (value: unknown) => {
+    values.push(value);
+    return "$" + values.length;
+  };
+  clauses.push(
+    input.group === "pending"
+      ? "ha.status in ('pending','escalated')"
+      : "ha.status not in ('pending','escalated')",
+  );
+  if (type) clauses.push("ha.approval_type=" + add(type));
+  const where = "where " + clauses.join(" and ");
+  const counts = await query<{
+    total: number | string;
+    pending: number | string;
+    escalated: number | string;
+    quote_sends: number | string;
+  }>(
+    `select count(*)::int as total,
+            count(*) filter (where ha.status='pending')::int as pending,
+            count(*) filter (where ha.status='escalated')::int as escalated,
+            count(*) filter (where ha.status='pending' and
+              ha.approval_type='quote_send')::int as quote_sends
+       from ${from} ${where}`,
+    values,
+  );
+  const total = Number(counts[0]?.total ?? 0);
+  const pageValues = [...values];
+  let pageWhere = where;
+  if (after) {
+    const dateIndex = pageValues.push(after.createdAt);
+    const idIndex = pageValues.push(after.id);
+    pageWhere +=
+      " and (ha.created_at,ha.id) < ($" + dateIndex + "::timestamptz,$" + idIndex + "::uuid)";
+  }
+  const limitIndex = pageValues.push(limit + 1);
+  const rows = await query<ApprovalQueueItem>(
+    `select ha.id,ha.agent_run_id,ha.approval_type,ha.requested_by,
+            ha.assigned_to,ha.status,ha.row_version,ha.superseded_by,
+            ha.recovery_outcome_code,ha.recovery_reason,
+            ha.context_data->>'quote_id' as quote_id,
+            left(ha.context_summary,300) as context_summary,
+            ha.reviewer_notes,ha.decided_at,ha.created_at
+       from ${from} ${pageWhere}
+       order by ha.created_at desc,ha.id desc
+       limit $${limitIndex}`,
+    pageValues,
+  );
+  const hasMore = rows.length > limit;
+  const items = rows.slice(0, limit);
+  const last = items.at(-1);
+  return {
+    items,
+    nextCursor:
+      hasMore && last
+        ? Buffer.from(
+            JSON.stringify({
+              v: 1,
+              signature,
+              createdAt: new Date(last.created_at).toISOString(),
+              id: last.id,
+            }),
+          ).toString("base64url")
+        : null,
+    total,
+    counts: {
+      pending: Number(counts[0]?.pending ?? 0),
+      escalated: Number(counts[0]?.escalated ?? 0),
+      quoteSends: Number(counts[0]?.quote_sends ?? 0),
+    },
+  };
+}
+
+/** Empty-state timestamp without loading the decided approval history. */
+export async function getLatestDecidedApprovalAt(
+  context: RequestAuthorization,
+): Promise<string | null> {
+  const scope = buildVisibilityScope(context, "human_approval", "ha");
+  const rows = await query<{ latest: string | Date | null }>(
+    `select max(ha.decided_at) as latest from human_approvals ha
+      where ${scope.sql} and ha.decided_at is not null`,
+    scope.values,
+  );
+  return rows[0]?.latest ? new Date(rows[0].latest).toISOString() : null;
 }
 
 /** Discover unassigned review work only through a linked, manager-owned subject. */
