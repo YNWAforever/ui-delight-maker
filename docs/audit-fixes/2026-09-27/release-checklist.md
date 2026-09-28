@@ -2,6 +2,12 @@
 
 **State: source merged to main under a production build hold; production NO-GO.** The audited application baseline was main SHA `2904faa502f7494173f48f412875c1d0a3aba674`. PRs #82–#101 landed on `codex/clientops-reviewed-integration`; [PR #103](https://github.com/YNWAforever/ui-delight-maker/pull/103) merged that source into main at `f038919b95ff085190401f64078b78bc8781dd4d`. The latest READY Production deployment is still `dpl_BubNGhS2HFmmvjcUYfiKiasDwcLU` at the audited SHA. The user-approved Vercel hold cancels new production builds until an explicit release. The 30 finding states remain in [status](status.md); code CI does not upgrade blocked role, data-parity or provider gates.
 
+## Current source and release checkpoint — 2026-09-29
+
+Main `8b6241376a5ca3f9af5c6a6157a351c83c6b64e4` includes merged PRs #111–#116. PR #116's protected preview `/api/build` matched its exact head `a1741b3b168a908d470c7cbc1e9af2fdb480559b`; its Checks, real isolated PostgreSQL contract (2,188 tests, 0 skipped) and two-run migration/seed replay passed. Post-merge main repeated the same static, 2,188/0-skip database and replay gates. The latest READY Production deployment remains audited `dpl_BubNGhS2HFmmvjcUYfiKiasDwcLU`; the production build hold remains active.
+
+The [2026-09-29 acceptance delta](../2026-09-29/acceptance-delta.md) records the 751-case audit baseline and current proof. Seven-role browser UAT, legacy/Neon snapshot parity, four historical anomaly dispositions, provider sandbox, authenticated full-route before/after and operator rehearsal/PITR are still blocked. Release decision remains **NO-GO**. No migration/seed was run against an unverified target, and no production write, promotion, customer message or paid provider call occurred.
+
 ## Feature status and evidence map
 
 Every preview cell is **blocked** until an authenticated preview at the same candidate SHA is checked. The route labels show the affected entrypoints, not a claim that browser UAT passed.
@@ -45,7 +51,7 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 - [T20](t20-evidence.md) cannot report cross-database row count, ID, owner, task or override parity until the promised isolated legacy and Neon snapshots arrive. All five domains stay on Supabase. There is no backfill, dual-write proof or cutover authorization.
 - Before an approved production migration, the operator must provide backup/PITR point, rehearsal against a matching disposable copy, migration duration/locks, anomaly inventory and reconciliation sign-off. No such production gate has been satisfied here.
 
-## Release gates
+## Release gates — 2026-09-28 checkpoint
 
 | Gate | Current result | Owner / way to close |
 |---|---|---|
@@ -70,7 +76,7 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 5. If a legacy domain has begun Neon writes, freeze writes, compare the delta and obtain a signed reverse-sync plan before any source reversal. A toggle alone is not a safe rollback.
 6. Record final disposition and customer-impact decision with the operator. No real customer message was sent; database effects of the failed #102 preview remain unverified.
 
-**Release decision:** NO-GO for production while external gates above remain blocked. Main contains the source at `f038919` but the user-approved production hold remains active; the live READY deployment is still the audited `2904faa` version.
+**Release decision at the 2026-09-28 checkpoint:** NO-GO for production while external gates above remain blocked. Main contains the source at `f038919` but the user-approved production hold remains active; the live READY deployment is still the audited `2904faa` version.
 
 ## Integration merge disposition
 
