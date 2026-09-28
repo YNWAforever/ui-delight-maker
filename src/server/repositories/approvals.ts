@@ -144,6 +144,7 @@ export async function decideApprovalInTransaction(
   db: Queryable,
   context: RequestAuthorization,
   input: ApprovalDecisionWrite,
+  beforeTransition?: (approval: HumanApproval) => Promise<void>,
 ): Promise<HumanApproval> {
   const current = (
     await db.query<HumanApproval>("select * from human_approvals where id=$1 for update", [
@@ -174,6 +175,7 @@ export async function decideApprovalInTransaction(
       "Approval decision is not authorized",
     );
   }
+  await beforeTransition?.(current);
 
   const updated = (
     await db.query<HumanApproval>(
