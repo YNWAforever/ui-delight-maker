@@ -153,6 +153,14 @@ describe("job-sheet queue SQL visibility", () => {
       ('sheet-allowed','JS-1','quote-1','ready',null,null,now(),100.25,'HKD','actor-1',null,null,null,'allowed private note',null),
       ('sheet-denied','JS-2','quote-2','ready',null,null,now(),200.50,'HKD','actor-1',null,null,null,'denied private note',null),
       ('sheet-other','JS-3','quote-3','ready',null,null,now(),300.75,'HKD','other-1',null,null,null,'other private note',null)`);
+    // Temporary tables are not auto-analyzed. Missing statistics inflated the
+    // visibility plan cost and triggered seconds of JIT for empty fixture tables.
+    // Keep production SQL, JIT settings, assertions and timeouts unchanged.
+    await holder.client.query(
+      "analyze pg_temp.accounts, pg_temp.clients, pg_temp.leads, pg_temp.quotes, " +
+        "pg_temp.quote_versions, pg_temp.tasks, pg_temp.agent_runs, pg_temp.activity_logs, " +
+        "pg_temp.products, pg_temp.human_approvals, pg_temp.job_sheets",
+    );
   });
   afterAll(async () => {
     if (holder.client) {

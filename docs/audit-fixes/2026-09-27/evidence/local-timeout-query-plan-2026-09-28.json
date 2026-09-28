@@ -1,0 +1,39 @@
+{
+  "date": "2026-09-28",
+  "baselineMain": "26860935514a042cc1cea3154fa4f5429ab9ec6a",
+  "scope": "Isolated PostgreSQL 17 synthetic temporary-table query; not production or full-route performance",
+  "change": "ANALYZE the 11 populated temporary fixture tables only",
+  "before": {
+    "planningMs": 0.897,
+    "executionMs": 10907.777,
+    "totalCost": 2822402.38,
+    "actualRows": 0,
+    "jit": {
+      "Functions": 160,
+      "Options": {
+        "Inlining": true,
+        "Optimization": true,
+        "Expressions": true,
+        "Deforming": true
+      },
+      "Timing": {
+        "Generation": {
+          "Deform": 3.492,
+          "Total": 8.625
+        },
+        "Inlining": 37.476,
+        "Optimization": 8978.296,
+        "Emission": 1866.292,
+        "Total": 10890.688
+      }
+    }
+  },
+  "after": {
+    "planningMs": 0.545,
+    "executionMs": 0.207,
+    "totalCost": 0.03,
+    "actualRows": 0,
+    "jit": null
+  },
+  "unchanged": ["production SQL", "JIT configuration", "authorization assertions", "test timeouts"]
+}
