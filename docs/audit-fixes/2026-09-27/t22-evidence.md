@@ -44,3 +44,9 @@
 | Legacy data parity | blocked | user will provide isolated snapshots later; [T20](t20-evidence.md) has no cross-database result |
 | Provider/n8n sandbox | blocked | no sandbox workflow/credential; no real token/cost or callback claim |
 | Production backup, rehearsal, release | blocked | operator evidence and explicit release scope absent; no production deployment, provider call or customer message. Database effects of the failed preview builds are unverified |
+
+## Repaired stack integration at PR #100
+
+Green stacked PR #99 head `9edb34d` was merged into the cumulative branch at `c6474ab`. The merge retained the T22 release evidence and added T20's explicit isolated-CI guard regression and T21's migration 021 inventory test. On a fresh disposable loopback pgvector PostgreSQL database, the entire merged suite passed 306 files / 2,172 tests with zero skipped at two workers. TypeScript, full lint (zero errors, one existing Fast Refresh warning), pure Vite client/SSR build and the bundle gate passed; login initial static JS measured 165,496 gzip bytes in this build. No `bun run build` was used against an unverified target.
+
+One earlier fresh two-worker four-file focused run hit a PostgreSQL deadlock during policy-fixture `TRUNCATE` (1 of 36 failed). A fresh repeat passed 36/36, five additional fresh-database repeats passed 36/36 each, and the complete fresh-database suite passed 2,172/2,172. The lock cycle was not captured before that first container was removed, so this isolated intermittent observation is retained as a test-stability risk; it is not described as fixed. The new PR #100 exact-head full CI, isolated migration/seed replay and Vercel checks remain required.
