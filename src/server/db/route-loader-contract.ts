@@ -542,6 +542,10 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
  * routes cannot slip through unnoticed.
  */
 export const ACKNOWLEDGED_UNCOVERED_ROUTES: string[] = [
+  // Public login loaders resolve the caller own Neon Auth/workspace state, with no CRM list
+  // query to budget. Their state and redirect behavior is covered in T18 auth tests.
+  "login",
+  "login.$authPath",
   // invite.$token.complete: its loader calls acceptUserInvitation (src/server-functions/
   // admin-invitations.ts), which is a mutation — it accepts the invitation and inserts a
   // profile row via requireNeonAuthIdentity() + acceptInvitation(). This gate covers read

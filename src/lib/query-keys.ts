@@ -51,6 +51,7 @@ export const crmQueryKeys = {
   jobSheets: createRouteQueryKeys("job-sheets"),
   leads: createRouteQueryKeys("leads"),
   notifications: createRouteQueryKeys("notifications"),
+  people: createRouteQueryKeys("people"),
   pipeline: createRouteQueryKeys("pipeline"),
   products: createRouteQueryKeys("products"),
   projects: createRouteQueryKeys("projects"),
