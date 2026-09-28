@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { BulkAction, BulkPreview, BulkResult } from "@/lib/operations/bulk-contract";
 import { toSafeErrorMessage } from "@/lib/errors";
 import {
@@ -52,33 +52,52 @@ export function useBulkOperation(
   const [preview, setPreview] = useState<BulkPreview | null>(null);
   const [result, setResult] = useState<BulkResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [recoveryState, setRecoveryState] = useState<"loading" | "retry" | null>(null);
   const busyRef = useRef(false);
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
 
+  const restoreReceipt = useCallback(
+    async (isMounted: () => boolean = () => true) => {
+      const stored = readStoredOperation(sessionStorage.getItem(storageKey));
+      if (!stored) {
+        sessionStorage.removeItem(storageKey);
+        if (isMounted()) setRecoveryState(null);
+        return;
+      }
+      setRecoveryState("loading");
+      try {
+        const saved = await getBulkResultFn({ data: { operationId: stored.operationId } });
+        if (!isMounted()) return;
+        setResult(saved);
+        setRecoveryState(null);
+        void onResultRef.current(saved);
+      } catch (error) {
+        if (!isMounted()) return;
+        if (error instanceof Error && error.message === "Bulk operation owner access denied") {
+          // The server uses one response for a missing operation and another actor's
+          // operation. Discard this tab's inaccessible pointer without exposing either.
+          sessionStorage.removeItem(storageKey);
+          setRecoveryState(null);
+        } else {
+          // A failed read says nothing about whether the earlier write committed.
+          // Keep the exact receipt until an owner-checked read can answer that.
+          setRecoveryState("retry");
+        }
+      }
+    },
+    [storageKey],
+  );
+
   useEffect(() => {
     setResult(null);
     setPreview(null);
-    const stored = readStoredOperation(sessionStorage.getItem(storageKey));
-    if (!stored) {
-      sessionStorage.removeItem(storageKey);
-      return;
-    }
     let mounted = true;
-    void getBulkResultFn({ data: { operationId: stored.operationId } })
-      .then((saved) => {
-        if (!mounted) return;
-        setResult(saved);
-        void onResultRef.current(saved);
-      })
-      .catch(() => {
-        if (mounted) sessionStorage.removeItem(storageKey);
-      });
+    void restoreReceipt(() => mounted);
     return () => {
       mounted = false;
     };
-  }, [storageKey]);
-
+  }, [restoreReceipt]);
   const acceptResult = async (next: BulkResult) => {
     setResult(next);
     try {
@@ -91,6 +110,10 @@ export function useBulkOperation(
 
   const prepare = async (action: BulkAction, ids: string[]): Promise<boolean> => {
     if (busyRef.current || ids.length === 0) return false;
+    if (recoveryState) {
+      toast.error("Check the previous bulk result before starting another change.");
+      return false;
+    }
     busyRef.current = true;
     setBusy(true);
     try {
@@ -173,12 +196,15 @@ export function useBulkOperation(
     preview,
     result,
     busy,
+    recoveryState,
+    retryLoadResult: () => void restoreReceipt(),
     prepare,
     commit,
     resume,
     cancelPreview: () => setPreview(null),
     dismiss: () => {
       setResult(null);
+      setRecoveryState(null);
       sessionStorage.removeItem(storageKey);
     },
   };
