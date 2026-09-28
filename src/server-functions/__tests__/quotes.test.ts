@@ -16,6 +16,8 @@ const {
   createQuoteVersionMock,
   createJobSheetFromAcceptedQuoteMock,
   decideApprovalMock,
+  updateQuoteCommercialMock,
+  createQuoteRevisionCommandMock,
   createServerFnChain,
 } = vi.hoisted(() => {
   const createServerFnChain = {
@@ -43,6 +45,8 @@ const {
     createQuoteVersionMock: vi.fn(),
     createJobSheetFromAcceptedQuoteMock: vi.fn(),
     decideApprovalMock: vi.fn(),
+    updateQuoteCommercialMock: vi.fn(),
+    createQuoteRevisionCommandMock: vi.fn(),
     createServerFnChain,
   };
 });
@@ -92,6 +96,11 @@ vi.mock("@/server/commands/approval-decision.server", () => ({
   decideApprovalCommand: decideApprovalMock,
 }));
 
+vi.mock("@/server/commands/quote-revision.server", () => ({
+  updateQuoteCommercial: updateQuoteCommercialMock,
+  createQuoteRevision: createQuoteRevisionCommandMock,
+}));
+
 describe("quote server functions", () => {
   beforeEach(() => {
     requireNeonAuthSessionMock.mockReset();
@@ -107,6 +116,11 @@ describe("quote server functions", () => {
     createQuoteVersionMock.mockReset();
     createJobSheetFromAcceptedQuoteMock.mockReset();
     decideApprovalMock.mockReset();
+    updateQuoteCommercialMock.mockReset().mockResolvedValue({ id: "quote-1", total_value: 120000 });
+    createQuoteRevisionCommandMock.mockReset().mockResolvedValue({
+      quote: { id: "revision-1", status: "revised" },
+      version: { id: "version-2" },
+    });
     loadRequestAuthorizationMock.mockReset().mockResolvedValue({
       session: { profile: { id: "user-1", role: "admin", status: "active" } },
       actor: { profileId: "user-1", role: "admin", status: "active" },
@@ -262,6 +276,34 @@ describe("quote server functions", () => {
     expect(requireNeonAuthSessionMock.mock.invocationCallOrder[0]).toBeLessThan(
       createQuoteMock.mock.invocationCallOrder[0],
     );
+  });
+
+  it("routes commercial edits through the locked command", async () => {
+    const { updateQuote } = await import("../quotes");
+    const result = await updateQuote({ data: { id: "quote-1", updates: { total_value: 120000 } } });
+    expect(updateQuoteCommercialMock).toHaveBeenCalledWith(
+      expect.objectContaining({ actor: expect.objectContaining({ profileId: "user-1" }) }),
+      { id: "quote-1", patch: { total_value: 120000 } },
+    );
+    expect(updateQuoteMock).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ id: "quote-1", total_value: 120000 });
+  });
+
+  it("routes a validated quote revision through the command", async () => {
+    const { createQuoteRevision } = await import("../quotes");
+    const result = await createQuoteRevision({
+      data: {
+        id: "quote-1",
+        baseVersionId: "version-1",
+        reason: "revised",
+        idempotencyKey: "revision-key",
+      },
+    });
+    expect(createQuoteRevisionCommandMock).toHaveBeenCalledWith(
+      expect.objectContaining({ actor: expect.objectContaining({ profileId: "user-1" }) }),
+      expect.objectContaining({ id: "quote-1", baseVersionId: "version-1", reason: "revised" }),
+    );
+    expect(result.quote).toMatchObject({ id: "revision-1", status: "revised" });
   });
 
   it.each([

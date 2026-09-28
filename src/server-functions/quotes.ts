@@ -7,6 +7,10 @@ import {
 } from "@/server/auth/authorization.server";
 import { randomUUID } from "node:crypto";
 import { decideApprovalCommand } from "@/server/commands/approval-decision.server";
+import {
+  createQuoteRevision as createQuoteRevisionCommand,
+  updateQuoteCommercial,
+} from "@/server/commands/quote-revision.server";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -35,7 +39,6 @@ import {
   type QuoteListRow,
   type QuotePageFilters,
   updateQuoteLifecycle as updateQuoteLifecycleInNeon,
-  updateQuote as updateQuoteInNeon,
 } from "@/server/repositories/quotes";
 import { serializeAgentRun, serializeHumanApproval } from "@/lib/serializable";
 import { transaction } from "@/server/db/neon.server";
@@ -47,6 +50,7 @@ import {
   LeadIdSchema,
   QuoteCreateSchema,
   QuoteMutationSchema,
+  QuoteRevisionSchema,
   QuoteVersionListSchema,
   RejectQuoteSchema,
   RequestQuoteApprovalSchema,
@@ -207,10 +211,23 @@ export const createQuote = createServerFn({ method: "POST" })
 export const updateQuote = createServerFn({ method: "POST" })
   .validator((data: unknown) => parseOperationInput(QuoteMutationSchema, data))
   .handler(async ({ data }) => {
-    await requireCapability("quotes.update", { resourceType: "quote", resourceId: data.id });
-    await requireNeonAuthSession();
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "quotes.update",
+      { resourceType: "quote", resourceId: data.id },
+      context,
+    );
     assertNoLifecycleQuoteUpdates(data.updates);
-    return updateQuoteInNeon(data.id, data.updates);
+    return updateQuoteCommercial(context, { id: data.id, patch: data.updates });
+  });
+
+export const createQuoteRevision = createServerFn({ method: "POST" })
+  .validator((data: unknown) => parseOperationInput(QuoteRevisionSchema, data))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    await requireCapability("quotes.create", {}, context);
+    await requireCapability("quotes.view", { resourceType: "quote", resourceId: data.id }, context);
+    return createQuoteRevisionCommand(context, data);
   });
 
 /**

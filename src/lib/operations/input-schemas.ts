@@ -123,6 +123,27 @@ export const QuoteMutationSchema = z.strictObject({
   updates: QuoteCommercialPatchSchema,
 });
 
+export const QuoteRevisionSchema = z.strictObject({
+  id: UuidSchema,
+  baseVersionId: UuidSchema,
+  reason: z.enum(["revised", "change_order"]),
+  notes: z.string().trim().max(500).optional(),
+  patch: z
+    .strictObject({
+      currency: CurrencySchema.optional(),
+      line_items: quoteCommercialFields.line_items.optional(),
+      total_value: MoneySchema.nullable().optional(),
+      valid_until: DateOnlySchema.nullable().optional(),
+      document_sections: z.json().optional(),
+      cover_text: optionalText,
+      assumptions: optionalText,
+      payment_terms: optionalText,
+    })
+    .optional(),
+  idempotencyKey: UuidSchema,
+});
+export type QuoteRevisionInput = z.infer<typeof QuoteRevisionSchema>;
+
 export const ApprovalDecisionSchema = z.strictObject({
   id: UuidSchema,
   decision: z.enum(["approved", "rejected", "escalated"]),

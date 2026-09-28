@@ -142,6 +142,10 @@ describe("verifyClientOpsDatabase", () => {
     );
     expect(CLIENTOPS_SCHEMA_CONTRACT.triggers).toMatchObject({
       admin_audit_logs_immutable: ["DELETE", "UPDATE"],
+      human_approvals_transition_guard: ["UPDATE"],
+      quote_commercial_integrity_guard: ["UPDATE"],
+      quote_line_item_integrity_guard: ["INSERT", "UPDATE", "DELETE"],
+      quote_version_integrity_guard: ["UPDATE", "DELETE"],
     });
   });
 });

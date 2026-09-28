@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, type SetStateAction } from "react";
+import { lazy, Suspense, useRef, useState, type SetStateAction } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import {
@@ -51,6 +51,7 @@ import {
   acceptQuoteAndCreateJobSheet,
   approveAndIssueQuote,
   approveQuote,
+  createQuoteRevision,
   issueQuoteVersion,
   rejectQuote,
   requestQuoteApproval,
@@ -313,9 +314,10 @@ function lifecycleBlockedReason(
 function lockReason(status: QuoteStatus): string | null {
   switch (status) {
     case "draft":
+    case "revised":
       return null;
     case "pending_approval":
-      return "Waiting for a decision. Line items unlock again if the quote is rejected.";
+      return "Waiting for a decision. Commercial changes require a new revision.";
     case "approved":
       return "Approved commercials are held as agreed until the quote is issued.";
     case "sent":
@@ -362,7 +364,7 @@ function QuoteDetail() {
     staleTime: 30_000,
   });
   const versions = versionsQuery.data?.items ?? [];
-  const { edit, approvalId } = search;
+  const { approvalId } = search;
 
   /**
    * IF-C2-23: the status on screen is the status the server returned. The route used to
@@ -370,7 +372,7 @@ function QuoteDetail() {
    * refetch — so a quote another user had rejected went on offering Approve indefinitely.
    */
   const status = quote.status as QuoteStatus;
-  const isEditMode = edit === true || status === "draft";
+  const isEditMode = status === "draft" || status === "revised";
   const locked = lockReason(status);
 
   const roleGrants = profile?.role ? ROLE_GRANTS[profile.role] : null;
@@ -381,6 +383,7 @@ function QuoteDetail() {
     [quote.id]: quote.line_items ?? [],
   }));
   const [saving, setSaving] = useState(false);
+  const revisionKeysRef = useRef(new Map<string, string>());
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   const editItems = editorDrafts[quote.id] ?? quote.line_items ?? [];
 
@@ -438,11 +441,32 @@ function QuoteDetail() {
       throw new Error("Approval context missing");
     }
 
-    await saveEditableQuoteFields();
+    // The reviewed quote is already frozen; issue exactly the stored commercial content.
     await approveAndIssueQuote({ data: { id: quote.id, approvalId } });
     await invalidateQuoteMutation(queryClient, quote, "approval_issue");
     toast.success("Quote approved and issued");
     navigate({ to: "/approvals" });
+  };
+
+  const handleCreateRevision = async () => {
+    const baseVersionId = currentPreviewVersionId;
+    if (!baseVersionId) return;
+    const idempotencyKey = revisionKeysRef.current.get(baseVersionId) ?? crypto.randomUUID();
+    revisionKeysRef.current.set(baseVersionId, idempotencyKey);
+    setSaving(true);
+    try {
+      const result = await createQuoteRevision({
+        data: { id: quote.id, baseVersionId, reason: "revised", idempotencyKey },
+      });
+      revisionKeysRef.current.delete(baseVersionId);
+      await invalidateQuoteMutation(queryClient, quote, "save");
+      toast.success("Revision created from the issued snapshot");
+      navigate({ to: "/quotes/$id", params: { id: result.quote.id } });
+    } catch (error) {
+      toast.error(toSafeErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSaveDraft = async () => {
@@ -641,6 +665,24 @@ function QuoteDetail() {
               <Download aria-hidden="true" className="mr-2 h-4 w-4" /> Print view
             </Link>
           </Button>,
+          ...(["sent", "viewed", "accepted"].includes(status) &&
+          canRun("quotes.create") &&
+          canRun("quotes.update")
+            ? [
+                <Button
+                  key="create-revision"
+                  variant="outline"
+                  size="sm"
+                  disabled={saving || !currentPreviewVersionId}
+                  title={
+                    !currentPreviewVersionId ? "Immutable snapshot needs reconciliation" : undefined
+                  }
+                  onClick={() => void handleCreateRevision()}
+                >
+                  Create revision
+                </Button>,
+              ]
+            : []),
         ]}
         primaryAction={
           nextAction && NextActionIcon ? (

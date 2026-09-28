@@ -739,12 +739,8 @@ function ApprovalsInbox() {
       <div className="flex flex-wrap items-center justify-end gap-2">
         {quoteId && (
           <Button variant="outline" size="sm" asChild>
-            <Link
-              to="/quotes/$id"
-              params={{ id: quoteId }}
-              search={{ edit: true, approvalId: approval.id }}
-            >
-              <FileText className="mr-2 h-4 w-4" /> Review & edit
+            <Link to="/quotes/$id" params={{ id: quoteId }} search={{ approvalId: approval.id }}>
+              <FileText className="mr-2 h-4 w-4" /> Review quote
             </Link>
           </Button>
         )}
