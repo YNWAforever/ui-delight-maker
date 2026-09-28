@@ -73,7 +73,8 @@ export function LoginAuthPage({
 
 function LoginAuthFormSkeleton() {
   return (
-    <div className="space-y-4" aria-label="Loading sign-in form">
+    <div className="space-y-4" role="status" aria-label="Loading sign-in form">
+      <p className="text-center text-sm text-muted-foreground">Loading sign-in form…</p>
       <div className="h-10 animate-pulse rounded-md bg-muted" />
       <div className="h-10 animate-pulse rounded-md bg-muted" />
       <div className="h-10 animate-pulse rounded-md bg-muted" />
