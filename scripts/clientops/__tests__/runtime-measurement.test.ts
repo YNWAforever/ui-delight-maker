@@ -131,12 +131,14 @@ describe("runtime measurement evidence", () => {
     mkdirSync(join(root, "assets"));
     writeFileSync(join(root, "assets", "entry.js"), "const entry = true;");
     writeFileSync(join(root, "assets", "login.js"), "const login = true;");
+    writeFileSync(join(root, "assets", "tasks.js"), "const tasks = [1, 2, 3, 4, 5];");
     const manifestPath = join(root, ".vite", "manifest.json");
     writeFileSync(
       manifestPath,
       JSON.stringify({
         "node_modules/app/client.ts": { file: "assets/entry.js" },
         "src/routes/login.tsx?tsr-split=component": { file: "assets/login.js" },
+        "src/routes/tasks.tsx?tsr-split=component": { file: "assets/tasks.js" },
       }),
     );
     const fetchMock = vi.fn(
@@ -159,6 +161,10 @@ describe("runtime measurement evidence", () => {
       manifestPath,
     });
     expect(fetchMock).toHaveBeenCalledTimes(40);
+    expect(measurement.initialJsRouteSource).toBe("src/routes/tasks.tsx?tsr-split=component");
+    expect(measurement.initialJsGzipBytes).toBe(
+      readInitialJsTransfer(manifestPath, "src/routes/tasks.tsx?tsr-split=component").gzipBytes,
+    );
     expect(measurement).toHaveProperty("metricScope", "http-request");
     expect(measurement.queryMetricsCoverage).toBe(1);
     expect(measurement.coldNavigationType).toBe("http-no-cache");

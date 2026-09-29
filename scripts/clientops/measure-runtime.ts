@@ -20,6 +20,7 @@ export type RuntimeMeasurement = {
   dbDurationMs: number | null;
   payloadBytes: number;
   initialJsGzipBytes: number;
+  initialJsRouteSource: string;
   queryMetricsCoverage: number;
   metricScope: "http-request" | null;
 };
@@ -165,9 +166,13 @@ export async function measureRuntimeHttp(config: {
   const countValues = all.map((sample) => sample.dbCount);
   const durationValues = all.map((sample) => sample.dbDurationMs);
   const dataset = await readIsolatedDataset(config.databaseTestUrl);
-  const loginTransfer = readInitialJsTransfer(
+  const routeFile = url.pathname === "/" ? "index" : url.pathname.slice(1).replaceAll("/", ".");
+  if (!/^[a-z0-9.-]+$/i.test(routeFile)) {
+    throw new Error("Cannot resolve a static route entry for JS transfer measurement");
+  }
+  const routeTransfer = readInitialJsTransfer(
     config.manifestPath,
-    "src/routes/login.tsx?tsr-split=component",
+    `src/routes/${routeFile}.tsx?tsr-split=component`,
   );
   return {
     evidenceType: "runtime_http",
@@ -195,7 +200,8 @@ export async function measureRuntimeHttp(config: {
       ? percentile(durationValues as number[], 0.95)
       : null,
     payloadBytes: Math.max(...all.map((sample) => sample.payloadBytes)),
-    initialJsGzipBytes: loginTransfer.gzipBytes,
+    initialJsGzipBytes: routeTransfer.gzipBytes,
+    initialJsRouteSource: routeTransfer.routeSource,
     queryMetricsCoverage:
       all.filter(
         (sample) =>
