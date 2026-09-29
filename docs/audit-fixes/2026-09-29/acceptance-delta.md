@@ -44,3 +44,7 @@ All 14 `NOT_TESTED` dynamic/reusable action IDs now have a [component-level sema
 ## Public input semantics and recovery back link
 
 At exact-head candidate preview `df315f1`, real keyboard input and accessible names were checked for public sign-in Email/Password and forgot-password Email without submission. The old production-public signup controls are absent from the current anonymous candidate route because signup is invitation-only; their invitation flow remains blocked. The fixed forgot-password view lacks a visible link back to sign-in, so the old audit's `T-PUBLIC-BACK` PASS does not carry forward to the candidate. See [browser evidence](public-auth-browser-evidence.md). No historical row was rewritten or promoted to full PASS.
+
+## Candidate recovery return restored — PR #120
+
+The `T-PUBLIC-BACK` candidate gap above was repaired at source commit `376d05e`. Its exact-head preview proved a keyboard-focusable Back to sign in link at 390px, with Tab reaching it after the email/send controls and Enter returning to `/login/sign-in`. [Visual and browser evidence](public-auth-browser-evidence.md). This is candidate anonymous evidence, not a new production release or token-bearing provider recovery test. Historical audit counts remain unchanged.

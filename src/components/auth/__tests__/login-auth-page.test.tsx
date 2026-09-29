@@ -38,6 +38,9 @@ describe("LoginAuthPage", () => {
             : "Set a new password for your invited account.",
         ),
       ).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Back to sign in" }).getAttribute("href")).toBe(
+        "/login/sign-in",
+      );
       expect(providerPropsMock).toHaveBeenCalledWith(expect.objectContaining({ signUp: false }));
     },
   );
@@ -47,6 +50,7 @@ describe("LoginAuthPage", () => {
       expect(providerPropsMock).toHaveBeenCalledWith(expect.objectContaining({ signUp: false })),
     );
     expect(await screen.findByText("Auth view: sign-in")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Back to sign in" })).toBeNull();
     expect(screen.getByText(/administrator-invited account/i)).toBeTruthy();
   });
 
