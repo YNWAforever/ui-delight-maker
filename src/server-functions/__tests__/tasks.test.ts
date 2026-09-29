@@ -18,6 +18,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireCapability: vi.fn(),
+  loadRequestAuthorization: vi.fn(),
+  listTaskQueuePage: vi.fn(),
   requirePageAuthorization: vi.fn(),
   listTasks: vi.fn(),
   createTaskInNeon: vi.fn(),
@@ -43,6 +45,7 @@ vi.mock("@tanstack/react-start", () => ({
 
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapability: mocks.requireCapability,
+  loadRequestAuthorization: mocks.loadRequestAuthorization,
   requirePageAuthorization: mocks.requirePageAuthorization,
 }));
 
@@ -52,6 +55,7 @@ vi.mock("@/lib/auth/neon-auth.server", () => ({
 
 vi.mock("@/server/repositories/tasks", () => ({
   listTasks: mocks.listTasks,
+  listTaskQueuePage: mocks.listTaskQueuePage,
   createTask: mocks.createTaskInNeon,
   updateTask: mocks.updateTaskInNeon,
 }));
@@ -181,5 +185,71 @@ describe("getTasks row-level redaction", () => {
 
     await expect(getTasks({ data: {} })).rejects.toThrow("FORBIDDEN");
     expect(mocks.listTasks).not.toHaveBeenCalled();
+  });
+});
+
+describe("getTasksPage write affordances use effective per-row authorization", () => {
+  const actor = {
+    profileId: "viewer",
+    role: "manager",
+    status: "active",
+    managedDepartmentIds: [],
+    managedTeamIds: [],
+    directReportIds: ["report"],
+  };
+  const now = new Date("2026-09-30T00:00:00Z");
+  const override = {
+    profileId: "viewer",
+    capability: "tasks.update",
+    effect: "deny",
+    resourceType: "task",
+    resourceId: "t1",
+  };
+
+  async function read(role = "manager", overrides: unknown[] = [], status = "active") {
+    mocks.loadRequestAuthorization.mockResolvedValue({
+      actor: { ...actor, role, status },
+      overrides,
+      now,
+    });
+    mocks.listTaskQueuePage.mockResolvedValue({
+      items: [
+        task({ id: "t1", assigned_to: "report" }),
+        task({ id: "t2", assigned_to: "outside" }),
+        task({ id: "t3", assigned_to: null }),
+      ],
+      total: 3,
+      nextCursor: null,
+    });
+    const { getTasksPage } = await loadModule();
+    return (await getTasksPage({ data: {} })).items.map((row) => row.can_update);
+  }
+
+  it("uses the same owner scope as the write endpoint without per-row SQL", async () => {
+    expect(await read()).toEqual([true, false, false]);
+    expect(mocks.listTaskQueuePage).toHaveBeenCalledTimes(1);
+  });
+  it.each(["sales", "client_success", "accounting", "admin", "super_admin"])(
+    "%s keeps its established update rights",
+    async (role) => {
+      expect(await read(role)).toEqual([true, true, true]);
+    },
+  );
+  it("read_only has no writes", async () => {
+    expect(await read("read_only")).toEqual([false, false, false]);
+  });
+  it("honours scoped allow, active deny, expiry and inactive accounts", async () => {
+    expect(await read("read_only", [{ ...override, effect: "allow" }])).toEqual([
+      true,
+      false,
+      false,
+    ]);
+    expect(await read("super_admin", [override])).toEqual([false, true, true]);
+    expect(await read("manager", [{ ...override, expiresAt: "2026-09-29T00:00:00Z" }])).toEqual([
+      true,
+      false,
+      false,
+    ]);
+    expect(await read("super_admin", [], "suspended")).toEqual([false, false, false]);
   });
 });

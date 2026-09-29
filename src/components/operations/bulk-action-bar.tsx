@@ -23,6 +23,7 @@ export function BulkActionBar({
   recoveryState,
   onRetryResult,
   onResume,
+  canResume = true,
   onClear,
   clearLabel = "Clear selection",
   children,
@@ -33,6 +34,7 @@ export function BulkActionBar({
   recoveryState?: "loading" | "retry" | null;
   onRetryResult?: () => void;
   onResume: () => void;
+  canResume?: boolean;
   onClear: () => void;
   clearLabel?: string;
   children?: ReactNode;
@@ -63,7 +65,13 @@ export function BulkActionBar({
             review
           </span>
           {result.state !== "completed" && (
-            <Button type="button" size="sm" variant="outline" disabled={busy} onClick={onResume}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy || !canResume}
+              onClick={onResume}
+            >
               {result.state === "running" ? "Check or resume" : "Resume"}
             </Button>
           )}

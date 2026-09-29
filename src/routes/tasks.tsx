@@ -12,7 +12,6 @@ import {
   FilteredEmptyState,
   MetricStrip,
   ResponsiveRecordList,
-  RowActionsMenu,
   SectionHeader,
   StaleDataIndicator,
   WorkspaceHeader,
@@ -203,6 +202,8 @@ const replaceOnlyTaskStatus = (tasks: TaskListItem[], id: string, status: TaskSt
 
 function TasksBoard() {
   const loaderTasks = Route.useLoaderData();
+  const { capabilities = [] } = Route.useRouteContext();
+  const canCreate = capabilities.includes("tasks.create");
   const filters = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
@@ -241,7 +242,12 @@ function TasksBoard() {
     await queryClient.invalidateQueries({ queryKey: crmQueryKeys.tasks.lists() });
     await router.invalidate({ filter: (match) => match.routeId === "/tasks" });
   });
-  const bulkIds = () => Array.from(bulkSelected);
+  const writableIds = new Set(
+    rows.filter((task) => task.can_update === true).map((task) => task.id),
+  );
+  const selectedWritable = new Set([...bulkSelected].filter((id) => writableIds.has(id)));
+  const canUpdate = writableIds.size > 0;
+  const bulkIds = () => Array.from(selectedWritable);
 
   const setFilters = (patch: Partial<TaskSearch>) =>
     navigate({
@@ -314,7 +320,8 @@ function TasksBoard() {
   const move = async (id: string, status: TaskStatus) => {
     if (pendingTaskIdsRef.current.has(id)) return;
     const movedTask = rows.find((task) => task.id === id);
-    const previousStatus = movedTask?.status;
+    if (movedTask?.can_update !== true) return;
+    const previousStatus = movedTask.status;
     if (!previousStatus || previousStatus === status) return;
 
     markPending(id);
@@ -354,7 +361,8 @@ function TasksBoard() {
   };
 
   const createAndRefresh = async (payload: CreateTaskPayload) => {
-    const created = await createTask({ data: payload });
+    if (!canCreate) return;
+    await createTask({ data: payload });
     await queryClient.invalidateQueries({ queryKey: crmQueryKeys.tasks.lists() });
     toast.success("Task created");
   };
@@ -440,19 +448,20 @@ function TasksBoard() {
     },
   ];
 
-  const taskRowActions = (task: TaskListItem) => (
-    <RowActionsMenu label={`Actions for ${taskTitle(task)}`}>
-      {COLUMNS.filter((column) => column.id !== task.status).map((column) => (
-        <DropdownMenuItem
-          key={column.id}
-          disabled={pendingTaskIds.has(task.id)}
-          onSelect={() => void move(task.id, column.id)}
-        >
-          Move to {column.label.toLowerCase()}
-        </DropdownMenuItem>
-      ))}
-    </RowActionsMenu>
-  );
+  const taskRowActions = (task: TaskListItem) =>
+    task.can_update === true ? (
+      <>
+        {COLUMNS.filter((column) => column.id !== task.status).map((column) => (
+          <DropdownMenuItem
+            key={column.id}
+            disabled={pendingTaskIds.has(task.id)}
+            onSelect={() => void move(task.id, column.id)}
+          >
+            Move to {column.label.toLowerCase()}
+          </DropdownMenuItem>
+        ))}
+      </>
+    ) : null;
 
   return (
     <>
@@ -470,7 +479,7 @@ function TasksBoard() {
             isRefetching={tasksQuery.isFetching}
           />
         }
-        primaryAction={<NewTaskDialog onCreate={createAndRefresh} />}
+        primaryAction={canCreate ? <NewTaskDialog onCreate={createAndRefresh} /> : undefined}
       />
 
       <div className="space-y-6 px-4 py-6 md:px-6">
@@ -547,20 +556,23 @@ function TasksBoard() {
           onChange={(assignee) => setFilters({ assignee })}
         />
 
-        {(bulkSelected.size > 0 || bulkOperation.result || bulkOperation.recoveryState) && (
+        {(selectedWritable.size > 0 || bulkOperation.result || bulkOperation.recoveryState) && (
           <BulkActionBar
-            selectedCount={bulkSelected.size}
+            selectedCount={selectedWritable.size}
             busy={bulkOperation.busy}
             result={bulkOperation.result}
             recoveryState={bulkOperation.recoveryState}
             onRetryResult={bulkOperation.retryLoadResult}
-            onResume={() => void bulkOperation.resume()}
+            canResume={canUpdate}
+            onResume={() => {
+              if (canUpdate) void bulkOperation.resume();
+            }}
             onClear={() => {
               setBulkSelected(new Set());
               bulkOperation.dismiss();
             }}
           >
-            {bulkSelected.size > 0 && (
+            {selectedWritable.size > 0 && (
               <>
                 <Select
                   onValueChange={(value) =>
@@ -651,16 +663,20 @@ function TasksBoard() {
           preview={bulkOperation.preview}
           busy={bulkOperation.busy}
           onCancel={bulkOperation.cancelPreview}
-          onCommit={() => void bulkOperation.commit()}
+          onCommit={() => {
+            if (canUpdate) void bulkOperation.commit();
+          }}
         />
 
         <section className="space-y-3">
           <SectionHeader
             title={filters.view === "board" ? "Board" : "List"}
             description={
-              filters.view === "board"
-                ? "Drag a card between columns, or focus it and press ← / →."
-                : "Matching tasks in pages. Use the row menu to change a status."
+              !canUpdate
+                ? "View tasks and their current status."
+                : filters.view === "board"
+                  ? "Drag a card between columns, or focus it and press ← / →."
+                  : "Matching tasks in pages. Use the row menu to change a status."
             }
             action={
               <div
@@ -700,17 +716,22 @@ function TasksBoard() {
                 columns={listColumns}
                 rows={filtered}
                 rowKey={(task) => task.id}
-                selection={{
-                  selected: bulkSelected,
-                  onChange: (next) => {
-                    if (next.size > 100) {
-                      toast.error("Select at most 100 tasks per bulk operation.");
-                      return;
-                    }
-                    setBulkSelected(next);
-                  },
-                }}
-                rowActions={taskRowActions}
+                selection={
+                  canUpdate
+                    ? {
+                        selected: selectedWritable,
+                        isRowSelectable: (task) => task.can_update === true,
+                        onChange: (next) => {
+                          if (next.size > 100) {
+                            toast.error("Select at most 100 tasks per bulk operation.");
+                            return;
+                          }
+                          setBulkSelected(new Set([...next].filter((id) => writableIds.has(id))));
+                        },
+                      }
+                    : undefined
+                }
+                rowActions={canUpdate ? taskRowActions : undefined}
                 renderCard={(task) => (
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -770,21 +791,22 @@ function TasksBoard() {
                       {colTasks.map((t) => {
                         const overdue = isOverdue(t.due_date, today) && t.status !== "done";
                         const isPending = pendingTaskIds.has(t.id);
+                        const canMove = t.can_update === true;
                         return (
                           <Card
                             key={t.id}
-                            role="button"
-                            tabIndex={isPending ? -1 : 0}
-                            aria-label={`${taskTitle(t)} — ${col.label}. Press left or right arrow to move between columns.`}
+                            role={canMove ? "button" : "group"}
+                            tabIndex={canMove && !isPending ? 0 : undefined}
+                            aria-label={`${taskTitle(t)} — ${col.label}${canMove ? ". Press left or right arrow to move between columns." : ""}`}
                             aria-busy={isPending}
-                            aria-disabled={isPending}
-                            draggable={!isPending}
+                            aria-disabled={!canMove || isPending}
+                            draggable={canMove && !isPending}
                             onDragStart={() => {
-                              if (!isPending) setDragging(t.id);
+                              if (canMove && !isPending) setDragging(t.id);
                             }}
                             onDragEnd={() => setDragging(null)}
                             onKeyDown={(e) => {
-                              if (isPending) return;
+                              if (!canMove || isPending) return;
                               if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
                               e.preventDefault();
                               const idx = COLUMNS.findIndex((c) => c.id === col.id);
@@ -792,7 +814,8 @@ function TasksBoard() {
                               if (target) move(t.id, target.id);
                             }}
                             className={cn(
-                              "cursor-grab p-4 transition-shadow hover:shadow-md active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                              "p-4 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                              canMove && "cursor-grab hover:shadow-md active:cursor-grabbing",
                               dragging === t.id && "opacity-50",
                               isPending && "cursor-wait opacity-60",
                             )}

@@ -56,7 +56,11 @@ export type DataTableShellProps<T> = {
   /** `DropdownMenuItem`s for the row's overflow menu, not raw buttons. */
   rowActions?: (row: T) => ReactNode;
   /** Omit entirely when no bulk action exists — see the guard note in the body. */
-  selection?: { selected: Set<string>; onChange: (next: Set<string>) => void };
+  selection?: {
+    selected: Set<string>;
+    onChange: (next: Set<string>) => void;
+    isRowSelectable?: (row: T) => boolean;
+  };
   /** The row currently open in a detail panel. Marks the row; does not scroll to it. */
   selectedRowKey?: string;
   expandable?: { renderDetails: (row: T) => ReactNode };
@@ -127,7 +131,7 @@ export function DataTableShell<T>({
    */
   const identityColumnId = (columns.find((column) => column.sticky) ?? columns[0])?.id;
 
-  const rowKeys = rows.map(rowKey);
+  const rowKeys = rows.filter((row) => selection?.isRowSelectable?.(row) !== false).map(rowKey);
   const selectedOnPage = selection ? rowKeys.filter((key) => selection.selected.has(key)) : [];
   const headerChecked =
     selectedOnPage.length === 0
@@ -137,7 +141,7 @@ export function DataTableShell<T>({
         : "indeterminate";
 
   const toggleRow = (key: string, checked: boolean) => {
-    if (!selection) return;
+    if (!selection || !rowKeys.includes(key)) return;
     const next = new Set(selection.selected);
     if (checked) next.add(key);
     else next.delete(key);
@@ -182,6 +186,7 @@ export function DataTableShell<T>({
             <TableHead scope="col" className="w-10 px-3">
               <Checkbox
                 checked={headerChecked}
+                disabled={rowKeys.length === 0}
                 onCheckedChange={(next) => toggleAllRows(next === true)}
                 aria-label="Select all rows"
               />
@@ -255,6 +260,7 @@ export function DataTableShell<T>({
       <TableBody>
         {rows.map((row) => {
           const key = rowKey(row);
+          const actions = rowActions?.(row);
           const isExpanded = expandedKeys.has(key);
           const detailsId = `${instanceId}-${key}-details`;
 
@@ -265,6 +271,7 @@ export function DataTableShell<T>({
                   <TableCell className="px-3 py-2.5">
                     <Checkbox
                       checked={selection.selected.has(key)}
+                      disabled={selection.isRowSelectable?.(row) === false}
                       onCheckedChange={(next) => toggleRow(key, next === true)}
                       aria-label={`Select row ${key}`}
                     />
@@ -318,9 +325,9 @@ export function DataTableShell<T>({
 
                 {rowActions && (
                   <TableCell className="px-3 py-2.5 text-right">
-                    <RowActionsMenu label={`Actions for row ${key}`}>
-                      {rowActions(row)}
-                    </RowActionsMenu>
+                    {actions && (
+                      <RowActionsMenu label={`Actions for row ${key}`}>{actions}</RowActionsMenu>
+                    )}
                   </TableCell>
                 )}
               </TableRow>
