@@ -91,14 +91,31 @@ vi.mock("@/components/sales", () => ({
   ResponsiveRecordList: ({
     rows,
     columns,
+    selection,
   }: {
     rows: Array<Record<string, unknown>>;
+    selection?: {
+      selected: Set<string>;
+      onChange: (next: Set<string>) => void;
+      isRowSelectable?: (row: Record<string, unknown>) => boolean;
+    };
     columns: Array<{ id: string; cell: (row: Record<string, unknown>) => ReactNode }>;
   }) => (
     <table>
       <tbody>
         {rows.map((row) => (
           <tr key={String(row.id)} data-testid="task-row">
+            {selection && (
+              <td>
+                <input
+                  type="checkbox"
+                  aria-label={`Select task ${row.id}`}
+                  checked={selection.selected.has(String(row.id))}
+                  disabled={selection.isRowSelectable?.(row) === false}
+                  onChange={() => selection.onChange(new Set([String(row.id)]))}
+                />
+              </td>
+            )}
             {columns.map((column) => (
               <td key={column.id} data-testid={`cell-${column.id}`}>
                 {column.cell(row)}
@@ -312,5 +329,30 @@ describe("task capability controls", () => {
     tasks[0].can_update = undefined as unknown as boolean;
     renderBoard();
     expect(screen.queryByRole("button", { name: /Call Northstar — Open/ })).toBeNull();
+  });
+});
+
+it("keeps an existing selection visible but disabled after permission is revoked", async () => {
+  search.view = "list";
+  const { queryClient } = renderBoard();
+  fireEvent.click(screen.getByRole("checkbox", { name: "Select task task-1" }));
+  await act(async () => {
+    for (const query of queryClient.getQueryCache().getAll()) {
+      const data = query.state.data as { view?: string; page?: { items: unknown[] } };
+      if (data?.view === "list" && data.page)
+        queryClient.setQueryData(query.queryKey, {
+          ...data,
+          page: { ...data.page, items: [{ ...tasks[0], can_update: false }] },
+        });
+    }
+  });
+  await waitFor(() => {
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Select task task-1",
+    }) as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+    expect(checkbox.disabled).toBe(true);
+    expect(screen.getByText("1 selected")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Set due date" })).toBeNull();
   });
 });

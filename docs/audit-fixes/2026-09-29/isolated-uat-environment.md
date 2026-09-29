@@ -62,3 +62,11 @@ R00's environment and seven-identity availability is advanced; full R00–R08 ac
 - Actual production project still has an ignore-build command that exits successfully for its production target. This hold is independent of the dedicated UAT project's deploys.
 
 Supersedes the earlier checkpoint's absence of role sessions and disposable Neon environment. It does not close the remaining business-workflow, Supabase parity, provider or release gates.
+
+## Task UAT follow-up
+
+- Deployed application source: `712a1a225e581bb54ac9fd423fa1956024c55d81`; deployment `dpl_D2C92ju5WFmGSigoRMmLTEGuQhX5`.
+- [Seven-role task and Admin-entry observations](task-role-uat-2026-09-30.md), including explicit deny, scoped allow, expiry, owner scope and tablet/keyboard checks.
+- Synthetic UAT task count is now 6; the additional task was created by the real sales UI. Temporary permission overrides used in testing were revoked; the original synthetic owner restored.
+- No schema changes for these fixes. To revert UAT UI only, redeploy the clean source at `4d8424ae27a387774f9153c29c2bbbdeba23f65c` to this UAT project, or promote its UAT deployment `dpl_7GR7XgypZEQZWVXjwkLwhJTRdbGw`. Do not change the actual production project/build hold.
+- Account/password reference remains private: `.clientops-perf/uat/TEST-ACCOUNTS.zh-HK.md`. Session files remain `.clientops-perf/uat/sessions/<role>.json`.

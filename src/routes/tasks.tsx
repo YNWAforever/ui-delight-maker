@@ -390,8 +390,8 @@ function TasksBoard() {
       sticky: true,
       width: "18rem",
       cell: (task) => (
-        <div className="min-w-0">
-          <span className="font-medium">{taskTitle(task)}</span>
+        <div className="min-w-0 max-w-xs">
+          <span className="font-medium [overflow-wrap:anywhere]">{taskTitle(task)}</span>
           {taskDescription(task) && (
             <span className="block truncate text-xs text-muted-foreground">
               {taskDescription(task)}
@@ -556,9 +556,9 @@ function TasksBoard() {
           onChange={(assignee) => setFilters({ assignee })}
         />
 
-        {(selectedWritable.size > 0 || bulkOperation.result || bulkOperation.recoveryState) && (
+        {(bulkSelected.size > 0 || bulkOperation.result || bulkOperation.recoveryState) && (
           <BulkActionBar
-            selectedCount={selectedWritable.size}
+            selectedCount={bulkSelected.size}
             busy={bulkOperation.busy}
             result={bulkOperation.result}
             recoveryState={bulkOperation.recoveryState}
@@ -713,20 +713,25 @@ function TasksBoard() {
             <>
               <ResponsiveRecordList
                 caption="Tasks"
+                breakpoint="xl"
                 columns={listColumns}
                 rows={filtered}
                 rowKey={(task) => task.id}
                 selection={
-                  canUpdate
+                  canUpdate || bulkSelected.size > 0
                     ? {
-                        selected: selectedWritable,
+                        selected: bulkSelected,
                         isRowSelectable: (task) => task.can_update === true,
                         onChange: (next) => {
                           if (next.size > 100) {
                             toast.error("Select at most 100 tasks per bulk operation.");
                             return;
                           }
-                          setBulkSelected(new Set([...next].filter((id) => writableIds.has(id))));
+                          setBulkSelected(
+                            new Set(
+                              [...next].filter((id) => bulkSelected.has(id) || writableIds.has(id)),
+                            ),
+                          );
                         },
                       }
                     : undefined
