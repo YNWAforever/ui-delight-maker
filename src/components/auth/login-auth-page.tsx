@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from "react";
+import { ClientOnly } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import {
   WorkspaceAccessState,
@@ -71,9 +72,11 @@ export function LoginAuthPage({
           </>
         ) : (
           <>
-            <Suspense fallback={<LoginAuthFormSkeleton />}>
-              <LoginAuthForm authPath={authPath} redirectTo={redirectTo} />
-            </Suspense>
+            <ClientOnly fallback={<LoginAuthFormSkeleton />}>
+              <Suspense fallback={<LoginAuthFormSkeleton />}>
+                <LoginAuthForm authPath={authPath} redirectTo={redirectTo} />
+              </Suspense>
+            </ClientOnly>
             {(authPath === "forgot-password" || authPath === "reset-password") && (
               <a
                 href="/login/sign-in"

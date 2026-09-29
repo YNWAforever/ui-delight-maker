@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ReactNode } from "react";
+import { renderToReadableStream } from "react-dom/server";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -25,6 +26,19 @@ afterEach(() => {
 });
 
 describe("LoginAuthPage", () => {
+  it.each(["sign-in", "forgot-password", "reset-password", "sign-up"])(
+    "keeps the %s form out of server HTML until event handlers can attach",
+    async (authPath) => {
+      const stream = await renderToReadableStream(
+        <LoginAuthPage authPath={authPath} redirectTo="/invite/test-token/complete" />,
+      );
+      await stream.allReady;
+      const html = await new Response(stream).text();
+      expect(html).not.toContain("Auth view:");
+      expect(html).toContain("Loading sign-in form");
+    },
+  );
+
   it.each(["forgot-password", "reset-password"])(
     "shows the %s recovery view without enabling self signup",
     async (authPath) => {
