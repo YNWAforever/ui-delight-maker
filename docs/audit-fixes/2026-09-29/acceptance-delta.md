@@ -40,3 +40,7 @@ These observations add **candidate anonymous** proof to `T-PUBLIC-SKIP` and `T-P
 ## Dynamic/reusable binding source census
 
 All 14 `NOT_TESTED` dynamic/reusable action IDs now have a [component-level semantic census](dynamic-action-census.md) at main `d4530f7`: one renewal card is not mounted by a production route; the other controls are caller-owned navigation, filter, selection, sheet or disclosure surfaces. This resolves the source classification and exposes a false “Internal mutation” label on the orphan renewal card. It does not verify route-expanded accessible names, destinations, row scope, persisted outcomes or seven-role browser journeys. The 14 historical audit rows remain `NOT_TESTED` until those actor fixtures are available.
+
+## Public input semantics and recovery back link
+
+At exact-head candidate preview `df315f1`, real keyboard input and accessible names were checked for public sign-in Email/Password and forgot-password Email without submission. The old production-public signup controls are absent from the current anonymous candidate route because signup is invitation-only; their invitation flow remains blocked. The fixed forgot-password view lacks a visible link back to sign-in, so the old audit's `T-PUBLIC-BACK` PASS does not carry forward to the candidate. See [browser evidence](public-auth-browser-evidence.md). No historical row was rewritten or promoted to full PASS.
