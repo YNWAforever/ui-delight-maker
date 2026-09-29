@@ -556,9 +556,9 @@ function TasksBoard() {
           onChange={(assignee) => setFilters({ assignee })}
         />
 
-        {(selectedWritable.size > 0 || bulkOperation.result || bulkOperation.recoveryState) && (
+        {(bulkSelected.size > 0 || bulkOperation.result || bulkOperation.recoveryState) && (
           <BulkActionBar
-            selectedCount={selectedWritable.size}
+            selectedCount={bulkSelected.size}
             busy={bulkOperation.busy}
             result={bulkOperation.result}
             recoveryState={bulkOperation.recoveryState}
@@ -718,16 +718,20 @@ function TasksBoard() {
                 rows={filtered}
                 rowKey={(task) => task.id}
                 selection={
-                  canUpdate
+                  canUpdate || bulkSelected.size > 0
                     ? {
-                        selected: selectedWritable,
+                        selected: bulkSelected,
                         isRowSelectable: (task) => task.can_update === true,
                         onChange: (next) => {
                           if (next.size > 100) {
                             toast.error("Select at most 100 tasks per bulk operation.");
                             return;
                           }
-                          setBulkSelected(new Set([...next].filter((id) => writableIds.has(id))));
+                          setBulkSelected(
+                            new Set(
+                              [...next].filter((id) => bulkSelected.has(id) || writableIds.has(id)),
+                            ),
+                          );
                         },
                       }
                     : undefined
