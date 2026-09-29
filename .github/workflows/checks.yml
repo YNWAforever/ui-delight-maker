@@ -27,3 +27,17 @@ jobs:
       - run: bun run lint
       - run: bunx vite build
       - run: bun run performance:bundles
+
+  browser-collector:
+    name: Browser collector integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:browser-collector

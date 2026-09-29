@@ -51,3 +51,6 @@ dist-ssr
 docs/frontend-revision/screenshots/
 # Baseline gate transcripts are evidence and must be tracked despite the global *.log rule.
 !docs/frontend-revision/baseline/*.log
+
+# Private isolated browser session state and local measurement output
+.clientops-perf/
