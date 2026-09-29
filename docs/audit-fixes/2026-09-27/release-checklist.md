@@ -2,11 +2,17 @@
 
 **State: source merged to main under a production build hold; production NO-GO.** The audited application baseline was main SHA `2904faa502f7494173f48f412875c1d0a3aba674`. PRs #82–#101 landed on `codex/clientops-reviewed-integration`; [PR #103](https://github.com/YNWAforever/ui-delight-maker/pull/103) merged that source into main at `f038919b95ff085190401f64078b78bc8781dd4d`. The latest READY Production deployment is still `dpl_BubNGhS2HFmmvjcUYfiKiasDwcLU` at the audited SHA. The user-approved Vercel hold cancels new production builds until an explicit release. The 30 finding states remain in [status](status.md); code CI does not upgrade blocked role, data-parity or provider gates.
 
-## Current source and release checkpoint — 2026-09-29
+## Earlier source checkpoint through PR #116 — 2026-09-29
 
 Main `8b6241376a5ca3f9af5c6a6157a351c83c6b64e4` includes merged PRs #111–#116. PR #116's protected preview `/api/build` matched its exact head `a1741b3b168a908d470c7cbc1e9af2fdb480559b`; its Checks, real isolated PostgreSQL contract (2,188 tests, 0 skipped) and two-run migration/seed replay passed. Post-merge main repeated the same static, 2,188/0-skip database and replay gates. The latest READY Production deployment remains audited `dpl_BubNGhS2HFmmvjcUYfiKiasDwcLU`; the production build hold remains active.
 
 The [2026-09-29 acceptance delta](../2026-09-29/acceptance-delta.md) records the 751-case audit baseline and current proof. Seven-role browser UAT, legacy/Neon snapshot parity, four historical anomaly dispositions, provider sandbox, authenticated full-route before/after and operator rehearsal/PITR are still blocked. Release decision remains **NO-GO**. No migration/seed was run against an unverified target, and no production write, promotion, customer message or paid provider call occurred.
+
+## Current application-source checkpoint through PR #120 — 2026-09-29
+
+Main application source `5607b4d06514fe15da892303f0b2f7d7cb2d77a3` includes the merged anonymous password-recovery form and back-navigation fixes plus the 14-ID [source census](../2026-09-29/dynamic-action-census.md). PR #120's protected preview `/api/build` matched exact source head `376d05e` and final docs head `1b999e0`; real Chromium Tab/Enter returned from forgot-password to sign-in at 390px. [Public browser evidence](../2026-09-29/public-auth-browser-evidence.md) covers only the anonymous candidate journey. Post-merge main Checks, 2,190 real isolated PostgreSQL tests with zero skipped, and two-run isolated migration/seed replay passed. No open PR remained at this checkpoint.
+
+The latest READY Production deployment is still audited SHA `2904faa502f7494173f48f412875c1d0a3aba674` under the approved build hold. Seven distinct role sessions, legacy/Neon snapshots, four historical anomaly dispositions, provider sandbox receipts, authenticated full-route performance before/after, 200% zoom/screen-reader UAT and operator/PITR rehearsal are not supplied. Release stays **NO-GO**; no production migration, data mutation, provider send, customer message or promotion was performed.
 
 ## Feature status and evidence map
 
