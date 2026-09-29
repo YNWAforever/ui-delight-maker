@@ -70,9 +70,19 @@ export function LoginAuthPage({
             )}
           </>
         ) : (
-          <Suspense fallback={<LoginAuthFormSkeleton />}>
-            <LoginAuthForm authPath={authPath} redirectTo={redirectTo} />
-          </Suspense>
+          <>
+            <Suspense fallback={<LoginAuthFormSkeleton />}>
+              <LoginAuthForm authPath={authPath} redirectTo={redirectTo} />
+            </Suspense>
+            {(authPath === "forgot-password" || authPath === "reset-password") && (
+              <a
+                href="/login/sign-in"
+                className="block rounded-sm text-center text-sm font-medium text-primary underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                Back to sign in
+              </a>
+            )}
+          </>
         )}
       </div>
     </main>
