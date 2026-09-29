@@ -1,5 +1,7 @@
 # 2026-09-29 acceptance delta
 
+> Latest: [2026-09-30 source/environment checkpoint](checkpoint-2026-09-30.md) supersedes source and production identity statements below. Earlier audit counts and measurements remain historical evidence.
+
 This is a source and evidence checkpoint against the user-supplied `04_Functional_Test_Matrix.csv` at audit baseline `46dd6107e7c08582ae6b626f1af4afc1e451cdac`. It does not rewrite that historical matrix. The initial checkpoint below used main `8b6241376a5ca3f9af5c6a6157a351c83c6b64e4`; the latest application-source checkpoint is main `5607b4d06514fe15da892303f0b2f7d7cb2d77a3` after PRs #117–#120. All 30 CO IDs remain in [status](../2026-09-27/status.md).
 
 | Audit matrix state | Cases | Current interpretation |
