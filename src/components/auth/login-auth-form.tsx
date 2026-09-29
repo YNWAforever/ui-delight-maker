@@ -9,6 +9,11 @@ type LoginAuthFormProps = {
 
 export function LoginAuthForm({ authPath, redirectTo }: LoginAuthFormProps) {
   const invitationSignUp = authPath === "sign-up" && /^\/invite\/[^/]+\/complete$/.test(redirectTo);
+  const viewPath = invitationSignUp
+    ? "sign-up"
+    : authPath === "forgot-password" || authPath === "reset-password"
+      ? authPath
+      : "sign-in";
   return (
     <NeonAuthProvider
       redirectTo={redirectTo}
@@ -16,7 +21,7 @@ export function LoginAuthForm({ authPath, redirectTo }: LoginAuthFormProps) {
       basePath="/login"
       signUp={invitationSignUp}
     >
-      <AuthView path={invitationSignUp ? "sign-up" : "sign-in"} cardFooter={false} />
+      <AuthView path={viewPath} cardFooter={false} />
     </NeonAuthProvider>
   );
 }
