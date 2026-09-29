@@ -1,0 +1,117 @@
+{
+  "expectedSha": "c6b474ebe0dc8d6113c3911a136c3de52c4db1c3",
+  "createdAt": "2026-09-29T18:57:22.121Z",
+  "noJavaScript": [
+    {
+      "path": "/login/sign-in",
+      "forms": 0,
+      "passwordFields": 0,
+      "loadingStatus": true
+    },
+    {
+      "path": "/login/forgot-password",
+      "forms": 0,
+      "passwordFields": 0,
+      "loadingStatus": true
+    },
+    {
+      "path": "/login/reset-password",
+      "forms": 0,
+      "passwordFields": 0,
+      "loadingStatus": true
+    }
+  ],
+  "roles": [
+    {
+      "role": "super_admin",
+      "authUserId": "5ab19e68-667f-4d60-8515-a9578f1b164f",
+      "profileId": "5ab19e68-667f-4d60-8515-a9578f1b164f",
+      "sessionFile": "sessions/super_admin.json",
+      "expiresAt": "2026-10-06T18:57:32.521Z",
+      "roleRendered": true,
+      "homepageLoaded": true,
+      "errors": [],
+      "authPosts": [
+        "POST"
+      ]
+    },
+    {
+      "role": "admin",
+      "authUserId": "d0bf98f1-9ce2-4bb9-80a0-3dd3837908fe",
+      "profileId": "d0bf98f1-9ce2-4bb9-80a0-3dd3837908fe",
+      "sessionFile": "sessions/admin.json",
+      "expiresAt": "2026-10-06T18:57:44.517Z",
+      "roleRendered": true,
+      "homepageLoaded": true,
+      "errors": [],
+      "authPosts": [
+        "POST"
+      ]
+    },
+    {
+      "role": "manager",
+      "authUserId": "b59756f5-cd59-4366-8885-796c75f25671",
+      "profileId": "demo-manager-user",
+      "sessionFile": "sessions/manager.json",
+      "expiresAt": "2026-10-06T18:57:54.230Z",
+      "roleRendered": true,
+      "homepageLoaded": true,
+      "errors": [],
+      "authPosts": [
+        "POST"
+      ]
+    },
+    {
+      "role": "sales",
+      "authUserId": "38fd9036-54b4-4cd8-98f3-6d0e057a5fac",
+      "profileId": "demo-sales-user",
+      "sessionFile": "sessions/sales.json",
+      "expiresAt": "2026-10-06T18:58:03.378Z",
+      "roleRendered": true,
+      "homepageLoaded": true,
+      "errors": [],
+      "authPosts": [
+        "POST"
+      ]
+    },
+    {
+      "role": "client_success",
+      "authUserId": "abd1852f-ab38-4d6c-9bc0-0b09e432a744",
+      "profileId": "demo-cs-user",
+      "sessionFile": "sessions/client_success.json",
+      "expiresAt": "2026-10-06T18:58:12.040Z",
+      "roleRendered": true,
+      "homepageLoaded": true,
+      "errors": [],
+      "authPosts": [
+        "POST"
+      ]
+    },
+    {
+      "role": "accounting",
+      "authUserId": "a8477476-90db-436e-89cd-f93201899883",
+      "profileId": "a8477476-90db-436e-89cd-f93201899883",
+      "sessionFile": "sessions/accounting.json",
+      "expiresAt": "2026-10-06T18:58:21.305Z",
+      "roleRendered": true,
+      "homepageLoaded": true,
+      "errors": [],
+      "authPosts": [
+        "POST"
+      ]
+    },
+    {
+      "role": "read_only",
+      "authUserId": "371f8cf3-4e59-47c6-9023-d36860893758",
+      "profileId": "371f8cf3-4e59-47c6-9023-d36860893758",
+      "sessionFile": "sessions/read_only.json",
+      "expiresAt": "2026-10-06T18:58:28.821Z",
+      "roleRendered": true,
+      "homepageLoaded": true,
+      "errors": [],
+      "authPosts": [
+        "POST"
+      ]
+    }
+  ]
+}
