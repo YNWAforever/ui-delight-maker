@@ -51,6 +51,7 @@ vi.mock("@tanstack/react-router", () => ({
     options,
     fullPath: "/tasks",
     useLoaderData: vi.fn(),
+    useRouteContext: vi.fn(),
     useSearch: () => search,
   }),
   useNavigate: () => navigateMock,
@@ -129,6 +130,7 @@ function deferred<T>() {
 const tasks = [
   {
     id: "task-1",
+    can_update: true,
     title: "Call Northstar",
     description: "Follow up",
     status: "open",
@@ -160,6 +162,10 @@ const openCreateDialog = () => {
 };
 
 beforeEach(() => {
+  vi.mocked(Route.useRouteContext).mockReturnValue({
+    capabilities: ["tasks.create", "tasks.update"],
+  } as never);
+  tasks[0].can_update = true;
   search.view = "board";
   search.priority = "all";
   search.assignee = "all";
@@ -283,5 +289,28 @@ describe("task creation safety", () => {
     // The typed title survives, so the retry does not start from scratch.
     expect((screen.getByLabelText("Title") as HTMLInputElement).value).toBe("Renewal check-in");
     expect(toastSuccessMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("task capability controls", () => {
+  it("hides creation without tasks.create even when updates are allowed", () => {
+    vi.mocked(Route.useRouteContext).mockReturnValue({ capabilities: ["tasks.update"] } as never);
+    renderBoard();
+    expect(screen.queryByRole("button", { name: /New task/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /Call Northstar — Open/ })).toBeTruthy();
+  });
+  it("does not offer drag or keyboard writes for a denied row", () => {
+    tasks[0].can_update = false;
+    renderBoard();
+    expect(screen.queryByRole("button", { name: /Call Northstar — Open/ })).toBeNull();
+    const card = screen.getByLabelText("Call Northstar — Open");
+    expect(card.getAttribute("draggable")).toBe("false");
+    fireEvent.keyDown(card, { key: "ArrowRight" });
+    expect(updateTaskMock).not.toHaveBeenCalled();
+  });
+  it("fails closed when row permission is absent", () => {
+    tasks[0].can_update = undefined as unknown as boolean;
+    renderBoard();
+    expect(screen.queryByRole("button", { name: /Call Northstar — Open/ })).toBeNull();
   });
 });

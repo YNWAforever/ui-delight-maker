@@ -38,6 +38,7 @@ vi.mock("@tanstack/react-router", () => ({
     options,
     fullPath: "/tasks",
     useLoaderData: vi.fn(),
+    useRouteContext: () => ({ capabilities: ["tasks.create", "tasks.update"] }),
     useSearch: () => search,
   }),
   useNavigate: () => navigateMock,
@@ -109,6 +110,7 @@ const RESTRICTED_DESCRIPTION = "Restricted. You do not have permission to view t
 const tasks = [
   {
     id: "task-visible",
+    can_update: true,
     title: "Call Northstar",
     description: "Follow up",
     status: "open",
@@ -121,6 +123,7 @@ const tasks = [
   },
   {
     id: "task-restricted",
+    can_update: true,
     title: null,
     description: null,
     status: "in_progress",

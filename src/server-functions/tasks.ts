@@ -1,3 +1,4 @@
+import { evaluateAuthorization } from "@/lib/admin/policy";
 import { parseOperationInput } from "@/lib/operations/errors";
 import {
   loadRequestAuthorization,
@@ -44,6 +45,8 @@ export type TaskListItem = Omit<Task, "title" | "description"> & {
   title: string | null;
   description: string | null;
   restricted: boolean;
+  /** Server-evaluated for this task; absent legacy responses are read-only. */
+  can_update?: boolean;
 };
 
 export const getTasks = createServerFn({ method: "GET" })
@@ -92,7 +95,24 @@ export const getTasksPage = createServerFn({ method: "GET" })
     const context = await loadRequestAuthorization();
     await requireCapability("tasks.view", {}, context);
     const page = await listTaskQueuePage(data, context);
-    return { ...page, items: page.items.map((task) => ({ ...task, restricted: false })) };
+    return {
+      ...page,
+      items: page.items.map((task) => ({
+        ...task,
+        restricted: false,
+        can_update: evaluateAuthorization({
+          actor: context.actor,
+          capability: "tasks.update",
+          target: {
+            resourceType: "task",
+            resourceId: task.id,
+            ...(task.assigned_to ? { ownerProfileId: task.assigned_to } : {}),
+          },
+          overrides: context.overrides,
+          now: context.now,
+        }).allowed,
+      })),
+    };
   });
 
 export const createTask = createServerFn({ method: "POST" })

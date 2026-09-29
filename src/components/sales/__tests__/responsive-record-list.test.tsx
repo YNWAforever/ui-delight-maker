@@ -182,3 +182,27 @@ describe("ResponsiveRecordList", () => {
     expect(screen.getAllByRole("checkbox", { name: "Select all rows" })).toHaveLength(1);
   });
 });
+
+it("keeps denied rows unselectable and hides empty action menus on both surfaces", async () => {
+  const onChange = vi.fn();
+  render(
+    <ResponsiveRecordList
+      columns={columns}
+      rows={accounts}
+      rowKey={rowKey}
+      selection={{ selected: new Set(), onChange, isRowSelectable: (row) => row.id === "a-1" }}
+      rowActions={(row) => (row.id === "a-1" ? <button>Move</button> : null)}
+      renderCard={(row) => <span>{row.name}</span>}
+    />,
+  );
+  expect(screen.queryAllByRole("button", { name: "Actions for row a-2" })).toHaveLength(0);
+  const denied = screen.getAllByRole("checkbox", { name: "Select row a-2" });
+  expect(denied).toHaveLength(2);
+  for (const checkbox of denied) {
+    expect(checkbox.hasAttribute("disabled")).toBe(true);
+    await userEvent.click(checkbox);
+  }
+  expect(onChange).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("checkbox", { name: "Select all rows" }));
+  expect(onChange).toHaveBeenCalledExactlyOnceWith(new Set(["a-1"]));
+});

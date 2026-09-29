@@ -48,8 +48,9 @@ export function ResponsiveRecordList<T>({
     });
   };
 
-  const toggleRow = (key: string, checked: boolean) => {
-    if (!selection) return;
+  const toggleRow = (row: T, checked: boolean) => {
+    if (!selection || selection.isRowSelectable?.(row) === false) return;
+    const key = rowKey(row);
     const next = new Set(selection.selected);
     if (checked) next.add(key);
     else next.delete(key);
@@ -68,6 +69,7 @@ export function ResponsiveRecordList<T>({
       <ul className={cn("space-y-3", cardsClass)} aria-label={caption}>
         {rows.map((row) => {
           const key = rowKey(row);
+          const actions = rowActions?.(row);
           const isExpanded = expandedKeys.has(key);
           const detailsId = `${instanceId}-${key}-card-details`;
           const isCurrent = selectedRowKey === key;
@@ -84,7 +86,8 @@ export function ResponsiveRecordList<T>({
                 {selection && (
                   <Checkbox
                     checked={selection.selected.has(key)}
-                    onCheckedChange={(next) => toggleRow(key, next === true)}
+                    disabled={selection.isRowSelectable?.(row) === false}
+                    onCheckedChange={(next) => toggleRow(row, next === true)}
                     aria-label={`Select row ${key}`}
                     className="mt-0.5"
                   />
@@ -106,10 +109,8 @@ export function ResponsiveRecordList<T>({
                   )}
                 </div>
 
-                {rowActions && (
-                  <RowActionsMenu label={`Actions for row ${key}`}>
-                    {rowActions(row)}
-                  </RowActionsMenu>
+                {actions && (
+                  <RowActionsMenu label={`Actions for row ${key}`}>{actions}</RowActionsMenu>
                 )}
               </div>
 

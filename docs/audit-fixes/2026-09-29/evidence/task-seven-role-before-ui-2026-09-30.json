@@ -1,0 +1,152 @@
+{
+  "sha": "6c7ecb0e85804b242566d57cc2ca16bcfd0f0d2e",
+  "createdAt": "2026-09-29T19:26:15.306Z",
+  "creation": {
+    "httpStatus": 200,
+    "profileId": "demo-sales-user",
+    "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+    "persisted": true
+  },
+  "roles": [
+    {
+      "role": "sales",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "offered": true,
+      "expectedAllowed": true,
+      "response": {
+        "httpStatus": 200,
+        "error": false,
+        "forbidden": false
+      },
+      "before": {
+        "status": "open",
+        "version": 0
+      },
+      "after": {
+        "status": "in_progress",
+        "version": 1
+      },
+      "dbMatches": true
+    },
+    {
+      "role": "manager",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "offered": true,
+      "expectedAllowed": true,
+      "response": {
+        "httpStatus": 200,
+        "error": false,
+        "forbidden": false
+      },
+      "before": {
+        "status": "in_progress",
+        "version": 1
+      },
+      "after": {
+        "status": "open",
+        "version": 2
+      },
+      "dbMatches": true
+    },
+    {
+      "role": "client_success",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "offered": true,
+      "expectedAllowed": true,
+      "response": {
+        "httpStatus": 200,
+        "error": false,
+        "forbidden": false
+      },
+      "before": {
+        "status": "open",
+        "version": 2
+      },
+      "after": {
+        "status": "in_progress",
+        "version": 3
+      },
+      "dbMatches": true
+    },
+    {
+      "role": "accounting",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "offered": true,
+      "expectedAllowed": true,
+      "response": {
+        "httpStatus": 200,
+        "error": false,
+        "forbidden": false
+      },
+      "before": {
+        "status": "in_progress",
+        "version": 3
+      },
+      "after": {
+        "status": "open",
+        "version": 4
+      },
+      "dbMatches": true
+    },
+    {
+      "role": "admin",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "offered": true,
+      "expectedAllowed": true,
+      "response": {
+        "httpStatus": 200,
+        "error": false,
+        "forbidden": false
+      },
+      "before": {
+        "status": "open",
+        "version": 4
+      },
+      "after": {
+        "status": "in_progress",
+        "version": 5
+      },
+      "dbMatches": true
+    },
+    {
+      "role": "super_admin",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "offered": true,
+      "expectedAllowed": true,
+      "response": {
+        "httpStatus": 200,
+        "error": false,
+        "forbidden": false
+      },
+      "before": {
+        "status": "in_progress",
+        "version": 5
+      },
+      "after": {
+        "status": "open",
+        "version": 6
+      },
+      "dbMatches": true
+    },
+    {
+      "role": "read_only",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "offered": true,
+      "expectedAllowed": false,
+      "response": {
+        "httpStatus": 200,
+        "error": true,
+        "forbidden": true
+      },
+      "before": {
+        "status": "open",
+        "version": 6
+      },
+      "after": {
+        "status": "open",
+        "version": 6
+      },
+      "dbMatches": true
+    }
+  ]
+}

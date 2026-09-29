@@ -15,6 +15,7 @@ vi.mock("@tanstack/react-router", () => ({
     options,
     fullPath: "/tasks",
     useLoaderData: vi.fn(),
+    useRouteContext: () => ({ capabilities: ["tasks.create", "tasks.update"] }),
     useSearch: () => ({ view: "board", priority: "all", assignee: "all" }),
   }),
   useNavigate: () => navigateMock,
@@ -84,6 +85,7 @@ function deferred<T>() {
 const tasks = [
   {
     id: "task-1",
+    can_update: true,
     title: "Call Northstar",
     description: "Follow up",
     status: "open",
@@ -94,6 +96,7 @@ const tasks = [
   },
   {
     id: "task-2",
+    can_update: true,
     title: "Prepare renewal",
     description: "Draft renewal",
     status: "in_progress",
