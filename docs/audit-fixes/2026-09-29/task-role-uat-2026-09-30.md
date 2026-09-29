@@ -33,9 +33,11 @@ Private session files remain ignored at `.clientops-perf/uat/sessions/<role>.jso
 | Severity | Location | Before | After | Why |
 |---|---|---|---|---|
 | HIGH | src/routes/tasks.tsx | read_only offered drag, keyboard and creation | effective create and per-task update checks | Controls reflect the server's actual permissions |
-| HIGH | src/routes/tasks.tsx | 768px document widened to 1036px | tablet card layout under verification in next slice | Keep status and actions inside viewport |
+| HIGH | src/routes/tasks.tsx | 768px document widened to 1036px | cards below 1280px, bounded desktop identity column | Keep status and actions inside viewport |
 
-Task authorization slice: **Approve**. Tablet layout: **Block pending browser recheck**.
+Task authorization slice: **Approve**. Tablet layout: **Approve for the tested five widths**, source `712a1a225e581bb54ac9fd423fa1956024c55d81`.
+
+[Ten browser cases](evidence/task-responsive-2026-09-30.json): sales/read_only at 390/768/1024/1280/1440px, 900px height. No horizontal overflow. Sales dialog Tab/Escape and row-menu Enter/Escape return focus; selected bulk controls remain within viewport. Read-only has no mutation controls. JSON null fields mean not applicable. [768px after](evidence/task-list-768-after.png). The follow-up selection regression preserves selected-but-now-denied rows as checked and disabled. This remains partial U15, not full cross-workflow responsive acceptance.
 Not verified: screen reader, touch hardware, animation playback at 10%, full empty/loading/error visual states.
 
 ## Limits
