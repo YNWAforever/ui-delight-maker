@@ -390,8 +390,8 @@ function TasksBoard() {
       sticky: true,
       width: "18rem",
       cell: (task) => (
-        <div className="min-w-0">
-          <span className="font-medium">{taskTitle(task)}</span>
+        <div className="min-w-0 max-w-xs">
+          <span className="font-medium [overflow-wrap:anywhere]">{taskTitle(task)}</span>
           {taskDescription(task) && (
             <span className="block truncate text-xs text-muted-foreground">
               {taskDescription(task)}
@@ -713,6 +713,7 @@ function TasksBoard() {
             <>
               <ResponsiveRecordList
                 caption="Tasks"
+                breakpoint="xl"
                 columns={listColumns}
                 rows={filtered}
                 rowKey={(task) => task.id}

@@ -25,7 +25,7 @@ export type ResponsiveRecordListProps<T> = DataTableShellProps<T> & {
   /** The narrow-viewport body for one row. Rendered inside the row's link when there is one. */
   renderCard: (row: T) => ReactNode;
   /** The width at which the table takes over from the cards. */
-  breakpoint?: "md" | "lg";
+  breakpoint?: "md" | "lg" | "xl";
 };
 
 export function ResponsiveRecordList<T>({
@@ -57,8 +57,10 @@ export function ResponsiveRecordList<T>({
     selection.onChange(next);
   };
 
-  const tableClass = breakpoint === "lg" ? "hidden lg:block" : "hidden md:block";
-  const cardsClass = breakpoint === "lg" ? "lg:hidden" : "md:hidden";
+  const tableClass = { md: "hidden md:block", lg: "hidden lg:block", xl: "hidden xl:block" }[
+    breakpoint
+  ];
+  const cardsClass = { md: "md:hidden", lg: "lg:hidden", xl: "xl:hidden" }[breakpoint];
 
   return (
     <div className={className}>
