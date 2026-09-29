@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const UuidSchema = z.uuid();
 
+// profiles.id is text; seeded and migrated identities need not be UUIDs.
+const ProfileIdSchema = z.string().trim().min(1).max(255);
+
 export const DateOnlySchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD")
@@ -21,7 +24,7 @@ const optionalText = z.string().max(10_000).nullable().optional();
 export const TaskCreateSchema = z.strictObject({
   title: z.string().trim().min(1).max(255),
   description: optionalText,
-  assigned_to: optionalId,
+  assigned_to: ProfileIdSchema.nullable().optional(),
   lead_id: optionalId,
   client_id: optionalId,
   contact_id: optionalId,
@@ -180,7 +183,7 @@ export const ApprovalDecisionSchema = z.strictObject({
 
 export const ApprovalAssignmentSchema = z.strictObject({
   id: UuidSchema,
-  assignedTo: UuidSchema.nullable(),
+  assignedTo: ProfileIdSchema.nullable(),
   expectedVersion: z.number().int().nonnegative().optional(),
 });
 export const ApprovalClaimSchema = z.strictObject({
@@ -274,7 +277,9 @@ export const EventImportCommitSchema = EventImportRowsSchema.extend({
 export const IdSchema = z.strictObject({ id: UuidSchema });
 export const QuoteVersionListSchema = z.strictObject({ quoteId: UuidSchema });
 export const LeadIdSchema = z.strictObject({ leadId: UuidSchema });
-export const RequestQuoteApprovalSchema = IdSchema.extend({ assignedTo: optionalId });
+export const RequestQuoteApprovalSchema = IdSchema.extend({
+  assignedTo: ProfileIdSchema.nullable().optional(),
+});
 export const ApproveQuoteSchema = IdSchema.extend({
   approvalId: UuidSchema.optional(),
   notes: NotesSchema.optional(),
