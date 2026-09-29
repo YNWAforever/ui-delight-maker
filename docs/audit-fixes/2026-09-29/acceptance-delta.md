@@ -1,22 +1,22 @@
 # 2026-09-29 acceptance delta
 
-This is a source and evidence checkpoint against the user-supplied `04_Functional_Test_Matrix.csv` at audit baseline `46dd6107e7c08582ae6b626f1af4afc1e451cdac`. It does not rewrite that historical matrix. Current merged source is main `8b6241376a5ca3f9af5c6a6157a351c83c6b64e4`. All 30 CO IDs remain in [status](../2026-09-27/status.md).
+This is a source and evidence checkpoint against the user-supplied `04_Functional_Test_Matrix.csv` at audit baseline `46dd6107e7c08582ae6b626f1af4afc1e451cdac`. It does not rewrite that historical matrix. The initial checkpoint below used main `8b6241376a5ca3f9af5c6a6157a351c83c6b64e4`; the latest application-source checkpoint is main `5607b4d06514fe15da892303f0b2f7d7cb2d77a3` after PRs #117–#120. All 30 CO IDs remain in [status](../2026-09-27/status.md).
 
 | Audit matrix state | Cases | Current interpretation |
 | --- | ---: | --- |
 | BLOCKED | 718 | Most need authenticated candidate roles and isolated journey data; 689 rows explicitly cite that blocker. Source/CI success cannot promote them to PASS. |
-| FAIL | 4 | These were audit-baseline defect probes. Positive source regressions now pass, but real browser acceptance remains blocked below. |
-| NOT_TESTED | 25 | Fourteen dynamic/reusable bindings need a semantic census, seven public input semantics were unobserved, and four viewport cases lack a working browser resize surface. |
+| FAIL | 4 | Historical defect probes. `T-PUBLIC-SKIP` now has anonymous candidate keyboard proof; invitation and bulk still need role browser proof. The baseline count remains unchanged. |
+| NOT_TESTED | 25 | Fourteen shared bindings now have a source census but await role/browser expansion; seven public inputs have partial candidate disposition; four authenticated shell viewport cases still need role sessions. The baseline count remains unchanged. |
 | PASS | 4 | Public navigation only: forgot, back, signup and signin. These do not prove a business journey. |
 
 | Audit-baseline failing case | Source correction | Current acceptance |
 | --- | --- | --- |
-| T-PUBLIC-SKIP | PR #111 added a focusable main target on public/auth/root fallback pages; positive component regression passed. | BLOCKED: actual keyboard/browser focus and responsive evidence. |
+| T-PUBLIC-SKIP | PR #111 added a focusable main target on public/auth/root fallback pages; positive component regression passed. | Anonymous candidate Tab/Enter focus and public 390/768/1280/1440px behavior verified in [browser evidence](public-auth-browser-evidence.md); historical production FAIL unchanged. |
 | T-AUD-INVITE-ESC | PR #111 moved invitation to Radix Dialog with Escape and focus-return behavior; positive component regression passed. | BLOCKED: independent browser keyboard and role session. |
 | T-AUD-INVITE-FOCUS | PR #111 moved initial focus into the invitation dialog; positive component regression passed. | BLOCKED: independent browser focus trap and screen-reader evidence. |
 | T-AUD-BULK-RECEIPT | PR #111 retains the same pending receipt/key on transient result-read failure and exposes Retry; positive component regression passed. | BLOCKED: real actor browser retry/offline/reconnect with independent result read. |
 
-PR #115 and PR #116 added two further R04 People-directory fixes: a query refresh failure now has an error/retry state without a false zero count, and narrow cards open the existing full record instead of setting a hidden selection panel. Their respective exact-head real isolated PostgreSQL gates passed 2,187 and 2,188 tests, both with zero skipped. PR #116's protected preview `/api/build` matched head `a1741b3`; post-merge main Checks and Database contract passed 2,188 tests with zero skipped and two-run isolated migration/seed replay. This proves source and isolated database contracts, not seven-role UAT. The browser control surface failed to initialize with a Windows sandbox ACL error again, so no new viewport, keyboard screenshot or role assertion is claimed.
+PR #115 and PR #116 added two further R04 People-directory fixes: a query refresh failure now has an error/retry state without a false zero count, and narrow cards open the existing full record instead of setting a hidden selection panel. Their respective exact-head real isolated PostgreSQL gates passed 2,187 and 2,188 tests, both with zero skipped. PR #116's protected preview `/api/build` matched head `a1741b3`; post-merge main Checks and Database contract passed 2,188 tests with zero skipped and two-run isolated migration/seed replay. This proves source and isolated database contracts, not seven-role UAT. At that earlier checkpoint the desktop browser control surface failed with a Windows sandbox ACL error; later anonymous Chromium evidence is recorded below, with no role assertion claimed.
 
 ## Remaining required acceptance
 
@@ -24,7 +24,7 @@ PR #115 and PR #116 added two further R04 People-directory fixes: a query refres
 | --- | --- |
 | R00 / R04 / R08 | Seven distinct isolated role sessions and same-record fixtures; current [role UAT](../2026-09-27/uat-results.md) remains blocked, with 0/18 new-audit cross-role journeys verified. |
 | R01 | Disposable compatibility rehearsal and record-level provenance/owner disposition for the four [historical anomalies](../2026-09-27/production-reconciliation-disposition.md). No historical value was inferred or repaired. |
-| R02 / R03 | Real actor/browser recovery, focus, 390/768/1280/1440 viewports, 200% zoom and screen reader. |
+| R02 / R03 | Anonymous public keyboard/recovery and four widths have candidate proof; authenticated dialog/bulk/shell behavior, 200% zoom and screen reader still need independent evidence. |
 | R05 | Authenticated upload→preview→commit→independent read→resume→download; real-source identity inventory and target-specific retention dry run. |
 | R06 | Same-data/machine authenticated 10 cold and 30 warm browser navigations, request-scoped metrics, and full-route before/after. Existing [performance evidence](../2026-09-27/t19-evidence.md) is bundle plus isolated SQL components. |
 | R07 | Isolated legacy and Neon snapshots for five-domain parity, provider sandbox receipts, callback recovery and scoped actor UI. |
@@ -48,3 +48,7 @@ At exact-head candidate preview `df315f1`, real keyboard input and accessible na
 ## Candidate recovery return restored — PR #120
 
 The `T-PUBLIC-BACK` candidate gap above was repaired at source commit `376d05e`. Its exact-head preview proved a keyboard-focusable Back to sign in link at 390px, with Tab reaching it after the email/send controls and Enter returning to `/login/sign-in`. [Visual and browser evidence](public-auth-browser-evidence.md). This is candidate anonymous evidence, not a new production release or token-bearing provider recovery test. Historical audit counts remain unchanged.
+
+## Merged application-source checkpoint through PR #120
+
+PRs [#118](https://github.com/YNWAforever/ui-delight-maker/pull/118), [#119](https://github.com/YNWAforever/ui-delight-maker/pull/119) and [#120](https://github.com/YNWAforever/ui-delight-maker/pull/120) merged in order. Main `5607b4d` passed post-merge Checks and real isolated PostgreSQL Database contract (2,190 tests, 0 skipped), plus a two-run isolated migration/seed replay. Protected #120 preview `/api/build` matched final PR head `1b999e0`; public keyboard/navigation and four-width evidence are linked above. The 14 dynamic action IDs have source semantics recorded, with runtime role outcomes still `NOT_TESTED`. No cross-role UAT, provider delivery, legacy parity, production deployment or authenticated full-route before/after performance was inferred. Release remains **NO-GO**.
