@@ -175,8 +175,8 @@ describe("remaining write command input boundaries", () => {
     expect(mocks.requireCapability).not.toHaveBeenCalled();
   });
 
-  it("rejects a malformed reviewer ID before requesting approval", async () => {
-    await expect(requestQuoteApproval({ data: { id: ID, assignedTo: "no" } })).rejects.toThrow();
+  it("rejects an empty reviewer ID before requesting approval", async () => {
+    await expect(requestQuoteApproval({ data: { id: ID, assignedTo: "   " } })).rejects.toThrow();
     expect(mocks.requireCapability).not.toHaveBeenCalled();
   });
 
