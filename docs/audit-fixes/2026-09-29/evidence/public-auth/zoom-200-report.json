@@ -1,0 +1,1504 @@
+{
+  "expectedSha": "589bf396ae1ade7b3241371535cd843d857c659d",
+  "browser": "153.0.8010.12",
+  "actor": "anonymous",
+  "samples": [
+    {
+      "view": "sign-in",
+      "physicalViewport": {
+        "width": 390,
+        "height": 900
+      },
+      "initial": {
+        "width": 390,
+        "dpr": 1
+      },
+      "zoom": 2,
+      "layout": {
+        "width": 195,
+        "height": 450,
+        "scrollWidth": 195,
+        "dpr": 2,
+        "bodyScrollWidth": 195
+      },
+      "overflow": false,
+      "fonts": [
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        }
+      ],
+      "focus": [
+        {
+          "tag": "A",
+          "text": "Skip to main content",
+          "id": "",
+          "x": 12,
+          "y": 12,
+          "width": 159.78125,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "email",
+          "id": "_R_5id6ba_-form-item",
+          "x": 41,
+          "y": 369,
+          "width": 131.2890625,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "A",
+          "text": "Forgot your password?",
+          "id": "",
+          "x": 102.890625,
+          "y": 390,
+          "width": 69.3984375,
+          "height": 60,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 39
+        },
+        {
+          "tag": "INPUT",
+          "text": "password",
+          "id": "_R_9id6ba_-form-item",
+          "x": 41,
+          "y": 329,
+          "width": 131.2890625,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 168
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Login",
+          "id": "",
+          "x": 41,
+          "y": 389,
+          "width": 131.2890625,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 168
+        }
+      ],
+      "skipTarget": {
+        "tag": "MAIN",
+        "text": "Fimmick ClientOpsSign in with your administrator-invited account.((e, i4, s3, u4",
+        "id": "main-content",
+        "x": 0,
+        "y": 0,
+        "width": 195,
+        "height": 618,
+        "visible": false,
+        "scrollX": 0,
+        "scrollY": 0
+      },
+      "backDestination": null
+    },
+    {
+      "view": "forgot-password",
+      "physicalViewport": {
+        "width": 390,
+        "height": 900
+      },
+      "initial": {
+        "width": 390,
+        "dpr": 1
+      },
+      "zoom": 2,
+      "layout": {
+        "width": 195,
+        "height": 450,
+        "scrollWidth": 195,
+        "dpr": 2,
+        "bodyScrollWidth": 195
+      },
+      "overflow": false,
+      "fonts": [
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        }
+      ],
+      "focus": [
+        {
+          "tag": "A",
+          "text": "Skip to main content",
+          "id": "",
+          "x": 12,
+          "y": 12,
+          "width": 159.78125,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "email",
+          "id": "_R_5id6ba_-form-item",
+          "x": 41,
+          "y": 381,
+          "width": 127.765625,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Send reset link",
+          "id": "",
+          "x": 41,
+          "y": 414,
+          "width": 127.765625,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 27
+        },
+        {
+          "tag": "A",
+          "text": "Back to sign in",
+          "id": "",
+          "x": 16,
+          "y": 430,
+          "width": 163,
+          "height": 20,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 96
+        }
+      ],
+      "skipTarget": {
+        "tag": "MAIN",
+        "text": "Fimmick ClientOpsEnter your email to receive a password reset link.((e, i4, s3, ",
+        "id": "main-content",
+        "x": 0,
+        "y": 0,
+        "width": 195,
+        "height": 546,
+        "visible": false,
+        "scrollX": 0,
+        "scrollY": 0
+      },
+      "backDestination": "/login/sign-in"
+    },
+    {
+      "view": "sign-in",
+      "physicalViewport": {
+        "width": 768,
+        "height": 900
+      },
+      "initial": {
+        "width": 768,
+        "dpr": 1
+      },
+      "zoom": 2,
+      "layout": {
+        "width": 384,
+        "height": 450,
+        "scrollWidth": 384,
+        "dpr": 2,
+        "bodyScrollWidth": 384
+      },
+      "overflow": false,
+      "fonts": [
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        }
+      ],
+      "focus": [
+        {
+          "tag": "A",
+          "text": "Skip to main content",
+          "id": "",
+          "x": 12,
+          "y": 12,
+          "width": 159.78125,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "email",
+          "id": "_R_5id6ba_-form-item",
+          "x": 41,
+          "y": 261,
+          "width": 302,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "A",
+          "text": "Forgot your password?",
+          "id": "",
+          "x": 192.8828125,
+          "y": 321,
+          "width": 150.1171875,
+          "height": 20,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "password",
+          "id": "_R_9id6ba_-form-item",
+          "x": 41,
+          "y": 349,
+          "width": 302,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Login",
+          "id": "",
+          "x": 41,
+          "y": 409,
+          "width": 302,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        }
+      ],
+      "skipTarget": {
+        "tag": "MAIN",
+        "text": "Fimmick ClientOpsSign in with your administrator-invited account.((e, i4, s3, u4",
+        "id": "main-content",
+        "x": 0,
+        "y": 0,
+        "width": 384,
+        "height": 470,
+        "visible": false,
+        "scrollX": 0,
+        "scrollY": 0
+      },
+      "backDestination": null
+    },
+    {
+      "view": "forgot-password",
+      "physicalViewport": {
+        "width": 768,
+        "height": 900
+      },
+      "initial": {
+        "width": 768,
+        "dpr": 1
+      },
+      "zoom": 2,
+      "layout": {
+        "width": 384,
+        "height": 450,
+        "scrollWidth": 384,
+        "dpr": 2,
+        "bodyScrollWidth": 384
+      },
+      "overflow": false,
+      "fonts": [
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        }
+      ],
+      "focus": [
+        {
+          "tag": "A",
+          "text": "Skip to main content",
+          "id": "",
+          "x": 12,
+          "y": 12,
+          "width": 159.78125,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "email",
+          "id": "_R_5id6ba_-form-item",
+          "x": 41,
+          "y": 273,
+          "width": 302,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Send reset link",
+          "id": "",
+          "x": 41,
+          "y": 333,
+          "width": 302,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "A",
+          "text": "Back to sign in",
+          "id": "",
+          "x": 16,
+          "y": 418,
+          "width": 352,
+          "height": 20,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        }
+      ],
+      "skipTarget": {
+        "tag": "MAIN",
+        "text": "Fimmick ClientOpsEnter your email to receive a password reset link.((e, i4, s3, ",
+        "id": "main-content",
+        "x": 0,
+        "y": 0,
+        "width": 384,
+        "height": 450,
+        "visible": true,
+        "scrollX": 0,
+        "scrollY": 0
+      },
+      "backDestination": "/login/sign-in"
+    },
+    {
+      "view": "sign-in",
+      "physicalViewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "initial": {
+        "width": 1280,
+        "dpr": 1
+      },
+      "zoom": 2,
+      "layout": {
+        "width": 640,
+        "height": 450,
+        "scrollWidth": 640,
+        "dpr": 2,
+        "bodyScrollWidth": 640
+      },
+      "overflow": false,
+      "fonts": [
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        }
+      ],
+      "focus": [
+        {
+          "tag": "A",
+          "text": "Skip to main content",
+          "id": "",
+          "x": 12,
+          "y": 12,
+          "width": 159.78125,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "email",
+          "id": "_R_5id6ba_-form-item",
+          "x": 153,
+          "y": 261,
+          "width": 334,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "A",
+          "text": "Forgot your password?",
+          "id": "",
+          "x": 336.8828125,
+          "y": 321,
+          "width": 150.1171875,
+          "height": 20,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "password",
+          "id": "_R_9id6ba_-form-item",
+          "x": 153,
+          "y": 349,
+          "width": 334,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Login",
+          "id": "",
+          "x": 153,
+          "y": 409,
+          "width": 334,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        }
+      ],
+      "skipTarget": {
+        "tag": "MAIN",
+        "text": "Fimmick ClientOpsSign in with your administrator-invited account.((e, i4, s3, u4",
+        "id": "main-content",
+        "x": 0,
+        "y": 0,
+        "width": 640,
+        "height": 470,
+        "visible": false,
+        "scrollX": 0,
+        "scrollY": 0
+      },
+      "backDestination": null
+    },
+    {
+      "view": "forgot-password",
+      "physicalViewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "initial": {
+        "width": 1280,
+        "dpr": 1
+      },
+      "zoom": 2,
+      "layout": {
+        "width": 640,
+        "height": 450,
+        "scrollWidth": 640,
+        "dpr": 2,
+        "bodyScrollWidth": 640
+      },
+      "overflow": false,
+      "fonts": [
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        }
+      ],
+      "focus": [
+        {
+          "tag": "A",
+          "text": "Skip to main content",
+          "id": "",
+          "x": 12,
+          "y": 12,
+          "width": 159.78125,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "email",
+          "id": "_R_5id6ba_-form-item",
+          "x": 153,
+          "y": 273,
+          "width": 334,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Send reset link",
+          "id": "",
+          "x": 153,
+          "y": 333,
+          "width": 334,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "A",
+          "text": "Back to sign in",
+          "id": "",
+          "x": 128,
+          "y": 418,
+          "width": 384,
+          "height": 20,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        }
+      ],
+      "skipTarget": {
+        "tag": "MAIN",
+        "text": "Fimmick ClientOpsEnter your email to receive a password reset link.((e, i4, s3, ",
+        "id": "main-content",
+        "x": 0,
+        "y": 0,
+        "width": 640,
+        "height": 450,
+        "visible": true,
+        "scrollX": 0,
+        "scrollY": 0
+      },
+      "backDestination": "/login/sign-in"
+    },
+    {
+      "view": "sign-in",
+      "physicalViewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "initial": {
+        "width": 1440,
+        "dpr": 1
+      },
+      "zoom": 2,
+      "layout": {
+        "width": 720,
+        "height": 450,
+        "scrollWidth": 720,
+        "dpr": 2,
+        "bodyScrollWidth": 720
+      },
+      "overflow": false,
+      "fonts": [
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        }
+      ],
+      "focus": [
+        {
+          "tag": "A",
+          "text": "Skip to main content",
+          "id": "",
+          "x": 12,
+          "y": 12,
+          "width": 159.78125,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "email",
+          "id": "_R_5id6ba_-form-item",
+          "x": 193,
+          "y": 261,
+          "width": 334,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "A",
+          "text": "Forgot your password?",
+          "id": "",
+          "x": 376.8828125,
+          "y": 321,
+          "width": 150.1171875,
+          "height": 20,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "password",
+          "id": "_R_9id6ba_-form-item",
+          "x": 193,
+          "y": 349,
+          "width": 334,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Login",
+          "id": "",
+          "x": 193,
+          "y": 409,
+          "width": 334,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        }
+      ],
+      "skipTarget": {
+        "tag": "MAIN",
+        "text": "Fimmick ClientOpsSign in with your administrator-invited account.((e, i4, s3, u4",
+        "id": "main-content",
+        "x": 0,
+        "y": 0,
+        "width": 720,
+        "height": 470,
+        "visible": false,
+        "scrollX": 0,
+        "scrollY": 0
+      },
+      "backDestination": null
+    },
+    {
+      "view": "forgot-password",
+      "physicalViewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "initial": {
+        "width": 1440,
+        "dpr": 1
+      },
+      "zoom": 2,
+      "layout": {
+        "width": 720,
+        "height": 450,
+        "scrollWidth": 720,
+        "dpr": 2,
+        "bodyScrollWidth": 720
+      },
+      "overflow": false,
+      "fonts": [
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        },
+        {
+          "family": "Plus Jakarta Sans",
+          "status": "loaded"
+        }
+      ],
+      "focus": [
+        {
+          "tag": "A",
+          "text": "Skip to main content",
+          "id": "",
+          "x": 12,
+          "y": 12,
+          "width": 159.78125,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "INPUT",
+          "text": "email",
+          "id": "_R_5id6ba_-form-item",
+          "x": 193,
+          "y": 273,
+          "width": 334,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Send reset link",
+          "id": "",
+          "x": 193,
+          "y": 333,
+          "width": 334,
+          "height": 36,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        },
+        {
+          "tag": "A",
+          "text": "Back to sign in",
+          "id": "",
+          "x": 168,
+          "y": 418,
+          "width": 384,
+          "height": 20,
+          "visible": true,
+          "scrollX": 0,
+          "scrollY": 0
+        }
+      ],
+      "skipTarget": {
+        "tag": "MAIN",
+        "text": "Fimmick ClientOpsEnter your email to receive a password reset link.((e, i4, s3, ",
+        "id": "main-content",
+        "x": 0,
+        "y": 0,
+        "width": 720,
+        "height": 450,
+        "visible": true,
+        "scrollX": 0,
+        "scrollY": 0
+      },
+      "backDestination": "/login/sign-in"
+    }
+  ],
+  "blocked": []
+}

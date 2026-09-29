@@ -22,3 +22,26 @@ Direct `/login/sign-up` displayed the sign-in Email/Password/Login UI and no Nam
 ## Recovery back navigation after PR #120
 
 Source commit `376d05ec35a7713110bdf262d270f241da318dbc` added an explicit **Back to sign in** link on forgot-password and reset-password views while leaving normal sign-in without a self-link. The exact-head protected preview `/api/build` matched that SHA. At 390px, the real Chromium focus order was Skip to main content → Email → Send reset link → Back to sign in; pressing `Enter` on the focused link returned to `/login/sign-in`, with the Email/Password/Login controls present. The recovery page had no horizontal overflow. [390px screenshot](evidence/public-auth/forgot-back-after-390.png). No email was entered or sent for this navigation test. This restores candidate navigation equivalent to historical `T-PUBLIC-BACK`; token-bearing reset and provider delivery remain blocked.
+
+## Anonymous native 200% browser zoom — 2026-09-30
+
+Source-equivalent protected PR #124 preview `/api/build` returned `589bf396ae1ade7b3241371535cd843d857c659d`; current main `d2b85119c0c9a514ffb3cc75694587fe13c99ad2` adds only the merge commit. The desktop browser helper failed to initialize, so this check used Node 24, pinned Playwright 1.63.0 and bundled Chromium 153.0.8010.12 in a disposable persistent profile.
+
+Eight real page scenarios covered `/login/sign-in` and `/login/forgot-password`, each at outer content viewports 390/768/1280/1440 by 900 pixels. A temporary extension called native `chrome.tabs.setZoom(..., 2)`; `getZoom` returned 2, devicePixelRatio changed 1→2, and CSS viewport widths halved to 195/384/640/720. No CSS transform, page-scale emulation or synthetic fixture was used.
+
+| Check | Observed candidate result |
+| --- | --- |
+| Horizontal reflow | 8/8: document/body scroll widths equalled the CSS viewport width. |
+| Keyboard controls | 8/8: sequential Tab focus stayed within the visible viewport; vertical scrolling exposed lower controls on the narrow cases. |
+| Skip link | 8/8: Tab then Enter focused `MAIN#main-content`. A tall main landmark need not fit wholly inside the viewport. |
+| Sign-in order | Skip → Email → Forgot your password? → Password → Login. No form submission. |
+| Recovery order and return | Skip → Email → Send reset link → Back to sign in; Enter on the back link returned to `/login/sign-in` at all four widths. |
+| Fonts | The declared Plus Jakarta Sans faces were explicitly awaited after zoom; all 24 faces reported loaded in each final sample. This verifies loaded-font layout, not font-download performance. |
+
+[Raw eight-case observations](evidence/public-auth/zoom-200-report.json) retain layout, native zoom, font status, focus geometry, scroll positions, skip targets and destinations. [390px focused recovery](evidence/public-auth/forgot-390-zoom200-focused.png) and [1440px sign-in](evidence/public-auth/login-1440-zoom200.png) were visually inspected. Full-page Playwright screenshots initially clipped under native zoom; the committed captures use Chromium `Page.captureScreenshot` with no clip and `captureBeyondViewport: false`.
+
+The profile had no user login/session. Only GET/HEAD to this exact preview and GET font resources from Google Fonts were allowed; other methods/origins were rejected. The final report records zero blocked requests. The temporary preview token was passed in process memory and added only to same-origin requests, never committed or printed. No credentials were typed, form submitted, account created, email sent or production data changed.
+
+This closes the anonymous candidate 200% zoom/keyboard subcheck only. Accessible-name snapshots are not screen-reader testing. Authenticated shell/dialog zoom, assistive-technology output, seven-role journeys, invite/token-bearing recovery, provider delivery and release acceptance remain blocked. Historical audit rows and their counts are unchanged.
+
+Method references: [Playwright extensions](https://playwright.dev/docs/chrome-extensions), [Chrome native tab zoom API](https://developer.chrome.com/docs/extensions/reference/api/tabs#method-setZoom).
