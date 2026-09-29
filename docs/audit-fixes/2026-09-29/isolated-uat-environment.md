@@ -50,3 +50,15 @@ R00's environment and seven-identity availability is advanced; full R00–R08 ac
 - Reset/reseed only this explicitly identified test database; do not use production credentials, production snapshots or real customer addresses.
 - Stop UAT by disabling its auth accounts/project access or removing its dedicated Vercel alias after operator approval; rollback the UAT app to its previous deployment independently of production.
 - Schema changes require a UAT restore/compatibility decision; reverting an app deployment alone does not undo migrations.
+
+## Corrected deployment verification
+
+- Fix source commit: `c6b474ebe0dc8d6113c3911a136c3de52c4db1c3`.
+- UAT deployment: `dpl_hHMkq1QwNaEft9mMZ9nSFmKR2do3`; stable alias returned the exact source SHA from `/api/build`.
+- Real Chromium with JavaScript disabled: sign-in, forgot-password and reset-password all render a loading status and zero forms/password inputs.
+- Seven fresh independent browser contexts submitted a POST to the real same-origin auth endpoint, matched seven distinct upstream identities, rendered each expected role and loaded the homepage without observed HTTP/page errors. Login was attempted as soon as fields became visible, validating the hydration fix. All seven private storage-state files were refreshed after password rotation.
+- Machine-readable sanitized evidence: [UAT acceptance](evidence/uat-2026-09-30.json). Credential values, cookies, connection strings and auth tokens are excluded.
+- Source PR: https://github.com/YNWAforever/ui-delight-maker/pull/126. Initial head static/build/bundles, real Chromium collector and isolated migration/seed replay passed; the full isolated PostgreSQL contract job is recorded by PR checks.
+- Actual production project still has an ignore-build command that exits successfully for its production target. This hold is independent of the dedicated UAT project's deploys.
+
+Supersedes the earlier checkpoint's absence of role sessions and disposable Neon environment. It does not close the remaining business-workflow, Supabase parity, provider or release gates.
