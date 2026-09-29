@@ -19,7 +19,7 @@ The runner checks `/api/build` against the full candidate SHA before and after c
 - Real Chromium integration on a disposable local HTTP fixture passes: independent cold cookie state, retained warm cache, both bootstrap and lazy JS, document plus data metrics, missing metrics, and zero arrivals at local POST/provider/worker/WebSocket receivers. Worker/WebSocket bypass and discarded warm-up failures were reproduced before correction.
 - App and strict script TypeScript, full ESLint (one pre-existing Fast Refresh warning), final touched-file ESLint, pure Vite client/SSR build, bundle gate and diff check pass.
 - Missing input returns `blocked_external` and process exit 2. The integration fixture is not ClientOps application performance or role UAT.
-- GitHub Actions now has a separate `Browser collector integration` job using Node 24 and the pinned Chromium installation. Real isolated PostgreSQL contract/replay and final preview checks are pending at this local evidence checkpoint.
+- GitHub Actions now has a separate `Browser collector integration` job using Node 24 and the pinned Chromium installation. PR #123 subsequently passed that job, 2,198 real isolated PostgreSQL tests with zero skipped, two-run migration/seed replay and protected preview SHA equality; see the [merged checkpoint](checkpoint-2026-09-30.md).
 
 Node 24 is deliberate: Bun 1.3.14 on this Windows host timed out starting Chromium's debug pipe, whereas Node 24.18.0 launched and closed Chromium successfully. Bun remains the repository package manager.
 

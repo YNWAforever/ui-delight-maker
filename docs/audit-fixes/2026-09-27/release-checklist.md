@@ -1,6 +1,8 @@
 # ClientOps audit release candidate — 2026-09-28
 
-**State: source merged to main under a production build hold; production NO-GO.** The audited application baseline was main SHA `2904faa502f7494173f48f412875c1d0a3aba674`. PRs #82–#101 landed on `codex/clientops-reviewed-integration`; [PR #103](https://github.com/YNWAforever/ui-delight-maker/pull/103) merged that source into main at `f038919b95ff085190401f64078b78bc8781dd4d`. The latest READY Production deployment is still `dpl_BubNGhS2HFmmvjcUYfiKiasDwcLU` at the audited SHA. The user-approved Vercel hold cancels new production builds until an explicit release. The 30 finding states remain in [status](status.md); code CI does not upgrade blocked role, data-parity or provider gates.
+**Current state (2026-09-30): PR #123 merged; release acceptance NO-GO.** Public production now serves `bed941b`, from a separate READY deployment; the `82d8ad7` main production attempt was canceled. See the [current checkpoint](../2026-09-29/checkpoint-2026-09-30.md). The deployment actor/mechanism and release evidence remain unresolved. Earlier production identities below are historical.
+
+**Historical integration checkpoint:** The audited application baseline was main SHA `2904faa502f7494173f48f412875c1d0a3aba674`. PRs #82–#101 landed on `codex/clientops-reviewed-integration`; [PR #103](https://github.com/YNWAforever/ui-delight-maker/pull/103) merged that source into main at `f038919b95ff085190401f64078b78bc8781dd4d`. At that checkpoint, the latest READY Production deployment was `dpl_BubNGhS2HFmmvjcUYfiKiasDwcLU` at the audited SHA. The user-approved Vercel hold canceled automatic main builds; the later READY production identity requires operator reconciliation. The 30 finding states remain in [status](status.md); code CI does not upgrade blocked role, data-parity or provider gates.
 
 ## Earlier source checkpoint through PR #116 — 2026-09-29
 
@@ -8,7 +10,7 @@ Main `8b6241376a5ca3f9af5c6a6157a351c83c6b64e4` includes merged PRs #111–#116.
 
 The [2026-09-29 acceptance delta](../2026-09-29/acceptance-delta.md) records the 751-case audit baseline and current proof. Seven-role browser UAT, legacy/Neon snapshot parity, four historical anomaly dispositions, provider sandbox, authenticated full-route before/after and operator rehearsal/PITR are still blocked. Release decision remains **NO-GO**. No migration/seed was run against an unverified target, and no production write, promotion, customer message or paid provider call occurred.
 
-## Current application-source checkpoint through PR #120 — 2026-09-29
+## Earlier application-source checkpoint through PR #120 — 2026-09-29
 
 Main application source `5607b4d06514fe15da892303f0b2f7d7cb2d77a3` includes the merged anonymous password-recovery form and back-navigation fixes plus the 14-ID [source census](../2026-09-29/dynamic-action-census.md). PR #120's protected preview `/api/build` matched exact source head `376d05e` and final docs head `1b999e0`; real Chromium Tab/Enter returned from forgot-password to sign-in at 390px. [Public browser evidence](../2026-09-29/public-auth-browser-evidence.md) covers only the anonymous candidate journey. Post-merge main Checks, 2,190 real isolated PostgreSQL tests with zero skipped, and two-run isolated migration/seed replay passed. No open PR remained at this checkpoint.
 
@@ -71,7 +73,7 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 | Provider/n8n callbacks and actual usage | blocked; sandbox contract/credential unavailable | integration owner supplies sandbox workflow and safe test credential |
 | Authenticated full route p95 before/after | blocked; no sessions/local app fixture | performance owner runs same-environment 30 warm/10 cold route and browser samples |
 | Backup/PITR, migration rehearsal, change window | blocked; operator evidence unavailable | production operator |
-| Release approval | source merged to main under approved, verified Vercel hold; no new READY production deployment; production remains NO-GO | user/owner after all gates, including target-specific migration, UAT and snapshot reconciliation |
+| Release approval | NO-GO: production serves `bed941b`; latest main build was canceled. Deployment provenance and outstanding acceptance gates require reconciliation; see the 2026-09-30 checkpoint | user/owner after all gates, including target-specific migration, UAT and snapshot reconciliation |
 
 ## Rollforward and rollback sequence
 

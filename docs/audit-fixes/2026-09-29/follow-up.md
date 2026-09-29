@@ -1,5 +1,7 @@
 # 2026-09-29 audit follow-up — candidate source
 
+> Latest: [2026-09-30 source/environment checkpoint](checkpoint-2026-09-30.md) supersedes source and production identity statements below. Earlier audit counts and measurements remain historical evidence.
+
 Audit baseline: main `46dd6107e7c08582ae6b626f1af4afc1e451cdac` (#110). User-supplied SHA256SUMS verified all 34 files. CSVs contain 718 action candidates, 751 test scenarios, 51 routes and 214 server functions. Those counts describe the audit inventory; they are not newly executed UI coverage. The audit's 0/18 cross-role business journeys remains 0/18 here.
 
 ## Backlog disposition
