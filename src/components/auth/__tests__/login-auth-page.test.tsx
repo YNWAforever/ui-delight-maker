@@ -25,6 +25,22 @@ afterEach(() => {
 });
 
 describe("LoginAuthPage", () => {
+  it.each(["forgot-password", "reset-password"])(
+    "shows the %s recovery view without enabling self signup",
+    async (authPath) => {
+      render(<LoginAuthPage authPath={authPath} />);
+
+      expect(await screen.findByText(`Auth view: ${authPath}`)).toBeTruthy();
+      expect(
+        screen.getByText(
+          authPath === "forgot-password"
+            ? "Enter your email to receive a password reset link."
+            : "Set a new password for your invited account.",
+        ),
+      ).toBeTruthy();
+      expect(providerPropsMock).toHaveBeenCalledWith(expect.objectContaining({ signUp: false }));
+    },
+  );
   it("does not offer self signup from the normal login route", async () => {
     render(<LoginAuthPage authPath="sign-up" />);
     await waitFor(() =>

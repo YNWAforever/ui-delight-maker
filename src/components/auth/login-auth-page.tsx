@@ -33,7 +33,11 @@ export function LoginAuthPage({
     description ??
     (isSignUp
       ? "Use the invited email address to create your account. Access begins after invitation activation."
-      : "Sign in with your administrator-invited account.");
+      : authPath === "forgot-password"
+        ? "Enter your email to receive a password reset link."
+        : authPath === "reset-password"
+          ? "Set a new password for your invited account."
+          : "Sign in with your administrator-invited account.");
 
   return (
     <main
