@@ -56,3 +56,7 @@ The earlier missing-role/environment/runtime statements describe that checkpoint
 ## Latest approval slice
 
 Source `fac59c9` / PR #134: U05 actual manager/admin opposed decisions, conflict, one terminal audit/receipt/version, refreshed UIs and unchanged replay PASS. Seven distinct role decision/notes/selection boundaries and four scope cases PASS; U12 scoped CS manual statement/replay PASS with no delivery/provider claim. Final actual R06 40-navigation gate PASS (warm p95 506.768ms), both intermediate failed runs retained. Local and source CI **2,279 / 0 skips**. [Case evidence](approval-role-uat-2026-09-30.md). Final evidence-head CI/merge pending. All 30 CO/16 UAT rows retained; bulk/import/risk, other full UAT, legacy/provider/anomaly/operator release gates remain open; production held.
+
+## R02 Task recovery acceptance delta
+
+[PR #135](https://github.com/YNWAforever/ui-delight-maker/pull/135), source `53dc62f`: exact source local/CI full suite **2,282 / zero skipped**, empty-schema queue fixture16/16, unchanged real queue runtime budgets, same-fixture preview68.0s→14.4s single observed pair, actual U08 100 mixed loss/reload/key replay/resume PASS and reader receipt denial. [Complete report](bulk-recovery-uat-2026-09-30.md). Documentation-head CI/merge remains required. CO-16 member/other bulk, R05 and wider/external acceptance stay open; production hold retained.

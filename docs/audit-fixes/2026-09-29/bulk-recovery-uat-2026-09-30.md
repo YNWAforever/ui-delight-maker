@@ -31,3 +31,30 @@ CI contract run `36687195207` failed first on `relation leads does not exist`, f
 Preview checks run with at most four concurrent read-only handlers, then assemble results in input order. Mixed eligible approval types still reject the whole preview. Only permitted rows retain their summaries. The operation and all receipt items are written atomically with a parameterized JSONB recordset insert. Commit authorization, version locks, business write/savepoint rollback, owner checks, idempotency key, expiry, chunk limit and leases remain unchanged.
 
 New real PostgreSQL coverage verifies all 100 mixed preview positions/statuses/privacy, four-reader bound, no business write and a database trigger rejecting item 99 with zero orphan operation/items. Red concurrency regression observed one reader before the fix; a first trigger fixture contained malformed dollar quoting and was corrected before successful verification. Full fresh suite: **2,282 passed, zero skipped/todo**, 312 files. Types, tracked-source lint, pure Vite and bundles pass. Hosted runtime and recovery remain pending. [Actual baseline](evidence/bulk-preview-before-df14575-2026-09-30.json), [screenshot](evidence/bulk-preview-before-df14575-2026-09-30.png).
+
+## U08 Task 100: actual scoped PASS
+
+Source `53dc62f8a19e4a2449c9e445651bbeb43bd3158b`, dedicated deployment `dpl_32SR9Ea7Z75GAVyB3nuus7m1nVJC`; the stable test alias returned this SHA before and after. Own sales and own read_only sessions were used. No super_admin session substituted for either actor.
+
+[Complete sanitized actual run](evidence/bulk-task-pass-53dc62f-2026-09-30.json), [saved receipt during transport outage](evidence/bulk-task-offline-53dc62f-2026-09-30.png), [completed UI](evidence/bulk-task-completed-53dc62f-2026-09-30.png).
+
+1. Real UI loaded and selected all 100 synthetic Tasks; actual preview showed 100 eligible, took 14,941ms and changed no Task.
+2. After preview, introduced ten explicit update denies, ten concurrent version changes and ten deleted records. All other Tasks stayed open/version zero.
+3. Forwarded the first real commit, then aborted only its browser response. Receipt-read requests were deliberately aborted during reload; the UI retained the same operation/key and offered Retry loading result. This is a targeted real transport fault, not a claim that the whole app works without network access.
+4. Restored receipt reads. The owner recovered the actual receipt and repeated the original commit key before continuing actual bounded chunks. Final receipts: **70 succeeded / 10 forbidden / 10 stale / 10 not_found**, 100 terminal items.
+5. All 70 successful records are done/version one; forbidden records remain open/version zero; stale records keep their concurrent version; missing records were not recreated. Terminal replay leaves the complete persisted snapshot unchanged.
+6. Own read_only session sent the same receipt GET: serialized owner-access denial and no fixture IDs in the response. HTTP 200 wrapping a server error is counted as denial, not success.
+7. Actual UI says 100 processed, 70 succeeded, 30 need review and **30 selected**. Screenshots visually inspected. Temporary denies revoked after assertions.
+
+The first full run reached 100/70 in PostgreSQL but the script raced a disabled Resume; [incomplete record](evidence/bulk-task-incomplete-sync-53dc62f-2026-09-30.json). The second recovered the receipt and replayed a real commit, but the observer only matched operationId rather than previewToken; [incomplete record](evidence/bulk-task-incomplete-observer-53dc62f-2026-09-30.json). Both remain success=false. The final observer waits for the actual commit/replay or resume response body and settled UI; application source and every server guard were unchanged between these three attempts.
+
+Network samples in the accepted run show real POST durations roughly 4.7–11.5 seconds after preview; the five-second item boundary excludes authorization and receipt/transaction overhead. No five-second end-to-end latency claim. The test issued twelve commit/replay/resume POSTs including the lost-response request.
+
+## Runbook, compatibility and retained blockers
+
+- Source commits: `df14575` precise PostgreSQL cursors, `065ccb1` standalone empty-schema fixture, `53dc62f` bounded preview/atomic receipt insert.
+- Fresh local and source CI each run the full **2,282 tests / zero skipped** suite backed by real disposable PostgreSQL. CI Checks `36690824046`, DB `36690823813`, migration/seed replay and browser collector passed. Final documentation-head CI is required before merging #135.
+- No migration or reconciliation required by this slice. Existing operation/item schema, payload hash, token, expiry, actor ownership, key and receipt statuses stay compatible. Do not delete receipts or reset business versions for rollback.
+- UAT app rollback is the preceding dedicated deployment `dpl_BfrAUnkawVzUSVfXFFcGZZy3tsvn` (source `df14575`); it has the correct cursor but restores the measured slow preview. An earlier app restores the pagination defect too.
+- To investigate an interrupted operation, first confirm independent app/DB/auth binding and its owner; recover/read its receipt before replaying its stored key. Resume only terminally unprocessed/retryable items. Preserve terminal failures for review; do not start a new operation as proof of replay safety.
+- U08 passes for this Task 100 scenario. Team-member/other-domain bulk acceptance, 5,000-row import/export, full responsive/keyboard/screen-reader, legacy snapshot parity, provider delivery, historical anomaly decisions and operator/PITR/release rehearsal remain open. All 30 CO and 16 UAT cases are retained. Production remains held and not deployed.

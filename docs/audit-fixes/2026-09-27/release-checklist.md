@@ -104,3 +104,5 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 ## Current evidence delta — independent UAT / R06
 
 [Independent seven-role UAT](../2026-09-29/isolated-uat-environment.md), scoped Quote U03 and billing U07 replace their earlier absence-of-session blockers. [Authenticated runtime comparison](../2026-09-29/r06-runtime-before-after-2026-09-30.md) satisfies the measured Task/Approval queue budgets on real 10k/100k PostgreSQL fixtures. Approval cold p95 regression and unresolved first CI/capture failures remain disclosed. Release is still **NO-GO** for broader UAT, legacy/provider/anomaly/operator gates. No production rollback or promotion was performed; current public build is `bed941b` with the persistent build hold active.
+
+- R02 source `53dc62f` additionally passes actual Task100 response-loss/reload/receipt recovery and mixed-result replay, with 70 once-only writes and 30 failures retained. [U08 report](../2026-09-29/bulk-recovery-uat-2026-09-30.md). Team/other bulk domains, import/export, full U15 and external/operator gates remain unaccepted. No schema change or production release in this slice.

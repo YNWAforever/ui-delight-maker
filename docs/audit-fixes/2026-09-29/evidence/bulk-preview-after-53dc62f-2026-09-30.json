@@ -1,0 +1,22 @@
+{
+  "sha": "53dc62f8a19e4a2449c9e445651bbeb43bd3158b",
+  "createdAt": "2026-09-30T08:43:33.121Z",
+  "scope": "Same unchanged 100-row fixture as 68,022ms baseline; actual sales UI preview only",
+  "beforeSha": "df145756f86337b1b175344fbeca124b0d89efbf",
+  "beforeMs": 68022,
+  "elapsedMs": 14408,
+  "requests": [
+    {
+      "path": "/_serverFn/3ca82ac80b395ae5a11fe18d190c1e71e1087afe2b4dceead79b05ef184d9319",
+      "status": 200,
+      "error": false,
+      "bodyBytes": 20297,
+      "elapsedMs": 13879
+    }
+  ],
+  "rows": 100,
+  "eligible": 100,
+  "unchangedBusinessRows": true,
+  "errors": [],
+  "success": true
+}
