@@ -1,0 +1,127 @@
+{
+  "sourceSha": "ea76d3b2b5a64b9efe98d403d7f8fff84331aee7",
+  "candidateUrl": "https://clientops-uat-20260930-9u4l2k0v1-ynwaforevers-projects.vercel.app",
+  "startedAt": "2026-09-30T20:56:56.412Z",
+  "success": true,
+  "scope": "Actual own roles and retained U10 fixtures: no automatic mutation dialogs, exact command denial, team replay, open-work-only reassignment and audit",
+  "cases": [
+    {
+      "case": "selected record loads with zero mutation dialogs",
+      "role": "super_admin",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "selected record loads with zero mutation dialogs",
+      "role": "admin",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "selected record loads with zero mutation dialogs",
+      "role": "manager",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "selected record loads with zero mutation dialogs and zero mutation controls",
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "actual saved reader suspend POST denied; complete profile unchanged",
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "explicit keyboard role intent opens only selected target; cancel performs no write",
+      "role": "admin",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "same-origin actual outside-report GET denied without profile payload",
+      "role": "manager",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "original completed team mixed operation exact-key replay unchanged on fixed source",
+      "role": "admin",
+      "ownAuthMatched": true,
+      "pass": true,
+      "operationId": "80cb95e1-523f-4236-a908-f43489a6ad56"
+    },
+    {
+      "case": "actual original team command denied to own reader; memberships unchanged",
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "original explicit Admin command completed once; independent browser read shows deactivated; open Task moved to retained text-ID successor; done Task history/version0 retained; one own-actor audit",
+      "role": "admin",
+      "ownAuthMatched": true,
+      "pass": true,
+      "mutableTaskMoved": 1,
+      "historyTaskUnchanged": 1,
+      "auditCount": 1,
+      "originalSuccessorEligiblePosition": 250,
+      "currentEligibilityPositionNotReasserted": true
+    },
+    {
+      "case": "actual original lifecycle POST denied; complete profile, both Tasks and actor audit unchanged",
+      "role": "manager",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "actual original lifecycle POST denied; complete profile, both Tasks and actor audit unchanged",
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "pass": true
+    }
+  ],
+  "priorValidSourceCases": [
+    {
+      "case": "own manager can select250th active scoped text profile and retain name across search",
+      "role": "manager",
+      "ownAuthMatched": true,
+      "pass": true,
+      "sourceSha": "0376f5c0bffda1c9eae63cd70dbbe47d16d7b8e2"
+    },
+    {
+      "case": "own manager direct actual outside-report profile GET denies without profile data",
+      "role": "manager",
+      "ownAuthMatched": true,
+      "pass": true,
+      "sourceSha": "0376f5c0bffda1c9eae63cd70dbbe47d16d7b8e2"
+    },
+    {
+      "case": "actual team preview3, after-preview duplicate/inactive yields1 success1 stale1 forbidden; two failures remain selected; exact-key replay unchanged",
+      "role": "admin",
+      "ownAuthMatched": true,
+      "operationId": "80cb95e1-523f-4236-a908-f43489a6ad56",
+      "pass": true,
+      "sourceSha": "0376f5c0bffda1c9eae63cd70dbbe47d16d7b8e2"
+    },
+    {
+      "case": "own reader actual team commit replay denies without membership mutation",
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "pass": true,
+      "sourceSha": "0376f5c0bffda1c9eae63cd70dbbe47d16d7b8e2"
+    }
+  ],
+  "invalidBroadReaderControlClaimSuperseded": true,
+  "sameOriginalFixtures": true,
+  "finishedAt": "2026-09-30T21:01:02.571Z",
+  "failedObserverRetained": true,
+  "failedObserverCause": "DOM status checked before invalidation refresh completed; original deactivation completed once; follow-up uses original records/request with no second Admin command",
+  "noProviderOrCustomerSend": true,
+  "syntheticFixturesRetainedForReview": true,
+  "noSecondAdminDeactivation": true,
+  "observerCorrectionOnly": true
+}
