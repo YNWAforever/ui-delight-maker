@@ -1,0 +1,108 @@
+{
+  "sha": "eaedb659b6aac4559114299c717faa46fb6a436e",
+  "createdAt": "2026-09-30T11:32:34.060Z",
+  "scope": "Exact-source production SSR over real loopback PostgreSQL, independent own role Auth; GET/HEAD-only adapter; no valid invitations sent",
+  "roles": [
+    {
+      "role": "admin",
+      "actualAuthIdentityMatched": true,
+      "initialEmailFocus": true,
+      "tabTrap": true,
+      "shiftTabTrap": true,
+      "escapeCloses": true,
+      "focusReturns": true,
+      "invalidInputVisible": true,
+      "noInvitationPost": true
+    },
+    {
+      "role": "super_admin",
+      "actualAuthIdentityMatched": true,
+      "initialEmailFocus": true,
+      "tabTrap": true,
+      "shiftTabTrap": true,
+      "escapeCloses": true,
+      "focusReturns": true,
+      "invalidInputVisible": true,
+      "noInvitationPost": true
+    }
+  ],
+  "widths": [
+    {
+      "width": 390,
+      "tableVisible": false,
+      "cardsVisible": true,
+      "dialogInViewport": true,
+      "noDocumentOverflow": true,
+      "submitReachable": true,
+      "focusReturns": true
+    },
+    {
+      "width": 768,
+      "tableVisible": false,
+      "cardsVisible": true,
+      "dialogInViewport": true,
+      "noDocumentOverflow": true,
+      "submitReachable": true,
+      "focusReturns": true
+    },
+    {
+      "width": 1024,
+      "tableVisible": false,
+      "cardsVisible": true,
+      "dialogInViewport": true,
+      "noDocumentOverflow": true,
+      "submitReachable": true,
+      "focusReturns": true
+    },
+    {
+      "width": 1280,
+      "tableVisible": false,
+      "cardsVisible": true,
+      "dialogInViewport": true,
+      "noDocumentOverflow": true,
+      "submitReachable": true,
+      "focusReturns": true
+    },
+    {
+      "width": 1440,
+      "tableVisible": false,
+      "cardsVisible": true,
+      "dialogInViewport": true,
+      "noDocumentOverflow": true,
+      "submitReachable": true,
+      "focusReturns": true
+    },
+    {
+      "width": 1920,
+      "tableVisible": true,
+      "cardsVisible": false,
+      "dialogInViewport": true,
+      "noDocumentOverflow": true,
+      "submitReachable": true,
+      "focusReturns": true
+    }
+  ],
+  "success": true,
+  "fixture": {
+    "activeProfiles": 250,
+    "deactivatedProfiles": 50,
+    "allSynthetic": true
+  },
+  "picker": {
+    "role": "admin",
+    "eligible250thSelected": true,
+    "nameRetainedAcrossSearch": true,
+    "pageSizes": [
+      50,
+      100,
+      150,
+      200,
+      250
+    ]
+  },
+  "loopbackBusinessDatasetUnchanged": true,
+  "invitationRowsUnchanged": true,
+  "browserZoom200": "not verified",
+  "screenReader": "not verified",
+  "syntheticProfileCleanup": true
+}
