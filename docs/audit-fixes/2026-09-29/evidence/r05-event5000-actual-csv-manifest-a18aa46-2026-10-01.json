@@ -1,0 +1,24 @@
+{
+  "sourceSha": "a18aa46273b10edc9cc75dbb11188ad9d49c98e6",
+  "syntheticOnly": true,
+  "archive": {
+    "file": "r05-event5000-actual-csv-a18aa46-2026-10-01.zip",
+    "sha256": "b157cfcf110837f1ae11f7b78d0fbb52ace568b60b9be6e671efe16672169343"
+  },
+  "files": [
+    {
+      "file": "event5000.csv",
+      "bytes": 965878,
+      "sha256": "5322f0f1710c0a447e71067c4a9bfc3677577693eb1a1ff18ecad22f9aee3a16",
+      "bom": true,
+      "actualBrowserDownload": false
+    },
+    {
+      "file": "issues.csv",
+      "bytes": 294,
+      "sha256": "9dc18807769c5e8bc14936ff7748366f21038ffb7f71cd60b7d19b98cd1ffd85",
+      "bom": true,
+      "actualBrowserDownload": true
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "sha": "5568af93c817305a33499ab6f4cabd52380410c5",
+  "role": "sales",
+  "leadId": "7d0508bb-e38e-4c84-9419-0c9d003fd24e",
+  "quoteId": "5a472d0f-b850-4f74-bcb6-e800a6935f41",
+  "number": null,
+  "status": "pending_approval",
+  "visibleLinkText": "",
+  "ariaLabel": null,
+  "emptyAccessibleQuoteLinkReproduced": true,
+  "noWrites": true
+}

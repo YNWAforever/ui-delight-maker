@@ -20,7 +20,18 @@ This is a source and evidence checkpoint against the user-supplied `04_Functiona
 
 PR #115 and PR #116 added two further R04 People-directory fixes: a query refresh failure now has an error/retry state without a false zero count, and narrow cards open the existing full record instead of setting a hidden selection panel. Their respective exact-head real isolated PostgreSQL gates passed 2,187 and 2,188 tests, both with zero skipped. PR #116's protected preview `/api/build` matched head `a1741b3`; post-merge main Checks and Database contract passed 2,188 tests with zero skipped and two-run isolated migration/seed replay. This proves source and isolated database contracts, not seven-role UAT. At that earlier checkpoint the desktop browser control surface failed with a Windows sandbox ACL error; later anonymous Chromium evidence is recorded below, with no role assertion claimed.
 
-## Remaining required acceptance
+
+## Current acceptance update — 2026-10-01 HKT
+
+Seven genuine isolated Auth identities/cookie sessions now exist; the old absence-of-session blocker is superseded. The original 751 audit scenarios and their historical counts remain unchanged. Current case-specific evidence is in the [16-case UAT matrix](../2026-09-27/uat-results.md) and [30-CO status](../2026-09-27/status.md).
+
+- R05/U09: all three actual 5,000-row Lead/Client/Event mixed-outcome lifecycles, original-key recovery/replay, side effects, seven-role owner-only receipt boundaries, real issue downloads and final read-only target/source-key parity PASS. Isolated retention dry-run/actual CLI/replay PASS. Production retention operator/schedule/approved target and legacy-key source inventory/backfill remain blocked_external.
+- R04/U02: actual Owner correction `5568af9` passes 2,334 zero-skip local/source-CI tests and eight seven-role UI/GET cases. The sales same-Lead follow-up/Task/manual draft/manager handoff has executed; the unnumbered related Quote link is a separate pending follow-up.
+- Previously completed U03/U04/U05/U06/U07/U08/U12/U14/U16 scoped actual evidence remains retained. Manager/team/reassignment, provider recovery, full responsive journeys/screen reader, historical compatibility/provenance, legacy snapshots/parity and operator/PITR remain separate open or external gates.
+
+Main `f4e033e` / merged #141 retains the production hold; public production remains `bed941b`. Candidate source/isolated acceptance is not a production release. Final #142 documentation-head checks are still required before its authorized green-only merge.
+
+## Historical remaining acceptance at the earlier checkpoint
 
 | Package | Blocked proof |
 | --- | --- |
