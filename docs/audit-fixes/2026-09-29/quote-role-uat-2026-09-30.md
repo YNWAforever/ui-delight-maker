@@ -39,3 +39,9 @@ Quote `b469d269-522f-4c55-9dbc-7f6d81b1d504`; approval `28fa6405-c1c4-45b9-9bdb-
 [Manager](evidence/quote-manager-approved-no-issue-2026-09-30.png), [issuer](evidence/quote-admin-issued-2026-09-30.png), [accounting](evidence/quote-accounting-accepted-quote-2026-09-30.png). This completes the U03 manager/issuer path; U04 revised-B isolation and U07 billing still require separate checks.
 
 Actual sales Duplicate then exposed a second strict-input error: readback `valid_until` is ISO midnight, while create expects a calendar date. A regression reproduces this mismatch; the client now projects the date portion without timezone conversion or relaxing validation. Date-only, ISO-midnight and null component cases pass; full gate and actual Duplicate retest follow.
+
+### Duplicate correction accepted
+
+Commit `b2bbd435f60439343fb6e536878034b097b5eee0`, dedicated UAT `dpl_52qArfnRNHpMEHLe8jp7kneEDi7D`: real sales Duplicate created draft `1aaf323b-c1b7-4cbf-bc35-d0977c7888f9`, parent linked, HKD 200.50, original calendar date `2026-10-30` preserved. [Actual result](evidence/quote-duplicate-results-2026-09-30.json), [snapshot/date readback](evidence/quote-snapshot-date-readback-2026-09-30.json), [UI](evidence/quote-sales-duplicate-2026-09-30.png). Accepted snapshot explicitly points at issued source and matches its line items and amount.
+
+Fresh local isolated suite and exact-head CI each passed **2,237 tests / 0 skipped**. PR #131 merged at `80ee0505f4a83adee03ea3ed0930351ab77ec998`; main Checks `36661939861` and Database contract `36661939839` passed. Dedicated UAT rollback is `dpl_GuYENvNovoL2P4k4cQzrhRzEohCA`; no schema changes. Production remains held.

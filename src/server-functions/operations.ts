@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { evaluateAuthorization } from "@/lib/admin/policy";
 import {
   loadRequestAuthorization,
   requireCapability,
@@ -152,6 +153,26 @@ export const getJobSheetRead = createServerFn({ method: "GET" })
             ? read.companyName
             : null,
       canUpdateHeader: Boolean(handoffAccess["job_sheets.update_billing"]),
+      // Invoice mutations target each portion, so its overrides differ from the sheet header.
+      canUpdateInvoiceByPortion: Object.fromEntries(
+        read.portions.map((portion) => {
+          const ownerProfileId = read.jobSheet.sales_owner ?? read.jobSheet.accounting_owner;
+          return [
+            portion.id,
+            evaluateAuthorization({
+              actor: context.actor,
+              overrides: context.overrides,
+              now: context.now,
+              capability: "job_sheets.update_billing",
+              target: {
+                resourceType: "job_sheet_portion",
+                resourceId: portion.id,
+                ...(ownerProfileId ? { ownerProfileId } : {}),
+              },
+            }).allowed,
+          ];
+        }),
+      ),
       canAcceptJobSheet: Boolean(handoffAccess["job_sheets.accept"]),
     };
   });

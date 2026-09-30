@@ -33,6 +33,8 @@ vi.mock("@/server-functions/job-sheets", () => ({
   correctXeroEntry: correctXeroEntryMock,
 }));
 vi.mock("@/server-functions/operations", () => ({ getJobSheetRead: vi.fn() }));
+// Header fields and picker have their own tests; these cases exercise portion actions.
+vi.mock("@/components/job-sheets/handoff-header-form", () => ({ HandoffHeaderForm: () => null }));
 // The reconciliation table is a read-only summary of the same portions; rendering it here
 // would only duplicate the numbers the assertions already read off the editor.
 vi.mock("@/components/job-sheets/billing-portions-table", () => ({
@@ -100,14 +102,24 @@ const portion = (overrides: Partial<JobSheetPortion>): JobSheetPortion => ({
   ...overrides,
 });
 
-function renderDetail(portions: JobSheetPortion[]) {
+type ActionAccess = {
+  canUpdateHeader?: boolean;
+  canUpdateInvoiceByPortion?: Record<string, boolean>;
+};
+function renderDetail(
+  portions: JobSheetPortion[],
+  actionAccess: ActionAccess = {
+    canUpdateHeader: true,
+    canUpdateInvoiceByPortion: Object.fromEntries(portions.map((item) => [item.id, true])),
+  },
+) {
   vi.mocked(Route.useLoaderData).mockReturnValue({
     jobSheet,
     portions,
     quote: null,
     client: null,
     canAcceptJobSheet: true,
-    canUpdateHeader: false,
+    ...actionAccess,
   } as never);
 
   const queryClient = new QueryClient({
@@ -323,5 +335,48 @@ describe("Xero-entered portions are commercially read-only, with the reason on s
     expect(
       screen.getByText(/has Xero details saved against it and cannot be removed/i),
     ).toBeTruthy();
+  });
+});
+
+describe("billing controls follow effective sheet and portion capabilities", () => {
+  it.each([false, undefined])(
+    "fails closed for sheet edits when access is %s",
+    (canUpdateHeader) => {
+      renderDetail([portion({})], { canUpdateHeader, canUpdateInvoiceByPortion: {} });
+      expect(screen.queryByRole("button", { name: "Add portion" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Remove portion" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Save billing plan" })).toBeNull();
+      expect((screen.getByLabelText("Amount") as HTMLInputElement).disabled).toBe(true);
+      expect((screen.getByLabelText("Billing note") as HTMLTextAreaElement).disabled).toBe(true);
+      expect((screen.getByLabelText("Invoice number") as HTMLInputElement).disabled).toBe(true);
+      expect(
+        (screen.getByRole("button", { name: "Record manual entry" }) as HTMLButtonElement).disabled,
+      ).toBe(true);
+    },
+  );
+  it("keeps a portion-scoped invoice deny separate from allowed sheet planning", () => {
+    renderDetail([portion({})], {
+      canUpdateHeader: true,
+      canUpdateInvoiceByPortion: { "p-1": false },
+    });
+    expect((screen.getByLabelText("Amount") as HTMLInputElement).disabled).toBe(false);
+    expect((screen.getByLabelText("Accounting notes") as HTMLTextAreaElement).disabled).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: "Record manual entry" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+  it("allows a scoped invoice grant while sheet planning remains denied", () => {
+    renderDetail([portion({})], {
+      canUpdateHeader: false,
+      canUpdateInvoiceByPortion: { "p-1": true },
+    });
+    expect((screen.getByLabelText("Amount") as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText("Accounting notes") as HTMLTextAreaElement).disabled).toBe(false);
+    fireEvent.change(screen.getByLabelText("Accounting notes"), {
+      target: { value: "Synthetic note" },
+    });
+    expect((screen.getByRole("button", { name: "Save note" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
   });
 });

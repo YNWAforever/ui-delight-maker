@@ -250,6 +250,7 @@ function JobSheetDetailPage() {
     },
   );
 
+  const canEditPlan = jobSheetQuery.data.canUpdateHeader === true;
   const commercialLocked = isJobSheetCommercialLocked(jobSheet.status, jobSheet.locked_at);
   const hasUnsavedBillingChanges = useMemo(
     () => hasUnsavedBillingDraftChanges(portionDrafts, portions),
@@ -337,6 +338,11 @@ function JobSheetDetailPage() {
   const savePortions = async () => {
     setBillingError(null);
     setPortionErrors({});
+
+    if (!canEditPlan) {
+      setBillingError("You do not have permission to edit this billing plan.");
+      return;
+    }
 
     if (commercialLocked) {
       setBillingError("Accepted job sheet commercial fields are immutable.");
@@ -645,13 +651,18 @@ function JobSheetDetailPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
               <CardTitle className="text-base">Billing portions</CardTitle>
-              {!commercialLocked && (
+              {!commercialLocked && canEditPlan && (
                 <Button variant="outline" size="sm" onClick={addPortion} disabled={editorBusy}>
                   <Plus className="mr-2 h-4 w-4" /> Add portion
                 </Button>
               )}
             </CardHeader>
             <CardContent className="space-y-4">
+              {!canEditPlan && (
+                <p className="text-sm text-muted-foreground">
+                  You do not have permission to edit this billing plan.
+                </p>
+              )}
               <BillingPortionsTable
                 totalAmount={jobSheet.total_amount}
                 currency={jobSheet.currency}
@@ -734,7 +745,8 @@ function JobSheetDetailPage() {
                   const enteredInXero = portion.status === "entered_in_xero";
                   const legacyEvidenceReview =
                     persisted && getXeroEvidenceState(persisted) === "needs_review";
-                  const commercialFieldsDisabled = commercialLocked || editorBusy || enteredInXero;
+                  const commercialFieldsDisabled =
+                    !canEditPlan || commercialLocked || editorBusy || enteredInXero;
                   const removalBlockedReason = persisted
                     ? getPortionRemovalBlockedReason(persisted)
                     : null;
@@ -781,7 +793,7 @@ function JobSheetDetailPage() {
                             onChange={(event) =>
                               updateDraft(portion.id, "name", event.target.value)
                             }
-                            disabled={commercialLocked || editorBusy}
+                            disabled={!canEditPlan || commercialLocked || editorBusy}
                             aria-invalid={fieldError ? true : undefined}
                             aria-describedby={
                               fieldError ? `portion-error-${portion.id}` : undefined
@@ -838,7 +850,7 @@ function JobSheetDetailPage() {
                               onValueChange={(value) =>
                                 updateDraft(portion.id, "status", value as JobSheetPortionStatus)
                               }
-                              disabled={commercialLocked || editorBusy}
+                              disabled={!canEditPlan || commercialLocked || editorBusy}
                             >
                               <SelectTrigger aria-label={`Status for ${portion.name}`}>
                                 <SelectValue />
@@ -875,7 +887,7 @@ function JobSheetDetailPage() {
                             onChange={(event) =>
                               updateDraft(portion.id, "description", event.target.value)
                             }
-                            disabled={commercialLocked || editorBusy}
+                            disabled={!canEditPlan || commercialLocked || editorBusy}
                             className="min-h-[88px]"
                           />
                         </div>
@@ -908,7 +920,7 @@ function JobSheetDetailPage() {
                         </p>
                       )}
 
-                      {!commercialLocked && (
+                      {!commercialLocked && canEditPlan && (
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           <Button
                             variant="ghost"
@@ -937,7 +949,7 @@ function JobSheetDetailPage() {
                 )}
               </div>
 
-              {!commercialLocked && (
+              {!commercialLocked && canEditPlan && (
                 <StickyActionBar>
                   {hasUnsavedBillingChanges && (
                     <Button
@@ -996,6 +1008,8 @@ function JobSheetDetailPage() {
               {previewPortions
                 .filter((portion) => savedPortionIds.has(portion.id))
                 .map((portion) => {
+                  const canEditInvoice =
+                    jobSheetQuery.data.canUpdateInvoiceByPortion?.[portion.id] === true;
                   const draft = xeroDrafts[portion.id] ?? {
                     xero_invoice_number: "",
                     xero_invoice_reference: "",
@@ -1029,7 +1043,12 @@ function JobSheetDetailPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => saveXeroNote(portion.id)}
-                            disabled={editorBusy || hasUnsavedBillingChanges || !noteDirty}
+                            disabled={
+                              !canEditInvoice ||
+                              editorBusy ||
+                              hasUnsavedBillingChanges ||
+                              !noteDirty
+                            }
                           >
                             <Save className="mr-2 h-4 w-4" /> Save note
                           </Button>
@@ -1037,7 +1056,7 @@ function JobSheetDetailPage() {
                             <Button
                               size="sm"
                               onClick={() => requestConfirmXeroEntry(portion.id)}
-                              disabled={editorBusy || hasUnsavedBillingChanges}
+                              disabled={!canEditInvoice || editorBusy || hasUnsavedBillingChanges}
                             >
                               Record manual entry
                             </Button>
@@ -1050,7 +1069,12 @@ function JobSheetDetailPage() {
                                 onClick={() =>
                                   requestCorrectXeroEntry(portion.id, "entered_in_xero")
                                 }
-                                disabled={editorBusy || hasUnsavedBillingChanges || !evidenceDirty}
+                                disabled={
+                                  !canEditInvoice ||
+                                  editorBusy ||
+                                  hasUnsavedBillingChanges ||
+                                  !evidenceDirty
+                                }
                               >
                                 Correct invoice details
                               </Button>
@@ -1058,7 +1082,7 @@ function JobSheetDetailPage() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => requestCorrectXeroEntry(portion.id, "planned")}
-                                disabled={editorBusy || hasUnsavedBillingChanges}
+                                disabled={!canEditInvoice || editorBusy || hasUnsavedBillingChanges}
                               >
                                 Reopen after void
                               </Button>
@@ -1066,6 +1090,11 @@ function JobSheetDetailPage() {
                           )}
                         </div>
                       </div>
+                      {!canEditInvoice && (
+                        <p className="mt-3 text-sm text-muted-foreground">
+                          You do not have permission to change this portion's invoice records.
+                        </p>
+                      )}
                       <div className="mt-4 grid gap-3 md:grid-cols-2">
                         <div className="space-y-1.5">
                           <Label htmlFor={`xero-number-${portion.id}`}>Invoice number</Label>
@@ -1078,7 +1107,9 @@ function JobSheetDetailPage() {
                                 [portion.id]: { ...draft, xero_invoice_number: event.target.value },
                               }))
                             }
-                            disabled={editorBusy || persisted?.status === "cancelled"}
+                            disabled={
+                              !canEditInvoice || editorBusy || persisted?.status === "cancelled"
+                            }
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -1095,7 +1126,9 @@ function JobSheetDetailPage() {
                                 },
                               }))
                             }
-                            disabled={editorBusy || persisted?.status === "cancelled"}
+                            disabled={
+                              !canEditInvoice || editorBusy || persisted?.status === "cancelled"
+                            }
                           />
                         </div>
                         <div className="space-y-1.5">
@@ -1110,7 +1143,9 @@ function JobSheetDetailPage() {
                                 [portion.id]: { ...draft, xero_invoice_date: event.target.value },
                               }))
                             }
-                            disabled={editorBusy || persisted?.status === "cancelled"}
+                            disabled={
+                              !canEditInvoice || editorBusy || persisted?.status === "cancelled"
+                            }
                           />
                         </div>
                         <div className="space-y-1.5 md:col-span-2">
@@ -1124,7 +1159,7 @@ function JobSheetDetailPage() {
                                 [portion.id]: { ...draft, xero_notes: event.target.value },
                               }))
                             }
-                            disabled={editorBusy}
+                            disabled={!canEditInvoice || editorBusy}
                             className="min-h-[80px]"
                           />
                         </div>
@@ -1149,7 +1184,7 @@ function JobSheetDetailPage() {
                                 [portion.id]: event.target.value,
                               }))
                             }
-                            disabled={editorBusy}
+                            disabled={!canEditInvoice || editorBusy}
                             className="min-h-[64px]"
                           />
                         </div>
