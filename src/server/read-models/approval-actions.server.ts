@@ -28,6 +28,15 @@ function quoteId(approval: ApprovalTarget): string | null {
   const payload = approval.context_data as { quote_id?: unknown } | null;
   return approval.quote_id ?? (typeof payload?.quote_id === "string" ? payload.quote_id : null);
 }
+function riskEngagementId(approval: ApprovalTarget): string | null {
+  if (approval.approval_type !== "cs_risk_review") return null;
+  const payload = approval.context_data as { engagement_id?: unknown } | null;
+  const id = payload?.engagement_id;
+  return typeof id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+    ? id.toLowerCase()
+    : null;
+}
 /** Existing policy evaluated per persisted row; no browser role inference or new grant. */
 export async function withApprovalActionFlags<T extends ApprovalTarget>(
   context: RequestAuthorization,
@@ -48,6 +57,26 @@ export async function withApprovalActionFlags<T extends ApprovalTarget>(
           await query<{ id: string; owner_profile_id: string | null }>(
             neonOwnershipQuery("quote"),
             [quoteIds],
+          )
+        ).map((row) => [row.id, row.owner_profile_id]),
+      )
+    : new Map<string, string | null>();
+  const engagementIds = [
+    ...new Set(
+      approvals.flatMap((approval) => {
+        const id = riskEngagementId(approval);
+        return id ? [id] : [];
+      }),
+    ),
+  ];
+  // Risk decisions also require the linked engagement's current grant. Routing retains
+  // its separate approval permission; ownership columns remain server-local.
+  const engagementOwners = engagementIds.length
+    ? new Map(
+        (
+          await query<{ id: string; owner_profile_id: string | null }>(
+            neonOwnershipQuery("engagement"),
+            [engagementIds],
           )
         ).map((row) => [row.id, row.owner_profile_id]),
       )
@@ -73,6 +102,25 @@ export async function withApprovalActionFlags<T extends ApprovalTarget>(
           now: context.now,
         }).allowed,
       );
+    const engagementId = riskEngagementId(approval),
+      engagementOwner = engagementId ? engagementOwners.get(engagementId) : null;
+    const riskAllowed =
+      approval.approval_type !== "cs_risk_review" ||
+      Boolean(
+        engagementId &&
+        engagementOwners.has(engagementId) &&
+        evaluateAuthorization({
+          actor: context.actor,
+          capability: "engagements.update",
+          target: {
+            resourceType: "engagement",
+            resourceId: engagementId,
+            ...(engagementOwner ? { ownerProfileId: engagementOwner } : {}),
+          },
+          overrides: context.overrides,
+          now: context.now,
+        }).allowed,
+      );
     const open = approval.status === "pending" || approval.status === "escalated";
     return {
       ...approval,
@@ -80,6 +128,7 @@ export async function withApprovalActionFlags<T extends ApprovalTarget>(
       can_decide:
         allowed &&
         quoteAllowed &&
+        riskAllowed &&
         (approval.status === "pending" ||
           (approval.status === "escalated" && approval.approval_type !== "quote_send")),
       can_request_changes: approval.status === "pending" && allowed,

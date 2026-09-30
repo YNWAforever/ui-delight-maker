@@ -1,0 +1,79 @@
+{
+  "sha": "eaedb659b6aac4559114299c717faa46fb6a436e",
+  "createdAt": "2026-09-30T12:20:49.297Z",
+  "scope": "Actual own client_success/manager risk review, synthetic-only isolated Neon DB/Auth, SQL fault rollback and exact-key replay; no provider dispatch",
+  "cases": [
+    {
+      "case": "client_success risk view",
+      "actualOwnAuthIdentity": true,
+      "approveOffered": false,
+      "proposalVisible": true
+    },
+    {
+      "case": "actual UI SQL fault",
+      "role": "manager",
+      "approvalId": "c78651cb-2296-4f46-8ffd-bf915bf7d688",
+      "engagementId": "191700b2-d67f-403b-92b0-beb1b918ccc6",
+      "serializedError": true,
+      "errorVisible": true,
+      "approvalRunEngagementAuditReceiptUnchanged": true
+    },
+    {
+      "case": "same real request under denied own role",
+      "role": "client_success",
+      "forbidden": true,
+      "allStateUnchanged": true
+    },
+    {
+      "case": "same real request under denied own role",
+      "role": "read_only",
+      "forbidden": true,
+      "allStateUnchanged": true
+    },
+    {
+      "case": "same key retry and terminal replay",
+      "role": "manager",
+      "allRelatedWritesCommitted": true,
+      "approvalVersion": 1,
+      "engagementScore": 13,
+      "runOutcome": "approved",
+      "approvalAudit": 1,
+      "engagementAudit": 1,
+      "receipt": 1,
+      "replayUnchanged": true,
+      "refreshedUiApproved": true
+    },
+    {
+      "case": "matching engagement-update deny",
+      "role": "manager",
+      "approvalId": "b41f5006-9981-44af-ac0a-276a32f22c6b",
+      "engagementId": "70deb43e-450b-46c0-80de-11c2b99a3a70",
+      "decisionOffered": true,
+      "serverForbidden": true,
+      "allStateUnchanged": true
+    },
+    {
+      "case": "actual UI reject and replay",
+      "role": "manager",
+      "previousScoreRetained": true,
+      "runOutcome": "rejected",
+      "approvalVersion": 1,
+      "audit": 1,
+      "receipt": 1,
+      "replayUnchanged": true
+    }
+  ],
+  "defects": [
+    {
+      "case": "risk effective action visibility",
+      "expected": "Approve hidden/disabled when linked engagement update is denied",
+      "actual": "Approve remains offered; actual POST is forbidden, all state unchanged",
+      "approvalId": "b41f5006-9981-44af-ac0a-276a32f22c6b",
+      "engagementId": "70deb43e-450b-46c0-80de-11c2b99a3a70"
+    }
+  ],
+  "success": false,
+  "stableImportSourceUnchanged": true,
+  "injectedTriggerRemoved": true,
+  "temporaryOverridesRevoked": true
+}
