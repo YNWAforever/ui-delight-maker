@@ -183,8 +183,8 @@ function AdminPeopleIndex() {
   const writeLock = useRef(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const inviteTriggerRef = useRef<HTMLButtonElement>(null);
-  const [roleUser, setRoleUser] = useState(selectedUser);
-  const [lifecycleUser, setLifecycleUser] = useState(selectedUser);
+  const [roleUser, setRoleUser] = useState<typeof selectedUser>(null);
+  const [lifecycleUser, setLifecycleUser] = useState<typeof selectedUser>(null);
   const [lifecycleInventory, setLifecycleInventory] = useState<ReassignmentInventory>();
   const [lifecycleLoading, setLifecycleLoading] = useState(false);
   const [lifecycleAction, setLifecycleAction] = useState<"suspend" | "reactivate">("suspend");
@@ -450,7 +450,7 @@ function AdminPeopleIndex() {
       />
 
       <UserRoleDialog
-        open={Boolean(roleUser)}
+        open={Boolean(roleUser) && access.manageRole}
         currentRole={roleUser?.role ?? "sales"}
         userName={roleUser?.name || roleUser?.email || "User"}
         onOpenChange={(open) => {
@@ -465,7 +465,7 @@ function AdminPeopleIndex() {
         }}
       />
 
-      {lifecycleUser ? (
+      {lifecycleUser && (access.suspend || access.manageRole) ? (
         <UserLifecycleDialog
           open
           user={lifecycleUser}

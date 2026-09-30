@@ -1,6 +1,12 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current verified checkpoint — PR #144 / U15 responsive, 2026-10-01 HKT
+## Current verified checkpoint — PR #145 / U10 source repair
+
+Main `6a915dd38d06e9a0a8aede89e337ccd83d152071` includes [merged #145](https://github.com/YNWAforever/ui-delight-maker/pull/145), exact final/post-main2,336/317/zero skipped and replay PASS. [Merge](evidence/pr145-merge-2026-10-01.json), [hold](evidence/production-hold-after-145-2026-10-01.json): canceled main attempt, publicbed941b unchanged.
+
+[U10 actual dialog defect/source repair](admin-dialog-uat-2026-10-01.md) is reviewable with local fresh2,340/zero skipped tests and static/pure Vite/bundles PASS. Fixed-source hosted genuine roles/lifecycle and final CI remain pending. All30 CO/16 UAT retained; full remaining/external gates stay open, release NO-GO.
+
+## Previous verified checkpoint — PR #144 / U15 responsive, 2026-10-01 HKT
 
 Main `d4e6383dbdea186ee6671d2db25c7cd84f637dbe` includes [merged #144](https://github.com/YNWAforever/ui-delight-maker/pull/144), final head80164b5. Exact final-head/post-main Checks36770436106 / Database36770436105 PASS2,336 tests/317 files/zero skipped and isolated migration/seed replay. [Merge](evidence/pr144-merge-2026-10-01.json), [hold](evidence/production-hold-after-144-2026-10-01.json). Production publicbed941b unchanged, main attempt canceled, no production operation.
 

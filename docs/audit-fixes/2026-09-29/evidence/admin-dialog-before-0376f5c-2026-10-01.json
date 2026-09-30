@@ -1,0 +1,12 @@
+{
+  "sourceSha": "0376f5c0bffda1c9eae63cd70dbbe47d16d7b8e2",
+  "role": "read_only",
+  "scope": "Actual unauthorized dialog reproduction with own reader and retained isolated profile",
+  "success": true,
+  "ownAuthMatched": true,
+  "actualAutoDialogs": 2,
+  "unauthorizedSuspendControlShown": true,
+  "realReaderPostDenied": true,
+  "profileUnchanged": true,
+  "noProviderOrCustomerSend": true
+}

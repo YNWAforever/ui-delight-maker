@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-09-30T20:47:36.405Z",
+  "baseMainSha": "6a915dd38d06e9a0a8aede89e337ccd83d152071",
+  "freshIsolatedDatabase": "clientops_admin_dialog_full_20261001",
+  "postgres": "17.10",
+  "tests": 2340,
+  "files": 318,
+  "skipped": 0,
+  "todo": 0,
+  "failed": 0,
+  "wallSeconds": 299.8399880371094,
+  "focusedPositiveTests": 15,
+  "newPositiveRegressions": 4,
+  "validBeforeRepairRegressionsFailed": 4,
+  "invalidInitialHarnessAttemptsRetained": true,
+  "typescript": "PASS",
+  "changedLint": "PASS",
+  "pureViteBuild": "PASS",
+  "bundles": "PASS",
+  "diffCheck": "PASS",
+  "migrationChange": false,
+  "productionOperation": false
+}
