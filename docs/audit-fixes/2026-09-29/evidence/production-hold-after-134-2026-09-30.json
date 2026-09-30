@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-09-30T07:55:41.169Z",
+  "projectId": "prj_28RsIf31nvcD0YS3UIQqdnvJlHki",
+  "productionHold": "if [ \"$VERCEL_ENV\" = \"production\" ]; then exit 0; else exit 1; fi",
+  "latestAttempt": {
+    "id": "dpl_5hB3XkJrwpGejNdTLf4dRyeit81v",
+    "state": "CANCELED",
+    "sha": "89ef92940e5815c516ba17cb1756630b041d6720"
+  },
+  "publicBuildSha": "bed941b37d18d214d0e7658ebce2116a2fc33eb9"
+}

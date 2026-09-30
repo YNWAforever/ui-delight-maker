@@ -74,3 +74,7 @@ Supersedes the earlier checkpoint's absence of role sessions and disposable Neon
 ## Latest independently verified application source
 
 Approval source `fac59c90eb47be77c4f75554b3cee6e624b26622`, deployment `dpl_7J8H98mVBo23qrAuLXd8Z3EiDxmJ`; stable alias returned exact SHA before/after complete seven-role, scoped override, actual opposed-decision and manual-statement UI capture. The dedicated database/auth IDs and seven account identities above are unchanged. [Evidence](approval-role-uat-2026-09-30.md). No schema replay or provider configuration changes; production deployment/data remains untouched.
+
+## Latest R02 source-bound UAT
+
+Source `53dc62f8a19e4a2449c9e445651bbeb43bd3158b`, deployment `dpl_32SR9Ea7Z75GAVyB3nuus7m1nVJC`; stable alias SHA checked before/after actual 100-row mixed Task recovery acceptance. Dedicated project, database, Auth and seven distinct identities remain unchanged. [U08 evidence](bulk-recovery-uat-2026-09-30.md). No migration, real provider configuration or production operation. Previous UAT source deployment `dpl_BfrAUnkawVzUSVfXFFcGZZy3tsvn` is source `df14575`; rollback there retains precise cursors but restores slower preview.

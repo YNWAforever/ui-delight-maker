@@ -93,7 +93,7 @@ const handler: BulkActionHandler = {
 const service = createBulkService({ handler });
 
 async function fixture(count: number) {
-  const ids = Array.from({ length: count }, () => randomUUID());
+  const ids: string[] = Array.from({ length: count }, () => randomUUID());
   createdIds.push(...ids);
   for (const id of ids) {
     await db().query("insert into bulk_probe_items(id) values ($1)", [id]);
@@ -145,6 +145,124 @@ describe("persistent bulk receipts on isolated PostgreSQL", () => {
     await db().end();
     holder.pool = null;
   });
+
+  it.runIf(hasDatabase)(
+    "previews 100 mixed rows with four bounded readers, stable order and hidden summaries",
+    async () => {
+      const ids = await fixture(100);
+      let active = 0;
+      let peak = 0;
+      const live = createBulkService({
+        handler: {
+          async preview(_context, id) {
+            const position = ids.indexOf(id);
+            active++;
+            peak = Math.max(peak, active);
+            try {
+              const row = (
+                await db().query<Probe>(
+                  "select p.*,pg_sleep($2) from bulk_probe_items p where id=$1",
+                  [id, (4 - (position % 4)) * 0.003],
+                )
+              ).rows[0];
+              if (position % 4 === 3) throw new Error("Private diagnostic");
+              return {
+                eligible: position % 4 === 0,
+                summary: "Private summary " + id,
+                version: row.version,
+                status: position % 4 === 1 ? "forbidden" : "not_found",
+                groupKey: "single",
+              };
+            } finally {
+              active--;
+            }
+          },
+          apply: handler.apply,
+        },
+      });
+      const prepared = await live.previewBulk(context(), {
+        action: { type: "task.status", status: "done" },
+        ids,
+      });
+      operationIds.push(prepared.operationId);
+      expect(peak).toBe(4);
+      expect(active).toBe(0);
+      expect(prepared.eligibleCount).toBe(25);
+      expect(prepared.rows.map((row) => row.id)).toEqual(ids);
+      const persisted = (
+        await db().query<{
+          resource_id: string;
+          position: number;
+          status: string | null;
+          summary: string | null;
+          code: string | null;
+          processed_at: Date | null;
+        }>("select * from bulk_operation_items where operation_id=$1 order by position", [
+          prepared.operationId,
+        ])
+      ).rows;
+      expect(persisted).toHaveLength(100);
+      for (const [position, row] of persisted.entries()) {
+        const eligible = position % 4 === 0;
+        expect(row.resource_id).toBe(ids[position]);
+        expect(row.position).toBe(position);
+        expect(row.status).toBe([null, "forbidden", "not_found", "failed"][position % 4]);
+        expect(row.summary).toBe(eligible ? "Private summary " + ids[position] : null);
+        expect(row.code).toBe(eligible ? null : "PREVIEW_INELIGIBLE");
+        expect(row.processed_at === null).toBe(eligible);
+        expect(prepared.rows[position].summary).toBe(row.summary);
+      }
+      expect(
+        (
+          await db().query<{ writes: string }>(
+            "select sum(write_count)::text as writes from bulk_probe_items where id=any($1::uuid[])",
+            [ids],
+          )
+        ).rows[0].writes,
+      ).toBe("0");
+    },
+  );
+
+  it.runIf(hasDatabase)(
+    "rolls back every preview receipt when its last item is rejected by PostgreSQL",
+    async () => {
+      const ids = await fixture(100);
+      const before = (
+        await db().query<{ count: string }>(
+          "select count(*)::text as count from bulk_operations where actor_profile_id=$1",
+          [actorId],
+        )
+      ).rows[0].count;
+      await db().query(
+        "create function bulk_test_reject_preview() returns trigger language plpgsql as $$ begin raise exception 'Synthetic last preview item rejected'; end $$",
+      );
+      await db().query(
+        "create trigger bulk_test_preview_failure before insert on bulk_operation_items for each row when (new.position=99) execute function bulk_test_reject_preview()",
+      );
+      try {
+        await expect(preview(ids)).rejects.toThrow("Synthetic last preview item rejected");
+        expect(
+          (
+            await db().query<{ count: string }>(
+              "select count(*)::text as count from bulk_operations where actor_profile_id=$1",
+              [actorId],
+            )
+          ).rows[0].count,
+        ).toBe(before);
+        expect(
+          (
+            await db().query<{ count: string }>(
+              "select count(*)::text as count from bulk_operation_items where resource_id=any($1::text[])",
+              [ids],
+            )
+          ).rows[0].count,
+        ).toBe("0");
+      } finally {
+        await db().query("drop trigger bulk_test_preview_failure on bulk_operation_items");
+        await db().query("drop function bulk_test_reject_preview()");
+      }
+    },
+  );
 
   it.runIf(hasDatabase)(
     "reconciles 100 mixed outcomes and never rewrites a success on resume",

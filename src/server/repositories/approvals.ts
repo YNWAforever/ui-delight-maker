@@ -183,21 +183,23 @@ export async function listApprovalQueuePage(
       " and (ha.created_at,ha.id) < ($" + dateIndex + "::timestamptz,$" + idIndex + "::uuid)";
   }
   const limitIndex = pageValues.push(limit + 1);
-  const rows = await query<ApprovalQueueItem>(
+  const rows = await query<ApprovalQueueItem & { cursor_created_at: string }>(
     `${claimable} select ha.id,ha.agent_run_id,ha.approval_type,ha.requested_by,
             ha.assigned_to,ha.status,ha.row_version,ha.superseded_by,
             ha.recovery_outcome_code,ha.recovery_reason,
             ha.context_data->>'quote_id' as quote_id,
             left(ha.context_summary,300) as context_summary,
-            ha.reviewer_notes,ha.decided_at,ha.created_at
+            ha.reviewer_notes,ha.decided_at,ha.created_at,
+            to_char(ha.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_created_at
        from ${from} ${pageWhere}
        order by ha.created_at desc,ha.id desc
        limit $${limitIndex}`,
     pageValues,
   );
   const hasMore = rows.length > limit;
-  const items = rows.slice(0, limit);
-  const last = items.at(-1);
+  // The driver-normalized public timestamp loses microseconds; cursor SQL must retain them.
+  const items = rows.slice(0, limit).map(({ cursor_created_at: _cursor, ...item }) => item);
+  const last = rows[Math.min(rows.length, limit) - 1];
   return {
     items,
     nextCursor:
@@ -206,7 +208,7 @@ export async function listApprovalQueuePage(
             JSON.stringify({
               v: 1,
               signature,
-              createdAt: new Date(last.created_at).toISOString(),
+              createdAt: last.cursor_created_at,
               id: last.id,
             }),
           ).toString("base64url")

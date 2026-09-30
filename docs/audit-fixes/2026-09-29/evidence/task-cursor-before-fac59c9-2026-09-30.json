@@ -1,0 +1,24 @@
+{
+  "sha": "fac59c90eb47be77c4f75554b3cee6e624b26622",
+  "prefix": "UAT Bulk 345b783c",
+  "initial": 50,
+  "after": 50,
+  "requests": [
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "cursorRequest": false,
+      "status": 200,
+      "error": false,
+      "fixtureTitleMatches": 0
+    },
+    {
+      "path": "/_serverFn/1d490b211c5516c1216daa2ca571d48a83e129befc1b2def5e4123e47cb52904",
+      "cursorRequest": true,
+      "status": 200,
+      "error": false,
+      "fixtureTitleMatches": 0
+    }
+  ],
+  "errors": [],
+  "loadMoreButtons": 0
+}

@@ -84,3 +84,16 @@ Public local runtime adapter verification at `6b2827734902fdc703bc845667c8f5f459
 ## Later approval authorization regression and repair
 
 PR #134 added per-row authorization metadata, then failed two complete actual warm readiness captures (1,144.803ms and 1,058.818ms). They remain reviewable. PostgreSQL EXPLAIN identified redundant claim ownership/JIT work; the final source `fac59c9` isolates open/unassigned claim candidates with unchanged visibility/deny rules. Final **10 cold / 30 warm**, same real data/machine/manager: warm p95 **506.768ms**, payload 107,383B, cold encoded JS 270,137B, SQL summed p95 629.765ms and 44 scoped queries, zero errors/blocks. All original budgets pass; no cold or session-count improvement claimed. [Full candidate progression and raw samples](approval-role-uat-2026-09-30.md).
+
+## R02 cursor/bulk candidate runtime regression check
+
+Source `53dc62f8a19e4a2449c9e445651bbeb43bd3158b`. Same machine, browser, genuine sales/manager sessions and unchanged isolated PostgreSQL dataset (10,000 Tasks / 100,000 approvals). Each route has **10 cold + 30 warm** complete actual navigations, zero failed/blocked requests and complete scoped SQL metrics.
+
+| Route | Warm rendered p95 | Cold rendered p95 | Max document/data | Max cold encoded JS | Scoped queries |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Tasks | 395.803 ms | 2,245.245 ms | 100,473 B | 267,834 B | 35 |
+| Approvals | 524.583 ms | 1,191.309 ms | 107,391 B | 270,137 B | 44 |
+
+All unchanged gates pass: warm p95 ≤800ms, document/data ≤150KiB, cold JS ≤300KiB. [Task raw samples](evidence/r06-tasks-bulk-source-53dc62f-2026-09-30.json), [Approval raw samples](evidence/r06-approvals-bulk-source-53dc62f-2026-09-30.json). No query/session-count reduction claim. This checks the precise cursor and preview changes against the already corrected queue behavior; the original failures/baselines above remain the before evidence.
+
+Separately, genuine hosted sales preview of the **same unchanged 100 Tasks** took 68,022ms before and **14,408ms after**, measured from actual UI submission until the review dialog. This is one observed pair, not a percentile/SLA result. No business Task changed during either preview. [Before](evidence/bulk-preview-before-df14575-2026-09-30.json), [after](evidence/bulk-preview-after-53dc62f-2026-09-30.json).
