@@ -1,0 +1,50 @@
+{
+  "sha": "d0f451c4cf65fe7e3c3c8e42619e75698904a85c",
+  "createdAt": "2026-09-30T10:13:21.215Z",
+  "scope": "Actual independent sales Lead5000 upload/preview only",
+  "role": "sales",
+  "csv": {
+    "rows": 5000,
+    "bytes": 870716,
+    "bom": true,
+    "chinese": true,
+    "multiline": true,
+    "sha256": "51b1ea75d1cdbe2fc885dc272e18dfca730d88120db8bc781d20cced1549b9a0",
+    "sameFixtureAs": ".clientops-perf/uat/import-07ba40a3",
+    "duplicateIdentical": true,
+    "duplicateConflicting": true,
+    "invalidEmail": true,
+    "invalidOwner": true,
+    "skip": true,
+    "missingExplicitTarget": true
+  },
+  "expected": {
+    "ready": 4994,
+    "invalid": 2,
+    "skipped": 2,
+    "ambiguous": 1,
+    "stale": 1
+  },
+  "requests": [
+    {
+      "path": "/_serverFn/4cfd67d21760cd649138f001811fa00fa5e451e113905bdbbe2f539b1c702a3c",
+      "status": 200,
+      "elapsedMs": 9698,
+      "bytes": 1197528,
+      "serializedError": false
+    }
+  ],
+  "success": true,
+  "elapsedMs": 9956,
+  "alerts": [],
+  "sessionId": "dc6609c8-569f-4d7d-be90-e898b0e44e86",
+  "actual": {
+    "ambiguous": 1,
+    "invalid": 2,
+    "ready": 4994,
+    "skipped": 2,
+    "stale": 1
+  },
+  "uiProcessed": "Processed: 6 / 5,000",
+  "previewDidNotWrite": true
+}

@@ -1,0 +1,69 @@
+{
+  "sha": "d0f451c4cf65fe7e3c3c8e42619e75698904a85c",
+  "createdAt": "2026-09-30T10:14:06.776Z",
+  "scope": "Actual independent sales Lead5000 commit, response loss, reload, resume, replay, owner reads, issues CSV",
+  "sessionId": "dc6609c8-569f-4d7d-be90-e898b0e44e86",
+  "actorRole": "sales",
+  "success": false,
+  "network": [
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "elapsedMs": 5916,
+      "bytes": 0,
+      "serializedError": null
+    },
+    {
+      "path": "/_serverFn/c8a9edc658b2fa7fb4effc24803c99c6627e5ad3bf6a0da6f805bdb502d79925",
+      "status": 200,
+      "elapsedMs": 5911,
+      "bytes": 0,
+      "serializedError": null
+    },
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "elapsedMs": 1259,
+      "bytes": 763,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/c8a9edc658b2fa7fb4effc24803c99c6627e5ad3bf6a0da6f805bdb502d79925",
+      "status": 200,
+      "elapsedMs": 4651,
+      "bytes": 1197377,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/c8a9edc658b2fa7fb4effc24803c99c6627e5ad3bf6a0da6f805bdb502d79925",
+      "status": 200,
+      "elapsedMs": 4461,
+      "bytes": 1197377,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "elapsedMs": 1279,
+      "bytes": 763,
+      "serializedError": false
+    }
+  ],
+  "roleReads": [],
+  "resumes": 0,
+  "firstCommitResponseLost": true,
+  "afterLostCounts": {
+    "ambiguous": 1,
+    "stale": 1,
+    "invalid": 2,
+    "ready": 4986,
+    "succeeded": 8,
+    "skipped": 2
+  },
+  "savedKeySurvivedReload": true,
+  "error": {
+    "name": "TimeoutError",
+    "message": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Check result', exact: true })\u001b[22m\n"
+  },
+  "finishedAt": "2026-09-30T10:15:21.117Z"
+}

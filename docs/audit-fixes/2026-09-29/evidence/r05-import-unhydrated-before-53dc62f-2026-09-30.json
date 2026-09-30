@@ -1,0 +1,32 @@
+{
+  "sha": "53dc62f8a19e4a2449c9e445651bbeb43bd3158b",
+  "createdAt": "2026-09-30T09:09:46.608Z",
+  "scope": "Actual independent sales Lead5000 upload/preview only",
+  "role": "sales",
+  "csv": {
+    "rows": 5000,
+    "bytes": 870716,
+    "bom": true,
+    "chinese": true,
+    "multiline": true,
+    "duplicateIdentical": true,
+    "duplicateConflicting": true,
+    "invalidEmail": true,
+    "invalidOwner": true,
+    "skip": true,
+    "missingExplicitTarget": true
+  },
+  "expected": {
+    "ready": 4994,
+    "invalid": 2,
+    "skipped": 2,
+    "ambiguous": 1,
+    "stale": 1
+  },
+  "requests": [],
+  "success": false,
+  "error": {
+    "name": "TimeoutError",
+    "message": "page.waitForFunction: Timeout 360000ms exceeded."
+  }
+}

@@ -8,7 +8,10 @@ import {
   type ImportHandler,
   type ImportKind,
   type PreparedImportRow,
+  type ImportRowPreparer,
 } from "./import-session.server";
+
+import { loadPreviewLookups, previewPairKey, type PreviewLookups } from "./preview-lookups.server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
@@ -79,94 +82,128 @@ async function candidateCount(kind: ImportKind, values: ImportRow) {
   ]);
 }
 
+async function prepareRow(
+  kind: ImportKind,
+  values: ImportRow,
+  input: Parameters<ImportRowPreparer>[3],
+  lookups?: PreviewLookups,
+): Promise<PreparedImportRow> {
+  if (text(values, "import_action") === "skip")
+    return { status: "skipped", action: "skip", errors: ["Skipped by importer"] };
+  const company = text(values, "company_name");
+  const externalId = text(values, "external_id");
+  const explicitId = text(values, kind === "event" ? "account_id" : "existing_id");
+  if (externalId && (!input.sourceNamespace || externalId.length > 200))
+    return status(
+      "invalid",
+      "review",
+      "External ID requires a source namespace and at most 200 characters",
+    );
+  if (explicitId && !UUID.test(explicitId))
+    return status("invalid", "review", "Existing record ID is invalid");
+  if (kind === "lead" && (!company || !EMAIL.test(text(values, "contact_email"))))
+    return status("invalid", "review", "Company and valid contact email are required");
+  if (kind === "client" && !company) return status("invalid", "review", "Company is required");
+  if (kind === "client" && text(values, "tier") && !TIER.has(text(values, "tier")))
+    return status("invalid", "review", "Client tier is invalid");
+  if (kind === "event") {
+    if (!input.campaignId || !UUID.test(input.campaignId))
+      return status("invalid", "review", "Campaign ID is required");
+    if (!company && !text(values, "contact_name"))
+      return status("invalid", "review", "Company or contact is required");
+    if (text(values, "email") && !EMAIL.test(text(values, "email")))
+      return status("invalid", "review", "Contact email is invalid");
+    if (text(values, "attendee_status") && !ATTENDEE.has(text(values, "attendee_status")))
+      return status("invalid", "review", "Attendee status is invalid");
+  }
+  if (text(values, "owner_email")) {
+    const owner = lookups
+      ? lookups.owners.has(text(values, "owner_email"))
+      : await queryOne<{ id: string }>(
+          "select id from profiles where lower(email)=lower($1) and status='active'",
+          [text(values, "owner_email")],
+        );
+    if (!owner) return status("invalid", "review", "Owner is unavailable");
+  }
+  if (kind === "client" && text(values, "product_name")) {
+    const product = lookups
+      ? lookups.products.has(text(values, "product_name"))
+      : await queryOne<{ id: string }>("select id from products where name=$1 and active=true", [
+          text(values, "product_name"),
+        ]);
+    if (!product) return status("invalid", "review", "Product is unavailable");
+  }
+  const resourceType = kindResource(kind);
+  const namespace = identityNamespace(kind, input.sourceNamespace, input.campaignId);
+  const mapped =
+    externalId && namespace
+      ? lookups
+        ? (lookups.identities.get(externalId) ?? null)
+        : await mappedIdentity(namespace, resourceType, externalId)
+      : null;
+  if (mapped && kind === "event")
+    return {
+      status: "skipped",
+      action: "skip",
+      targetId: mapped,
+      errors: ["External attendee ID already imported"],
+    };
+  if (mapped && explicitId && mapped !== explicitId)
+    return status("ambiguous", "review", "External ID and selected existing ID disagree");
+  const targetId = mapped ?? explicitId ?? null;
+  if (targetId) {
+    const version = lookups
+      ? (lookups.versions.get(targetId.toLowerCase()) ?? null)
+      : await targetVersion(kind, targetId);
+    if (version === null) return status("stale", "review", "Selected import target is unavailable");
+    return {
+      status: null,
+      action: kind === "event" ? "attach" : "update",
+      targetId,
+      expectedVersion: version,
+      errors: [],
+    };
+  }
+  if (
+    company &&
+    !externalId &&
+    (lookups
+      ? lookups.candidates.has(
+          previewPairKey(company, kind === "lead" ? text(values, "contact_email") : ""),
+        )
+      : (await candidateCount(kind, values)).length > 0)
+  )
+    return status(
+      "ambiguous",
+      "review",
+      "Existing company or contact requires an explicit existing ID or skip",
+    );
+  if (kind === "event" && !externalId && input.campaignId) {
+    const existing = lookups
+      ? lookups.attendees.has(previewPairKey(company, text(values, "email")))
+      : (
+          await query<{ id: string }>(
+            "select id from campaign_members where campaign_id=$1 and lower(coalesce(raw_email,''))=lower($2) and lower(coalesce(raw_company_name,''))=lower($3) limit 1",
+            [input.campaignId, text(values, "email"), company],
+          )
+        ).length > 0;
+    if (existing)
+      return status("ambiguous", "review", "Existing attendee requires an external ID or skip");
+  }
+  return { status: null, action: "create", errors: [] };
+}
+
 export const productionImportHandler: ImportHandler = {
-  async prepareRow(_context, kind, values, input) {
-    if (text(values, "import_action") === "skip")
-      return { status: "skipped", action: "skip", errors: ["Skipped by importer"] };
-    const company = text(values, "company_name");
-    const externalId = text(values, "external_id");
-    const explicitId = text(values, kind === "event" ? "account_id" : "existing_id");
-    if (externalId && (!input.sourceNamespace || externalId.length > 200))
-      return status(
-        "invalid",
-        "review",
-        "External ID requires a source namespace and at most 200 characters",
-      );
-    if (explicitId && !UUID.test(explicitId))
-      return status("invalid", "review", "Existing record ID is invalid");
-    if (kind === "lead" && (!company || !EMAIL.test(text(values, "contact_email"))))
-      return status("invalid", "review", "Company and valid contact email are required");
-    if (kind === "client" && !company) return status("invalid", "review", "Company is required");
-    if (kind === "client" && text(values, "tier") && !TIER.has(text(values, "tier")))
-      return status("invalid", "review", "Client tier is invalid");
-    if (kind === "event") {
-      if (!input.campaignId || !UUID.test(input.campaignId))
-        return status("invalid", "review", "Campaign ID is required");
-      if (!company && !text(values, "contact_name"))
-        return status("invalid", "review", "Company or contact is required");
-      if (text(values, "email") && !EMAIL.test(text(values, "email")))
-        return status("invalid", "review", "Contact email is invalid");
-      if (text(values, "attendee_status") && !ATTENDEE.has(text(values, "attendee_status")))
-        return status("invalid", "review", "Attendee status is invalid");
-    }
-    if (text(values, "owner_email")) {
-      const owner = await queryOne<{ id: string }>(
-        "select id from profiles where lower(email)=lower($1) and status='active'",
-        [text(values, "owner_email")],
-      );
-      if (!owner) return status("invalid", "review", "Owner is unavailable");
-    }
-    if (kind === "client" && text(values, "product_name")) {
-      const product = await queryOne<{ id: string }>(
-        "select id from products where name=$1 and active=true",
-        [text(values, "product_name")],
-      );
-      if (!product) return status("invalid", "review", "Product is unavailable");
-    }
-    const resourceType = kindResource(kind);
-    const namespace = identityNamespace(kind, input.sourceNamespace, input.campaignId);
-    const mapped =
-      externalId && namespace ? await mappedIdentity(namespace, resourceType, externalId) : null;
-    if (mapped && kind === "event")
-      return {
-        status: "skipped",
-        action: "skip",
-        targetId: mapped,
-        errors: ["External attendee ID already imported"],
-      };
-    if (mapped && explicitId && mapped !== explicitId)
-      return status("ambiguous", "review", "External ID and selected existing ID disagree");
-    const targetId = mapped ?? explicitId ?? null;
-    if (targetId) {
-      const version =
-        kind === "event"
-          ? await targetVersion("event", targetId)
-          : await targetVersion(kind, targetId);
-      if (version === null)
-        return status("stale", "review", "Selected import target is unavailable");
-      return {
-        status: null,
-        action: kind === "event" ? "attach" : "update",
-        targetId,
-        expectedVersion: version,
-        errors: [],
-      };
-    }
-    if (company && !externalId && (await candidateCount(kind, values)).length > 0)
-      return status(
-        "ambiguous",
-        "review",
-        "Existing company or contact requires an explicit existing ID or skip",
-      );
-    if (kind === "event" && !externalId && input.campaignId) {
-      const existing = await query<{ id: string }>(
-        "select id from campaign_members where campaign_id=$1 and lower(coalesce(raw_email,''))=lower($2) and lower(coalesce(raw_company_name,''))=lower($3) limit 1",
-        [input.campaignId, text(values, "email"), company],
-      );
-      if (existing.length)
-        return status("ambiguous", "review", "Existing attendee requires an external ID or skip");
-    }
-    return { status: null, action: "create", errors: [] };
+  prepareRow: (_context, kind, values, input) => prepareRow(kind, values, input),
+  async prepareBatch(_context, kind, rows, input) {
+    const lookups = await loadPreviewLookups(kind, rows, {
+      namespace: identityNamespace(kind, input.sourceNamespace, input.campaignId),
+      campaignId: input.campaignId && UUID.test(input.campaignId) ? input.campaignId : null,
+      explicitIds: rows
+        .map((row) => text(row, kind === "event" ? "account_id" : "existing_id"))
+        .filter((id) => UUID.test(id)),
+    });
+    return (_context, _kind, values, rowInput) => prepareRow(kind, values, rowInput, lookups);
   },
 
   async applyRow(context, kind, values, prepared, db) {

@@ -1,0 +1,13 @@
+{
+  "sha": "a18aa46273b10edc9cc75dbb11188ad9d49c98e6",
+  "previewSource": "d0f451c4cf65fe7e3c3c8e42619e75698904a85c",
+  "sessionId": "dc6609c8-569f-4d7d-be90-e898b0e44e86",
+  "role": "sales",
+  "scope": "Recover the original 8-write paused operation after receipt read loss; read-only retry",
+  "success": true,
+  "originalEightWritesRetained": true,
+  "sameKeyRetained": true,
+  "retryReadsOnly": true,
+  "replacementBlocked": true,
+  "recoveredPaused": true
+}

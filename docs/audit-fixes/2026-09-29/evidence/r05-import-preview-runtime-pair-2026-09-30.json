@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-09-30T10:22:25.741Z",
+  "beforeSource": "53dc62f8a19e4a2449c9e445651bbeb43bd3158b",
+  "afterSource": "d0f451c4cf65fe7e3c3c8e42619e75698904a85c",
+  "uatDeploymentId": "dpl_EBBeuTrtoD6UuXdbxHRDW2dJ7s2e",
+  "fixture": {
+    "rows": 5000,
+    "bytes": 870716,
+    "sha256": "51b1ea75d1cdbe2fc885dc272e18dfca730d88120db8bc781d20cced1549b9a0",
+    "identicalCsv": true
+  },
+  "sameAppDatabaseAuthAndActor": true,
+  "role": "sales",
+  "singleObservedPair": true,
+  "before": {
+    "http": 504,
+    "postElapsedMs": 301568,
+    "uiElapsedMs": 301795,
+    "successfulLatencySample": false
+  },
+  "after": {
+    "http": 200,
+    "postElapsedMs": 9698,
+    "uiElapsedMs": 9956,
+    "previewNoBusinessWrite": true
+  },
+  "p95OrSlaClaim": false
+}
