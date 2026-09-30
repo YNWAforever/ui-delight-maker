@@ -109,3 +109,14 @@ describe("root fallback skip target", () => {
     expect(document.querySelectorAll("main").length).toBe(1);
   });
 });
+
+describe("root stylesheet availability in an isolated browser", () => {
+  it("loads every stylesheet from the app origin", () => {
+    const head = Route.options.head!({} as never) as { links: { rel: string; href: string }[] };
+    const stylesheets = head.links.filter((link) => link.rel === "stylesheet");
+    expect(stylesheets.length).toBeGreaterThan(0);
+    for (const link of stylesheets) {
+      expect(new URL(link.href, "http://localhost:5199").origin).toBe("http://localhost:5199");
+    }
+  });
+});

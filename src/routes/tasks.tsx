@@ -120,6 +120,11 @@ function mapQueueRows(
 }
 
 export const Route = createFileRoute("/tasks")({
+  // Keep authorization and queue loading on the server; render the interactive
+  // board once in the browser instead of sending all cards again as HTML.
+  ssr: "data-only",
+  pendingMinMs: 0,
+  pendingComponent: TasksPendingState,
   validateSearch: taskSearchSchema,
   // `view` is deliberately not a dep: it changes what is drawn, never what is fetched.
   loaderDeps: ({ search }) => ({
@@ -147,6 +152,14 @@ export const Route = createFileRoute("/tasks")({
   errorComponent: TasksErrorState,
   component: TasksBoard,
 });
+
+function TasksPendingState() {
+  return (
+    <div role="status" className="px-4 py-6 text-sm text-muted-foreground md:px-6">
+      Loading tasks…
+    </div>
+  );
+}
 
 /** `getTasks` hard-requires `tasks.view` and throws; the sidebar shows the entry regardless. */
 function TasksErrorState({ error }: { error: unknown }) {

@@ -1,0 +1,315 @@
+{
+  "sha": "f4f5c9721d70234f121fe77fe8276cce939d527a",
+  "createdAt": "2026-09-30T05:13:15.475Z",
+  "roles": [
+    {
+      "label": "sales",
+      "role": "sales",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "mutationOffered": true,
+      "creationOffered": true,
+      "directRequest": false,
+      "response": {
+        "httpStatus": 200,
+        "error": false,
+        "forbidden": false
+      },
+      "before": {
+        "status": "open",
+        "version": 32
+      },
+      "after": {
+        "status": "in_progress",
+        "version": 33
+      },
+      "dbMatches": true
+    },
+    {
+      "label": "manager",
+      "role": "manager",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "mutationOffered": true,
+      "creationOffered": true,
+      "directRequest": false,
+      "response": {
+        "httpStatus": 200,
+        "error": false,
+        "forbidden": false
+      },
+      "before": {
+        "status": "in_progress",
+        "version": 33
+      },
+      "after": {
+        "status": "open",
+        "version": 34
+      },
+      "dbMatches": true
+    },
+    {
+      "label": "client_success",
+      "role": "client_success",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "mutationOffered": true,
+      "creationOffered": true,
+      "directRequest": false,
+      "response": {
+        "httpStatus": 200,
+        "error": false,
+        "forbidden": false
+      },
+      "before": {
+        "status": "open",
+        "version": 34
+      },
+      "after": {
+        "status": "in_progress",
+        "version": 35
+      },
+      "dbMatches": true
+    },
+    {
+      "label": "accounting",
+      "role": "accounting",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "mutationOffered": true,
+      "creationOffered": false,
+      "directRequest": false,
+      "response": {
+        "httpStatus": 200,
+        "error": false,
+        "forbidden": false
+      },
+      "before": {
+        "status": "in_progress",
+        "version": 35
+      },
+      "after": {
+        "status": "open",
+        "version": 36
+      },
+      "dbMatches": true
+    },
+    {
+      "label": "admin",
+      "role": "admin",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "mutationOffered": true,
+      "creationOffered": true,
+      "directRequest": false,
+      "response": {
+        "httpStatus": 200,
+        "error": false,
+        "forbidden": false
+      },
+      "before": {
+        "status": "open",
+        "version": 36
+      },
+      "after": {
+        "status": "in_progress",
+        "version": 37
+      },
+      "dbMatches": true
+    },
+    {
+      "label": "super_admin",
+      "role": "super_admin",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "mutationOffered": true,
+      "creationOffered": true,
+      "directRequest": false,
+      "response": {
+        "httpStatus": 200,
+        "error": false,
+        "forbidden": false
+      },
+      "before": {
+        "status": "in_progress",
+        "version": 37
+      },
+      "after": {
+        "status": "open",
+        "version": 38
+      },
+      "dbMatches": true
+    },
+    {
+      "label": "read_only",
+      "role": "read_only",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "mutationOffered": false,
+      "creationOffered": false,
+      "directRequest": true,
+      "response": {
+        "httpStatus": 200,
+        "error": true,
+        "forbidden": true
+      },
+      "before": {
+        "status": "open",
+        "version": 38
+      },
+      "after": {
+        "status": "open",
+        "version": 38
+      },
+      "dbMatches": true
+    }
+  ],
+  "overrides": [
+    {
+      "label": "sales-scoped-deny",
+      "role": "sales",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "mutationOffered": false,
+      "creationOffered": true,
+      "directRequest": true,
+      "response": {
+        "httpStatus": 200,
+        "error": true,
+        "forbidden": true
+      },
+      "before": {
+        "status": "open",
+        "version": 38
+      },
+      "after": {
+        "status": "open",
+        "version": 38
+      },
+      "dbMatches": true
+    },
+    {
+      "label": "reader-scoped-allow",
+      "role": "read_only",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "mutationOffered": true,
+      "creationOffered": false,
+      "directRequest": false,
+      "response": {
+        "httpStatus": 200,
+        "error": false,
+        "forbidden": false
+      },
+      "before": {
+        "status": "open",
+        "version": 38
+      },
+      "after": {
+        "status": "in_progress",
+        "version": 39
+      },
+      "dbMatches": true
+    },
+    {
+      "label": "reader-expired-allow",
+      "role": "read_only",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "mutationOffered": false,
+      "creationOffered": false,
+      "directRequest": true,
+      "response": {
+        "httpStatus": 200,
+        "error": true,
+        "forbidden": true
+      },
+      "before": {
+        "status": "in_progress",
+        "version": 39
+      },
+      "after": {
+        "status": "in_progress",
+        "version": 39
+      },
+      "dbMatches": true
+    },
+    {
+      "label": "manager-unowned-deny",
+      "role": "manager",
+      "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+      "mutationOffered": false,
+      "creationOffered": true,
+      "directRequest": true,
+      "response": {
+        "httpStatus": 200,
+        "error": true,
+        "forbidden": true
+      },
+      "before": {
+        "status": "in_progress",
+        "version": 40
+      },
+      "after": {
+        "status": "in_progress",
+        "version": 40
+      },
+      "dbMatches": true
+    }
+  ],
+  "admin": [
+    {
+      "role": "super_admin",
+      "allowed": true,
+      "peopleDataVisible": true,
+      "denialVisible": false,
+      "urlPath": "/admin/people"
+    },
+    {
+      "role": "admin",
+      "allowed": true,
+      "peopleDataVisible": true,
+      "denialVisible": false,
+      "urlPath": "/admin/people"
+    },
+    {
+      "role": "manager",
+      "allowed": true,
+      "peopleDataVisible": true,
+      "denialVisible": false,
+      "urlPath": "/admin/people"
+    },
+    {
+      "role": "sales",
+      "allowed": false,
+      "peopleDataVisible": false,
+      "denialVisible": false,
+      "urlPath": "/"
+    },
+    {
+      "role": "client_success",
+      "allowed": false,
+      "peopleDataVisible": false,
+      "denialVisible": false,
+      "urlPath": "/"
+    },
+    {
+      "role": "accounting",
+      "allowed": false,
+      "peopleDataVisible": false,
+      "denialVisible": false,
+      "urlPath": "/"
+    },
+    {
+      "role": "read_only",
+      "allowed": true,
+      "peopleDataVisible": true,
+      "denialVisible": false,
+      "urlPath": "/admin/people"
+    }
+  ],
+  "screenshots": [
+    "sales-after.png",
+    "manager-after.png",
+    "client_success-after.png",
+    "accounting-after.png",
+    "admin-after.png",
+    "super_admin-after.png",
+    "read_only-after.png",
+    "sales-scoped-deny-after.png",
+    "reader-scoped-allow-after.png",
+    "reader-expired-allow-after.png",
+    "manager-unowned-deny-after.png"
+  ],
+  "cleanedUp": true
+}

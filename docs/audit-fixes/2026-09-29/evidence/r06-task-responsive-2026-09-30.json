@@ -1,0 +1,106 @@
+{
+  "sha": "f4f5c9721d70234f121fe77fe8276cce939d527a",
+  "createdAt": "2026-09-30T05:28:44.935Z",
+  "cases": [
+    {
+      "role": "sales",
+      "width": 390,
+      "height": 900,
+      "horizontalOverflow": false,
+      "deniedWriteControlsAbsent": null,
+      "dialogTabEscapeFocusReturn": true,
+      "rowMenuEnterEscapeFocusReturn": true,
+      "bulkSelectionNoOverflow": true
+    },
+    {
+      "role": "sales",
+      "width": 768,
+      "height": 900,
+      "horizontalOverflow": false,
+      "deniedWriteControlsAbsent": null,
+      "dialogTabEscapeFocusReturn": true,
+      "rowMenuEnterEscapeFocusReturn": true,
+      "bulkSelectionNoOverflow": true
+    },
+    {
+      "role": "sales",
+      "width": 1024,
+      "height": 900,
+      "horizontalOverflow": false,
+      "deniedWriteControlsAbsent": null,
+      "dialogTabEscapeFocusReturn": true,
+      "rowMenuEnterEscapeFocusReturn": true,
+      "bulkSelectionNoOverflow": true
+    },
+    {
+      "role": "sales",
+      "width": 1280,
+      "height": 900,
+      "horizontalOverflow": false,
+      "deniedWriteControlsAbsent": null,
+      "dialogTabEscapeFocusReturn": true,
+      "rowMenuEnterEscapeFocusReturn": true,
+      "bulkSelectionNoOverflow": true
+    },
+    {
+      "role": "sales",
+      "width": 1440,
+      "height": 900,
+      "horizontalOverflow": false,
+      "deniedWriteControlsAbsent": null,
+      "dialogTabEscapeFocusReturn": true,
+      "rowMenuEnterEscapeFocusReturn": true,
+      "bulkSelectionNoOverflow": true
+    },
+    {
+      "role": "read_only",
+      "width": 390,
+      "height": 900,
+      "horizontalOverflow": false,
+      "deniedWriteControlsAbsent": true,
+      "dialogTabEscapeFocusReturn": null,
+      "rowMenuEnterEscapeFocusReturn": null,
+      "bulkSelectionNoOverflow": null
+    },
+    {
+      "role": "read_only",
+      "width": 768,
+      "height": 900,
+      "horizontalOverflow": false,
+      "deniedWriteControlsAbsent": true,
+      "dialogTabEscapeFocusReturn": null,
+      "rowMenuEnterEscapeFocusReturn": null,
+      "bulkSelectionNoOverflow": null
+    },
+    {
+      "role": "read_only",
+      "width": 1024,
+      "height": 900,
+      "horizontalOverflow": false,
+      "deniedWriteControlsAbsent": true,
+      "dialogTabEscapeFocusReturn": null,
+      "rowMenuEnterEscapeFocusReturn": null,
+      "bulkSelectionNoOverflow": null
+    },
+    {
+      "role": "read_only",
+      "width": 1280,
+      "height": 900,
+      "horizontalOverflow": false,
+      "deniedWriteControlsAbsent": true,
+      "dialogTabEscapeFocusReturn": null,
+      "rowMenuEnterEscapeFocusReturn": null,
+      "bulkSelectionNoOverflow": null
+    },
+    {
+      "role": "read_only",
+      "width": 1440,
+      "height": 900,
+      "horizontalOverflow": false,
+      "deniedWriteControlsAbsent": true,
+      "dialogTabEscapeFocusReturn": null,
+      "rowMenuEnterEscapeFocusReturn": null,
+      "bulkSelectionNoOverflow": null
+    }
+  ]
+}

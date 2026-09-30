@@ -54,3 +54,15 @@ The collector validates target syntax, database name, counts and runtime SHA. It
 Actual authenticated ClientOps before/after, independent same-data and database-binding evidence, seven-role sessions and the wider R00-R08 gates remain unavailable. No ClientOps runtime numbers were produced by the fixture, no production data was queried or changed, and release remains NO-GO.
 
 References used for the harness: [Playwright isolated browser contexts](https://playwright.dev/docs/api/class-browsercontext) and [Chromium proxy loopback rules](https://chromium.googlesource.com/chromium/src/+/main/net/docs/proxy.md#Overriding-the-implicit-bypass-rules).
+
+## 2026-09-30 actual ClientOps runtime completion
+
+The earlier missing-session/runtime paragraph is historical. [Actual before/after](r06-runtime-before-after-2026-09-30.md) now supplies complete 40-navigation Task and Approval reports on the same 10k/100k PostgreSQL fixture and independently authenticated actors. Both final queue scopes pass; release remains NO-GO.
+
+A reproducible production-mode local adapter is now `scripts/clientops/serve-audit-browser-runtime.mjs`. It checks clean tracked source/expected SHA, the confirmed independent UAT Auth origin hash and exact non-production project/branch. It binds only the fixed loopback fixture DB above, accepts GET/HEAD only and rejects workflow APIs. Its `ws` transport comes from the unchanged locked graph, without a new dependency. Keep private config/token/session files ignored.
+
+1. Verify the dedicated Docker identity/loopback port, migrations 001–021 and the fixture attestation counts. Reuse only this disposable synthetic fixture; the adapter does not migrate or seed it.
+2. In the selected clean source worktree, run `bunx vite build`; record the SHA and matching build. Never use `bun run build` to prepare a target with unverified isolation.
+3. From the directory with ignored private config/token, start `node scripts/clientops/serve-audit-browser-runtime.mjs <full-sha> <built-worktree>`. Use the complete input map above and actual sales/manager localhost storage-state files; retain secure cookie attributes. No token/cookie/connection string belongs in a ticket or committed report.
+4. Run `bun run performance:browser:verify` for each declared canonical URL/selector with `DATABASE_TEST_URL` matching the adapter's fixed fixture. Keep all ten cold/thirty warm samples and failures. Stop the adapter after capture.
+5. Recheck hosted exact SHA, seven independent role boundaries and required layouts separately. The adapter supplies real SSR/SQL/asset transport; it does not certify decision races, import/provider workflows or production readiness.

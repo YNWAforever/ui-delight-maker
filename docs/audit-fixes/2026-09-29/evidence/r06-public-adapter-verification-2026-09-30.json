@@ -1,0 +1,81 @@
+{
+  "sha": "6b2827734902fdc703bc845667c8f5f459025360",
+  "createdAt": "2026-09-30T05:38:03.085Z",
+  "transport": "real PostgreSQL over loopback WebSocket/TCP",
+  "postStatus": 405,
+  "workflowGetStatus": 403,
+  "cases": [
+    {
+      "role": "sales",
+      "route": "/tasks?view=board&priority=all&assignee=all&search=",
+      "ready": true,
+      "responses": [
+        {
+          "path": "/tasks",
+          "status": 200,
+          "scope": "http-request",
+          "count": 31,
+          "failed": 0
+        },
+        {
+          "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+          "status": 200,
+          "scope": "http-request",
+          "count": 4,
+          "failed": 0
+        }
+      ],
+      "errors": []
+    },
+    {
+      "role": "manager",
+      "route": "/approvals?type=all",
+      "ready": true,
+      "responses": [
+        {
+          "path": "/approvals",
+          "status": 200,
+          "scope": "http-request",
+          "count": 15,
+          "failed": 0
+        },
+        {
+          "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+          "status": 200,
+          "scope": "http-request",
+          "count": 4,
+          "failed": 0
+        },
+        {
+          "path": "/_serverFn/800d7682791ba082cc04d6e243211e2b2240ebdddeb95a6c27c0f30b41f1b53a",
+          "status": 200,
+          "scope": "http-request",
+          "count": 7,
+          "failed": 0
+        },
+        {
+          "path": "/_serverFn/c37d647b566dec6bfc5a8087d1b196476c7ccb43d6847d41a3f3ee4813e59071",
+          "status": 200,
+          "scope": "http-request",
+          "count": 8,
+          "failed": 0
+        },
+        {
+          "path": "/_serverFn/8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d",
+          "status": 200,
+          "scope": "http-request",
+          "count": 8,
+          "failed": 0
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "databaseUnchanged": true,
+  "counts": {
+    "tasks": 10000,
+    "approvals": 100000,
+    "task_version_total": "0",
+    "approval_version_total": "0"
+  }
+}

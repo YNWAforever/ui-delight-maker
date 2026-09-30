@@ -47,3 +47,8 @@ No branch was created or resumed, no connection string was retrieved, and no dat
 | R08 | Those gates, deployment provenance, operator/PITR/compatibility and release/rollback rehearsal. |
 
 All 30 CO IDs remain tracked in [status](../2026-09-27/status.md). Missing role, snapshot, provider or runtime proof is not promoted to PASS by source CI. The [release and rollback checklist](../2026-09-27/release-checklist.md), [UAT results](../2026-09-27/uat-results.md) and [migration/reconciliation disposition](../2026-09-27/production-reconciliation-disposition.md) remain the operational handoff.
+
+
+## Current acceptance delta after independent UAT and R06
+
+The earlier missing-role/environment/runtime statements describe that checkpoint. [Independent UAT](isolated-uat-environment.md) now has seven genuine role sessions. Scoped quote U03 and billing U07 pass; [real R06 before/after](r06-runtime-before-after-2026-09-30.md) passes Task/Approval queue budgets with 10 cold/30 warm and 10k/100k real PostgreSQL data. Wider UAT, import/bulk/offline, zoom/screen-reader, legacy/provider/anomaly provenance and operator release rehearsal remain incomplete. No production promotion; public build remains `bed941b` under the approved hold.
