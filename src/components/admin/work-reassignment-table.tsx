@@ -51,8 +51,8 @@ export function WorkReassignmentTable({
         </p>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-border text-xs text-muted-foreground">
+        <table className="block w-full text-left text-sm sm:table sm:min-w-full">
+          <thead className="sr-only border-b border-border text-xs text-muted-foreground sm:not-sr-only sm:table-header-group">
             <tr>
               <th className="px-4 py-2.5 font-medium">Work area</th>
               <th className="px-4 py-2.5 font-medium">Open records</th>
@@ -60,16 +60,26 @@ export function WorkReassignmentTable({
               <th className="px-4 py-2.5 font-medium">Successor</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="block divide-y divide-border sm:table-row-group">
             {visibleBuckets.map((bucket) => {
               return (
-                <tr key={bucket.key}>
-                  <td className="px-4 py-3 font-medium text-foreground">{bucket.label}</td>
-                  <td className="px-4 py-3 tabular-nums text-muted-foreground">{bucket.count}</td>
+                <tr key={bucket.key} className="grid grid-cols-2 sm:table-row">
+                  <td className="col-span-2 px-4 py-3 font-medium text-foreground sm:table-cell">
+                    {bucket.label}
+                  </td>
                   <td className="px-4 py-3 tabular-nums text-muted-foreground">
+                    <span className="block text-xs text-muted-foreground sm:hidden">
+                      Open records
+                    </span>
+                    {bucket.count}
+                  </td>
+                  <td className="px-4 py-3 tabular-nums text-muted-foreground">
+                    <span className="block text-xs text-muted-foreground sm:hidden">
+                      History retained
+                    </span>
                     {bucket.historyCount}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="col-span-2 min-w-0 px-4 py-3 sm:table-cell">
                     {bucket.count > 0 ? (
                       <ProfileSearchCombobox
                         purpose="successor"

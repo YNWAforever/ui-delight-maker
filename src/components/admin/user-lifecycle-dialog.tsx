@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { FormEvent } from "react";
 import { LoadingSkeleton } from "@/components/sales";
 import { toSafeErrorMessage } from "@/lib/errors";
@@ -77,6 +78,8 @@ export function UserLifecycleDialog({
   const [selected, setSelected] = useState<Partial<Record<ReassignmentBucketKey, string>>>({});
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const initialFocusRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -135,24 +138,33 @@ export function UserLifecycleDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 md:items-center">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="user-lifecycle-title"
-        className="my-8 w-full max-w-2xl rounded-md border border-border bg-background shadow-xl"
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        onOpenAutoFocus={(event) => {
+          returnFocusRef.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          event.preventDefault();
+          initialFocusRef.current?.focus();
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
+        }}
+        onInteractOutside={(event) => event.preventDefault()}
+        className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-2xl gap-0 overflow-y-auto rounded-md p-0 [&>*]:min-w-0"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
               User lifecycle
             </p>
-            <h2 id="user-lifecycle-title" className="mt-1 text-base font-semibold text-foreground">
+            <DialogTitle className="mt-1 text-base font-semibold text-foreground">
               {user.name || user.email || "Unnamed user"}
-            </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-xs text-muted-foreground">
               Access changes are audited and preserve the user's business history.
-            </p>
+            </DialogDescription>
           </div>
           <button
             type="button"
@@ -261,6 +273,7 @@ export function UserLifecycleDialog({
           <label className="block">
             <span className="text-sm font-medium text-foreground">Reason</span>
             <textarea
+              ref={initialFocusRef}
               aria-label="Reason"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
@@ -306,7 +319,7 @@ export function UserLifecycleDialog({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

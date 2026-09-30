@@ -1,0 +1,11 @@
+{
+  "sourceSha": "ea76d3b2b5a64b9efe98d403d7f8fff84331aee7",
+  "role": "admin",
+  "scope": "Actual own Admin narrow selected/full record entry defect; no writes",
+  "success": true,
+  "visibleRoleButtons": 0,
+  "visibleLifecycleButtons": 0,
+  "fullRecordManageLink": 0,
+  "defectReproduced": true,
+  "noMutationSubmitted": true
+}

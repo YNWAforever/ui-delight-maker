@@ -406,7 +406,7 @@ function AdminPeopleIndex() {
           departments={departments}
           teams={teams}
         />
-        <div className="hidden md:block">
+        <div className={selectedUser ? "order-first min-w-0 xl:order-last" : "hidden md:block"}>
           <UserDetailPanel
             user={selectedUser}
             busy={busy}

@@ -1,0 +1,71 @@
+{
+  "checkedAt": "2026-09-30T22:14:46.334Z",
+  "sourceSha": "fc4a2fd311d38d05ca6295a43e4fc8571158fd6f",
+  "pr": "https://github.com/YNWAforever/ui-delight-maker/pull/147",
+  "requiredChecks": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T21:53:49Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36782167097/job/110114826463",
+      "name": "Types and lint",
+      "startedAt": "2026-09-30T21:52:26Z",
+      "status": "COMPLETED",
+      "workflowName": "Checks"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T21:56:37Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36782166951/job/110114825945",
+      "name": "contract",
+      "startedAt": "2026-09-30T21:52:26Z",
+      "status": "COMPLETED",
+      "workflowName": "Database contract"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T21:53:08Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36782167097/job/110114826699",
+      "name": "Browser collector integration",
+      "startedAt": "2026-09-30T21:52:26Z",
+      "status": "COMPLETED",
+      "workflowName": "Checks"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T21:53:53Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36782166951/job/110114826243",
+      "name": "Isolated migration and seed replay",
+      "startedAt": "2026-09-30T21:52:26Z",
+      "status": "COMPLETED",
+      "workflowName": "Database contract"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T21:53:04Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://vercel.com/github",
+      "name": "Vercel Preview Comments",
+      "startedAt": "2026-09-30T21:53:04Z",
+      "status": "COMPLETED",
+      "workflowName": ""
+    }
+  ],
+  "vercel": {
+    "__typename": "StatusContext",
+    "context": "Vercel",
+    "startedAt": "2026-09-30T21:53:03Z",
+    "state": "SUCCESS",
+    "targetUrl": "https://vercel.com/ynwaforevers-projects/ui-delight-maker/6PTqL82kCXQ88bMb7QY8Te8JR747"
+  },
+  "tests": 2344,
+  "files": 319,
+  "skipped": 0,
+  "todo": 0,
+  "freshContractJob": 110114825945,
+  "finalDocumentationHead": "pending",
+  "productionRelease": false
+}

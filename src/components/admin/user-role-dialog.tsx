@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { ArrowDownRight, ArrowUpRight, X } from "lucide-react";
 import { ROLE_GRANTS } from "@/lib/admin/policy";
 import type { UserRole } from "@/lib/admin/types";
@@ -24,6 +25,8 @@ export function UserRoleDialog({
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const initialFocusRef = useRef<HTMLSelectElement | null>(null);
 
   /**
    * Reset on open, because this dialog is hidden rather than unmounted.
@@ -73,21 +76,30 @@ export function UserRoleDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 md:items-center">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="role-dialog-title"
-        className="my-8 w-full max-w-lg rounded-md border border-border bg-background shadow-xl"
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        onOpenAutoFocus={(event) => {
+          returnFocusRef.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          event.preventDefault();
+          initialFocusRef.current?.focus();
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
+        }}
+        onInteractOutside={(event) => event.preventDefault()}
+        className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-lg gap-0 overflow-y-auto rounded-md p-0 [&>*]:min-w-0"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>
-            <h2 id="role-dialog-title" className="text-base font-semibold text-foreground">
+            <DialogTitle className="text-base font-semibold text-foreground">
               Change role
-            </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-xs text-muted-foreground">
               {userName} · current role: {getUserRoleLabel(currentRole)}
-            </p>
+            </DialogDescription>
           </div>
           <button
             type="button"
@@ -102,6 +114,7 @@ export function UserRoleDialog({
           <label className="block text-sm font-medium text-foreground">
             New role
             <select
+              ref={initialFocusRef}
               aria-label="New role"
               value={role}
               onChange={(event) => setRole(event.target.value as UserRole)}
@@ -178,7 +191,7 @@ export function UserRoleDialog({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

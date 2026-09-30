@@ -1,6 +1,12 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current verified checkpoint — PR #145 / U10 source repair
+## Current verified checkpoint — PR #146 / R03 keyboard+narrow source batch
+
+Main `4d238725391a0fec4151b037a9339b919621ed37` includes [merged #146](https://github.com/YNWAforever/ui-delight-maker/pull/146), exact final/post-main2,340/318/zero skipped/replay PASS. [Merge](evidence/pr146-merge-2026-10-01.json), [hold](evidence/production-hold-after-146-2026-10-01.json): canceled main attempt/publicbed941b unchanged. Defined U10 PASS.
+
+[R03 keyboard+narrow source repair](admin-keyboard-uat-2026-10-01.md) passes local fresh2,344 zero-skip core suite and final21/static/pure-build gates. Exact-sourcefc4a2fd CI2,344/319/zero skipped/replay/static and seventeen expanded own Admin/SA/reader width/native200/focus/readability/no-write cases PASS. Final documentation-head CI pending. Stable dedicated test alias remainsa18aa46; detachedfc4a2fd has actual proof. All30 CO/16 UAT and remaining/external gates retained; release NO-GO.
+
+## Previous verified checkpoint — PR #145 / U10 source repair
 
 Main `6a915dd38d06e9a0a8aede89e337ccd83d152071` includes [merged #145](https://github.com/YNWAforever/ui-delight-maker/pull/145), exact final/post-main2,336/317/zero skipped and replay PASS. [Merge](evidence/pr145-merge-2026-10-01.json), [hold](evidence/production-hold-after-145-2026-10-01.json): canceled main attempt, publicbed941b unchanged.
 
