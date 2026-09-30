@@ -1,0 +1,44 @@
+{
+  "sourceSha": "8691421eb79a57e8bb3fdbc4a7e54367d493611f",
+  "checkedAt": "2026-09-30T16:36:18.690Z",
+  "localFull": {
+    "files": 316,
+    "tests": 2325,
+    "skipped": 0,
+    "todo": 0,
+    "database": "fresh disposable PG17.10",
+    "log": "Git-ignored claimable-detail-final-suite.private.log"
+  },
+  "sourceCi": {
+    "checks": 36735174886,
+    "databaseContract": 36735174856,
+    "contractJob": 109954870999,
+    "tests": 2325,
+    "skipped": 0,
+    "replay": "PASS"
+  },
+  "focused": {
+    "newRealPg": 12,
+    "relatedRealPg": 48,
+    "validBefore": {
+      "failed": 3,
+      "passed": 9
+    },
+    "after": "PASS"
+  },
+  "static": [
+    "app/runtime types",
+    "changed lint",
+    "pure bunx vite build",
+    "bundle gate",
+    "git diff --check"
+  ],
+  "hosted": {
+    "deployment": "dpl_JCVzK97MveRif6vBPSyD2JydUbZK",
+    "actualAuthRoles": 7,
+    "immutableCases": 6,
+    "claimCases": 10,
+    "hkReportCases": 4
+  },
+  "scope": "Source verification; final docs-head and post-merge gates remain separate. No production release."
+}

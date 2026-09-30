@@ -1,0 +1,111 @@
+{
+  "sha": "8691421eb79a57e8bb3fdbc4a7e54367d493611f",
+  "startedAt": "2026-09-30T16:30:04.271Z",
+  "approvalId": "745a9f25-157c-4da3-ae89-db2258621e54",
+  "scope": "Seven distinct actual Auth roles; claimable detail/read and denied direct claims; matching view/decision denies; one real own-manager claim/replay",
+  "cases": [
+    {
+      "case": "actual own-role detail and claim boundary",
+      "role": "super_admin",
+      "ownAuthMatched": true,
+      "detailGetSuccess": true,
+      "payloadVisible": true,
+      "claimOffered": true,
+      "deniedDirectClaim": null,
+      "stateUnchanged": true
+    },
+    {
+      "case": "actual own-role detail and claim boundary",
+      "role": "admin",
+      "ownAuthMatched": true,
+      "detailGetSuccess": true,
+      "payloadVisible": true,
+      "claimOffered": true,
+      "deniedDirectClaim": null,
+      "stateUnchanged": true
+    },
+    {
+      "case": "actual own-role detail and claim boundary",
+      "role": "manager",
+      "ownAuthMatched": true,
+      "detailGetSuccess": true,
+      "payloadVisible": true,
+      "claimOffered": true,
+      "deniedDirectClaim": null,
+      "stateUnchanged": true
+    },
+    {
+      "case": "actual own-role detail and claim boundary",
+      "role": "sales",
+      "ownAuthMatched": true,
+      "detailGetSuccess": true,
+      "payloadVisible": true,
+      "claimOffered": false,
+      "deniedDirectClaim": true,
+      "stateUnchanged": true
+    },
+    {
+      "case": "actual own-role detail and claim boundary",
+      "role": "client_success",
+      "ownAuthMatched": true,
+      "detailGetSuccess": true,
+      "payloadVisible": true,
+      "claimOffered": false,
+      "deniedDirectClaim": true,
+      "stateUnchanged": true
+    },
+    {
+      "case": "actual own-role detail and claim boundary",
+      "role": "accounting",
+      "ownAuthMatched": true,
+      "detailGetSuccess": true,
+      "payloadVisible": true,
+      "claimOffered": false,
+      "deniedDirectClaim": true,
+      "stateUnchanged": true
+    },
+    {
+      "case": "actual own-role detail and claim boundary",
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "detailGetSuccess": true,
+      "payloadVisible": true,
+      "claimOffered": false,
+      "deniedDirectClaim": true,
+      "stateUnchanged": true
+    },
+    {
+      "case": "matching actual scoped deny",
+      "role": "manager",
+      "capability": "approvals.view",
+      "realDetailDenied": true,
+      "noPayloadLeaked": true,
+      "realPostDenied": true,
+      "approvalAuditReceiptUnchanged": true,
+      "claimableQueueOmitted": true
+    },
+    {
+      "case": "matching actual scoped deny",
+      "role": "manager",
+      "capability": "approvals.decide",
+      "realDetailDenied": true,
+      "noPayloadLeaked": true,
+      "realPostDenied": true,
+      "approvalAuditReceiptUnchanged": true,
+      "claimableQueueOmitted": true
+    },
+    {
+      "case": "own manager actual UI claim and exact-key replay",
+      "oneVersion": true,
+      "oneClaimReceipt": true,
+      "oneClaimAudit": true,
+      "replayUnchanged": true,
+      "claimAbsentAfterReload": true
+    }
+  ],
+  "success": true,
+  "distinctActualAuthUsers": 7,
+  "distinctOwnAuthCookieSets": 7,
+  "temporaryOverridesRevoked": true,
+  "finishedAt": "2026-09-30T16:31:55.923Z"
+}

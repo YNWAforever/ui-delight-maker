@@ -1,0 +1,39 @@
+{
+  "sha": "8691421eb79a57e8bb3fdbc4a7e54367d493611f",
+  "startedAt": "2026-09-30T16:29:23.698Z",
+  "scope": "Actual own accounting seven-day accepted report, Hong Kong midnight inclusive bound, independent HKD/USD100.25 and two actual browser timezones; synthetic-only fixtures",
+  "cases": [
+    {
+      "case": "Actual accounting report/CSV separates currencies; lower-midnight7 included, one-second-before5/old500/null700 excluded",
+      "pass": true
+    },
+    {
+      "case": "Actual Los_Angeles and Auckland accounting report/download rows identical",
+      "pass": true
+    },
+    {
+      "case": "Actual accounting HK00:30 instant display",
+      "browserTimezone": "America/Los_Angeles",
+      "display": "25 Sept 2026, 00:30",
+      "pass": true
+    },
+    {
+      "case": "Actual accounting HK00:30 instant display",
+      "browserTimezone": "Pacific/Auckland",
+      "display": "25 Sept 2026, 00:30",
+      "pass": true
+    }
+  ],
+  "success": true,
+  "hkBusinessDate": "2026-10-01",
+  "hkRangeStartUtc": "2026-09-24T16:00:00.000Z",
+  "actualReportDelta": {
+    "HKD": "107.25",
+    "USD": "100.25",
+    "unverified": 1
+  },
+  "syntheticQuoteFixturesRetained": 6,
+  "acceptedPeriodNotMovedByMetadata": true,
+  "dateOnlyEvidence": "existing actual invoice-date/duplicate-calendar UAT retained",
+  "finishedAt": "2026-09-30T16:30:10.164Z"
+}

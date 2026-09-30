@@ -1,0 +1,52 @@
+{
+  "sha": "8691421eb79a57e8bb3fdbc4a7e54367d493611f",
+  "startedAt": "2026-09-30T15:19:52.271Z",
+  "scope": "Actual own sales/manager/admin/accounting immutable accepted A and revision B workflow; isolated synthetic data",
+  "sourceQuoteId": "b469d269-522f-4c55-9dbc-7f6d81b1d504",
+  "cases": [
+    {
+      "case": "Own sales creates B from immutable A; same key returns same B",
+      "pass": true
+    },
+    {
+      "case": "Actual B commercial edit/save does not change any A quote/version/sheet field",
+      "pass": true
+    },
+    {
+      "case": "Own accounting A print preview still renders immutable HKD200.50",
+      "pass": true
+    },
+    {
+      "case": "Own manager claims and approves B without issue permission; A unchanged",
+      "pass": true
+    },
+    {
+      "case": "Own admin issues B601.50; A accepted/source snapshot and accepted_at unchanged",
+      "pass": true
+    },
+    {
+      "case": "Own accounting accepts B into one separate601.50 sheet; same-key replay leaves both A and B unchanged",
+      "pass": true
+    }
+  ],
+  "success": true,
+  "revisionQuoteId": "b3d06335-cd68-468b-9fca-c7fdfc370be8",
+  "appendedRevisionLedgerId": "5db3b9da-4f9d-4b5d-9603-46d81d88b66f",
+  "existingIssuedAndAcceptedVersionsUnchanged": true,
+  "approvalId": "27843d6b-3faf-457d-9aad-a046e4edbda4",
+  "originalAcceptedAt": "2026-09-30T02:33:35.052+00:00",
+  "originalIssuedVersionId": "6f3b6fa4-d5aa-4ae1-a747-7999a99ef694",
+  "originalAcceptedVersionId": "78b73e88-c73a-4900-bf7a-5d1c3dac0d5d",
+  "originalJobSheetId": "5b559907-919e-4b7e-a825-5ac466b4a06b",
+  "revisionAcceptedVersionId": "d1344a03-be6b-4ad9-ab9f-4829ecb4e4d8",
+  "revisionJobSheetId": "9d9c0e7b-31c7-4eb3-8a4a-8ca80a20d980",
+  "acceptedAMatchesIssuedSource": true,
+  "originalQuoteCommercialAcceptedAtAndSheetUnchanged": true,
+  "actualIndependentAuthRoles": [
+    "sales",
+    "manager",
+    "admin",
+    "accounting"
+  ],
+  "finishedAt": "2026-09-30T15:21:49.492Z"
+}
