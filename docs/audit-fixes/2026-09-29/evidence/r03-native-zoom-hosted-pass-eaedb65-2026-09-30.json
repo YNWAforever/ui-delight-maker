@@ -1,0 +1,60 @@
+{
+  "sha": "eaedb659b6aac4559114299c717faa46fb6a436e",
+  "createdAt": "2026-09-30T11:52:08.047Z",
+  "scope": "Native Chromium tab zoom via official chrome.tabs API; disposable browser profile; exact-source dedicated hosted UAT and own admin Auth; no CSS/emulation/pinch scaling",
+  "success": true,
+  "cases": [
+    {
+      "actor": "anonymous",
+      "route": "/login/sign-in",
+      "nativeZoomFactor": 2,
+      "mode": "automatic",
+      "scope": "per-tab",
+      "before": {
+        "width": 1424,
+        "height": 905,
+        "dpr": 1
+      },
+      "after": {
+        "width": 712,
+        "height": 452,
+        "dpr": 2,
+        "clientWidth": 712,
+        "scrollWidth": 712
+      },
+      "oneMain": true,
+      "skipEnterFocusMain": true
+    },
+    {
+      "actor": "admin",
+      "route": "/admin/people",
+      "actualOwnIdentityMatched": true,
+      "nativeZoomFactor": 2,
+      "mode": "automatic",
+      "scope": "per-tab",
+      "before": {
+        "width": 1424,
+        "height": 905,
+        "dpr": 1
+      },
+      "after": {
+        "width": 712,
+        "height": 452,
+        "dpr": 2,
+        "clientWidth": 712,
+        "scrollWidth": 712
+      },
+      "dialogInViewport": true,
+      "initialEmailFocus": true,
+      "tabTrap": true,
+      "submitReachable": true,
+      "escapeAndFocusReturn": true
+    }
+  ],
+  "references": [
+    "https://developer.chrome.com/docs/extensions/reference/api/tabs#method-setZoom",
+    "https://playwright.dev/docs/chrome-extensions"
+  ],
+  "screenshotMethod": "CDP captureScreenshot with native viewport, no CSS/emulation scale",
+  "screenReader": "not verified"
+}

@@ -1,0 +1,14 @@
+{
+  "checkedAt": "2026-09-30T11:51:24.810Z",
+  "projectId": "prj_jlIsv7mLYGpZR4XEV4njX05jAZYJ",
+  "candidateUrl": "https://clientops-uat-20260930-nyg55q7j0-ynwaforevers-projects.vercel.app",
+  "candidateSource": "eaedb659b6aac4559114299c717faa46fb6a436e",
+  "stableUatSource": "a18aa46273b10edc9cc75dbb11188ad9d49c98e6",
+  "realProductionSource": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+  "automaticPromotionDisabled": true,
+  "deploymentProtection": "retained; authorized CLI machine access, private cookie",
+  "appRoles": "independent own user cookies and real backend identities",
+  "deploymentId": "dpl_6jEgB9pxFCjuTdPASWb2xiSXyYFZ",
+  "providerEnvironmentName": "production",
+  "providerEnvironmentScope": "Dedicated synthetic UAT project only; no real-production deployment"
+}

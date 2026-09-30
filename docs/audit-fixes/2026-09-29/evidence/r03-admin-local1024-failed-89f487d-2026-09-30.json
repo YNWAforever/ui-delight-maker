@@ -1,0 +1,63 @@
+{
+  "sha": "89f487dbe6d9143980d92cee18cd016a98b49dd3",
+  "createdAt": "2026-09-30T11:18:33.509Z",
+  "scope": "Exact-source production SSR over real loopback PostgreSQL, independent own role Auth; GET/HEAD-only adapter; no valid invitations sent",
+  "roles": [
+    {
+      "role": "admin",
+      "actualAuthIdentityMatched": true,
+      "initialEmailFocus": true,
+      "tabTrap": true,
+      "shiftTabTrap": true,
+      "escapeCloses": true,
+      "focusReturns": true,
+      "invalidInputVisible": true,
+      "noInvitationPost": true
+    }
+  ],
+  "widths": [
+    {
+      "width": 390,
+      "dialogInViewport": true,
+      "noDocumentOverflow": true,
+      "submitReachable": true,
+      "focusReturns": true
+    },
+    {
+      "width": 768,
+      "dialogInViewport": true,
+      "noDocumentOverflow": true,
+      "submitReachable": true,
+      "focusReturns": true
+    }
+  ],
+  "success": false,
+  "fixture": {
+    "activeProfiles": 250,
+    "deactivatedProfiles": 50,
+    "allSynthetic": true
+  },
+  "picker": {
+    "role": "admin",
+    "eligible250thSelected": true,
+    "nameRetainedAcrossSearch": true,
+    "pageSizes": [
+      50,
+      100,
+      150,
+      200,
+      250
+    ]
+  },
+  "error": {
+    "name": "AssertionError",
+    "message": "Expected values to be strictly equal:\n\ntrue !== false\n",
+    "stage": "width 1024"
+  },
+  "focusAtFailure": {
+    "tag": "TEXTAREA",
+    "label": "Email addresses",
+    "insideDialog": true
+  },
+  "syntheticProfileCleanup": true
+}

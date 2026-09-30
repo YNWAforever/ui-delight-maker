@@ -1,0 +1,98 @@
+{
+  "sha": "89f487dbe6d9143980d92cee18cd016a98b49dd3",
+  "scope": "Read-only loopback SSR, exact candidate, original seven profiles after fixture cleanup",
+  "widths": [
+    {
+      "viewport": 768,
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "overflow": []
+    },
+    {
+      "viewport": 1024,
+      "clientWidth": 1024,
+      "scrollWidth": 1375,
+      "overflow": [
+        {
+          "tag": "TABLE",
+          "class": "w-full border-collapse text-left text-sm",
+          "left": 504,
+          "right": 1374.765625,
+          "width": 870.765625,
+          "minWidth": "0px",
+          "display": "table",
+          "overflowX": "visible",
+          "grid": "none"
+        },
+        {
+          "tag": "THEAD",
+          "class": "[&_tr]:border-b",
+          "left": 504,
+          "right": 1374.765625,
+          "width": 870.765625,
+          "minWidth": "0px",
+          "display": "table-header-group",
+          "overflowX": "visible",
+          "grid": "none"
+        },
+        {
+          "tag": "TR",
+          "class": "border-b transition-colors data-[state=selected]:bg-muted hover:bg-transparent",
+          "left": 504,
+          "right": 1374.765625,
+          "width": 870.765625,
+          "minWidth": "0px",
+          "display": "table-row",
+          "overflowX": "visible",
+          "grid": "none"
+        }
+      ]
+    },
+    {
+      "viewport": 1280,
+      "clientWidth": 1280,
+      "scrollWidth": 1375,
+      "overflow": [
+        {
+          "tag": "TABLE",
+          "class": "w-full border-collapse text-left text-sm",
+          "left": 504,
+          "right": 1374.765625,
+          "width": 870.765625,
+          "minWidth": "0px",
+          "display": "table",
+          "overflowX": "visible",
+          "grid": "none"
+        },
+        {
+          "tag": "THEAD",
+          "class": "[&_tr]:border-b",
+          "left": 504,
+          "right": 1374.765625,
+          "width": 870.765625,
+          "minWidth": "0px",
+          "display": "table-header-group",
+          "overflowX": "visible",
+          "grid": "none"
+        },
+        {
+          "tag": "TR",
+          "class": "border-b transition-colors data-[state=selected]:bg-muted hover:bg-transparent",
+          "left": 504,
+          "right": 1374.765625,
+          "width": 870.765625,
+          "minWidth": "0px",
+          "display": "table-row",
+          "overflowX": "visible",
+          "grid": "none"
+        }
+      ]
+    },
+    {
+      "viewport": 1440,
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "overflow": []
+    }
+  ]
+}

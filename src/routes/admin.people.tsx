@@ -393,7 +393,7 @@ function AdminPeopleIndex() {
         }
       />
 
-      <div className="grid min-w-0 md:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid min-w-0 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <PeopleDirectory
           data={directory}
           search={search}

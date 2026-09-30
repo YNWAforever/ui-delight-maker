@@ -55,3 +55,7 @@ A fresh actual5000Lead run at a18aa46 previews all5,000 in9,688msPOST/9,925msUI 
 The recovery fix has no import-server change from d0f451c. Existing schema/receipt/key remains compatible; rollback to d0f451c restores the demonstrated missing-retry UI defect. Retain all synthetic paused sessions and their keys while investigating, rather than resetting them to obtain a green run.
 
 Final documentation-head CI is still required before merging #136. Source fixes/isolated acceptance do not authorize production promotion. All30CO/16UAT remain tracked and release stays NO-GO.
+
+## Final source merge checkpoint
+
+PR #136 merged at `1b48265d913c82d1d476fe2e701682cd88ff7af4` (2026-09-30 10:56:15Z), after exact final head `f6126d762d66ecfe5cf7a51aaf79424a6deaf88f` passed Checks `36704661537` / DB `36704661510`, **2,294 real PostgreSQL tests / zero skipped**, replay/browser/Vercel. Post-main Checks `36705446703` and DB `36705446706` also passed **2,294 / zero skipped**. [Production hold proof](evidence/production-hold-after-136-2026-09-30.json): canceled merge deployment, public build bed941b unchanged, no promotion. Full U09 lifecycle remains running.
