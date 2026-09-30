@@ -4,7 +4,7 @@
 
 Main `4d238725391a0fec4151b037a9339b919621ed37` includes [merged #146](https://github.com/YNWAforever/ui-delight-maker/pull/146), exact final/post-main2,340/318/zero skipped/replay PASS. [Merge](evidence/pr146-merge-2026-10-01.json), [hold](evidence/production-hold-after-146-2026-10-01.json): canceled main attempt/publicbed941b unchanged. Defined U10 PASS.
 
-[R03 keyboard+narrow source repair](admin-keyboard-uat-2026-10-01.md) passes local fresh2,344 zero-skip core suite and final21/static/pure-build gates. Exact-source hosted width/native200/role no-write proof and source/final CI pending. All30 CO/16 UAT and remaining/external gates retained; release NO-GO.
+[R03 keyboard+narrow source repair](admin-keyboard-uat-2026-10-01.md) passes local fresh2,344 zero-skip core suite and final21/static/pure-build gates. Exact-sourcefc4a2fd CI2,344/319/zero skipped/replay/static and seventeen expanded own Admin/SA/reader width/native200/focus/readability/no-write cases PASS. Final documentation-head CI pending. Stable dedicated test alias remainsa18aa46; detachedfc4a2fd has actual proof. All30 CO/16 UAT and remaining/external gates retained; release NO-GO.
 
 ## Previous verified checkpoint — PR #145 / U10 source repair
 

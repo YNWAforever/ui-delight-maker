@@ -66,3 +66,7 @@ The `T-PUBLIC-BACK` candidate gap above was repaired at source commit `376d05e`.
 ## Merged application-source checkpoint through PR #120
 
 PRs [#118](https://github.com/YNWAforever/ui-delight-maker/pull/118), [#119](https://github.com/YNWAforever/ui-delight-maker/pull/119) and [#120](https://github.com/YNWAforever/ui-delight-maker/pull/120) merged in order. Main `5607b4d` passed post-merge Checks and real isolated PostgreSQL Database contract (2,190 tests, 0 skipped), plus a two-run isolated migration/seed replay. Protected #120 preview `/api/build` matched final PR head `1b999e0`; public keyboard/navigation and four-width evidence are linked above. The 14 dynamic action IDs have source semantics recorded, with runtime role outcomes still `NOT_TESTED`. No cross-role UAT, provider delivery, legacy parity, production deployment or authenticated full-route before/after performance was inferred. Release remains **NO-GO**.
+
+## 2026-10-01 expanded Admin repair
+
+[Actual Admin keyboard/narrow report](admin-keyboard-uat-2026-10-01.md) retains original failures and source4fb0b4a scoped pass followed by390 clippingFAIL. Repairedfc4a2fd passes seventeen expanded own-role width/native200/focus/error/control-bounds cases plus exact-source CI2,344/zero skipped and replay. CO-20 defined directory criteria verified_fixed. Historical751 matrix unchanged; full mixed receipt/screen reader/external release gates remain. Final docs-head CI pending.
