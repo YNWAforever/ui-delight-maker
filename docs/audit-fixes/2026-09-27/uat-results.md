@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | U01 onboarding | anonymous, invited, active, no_profile, suspended identities | Invite/workspace state clear; nonmember cannot read CRM | pending full workflow | [T18](t18-evidence.md) |
 | U02 sales day | sales with scoped Lead, Task, draft Quote | owner name, follow-up, approval handoff and consistent state | pending full workflow | [T07](t07-evidence.md), [T12](t12-evidence.md) |
-| U03 manager review | scoped manager plus issuer on same Quote | manager approves, issue denied to manager, issuer can complete | pending full workflow | [T07](t07-evidence.md) |
+| U03 manager review | scoped manager plus issuer on same Quote | manager approves, issue denied to manager, issuer can complete | PASS: isolated manager claim/approve and admin issue; five issuer denials | [T07](t07-evidence.md) |
 | U04 immutable version | issuer, accounting; synthetic issued A and revised B | acceptance uses A, fixed accepted_at, B cannot rewrite A | pending full workflow | [T06](t06-evidence.md), [T09](t09-evidence.md) |
 | U05 competing decisions | two reviewers and one pending approval | one terminal decision; other conflict; refresh agrees | pending full workflow | [T05](t05-evidence.md) |
 | U06 cross-entry deny | accounting plus explicit task/approval/sheet deny and expired override | search, home, list, detail, report, export and direct server request omit denied data | pending full workflow | [T02](t02-evidence.md), [T03](t03-evidence.md) |

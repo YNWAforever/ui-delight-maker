@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import type { ComponentType, ReactNode } from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+const updateQuoteMock = vi.hoisted(() => vi.fn());
 const state = vi.hoisted(() => ({
   role: "admin",
   capabilities: undefined as string[] | undefined,
@@ -17,7 +18,20 @@ vi.mock("@tanstack/react-router", () => ({
         number: "Q-TEST",
         status: state.status,
         line_items: [
-          { id: "item-1", service: "Synthetic service", description: "", qty: 1, unit_price: 100 },
+          {
+            id: "item-1",
+            service: "Synthetic service",
+            description: "",
+            qty: 1,
+            unit_price: 100,
+            quote_id: "quote-1",
+            total: 100,
+            sort_order: 0,
+            created_at: "2026-09-30",
+            updated_at: "2026-09-30",
+            product_id: null,
+            taxable: false,
+          },
         ],
         total_value: 100,
         currency: "HKD",
@@ -55,7 +69,7 @@ vi.mock("@/server-functions/quotes", () => ({
   issueQuoteVersion: vi.fn(),
   rejectQuote: vi.fn(),
   requestQuoteApproval: vi.fn(),
-  updateQuote: vi.fn(),
+  updateQuote: updateQuoteMock,
 }));
 vi.mock("@/components/sales", () => ({
   WorkspaceHeader: ({ primaryAction }: { primaryAction?: ReactNode }) => (
@@ -71,6 +85,7 @@ vi.mock("@/components/sales", () => ({
   StickyActionBar: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 import { Route } from "../quotes.$id";
+import { QuoteCommercialPatchSchema } from "@/lib/operations/input-schemas";
 afterEach(cleanup);
 function draw(role: string, capabilities: string[] | undefined, status = "approved") {
   Object.assign(state, { role, capabilities, status });
@@ -112,5 +127,24 @@ describe("quote action controls use server-evaluated capabilities", () => {
       (screen.getByRole("button", { name: "Save & Request Approval" }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
+  });
+});
+
+describe("persisted quote commercial round trip", () => {
+  it("saves an enriched database line item as a valid strict commercial input", async () => {
+    updateQuoteMock.mockReset();
+    updateQuoteMock.mockResolvedValue({});
+    draw("sales", ["quotes.update"], "draft");
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    await waitFor(() => expect(updateQuoteMock).toHaveBeenCalledOnce());
+    const patch = updateQuoteMock.mock.calls[0][0].data.updates;
+    expect(QuoteCommercialPatchSchema.safeParse(patch).success).toBe(true);
+    expect(patch.line_items[0]).toEqual({
+      id: "item-1",
+      service: "Synthetic service",
+      description: "",
+      qty: 1,
+      unit_price: 100,
+    });
   });
 });

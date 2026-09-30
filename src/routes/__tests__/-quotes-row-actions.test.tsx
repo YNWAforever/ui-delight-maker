@@ -6,6 +6,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Quote } from "@/lib/types";
+import { DateOnlySchema, QuoteCommercialPatchSchema } from "@/lib/operations/input-schemas";
 
 const createQuoteMock = vi.hoisted(() => vi.fn());
 const updateQuoteMock = vi.hoisted(() => vi.fn());
@@ -260,3 +261,56 @@ describe("Quotes Duplicate performs two real writes", () => {
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledOnce());
   });
 });
+
+it("duplicates persisted line items through the strict commercial input contract", async () => {
+  const loaded = Route.useLoaderData();
+  vi.mocked(Route.useLoaderData).mockReturnValue({
+    ...loaded,
+    items: [
+      {
+        ...loaded.items[0],
+        line_items: SOURCE_QUOTE.line_items.map((item) => ({
+          ...item,
+          quote_id: SOURCE_QUOTE.id,
+          total: item.qty * item.unit_price,
+          sort_order: 0,
+          created_at: SOURCE_QUOTE.created_at,
+          updated_at: SOURCE_QUOTE.updated_at,
+        })),
+      },
+    ],
+  } as never);
+  createQuoteMock.mockResolvedValue({ id: "quote-copy" });
+  updateQuoteMock.mockResolvedValue({});
+  renderQuotes();
+  const menu = await openRowMenu();
+  fireEvent.click(within(menu).getByRole("menuitem", { name: "Duplicate" }));
+  await waitFor(() => expect(createQuoteMock).toHaveBeenCalledOnce());
+  const payload = createQuoteMock.mock.calls[0][0].data;
+  expect(QuoteCommercialPatchSchema.safeParse({ line_items: payload.line_items }).success).toBe(
+    true,
+  );
+  expect(payload.line_items).toEqual(SOURCE_QUOTE.line_items);
+});
+
+it.each(["2026-09-01", "2026-09-01T00:00:00.000Z", null])(
+  "duplicates persisted calendar date %s through the strict date input contract",
+  async (valid_until) => {
+    const loaded = Route.useLoaderData();
+    vi.mocked(Route.useLoaderData).mockReturnValue({
+      ...loaded,
+      items: [{ ...loaded.items[0], valid_until }],
+    } as never);
+    createQuoteMock.mockResolvedValue({ id: "quote-copy" });
+    updateQuoteMock.mockResolvedValue({});
+    renderQuotes();
+    const menu = await openRowMenu();
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Duplicate" }));
+    await waitFor(() => expect(createQuoteMock).toHaveBeenCalledOnce());
+    const payload = createQuoteMock.mock.calls[0][0].data;
+    expect(payload.valid_until).toBe(valid_until === null ? null : "2026-09-01");
+    if (payload.valid_until !== null) {
+      expect(DateOnlySchema.safeParse(payload.valid_until).success).toBe(true);
+    }
+  },
+);
