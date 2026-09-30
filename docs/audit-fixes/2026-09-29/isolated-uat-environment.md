@@ -70,3 +70,7 @@ Supersedes the earlier checkpoint's absence of role sessions and disposable Neon
 - Synthetic UAT task count is now 6; the additional task was created by the real sales UI. Temporary permission overrides used in testing were revoked; the original synthetic owner restored.
 - No schema changes for these fixes. To revert UAT UI only, redeploy the clean source at `4d8424ae27a387774f9153c29c2bbbdeba23f65c` to this UAT project, or promote its UAT deployment `dpl_7GR7XgypZEQZWVXjwkLwhJTRdbGw`. Do not change the actual production project/build hold.
 - Account/password reference remains private: `.clientops-perf/uat/TEST-ACCOUNTS.zh-HK.md`. Session files remain `.clientops-perf/uat/sessions/<role>.json`.
+
+## Latest independently verified application source
+
+Approval source `fac59c90eb47be77c4f75554b3cee6e624b26622`, deployment `dpl_7J8H98mVBo23qrAuLXd8Z3EiDxmJ`; stable alias returned exact SHA before/after complete seven-role, scoped override, actual opposed-decision and manual-statement UI capture. The dedicated database/auth IDs and seven account identities above are unchanged. [Evidence](approval-role-uat-2026-09-30.md). No schema replay or provider configuration changes; production deployment/data remains untouched.
