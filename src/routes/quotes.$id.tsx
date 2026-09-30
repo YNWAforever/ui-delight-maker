@@ -208,11 +208,9 @@ async function invalidateQuoteMutation(
  * approval is a manager's job, and a quote whose buttons silently change on every
  * transition reads as a broken page rather than a governed one.
  *
- * The capability check here is an honesty hint, not enforcement — `requireCapability` on
- * the server remains the only thing that decides. It reads the same role table the server
- * consults, but a per-user override can still widen access, so the hint defaults to
- * "allowed" whenever the shell profile is unavailable rather than disabling a control that
- * would in fact have worked.
+ * Controls consume effective capabilities from the server for this quote. Overrides,
+ * expiry and ownership can differ from the role defaults. Missing decisions disable actions;
+ * mutation guards recheck current authorization and state before every write.
  * ---------------------------------------------------------------------------------- */
 
 type LifecycleActionKey = "request_approval" | "reject" | "approve" | "issue" | "accept";
@@ -225,7 +223,7 @@ type LifecycleAction = {
   icon: LucideIcon;
   variant: "default" | "outline";
   capability: Capability;
-  /** Why this role cannot run it. Never names a capability string. */
+  /** Why the actor cannot run it on this quote. Never names a capability string. */
   capabilityReason: string;
   allowedStatuses: readonly QuoteStatus[];
 };
@@ -238,7 +236,7 @@ const LIFECYCLE_ACTIONS: readonly LifecycleAction[] = [
     icon: Send,
     variant: "default",
     capability: "quotes.request_approval",
-    capabilityReason: "Submitting quotes for approval is not part of your role.",
+    capabilityReason: "You do not have permission to submit this quote for approval.",
     allowedStatuses: ["draft", "revised"],
   },
   {
@@ -248,7 +246,7 @@ const LIFECYCLE_ACTIONS: readonly LifecycleAction[] = [
     icon: XCircle,
     variant: "outline",
     capability: "quotes.approve",
-    capabilityReason: "Deciding on quote approvals requires manager access.",
+    capabilityReason: "You do not have permission to decide this quote\u0027s approval.",
     allowedStatuses: ["pending_approval"],
   },
   {
@@ -258,7 +256,7 @@ const LIFECYCLE_ACTIONS: readonly LifecycleAction[] = [
     icon: CheckCircle2,
     variant: "default",
     capability: "quotes.approve",
-    capabilityReason: "Deciding on quote approvals requires manager access.",
+    capabilityReason: "You do not have permission to decide this quote\u0027s approval.",
     allowedStatuses: ["pending_approval"],
   },
   {
@@ -268,7 +266,7 @@ const LIFECYCLE_ACTIONS: readonly LifecycleAction[] = [
     icon: Send,
     variant: "default",
     capability: "quotes.issue",
-    capabilityReason: "Issuing quotes to clients requires administrator access.",
+    capabilityReason: "You do not have permission to issue this quote.",
     allowedStatuses: ["approved"],
   },
   {
@@ -278,7 +276,7 @@ const LIFECYCLE_ACTIONS: readonly LifecycleAction[] = [
     icon: CheckCircle2,
     variant: "default",
     capability: "job_sheets.accept",
-    capabilityReason: "Recording an acceptance is done by accounting.",
+    capabilityReason: "You do not have permission to record acceptance for this quote.",
     allowedStatuses: ["sent", "viewed"],
   },
 ] as const;

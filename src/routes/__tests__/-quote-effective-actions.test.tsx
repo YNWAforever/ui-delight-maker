@@ -80,6 +80,10 @@ function draw(role: string, capabilities: string[] | undefined, status = "approv
 describe("quote action controls use server-evaluated capabilities", () => {
   it("disables issue for an admin with an effective deny", () => {
     draw("admin", []);
+    expect(
+      screen.getAllByText("You do not have permission to issue this quote.").length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/requires administrator access/)).toBeNull();
     for (const button of screen.getAllByRole("button", { name: "Issue quote" })) {
       expect((button as HTMLButtonElement).disabled).toBe(true);
     }

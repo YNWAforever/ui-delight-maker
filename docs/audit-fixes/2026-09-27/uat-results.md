@@ -40,3 +40,7 @@ For each run, record candidate SHA from GET `/api/build`, isolated data IDs in a
 ## 2026-09-30 executed Task/Admin entry slice
 
 [Seven-role report](../2026-09-29/task-role-uat-2026-09-30.md) records actual same-task writes, denied direct requests, four effective override/scope scenarios, Admin entry boundaries and ten Task layout/keyboard cases. The full cases above remain pending because their other records, state transitions, import/bulk sizes and cross-entry paths have not all been exercised. Seven sessions are available; session absence is no longer a blocker.
+
+## 2026-09-30 quote action slice
+
+[Quote role report](../2026-09-29/quote-role-uat-2026-09-30.md): seven-role issue boundaries and two scoped overrides pass at `4b5f94a`. Sales synthetic draft creation passes; subsequent save/submission fails strict line-item validation and is being repaired. U03/U04/U07 remain open; the full matrices above retain their individual gates.

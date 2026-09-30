@@ -1,0 +1,67 @@
+{
+  "sha": "4b5f94a924712353ecf0d035603a33679a12e91b",
+  "quoteId": "b469d269-522f-4c55-9dbc-7f6d81b1d504",
+  "cases": [
+    {
+      "case": "quote issue role boundary",
+      "role": "super_admin",
+      "enabled": true,
+      "pass": true
+    },
+    {
+      "case": "quote issue role boundary",
+      "role": "admin",
+      "enabled": true,
+      "pass": true
+    },
+    {
+      "case": "quote issue role boundary",
+      "role": "manager",
+      "enabled": false,
+      "pass": true
+    },
+    {
+      "case": "quote issue role boundary",
+      "role": "sales",
+      "enabled": false,
+      "pass": true
+    },
+    {
+      "case": "quote issue role boundary",
+      "role": "client_success",
+      "enabled": false,
+      "pass": true
+    },
+    {
+      "case": "quote issue role boundary",
+      "role": "accounting",
+      "enabled": false,
+      "pass": true
+    },
+    {
+      "case": "quote issue role boundary",
+      "role": "read_only",
+      "enabled": false,
+      "pass": true
+    },
+    {
+      "case": "scoped issue deny",
+      "role": "admin",
+      "pass": true
+    },
+    {
+      "case": "scoped issue allow",
+      "role": "sales",
+      "pass": true
+    }
+  ],
+  "workflow": {
+    "result": "FAIL",
+    "at": "draft commercial save",
+    "message": "Invalid input",
+    "cause": "Persisted line item metadata was passed to the strict input validator",
+    "nextTask": "R01 quote commercial input projection"
+  },
+  "providerCalls": 0,
+  "productionWrites": 0
+}
