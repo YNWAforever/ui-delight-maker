@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { BillingPortionsTable } from "@/components/job-sheets/billing-portions-table";
+import { DateOnlySchema } from "@/lib/operations/input-schemas";
 import { canAcceptJobSheet } from "@/lib/quote-to-cash";
 import type { JobSheet, JobSheetPortion } from "@/lib/types";
 import {
@@ -565,4 +566,27 @@ describe("job sheet accounting workspace behavior", () => {
       ]),
     ).toBe("HKD 1,250.00 / USD 500.00");
   });
+});
+
+it("projects persisted ISO calendar fields into date inputs without timezone conversion", () => {
+  const original = makePortion({
+    target_invoice_date: "2026-09-30T00:00:00.000Z",
+    xero_invoice_date: "2026-10-01T00:00:00.000Z",
+  });
+  const billing = toPortionDrafts([original]);
+  const invoice = toXeroDrafts([original]);
+  expect(billing[0].target_invoice_date).toBe("2026-09-30");
+  expect(invoice[original.id].xero_invoice_date).toBe("2026-10-01");
+  expect(
+    DateOnlySchema.safeParse(buildPortionSavePayload(billing, [original])[0].target_invoice_date)
+      .success,
+  ).toBe(true);
+  expect(hasUnsavedBillingDraftChanges(billing, [original])).toBe(false);
+  expect(hasUnsavedXeroDraftChanges(invoice, [original])).toBe(false);
+});
+
+it("compares normalized invoice dates against ISO readback without inventing unsaved edits", () => {
+  const original = makePortion({ xero_invoice_date: "2026-10-01T00:00:00.000Z" });
+  const draft = { ...toXeroDrafts([original])[original.id], xero_invoice_date: "2026-10-01" };
+  expect(hasUnsavedXeroDraftChanges({ [original.id]: draft }, [original])).toBe(false);
 });

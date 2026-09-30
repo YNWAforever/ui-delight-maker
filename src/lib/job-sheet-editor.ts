@@ -46,7 +46,7 @@ export const toPortionDrafts = (portions: JobSheetPortion[]): PortionDraft[] =>
     description: portion.description ?? "",
     amount: String(portion.amount ?? 0),
     currency: portion.currency,
-    target_invoice_date: portion.target_invoice_date ?? "",
+    target_invoice_date: portion.target_invoice_date?.slice(0, 10) ?? "",
     billing_type: portion.billing_type,
     status: portion.status,
     sort_order: portion.sort_order,
@@ -60,7 +60,7 @@ export const toXeroDrafts = (portions: JobSheetPortion[]): Record<string, XeroDr
       {
         xero_invoice_number: portion.xero_invoice_number ?? "",
         xero_invoice_reference: portion.xero_invoice_reference ?? "",
-        xero_invoice_date: portion.xero_invoice_date ?? "",
+        xero_invoice_date: portion.xero_invoice_date?.slice(0, 10) ?? "",
         xero_notes: portion.xero_notes ?? "",
       },
     ]),
@@ -231,7 +231,7 @@ export const buildXeroSavePayload = (draft: XeroDraft): NormalizedXeroSavePayloa
 const getPersistedXeroPayload = (portion: JobSheetPortion): NormalizedXeroSavePayload => ({
   xero_invoice_number: portion.xero_invoice_number ?? null,
   xero_invoice_reference: portion.xero_invoice_reference ?? null,
-  xero_invoice_date: portion.xero_invoice_date ?? null,
+  xero_invoice_date: portion.xero_invoice_date?.slice(0, 10) ?? null,
   xero_notes: portion.xero_notes ?? null,
 });
 

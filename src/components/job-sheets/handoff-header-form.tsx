@@ -85,13 +85,15 @@ export function HandoffHeaderForm({
           acceptance. Accepted commercial fields are locked.
         </p>
         {editable ? (
-          <ProfileSearchCombobox
-            purpose="job_sheet_owner"
-            label="Accounting owner"
-            value={accountingOwner}
-            onChange={setAccountingOwner}
-            resourceId={jobSheet.id}
-          />
+          <fieldset disabled={locked || busy}>
+            <ProfileSearchCombobox
+              purpose="job_sheet_owner"
+              label="Accounting owner"
+              value={accountingOwner}
+              onChange={setAccountingOwner}
+              resourceId={jobSheet.id}
+            />
+          </fieldset>
         ) : (
           <p className="text-sm">Accounting owner: {jobSheet.accounting_owner ?? "Unassigned"}</p>
         )}
