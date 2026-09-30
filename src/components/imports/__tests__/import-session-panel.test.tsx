@@ -13,7 +13,7 @@ import { ImportSessionPanel } from "../import-session-panel";
 afterEach(() => {
   cleanup();
   localStorage.clear();
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 describe("CSV importer hydration", () => {
   it.each(["lead", "client", "event"] as const)(
@@ -64,4 +64,75 @@ describe("CSV importer hydration", () => {
     expect(api.commitImportFn).not.toHaveBeenCalled();
     expect(api.resumeImportFn).not.toHaveBeenCalled();
   });
+});
+
+describe("saved CSV result read recovery", () => {
+  it.each(["lead", "client", "event"] as const)(
+    "retains %s key, blocks replacement, and retries only its receipt read",
+    async (kind) => {
+      const key = "clientops-import:" + kind + ":";
+      const saved = {
+        sessionId: "saved-session",
+        previewHash: "same-hash",
+        previewExpiresAt: "2099-01-01T00:00:00Z",
+        idempotencyKey: "same-key",
+      };
+      localStorage.setItem(key, JSON.stringify(saved));
+      api.getImportResultFn
+        .mockRejectedValueOnce(new Error("Network interrupted"))
+        .mockResolvedValueOnce({
+          sessionId: saved.sessionId,
+          state: "paused",
+          processed: 0,
+          total: 1,
+          rows: [
+            {
+              recordIndex: 1,
+              sourceLine: 2,
+              action: "create",
+              status: null,
+              errors: [],
+              id: null,
+              retryable: false,
+            },
+          ],
+        });
+      render(<ImportSessionPanel kind={kind} />);
+      await screen.findByRole("alert");
+      const file = screen.getByLabelText(
+        "CSV file (up to 5 MiB and 5,000 rows)",
+      ) as HTMLInputElement;
+      const retry = screen.getByRole("button", { name: "Retry loading result" });
+      expect(file.disabled).toBe(true);
+      expect(
+        (
+          screen.getByLabelText(
+            "Source system ID namespace (required with external_id)",
+          ) as HTMLInputElement
+        ).disabled,
+      ).toBe(true);
+      // Even a synthetic change cannot replace an unresolved saved receipt.
+      fireEvent.change(file, {
+        target: {
+          files: [
+            {
+              name: "replacement.csv",
+              text: async () => "company_name,contact_email\nFake,fake@example.test",
+            },
+          ],
+        },
+      });
+      expect(api.previewImportFn).not.toHaveBeenCalled();
+      expect(JSON.parse(localStorage.getItem(key)!)).toEqual(saved);
+      fireEvent.click(retry);
+      expect(await screen.findByRole("button", { name: "Continue next 20" })).toBeTruthy();
+      expect(api.getImportResultFn.mock.calls).toEqual([
+        [{ data: { sessionId: saved.sessionId } }],
+        [{ data: { sessionId: saved.sessionId } }],
+      ]);
+      expect(JSON.parse(localStorage.getItem(key)!)).toEqual(saved);
+      expect(api.commitImportFn).not.toHaveBeenCalled();
+      expect(api.resumeImportFn).not.toHaveBeenCalled();
+    },
+  );
 });

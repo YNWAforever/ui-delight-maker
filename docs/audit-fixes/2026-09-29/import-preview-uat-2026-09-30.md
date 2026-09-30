@@ -33,3 +33,15 @@ All 30 CO and 16 UAT rows remain tracked. Full Lead/Client/Event lifecycle, down
 Full-suite first run: 2,270 passed / 21 failed because two pre-existing route mocks replaced the router without ClientOnly. Both now retain the real export; all 25 affected route/hydration UI cases pass. No assertion/skip gate removed. Fresh full rerun pending. The initial implementation run also exposed unexpanded SQL-writing placeholders, corrected before the passing production-adapter run; failed local logs retained privately.
 
 Fresh final source gate: **2,291 real PostgreSQL/full-suite tests / 0 skipped / 0 todo**,313files; TypeScript, full source lint, pure Vite client/SSR and bundle budgets pass. applyRow unchanged from merged main. Hosted exact-source verification and CI remain required.
+
+## Exact-source hosted delta / new recovery defect
+
+PR #136 source d0f451c4cf65fe7e3c3c8e42619e75698904a85c passed Checks36700699589 and DB36700699592: **2,291 / zero skipped**, replay/browser/Vercel. Own seven actual role sessions were independently attested before import.
+
+Same unchanged CSV bytes/hash, app/database/Auth/actor: actual POST **9,698ms / HTTP200**, UI9,956ms; before HTTP504 at301,568ms is a censored failure, not a successful baseline latency. [Actual single pair](evidence/r05-import-preview-runtime-pair-2026-09-30.json), [accepted preview](evidence/r05-import-preview-after-d0f451c-2026-09-30.json), [screen](evidence/r05-import-preview-after-d0f451c-2026-09-30.png). Classification all5,000 correct, zero preview Lead writes. No p95/percentage/SLA inference.
+
+The full lifecycle then forwarded the actual first commit and lost its response: eight synthetic Leads succeeded, saved key survived reload. Receipt reads were interrupted deliberately. Actual UI offered **no Check/Retry** while its receipt was unavailable, yet allowed replacement file input. [Failure](evidence/r05-import-recovery-failed-d0f451c-2026-09-30.json), [screen](evidence/r05-import-recovery-failed-d0f451c-2026-09-30.png). This is a product recovery defect, not merely an observer timeout. The test remains success=false; eight writes/receipt retained, not reset. The pending observer rejection during cleanup is also retained privately.
+
+Three new Lead/Client/Event recovery tests failed for missing Retry. Candidate now initializes saved recovery state before presenting controls, blocks replacement while unresolved, exposes a read-only Retry loading result, and retains the exact saved key. A synthetic change cannot bypass the disabled replacement input. All28 affected UI cases pass. Full fresh DB/static/build and exact-source hosted recovery remain pending; U09 not accepted.
+
+Recovery final local source: **2,294 / zero skipped / zero todo**,313files on fresh real PostgreSQL; types, full source lint, pure Vite and bundles pass. Hosted recapture and final-headCI still required.

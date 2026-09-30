@@ -113,7 +113,7 @@ function ImportSessionPanelContent({
   const [fileName, setFileName] = useState<string | null>(null);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
-  const [saved, setSaved] = useState<SavedImport | null>(null);
+  const [saved, setSaved] = useState<SavedImport | null>(() => readSaved(storageKey));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -123,9 +123,25 @@ function ImportSessionPanelContent({
     const pending = readSaved(storageKey);
     if (!pending) return;
     setSaved(pending);
+    let disposed = false;
+    busyRef.current = true;
+    setBusy(true);
     void getImportResultFn({ data: { sessionId: pending.sessionId } })
-      .then((recovered) => setResult(recovered))
-      .catch((reason) => setError(toSafeErrorMessage(reason)));
+      .then((recovered) => {
+        if (!disposed) setResult(recovered);
+      })
+      .catch((reason) => {
+        if (!disposed) setError(toSafeErrorMessage(reason));
+      })
+      .finally(() => {
+        if (!disposed) {
+          busyRef.current = false;
+          setBusy(false);
+        }
+      });
+    return () => {
+      disposed = true;
+    };
   }, [storageKey]);
 
   async function guarded(work: () => Promise<void>) {
@@ -143,6 +159,7 @@ function ImportSessionPanelContent({
     }
   }
   async function start(file: File) {
+    if (!canStartNew) return;
     await guarded(async () => {
       const csvText = await file.text();
       if (new TextEncoder().encode(csvText).length > 5 * 1024 * 1024)
@@ -230,11 +247,11 @@ function ImportSessionPanelContent({
   const visible = rows.slice((page - 1) * pageSize, page * pageSize);
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   const failures = current ? failedRows(current).length : 0;
-  const canStartNew =
-    !current ||
-    current.state === "completed" ||
-    current.state === "expired" ||
-    (current.state === "preview" && current.rows.every((row) => row.status !== null));
+  const canStartNew = current
+    ? current.state === "completed" ||
+      current.state === "expired" ||
+      (current.state === "preview" && current.rows.every((row) => row.status !== null))
+    : !saved;
 
   return (
     <Card>
@@ -274,6 +291,19 @@ function ImportSessionPanelContent({
           <p className="text-sm text-destructive" role="alert">
             {error}
           </p>
+        )}
+        {saved && !current && (
+          <div className="space-y-2">
+            <p role="status" className="text-sm text-muted-foreground">
+              {error
+                ? "Saved import result could not be loaded. Retry to recover this session."
+                : "Loading saved import result…"}
+            </p>
+            <p className="break-all text-xs text-muted-foreground">Session: {saved.sessionId}</p>
+            <Button variant="outline" disabled={busy} onClick={() => void check()}>
+              Retry loading result
+            </Button>
+          </div>
         )}
         {current && (
           <>
