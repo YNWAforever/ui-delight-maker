@@ -1,5 +1,6 @@
 import { resolveDispatchableAgent } from "@/lib/agents";
-import { requireCapability } from "@/server/auth/authorization.server";
+import { loadRequestAuthorization, requireCapability } from "@/server/auth/authorization.server";
+import { evaluateAuthorization } from "@/lib/admin/policy";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
@@ -31,6 +32,12 @@ type GetLeadsInput = {
   contact_id?: string;
   account_id?: string;
   source_campaign_id?: string;
+};
+
+export type LeadListItem = Lead & {
+  owner_display_name?: string | null;
+  /** Absent legacy responses remain read-only. */
+  can_update?: boolean;
 };
 
 type CreateLeadInput = Pick<Lead, "company_name" | "source"> & {
@@ -74,9 +81,36 @@ export const getLeads = createServerFn({ method: "GET" })
 export const getLeadsPage = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as LeadPageFilters)
   .handler(async ({ data }) => {
-    await requireCapability("leads.view");
+    const context = await loadRequestAuthorization();
+    await requireCapability("leads.view", {}, context);
     await requireNeonAuthSession();
-    return listLeadsPage(data);
+    const page = await listLeadsPage(data);
+    return {
+      ...page,
+      can_create: evaluateAuthorization({
+        actor: context.actor,
+        capability: "leads.create",
+        target: {},
+        overrides: context.overrides,
+        now: context.now,
+      }).allowed,
+      items: page.items.map(
+        (lead): LeadListItem => ({
+          ...lead,
+          can_update: evaluateAuthorization({
+            actor: context.actor,
+            capability: "leads.update",
+            target: {
+              resourceType: "lead",
+              resourceId: lead.id,
+              ...(lead.assigned_to ? { ownerProfileId: lead.assigned_to } : {}),
+            },
+            overrides: context.overrides,
+            now: context.now,
+          }).allowed,
+        }),
+      ),
+    };
   });
 
 export const getLead = createServerFn({ method: "GET" })

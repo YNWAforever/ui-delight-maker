@@ -11,6 +11,7 @@ import {
 const PurposeSchema = z.enum([
   "task_filter",
   "task_assign",
+  "lead_assign",
   "approval_reviewer",
   "job_sheet_owner",
   "job_sheet_owner_filter",
@@ -41,6 +42,7 @@ async function requirePurpose(
     return;
   }
   const capability = {
+    lead_assign: "leads.update",
     task_filter: "tasks.view",
     approval_reviewer: "approvals.decide",
     job_sheet_owner: "job_sheets.update_billing",
@@ -51,8 +53,8 @@ async function requirePurpose(
   } as const;
   await requireCapability(
     capability[purpose],
-    purpose === "approval_reviewer" && resourceId
-      ? { resourceType: "human_approval", resourceId }
+    (purpose === "approval_reviewer" || purpose === "lead_assign") && resourceId
+      ? { resourceType: purpose === "lead_assign" ? "lead" : "human_approval", resourceId }
       : {},
     context,
   );

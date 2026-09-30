@@ -84,24 +84,27 @@ export async function listLeads(filters: LeadFilters = {}) {
   );
 }
 
-export async function listLeadsPage(filters: LeadPageFilters = {}): Promise<PaginatedResult<Lead>> {
+export async function listLeadsPage(
+  filters: LeadPageFilters = {},
+): Promise<PaginatedResult<Lead & { owner_display_name: string | null }>> {
   const where = buildFilters([
-    ["status", filters.status],
-    ["source", filters.source],
-    ["assigned_to", filters.assigned_to],
-    ["contact_id", filters.contact_id],
-    ["account_id", filters.account_id],
-    ["source_campaign_id", filters.source_campaign_id],
+    ["l.status", filters.status],
+    ["l.source", filters.source],
+    ["l.assigned_to", filters.assigned_to],
+    ["l.contact_id", filters.contact_id],
+    ["l.account_id", filters.account_id],
+    ["l.source_campaign_id", filters.source_campaign_id],
   ]);
   const { page, limit, offset } = normalizePagination(filters);
 
   const [items, count] = await Promise.all([
-    query<Lead>(
+    query<Lead & { owner_display_name: string | null }>(
       `
-        select *
-        from leads
+        select l.*, nullif(trim(p.name), '') as owner_display_name
+        from leads l
+        left join profiles p on p.id = l.assigned_to
         ${where.sql}
-        order by created_at desc, id desc
+        order by l.created_at desc, l.id desc
         limit $${where.values.length + 1} offset $${where.values.length + 2}
       `,
       [...where.values, limit, offset],
@@ -109,7 +112,7 @@ export async function listLeadsPage(filters: LeadPageFilters = {}): Promise<Pagi
     queryOne<{ total: number | string }>(
       `
         select count(*) as total
-        from leads
+        from leads l
         ${where.sql}
       `,
       where.values,

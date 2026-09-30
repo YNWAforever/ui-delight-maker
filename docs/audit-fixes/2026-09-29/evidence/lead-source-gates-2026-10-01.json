@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-09-30T23:36:34.602Z",
+  "baseMainSha": "5f3436190248c2bbe74255dd2f02a5ecd5a5d13d",
+  "database": "clientops_lead_full_verify_20261001",
+  "postgres": "17.10",
+  "loopbackHost": "127.0.0.1",
+  "port": 56489,
+  "tests": 2368,
+  "files": 321,
+  "failed": 0,
+  "skipped": 0,
+  "todo": 0,
+  "wallSeconds": 267.51021533203124,
+  "focusedTests": 43,
+  "oldSourceFailed": {
+    "ui": 8,
+    "policy": 8,
+    "realSQL": 2
+  },
+  "typecheck": "PASS",
+  "sourceLint": "PASS (private ignored artifacts excluded locally)",
+  "pureViteBuild": "PASS",
+  "routeBundles": "PASS",
+  "schemaMigration": false,
+  "productionOperation": false
+}
