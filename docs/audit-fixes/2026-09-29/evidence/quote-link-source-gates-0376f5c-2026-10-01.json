@@ -1,0 +1,46 @@
+{
+  "sourceSha": "0376f5c0bffda1c9eae63cd70dbbe47d16d7b8e2",
+  "newPositiveCases": 2,
+  "validBefore": {
+    "failed": 1,
+    "passed": 13
+  },
+  "focusedAfter": {
+    "passed": 14
+  },
+  "localFull": {
+    "tests": 2336,
+    "files": 317,
+    "skipped": 0,
+    "todo": 0,
+    "seconds": 313.56,
+    "target": "new disposable loopback PG17.10 database"
+  },
+  "sourceCi": {
+    "checks": 36763536711,
+    "database": 36763536737,
+    "freshContractJob": 110051859124,
+    "tests": 2336,
+    "skipped": 0,
+    "isolatedMigrationSeedReplay": "PASS"
+  },
+  "static": [
+    "TypeScript",
+    "changed ESLint",
+    "pure bunx vite build",
+    "bundle gate",
+    "diff check"
+  ],
+  "hosted": {
+    "cases": 11,
+    "retainedSameRecords": true,
+    "actualRoleIdentities": [
+      "sales",
+      "manager",
+      "read_only"
+    ],
+    "ownAuthMatched": true,
+    "businessAndReaderReceiptsUnchanged": true
+  },
+  "productionRelease": false
+}

@@ -353,7 +353,7 @@ function LeadDetail() {
                               params={{ id: q.id }}
                               className="text-sm font-medium hover:text-primary hover:underline"
                             >
-                              {q.number}
+                              {q.number?.trim() || "Untitled quote"}
                             </Link>
                             <p className="text-xs text-muted-foreground">
                               {q.lineItemCount} items · valid until {formatDate(q.valid_until)}
