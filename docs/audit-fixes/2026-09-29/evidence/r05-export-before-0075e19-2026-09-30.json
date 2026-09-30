@@ -1,0 +1,59 @@
+{
+  "sha": "0075e198a84e2ea8d1c3a04638dcc11a69db2e96",
+  "createdAt": "2026-09-30T13:25:41.640Z",
+  "scope": "Actual independent accounting report and ownSA/admin Audit CSV exports; synthetic formula-shaped fields and decimal/negative numeric values",
+  "cases": [
+    {
+      "case": "actual accounting report download",
+      "ownAuthIdentityMatched": true,
+      "bom": true,
+      "sevenFormulaTextsEscaped": true,
+      "negativeAndDecimalNumeric": true,
+      "actualBrowserDownload": true,
+      "rows": 20
+    },
+    {
+      "case": "actual own audit page CSV",
+      "role": "super_admin",
+      "ownAuthIdentityMatched": true,
+      "bom": true,
+      "actualBrowserDownload": true,
+      "rows": 7,
+      "allSevenFormulaTextsEscaped": true
+    },
+    {
+      "case": "actual own audit page CSV",
+      "role": "admin",
+      "ownAuthIdentityMatched": true,
+      "bom": true,
+      "actualBrowserDownload": true,
+      "rows": 7,
+      "allSevenFormulaTextsEscaped": true
+    },
+    {
+      "case": "own reader audit export",
+      "ownAuthIdentityMatched": true,
+      "exportAbsent": true,
+      "realPostForbidden": true,
+      "noAuditIdsLeaked": true
+    },
+    {
+      "case": "matching effective export deny",
+      "role": "super_admin",
+      "buttonOffered": true,
+      "realPostForbidden": true,
+      "noAuditIdsLeaked": true
+    }
+  ],
+  "defects": [
+    {
+      "case": "audit export affordance",
+      "expected": "Export absent/disabled under effective audit.export deny",
+      "actual": "Role-only button offered; real POST forbidden, no audit IDs leaked"
+    }
+  ],
+  "success": false,
+  "syntheticBusinessFixturesCleaned": true,
+  "appendOnlySyntheticAuditRowsRetained": 7,
+  "temporaryOverridesRevoked": true
+}

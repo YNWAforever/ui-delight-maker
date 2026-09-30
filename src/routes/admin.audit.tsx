@@ -11,7 +11,6 @@ import {
   WorkspaceHeader,
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
-import { adminControlAccess } from "@/lib/admin-capabilities";
 import { AdminError } from "@/lib/admin/errors";
 import { adminAuditSearchSchema, type AdminAuditSearch } from "@/lib/admin/schemas";
 import { csvFileName, toCsv, type CsvColumn } from "@/lib/csv";
@@ -129,7 +128,7 @@ function AdminAuditRoute() {
   const loaded = Route.useLoaderData();
   const auditQuery = useQuery({ ...auditQueryOptions(search), initialData: loaded });
   const { data, forbidden } = auditQuery.data;
-  const { profile } = Route.useRouteContext();
+  const { capabilities = [] } = Route.useRouteContext();
   const navigate = useNavigate({ from: Route.fullPath });
   const exportLock = useRef(false);
   const [exporting, setExporting] = useState(false);
@@ -145,7 +144,7 @@ function AdminAuditRoute() {
   const [from, setFrom] = useState(toLocalInput(search.from));
   const [to, setTo] = useState(toLocalInput(search.to));
 
-  const access = adminControlAccess(profile?.role);
+  const access = { exportAudit: capabilities.includes("audit.export") };
 
   function submitFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -352,9 +351,9 @@ function AdminAuditRoute() {
         exportLabel="Export this page (CSV)"
         exportHint={`Downloads the ${formatCount(data.items.length)} ${data.items.length === 1 ? "entry" : "entries"} listed below, with these filters applied. The full history is not exported.`}
         /*
-          `audit.export` is granted to Super Admin and Admin only. The button used to render
-          for anyone who could open the page — including an actor holding an `audit.view`
-          override — so it was a live control that always failed.
+          The server shell supplies the current effective audit.export grant.
+          Missing snapshots and active denies hide the control; the export request
+          independently rechecks the same capability.
         */
         onExport={access.exportAudit ? () => void exportAudit() : undefined}
       />

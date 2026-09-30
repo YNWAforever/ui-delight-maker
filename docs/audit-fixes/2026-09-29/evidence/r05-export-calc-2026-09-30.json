@@ -1,0 +1,107 @@
+{
+  "engine": "LibreOffice CLI actual CSV import converted to XLSX; formula evaluation enabled",
+  "source": "Actual authenticated downloaded report/Admin CSVs",
+  "sheets": [
+    {
+      "file": "report.csv",
+      "formulaCount": 0,
+      "sevenTextCells": [
+        {
+          "cell": "A21",
+          "type": "s",
+          "literalText": true
+        },
+        {
+          "cell": "A4",
+          "type": "s",
+          "literalText": true
+        },
+        {
+          "cell": "A11",
+          "type": "s",
+          "literalText": true
+        },
+        {
+          "cell": "A12",
+          "type": "s",
+          "literalText": true
+        },
+        {
+          "cell": "A8",
+          "type": "s",
+          "literalText": true
+        },
+        {
+          "cell": "A9",
+          "type": "s",
+          "literalText": true
+        },
+        {
+          "cell": "A10",
+          "type": "s",
+          "literalText": true
+        }
+      ],
+      "numeric": {
+        "-12.5": {
+          "cell": "B21",
+          "type": "n",
+          "value": -12.5
+        },
+        "100.25": {
+          "cell": "B4",
+          "type": "n",
+          "value": 100.25
+        }
+      }
+    },
+    {
+      "file": "audit-super_admin.csv",
+      "formulaCount": 0,
+      "sevenTextCells": [
+        {
+          "cell": "E8",
+          "type": "s",
+          "literalText": true
+        },
+        {
+          "cell": "E7",
+          "type": "s",
+          "literalText": true
+        },
+        {
+          "cell": "E6",
+          "type": "s",
+          "literalText": true
+        },
+        {
+          "cell": "E5",
+          "type": "s",
+          "literalText": true
+        },
+        {
+          "cell": "E4",
+          "type": "s",
+          "literalText": true
+        },
+        {
+          "cell": "E2",
+          "type": "s",
+          "literalText": true
+        },
+        {
+          "cell": "E3",
+          "type": "s",
+          "literalText": true
+        }
+      ],
+      "numeric": {}
+    }
+  ],
+  "unescapedControl": {
+    "hasFormula": true,
+    "value": 2
+  },
+  "carriageReturnCellNormalization": "LibreOffice normalizes embedded CR to LF; seven separate literal cells verified. Actual CSV bytes remain unchanged.",
+  "pass": true
+}

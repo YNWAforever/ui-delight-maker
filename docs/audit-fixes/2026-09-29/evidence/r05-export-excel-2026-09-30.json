@@ -1,0 +1,108 @@
+{
+  "build": 20430.0,
+  "engine": "Microsoft Excel actual CSV open read-only",
+  "sheets": [
+    {
+      "formulaCount": 0,
+      "numeric": [
+        {
+          "value": 100.25,
+          "type": "Double",
+          "cell": "B4"
+        },
+        {
+          "value": -12.5,
+          "type": "Double",
+          "cell": "B21"
+        }
+      ],
+      "sevenTextCells": [
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "A21"
+        },
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "A4"
+        },
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "A11"
+        },
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "A12"
+        },
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "A8"
+        },
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "A9"
+        },
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "A10"
+        }
+      ],
+      "file": "report.csv"
+    },
+    {
+      "formulaCount": 0,
+      "numeric": [],
+      "sevenTextCells": [
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "E8"
+        },
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "E7"
+        },
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "E6"
+        },
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "E5"
+        },
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "E4"
+        },
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "E2"
+        },
+        {
+          "literalText": true,
+          "type": "String",
+          "cell": "E3"
+        }
+      ],
+      "file": "audit-super_admin.csv"
+    }
+  ],
+  "version": "16.0",
+  "pass": true,
+  "unescapedControl": {
+    "hasFormula": true,
+    "value": 2
+  },
+  "source": "Actual authenticated report/Admin downloads"
+}
