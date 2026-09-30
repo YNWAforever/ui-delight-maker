@@ -127,28 +127,38 @@ export function createBulkService(options: { handler: BulkActionHandler }) {
     const rows: BulkPreview["rows"] = [];
     const initialStatus: Array<BulkItemStatus | null> = [];
     let groupKey: string | null = null;
-    for (const id of request.ids) {
-      try {
-        const check = await handler.preview(context, id, request.action);
-        if (check.eligible && check.groupKey) {
-          if (groupKey && groupKey !== check.groupKey) {
-            throw new Error("Bulk approval types must match");
+
+    for (let offset = 0; offset < request.ids.length; offset += WORKER_CONCURRENCY) {
+      const ids = request.ids.slice(offset, offset + WORKER_CONCURRENCY);
+      // Preview only reads. Bound concurrency and assemble results in the requested order.
+      const checks = await Promise.allSettled(
+        ids.map((id) => handler.preview(context, id, request.action)),
+      );
+      for (const [index, result] of checks.entries()) {
+        const id = ids[index];
+        try {
+          if (result.status === "rejected") throw result.reason;
+          const check = result.value;
+          if (check.eligible && check.groupKey) {
+            if (groupKey && groupKey !== check.groupKey) {
+              throw new Error("Bulk approval types must match");
+            }
+            groupKey = check.groupKey;
           }
-          groupKey = check.groupKey;
+          rows.push({
+            id,
+            eligible: check.eligible,
+            summary: check.eligible ? check.summary : null,
+            expectedVersion: check.version,
+          });
+          initialStatus.push(check.eligible ? null : (check.status ?? "not_found"));
+        } catch (error) {
+          if (error instanceof Error && error.message === "Bulk approval types must match")
+            throw error;
+          const status = error instanceof BulkItemError ? error.status : "failed";
+          rows.push({ id, eligible: false, summary: null, expectedVersion: null });
+          initialStatus.push(status);
         }
-        rows.push({
-          id,
-          eligible: check.eligible,
-          summary: check.eligible ? check.summary : null,
-          expectedVersion: check.version,
-        });
-        initialStatus.push(check.eligible ? null : (check.status ?? "not_found"));
-      } catch (error) {
-        if (error instanceof Error && error.message === "Bulk approval types must match")
-          throw error;
-        const status = error instanceof BulkItemError ? error.status : "failed";
-        rows.push({ id, eligible: false, summary: null, expectedVersion: null });
-        initialStatus.push(status);
       }
     }
     const payloadHash = createHash("sha256")
@@ -169,20 +179,28 @@ export function createBulkService(options: { handler: BulkActionHandler }) {
           expiresAt,
         ],
       );
-      for (const [position, row] of rows.entries()) {
-        await db.query(
-          "insert into bulk_operation_items(operation_id,position,resource_id,expected_version,summary,status,code,processed_at) values($1,$2,$3,$4,$5,$6,$7,case when $6::text is null then null else now() end)",
-          [
-            operationId,
-            position,
-            row.id,
-            row.expectedVersion,
-            row.summary,
-            initialStatus[position],
-            initialStatus[position] ? "PREVIEW_INELIGIBLE" : null,
-          ],
-        );
-      }
+      await db.query(
+        `insert into bulk_operation_items
+           (operation_id,position,resource_id,expected_version,summary,status,code,processed_at)
+         select $1::uuid,item.position,item.resource_id,item.expected_version,item.summary,
+                item.status,item.code,case when item.status is null then null else now() end
+           from jsonb_to_recordset($2::jsonb) as item
+             (position integer,resource_id text,expected_version integer,summary text,status text,code text)
+          order by item.position`,
+        [
+          operationId,
+          JSON.stringify(
+            rows.map((row, position) => ({
+              position,
+              resource_id: row.id,
+              expected_version: row.expectedVersion,
+              summary: row.summary,
+              status: initialStatus[position],
+              code: initialStatus[position] ? "PREVIEW_INELIGIBLE" : null,
+            })),
+          ),
+        ],
+      );
     });
     return {
       operationId,

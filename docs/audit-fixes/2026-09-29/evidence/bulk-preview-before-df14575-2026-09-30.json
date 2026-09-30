@@ -1,0 +1,18 @@
+{
+  "sha": "df145756f86337b1b175344fbeca124b0d89efbf",
+  "requestScope": "Actual 100-row preview diagnostic only; not commit/resume acceptance",
+  "requests": [
+    {
+      "path": "/_serverFn/3ca82ac80b395ae5a11fe18d190c1e71e1087afe2b4dceead79b05ef184d9319",
+      "status": 200,
+      "error": false,
+      "bodyBytes": 20297,
+      "elapsedMs": 83294
+    }
+  ],
+  "elapsedMs": 68022,
+  "dialogVisible": 1,
+  "statusText": [
+    "100 selectedDoneSet priorityDue dateSet due dateUnassignedSelected: UnassignedBulk task owner searchAssign ownerClear selection"
+  ]
+}
