@@ -5,6 +5,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "./assets/fonts/plus-jakarta-sans/font.css";
 
 @custom-variant dark (&:is(.dark *));
 
