@@ -1,0 +1,11 @@
+{
+  "sha": "8691421eb79a57e8bb3fdbc4a7e54367d493611f",
+  "role": "sales",
+  "ownAuthMatched": true,
+  "leadId": "ab62985a-25ee-4e97-bc58-0e52679955bf",
+  "actualOwnerLabel": "Owner\n\ndemo-sales-user",
+  "expectedOwnerName": "UAT sales",
+  "rawIdShown": true,
+  "ownerNameAbsent": true,
+  "noWrites": true
+}
