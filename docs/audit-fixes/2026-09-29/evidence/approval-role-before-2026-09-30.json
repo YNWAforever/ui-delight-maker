@@ -1,0 +1,33 @@
+{
+  "sha": "f4f5c9721d70234f121fe77fe8276cce939d527a",
+  "createdAt": "2026-09-30T05:44:40.631Z",
+  "role": "read_only",
+  "approvalId": "686b0e26-b042-4ef1-b73a-72b50548041f",
+  "approvalType": "qualification_review",
+  "defectReproduced": true,
+  "approveOffered": true,
+  "checkboxCount": 2,
+  "assignmentControlCount": 0,
+  "response": {
+    "status": 200,
+    "error": true,
+    "forbidden": true
+  },
+  "dbUnchanged": true,
+  "before": {
+    "id": "686b0e26-b042-4ef1-b73a-72b50548041f",
+    "status": "pending",
+    "row_version": 0,
+    "assigned_to": "demo-manager-user",
+    "decided_at": null,
+    "reviewer_notes": null
+  },
+  "after": {
+    "id": "686b0e26-b042-4ef1-b73a-72b50548041f",
+    "status": "pending",
+    "row_version": 0,
+    "assigned_to": "demo-manager-user",
+    "decided_at": null,
+    "reviewer_notes": null
+  }
+}

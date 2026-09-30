@@ -1,0 +1,326 @@
+{
+  "sha": "9ac3090fcd959cb772b04814d9eb7317ae507789",
+  "createdAt": "2026-09-30T06:32:48.141Z",
+  "roles": [
+    {
+      "role": "super_admin",
+      "approvalId": "b93ee075-6c47-4782-8e10-e95184a84583",
+      "decisionOffered": true,
+      "bulkSelectionOffered": true,
+      "requestChangeOffered": true
+    },
+    {
+      "role": "admin",
+      "approvalId": "b93ee075-6c47-4782-8e10-e95184a84583",
+      "decisionOffered": true,
+      "bulkSelectionOffered": true,
+      "requestChangeOffered": true
+    },
+    {
+      "role": "manager",
+      "approvalId": "b93ee075-6c47-4782-8e10-e95184a84583",
+      "decisionOffered": true,
+      "bulkSelectionOffered": true,
+      "requestChangeOffered": true
+    },
+    {
+      "role": "sales",
+      "approvalId": "b93ee075-6c47-4782-8e10-e95184a84583",
+      "decisionOffered": false,
+      "bulkSelectionOffered": false,
+      "requestChangeOffered": false,
+      "directRequest": {
+        "status": 200,
+        "forbidden": true,
+        "dbUnchanged": true
+      }
+    },
+    {
+      "role": "client_success",
+      "approvalId": "b93ee075-6c47-4782-8e10-e95184a84583",
+      "decisionOffered": false,
+      "bulkSelectionOffered": false,
+      "requestChangeOffered": false,
+      "directRequest": {
+        "status": 200,
+        "forbidden": true,
+        "dbUnchanged": true
+      }
+    },
+    {
+      "role": "accounting",
+      "approvalId": "b93ee075-6c47-4782-8e10-e95184a84583",
+      "decisionOffered": false,
+      "bulkSelectionOffered": false,
+      "requestChangeOffered": false,
+      "directRequest": {
+        "status": 200,
+        "forbidden": true,
+        "dbUnchanged": true
+      }
+    },
+    {
+      "role": "read_only",
+      "approvalId": "b93ee075-6c47-4782-8e10-e95184a84583",
+      "decisionOffered": false,
+      "bulkSelectionOffered": false,
+      "requestChangeOffered": false,
+      "directRequest": {
+        "status": 200,
+        "forbidden": true,
+        "dbUnchanged": true
+      }
+    }
+  ],
+  "writes": [
+    {
+      "role": "manager",
+      "id": "b93ee075-6c47-4782-8e10-e95184a84583",
+      "decision": "Approve",
+      "before": {
+        "id": "b93ee075-6c47-4782-8e10-e95184a84583",
+        "status": "pending",
+        "row_version": 0,
+        "assigned_to": "demo-manager-user",
+        "decided_at": null,
+        "reviewer_notes": null
+      },
+      "after": {
+        "id": "b93ee075-6c47-4782-8e10-e95184a84583",
+        "status": "approved",
+        "row_version": 1,
+        "assigned_to": "demo-manager-user",
+        "decided_at": "2026-09-30T06:33:52.067Z",
+        "reviewer_notes": null
+      },
+      "response": {
+        "status": 200,
+        "error": false
+      }
+    },
+    {
+      "role": "admin",
+      "id": "72656962-afc2-49df-b407-859ff88bd928",
+      "decision": "Approve",
+      "before": {
+        "id": "72656962-afc2-49df-b407-859ff88bd928",
+        "status": "pending",
+        "row_version": 0,
+        "assigned_to": "demo-manager-user",
+        "decided_at": null,
+        "reviewer_notes": null
+      },
+      "after": {
+        "id": "72656962-afc2-49df-b407-859ff88bd928",
+        "status": "approved",
+        "row_version": 1,
+        "assigned_to": "demo-manager-user",
+        "decided_at": "2026-09-30T06:34:38.338Z",
+        "reviewer_notes": null
+      },
+      "response": {
+        "status": 200,
+        "error": false
+      }
+    },
+    {
+      "role": "super_admin",
+      "id": "681df220-0215-42b8-92ac-af1dfcc3a8b5",
+      "decision": "Approve",
+      "before": {
+        "id": "681df220-0215-42b8-92ac-af1dfcc3a8b5",
+        "status": "pending",
+        "row_version": 0,
+        "assigned_to": "demo-manager-user",
+        "decided_at": null,
+        "reviewer_notes": null
+      },
+      "after": {
+        "id": "681df220-0215-42b8-92ac-af1dfcc3a8b5",
+        "status": "approved",
+        "row_version": 1,
+        "assigned_to": "demo-manager-user",
+        "decided_at": "2026-09-30T06:34:50.500Z",
+        "reviewer_notes": null
+      },
+      "response": {
+        "status": 200,
+        "error": false
+      }
+    },
+    {
+      "role": "read_only",
+      "id": "4946fe3c-a32b-4e4f-95f6-a92b2e606bb1",
+      "decision": "Approve",
+      "before": {
+        "id": "4946fe3c-a32b-4e4f-95f6-a92b2e606bb1",
+        "status": "pending",
+        "row_version": 0,
+        "assigned_to": "demo-manager-user",
+        "decided_at": null,
+        "reviewer_notes": null
+      },
+      "after": {
+        "id": "4946fe3c-a32b-4e4f-95f6-a92b2e606bb1",
+        "status": "approved",
+        "row_version": 1,
+        "assigned_to": "demo-manager-user",
+        "decided_at": "2026-09-30T06:35:15.953Z",
+        "reviewer_notes": null
+      },
+      "response": {
+        "status": 200,
+        "error": false
+      }
+    },
+    {
+      "role": "manager",
+      "id": "acc79fb4-51ce-4852-a9c1-8087e335a400",
+      "decision": "Approve",
+      "before": {
+        "id": "acc79fb4-51ce-4852-a9c1-8087e335a400",
+        "status": "pending",
+        "row_version": 0,
+        "assigned_to": "demo-manager-user",
+        "decided_at": null,
+        "reviewer_notes": null
+      },
+      "after": {
+        "id": "acc79fb4-51ce-4852-a9c1-8087e335a400",
+        "status": "approved",
+        "row_version": 1,
+        "assigned_to": "demo-manager-user",
+        "decided_at": "2026-09-30T06:36:13.240Z",
+        "reviewer_notes": null
+      },
+      "response": {
+        "status": 200,
+        "error": false
+      }
+    }
+  ],
+  "overrides": [
+    {
+      "role": "manager",
+      "label": "manager-scoped-deny",
+      "approvalId": "1c6b5085-7f91-4125-9764-464892aa950f",
+      "allowed": false,
+      "recordVisible": true,
+      "directRequestForbidden": true,
+      "dbUnchanged": true
+    },
+    {
+      "role": "read_only",
+      "label": "reader-scoped-allow",
+      "approvalId": "4946fe3c-a32b-4e4f-95f6-a92b2e606bb1",
+      "allowed": true,
+      "actualUiPost": true,
+      "dbChangedOnce": true
+    },
+    {
+      "role": "read_only",
+      "label": "reader-expired-allow",
+      "approvalId": "2c98c33d-48ed-4f56-8ed5-d60f4c4822be",
+      "allowed": false,
+      "recordVisible": true,
+      "directRequestForbidden": true,
+      "dbUnchanged": true
+    },
+    {
+      "role": "manager",
+      "label": "manager-unowned-deny",
+      "approvalId": "519ed5e6-f9c7-4545-98b2-65606e093c2b",
+      "allowed": false,
+      "recordVisible": false,
+      "directRequestForbidden": true,
+      "dbUnchanged": true
+    }
+  ],
+  "race": {
+    "approvalId": "c70a8efa-282c-432d-a04f-812e9c926b6a",
+    "actualPostsReleasedTogether": true,
+    "actors": [
+      "manager",
+      "admin"
+    ],
+    "requestedDecisions": [
+      "approved",
+      "rejected"
+    ],
+    "winner": "admin",
+    "loserConflict": true,
+    "row": {
+      "id": "c70a8efa-282c-432d-a04f-812e9c926b6a",
+      "status": "rejected",
+      "row_version": 1,
+      "assigned_to": "demo-manager-user",
+      "decided_at": "2026-09-30T06:35:43.899Z",
+      "reviewer_notes": null
+    },
+    "auditCount": 1,
+    "receiptCount": 1,
+    "idempotencyReplayUnchanged": true,
+    "refreshed": [
+      {
+        "role": "manager",
+        "statusVisible": "rejected",
+        "terminalNoteVisible": true
+      },
+      {
+        "role": "admin",
+        "statusVisible": "rejected",
+        "terminalNoteVisible": true
+      }
+    ]
+  },
+  "manual": null,
+  "success": false,
+  "overrideCleanup": true,
+  "syntheticFixtures": [
+    {
+      "id": "b93ee075-6c47-4782-8e10-e95184a84583",
+      "summary": "UAT approval capability complete recapture b93ee075",
+      "type": "qualification_review"
+    },
+    {
+      "id": "72656962-afc2-49df-b407-859ff88bd928",
+      "summary": "UAT approval admin allowed 72656962",
+      "type": "qualification_review"
+    },
+    {
+      "id": "681df220-0215-42b8-92ac-af1dfcc3a8b5",
+      "summary": "UAT approval super_admin allowed 681df220",
+      "type": "qualification_review"
+    },
+    {
+      "id": "1c6b5085-7f91-4125-9764-464892aa950f",
+      "summary": "UAT manager-scoped-deny 1c6b5085",
+      "type": "qualification_review"
+    },
+    {
+      "id": "4946fe3c-a32b-4e4f-95f6-a92b2e606bb1",
+      "summary": "UAT reader-scoped-allow 4946fe3c",
+      "type": "qualification_review"
+    },
+    {
+      "id": "2c98c33d-48ed-4f56-8ed5-d60f4c4822be",
+      "summary": "UAT reader-expired-allow 2c98c33d",
+      "type": "qualification_review"
+    },
+    {
+      "id": "519ed5e6-f9c7-4545-98b2-65606e093c2b",
+      "summary": "UAT manager-unowned-deny 519ed5e6",
+      "type": "qualification_review"
+    },
+    {
+      "id": "c70a8efa-282c-432d-a04f-812e9c926b6a",
+      "summary": "UAT opposite decision race c70a8efa",
+      "type": "qualification_review"
+    },
+    {
+      "id": "acc79fb4-51ce-4852-a9c1-8087e335a400",
+      "summary": "UAT manual handoff acc79fb4",
+      "type": "message_send"
+    }
+  ]
+}

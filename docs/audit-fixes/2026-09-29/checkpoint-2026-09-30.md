@@ -52,3 +52,7 @@ All 30 CO IDs remain tracked in [status](../2026-09-27/status.md). Missing role,
 ## Current acceptance delta after independent UAT and R06
 
 The earlier missing-role/environment/runtime statements describe that checkpoint. [Independent UAT](isolated-uat-environment.md) now has seven genuine role sessions. Scoped quote U03 and billing U07 pass; [real R06 before/after](r06-runtime-before-after-2026-09-30.md) passes Task/Approval queue budgets with 10 cold/30 warm and 10k/100k real PostgreSQL data. Wider UAT, import/bulk/offline, zoom/screen-reader, legacy/provider/anomaly provenance and operator release rehearsal remain incomplete. No production promotion; public build remains `bed941b` under the approved hold.
+
+## Latest approval slice
+
+Source `fac59c9` / PR #134: U05 actual manager/admin opposed decisions, conflict, one terminal audit/receipt/version, refreshed UIs and unchanged replay PASS. Seven distinct role decision/notes/selection boundaries and four scope cases PASS; U12 scoped CS manual statement/replay PASS with no delivery/provider claim. Final actual R06 40-navigation gate PASS (warm p95 506.768ms), both intermediate failed runs retained. Local and source CI **2,279 / 0 skips**. [Case evidence](approval-role-uat-2026-09-30.md). Final evidence-head CI/merge pending. All 30 CO/16 UAT rows retained; bulk/import/risk, other full UAT, legacy/provider/anomaly/operator release gates remain open; production held.

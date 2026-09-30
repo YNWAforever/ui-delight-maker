@@ -35,6 +35,7 @@ import { CLIENTOPS_MIGRATION_PATHS } from "@/lib/clientops-relationship-schema";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
 import {
   claimApprovalCommand,
+  canClaimApproval,
   recoverAgentRunCommand,
 } from "@/server/commands/agent-recovery.server";
 import { createAgentRun, updateAgentRunResult } from "@/server/repositories/agent-runs";
@@ -43,6 +44,7 @@ import { listClaimableApprovals } from "@/server/repositories/approvals";
 import { decideApprovalCommand } from "@/server/commands/approval-decision.server";
 import { recordManualMessageSentCommand } from "@/server/commands/message-handoff.server";
 import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import type { HumanApproval } from "@/lib/types";
 import type { AppSession } from "@/lib/auth/neon-auth.server";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
@@ -126,6 +128,51 @@ describe("approval claim and agent recovery on isolated PostgreSQL", () => {
     await holder.pool.end();
     holder.pool = null;
   });
+
+  it.runIf(hasDatabase)(
+    "evaluates a claim in READ ONLY without changing the approval or taking a row write lock",
+    async () => {
+      const f = await fixture(report);
+      const client = await db().connect();
+      try {
+        await client.query("begin read only");
+        const approval = (
+          await client.query<HumanApproval>("select * from human_approvals where id=$1", [
+            f.approvalId,
+          ])
+        ).rows[0];
+        const reader: Queryable = {
+          query: async <T>(sql: string, values: readonly unknown[] = []) => ({
+            rows: (await client.query(sql, [...values])).rows as T[],
+          }),
+        };
+        expect(await canClaimApproval(context(managerA, [report]), approval, reader)).toBe(true);
+        expect(await canClaimApproval(context(managerB), approval, reader)).toBe(false);
+        const after = (
+          await client.query("select assigned_to,row_version from human_approvals where id=$1", [
+            f.approvalId,
+          ])
+        ).rows[0];
+        expect(after).toEqual({ assigned_to: null, row_version: 0 });
+        await client.query("rollback");
+      } finally {
+        client.release();
+      }
+    },
+  );
+  it.runIf(hasDatabase)(
+    "withholds claim affordances when linked subject proof is absent",
+    async () => {
+      const f = await fixture(null);
+      const approval = (
+        await db().query<HumanApproval>("select * from human_approvals where id=$1", [f.approvalId])
+      ).rows[0];
+      expect(await canClaimApproval(context(managerA, [report]), approval)).toBe(false);
+      expect(
+        await canClaimApproval(context(managerA, [report]), { ...approval, agent_run_id: null }),
+      ).toBe(false);
+    },
+  );
 
   it.runIf(hasDatabase)("lists only in-scope unassigned work with a redacted payload", async () => {
     const owned = await fixture(report);

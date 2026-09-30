@@ -80,3 +80,7 @@ R00 isolation/session setup is available; broader R02–R05/R07 UAT continues. L
 
 
 Public local runtime adapter verification at `6b2827734902fdc703bc845667c8f5f459025360`: actual sales Task and manager Approval rows loaded with all executed request SQL metrics (35 / 42 aggregate queries), zero failed queries/page errors, POST 405, workflow GET 403, and unchanged real PostgreSQL row counts/version totals. [Sanitized observations](evidence/r06-public-adapter-verification-2026-09-30.json). Adapter stopped after verification. Initial private verification assertions were corrected to the existing `row_version` column and `http-request` metric scope; application/runtime code was unchanged.
+
+## Later approval authorization regression and repair
+
+PR #134 added per-row authorization metadata, then failed two complete actual warm readiness captures (1,144.803ms and 1,058.818ms). They remain reviewable. PostgreSQL EXPLAIN identified redundant claim ownership/JIT work; the final source `fac59c9` isolates open/unassigned claim candidates with unchanged visibility/deny rules. Final **10 cold / 30 warm**, same real data/machine/manager: warm p95 **506.768ms**, payload 107,383B, cold encoded JS 270,137B, SQL summed p95 629.765ms and 44 scoped queries, zero errors/blocks. All original budgets pass; no cold or session-count improvement claimed. [Full candidate progression and raw samples](approval-role-uat-2026-09-30.md).

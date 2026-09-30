@@ -1,0 +1,73 @@
+{
+  "sha": "9ac3090fcd959cb772b04814d9eb7317ae507789",
+  "createdAt": "2026-09-30T06:42:14.297Z",
+  "roles": [],
+  "writes": [
+    {
+      "role": "manager",
+      "id": "319d4922-e343-437e-b1c3-adcf9e9456f1",
+      "decision": "Approve",
+      "before": {
+        "id": "319d4922-e343-437e-b1c3-adcf9e9456f1",
+        "status": "pending",
+        "row_version": 0,
+        "assigned_to": "demo-manager-user",
+        "decided_at": null,
+        "reviewer_notes": null
+      },
+      "after": {
+        "id": "319d4922-e343-437e-b1c3-adcf9e9456f1",
+        "status": "approved",
+        "row_version": 1,
+        "assigned_to": "demo-manager-user",
+        "decided_at": "2026-09-30T06:42:32.375Z",
+        "reviewer_notes": null
+      },
+      "response": {
+        "status": 200,
+        "error": false
+      }
+    }
+  ],
+  "overrides": [],
+  "race": null,
+  "manual": {
+    "approvalId": "319d4922-e343-437e-b1c3-adcf9e9456f1",
+    "actor": "client_success",
+    "explicitScopedGrant": true,
+    "statement": {
+      "approval_id": "319d4922-e343-437e-b1c3-adcf9e9456f1",
+      "handoff_status": "manual_send_recorded",
+      "sent_reference": "Synthetic UAT operator statement; no delivery",
+      "recorded_by": "demo-cs-user",
+      "recorded_at": "2026-09-30T06:42:52.443Z",
+      "created_at": "2026-09-30T06:42:32.375Z"
+    },
+    "handoffCreatedByActualApproval": true,
+    "replayUnchanged": true,
+    "manualAuditCount": 1,
+    "readerCopyAllowed": true,
+    "readerRecordOffered": false,
+    "readerDirectPostForbidden": true,
+    "noMessageSentByClientOps": true,
+    "noProviderCall": true,
+    "notDeliveryEvidence": true
+  },
+  "success": true,
+  "scope": "manual-handoff-only",
+  "manualReadBefore": {
+    "role": "read_only",
+    "copyVisible": true,
+    "recordAbsent": true,
+    "referenceInputAbsent": true,
+    "handoffState": "awaiting_manual_send"
+  },
+  "overrideCleanup": true,
+  "syntheticFixtures": [
+    {
+      "id": "319d4922-e343-437e-b1c3-adcf9e9456f1",
+      "summary": "UAT manual handoff 319d4922",
+      "type": "message_send"
+    }
+  ]
+}

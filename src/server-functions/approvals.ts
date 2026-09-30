@@ -1,4 +1,8 @@
 import { randomUUID } from "node:crypto";
+import {
+  withApprovalActionFlags,
+  approvalDecisionPermission,
+} from "@/server/read-models/approval-actions.server";
 import { parseOperationInput } from "@/lib/operations/errors";
 import { loadRequestAuthorization, requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
@@ -10,7 +14,7 @@ import {
 } from "@/server/repositories/approvals";
 import { serializeHumanApproval } from "@/lib/serializable";
 import { decideApprovalCommand } from "@/server/commands/approval-decision.server";
-import { claimApprovalCommand } from "@/server/commands/agent-recovery.server";
+import { claimApprovalCommand, canClaimApproval } from "@/server/commands/agent-recovery.server";
 import {
   recordManualMessageSentCommand,
   type MessageHandoff,
@@ -37,7 +41,7 @@ export const getApprovalsPage = createServerFn({ method: "GET" })
     const page = await listApprovalQueuePage(data, context);
     return {
       ...page,
-      items: page.items.map((item) => ({
+      items: (await withApprovalActionFlags(context, page.items)).map((item) => ({
         ...item,
         created_at: new Date(item.created_at).toISOString(),
         decided_at: item.decided_at ? new Date(item.decided_at).toISOString() : null,
@@ -63,7 +67,9 @@ export const getApprovalDetailFn = createServerFn({ method: "GET" })
       },
       context,
     );
-    return serializeHumanApproval(await getApproval(data.id));
+    const approval = await getApproval(data.id);
+    const [actions] = await withApprovalActionFlags(context, [serializeHumanApproval(approval)]);
+    return { ...actions, can_claim: await canClaimApproval(context, approval) };
   });
 
 export const decideApproval = createServerFn({ method: "POST" })
@@ -102,7 +108,8 @@ export const assignApprovalFn = createServerFn({ method: "POST" })
       context,
     );
     const approval = await assignApproval(data, context);
-    return serializeHumanApproval(approval);
+    const [actions] = await withApprovalActionFlags(context, [serializeHumanApproval(approval)]);
+    return { ...actions, can_claim: await canClaimApproval(context, approval) };
   });
 
 /**
@@ -129,7 +136,8 @@ export const claimApprovalFn = createServerFn({ method: "POST" })
       ...data,
       idempotencyKey: data.idempotencyKey ?? randomUUID(),
     });
-    return serializeHumanApproval(approval);
+    const [actions] = await withApprovalActionFlags(context, [serializeHumanApproval(approval)]);
+    return { ...actions, can_claim: false };
   });
 
 /** Draft text is fetched only for the selected, authorized approved message request. */
@@ -157,6 +165,9 @@ export const getMessageHandoffFn = createServerFn({ method: "GET" })
     const payload = approval.context_data as { draft_message?: unknown } | null;
     return {
       approvalId: approval.id,
+      can_record_manual_send:
+        handoff.handoff_status === "awaiting_manual_send" &&
+        approvalDecisionPermission(context, approval),
       draftMessage: typeof payload?.draft_message === "string" ? payload.draft_message : null,
       handoff,
     };

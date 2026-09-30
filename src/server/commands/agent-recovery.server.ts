@@ -3,7 +3,7 @@ import { evaluateAuthorization } from "@/lib/admin/policy";
 import type { AgentRun, HumanApproval } from "@/lib/types";
 import { AGENT_RUN_STUCK_MINUTES } from "@/lib/agents";
 import type { RequestAuthorization } from "@/server/auth/authorization.server";
-import { type Queryable, transaction } from "@/server/db/neon.server";
+import { type Queryable, transaction, query } from "@/server/db/neon.server";
 import {
   NEON_OWNED_RESOURCE_TYPES,
   neonOwnershipQuery,
@@ -62,12 +62,17 @@ function requireScopedCapability(
   }
 }
 
-async function claimSubjectOwner(db: Queryable, approval: HumanApproval): Promise<string> {
+async function claimSubjectOwner(
+  db: Queryable,
+  approval: HumanApproval,
+  lockRun = true,
+): Promise<string> {
   if (approval.agent_run_id) {
     const run = (
-      await db.query<AgentRun>("select * from agent_runs where id=$1 for update", [
-        approval.agent_run_id,
-      ])
+      await db.query<AgentRun>(
+        `select * from agent_runs where id=$1${lockRun ? " for update" : ""}`,
+        [approval.agent_run_id],
+      )
     ).rows[0];
     if (!run || run.status !== "waiting_approval") {
       throw new AdminError("CONFLICT", "Linked agent run is not waiting for review");
@@ -83,6 +88,31 @@ async function claimSubjectOwner(db: Queryable, approval: HumanApproval): Promis
   throw new AdminError("OUTSIDE_SCOPE", "Approval subject ownership cannot be verified");
 }
 
+/** Read-only affordance proof; the command rechecks ownership under its existing locks. */
+export async function canClaimApproval(
+  context: RequestAuthorization,
+  approval: HumanApproval,
+  existingDb?: Queryable,
+): Promise<boolean> {
+  if (approval.assigned_to || !["pending", "escalated"].includes(approval.status)) return false;
+  const reader: Queryable = existingDb ?? {
+    query: async <T>(sql: string, values: readonly unknown[] = []) => ({
+      rows: await query<T>(sql, values),
+    }),
+  };
+  try {
+    const owner = await claimSubjectOwner(reader, approval, false);
+    requireScopedCapability(context, "approvals.decide", "human_approval", approval.id, owner);
+    return true;
+  } catch (error) {
+    if (
+      error instanceof AdminError &&
+      ["OUTSIDE_SCOPE", "FORBIDDEN", "CONFLICT"].includes(error.code)
+    )
+      return false;
+    throw error;
+  }
+}
 export async function claimApprovalCommand(
   context: RequestAuthorization,
   input: ClaimInput,
