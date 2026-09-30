@@ -59,9 +59,18 @@ import { Route } from "../approvals";
 
 const now = "2026-08-01T09:00:00.000Z";
 
-const approval = (
-  overrides: Partial<SerializableHumanApproval> = {},
-): SerializableHumanApproval => ({
+type ApprovalView = SerializableHumanApproval & {
+  can_decide?: boolean;
+  can_request_changes?: boolean;
+  can_assign?: boolean;
+  can_claim?: boolean;
+};
+
+const approval = (overrides: Partial<ApprovalView> = {}): ApprovalView => ({
+  can_decide: true,
+  can_request_changes: true,
+  can_assign: true,
+  can_claim: true,
   id: "ap-1",
   agent_run_id: "run-1",
   approval_type: "discount",
@@ -78,7 +87,7 @@ const approval = (
   ...overrides,
 });
 
-const messageSend = (overrides: Partial<SerializableHumanApproval> = {}) =>
+const messageSend = (overrides: Partial<ApprovalView> = {}) =>
   approval({
     approval_type: "message_send",
     context_summary: "Reply draft for customer",
@@ -164,6 +173,7 @@ beforeEach(() => {
   navigateMock.mockReset();
   getMessageHandoffFnMock.mockReset().mockResolvedValue({
     approvalId: "ap-1",
+    can_record_manual_send: true,
     draftMessage: "Draft only",
     handoff: { handoff_status: "awaiting_manual_send", sent_reference: null },
   });
@@ -397,5 +407,80 @@ describe("Assigning a reviewer", () => {
     expect(
       (screen.getAllByRole("button", { name: /^Approve$/ })[0] as HTMLButtonElement).disabled,
     ).toBe(false);
+  });
+});
+
+describe("Server-evaluated approval action boundaries", () => {
+  it.each([false, undefined])("omits writes and selection when metadata is %s", async (flag) => {
+    renderInbox([
+      approval({ can_decide: flag, can_assign: flag, can_claim: flag, can_request_changes: flag }),
+    ]);
+    await screen.findAllByText("Discount of 15% on renewal");
+    await waitFor(() => expect(getApprovalDetailFnMock).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Request changes" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Claim for review" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /Assign reviewer/ })).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(decideApprovalMock).not.toHaveBeenCalled();
+    expect(assignApprovalFnMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps a scoped claim reachable without offering a direct decision", async () => {
+    renderInbox([
+      approval({
+        can_decide: false,
+        can_assign: false,
+        can_request_changes: false,
+        can_claim: true,
+      }),
+    ]);
+    const claim = await screen.findByRole("button", { name: "Claim for review" });
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /Assign reviewer/ })).toBeNull();
+    fireEvent.click(claim);
+    await waitFor(() => expect(claimApprovalFnMock).toHaveBeenCalled());
+  });
+
+  it("allows selection only on independently permitted rows", async () => {
+    renderInbox([
+      approval(),
+      approval({
+        id: "ap-denied",
+        can_decide: false,
+        can_assign: false,
+        can_claim: false,
+        can_request_changes: false,
+      }),
+    ]);
+    const denied = screen.getAllByRole("checkbox", { name: /Select row ap-denied/ });
+    expect(denied.every((element) => (element as HTMLButtonElement).disabled)).toBe(true);
+    fireEvent.click(denied[0]);
+    expect(screen.queryByText("1 selected")).toBeNull();
+    fireEvent.click(screen.getAllByRole("checkbox", { name: /Select row ap-1/ })[0]);
+    expect(screen.getByText("1 selected")).toBeTruthy();
+  });
+
+  it("shows approved draft read access while omitting an unauthorized manual record", async () => {
+    getMessageHandoffFnMock.mockResolvedValue({
+      approvalId: "ap-1",
+      can_record_manual_send: false,
+      draftMessage: "Draft only",
+      handoff: { handoff_status: "awaiting_manual_send", sent_reference: null },
+    });
+    renderInbox([
+      messageSend({
+        status: "approved",
+        can_decide: false,
+        can_assign: false,
+        can_claim: false,
+        can_request_changes: false,
+      }),
+    ]);
+    expect(await screen.findByRole("button", { name: "Copy approved draft" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Record manual send" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Manual send reference" })).toBeNull();
+    expect(recordManualMessageSentFnMock).not.toHaveBeenCalled();
   });
 });

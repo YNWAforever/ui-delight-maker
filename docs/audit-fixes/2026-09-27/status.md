@@ -196,3 +196,17 @@ R06 measured queue gates are satisfied; remaining workflow/zoom/screen-reader/pr
 
 
 Public local runtime adapter verification at `6b2827734902fdc703bc845667c8f5f459025360`: actual sales Task and manager Approval rows loaded with all executed request SQL metrics (35 / 42 aggregate queries), zero failed queries/page errors, POST 405, workflow GET 403, and unchanged real PostgreSQL row counts/version totals. [Sanitized observations](../2026-09-29/evidence/r06-public-adapter-verification-2026-09-30.json). Adapter stopped after verification. Initial private verification assertions were corrected to the existing `row_version` column and `http-request` metric scope; application/runtime code was unchanged.
+
+
+## PR #133 merged / R04 approval UI continuation — 2026-09-30
+
+PR #133 exact final head `ff3c790fcc1da1f181d516d9aa759116b19b6cd9` passed Checks `36674579221` and Database contract `36674579207`: **2,258 real PostgreSQL tests / zero skipped**, browser collector, isolated migration/seed replay and Vercel. Merge commit **`d9457ce705f644079d49e99b019977ffd5888460`**; post-main Checks `36674928227` and DB `36674928247` passed. Initial source failure remains cause unknown. R06 scoped queue runtime/role evidence is durable in the merged source; production release remains held.
+
+R04 actual isolated `f4f5c97` reader reproduction: Approve and checkboxes were offered, actual same-origin POST returned serialized FORBIDDEN, persisted pending status/row_version unchanged. [Raw observations](../2026-09-29/evidence/approval-role-before-2026-09-30.json), [screen](../2026-09-29/evidence/approval-reader-before-2026-09-30.png). Five new component boundary cases first failed; all 18 approval component cases now pass.
+
+Candidate returns server-evaluated per-record decision/request-change/routing flags, selected linked-subject claim proof, and approved-message manual-statement permission. Missing flags fail closed; quote decisions additionally honor existing quote approval authorization, while request-change retains its existing approval-only scope. Bulk selection excludes unauthorized rows. Claim/routing writes retain their locked command guards, and reviewer roster gates now evaluate the supplied persisted approval scope while preserving the existing eligible roles/roster limits.
+
+**56 focused tests** pass, including real PostgreSQL READ ONLY claim, scope/allow/deny/expiry and existing rollback/idempotency/concurrency. The first complete local run had 2,276 passes and one failure because a duplicated new guard increased the exact source-check count 237 to 238; the code now reuses the existing guard with a scoped target, and the unchanged 237-check gate passes. Fresh final full PostgreSQL suite, hosted seven-role/race/manual UI and exact-head CI remain pending. Typecheck, touched-file lint, pure Vite and bundle gates pass. No migration/new grant/dependency/exclusion/provider or production operation introduced. All 30 CO and 16 UAT rows retained.
+
+
+R04 final local source verification: fresh empty `clientops_approval_final_20260930` passed **2,278 real PostgreSQL tests / zero skipped** (312 files), including concurrency, rollback, idempotency and the new READ ONLY claim/roster scope cases. Typecheck, touched-file lint, pure Vite client/SSR and bundle budgets passed after the final scope change. Existing authorization-surface threshold remains 237. Hosted role/race/manual acceptance and exact-head remote checks follow; source acceptance is not production release.

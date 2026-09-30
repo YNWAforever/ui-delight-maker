@@ -34,6 +34,7 @@ const SearchSchema = z.strictObject({
 async function requirePurpose(
   purpose: ProfilePurpose,
   context: Awaited<ReturnType<typeof loadRequestAuthorization>>,
+  resourceId?: string,
 ) {
   if (purpose === "task_assign") {
     await requireCapability("tasks.update", {}, context);
@@ -48,14 +49,20 @@ async function requirePurpose(
     admin_directory: "users.view",
     successor: "users.manage",
   } as const;
-  await requireCapability(capability[purpose], {}, context);
+  await requireCapability(
+    capability[purpose],
+    purpose === "approval_reviewer" && resourceId
+      ? { resourceType: "human_approval", resourceId }
+      : {},
+    context,
+  );
 }
 
 export const listAssignableProfilesFn = createServerFn({ method: "GET" })
   .validator((data: unknown) => parseOperationInput(SearchSchema, data))
   .handler(async ({ data }) => {
     const context = await loadRequestAuthorization();
-    await requirePurpose(data.purpose, context);
+    await requirePurpose(data.purpose, context, data.resourceId);
     return listAssignableProfiles(data, context);
   });
 
@@ -63,6 +70,6 @@ export const resolveAssignableProfileFn = createServerFn({ method: "GET" })
   .validator((data: unknown) => parseOperationInput(ResolveSchema, data))
   .handler(async ({ data }) => {
     const context = await loadRequestAuthorization();
-    await requirePurpose(data.purpose, context);
+    await requirePurpose(data.purpose, context, data.resourceId);
     return resolveAssignableProfile(data, context);
   });

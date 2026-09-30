@@ -43,6 +43,26 @@ function permits(context: RequestAuthorization, capability: Capability): boolean
     now: context.now,
   }).allowed;
 }
+async function permitsApprovalReviewer(context: RequestAuthorization, resourceId?: string) {
+  if (!resourceId) return permits(context, "approvals.decide");
+  const [approval] = await query<{ assigned_to: string | null }>(
+    "select assigned_to from human_approvals where id=$1",
+    [resourceId],
+  );
+  if (!approval) return false;
+  return evaluateAuthorization({
+    actor: context.actor,
+    capability: "approvals.decide",
+    target: {
+      resourceType: "human_approval",
+      resourceId,
+      ...(approval.assigned_to ? { ownerProfileId: approval.assigned_to } : {}),
+    },
+    overrides: context.overrides,
+    now: context.now,
+  }).allowed;
+}
+
 function parseCursor(cursor: string | undefined, signature: string) {
   if (!cursor) return null;
   if (cursor.length > 2048) throw new AdminError("VALIDATION_FAILED", "Invalid people cursor");
@@ -76,7 +96,7 @@ export async function listAssignableProfiles(
       : purpose === "task_assign"
         ? permits(context, "tasks.update")
         : purpose === "approval_reviewer"
-          ? permits(context, "approvals.decide")
+          ? await permitsApprovalReviewer(context, input.resourceId)
           : purpose === "job_sheet_owner"
             ? permits(context, "job_sheets.update_billing")
             : purpose === "job_sheet_owner_filter"
@@ -225,7 +245,7 @@ export async function resolveAssignableProfile(
       : purpose === "task_assign"
         ? permits(context, "tasks.update")
         : purpose === "approval_reviewer"
-          ? permits(context, "approvals.decide")
+          ? await permitsApprovalReviewer(context, input.resourceId)
           : purpose === "job_sheet_owner"
             ? permits(context, "job_sheets.update_billing")
             : purpose === "job_sheet_owner_filter"

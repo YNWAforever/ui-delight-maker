@@ -290,6 +290,70 @@ describe("work queue keyset pagination on isolated PostgreSQL", () => {
     },
   );
 
+  it.runIf(hasDatabase)(
+    "reviewer roster honors persisted approval scope, scoped allow, deny and expiry",
+    async () => {
+      const repo = await import("@/server/repositories/assignable-profiles");
+      await holder.client!.query(
+        "insert into profiles(id,name,email,role,status) values('queue-manager','Queue Manager','private-queue@example.test','manager','active') on conflict(id) do nothing",
+      );
+      const id = (
+        await holder.client!.query(
+          "select id from human_approvals where assigned_to='owner-b' limit 1",
+        )
+      ).rows[0].id;
+      const actor = context(),
+        input = { purpose: "approval_reviewer" as const, resourceId: id, query: "Queue Manager" };
+      await expect(repo.listAssignableProfiles(input, actor)).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
+      actor.overrides = [
+        {
+          profileId: actor.actor.profileId,
+          capability: "approvals.decide",
+          effect: "allow",
+          resourceType: "human_approval",
+          resourceId: id,
+        },
+      ];
+      expect((await repo.listAssignableProfiles(input, actor)).items).toMatchObject([
+        { id: "queue-manager", displayName: "Queue Manager" },
+      ]);
+      expect(
+        await repo.resolveAssignableProfile(
+          { purpose: "approval_reviewer", resourceId: id, id: "queue-manager" },
+          actor,
+        ),
+      ).toMatchObject({ displayName: "Queue Manager" });
+      actor.overrides.push({
+        profileId: actor.actor.profileId,
+        capability: "approvals.decide",
+        effect: "deny",
+        resourceType: "human_approval",
+        resourceId: id,
+      });
+      await expect(
+        repo.resolveAssignableProfile(
+          { purpose: "approval_reviewer", resourceId: id, id: "queue-manager" },
+          actor,
+        ),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      actor.overrides = [
+        {
+          profileId: actor.actor.profileId,
+          capability: "approvals.decide",
+          effect: "allow",
+          resourceType: "human_approval",
+          resourceId: id,
+          expiresAt: "2026-09-01T00:00:00Z",
+        },
+      ];
+      await expect(repo.listAssignableProfiles(input, actor)).rejects.toMatchObject({
+        code: "FORBIDDEN",
+      });
+    },
+  );
+
   it.runIf(hasDatabase)("task filter names only owners of visible tasks", async () => {
     const repository = await import("@/server/repositories/assignable-profiles").catch(() => null);
     expect(repository?.listAssignableProfiles).toBeTypeOf("function");

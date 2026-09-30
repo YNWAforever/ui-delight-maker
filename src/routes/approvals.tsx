@@ -80,6 +80,11 @@ import type { ApprovalType } from "@/lib/types";
 type Approval = Omit<SerializableHumanApproval, "context_data"> & {
   context_data?: SerializableHumanApproval["context_data"];
   quote_id: string | null;
+  /** Missing legacy metadata fails closed. */
+  can_decide?: boolean;
+  can_request_changes?: boolean;
+  can_assign?: boolean;
+  can_claim?: boolean;
 };
 type ApprovalRead = Approval[];
 type ApprovalPage = {
@@ -244,7 +249,7 @@ function ApprovalsInbox() {
   const approvalsQuery = useQuery({
     ...routeQueryOptions({
       queryKey: approvalsQueryKey,
-      queryFn: () => getApprovalsPage({ data: pageInput("pending") }),
+      queryFn: (): Promise<ApprovalPage> => getApprovalsPage({ data: pageInput("pending") }),
     }),
     initialData: loadedApprovals,
     refetchInterval: () =>
@@ -254,7 +259,7 @@ function ApprovalsInbox() {
   const historyQuery = useQuery({
     ...routeQueryOptions({
       queryKey: historyQueryKey,
-      queryFn: () => getApprovalsPage({ data: pageInput("history") }),
+      queryFn: (): Promise<ApprovalPage> => getApprovalsPage({ data: pageInput("history") }),
     }),
   });
   const [loadingMore, setLoadingMore] = useState<"pending" | "history" | null>(null);
@@ -427,8 +432,17 @@ function ApprovalsInbox() {
     }),
     enabled: Boolean(selected),
   });
+  // Detail refresh updates affordances/payload, never revives an optimistic terminal row.
+  const detailFlags = detailQuery.isError ? null : (detailQuery.data ?? selected);
   const detailApproval = selected
-    ? { ...selected, context_data: detailQuery.data?.context_data }
+    ? {
+        ...selected,
+        can_decide: detailFlags?.can_decide === true,
+        can_assign: detailFlags?.can_assign === true,
+        can_claim: detailFlags?.can_claim === true,
+        can_request_changes: detailFlags?.can_request_changes === true,
+        context_data: detailQuery.data?.context_data,
+      }
     : null;
 
   const messageHandoffQuery = useQuery({
@@ -883,7 +897,10 @@ function ApprovalsInbox() {
   const decisionActions = (approval: Approval) => {
     const quoteId = getQuoteId(approval);
 
-    if (!isDecidable(approval)) {
+    if (
+      !isDecidable(approval) ||
+      (approval.can_decide !== true && approval.can_request_changes !== true)
+    ) {
       return (
         <div className="flex flex-wrap items-center justify-end gap-2">
           {quoteId && (
@@ -911,7 +928,7 @@ function ApprovalsInbox() {
             </Link>
           </Button>
         )}
-        {approval.status === "pending" && (
+        {approval.can_request_changes === true && approval.status === "pending" && (
           <Button
             size="sm"
             variant="outline"
@@ -929,49 +946,53 @@ function ApprovalsInbox() {
             <AlertTriangle className="mr-2 h-4 w-4" /> Request changes
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={isBusy}
-          onClick={() =>
-            setConfirm({
-              title:
-                approval.approval_type === "quote_send"
-                  ? "Reject this quote send?"
-                  : "Reject this request?",
-              description:
-                approval.approval_type === "quote_send"
-                  ? "The quote is marked rejected and this approval closes. There is no reopen action — the quote has to be revised and submitted for approval again."
-                  : "The agent stops and this approval closes. There is no undo.",
-              label: "Reject",
-              action: () => runDecision(() => decideOne(approval, "rejected")),
-            })
-          }
-        >
-          <XCircle className="mr-2 h-4 w-4" /> Reject
-        </Button>
-        <Button
-          size="sm"
-          disabled={isBusy}
-          onClick={() =>
-            setConfirm({
-              title:
-                approval.approval_type === "quote_send"
-                  ? "Approve this quote?"
-                  : "Approve this request?",
-              description:
-                approval.approval_type === "quote_send"
-                  ? "Approving closes this request and marks the quote approved. Issuing its version is a separate action for an authorized issuer."
-                  : approval.approval_type === "message_send"
-                    ? "The draft will be approved and await manual send. ClientOps does not send it."
-                    : approvalProposedAction(approval.approval_type) + " There is no undo.",
-              label: "Approve",
-              action: () => runDecision(() => decideOne(approval, "approved")),
-            })
-          }
-        >
-          <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
-        </Button>
+        {approval.can_decide === true && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isBusy}
+            onClick={() =>
+              setConfirm({
+                title:
+                  approval.approval_type === "quote_send"
+                    ? "Reject this quote send?"
+                    : "Reject this request?",
+                description:
+                  approval.approval_type === "quote_send"
+                    ? "The quote is marked rejected and this approval closes. There is no reopen action — the quote has to be revised and submitted for approval again."
+                    : "The agent stops and this approval closes. There is no undo.",
+                label: "Reject",
+                action: () => runDecision(() => decideOne(approval, "rejected")),
+              })
+            }
+          >
+            <XCircle className="mr-2 h-4 w-4" /> Reject
+          </Button>
+        )}
+        {approval.can_decide === true && (
+          <Button
+            size="sm"
+            disabled={isBusy}
+            onClick={() =>
+              setConfirm({
+                title:
+                  approval.approval_type === "quote_send"
+                    ? "Approve this quote?"
+                    : "Approve this request?",
+                description:
+                  approval.approval_type === "quote_send"
+                    ? "Approving closes this request and marks the quote approved. Issuing its version is a separate action for an authorized issuer."
+                    : approval.approval_type === "message_send"
+                      ? "The draft will be approved and await manual send. ClientOps does not send it."
+                      : approvalProposedAction(approval.approval_type) + " There is no undo.",
+                label: "Approve",
+                action: () => runDecision(() => decideOne(approval, "approved")),
+              })
+            }
+          >
+            <CheckCircle2 className="mr-2 h-4 w-4" /> Approve
+          </Button>
+        )}
       </div>
     );
   };
@@ -991,14 +1012,15 @@ function ApprovalsInbox() {
        * reviewer on a closed decision would misrepresent who made it. A disabled control with
        * a reason would imply it might come back. It does not.
        */
-      ...(approval.status === "pending"
+      ...((approval.status === "pending" || approval.status === "escalated") &&
+      (approval.can_assign === true || approval.can_claim === true)
         ? [
             {
               id: "reviewer",
               title: "Reviewer",
               content: (
                 <div className="space-y-2">
-                  {!approval.assigned_to && (
+                  {!approval.assigned_to && approval.can_claim === true && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -1008,17 +1030,19 @@ function ApprovalsInbox() {
                       Claim for review
                     </Button>
                   )}
-                  <ProfileSearchCombobox
-                    purpose="approval_reviewer"
-                    label={`Assign reviewer (${surface})`}
-                    resourceId={approval.id}
-                    value={approval.assigned_to ?? ""}
-                    onChange={(value) => void assignReviewer(approval, value || UNASSIGNED_VALUE)}
-                  />
+                  {approval.can_assign === true && (
+                    <ProfileSearchCombobox
+                      purpose="approval_reviewer"
+                      label={`Assign reviewer (${surface})`}
+                      resourceId={approval.id}
+                      value={approval.assigned_to ?? ""}
+                      onChange={(value) => void assignReviewer(approval, value || UNASSIGNED_VALUE)}
+                    />
+                  )}
                   <p className="text-xs text-muted-foreground">
                     <UserPlus className="mr-1 inline h-3 w-3" />
                     {approval.assigned_to
-                      ? "Routed to a reviewer. Anyone who can decide approvals still can."
+                      ? "Routed to a reviewer. Decisions remain subject to each reviewer\u2019s record permissions."
                       : "Unassigned. Eligible reviewers can claim it when the linked subject is in scope."}
                   </p>
                 </div>
@@ -1072,7 +1096,7 @@ function ApprovalsInbox() {
                           Manual send recorded: {messageHandoffQuery.data.handoff.sent_reference}.
                           This is an operator statement, not a delivery receipt.
                         </p>
-                      ) : (
+                      ) : messageHandoffQuery.data?.can_record_manual_send === true ? (
                         <div className="space-y-2">
                           <input
                             aria-label="Manual send reference"
@@ -1093,6 +1117,10 @@ function ApprovalsInbox() {
                             delivery.
                           </p>
                         </div>
+                      ) : (
+                        <p className="text-muted-foreground">
+                          Awaiting a manual send statement from an authorized reviewer.
+                        </p>
                       )}
                     </>
                   )}
@@ -1286,16 +1314,30 @@ function ApprovalsInbox() {
                       breakpoint="lg"
                       caption="Approvals waiting on a human decision"
                       selectedRowKey={selected?.id}
-                      selection={{
-                        selected: bulk,
-                        onChange: (next) => {
-                          if (next.size > 100) {
-                            toast.error("Select at most 100 approvals per bulk operation.");
-                            return;
-                          }
-                          setBulk(next);
-                        },
-                      }}
+                      selection={
+                        pending.some((approval) => approval.can_decide === true)
+                          ? {
+                              selected: bulk,
+                              isRowSelectable: (approval) => approval.can_decide === true,
+                              onChange: (next) => {
+                                if (next.size > 100) {
+                                  toast.error("Select at most 100 approvals per bulk operation.");
+                                  return;
+                                }
+                                setBulk(
+                                  new Set(
+                                    [...next].filter((id) =>
+                                      pending.some(
+                                        (approval) =>
+                                          approval.id === id && approval.can_decide === true,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            }
+                          : undefined
+                      }
                     />
                   )}
                   {approvalsQuery.data.nextCursor && (
@@ -1360,7 +1402,7 @@ function ApprovalsInbox() {
                           <div className="mt-2">{section.content}</div>
                         </div>
                       ))}
-                      {decisionActions(selected)}
+                      {decisionActions(detailApproval ?? selected)}
                     </CardContent>
                   </Card>
                 ) : (
@@ -1444,7 +1486,7 @@ function ApprovalsInbox() {
             },
             ...detailSections(detailApproval ?? selected, "panel"),
           ]}
-          primaryAction={decisionActions(selected)}
+          primaryAction={decisionActions(detailApproval ?? selected)}
         />
       )}
 
