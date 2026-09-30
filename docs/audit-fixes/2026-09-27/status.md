@@ -34,7 +34,7 @@ Allowed finding states: `open`, `in_progress`, `verified_fixed`, `already_fixed_
 
 ## Finding matrix
 
-Current verified main is `6a915dd38d06e9a0a8aede89e337ccd83d152071` after PR #145, with 2,336 real isolated PostgreSQL tests and zero skipped. PR #146 source `ea76d3b` passes2,340/zero skipped local/exact-source CI; final documentation-head CI/merge pending. Public production still serves `bed941b37d18d214d0e7658ebce2116a2fc33eb9` under the verified build hold. Earlier task-row blockers describe their original evidence time; seven distinct isolated sessions and authenticated runtime measurements now exist for linked executed slices. Finding states remain evidence-based; outstanding workflow, historical parity, provider and release gates retain their individual blockers.
+Current verified main is `4d238725391a0fec4151b037a9339b919621ed37` after PR #146, exact final-head/post-main2,340/zero skipped and replay PASS. R03 modal/narrow source repair passes local2,344/zero skipped plus final21/static/pure-build gates; exact committed-source hosted acceptance/final CI pending. Public production still serves `bed941b37d18d214d0e7658ebce2116a2fc33eb9` under the verified build hold. Earlier task-row blockers describe their original evidence time; seven distinct isolated sessions and authenticated runtime measurements now exist for linked executed slices. Finding states remain evidence-based; outstanding workflow, historical parity, provider and release gates retain their individual blockers.
 
 | Finding | Severity | Owner | State | Unit / real DB / role UI evidence | Blocker |
 |---|---|---|---|---|---|
@@ -342,3 +342,9 @@ Source `0376f5c0bffda1c9eae63cd70dbbe47d16d7b8e2`: exact source Checks3676353671
 ## PR #146 hosted U10 completion / R03 next — 2026-10-01 HKT
 
 Source `ea76d3b2b5a64b9efe98d403d7f8fff84331aee7` passes exact-source GitHub required checks/fresh2,340 zero-skip contract/replay. Actual fixed-source12cases plus four valid earlier cases meet defined U10; successor hydrated name remains across search. Three observer corrections and original once-only deactivation retained. [Full U10 evidence](../2026-09-29/admin-dialog-uat-2026-10-01.md). U10 PASS; CO-20 remains in_progress for actual role/lifecycle keyboard defects (initial focus/Tab/Escape), which R03/U15 retains as FAIL/unexecuted repaired gate. CO-16 Team partial passes; other domains remain open. All30 CO/16 UAT retained. Final documentation-head CI/merge pending; production/publicbed941b hold unchanged, release NO-GO.
+
+## #146 merged / R03 keyboard+narrow source repair — 2026-10-01 HKT
+
+#146 final5879982 merged05:12:40 HKT at `4d238725391a0fec4151b037a9339b919621ed37`; exact final/post-main2,340/318/zero skipped and replay PASS. [Merge](../2026-09-29/evidence/pr146-merge-2026-10-01.json), [hold](../2026-09-29/evidence/production-hold-after-146-2026-10-01.json): production attempt canceled/publicbed941b unchanged.
+
+[Next R03 keyboard+narrow repair](../2026-09-29/admin-keyboard-uat-2026-10-01.md): actual two modal keyboard defects and390px missing management entry reproduced; four valid red→green tests; related21/static/pure Vite/bundles PASS; real fresh PG2,344 zero-skip PASS. Invalid skipped run explicitly rejected; local full before navigation-only addition, exact-source full CI required. Hosted source/width/native200/no-write role acceptance pending. All30 CO/16 UAT retained, no API/policy/migration/production operation; release NO-GO.

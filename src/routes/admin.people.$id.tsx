@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShieldOff } from "lucide-react";
 import { toast } from "sonner";
@@ -221,6 +221,15 @@ function AdminUserRoute() {
         description={`${getUserRoleLabel(user.role)} · ${user.email || "No email"}`}
         backHref={{ to: "/admin/people", label: "Back to People" }}
         status={<StatusBadge domain="adminProfiles" value={user.status} />}
+        primaryAction={
+          access.manageRole || access.suspend || access.revokeSessions ? (
+            <Button asChild variant="outline">
+              <Link to="/admin/people" search={{ user: user.id }}>
+                Manage person
+              </Link>
+            </Button>
+          ) : undefined
+        }
       />
       <div className="px-4 py-6 md:px-6">
         <Tabs

@@ -1,0 +1,29 @@
+{
+  "checkedAt": "2026-09-30T21:33:34.923Z",
+  "baseMainSha": "4d238725391a0fec4151b037a9339b919621ed37",
+  "freshIsolatedDatabase": "clientops_admin_keyboard_verify_20261001",
+  "postgres": "17.10",
+  "tests": 2344,
+  "files": 319,
+  "failed": 0,
+  "skipped": 0,
+  "todo": 0,
+  "wallSeconds": 275.8401149902344,
+  "validOriginalSourceRegressionsFailed": 4,
+  "finalRelatedTests": 21,
+  "typescript": "PASS",
+  "changedLint": "PASS",
+  "pureViteBuild": "PASS",
+  "bundles": "PASS",
+  "diffCheck": "PASS",
+  "noAPIOrPolicyOrMigrationChange": true,
+  "initialInvalidRun": {
+    "passed": 2023,
+    "skipped": 321,
+    "acceptedAsGate": false,
+    "cause": "DATABASE_TEST_URL omitted; zero-skip guard rejected run"
+  },
+  "localFullRunBeforeNavigationOnlyAdjustment": true,
+  "exactCommittedSourceFullCIRequired": true,
+  "productionOperation": false
+}
