@@ -45,3 +45,13 @@ The full lifecycle then forwarded the actual first commit and lost its response:
 Three new Lead/Client/Event recovery tests failed for missing Retry. Candidate now initializes saved recovery state before presenting controls, blocks replacement while unresolved, exposes a read-only Retry loading result, and retains the exact saved key. A synthetic change cannot bypass the disabled replacement input. All28 affected UI cases pass. Full fresh DB/static/build and exact-source hosted recovery remain pending; U09 not accepted.
 
 Recovery final local source: **2,294 / zero skipped / zero todo**,313files on fresh real PostgreSQL; types, full source lint, pure Vite and bundles pass. Hosted recapture and final-headCI still required.
+
+## Recovery source acceptance and remaining full U09
+
+Source **a18aa46273b10edc9cc75dbb11188ad9d49c98e6**: exact-source Checks36702543051 / DB36702542944 passed **2,294 / zero skipped**, isolated replay, browser collector and Vercel. Real UAT recovered the **original** d0f451c session after receipt-read interruption, retaining its eight prior writes and exact original key. Retry made no business writes; replacement input remained disabled before/after read. [Accepted original-session recovery](evidence/r05-original-recovery-pass-a18aa46-2026-09-30.json), [blocked-input screen](evidence/r05-original-recovery-blocked-input-a18aa46-2026-09-30.png), [recovered screen](evidence/r05-original-recovered-a18aa46-2026-09-30.png).
+
+A fresh actual5000Lead run at a18aa46 previews all5,000 in9,688msPOST/9,925msUI with correct mixed classifications and no preview writes; [raw preview](evidence/r05-final-preview-a18aa46-2026-09-30.json). Actual loss/reload/key replay and bounded continuation are running. Until its persisted final read, replay, seven-role receipt denials and browser issues download finish, full U09 remains pending. Client/Event lifecycle, source inventory, target-specific retention and other release gates are also open.
+
+The recovery fix has no import-server change from d0f451c. Existing schema/receipt/key remains compatible; rollback to d0f451c restores the demonstrated missing-retry UI defect. Retain all synthetic paused sessions and their keys while investigating, rather than resetting them to obtain a green run.
+
+Final documentation-head CI is still required before merging #136. Source fixes/isolated acceptance do not authorize production promotion. All30CO/16UAT remain tracked and release stays NO-GO.
