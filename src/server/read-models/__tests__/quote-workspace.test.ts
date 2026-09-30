@@ -391,10 +391,14 @@ describe("quote workspace read models", () => {
 
     requireCapabilityChecksMock.mockClear();
     await getQuoteVersionsSection({ data: { id: "quote-1", page: 1 } });
-    expect(requireCapabilityMock).toHaveBeenLastCalledWith("quotes.view", {
-      resourceType: "quote",
-      resourceId: "quote-1",
-    });
+    expect(requireCapabilityMock).toHaveBeenLastCalledWith(
+      "quotes.view",
+      {
+        resourceType: "quote",
+        resourceId: "quote-1",
+      },
+      undefined,
+    );
     expect(requireCapabilityChecksMock).not.toHaveBeenCalled();
   });
 

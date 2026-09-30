@@ -8,6 +8,7 @@ import {
   loadRequestAuthorization,
   requireCapability,
   requireCapabilityChecks,
+  type RequestAuthorization,
 } from "@/server/auth/authorization.server";
 import {
   loadQuoteCreateBootstrap,
@@ -98,8 +99,8 @@ export const getQuoteReferencePage = createServerFn({ method: "GET" })
     return listQuoteReferencePage(data);
   });
 
-async function authorizeQuote(id: string) {
-  await requireCapability("quotes.view", { resourceType: "quote", resourceId: id });
+async function authorizeQuote(id: string, context?: RequestAuthorization) {
+  await requireCapability("quotes.view", { resourceType: "quote", resourceId: id }, context);
 }
 
 /**
@@ -164,7 +165,7 @@ export const getQuoteDetailRead = createServerFn({ method: "GET" })
   .validator(parseIdInput)
   .handler(async ({ data }) => {
     const context = await loadRequestAuthorization();
-    await requireCapability("quotes.view", { resourceType: "quote", resourceId: data.id }, context);
+    await authorizeQuote(data.id, context);
     const read = await getQuoteWorkspaceDetail(data.id);
     const visibility = await resolveLinkedQuoteVisibility(read);
     // Resolve ownership once for all actions; scoped overrides and manager boundaries must
