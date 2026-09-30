@@ -1,0 +1,84 @@
+{
+  "createdAt": "2026-09-30T03:30:15.229Z",
+  "container": "clientops-quote-uat-pg-20260930",
+  "loopbackPort": 56489,
+  "database": "clientops_perf_r06_20260930",
+  "tasks": 10000,
+  "approvals": 100000,
+  "profiles": 7,
+  "roles": [
+    {
+      "id": "5ab19e68-667f-4d60-8515-a9578f1b164f",
+      "role": "super_admin"
+    },
+    {
+      "id": "d0bf98f1-9ce2-4bb9-80a0-3dd3837908fe",
+      "role": "admin"
+    },
+    {
+      "id": "demo-manager-user",
+      "role": "manager"
+    },
+    {
+      "id": "demo-sales-user",
+      "role": "sales"
+    },
+    {
+      "id": "demo-cs-user",
+      "role": "client_success"
+    },
+    {
+      "id": "a8477476-90db-436e-89cd-f93201899883",
+      "role": "accounting"
+    },
+    {
+      "id": "371f8cf3-4e59-47c6-9023-d36860893758",
+      "role": "read_only"
+    }
+  ],
+  "authOrigin": "Independent clientops UAT Neon Auth",
+  "cookies": [
+    {
+      "role": "super_admin",
+      "name": "__Secure-neon-auth.session_token",
+      "secure": true,
+      "httpOnly": true
+    },
+    {
+      "role": "admin",
+      "name": "__Secure-neon-auth.session_token",
+      "secure": true,
+      "httpOnly": true
+    },
+    {
+      "role": "manager",
+      "name": "__Secure-neon-auth.session_token",
+      "secure": true,
+      "httpOnly": true
+    },
+    {
+      "role": "sales",
+      "name": "__Secure-neon-auth.session_token",
+      "secure": true,
+      "httpOnly": true
+    },
+    {
+      "role": "client_success",
+      "name": "__Secure-neon-auth.session_token",
+      "secure": true,
+      "httpOnly": true
+    },
+    {
+      "role": "accounting",
+      "name": "__Secure-neon-auth.session_token",
+      "secure": true,
+      "httpOnly": true
+    },
+    {
+      "role": "read_only",
+      "name": "__Secure-neon-auth.session_token",
+      "secure": true,
+      "httpOnly": true
+    }
+  ]
+}
