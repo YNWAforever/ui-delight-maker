@@ -14,9 +14,9 @@ This is a source and evidence checkpoint against the user-supplied `04_Functiona
 | Audit-baseline failing case | Source correction | Current acceptance |
 | --- | --- | --- |
 | T-PUBLIC-SKIP | PR #111 added a focusable main target on public/auth/root fallback pages; positive component regression passed. | Anonymous candidate Tab/Enter focus and public 390/768/1280/1440px behavior verified in [browser evidence](public-auth-browser-evidence.md); historical production FAIL unchanged. |
-| T-AUD-INVITE-ESC | PR #111 moved invitation to Radix Dialog with Escape and focus-return behavior; positive component regression passed. | BLOCKED: independent browser keyboard and role session. |
-| T-AUD-INVITE-FOCUS | PR #111 moved initial focus into the invitation dialog; positive component regression passed. | BLOCKED: independent browser focus trap and screen-reader evidence. |
-| T-AUD-BULK-RECEIPT | PR #111 retains the same pending receipt/key on transient result-read failure and exposes Retry; positive component regression passed. | BLOCKED: real actor browser retry/offline/reconnect with independent result read. |
+| T-AUD-INVITE-ESC | PR #111 moved invitation to Radix Dialog with Escape and focus-return behavior; positive component regression passed. | Actual thirteen own-role width/native200/Escape/exact-trigger cases PASS atfc4a2fd; [invitation proof](invitation-keyboard-uat-2026-10-01.md). |
+| T-AUD-INVITE-FOCUS | PR #111 moved initial focus into the invitation dialog; positive component regression passed. | Actual initial email focus/forward+reverse Tab cases PASS atfc4a2fd; screen-reader output remains unverified. [Proof](invitation-keyboard-uat-2026-10-01.md). |
+| T-AUD-BULK-RECEIPT | PR #111 retains the same pending receipt/key on transient result-read failure and exposes Retry; positive component regression passed. | Actual original owner receipt GET transport failure/pointer retention/keyboard retry/reconnect and reader-owner-denial PASS; [mixed receipt proof](responsive-journey-uat-2026-10-01.md). |
 
 PR #115 and PR #116 added two further R04 People-directory fixes: a query refresh failure now has an error/retry state without a false zero count, and narrow cards open the existing full record instead of setting a hidden selection panel. Their respective exact-head real isolated PostgreSQL gates passed 2,187 and 2,188 tests, both with zero skipped. PR #116's protected preview `/api/build` matched head `a1741b3`; post-merge main Checks and Database contract passed 2,188 tests with zero skipped and two-run isolated migration/seed replay. This proves source and isolated database contracts, not seven-role UAT. At that earlier checkpoint the desktop browser control surface failed with a Windows sandbox ACL error; later anonymous Chromium evidence is recorded below, with no role assertion claimed.
 
@@ -70,3 +70,7 @@ PRs [#118](https://github.com/YNWAforever/ui-delight-maker/pull/118), [#119](htt
 ## 2026-10-01 expanded Admin repair
 
 [Actual Admin keyboard/narrow report](admin-keyboard-uat-2026-10-01.md) retains original failures and source4fb0b4a scoped pass followed by390 clippingFAIL. Repairedfc4a2fd passes seventeen expanded own-role width/native200/focus/error/control-bounds cases plus exact-source CI2,344/zero skipped and replay. CO-20 defined directory criteria verified_fixed. Historical751 matrix unchanged; full mixed receipt/screen reader/external release gates remain. Final docs-head CI pending.
+
+## 2026-10-01 actual import permissions and invitation keyboard
+
+[CO-04 seven-role25-case proof](import-role-uat-2026-10-01.md) passes actual business/side-effect/owner/source-key checks and two after-preview denies; findingverified_fixed. [Invitation13 cases](invitation-keyboard-uat-2026-10-01.md) supersede the historical keyboard blockers above only in their executed scope. Provider invite/signup/actual acceptance, assistive-technology output and remaining bulk/data/operator release gates stay open. Historical751-case counts unchanged; individual actual evidence must support every later promotion.

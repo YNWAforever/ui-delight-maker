@@ -78,3 +78,13 @@ Approval source `fac59c90eb47be77c4f75554b3cee6e624b26622`, deployment `dpl_7J8H
 ## Latest R02 source-bound UAT
 
 Source `53dc62f8a19e4a2449c9e445651bbeb43bd3158b`, deployment `dpl_32SR9Ea7Z75GAVyB3nuus7m1nVJC`; stable alias SHA checked before/after actual 100-row mixed Task recovery acceptance. Dedicated project, database, Auth and seven distinct identities remain unchanged. [U08 evidence](bulk-recovery-uat-2026-09-30.md). No migration, real provider configuration or production operation. Previous UAT source deployment `dpl_BfrAUnkawVzUSVfXFFcGZZy3tsvn` is source `df14575`; rollback there retains precise cursors but restores slower preview.
+
+## Stable test-site upgrade — 2026-10-01 HKT
+
+[Actual upgrade and seven-role proof](evidence/stable-uat-upgrade-fc4a2fd-2026-10-01.json). Stable URL remains https://clientops-uat-20260930.vercel.app/login/sign-in; source nowfc4a2fd, deploymentdpl_5yqEDJext5SReES72yYWB6oCSCCh, same independent UAT project/database/Auth. Application source equals merged main2606334 (#147); docs merge SHA differs from deployed source. Exact source and final/main2,344/319/zero skipped CI/replay pass. Hosting protection unchanged.
+
+Seven own upstream users, live sessions, cookie sets and active profile roles match; each actual home loads. Accounting correctly shows policy-scoped Today operations; the other six show Revenue Desk. No super_admin impersonation. Existing ignored session files remain at the paths above and work with this stable URL.
+
+Before alias change, all three original recorded5000 IDs were completed, and global running workers/live leases zero. One earlier historical Lead failure remains paused with its original receipt/key; retained inventory disclosed. Import/bulk backend and migrations are unchanged froma18aa46. Before/after complete public synthetic profiles/Tasks/import sessions/rows/source keys/bulk operations/items snapshots match. No migration, seed, fixture repair or cleanup during upgrade.
+
+Only dedicated test alias changed. Actual production project retains the hold; #147 production attemptCANCELED and publicbed941b unchanged. [Read-only hold proof](evidence/production-hold-after-147-2026-10-01.json). Never copy these credentials/storage-state files into Git or chat; expiry requires each corresponding account's own fresh login.

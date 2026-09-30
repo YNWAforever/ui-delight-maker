@@ -1,0 +1,215 @@
+{
+  "sourceSha": "fc4a2fd311d38d05ca6295a43e4fc8571158fd6f",
+  "candidateUrl": "https://clientops-uat-20260930-qw4weh2g2-ynwaforevers-projects.vercel.app",
+  "startedAt": "2026-09-30T22:44:53.620Z",
+  "scope": "Actual own Admin/SA/manager invitation keyboard/error at390/768/1440/native200; no send",
+  "success": true,
+  "cases": [
+    {
+      "case": "own invitation initial email focus,18 forward/reverse Tabs, readable invalid-address error with no send, Escape exact trigger return",
+      "role": "super_admin",
+      "width": 390,
+      "modalWidths": {
+        "clientWidth": 356,
+        "scrollWidth": 356
+      },
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own invitation initial email focus,18 forward/reverse Tabs, readable invalid-address error with no send, Escape exact trigger return",
+      "role": "super_admin",
+      "width": 768,
+      "modalWidths": {
+        "clientWidth": 574,
+        "scrollWidth": 574
+      },
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own invitation initial email focus,18 forward/reverse Tabs, readable invalid-address error with no send, Escape exact trigger return",
+      "role": "super_admin",
+      "width": 1440,
+      "modalWidths": {
+        "clientWidth": 574,
+        "scrollWidth": 574
+      },
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own invitation initial email focus,18 forward/reverse Tabs, readable invalid-address error with no send, Escape exact trigger return",
+      "role": "admin",
+      "width": 390,
+      "modalWidths": {
+        "clientWidth": 356,
+        "scrollWidth": 356
+      },
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own invitation initial email focus,18 forward/reverse Tabs, readable invalid-address error with no send, Escape exact trigger return",
+      "role": "admin",
+      "width": 768,
+      "modalWidths": {
+        "clientWidth": 574,
+        "scrollWidth": 574
+      },
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own invitation initial email focus,18 forward/reverse Tabs, readable invalid-address error with no send, Escape exact trigger return",
+      "role": "admin",
+      "width": 1440,
+      "modalWidths": {
+        "clientWidth": 574,
+        "scrollWidth": 574
+      },
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own invitation initial email focus,18 forward/reverse Tabs, readable invalid-address error with no send, Escape exact trigger return",
+      "role": "manager",
+      "width": 390,
+      "modalWidths": {
+        "clientWidth": 356,
+        "scrollWidth": 356
+      },
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own invitation initial email focus,18 forward/reverse Tabs, readable invalid-address error with no send, Escape exact trigger return",
+      "role": "manager",
+      "width": 768,
+      "modalWidths": {
+        "clientWidth": 574,
+        "scrollWidth": 574
+      },
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own invitation initial email focus,18 forward/reverse Tabs, readable invalid-address error with no send, Escape exact trigger return",
+      "role": "manager",
+      "width": 1440,
+      "modalWidths": {
+        "clientWidth": 574,
+        "scrollWidth": 574
+      },
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own invitation initial email focus,18 forward/reverse Tabs, readable invalid-address error with no send, Escape exact trigger return",
+      "role": "super_admin",
+      "width": 1440,
+      "nativeZoom": {
+        "factor": 2,
+        "before": {
+          "width": 1424,
+          "height": 905,
+          "dpr": 1
+        },
+        "after": {
+          "width": 712,
+          "height": 452,
+          "dpr": 2
+        },
+        "nativeAutomaticPerTab": true
+      },
+      "modalWidths": {
+        "clientWidth": 574,
+        "scrollWidth": 574
+      },
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own invitation initial email focus,18 forward/reverse Tabs, readable invalid-address error with no send, Escape exact trigger return",
+      "role": "admin",
+      "width": 1440,
+      "nativeZoom": {
+        "factor": 2,
+        "before": {
+          "width": 1424,
+          "height": 905,
+          "dpr": 1
+        },
+        "after": {
+          "width": 712,
+          "height": 452,
+          "dpr": 2
+        },
+        "nativeAutomaticPerTab": true
+      },
+      "modalWidths": {
+        "clientWidth": 574,
+        "scrollWidth": 574
+      },
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own invitation initial email focus,18 forward/reverse Tabs, readable invalid-address error with no send, Escape exact trigger return",
+      "role": "manager",
+      "width": 1440,
+      "nativeZoom": {
+        "factor": 2,
+        "before": {
+          "width": 1424,
+          "height": 905,
+          "dpr": 1
+        },
+        "after": {
+          "width": 712,
+          "height": 452,
+          "dpr": 2
+        },
+        "nativeAutomaticPerTab": true
+      },
+      "modalWidths": {
+        "clientWidth": 574,
+        "scrollWidth": 574
+      },
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own reader invitation control/dialog absent",
+      "role": "read_only",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true
+    }
+  ],
+  "noMutationPosts": true,
+  "invitationsAndAuditUnchanged": true,
+  "noMailProviderOrCustomerSend": true,
+  "screenReader": "not verified",
+  "finishedAt": "2026-09-30T22:47:02.381Z",
+  "postErrorSendAndCancelBoundsChecked": true,
+  "visualReview": [
+    "admin-390.png"
+  ],
+  "screenshots": [
+    "invitation-keyboard-fc4a2fd-admin-1440-native200.png",
+    "invitation-keyboard-fc4a2fd-admin-1440.png",
+    "invitation-keyboard-fc4a2fd-admin-390.png",
+    "invitation-keyboard-fc4a2fd-admin-768.png",
+    "invitation-keyboard-fc4a2fd-manager-1440-native200.png",
+    "invitation-keyboard-fc4a2fd-manager-1440.png",
+    "invitation-keyboard-fc4a2fd-manager-390.png",
+    "invitation-keyboard-fc4a2fd-manager-768.png",
+    "invitation-keyboard-fc4a2fd-reader390.png",
+    "invitation-keyboard-fc4a2fd-super_admin-1440-native200.png",
+    "invitation-keyboard-fc4a2fd-super_admin-1440.png",
+    "invitation-keyboard-fc4a2fd-super_admin-390.png",
+    "invitation-keyboard-fc4a2fd-super_admin-768.png"
+  ],
+  "providerInviteSendSignupAcceptance": "not executed"
+}
