@@ -1,6 +1,12 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current verified checkpoint — PR #143 / U01 states, 2026-10-01 HKT
+## Current verified checkpoint — PR #144 / U15 responsive, 2026-10-01 HKT
+
+Main `d4e6383dbdea186ee6671d2db25c7cd84f637dbe` includes [merged #144](https://github.com/YNWAforever/ui-delight-maker/pull/144), final head80164b5. Exact final-head/post-main Checks36770436106 / Database36770436105 PASS2,336 tests/317 files/zero skipped and isolated migration/seed replay. [Merge](evidence/pr144-merge-2026-10-01.json), [hold](evidence/production-hold-after-144-2026-10-01.json). Production publicbed941b unchanged, main attempt canceled, no production operation.
+
+[U15 seventeen actual width/native200/keyboard cases](responsive-journey-uat-2026-10-01.md) PASS in defined scopes; original business rows unchanged. U02 completed, U01 actual states evidenced; full provider invite/acceptance, manager/team/reassignment, mixed receipt/broader dialog/screen-reader, historical/legacy/operator release proof remain open. All30 CO/16 UAT retained; release NO-GO. Earlier entries are historical.
+
+## Previous verified checkpoint — PR #143 / U01 states, 2026-10-01 HKT
 
 Main `2f407d7f17a011623d021eafdb0d3c27c43353bc` includes [merged #143](https://github.com/YNWAforever/ui-delight-maker/pull/143), final head0868d48. Exact final-head and post-main Checks36768125769 / Database36768125626 pass **2,336 /317 /zero skipped**, isolated migration/seed replay and all other required checks. [Merge](evidence/pr143-merge-2026-10-01.json), [hold](evidence/production-hold-after-143-2026-10-01.json). Public productionbed941b unchanged, main attempt canceled, no production operation.
 
