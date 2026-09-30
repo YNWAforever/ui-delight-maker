@@ -19,3 +19,9 @@ Real isolated PostgreSQL regression first returned only **50 of 101**. The corre
 After fixed source deployment, select 100 initially eligible synthetic Tasks. After actual preview, introduce 10 explicit denies, 10 concurrent stale versions and 10 missing records; 70 remain eligible. Forward the real first commit, abort only its browser response, deny receipt reads while offline, reload and recover with the same stored key. Resume actual chunks, verify 70 once-only writes and 30 terminal failures, unauthorized other-actor receipt read denial, unchanged replay and retained failure selection. Actual requests/results required; no mocked server result.
 
 Production remains held. The latest #134 main deployment attempt was CANCELED and public source stayed `bed941b`. Full backlog/release gates remain open.
+
+## CI fixture diagnosis and actual preview latency
+
+Head `df145756f86337b1b175344fbeca124b0d89efbf` loads/selects all 100 Tasks in the genuine sales UI. Actual preview POST took **68,022 ms** before the dialog appeared (20,297 response bytes, no server error); the 30-second U08 harness stopped before fault injection or commit. This is not bulk recovery acceptance. Private response tokens are excluded from published evidence.
+
+CI contract run `36687195207` failed first on `relation leads does not exist`, followed by ten aborted-transaction failures. A fresh empty local PostgreSQL database independently reproduced 5 passes / 11 failures. The queue fixture now creates all referenced linked-subject relations as temporary tables and restricts search_path to pg_temp/pg_catalog. The identical empty target passes all 16 tests. A previously populated full-suite target had concealed this dependency; that earlier green result is retained but is insufficient for this fixture boundary.

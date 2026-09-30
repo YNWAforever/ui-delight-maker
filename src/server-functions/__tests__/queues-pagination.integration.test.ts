@@ -71,6 +71,16 @@ describe("work queue keyset pagination on isolated PostgreSQL", () => {
     pool = new Pool({ connectionString: process.env.DATABASE_TEST_URL, max: 1 });
     holder.client = await pool.connect();
     await holder.client.query("begin");
+    // Every referenced relation belongs to this connection; no public schema or test-order dependency.
+    await holder.client.query("set local search_path=pg_temp,pg_catalog");
+    await holder.client.query(`
+      create temp table leads (id uuid primary key, assigned_to text) on commit drop;
+      create temp table engagements (id uuid primary key, owner text) on commit drop;
+      create temp table accounts (id uuid primary key, account_owner text) on commit drop;
+      create temp table campaigns (id uuid primary key, owner text) on commit drop;
+      create temp table clients (id uuid primary key, account_owner text) on commit drop;
+      create temp table quotes (id uuid primary key, created_by text, account_id uuid) on commit drop;
+    `);
     await holder.client.query(`create temp table tasks (
       id uuid primary key, title text, description text, assigned_to text,
       account_id text, due_date date, priority text, status text,
