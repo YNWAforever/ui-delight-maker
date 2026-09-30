@@ -358,7 +358,7 @@ export function PeopleDirectory({
           rows={rows}
           rowKey={(user) => user.id}
           renderCard={renderCard}
-          breakpoint="lg"
+          breakpoint="container"
           caption="People in this workspace"
           selectedRowKey={selectedUserId}
         />

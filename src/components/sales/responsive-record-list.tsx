@@ -24,8 +24,8 @@ import { DataTableShell, RowActionsMenu, type DataTableShellProps } from "./data
 export type ResponsiveRecordListProps<T> = DataTableShellProps<T> & {
   /** The narrow-viewport body for one row. Rendered inside the row's link when there is one. */
   renderCard: (row: T) => ReactNode;
-  /** The width at which the table takes over from the cards. */
-  breakpoint?: "md" | "lg" | "xl";
+  /** Viewport breakpoint, or 56rem of list space beside navigation/detail rails. */
+  breakpoint?: "md" | "lg" | "xl" | "container";
 };
 
 export function ResponsiveRecordList<T>({
@@ -57,13 +57,26 @@ export function ResponsiveRecordList<T>({
     selection.onChange(next);
   };
 
-  const tableClass = { md: "hidden md:block", lg: "hidden lg:block", xl: "hidden xl:block" }[
-    breakpoint
-  ];
-  const cardsClass = { md: "md:hidden", lg: "lg:hidden", xl: "xl:hidden" }[breakpoint];
+  const tableClass = {
+    md: "hidden md:block",
+    lg: "hidden lg:block",
+    xl: "hidden xl:block",
+    container: "hidden @min-[56rem]:block",
+  }[breakpoint];
+  const cardsClass = {
+    md: "md:hidden",
+    lg: "lg:hidden",
+    xl: "xl:hidden",
+    container: "@min-[56rem]:hidden",
+  }[breakpoint];
 
   return (
-    <div className={className}>
+    <div
+      className={cn(
+        breakpoint === "container" && "@container min-w-0 [&>div]:overflow-x-auto",
+        className,
+      )}
+    >
       <div className={tableClass}>
         <DataTableShell {...shell} />
       </div>
