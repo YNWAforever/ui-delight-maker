@@ -358,4 +358,127 @@ describe("linked quote reads: lead degradation is narrow and complete", () => {
       ).rejects.toBeInstanceOf(AdminError);
     },
   );
+
+  describe("quote detail returns effective action capabilities", () => {
+    const quoteId = QUOTE_LEAD_LINKED_ID;
+    async function withOverride(
+      profileId: string,
+      capability: string,
+      effect: string,
+      run: () => Promise<void>,
+      extra: { expiresAt?: string; revokedAt?: string; resourceId?: string } = {},
+    ) {
+      const result = await holder.pool!.query(
+        `insert into permission_overrides
+       (profile_id, capability, effect, resource_type, resource_id, reason, granted_by, expires_at, revoked_at)
+       values ($1,$2,$3,'quote',$4,'Disposable regression fixture',$1,$5,$6) returning id`,
+        [
+          profileId,
+          capability,
+          effect,
+          extra.resourceId ?? quoteId,
+          extra.expiresAt ?? null,
+          extra.revokedAt ?? null,
+        ],
+      );
+      try {
+        await run();
+      } finally {
+        await holder.pool!.query("delete from permission_overrides where id=$1", [
+          result.rows[0].id,
+        ]);
+      }
+    }
+    const actions = async () => {
+      const read = await getQuoteDetailRead({ data: { id: quoteId } });
+      return (read as unknown as { capabilities: string[] }).capabilities;
+    };
+    it.runIf(hasDatabase)(
+      "removes accounting acceptance when this quote explicitly denies it",
+      async () => {
+        holder.session = accountingSession;
+        expect(await actions()).toContain("job_sheets.accept");
+        await withOverride(ACCOUNTING_PROFILE_ID, "job_sheets.accept", "deny", async () => {
+          expect(await actions()).not.toContain("job_sheets.accept");
+        });
+        expect(await actions()).toContain("job_sheets.accept");
+      },
+    );
+    it.runIf(hasDatabase)(
+      "offers a scoped issue grant that the sales role alone does not hold",
+      async () => {
+        holder.session = salesSession;
+        expect(await actions()).not.toContain("quotes.issue");
+        await withOverride(SALES_PROFILE_ID, "quotes.issue", "allow", async () => {
+          expect(await actions()).toContain("quotes.issue");
+          const other = await getQuoteDetailRead({ data: { id: QUOTE_DOC_LEAD_ONLY_ID } });
+          expect((other as unknown as { capabilities: string[] }).capabilities).not.toContain(
+            "quotes.issue",
+          );
+        });
+      },
+    );
+    it.runIf(hasDatabase)("deny wins over a matching scoped allow", async () => {
+      holder.session = salesSession;
+      await withOverride(SALES_PROFILE_ID, "quotes.issue", "allow", async () => {
+        await withOverride(SALES_PROFILE_ID, "quotes.issue", "deny", async () => {
+          expect(await actions()).not.toContain("quotes.issue");
+        });
+      });
+    });
+    it.runIf(hasDatabase)("expired and revoked grants never offer issue", async () => {
+      holder.session = salesSession;
+      for (const extra of [
+        { expiresAt: "2020-01-01T00:00:00Z" },
+        { revokedAt: "2020-01-01T00:00:00Z" },
+      ]) {
+        await withOverride(
+          SALES_PROFILE_ID,
+          "quotes.issue",
+          "allow",
+          async () => {
+            expect(await actions()).not.toContain("quotes.issue");
+          },
+          extra,
+        );
+      }
+    });
+    it.runIf(hasDatabase)(
+      "manager view permission does not offer actions outside ownership scope",
+      async () => {
+        const manager = makeProfile({ id: "quote-vis-manager", role: "manager" });
+        await holder.pool!.query(
+          "insert into profiles (id,email,name,role,status) values ($1,$2,$3,'manager','active') on conflict(id) do nothing",
+          [manager.id, manager.email, manager.name],
+        );
+        holder.session = sessionFor(manager);
+        try {
+          await withOverride(
+            manager.id,
+            "quotes.view",
+            "allow",
+            async () => {
+              const read = await getQuoteDetailRead({ data: { id: QUOTE_DOC_LEAD_ONLY_ID } });
+              expect(read.capabilities).not.toContain("quotes.approve");
+              expect(read.capabilities).not.toContain("quotes.update");
+              await holder.pool!.query("update quotes set created_by=$2 where id=$1", [
+                QUOTE_DOC_LEAD_ONLY_ID,
+                manager.id,
+              ]);
+              const own = await getQuoteDetailRead({ data: { id: QUOTE_DOC_LEAD_ONLY_ID } });
+              expect(own.capabilities).toContain("quotes.approve");
+              expect(own.capabilities).toContain("quotes.update");
+              expect(own.capabilities).not.toContain("quotes.issue");
+            },
+            { resourceId: QUOTE_DOC_LEAD_ONLY_ID },
+          );
+        } finally {
+          await holder.pool!.query("update quotes set created_by=null where id=$1", [
+            QUOTE_DOC_LEAD_ONLY_ID,
+          ]);
+          await holder.pool!.query("delete from profiles where id=$1", [manager.id]);
+        }
+      },
+    );
+  });
 });

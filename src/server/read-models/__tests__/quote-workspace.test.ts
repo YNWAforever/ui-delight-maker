@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   queryMock,
+  loadRequestAuthorizationMock,
   queryOneMock,
   evaluateCapabilityChecksMock,
   requireCapabilityChecksMock,
@@ -19,6 +20,7 @@ const {
 
   return {
     queryMock: vi.fn(),
+    loadRequestAuthorizationMock: vi.fn(),
     queryOneMock: vi.fn(),
     evaluateCapabilityChecksMock: vi.fn(),
     requireCapabilityChecksMock: vi.fn(),
@@ -30,6 +32,7 @@ const {
 vi.mock("@tanstack/react-start", () => ({ createServerFn: () => createServerFnChain }));
 vi.mock("@/server/auth/authorization.server", () => ({
   evaluateCapabilityChecks: evaluateCapabilityChecksMock,
+  loadRequestAuthorization: loadRequestAuthorizationMock,
   requireCapabilityChecks: requireCapabilityChecksMock,
   requireCapability: requireCapabilityMock,
 }));
@@ -57,6 +60,18 @@ const immutableSnapshot = { id: "quote-1", number: "Q-001", lead_id: "lead-1", l
 describe("quote workspace read models", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    loadRequestAuthorizationMock.mockResolvedValue({
+      actor: {
+        profileId: "user-1",
+        role: "sales",
+        status: "active",
+        managedDepartmentIds: [],
+        managedTeamIds: [],
+        directReportIds: [],
+      },
+      overrides: [],
+      now: new Date(),
+    });
     requireCapabilityChecksMock.mockResolvedValue({
       user: { id: "user-1" },
       profile: { id: "user-1", role: "sales", status: "active" },
@@ -358,10 +373,13 @@ describe("quote workspace read models", () => {
       requireCapabilityMock.mockClear();
       evaluateCapabilityChecksMock.mockClear();
       await call();
-      expect(requireCapabilityMock).toHaveBeenNthCalledWith(1, "quotes.view", {
-        resourceType: "quote",
-        resourceId: "quote-1",
-      });
+      expect(requireCapabilityMock.mock.calls[0].slice(0, 2)).toEqual([
+        "quotes.view",
+        {
+          resourceType: "quote",
+          resourceId: "quote-1",
+        },
+      ]);
       expect(requireCapabilityMock).toHaveBeenNthCalledWith(2, "accounts.view", {
         resourceType: "client",
         resourceId: "client-1",
