@@ -1,0 +1,63 @@
+{
+  "sha": "5568af93c817305a33499ab6f4cabd52380410c5",
+  "startedAt": "2026-09-30T18:43:55.008Z",
+  "scope": "CO-14 existing actual same-Task owner display with seven own Auth roles, no writes",
+  "success": true,
+  "cases": [
+    {
+      "role": "super_admin",
+      "ownAuthMatched": true,
+      "ownerName": "UAT sales",
+      "rawProfileIdAbsentInCard": true,
+      "pass": true
+    },
+    {
+      "role": "admin",
+      "ownAuthMatched": true,
+      "ownerName": "UAT sales",
+      "rawProfileIdAbsentInCard": true,
+      "pass": true
+    },
+    {
+      "role": "manager",
+      "ownAuthMatched": true,
+      "ownerName": "UAT sales",
+      "rawProfileIdAbsentInCard": true,
+      "pass": true
+    },
+    {
+      "role": "sales",
+      "ownAuthMatched": true,
+      "ownerName": "UAT sales",
+      "rawProfileIdAbsentInCard": true,
+      "pass": true
+    },
+    {
+      "role": "client_success",
+      "ownAuthMatched": true,
+      "ownerName": "UAT sales",
+      "rawProfileIdAbsentInCard": true,
+      "pass": true
+    },
+    {
+      "role": "accounting",
+      "ownAuthMatched": true,
+      "ownerName": "UAT sales",
+      "rawProfileIdAbsentInCard": true,
+      "pass": true
+    },
+    {
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "ownerName": "UAT sales",
+      "rawProfileIdAbsentInVisibleTask": true,
+      "noMovableButton": true,
+      "pass": true
+    }
+  ],
+  "taskId": "bd7f0281-3989-4641-a9d4-b3aa795fd679",
+  "observerCorrection": "read_only correctly has a static card rather than the movable role=button; verify the actual static row text.",
+  "businessTaskUnchanged": true,
+  "distinctActualAuthUsers": 7,
+  "finishedAt": "2026-09-30T19:00:07.195Z"
+}

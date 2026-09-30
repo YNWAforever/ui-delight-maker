@@ -6,6 +6,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  useSearchMock,
   triggerLeadAgentMock,
   triggerQuoteAgentMock,
   updateLeadMock,
@@ -14,6 +15,7 @@ const {
   toastSuccessMock,
   toastMessageMock,
 } = vi.hoisted(() => ({
+  useSearchMock: vi.fn(),
   triggerLeadAgentMock: vi.fn(),
   triggerQuoteAgentMock: vi.fn(),
   updateLeadMock: vi.fn(),
@@ -28,9 +30,17 @@ vi.mock("@tanstack/react-router", () => ({
     options,
     fullPath: "/leads/$id",
     useLoaderData: vi.fn(),
-    useSearch: () => ({}),
+    useSearch: useSearchMock,
   }),
-  Link: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+  Link: ({
+    children,
+    to,
+    params,
+  }: {
+    children?: ReactNode;
+    to: string;
+    params?: { id: string };
+  }) => <a href={to.replace("$id", params?.id ?? "")}>{children}</a>,
   useNavigate: () => vi.fn(),
   useRouter: () => ({ invalidate: vi.fn() }),
 }));
@@ -148,6 +158,7 @@ const quoteButton = () => screen.getAllByRole("button")[1];
 
 beforeEach(() => {
   vi.clearAllMocks();
+  useSearchMock.mockReturnValue({});
   getLeadWorkspaceReadMock.mockResolvedValue(workspaceRead);
   updateLeadMock.mockResolvedValue({});
   vi.mocked(Route.useLoaderData).mockReturnValue(workspaceRead as never);
@@ -336,4 +347,37 @@ describe("Lead detail — owner display", () => {
     expect(owner.textContent).toContain(expected);
     if (assignedTo) expect(owner.textContent).not.toContain(assignedTo);
   });
+});
+
+describe("Lead related Quote links", () => {
+  it.each([
+    { number: null, expectedName: "Untitled quote" },
+    { number: "Q-2026-100", expectedName: "Q-2026-100" },
+  ])(
+    "provides an accessible $expectedName link to the persisted Quote",
+    ({ number, expectedName }) => {
+      const data = {
+        ...workspaceRead,
+        quotes: [
+          {
+            id: "quote-1",
+            number,
+            status: "pending_approval",
+            total_value: 200.5,
+            currency: "HKD",
+            valid_until: "2026-10-31",
+            created_at: "2026-10-01T00:00:00Z",
+            lineItemCount: 1,
+          },
+        ],
+      };
+      useSearchMock.mockReturnValue({ tab: "quotes" });
+      getLeadWorkspaceReadMock.mockResolvedValue(data);
+      vi.mocked(Route.useLoaderData).mockReturnValue(data as never);
+      renderLead();
+      const link = screen.getByRole("link", { name: expectedName });
+      expect(link.getAttribute("href")).toBe("/quotes/quote-1");
+      expect(link.textContent).toBe(expectedName);
+    },
+  );
 });
