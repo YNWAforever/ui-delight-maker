@@ -4,7 +4,7 @@
 
 | Case | Role and disposable data required | Expected browser and network result | Actual UAT | Supporting local proof |
 |---|---|---|---|---|
-| U01 onboarding | anonymous, invited, active, no_profile, suspended identities | Invite/workspace state clear; nonmember cannot read CRM | pending full workflow | [T18](t18-evidence.md) |
+| U01 onboarding | anonymous, invited, active, no_profile, suspended identities | Invite/workspace state clear; nonmember cannot read CRM | PASS scoped eleven actual identity/state/CRM denial/invite reason+keyboard recovery cases; full invite-send/signup/actual acceptance pending | [Actual U01 states](../2026-09-29/onboarding-uat-2026-10-01.md), [T18](t18-evidence.md) |
 | U02 sales day | sales with scoped Lead, Task, draft Quote | owner name, follow-up, approval handoff and consistent state | PASS: actual same-Lead owner/follow-up/Task/manual Quote/HKD200.50/manager handoff; own sales/manager/reader accessible related link and reader direct-write denials, eleven cases | [Actual U02](../2026-09-29/sales-day-uat-2026-10-01.md), [T07](t07-evidence.md), [T12](t12-evidence.md) |
 | U03 manager review | scoped manager plus issuer on same Quote | manager approves, issue denied to manager, issuer can complete | PASS: isolated manager claim/approve and admin issue; five issuer denials | [T07](t07-evidence.md) |
 | U04 immutable version | issuer, accounting; synthetic issued A and revised B | acceptance uses A, fixed accepted_at, B cannot rewrite A | PASS: genuine sales/manager/admin/accounting revised B601.50, original A200.50 snapshot/date/sheet/print unchanged, one new revision ledger and exact-key replay | [Actual U04](../2026-09-29/quote-role-uat-2026-09-30.md), [T06](t06-evidence.md) |

@@ -1,0 +1,99 @@
+{
+  "sourceSha": "0376f5c0bffda1c9eae63cd70dbbe47d16d7b8e2",
+  "startedAt": "2026-09-30T19:49:30.067Z",
+  "scope": "Real own identity and isolated SQL fixture-state UI/GET rehearsal; no provider email/signup/actual invitation acceptance claim",
+  "success": true,
+  "cases": [
+    {
+      "case": "active own sales sign-in redirects once to workspace and real CRM read succeeds",
+      "state": "active",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "hosting-access-only anonymous context shows sign-in and CRM read is denied",
+      "state": "anonymous",
+      "httpStatus": 200,
+      "serializedAuthorizationError": true,
+      "noCrmPayload": true,
+      "pass": true
+    },
+    {
+      "case": "own signed-in suspended has clear workspace state and real same-origin CRM GET denial",
+      "state": "suspended",
+      "ownAuthMatched": true,
+      "httpStatus": 200,
+      "serializedAuthorizationError": true,
+      "noCrmPayload": true,
+      "pass": true
+    },
+    {
+      "case": "own signed-in deactivated has clear workspace state and real same-origin CRM GET denial",
+      "state": "deactivated",
+      "ownAuthMatched": true,
+      "httpStatus": 200,
+      "serializedAuthorizationError": true,
+      "noCrmPayload": true,
+      "pass": true
+    },
+    {
+      "case": "own signed-in no_profile has clear workspace state and real same-origin CRM GET denial",
+      "state": "no_profile",
+      "ownAuthMatched": true,
+      "httpStatus": 200,
+      "serializedAuthorizationError": true,
+      "noCrmPayload": true,
+      "pass": true
+    },
+    {
+      "case": "own signed-in invited has clear workspace state and real same-origin CRM GET denial",
+      "state": "invited",
+      "ownAuthMatched": true,
+      "httpStatus": 200,
+      "serializedAuthorizationError": true,
+      "noCrmPayload": true,
+      "pass": true
+    },
+    {
+      "case": "synthetic pending invitation route shows intended test email and role",
+      "state": "ready",
+      "sqlFixture": true,
+      "pass": true
+    },
+    {
+      "case": "own signed-in expired-no-profile has clear workspace state and real same-origin CRM GET denial",
+      "state": "expired-no-profile",
+      "ownAuthMatched": true,
+      "httpStatus": 200,
+      "serializedAuthorizationError": true,
+      "noCrmPayload": true,
+      "pass": true
+    },
+    {
+      "case": "SQL fixture expired invitation shows specific reason and keyboard sign-in recovery",
+      "state": "expired",
+      "sqlFixture": true,
+      "noActualAcceptanceClaim": true,
+      "pass": true
+    },
+    {
+      "case": "SQL fixture accepted invitation shows specific reason and keyboard sign-in recovery",
+      "state": "accepted",
+      "sqlFixture": true,
+      "noActualAcceptanceClaim": true,
+      "pass": true
+    },
+    {
+      "case": "SQL fixture revoked invitation shows specific reason and keyboard sign-in recovery",
+      "state": "revoked",
+      "sqlFixture": true,
+      "noActualAcceptanceClaim": true,
+      "pass": true
+    }
+  ],
+  "noProviderOrCustomerSend": true,
+  "originalProfileBusinessFieldsRestored": true,
+  "automaticUpdatedAtChanged": true,
+  "onlySyntheticInvitationRevoked": true,
+  "finishedAt": "2026-09-30T19:50:24.574Z"
+}
