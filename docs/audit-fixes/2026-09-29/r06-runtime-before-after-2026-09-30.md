@@ -97,3 +97,15 @@ Source `53dc62f8a19e4a2449c9e445651bbeb43bd3158b`. Same machine, browser, genuin
 All unchanged gates pass: warm p95 ≤800ms, document/data ≤150KiB, cold JS ≤300KiB. [Task raw samples](evidence/r06-tasks-bulk-source-53dc62f-2026-09-30.json), [Approval raw samples](evidence/r06-approvals-bulk-source-53dc62f-2026-09-30.json). No query/session-count reduction claim. This checks the precise cursor and preview changes against the already corrected queue behavior; the original failures/baselines above remain the before evidence.
 
 Separately, genuine hosted sales preview of the **same unchanged 100 Tasks** took 68,022ms before and **14,408ms after**, measured from actual UI submission until the review dialog. This is one observed pair, not a percentile/SLA result. No business Task changed during either preview. [Before](evidence/bulk-preview-before-df14575-2026-09-30.json), [after](evidence/bulk-preview-after-53dc62f-2026-09-30.json).
+
+## Risk-specific actual runtime gate
+Same machine/browser/genuine own manager identity, exact same disposable PostgreSQL snapshot:10,000 Tasks/100,000 approvals, with100 synthetic pending risk rows referencing a synthetic engagement. Original all-qualification fixture remains untouched. Both sources use real production SSR, loopback WebSocket/TCP PostgreSQL and strict GET/HEAD-only app transport. Each source has **10 cold + 30 warm actual navigations**, complete scoped SQL metrics, no failed/blocked requests or failed queries. Counts and aggregate versions remain unchanged; actual own Auth identity rechecked.
+
+| Source | Warm rendered p95 | Cold rendered p95 | SQL duration p95 | Max document/data | Max cold encoded JS | Scoped SQL |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Before main e2b1a36 |566.581ms|3,900.521ms|633.241ms|74,832B|270,146B|44|
+| Fixed0075e19 |542.842ms|2,091.712ms|604.545ms|74,832B|270,146B|45|
+
+Unchanged gates **PASS**: warm p95≤800ms, document/data≤150KiB, cold encoded JS≤300KiB. One additional bounded risk ownership read is expected and required for effective authorization; there is no N+1. Observed timings do not establish a general speedup or production SLA. [Before samples](evidence/r06-risk-before-e2b1a36-2026-09-30.json), [after samples](evidence/r06-risk-after-0075e19-2026-09-30.json).
+
+The performance fixture preparer initially used SQL + for text concatenation, then cast an actual UUID subject to text in a join. Both preparation errors were corrected before measurement, with original exact synthetic identities reused; no app/schema change or source/gate exemption. All local runtime servers stopped after captures. Provider-generation, historical reconciliation, remaining broader UAT and production release gates remain open.

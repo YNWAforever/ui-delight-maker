@@ -1,0 +1,132 @@
+{
+  "sha": "0075e198a84e2ea8d1c3a04638dcc11a69db2e96",
+  "createdAt": "2026-09-30T12:52:53.154Z",
+  "scope": "Actual own client_success/manager risk review, synthetic-only isolated Neon DB/Auth, SQL fault rollback and exact-key replay; no provider dispatch",
+  "cases": [
+    {
+      "case": "genuine own role risk UI",
+      "role": "super_admin",
+      "actualOwnAuthIdentity": true,
+      "approveOffered": true,
+      "rejectOffered": true
+    },
+    {
+      "case": "genuine own role risk UI",
+      "role": "admin",
+      "actualOwnAuthIdentity": true,
+      "approveOffered": true,
+      "rejectOffered": true
+    },
+    {
+      "case": "genuine own role risk UI",
+      "role": "manager",
+      "actualOwnAuthIdentity": true,
+      "approveOffered": true,
+      "rejectOffered": true
+    },
+    {
+      "case": "genuine own role risk UI",
+      "role": "sales",
+      "actualOwnAuthIdentity": true,
+      "approveOffered": false,
+      "rejectOffered": false
+    },
+    {
+      "case": "genuine own role risk UI",
+      "role": "client_success",
+      "actualOwnAuthIdentity": true,
+      "approveOffered": false,
+      "rejectOffered": false
+    },
+    {
+      "case": "genuine own role risk UI",
+      "role": "accounting",
+      "actualOwnAuthIdentity": true,
+      "approveOffered": false,
+      "rejectOffered": false
+    },
+    {
+      "case": "genuine own role risk UI",
+      "role": "read_only",
+      "actualOwnAuthIdentity": true,
+      "approveOffered": false,
+      "rejectOffered": false
+    },
+    {
+      "case": "client_success risk view",
+      "actualOwnAuthIdentity": true,
+      "approveOffered": false,
+      "proposalVisible": true
+    },
+    {
+      "case": "actual UI SQL fault",
+      "role": "manager",
+      "approvalId": "d1b4c382-8104-44eb-9199-918fb5b10ef2",
+      "engagementId": "7cb02ed7-5cb2-4eeb-b578-f28a44b97718",
+      "serializedError": true,
+      "errorVisible": true,
+      "approvalRunEngagementAuditReceiptUnchanged": true
+    },
+    {
+      "case": "same real request under denied own role",
+      "role": "sales",
+      "forbidden": true,
+      "allStateUnchanged": true
+    },
+    {
+      "case": "same real request under denied own role",
+      "role": "client_success",
+      "forbidden": true,
+      "allStateUnchanged": true
+    },
+    {
+      "case": "same real request under denied own role",
+      "role": "accounting",
+      "forbidden": true,
+      "allStateUnchanged": true
+    },
+    {
+      "case": "same real request under denied own role",
+      "role": "read_only",
+      "forbidden": true,
+      "allStateUnchanged": true
+    },
+    {
+      "case": "same key retry and terminal replay",
+      "role": "manager",
+      "allRelatedWritesCommitted": true,
+      "approvalVersion": 1,
+      "engagementScore": 13,
+      "runOutcome": "approved",
+      "approvalAudit": 1,
+      "engagementAudit": 1,
+      "receipt": 1,
+      "replayUnchanged": true,
+      "refreshedUiApproved": true
+    },
+    {
+      "case": "matching engagement-update deny",
+      "role": "manager",
+      "approvalId": "28a241aa-68b1-42a8-bfc3-9bfd89f6fb1f",
+      "engagementId": "08e1356d-4735-416f-b632-99172f8ee0d5",
+      "decisionOffered": false,
+      "serverForbidden": true,
+      "allStateUnchanged": true
+    },
+    {
+      "case": "actual UI reject and replay",
+      "role": "manager",
+      "previousScoreRetained": true,
+      "runOutcome": "rejected",
+      "approvalVersion": 1,
+      "audit": 1,
+      "receipt": 1,
+      "replayUnchanged": true
+    }
+  ],
+  "defects": [],
+  "success": true,
+  "stableImportSourceUnchanged": true,
+  "injectedTriggerRemoved": true,
+  "temporaryOverridesRevoked": true
+}

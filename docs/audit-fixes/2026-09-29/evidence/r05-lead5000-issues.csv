@@ -1,0 +1,5 @@
+﻿Record index,Source line,Action,Status,Errors,Record ID
+4995,4997,review,invalid,Company and valid contact email are required,
+4996,4998,review,invalid,Owner is unavailable,
+4999,5002,review,ambiguous,Conflicting rows use the same external ID,
+5000,5004,review,stale,Selected import target is unavailable,

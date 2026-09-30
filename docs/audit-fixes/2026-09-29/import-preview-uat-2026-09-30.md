@@ -59,3 +59,12 @@ Final documentation-head CI is still required before merging #136. Source fixes/
 ## Final source merge checkpoint
 
 PR #136 merged at `1b48265d913c82d1d476fe2e701682cd88ff7af4` (2026-09-30 10:56:15Z), after exact final head `f6126d762d66ecfe5cf7a51aaf79424a6deaf88f` passed Checks `36704661537` / DB `36704661510`, **2,294 real PostgreSQL tests / zero skipped**, replay/browser/Vercel. Post-main Checks `36705446703` and DB `36705446706` also passed **2,294 / zero skipped**. [Production hold proof](evidence/production-hold-after-136-2026-09-30.json): canceled merge deployment, public build bed941b unchanged, no promotion. Full U09 lifecycle remains running.
+
+## Full Lead5000 scoped lifecycle acceptance
+Source `a18aa46273b10edc9cc75dbb11188ad9d49c98e6` remained fixed from 10:33:38Z to 13:00:57Z. The original stable dedicated UAT URL and exact import key/body were preserved throughout. Actual UI network response loss, interrupted receipt reads during reload, Retry, same-key commit replay and **623 actual bounded Continue actions** completed without reset, changed chunk/workers or gate relaxation.
+
+Final persisted counts: **4,994 succeeded / 2 invalid / 2 skipped / 1 ambiguous / 1 stale = 5,000**; UI completed with5,000/5,000. PostgreSQL confirms4,994 distinct created business IDs, all owned by sales, distinct source namespaces with identical names retained separately, Chinese/multiline preserved and no duplicate business IDs. Same-key terminal replay changes no prior business/receipt rows. Seven independent actual identities/cookie sets are checked: sales owner reads; all six others, including super_admin/admin, are denied receipt read without business-ID leakage.
+
+Actual browser issues download has BOM and exactly four issue rows; skipped rows excluded. [Full raw observations including actual network timings](evidence/r05-lead5000-completed-a18aa46-2026-09-30.json), [completed screen](evidence/r05-lead5000-completed.png), [lost response](evidence/r05-lead5000-lost-response.png), [actual CSV](evidence/r05-lead5000-issues.csv). Earlier failed/paused runs and their original keys remain retained; this does not retrospectively convert them into passing runs.
+
+U09 **Lead lifecycle PASS in isolation**. Client/Event lifecycle, cross-kind import source inventory and target-specific7-day retention remain pending. No full all-kind/U09 or production release claim. No production DB connection, provider/customer message or promotion occurred.
