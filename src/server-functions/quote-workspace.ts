@@ -1,9 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
+import { evaluateAuthorization } from "@/lib/admin/policy";
+import type { Capability } from "@/lib/admin/types";
+import { resolveOwnerProfileId } from "@/server/auth/resource-ownership";
 import type { Quote, QuoteVersion } from "@/lib/types";
 import {
   evaluateCapabilityChecks,
+  loadRequestAuthorization,
   requireCapability,
   requireCapabilityChecks,
+  type RequestAuthorization,
 } from "@/server/auth/authorization.server";
 import {
   loadQuoteCreateBootstrap,
@@ -94,8 +99,8 @@ export const getQuoteReferencePage = createServerFn({ method: "GET" })
     return listQuoteReferencePage(data);
   });
 
-async function authorizeQuote(id: string) {
-  await requireCapability("quotes.view", { resourceType: "quote", resourceId: id });
+async function authorizeQuote(id: string, context?: RequestAuthorization) {
+  await requireCapability("quotes.view", { resourceType: "quote", resourceId: id }, context);
 }
 
 /**
@@ -159,10 +164,42 @@ function redactLeadIdentityFromVersion(version: QuoteVersion): QuoteVersion {
 export const getQuoteDetailRead = createServerFn({ method: "GET" })
   .validator(parseIdInput)
   .handler(async ({ data }) => {
-    await authorizeQuote(data.id);
+    const context = await loadRequestAuthorization();
+    await authorizeQuote(data.id, context);
     const read = await getQuoteWorkspaceDetail(data.id);
     const visibility = await resolveLinkedQuoteVisibility(read);
-    return visibility.lead ? read : { ...read, ...redactLeadIdentity(read.quote) };
+    // Resolve ownership once for all actions; scoped overrides and manager boundaries must
+    // match the mutation guards. Only capability names leave the server, never override rows.
+    const ownerProfileId = await resolveOwnerProfileId("quote", data.id);
+    const capabilities: Capability[] = [
+      "quotes.create",
+      "quotes.update",
+      "quotes.request_approval",
+      "quotes.approve",
+      "quotes.issue",
+      "job_sheets.accept",
+    ];
+    const allowed = capabilities.filter(
+      (capability) =>
+        evaluateAuthorization({
+          actor: context.actor,
+          overrides: context.overrides,
+          now: context.now,
+          capability,
+          target:
+            capability === "quotes.create"
+              ? {}
+              : {
+                  resourceType: "quote",
+                  resourceId: data.id,
+                  ...(ownerProfileId ? { ownerProfileId } : {}),
+                },
+        }).allowed,
+    );
+    return {
+      ...(visibility.lead ? read : { ...read, ...redactLeadIdentity(read.quote) }),
+      capabilities: allowed,
+    };
   });
 
 export const getQuoteVersionsSection = createServerFn({ method: "GET" })
