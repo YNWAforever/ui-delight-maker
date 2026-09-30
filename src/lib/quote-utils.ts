@@ -19,3 +19,14 @@ export function newLineItem(template: PricingTemplate): QuoteLineItem {
     unit_price: template.unit_price ?? 0,
   };
 }
+
+/** Commercial mutation input excludes server-owned metadata on persisted line items. */
+export function toQuoteCommercialLineItems(items: readonly QuoteLineItem[]): QuoteLineItem[] {
+  return items.map(({ id, service, description, qty, unit_price }) => ({
+    id,
+    service,
+    description,
+    qty,
+    unit_price,
+  }));
+}

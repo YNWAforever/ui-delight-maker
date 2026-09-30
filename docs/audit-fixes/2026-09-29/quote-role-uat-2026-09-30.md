@@ -24,6 +24,6 @@ Real isolated PostgreSQL action tests additionally cover matching deny over allo
 
 ## Quote journey remains open
 
-Sales created synthetic quote `b469d269-522f-4c55-9dbc-7f6d81b1d504` through the UI: owner `demo-sales-user`, HKD 200.50 (2 × 100.25), correct account/lead. Subsequent Save & Request Approval failed with **Invalid input**. Captured real request shows persisted line-item metadata (quote_id, dates, computed total and additional fields) sent to the strict six-field commercial validator. No approval or lifecycle advancement is accepted. Fix this input projection next, then resume manager claim/approve → authorized issue → accounting version acceptance → billing and rollback checks.
+Sales created synthetic quote `b469d269-522f-4c55-9dbc-7f6d81b1d504` through the UI: owner `demo-sales-user`, HKD 200.50 (2 × 100.25), correct account/lead. Subsequent Save & Request Approval failed with **Invalid input**. Captured real request shows persisted line-item metadata (quote_id, dates, computed total and additional fields) sent to the strict five-field commercial validator. No approval or lifecycle advancement is accepted. Fix this input projection next, then resume manager claim/approve → authorized issue → accounting version acceptance → billing and rollback checks.
 
 This is partial U03/U04/U06 evidence, not full quote/accounting acceptance. Historical anomaly provenance, legacy snapshots, provider sandbox, runtime before/after and release gates remain open.

@@ -23,6 +23,7 @@ import { Card } from "@/components/ui/card";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatCount, formatCurrencyAmount, formatDate } from "@/lib/format";
+import { toQuoteCommercialLineItems } from "@/lib/quote-utils";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { useIsExactPath } from "@/lib/routing-utils";
@@ -335,7 +336,7 @@ function QuotesIndex() {
           cover_text: source.cover_text,
           assumptions: source.assumptions,
           payment_terms: source.payment_terms,
-          line_items: source.line_items,
+          line_items: toQuoteCommercialLineItems(source.line_items),
           total_value: source.total_value,
         },
       });

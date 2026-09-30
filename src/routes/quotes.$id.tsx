@@ -45,7 +45,7 @@ import {
 import { crmQueryKeys } from "@/lib/query-keys";
 import { getStatusLabel } from "@/lib/status-labels";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
-import { calculateTotal, newLineItem } from "@/lib/quote-utils";
+import { calculateTotal, newLineItem, toQuoteCommercialLineItems } from "@/lib/quote-utils";
 import {
   acceptQuoteAndCreateJobSheet,
   approveQuote,
@@ -432,7 +432,10 @@ function QuoteDetail() {
 
   const saveEditableQuoteFields = async () => {
     await updateQuote({
-      data: { id: quote.id, updates: { line_items: editItems, total_value: totalValue } },
+      data: {
+        id: quote.id,
+        updates: { line_items: toQuoteCommercialLineItems(editItems), total_value: totalValue },
+      },
     });
   };
 
