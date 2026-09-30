@@ -1,0 +1,139 @@
+{
+  "sha": "1ec7531e9c5cb1e113d6fb8ba1089e6fc8313936",
+  "jobSheetId": "5b559907-919e-4b7e-a825-5ac466b4a06b",
+  "rows": [
+    {
+      "role": "super_admin",
+      "url": "/job-sheets/5b559907-919e-4b7e-a825-5ac466b4a06b",
+      "addVisible": true,
+      "addEnabled": true,
+      "editableInputs": 15,
+      "buttons": [
+        "",
+        "Toggle Sidebar",
+        "",
+        "1",
+        " Accept & lock",
+        " Add portion",
+        " Remove portion",
+        "Save billing plan",
+        " Save note",
+        "Record manual entry",
+        "Save handoff header"
+      ]
+    },
+    {
+      "role": "admin",
+      "url": "/job-sheets/5b559907-919e-4b7e-a825-5ac466b4a06b",
+      "addVisible": true,
+      "addEnabled": true,
+      "editableInputs": 15,
+      "buttons": [
+        "",
+        "Toggle Sidebar",
+        "",
+        "1",
+        " Accept & lock",
+        " Add portion",
+        " Remove portion",
+        "Save billing plan",
+        " Save note",
+        "Record manual entry",
+        "Save handoff header"
+      ]
+    },
+    {
+      "role": "manager",
+      "url": "/job-sheets/5b559907-919e-4b7e-a825-5ac466b4a06b",
+      "addVisible": true,
+      "addEnabled": true,
+      "editableInputs": 9,
+      "buttons": [
+        "",
+        "Toggle Sidebar",
+        "",
+        "3",
+        " Add portion",
+        " Remove portion",
+        "Save billing plan",
+        " Save note",
+        "Record manual entry"
+      ]
+    },
+    {
+      "role": "sales",
+      "url": "/job-sheets/5b559907-919e-4b7e-a825-5ac466b4a06b",
+      "addVisible": true,
+      "addEnabled": true,
+      "editableInputs": 9,
+      "buttons": [
+        "",
+        "Toggle Sidebar",
+        "",
+        "1",
+        " Add portion",
+        " Remove portion",
+        "Save billing plan",
+        " Save note",
+        "Record manual entry"
+      ]
+    },
+    {
+      "role": "client_success",
+      "url": "/job-sheets/5b559907-919e-4b7e-a825-5ac466b4a06b",
+      "addVisible": true,
+      "addEnabled": true,
+      "editableInputs": 9,
+      "buttons": [
+        "",
+        "Toggle Sidebar",
+        "",
+        "1",
+        " Add portion",
+        " Remove portion",
+        "Save billing plan",
+        " Save note",
+        "Record manual entry"
+      ]
+    },
+    {
+      "role": "accounting",
+      "url": "/job-sheets/5b559907-919e-4b7e-a825-5ac466b4a06b",
+      "addVisible": true,
+      "addEnabled": true,
+      "editableInputs": 15,
+      "buttons": [
+        "",
+        "Toggle Sidebar",
+        "",
+        "",
+        " Accept & lock",
+        " Add portion",
+        " Remove portion",
+        "Save billing plan",
+        " Save note",
+        "Record manual entry",
+        "Save handoff header"
+      ]
+    },
+    {
+      "role": "read_only",
+      "url": "/job-sheets/5b559907-919e-4b7e-a825-5ac466b4a06b",
+      "addVisible": true,
+      "addEnabled": true,
+      "editableInputs": 9,
+      "buttons": [
+        "",
+        "Toggle Sidebar",
+        "",
+        "",
+        " Add portion",
+        " Remove portion",
+        "Save billing plan",
+        " Save note",
+        "Record manual entry"
+      ],
+      "afterAddEditableInputs": 13
+    }
+  ]
+}

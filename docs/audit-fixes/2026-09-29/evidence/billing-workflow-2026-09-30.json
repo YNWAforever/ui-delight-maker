@@ -1,0 +1,141 @@
+{
+  "sha": "f7f0be67934c2650f0ce1aeab2e7584a01498629",
+  "jobSheetId": "5b559907-919e-4b7e-a825-5ac466b4a06b",
+  "startedAt": "2026-09-30T03:12:57.246Z",
+  "cases": [
+    {
+      "case": "sheet and invoice role boundary",
+      "role": "super_admin",
+      "allowed": true,
+      "pass": true
+    },
+    {
+      "case": "sheet and invoice role boundary",
+      "role": "admin",
+      "allowed": true,
+      "pass": true
+    },
+    {
+      "case": "sheet and invoice role boundary",
+      "role": "manager",
+      "allowed": false,
+      "pass": true
+    },
+    {
+      "case": "sheet and invoice role boundary",
+      "role": "sales",
+      "allowed": false,
+      "pass": true
+    },
+    {
+      "case": "sheet and invoice role boundary",
+      "role": "client_success",
+      "allowed": false,
+      "pass": true
+    },
+    {
+      "case": "sheet and invoice role boundary",
+      "role": "accounting",
+      "allowed": true,
+      "pass": true
+    },
+    {
+      "case": "sheet and invoice role boundary",
+      "role": "read_only",
+      "allowed": false,
+      "pass": true
+    },
+    {
+      "case": "portion deny preserves allowed sheet planning",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "portion allow does not grant sheet planning",
+      "role": "read_only",
+      "pass": true
+    },
+    {
+      "case": "expired and revoked grants leave invoice disabled",
+      "role": "read_only",
+      "pass": true
+    },
+    {
+      "case": "missing owner and PO blocks acceptance",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "actual accounting identity owns documented no-PO handoff",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "partial billing mismatch remains blocked after persistence",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "note-only save keeps invoice planned",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "explicit confirmation locks reconciled commercial fields",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "locked commercial POST is rejected without write",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "manual evidence is recorded without external Xero contact",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "same-key manual invoice replay does not advance version",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "invoice server request denied for non-accounting role",
+      "role": "manager",
+      "httpStatus": 200,
+      "error": true,
+      "denied": true,
+      "locked": false,
+      "pass": true
+    },
+    {
+      "case": "invoice server request denied for non-accounting role",
+      "role": "sales",
+      "httpStatus": 200,
+      "error": true,
+      "denied": true,
+      "locked": false,
+      "pass": true
+    },
+    {
+      "case": "invoice server request denied for non-accounting role",
+      "role": "client_success",
+      "httpStatus": 200,
+      "error": true,
+      "denied": true,
+      "locked": false,
+      "pass": true
+    },
+    {
+      "case": "invoice server request denied for non-accounting role",
+      "role": "read_only",
+      "httpStatus": 200,
+      "error": true,
+      "denied": true,
+      "locked": false,
+      "pass": true
+    }
+  ],
+  "finishedAt": "2026-09-30T03:17:43.676Z"
+}

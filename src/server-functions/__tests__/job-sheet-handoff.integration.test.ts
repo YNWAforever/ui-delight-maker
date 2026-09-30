@@ -6,7 +6,24 @@ import type { Queryable } from "@/server/db/neon.server";
 import type { RequestAuthorization } from "@/server/auth/authorization.server";
 import type { AppSession } from "@/lib/auth/neon-auth.server";
 
-const holder = vi.hoisted(() => ({ pool: null as Pool | null, client: null as PoolClient | null }));
+const holder = vi.hoisted(() => ({
+  pool: null as Pool | null,
+  client: null as PoolClient | null,
+  session: null as AppSession | null,
+}));
+// Session and transport seams only; policy, ownership and SQL remain real.
+vi.mock("@/lib/auth/neon-auth.server", () => ({
+  requireNeonAuthSession: async () => {
+    if (!holder.session) throw new Error("No test session");
+    return holder.session;
+  },
+}));
+vi.mock("@tanstack/react-start", () => ({
+  createServerFn: () => {
+    const chain = { validator: () => chain, handler: (fn: unknown) => fn };
+    return chain;
+  },
+}));
 vi.mock("@/server/db/neon.server", () => ({
   query: async <T>(sql: string, values: readonly unknown[] = [], db?: Queryable): Promise<T[]> =>
     (await (db ?? holder.client ?? holder.pool!).query(sql, [...values])).rows as T[],
@@ -47,6 +64,7 @@ import {
   listAssignableProfiles,
   resolveAssignableProfile,
 } from "@/server/repositories/assignable-profiles";
+import { getJobSheetRead } from "@/server-functions/operations";
 import { productionBulkHandler } from "@/server/operations/bulk-actions.server";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
@@ -152,6 +170,99 @@ describe("Job Sheet handoff on isolated PostgreSQL", () => {
     holder.pool = null;
   });
 
+  async function readAs(
+    role:
+      | "super_admin"
+      | "admin"
+      | "manager"
+      | "sales"
+      | "client_success"
+      | "accounting"
+      | "read_only",
+    id: string,
+  ) {
+    const profileId = "billing-role-" + randomUUID();
+    await db().query(
+      "insert into profiles(id,email,name,role,status) values($1,$2,'Billing role fixture',$3,'active')",
+      [profileId, profileId + "@audit.invalid", role],
+    );
+    if (role === "manager") {
+      await db().query("update profiles set manager_profile_id=$1 where id=$2", [
+        profileId,
+        actorId,
+      ]);
+    }
+    holder.session = { profile: { id: profileId, role, status: "active" } } as AppSession;
+    return { profileId, read: await getJobSheetRead({ data: { id } }) };
+  }
+
+  it
+    .runIf(hasDatabase)
+    .each([
+      "super_admin",
+      "admin",
+      "manager",
+      "sales",
+      "client_success",
+      "accounting",
+      "read_only",
+    ] as const)("returns actual sheet and portion action capabilities for %s", async (role) => {
+    const id = await seedJobSheet({ accountingOwner: actorId });
+    const { read } = await readAs(role, id);
+    const allowed = ["super_admin", "admin", "accounting"].includes(role);
+    expect(read.canUpdateHeader).toBe(allowed);
+    expect(read.canUpdateInvoiceByPortion[read.portions[0].id]).toBe(allowed);
+  });
+
+  it.runIf(hasDatabase)(
+    "applies portion-scoped deny while the accounting sheet remains editable",
+    async () => {
+      const id = await seedJobSheet({ accountingOwner: actorId });
+      const { profileId, read } = await readAs("accounting", id);
+      await db().query(
+        `insert into permission_overrides(profile_id,capability,effect,resource_type,resource_id,reason,granted_by)
+      values($1,'job_sheets.update_billing','deny','job_sheet_portion',$2,'Isolated portion deny',$1)`,
+        [profileId, read.portions[0].id],
+      );
+      const after = await getJobSheetRead({ data: { id } });
+      expect(after.canUpdateHeader).toBe(true);
+      expect(after.canUpdateInvoiceByPortion[read.portions[0].id]).toBe(false);
+    },
+  );
+
+  it.runIf(hasDatabase)(
+    "applies portion-scoped allow without granting read_only sheet planning",
+    async () => {
+      const id = await seedJobSheet({ accountingOwner: actorId });
+      const { profileId, read } = await readAs("read_only", id);
+      await db().query(
+        `insert into permission_overrides(profile_id,capability,effect,resource_type,resource_id,reason,granted_by)
+      values($1,'job_sheets.update_billing','allow','job_sheet_portion',$2,'Isolated portion allow',$3)`,
+        [profileId, read.portions[0].id, actorId],
+      );
+      const after = await getJobSheetRead({ data: { id } });
+      expect(after.canUpdateHeader).toBe(false);
+      expect(after.canUpdateInvoiceByPortion[read.portions[0].id]).toBe(true);
+    },
+  );
+
+  it.runIf(hasDatabase)("keeps an unowned sheet outside manager visibility", async () => {
+    const id = await seedJobSheet();
+    await expect(readAs("manager", id)).rejects.toThrow("outside your management scope");
+  });
+
+  it.runIf(hasDatabase)("ignores expired and revoked portion grants", async () => {
+    const id = await seedJobSheet({ accountingOwner: actorId });
+    const { profileId, read } = await readAs("read_only", id);
+    await db().query(
+      `insert into permission_overrides(profile_id,capability,effect,resource_type,resource_id,reason,granted_by,expires_at,revoked_at)
+      values($1,'job_sheets.update_billing','allow','job_sheet_portion',$2,'Expired fixture',$3,now()-interval '1 day',null),
+            ($1,'job_sheets.update_billing','allow','job_sheet_portion',$2,'Revoked fixture',$3,null,now())`,
+      [profileId, read.portions[0].id, actorId],
+    );
+    const after = await getJobSheetRead({ data: { id } });
+    expect(after.canUpdateInvoiceByPortion[read.portions[0].id]).toBe(false);
+  });
   it.runIf(hasDatabase)(
     "records an explicit no-PO handoff and accepts a reconciled sheet",
     async () => {

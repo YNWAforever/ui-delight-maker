@@ -1,0 +1,70 @@
+{
+  "sha": "3f1dac32c7f9a0cfe34c71d762171b002933ac0e",
+  "jobSheetId": "5b559907-919e-4b7e-a825-5ac466b4a06b",
+  "cases": [
+    {
+      "role": "super_admin",
+      "invoiceDate": "2026-09-30",
+      "commercialLocked": true,
+      "ownerPickerLocked": true,
+      "invoiceAllowed": true,
+      "replay": "not replayed",
+      "pass": true
+    },
+    {
+      "role": "admin",
+      "invoiceDate": "2026-09-30",
+      "commercialLocked": true,
+      "ownerPickerLocked": true,
+      "invoiceAllowed": true,
+      "replay": "not replayed",
+      "pass": true
+    },
+    {
+      "role": "manager",
+      "invoiceDate": "2026-09-30",
+      "commercialLocked": true,
+      "ownerPickerLocked": null,
+      "invoiceAllowed": false,
+      "replay": "denied unchanged",
+      "pass": true
+    },
+    {
+      "role": "sales",
+      "invoiceDate": "2026-09-30",
+      "commercialLocked": true,
+      "ownerPickerLocked": null,
+      "invoiceAllowed": false,
+      "replay": "denied unchanged",
+      "pass": true
+    },
+    {
+      "role": "client_success",
+      "invoiceDate": "2026-09-30",
+      "commercialLocked": true,
+      "ownerPickerLocked": null,
+      "invoiceAllowed": false,
+      "replay": "denied unchanged",
+      "pass": true
+    },
+    {
+      "role": "accounting",
+      "invoiceDate": "2026-09-30",
+      "commercialLocked": true,
+      "ownerPickerLocked": true,
+      "invoiceAllowed": true,
+      "replay": "same-key unchanged",
+      "pass": true
+    },
+    {
+      "role": "read_only",
+      "invoiceDate": "2026-09-30",
+      "commercialLocked": true,
+      "ownerPickerLocked": null,
+      "invoiceAllowed": false,
+      "replay": "denied unchanged",
+      "pass": true
+    }
+  ],
+  "pass": true
+}
