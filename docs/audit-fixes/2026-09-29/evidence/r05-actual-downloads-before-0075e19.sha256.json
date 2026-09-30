@@ -1,0 +1,18 @@
+{
+  "archive": "r05-actual-downloads-before-0075e19.zip",
+  "files": [
+    {
+      "file": "r05-report-actual-before-0075e19.csv",
+      "bytes": 779,
+      "sha256": "216c095427c23a748ce9ed4e385b9f7794ff207f1752a7b886f501a1e23271df",
+      "exactDownloadedBytesPreserved": true
+    },
+    {
+      "file": "r05-admin-actual-before-0075e19.csv",
+      "bytes": 1446,
+      "sha256": "633642863896ece2cbbe90341a8470a2c93a27296e0f49f224413410aa182d25",
+      "exactDownloadedBytesPreserved": true
+    }
+  ],
+  "reason": "Preserve exact CSV CRLF and embedded CR fields without newline normalization or whitespace-rule exemptions"
+}
