@@ -1,0 +1,29 @@
+{
+  "viewport": 768,
+  "clientWidth": 768,
+  "scrollWidth": 800,
+  "overflow": [
+    {
+      "tag": "DIV",
+      "class": "hidden md:block",
+      "left": 480,
+      "right": 800,
+      "width": 320,
+      "minWidth": "auto",
+      "display": "block",
+      "overflowX": "visible",
+      "grid": "none"
+    },
+    {
+      "tag": "ASIDE",
+      "class": "border-l border-border px-4 py-8 text-center text-sm text-muted-foreground",
+      "left": 480,
+      "right": 800,
+      "width": 320,
+      "minWidth": "0px",
+      "display": "block",
+      "overflowX": "visible",
+      "grid": "none"
+    }
+  ]
+}

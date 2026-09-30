@@ -1,0 +1,18 @@
+{
+  "sha": "a18aa46273b10edc9cc75dbb11188ad9d49c98e6",
+  "createdAt": "2026-09-30T10:37:12.125Z",
+  "scope": "Real admin invitation focus/widths and 250th eligible profile picker; no valid invitations sent",
+  "roles": [],
+  "widths": [],
+  "success": false,
+  "fixture": {
+    "activeProfiles": 250,
+    "deactivatedProfiles": 50,
+    "allSynthetic": true
+  },
+  "error": {
+    "name": "AssertionError",
+    "message": "Expected values to be strictly equal:\n\nfalse !== true\n"
+  },
+  "syntheticProfileCleanup": true
+}
