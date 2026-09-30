@@ -44,3 +44,8 @@ For each run, record candidate SHA from GET `/api/build`, isolated data IDs in a
 ## 2026-09-30 quote action slice
 
 [Quote role report](../2026-09-29/quote-role-uat-2026-09-30.md): seven-role issue boundaries and two scoped overrides pass at `4b5f94a`. Sales synthetic draft creation passes; subsequent save/submission fails strict line-item validation and is being repaired. U03/U04/U07 remain open; the full matrices above retain their individual gates.
+
+
+## R06 final hosted queue regression slice
+
+Dedicated UAT source `f4f5c97` repeats the real seven-role Task mutation/denial, four overrides/scopes, seven Admin entry boundaries and ten layout/keyboard cases after selective queue rendering. [Report](../2026-09-29/r06-runtime-before-after-2026-09-30.md), [role results](../2026-09-29/evidence/r06-task-role-uat-2026-09-30.json), [layout results](../2026-09-29/evidence/r06-task-responsive-2026-09-30.json). Scope remains partial U02/U06/U10/U15; all sixteen full workflow rows retain their own unmet criteria.

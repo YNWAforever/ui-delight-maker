@@ -99,3 +99,8 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 - [PR #103](https://github.com/YNWAforever/ui-delight-maker/pull/103) merged the audited source into main at `f038919b95ff085190401f64078b78bc8781dd4d`. Its production deployment `dpl_HCh6p9UMSNwgivUn52VF3NS4XxAW` was CANCELED; the same audited deployment remained the latest READY version. The Vercel hold was read back after the merge.
 - Main-push GitHub Types/lint, real PostgreSQL contract (2,172 tests, zero skipped) and isolated migration/seed replay passed. The Supabase Preview check failed because an organization member reached the free-project limit; it is an external blocker, not a passing release gate.
 - The first #102 preview used the old `bun run build`, attempted migration and seed on a target of unverified isolation, and failed with `Quote version is immutable`. Database effects of that failed preview are not yet ruled out. Its later preview used the source-only command and passed. No deliberate production migration or customer message was sent.
+
+
+## Current evidence delta — independent UAT / R06
+
+[Independent seven-role UAT](../2026-09-29/isolated-uat-environment.md), scoped Quote U03 and billing U07 replace their earlier absence-of-session blockers. [Authenticated runtime comparison](../2026-09-29/r06-runtime-before-after-2026-09-30.md) satisfies the measured Task/Approval queue budgets on real 10k/100k PostgreSQL fixtures. Approval cold p95 regression and unresolved first CI/capture failures remain disclosed. Release is still **NO-GO** for broader UAT, legacy/provider/anomaly/operator gates. No production rollback or promotion was performed; current public build is `bed941b` with the persistent build hold active.
