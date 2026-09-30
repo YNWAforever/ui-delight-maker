@@ -1,6 +1,12 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current verified checkpoint — PR #141 / 2026-10-01 HKT
+## Current verified checkpoint — PR #142 / #143 candidate, 2026-10-01 HKT
+
+Main `e4f0555a72f8efaa3055a11871f16694ceb65093` includes [merged #142](https://github.com/YNWAforever/ui-delight-maker/pull/142), final head `86c5a1f`. Exact final-head and post-main [Checks](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36761047482)/[Database contract](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36761047556) pass **2,334 tests / 317 files / zero skipped**, plus isolated migration/seed replay. [Merge](evidence/pr142-merge-2026-10-01.json), [production hold](evidence/production-hold-after-142-2026-10-01.json): canceled main attempt, public `bed941b` unchanged.
+
+Candidate #143 source `0376f5c` corrects the actual empty unnumbered Quote link. Fresh local and exact-source CI pass **2,336 / 317 / zero skipped**, static/pure Vite/bundle/replay gates. [Eleven actual U02 same-record cases](sales-day-uat-2026-10-01.md) PASS; CO-14 seven-role Task name display, all-kind5,000 R05 and prior scoped UAT proof remain retained. Final documentation-head CI/merge remains required. No production operation or release; independent onboarding/team/provider/screen-reader/legacy/provenance/operator gates remain open. The older entries below are historical checkpoints.
+
+## Previous verified checkpoint — PR #141 / 2026-10-01 HKT
 
 Main `f4e033ede7f5fcd2808aaaf93293baf73527ca80` includes [merged #141](https://github.com/YNWAforever/ui-delight-maker/pull/141). Exact final head and post-main [Checks](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36750799574)/[Database contract](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36750800091) pass 2,325 tests, 316 files, zero skipped, and isolated migration/seed replay. [Merge proof](evidence/pr141-merge-2026-10-01.json). Actual [U06 cross-entry](cross-entry-uat-2026-10-01.md), [U12 own Sales/CS manual statements](manual-message-uat-2026-10-01.md) and [isolated retention CLI](import-retention-rehearsal-2026-10-01.md) pass in their stated scopes. Lead, Client and Event 5,000-row terminal/replay/related-side-effect/seven-role receipt/download checks and final isolated source-key/target parity now PASS at source `a18aa46`. [Import evidence](client-event-import-uat-2026-09-30.md).
 

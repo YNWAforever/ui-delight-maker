@@ -1,0 +1,91 @@
+{
+  "sha": "0376f5c0bffda1c9eae63cd70dbbe47d16d7b8e2",
+  "startedAt": "2026-09-30T19:20:33.725Z",
+  "scope": "Complete retained U02 after accessible Quote-link repair; no duplicate creation",
+  "success": true,
+  "leadId": "7d0508bb-e38e-4c84-9419-0c9d003fd24e",
+  "taskId": "c8844fb8-0bac-49eb-88f5-587b6557286d",
+  "quoteId": "5a472d0f-b850-4f74-bcb6-e800a6935f41",
+  "approvalId": "fbabfb0f-148c-4eed-8bbe-9da071beaf1a",
+  "originalSixCaseSource": "5568af93c817305a33499ab6f4cabd52380410c5",
+  "cases": [
+    {
+      "case": "same scoped Lead displays real owner name",
+      "role": "sales",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "real quick follow-up creates one linked open Task and refreshes same Home Lead",
+      "role": "sales",
+      "taskId": "c8844fb8-0bac-49eb-88f5-587b6557286d",
+      "assignedState": "Unassigned (quick action has no owner input)",
+      "pass": true
+    },
+    {
+      "case": "same linked Task keyboard move persists once and UI agrees",
+      "role": "sales",
+      "status": "in_progress",
+      "pass": true
+    },
+    {
+      "case": "own reader direct same Task mutation denies without version/state change",
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "same Lead actual manual draft retains text creator and HKD200.50",
+      "role": "sales",
+      "pass": true
+    },
+    {
+      "case": "actual own manager sees and can claim the same one pending handoff; sales and persisted states agree",
+      "role": "sales/manager",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "same retained unnumbered Quote has visible accessible link and Enter reaches the persisted Quote",
+      "role": "sales",
+      "ownAuthMatched": true,
+      "label": "Untitled quote",
+      "persistedQuoteId": "5a472d0f-b850-4f74-bcb6-e800a6935f41",
+      "pass": true
+    },
+    {
+      "case": "same retained unnumbered Quote has visible accessible link and Enter reaches the persisted Quote",
+      "role": "manager",
+      "ownAuthMatched": true,
+      "label": "Untitled quote",
+      "persistedQuoteId": "5a472d0f-b850-4f74-bcb6-e800a6935f41",
+      "pass": true
+    },
+    {
+      "case": "same retained unnumbered Quote has visible accessible link and Enter reaches the persisted Quote",
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "label": "Untitled quote",
+      "persistedQuoteId": "5a472d0f-b850-4f74-bcb6-e800a6935f41",
+      "pass": true
+    },
+    {
+      "case": "own reader same actual quote approval POST denies without state/receipt mutation",
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "httpStatus": 200,
+      "serializedError": true,
+      "pass": true
+    },
+    {
+      "case": "same one pending handoff remains claimable to own manager after final source",
+      "role": "manager",
+      "ownAuthMatched": true,
+      "pass": true
+    }
+  ],
+  "businessAndReaderReceiptsUnchanged": true,
+  "sameOriginalRecordsRetained": true,
+  "noProviderOrCustomerSend": true,
+  "finishedAt": "2026-09-30T19:21:12.286Z"
+}
