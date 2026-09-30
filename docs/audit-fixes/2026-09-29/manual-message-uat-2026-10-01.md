@@ -1,0 +1,7 @@
+# U12 manual message record — 2026-10-01 HKT
+
+Genuine sales, manager and read_only sessions at detached source8691421; same independent synthetic Neon/Auth environment. [Actual sales result](evidence/manual-sales-8691421-2026-10-01.json), [sales UI](evidence/manual-sales-8691421-2026-10-01.png), [reader UI](evidence/manual-reader-8691421-2026-10-01.png). Previous scoped client_success proof is in [approval UAT](approval-role-uat-2026-09-30.md).
+
+Manager actually approves a synthetic draft, creating its manual handoff. Sales has no baseline decision grant: a temporary **explicitly scoped** allow enables Record manual send for this approval only. The real sales UI records **Synthetic UAT operator statement; no delivery**, with actor/reference/time, one audit and exact-key replay leaving the persisted row unchanged. Read_only can Copy approved draft but sees no record/reference controls; its actual direct POST is denied and leaves the row unchanged. Every observed session matches its own real Auth identity; no super_admin substitution. Temporary override revoked.
+
+Combined sales/client_success scenarios complete U12's manual statement/copy/replay/denial wording scope. The role-specific scoped grant is stated explicitly; this does not establish baseline sales/client_success decision access. ClientOps did not send any message, and manual_send_recorded is an operator statement, not an external delivery receipt. Provider delivery remains blocked separately; no customer/provider call, production connection, migration or promotion.

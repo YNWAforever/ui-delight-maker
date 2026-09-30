@@ -1,0 +1,51 @@
+{
+  "sha": "8691421eb79a57e8bb3fdbc4a7e54367d493611f",
+  "startedAt": "2026-09-30T16:55:42.701Z",
+  "scope": "Actual own accounting cross-entry view denial on synthetic Task, Approval and original synthetic B Job Sheet; restricted Lead-only search; matching expired allow cannot bypass active deny",
+  "cases": [
+    {
+      "case": "Actual accounting global search cannot match restricted Lead-only title/email",
+      "pass": true
+    },
+    {
+      "case": "Actual denied Task title/detail omitted from list, global search and direct recorded GETs; expired allow gives no access",
+      "pass": true
+    },
+    {
+      "case": "Actual denied Approval absent from queue; direct selected-detail GET error contains no confidential payload",
+      "pass": true
+    },
+    {
+      "case": "Denied B Job Sheet omitted from Today/SSR/list/selection/export and direct detail; authorized original A still selectable/exportable",
+      "pass": true
+    },
+    {
+      "case": "Actual own accounting Task/review report and browser CSV aggregates each exclude exactly the denied fixture",
+      "pass": true
+    }
+  ],
+  "success": true,
+  "fixtures": {
+    "taskId": "cdcdb522-4a9e-4f58-b507-9ceceb3cc357",
+    "approvalId": "ae55f077-ba88-4c1d-b473-71ee82a0aca5",
+    "leadId": "4153711d-658a-493f-9c74-a1ff34963856",
+    "sheetId": "9d9c0e7b-31c7-4eb3-8a4a-8ca80a20d980"
+  },
+  "actualAggregateDelta": {
+    "tasksCreated": -1,
+    "pendingApprovals": -1
+  },
+  "businessRecordsUnchanged": true,
+  "temporaryOverridesRevoked": true,
+  "finishedAt": "2026-09-30T16:57:21.624Z",
+  "homeRawFollowup": {
+    "checkedAt": "2026-09-30T17:04:00.160Z",
+    "baseline": {
+      "taskSerialized": true,
+      "approvalSerialized": true,
+      "sheetSerialized": true
+    },
+    "allThreeDeniedIdsAbsentFromActualAuthenticatedSSR": true,
+    "renderedHomeContainsOnlyApplicableSheetRows": true
+  }
+}
