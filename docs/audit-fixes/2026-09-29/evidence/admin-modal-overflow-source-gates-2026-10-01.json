@@ -1,0 +1,13 @@
+{
+  "relatedTests": 21,
+  "typescript": "PASS",
+  "changedLint": "PASS",
+  "pureViteBuild": "PASS",
+  "bundleGate": "PASS",
+  "source4fbCiTests": 2344,
+  "source4fbCiSkipped": 0,
+  "source4fbFreshContractJob": 110108547082,
+  "expandedNewSourceHostedAndExactCI": "pending",
+  "APIOrPolicyOrMigrationChange": false,
+  "productionOperation": false
+}

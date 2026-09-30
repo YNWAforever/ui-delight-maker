@@ -1,0 +1,217 @@
+{
+  "fullU15Accepted": false,
+  "disposition": "17 keyboard/entry cases pass; subsequent visual/runtime inner-width gate FAIL requires repair and recapture",
+  "originalReport": {
+    "sourceSha": "4fb0b4a19d23c1618f4165fd86239e91c97a5039",
+    "candidateUrl": "https://clientops-uat-20260930-21bn2rnfl-ynwaforevers-projects.vercel.app",
+    "startedAt": "2026-09-30T21:38:34.877Z",
+    "scope": "Actual own Admin/SA modal and management entry at390/768/1440/native200; reader narrow omission; same original fixtures no commands",
+    "success": true,
+    "cases": [
+      {
+        "case": "authorized full-record Manage person entry; role modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return",
+        "role": "admin",
+        "width": 390,
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; lifecycle modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return/hydrated successor name retention",
+        "role": "admin",
+        "width": 390,
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; role modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return",
+        "role": "admin",
+        "width": 768,
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; lifecycle modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return/hydrated successor name retention",
+        "role": "admin",
+        "width": 768,
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; role modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return",
+        "role": "admin",
+        "width": 1440,
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; lifecycle modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return/hydrated successor name retention",
+        "role": "admin",
+        "width": 1440,
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; role modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return",
+        "role": "super_admin",
+        "width": 390,
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; lifecycle modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return/hydrated successor name retention",
+        "role": "super_admin",
+        "width": 390,
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; role modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return",
+        "role": "super_admin",
+        "width": 768,
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; lifecycle modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return/hydrated successor name retention",
+        "role": "super_admin",
+        "width": 768,
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; role modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return",
+        "role": "super_admin",
+        "width": 1440,
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; lifecycle modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return/hydrated successor name retention",
+        "role": "super_admin",
+        "width": 1440,
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; role modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return",
+        "role": "admin",
+        "width": 1440,
+        "nativeZoom": {
+          "factor": 2,
+          "before": {
+            "width": 1424,
+            "height": 905,
+            "dpr": 1
+          },
+          "after": {
+            "width": 712,
+            "height": 452,
+            "dpr": 2
+          },
+          "nativeAutomaticPerTab": true
+        },
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; lifecycle modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return/hydrated successor name retention",
+        "role": "admin",
+        "width": 1440,
+        "nativeZoom": {
+          "factor": 2,
+          "before": {
+            "width": 1424,
+            "height": 905,
+            "dpr": 1
+          },
+          "after": {
+            "width": 712,
+            "height": 452,
+            "dpr": 2
+          },
+          "nativeAutomaticPerTab": true
+        },
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; role modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return",
+        "role": "super_admin",
+        "width": 1440,
+        "nativeZoom": {
+          "factor": 2,
+          "before": {
+            "width": 1424,
+            "height": 905,
+            "dpr": 1
+          },
+          "after": {
+            "width": 712,
+            "height": 452,
+            "dpr": 2
+          },
+          "nativeAutomaticPerTab": true
+        },
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "authorized full-record Manage person entry; lifecycle modal initial focus/Tab+ShiftTab/readable validation/Escape exact-trigger return/hydrated successor name retention",
+        "role": "super_admin",
+        "width": 1440,
+        "nativeZoom": {
+          "factor": 2,
+          "before": {
+            "width": 1424,
+            "height": 905,
+            "dpr": 1
+          },
+          "after": {
+            "width": 712,
+            "height": 452,
+            "dpr": 2
+          },
+          "nativeAutomaticPerTab": true
+        },
+        "ownAuthMatched": true,
+        "pass": true
+      },
+      {
+        "case": "own reader full record lacks Manage person; narrow selected record readable with no mutation controls/dialogs",
+        "role": "read_only",
+        "width": 390,
+        "ownAuthMatched": true,
+        "pass": true
+      }
+    ],
+    "businessRowsAndAuditUnchanged": true,
+    "noMutationPosts": true,
+    "noProviderOrCustomerSend": true,
+    "screenReader": "not verified",
+    "finishedAt": "2026-09-30T21:41:16.671Z"
+  },
+  "clippingReport": {
+    "sourceSha": "4fb0b4a19d23c1618f4165fd86239e91c97a5039",
+    "role": "admin",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "modalWidths": {
+      "clientWidth": 356,
+      "scrollWidth": 458
+    },
+    "submitBoxAtMeasurement": {
+      "x": 245.234375,
+      "y": 766,
+      "width": 124.71875,
+      "height": 38
+    },
+    "horizontalScrollRequired": true,
+    "defectReproduced": true,
+    "keyboardOnly17CasesPassed": true,
+    "completeU15Accepted": false,
+    "previousReadabilityAssertionsInsufficient": true,
+    "noMutationSubmitted": true
+  }
+}

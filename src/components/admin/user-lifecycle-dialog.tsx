@@ -152,7 +152,7 @@ export function UserLifecycleDialog({
           if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus();
         }}
         onInteractOutside={(event) => event.preventDefault()}
-        className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-2xl gap-0 overflow-y-auto rounded-md p-0"
+        className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-2xl gap-0 overflow-y-auto rounded-md p-0 [&>*]:min-w-0"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>

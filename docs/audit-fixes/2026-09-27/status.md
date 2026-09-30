@@ -348,3 +348,7 @@ Source `ea76d3b2b5a64b9efe98d403d7f8fff84331aee7` passes exact-source GitHub req
 #146 final5879982 merged05:12:40 HKT at `4d238725391a0fec4151b037a9339b919621ed37`; exact final/post-main2,340/318/zero skipped and replay PASS. [Merge](../2026-09-29/evidence/pr146-merge-2026-10-01.json), [hold](../2026-09-29/evidence/production-hold-after-146-2026-10-01.json): production attempt canceled/publicbed941b unchanged.
 
 [Next R03 keyboard+narrow repair](../2026-09-29/admin-keyboard-uat-2026-10-01.md): actual two modal keyboard defects and390px missing management entry reproduced; four valid red→green tests; related21/static/pure Vite/bundles PASS; real fresh PG2,344 zero-skip PASS. Invalid skipped run explicitly rejected; local full before navigation-only addition, exact-source full CI required. Hosted source/width/native200/no-write role acceptance pending. All30 CO/16 UAT retained, no API/policy/migration/production operation; release NO-GO.
+
+## PR #147 inner-width follow-up — 2026-10-01 HKT
+
+Source4fb exact CI2,344/zero skipped/replay PASS and17 executed keyboard/entry cases PASS, but actual390px internal modal356→458px overflow FAIL rejects full U15. [R03 follow-up](../2026-09-29/admin-keyboard-uat-2026-10-01.md). Responsive existing reassignment/min-width fix passes21/static/pure Vite/bundles; expanded exact-source own roles/native200/inner-width/complete-control proof and final CI pending. CO-20 remains in_progress; all30/16 retained; production held, release NO-GO.

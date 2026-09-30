@@ -1,0 +1,24 @@
+{
+  "sourceSha": "4fb0b4a19d23c1618f4165fd86239e91c97a5039",
+  "role": "admin",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "modalWidths": {
+    "clientWidth": 356,
+    "scrollWidth": 458
+  },
+  "submitBoxAtMeasurement": {
+    "x": 245.234375,
+    "y": 766,
+    "width": 124.71875,
+    "height": 38
+  },
+  "horizontalScrollRequired": true,
+  "defectReproduced": true,
+  "keyboardOnly17CasesPassed": true,
+  "completeU15Accepted": false,
+  "previousReadabilityAssertionsInsufficient": true,
+  "noMutationSubmitted": true
+}
