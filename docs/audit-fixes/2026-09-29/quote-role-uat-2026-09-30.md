@@ -27,3 +27,15 @@ Real isolated PostgreSQL action tests additionally cover matching deny over allo
 Sales created synthetic quote `b469d269-522f-4c55-9dbc-7f6d81b1d504` through the UI: owner `demo-sales-user`, HKD 200.50 (2 × 100.25), correct account/lead. Subsequent Save & Request Approval failed with **Invalid input**. Captured real request shows persisted line-item metadata (quote_id, dates, computed total and additional fields) sent to the strict five-field commercial validator. No approval or lifecycle advancement is accepted. Fix this input projection next, then resume manager claim/approve → authorized issue → accounting version acceptance → billing and rollback checks.
 
 This is partial U03/U04/U06 evidence, not full quote/accounting acceptance. Historical anomaly provenance, legacy snapshots, provider sandbox, runtime before/after and release gates remain open.
+
+## Persisted quote workflow — 2026-09-30 follow-up
+
+Source `1ec7531e9c5cb1e113d6fb8ba1089e6fc8313936`, UAT deployment `dpl_GuYENvNovoL2P4k4cQzrhRzEohCA`. The earlier Save failure is repaired by projecting persisted line items into the strict commercial contract. Fresh isolated PostgreSQL full suite passed **2,234 tests / 0 skipped**; PR #131 exact-head checks, migration/seed replay and preview passed.
+
+[Eleven actual UI/request/database cases](evidence/quote-journey-2026-09-30.json) passed: sales submits approval, manager claims and approves, admin issues immutable HKD 200.50 version, five denied identities cannot issue, accounting accepts and creates exactly one Job Sheet, same-key replay adds no Job Sheet, read_only acceptance is denied without changing state. Auth cookies remain private and distinct.
+
+Quote `b469d269-522f-4c55-9dbc-7f6d81b1d504`; approval `28fa6405-c1c4-45b9-9bdb-080bc1ffd660`; issued version `6f3b6fa4-d5aa-4ae1-a747-7999a99ef694`; accepted snapshot `78b73e88-c73a-4900-bf7a-5d1c3dac0d5d`; Job Sheet `5b559907-919e-4b7e-a825-5ac466b4a06b`. Acceptance creates a distinct accepted snapshot from the issued version; these IDs are not expected to be equal.
+
+[Manager](evidence/quote-manager-approved-no-issue-2026-09-30.png), [issuer](evidence/quote-admin-issued-2026-09-30.png), [accounting](evidence/quote-accounting-accepted-quote-2026-09-30.png). This completes the U03 manager/issuer path; U04 revised-B isolation and U07 billing still require separate checks.
+
+Actual sales Duplicate then exposed a second strict-input error: readback `valid_until` is ISO midnight, while create expects a calendar date. A regression reproduces this mismatch; the client now projects the date portion without timezone conversion or relaxing validation. Date-only, ISO-midnight and null component cases pass; full gate and actual Duplicate retest follow.

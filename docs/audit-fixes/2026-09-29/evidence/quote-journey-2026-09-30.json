@@ -1,0 +1,82 @@
+{
+  "sha": "1ec7531e9c5cb1e113d6fb8ba1089e6fc8313936",
+  "startedAt": "2026-09-30T02:28:46.302Z",
+  "quoteId": "b469d269-522f-4c55-9dbc-7f6d81b1d504",
+  "cases": [
+    {
+      "case": "sales submits persistent quote approval",
+      "role": "sales",
+      "pass": true
+    },
+    {
+      "case": "manager claims and approves without issuer permission",
+      "role": "manager",
+      "pass": true
+    },
+    {
+      "case": "authorized admin issues immutable quote version",
+      "role": "admin",
+      "pass": true
+    },
+    {
+      "case": "server rejects issue replay for denied role",
+      "role": "manager",
+      "httpStatus": 200,
+      "error": true,
+      "denied": true,
+      "pass": true
+    },
+    {
+      "case": "server rejects issue replay for denied role",
+      "role": "sales",
+      "httpStatus": 200,
+      "error": true,
+      "denied": true,
+      "pass": true
+    },
+    {
+      "case": "server rejects issue replay for denied role",
+      "role": "client_success",
+      "httpStatus": 200,
+      "error": true,
+      "denied": true,
+      "pass": true
+    },
+    {
+      "case": "server rejects issue replay for denied role",
+      "role": "accounting",
+      "httpStatus": 200,
+      "error": true,
+      "denied": true,
+      "pass": true
+    },
+    {
+      "case": "server rejects issue replay for denied role",
+      "role": "read_only",
+      "httpStatus": 200,
+      "error": true,
+      "denied": true,
+      "pass": true
+    },
+    {
+      "case": "accounting accepts specified issued version and creates one job sheet",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "acceptance same-key replay creates no second job sheet",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "read_only acceptance replay denied and unchanged",
+      "role": "read_only",
+      "pass": true
+    }
+  ],
+  "approvalId": "28fa6405-c1c4-45b9-9bdb-080bc1ffd660",
+  "issuedVersionId": "6f3b6fa4-d5aa-4ae1-a747-7999a99ef694",
+  "jobSheetId": "5b559907-919e-4b7e-a825-5ac466b4a06b",
+  "acceptedVersionId": "78b73e88-c73a-4900-bf7a-5d1c3dac0d5d",
+  "finishedAt": "2026-09-30T02:37:01.377Z"
+}

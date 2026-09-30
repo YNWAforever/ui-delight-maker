@@ -330,7 +330,8 @@ function QuotesIndex() {
           account_id: source.account_id,
           deal_id: source.deal_id,
           currency: source.currency,
-          valid_until: source.valid_until,
+          // Readback may serialize a Postgres calendar date as ISO midnight.
+          valid_until: source.valid_until?.slice(0, 10) ?? null,
           quote_template_id: source.quote_template_id,
           document_sections: source.document_sections,
           cover_text: source.cover_text,
