@@ -98,16 +98,18 @@ export async function listApprovalQueuePage(
   const shifted = (sql: string, offset: number) =>
     sql.replace(/\$(\d+)/g, (_, index: string) => "$" + (Number(index) + offset));
   const clauses = [scope.sql];
-  let from = "human_approvals ha";
+  const from = "human_approvals ha";
+  let claimable = "";
   if (context.actor.role === "manager" && input.group === "pending") {
-    // Claims only apply to open unassigned rows; history keeps its ordinary visibility scope.
-    // OFFSET 0 keeps the linked-subject CASE as one lateral evaluation instead of repeating
-    // its subqueries in each view/decide predicate (and compiling them with PostgreSQL JIT).
+    // Compute linked ownership only for the unassigned open subset, once per statement.
+    // Materialization prevents repeating ownership in the outer count/page predicates.
+    // Terminal history uses ordinary visibility and cannot discover claimable work.
     // Match the linked-subject ownership used by listClaimableApprovals, while applying
     // both view and decide overrides before counting or paging.
-    from += ` left join agent_runs ar on ar.id=ha.agent_run_id
+    const claimFrom =
+      from +
+      ` left join agent_runs ar on ar.id=ha.agent_run_id
       cross join lateral (select case
-        when ha.assigned_to is not null then null
         when ar.status='waiting_approval' and ar.subject_type='lead'
           then (select l.assigned_to from leads l where l.id=ar.subject_id)
         when ar.status='waiting_approval' and ar.subject_type='engagement'
@@ -139,10 +141,12 @@ export async function listApprovalQueuePage(
     values.push(...claimView.values);
     const decideSql = shifted(claimDecide.sql, values.length);
     values.push(...claimDecide.values);
-    clauses[0] = `(${scope.sql} or (ha.assigned_to is null
-      and ha.status in ('pending','escalated')
-      and subject.claim_owner is not null
-      and ${viewSql} and ${decideSql}))`;
+    claimable = `with claimable_approvals as materialized (
+      select ha.id from ${claimFrom}
+      where ha.assigned_to is null and ha.status in ('pending','escalated')
+        and subject.claim_owner is not null and ${viewSql} and ${decideSql}
+    )`;
+    clauses[0] = `(${scope.sql} or ha.id in (select id from claimable_approvals))`;
   }
   const add = (value: unknown) => {
     values.push(value);
@@ -161,7 +165,7 @@ export async function listApprovalQueuePage(
     escalated: number | string;
     quote_sends: number | string;
   }>(
-    `select count(*)::int as total,
+    `${claimable} select count(*)::int as total,
             count(*) filter (where ha.status='pending')::int as pending,
             count(*) filter (where ha.status='escalated')::int as escalated,
             count(*) filter (where ha.status='pending' and
@@ -180,7 +184,7 @@ export async function listApprovalQueuePage(
   }
   const limitIndex = pageValues.push(limit + 1);
   const rows = await query<ApprovalQueueItem>(
-    `select ha.id,ha.agent_run_id,ha.approval_type,ha.requested_by,
+    `${claimable} select ha.id,ha.agent_run_id,ha.approval_type,ha.requested_by,
             ha.assigned_to,ha.status,ha.row_version,ha.superseded_by,
             ha.recovery_outcome_code,ha.recovery_reason,
             ha.context_data->>'quote_id' as quote_id,

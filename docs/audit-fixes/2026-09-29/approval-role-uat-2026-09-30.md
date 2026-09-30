@@ -34,3 +34,9 @@ Follow-up limits linked claim scope to pending groups and fences pending lateral
 ## Release boundaries
 
 Source review and isolated acceptance only. Production remains held; public build `bed941b37d18d214d0e7658ebce2116a2fc33eb9`. No migration, historical reconciliation, production data write or production deployment. Legacy snapshots, provider sandbox, four historical anomaly dispositions, operator/PITR/release rehearsal and wider backlog remain outstanding.
+
+## Second complete performance capture
+
+Source `97c4d6dac95ba6e97b8e2e715ae1ec6955e92235`, [all 40 samples](evidence/approval-runtime-failed-97c4d6d-2026-09-30.json), warm p95 **1,058.818ms**, p50 **837.257ms**: FAIL. Summed SQL duration p95 fell to **1,124.457ms**, but rendered readiness still exceeds 800ms. Direct pending-count EXPLAIN showed the lateral fence changed planner cost enough to enable expensive JIT optimization: **473.173ms JIT / 557.660ms execution**. That candidate is not accepted.
+
+The next source computes manager claim ownership in a materialized, open/unassigned subset before applying membership to the ordinary scoped count/page. It retains the same persisted subject/view/decide rules, empty/null-owner behavior and row overrides. Added real PostgreSQL assertions confirm a view or decide deny still excludes an otherwise claimable row. No DB JIT setting, fixture size, warm sample count or threshold changed. Full source tests, new fixed-SHA runtime and hosted role recapture follow.

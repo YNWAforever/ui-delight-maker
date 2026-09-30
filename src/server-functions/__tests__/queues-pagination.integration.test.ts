@@ -249,6 +249,24 @@ describe("work queue keyset pagination on isolated PostgreSQL", () => {
       );
       expect(page.total).toBe(121);
       expect(page.items[0].id).toBe(approval.rows[0].id);
+      for (const capability of ["approvals.view", "approvals.decide"] as const) {
+        const denied = context();
+        denied.overrides = [
+          {
+            profileId: denied.actor.profileId,
+            capability,
+            effect: "deny",
+            resourceType: "human_approval",
+            resourceId: approval.rows[0].id,
+          },
+        ];
+        const hidden = await repository.listApprovalQueuePage(
+          { group: "pending", limit: 50 },
+          denied,
+        );
+        expect(hidden.total).toBe(120);
+        expect(hidden.items.some((row) => row.id === approval.rows[0].id)).toBe(false);
+      }
     },
   );
 
