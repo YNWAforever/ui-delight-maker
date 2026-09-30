@@ -1,10 +1,10 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current verified checkpoint — PR #146 / R03 keyboard+narrow source batch
+## Current verified checkpoint — PR #147 / stable isolated UAT and mixed receipt
 
-Main `4d238725391a0fec4151b037a9339b919621ed37` includes [merged #146](https://github.com/YNWAforever/ui-delight-maker/pull/146), exact final/post-main2,340/318/zero skipped/replay PASS. [Merge](evidence/pr146-merge-2026-10-01.json), [hold](evidence/production-hold-after-146-2026-10-01.json): canceled main attempt/publicbed941b unchanged. Defined U10 PASS.
+Main `2606334848c8e980128b2d3611ea9a41fc224747` includes [merged #147](https://github.com/YNWAforever/ui-delight-maker/pull/147), final05a3897 and post-main2,344/319/zero skipped/replay/static PASS. [Merge](evidence/pr147-merge-2026-10-01.json), [hold](evidence/production-hold-after-147-2026-10-01.json): canceled main attempt/publicbed941b unchanged.
 
-[R03 keyboard+narrow source repair](admin-keyboard-uat-2026-10-01.md) passes local fresh2,344 zero-skip core suite and final21/static/pure-build gates. Exact-sourcefc4a2fd CI2,344/319/zero skipped/replay/static and seventeen expanded own Admin/SA/reader width/native200/focus/readability/no-write cases PASS. Final documentation-head CI pending. Stable dedicated test alias remainsa18aa46; detachedfc4a2fd has actual proof. All30 CO/16 UAT and remaining/external gates retained; release NO-GO.
+[R03 keyboard+narrow source repair](admin-keyboard-uat-2026-10-01.md) passes local fresh2,344 zero-skip core suite and final21/static/pure-build gates. Exact-sourcefc4a2fd CI2,344/319/zero skipped/replay/static and seventeen expanded own Admin/SA/reader width/native200/focus/readability/no-write cases PASS. Final/main CI now PASS. Stable dedicated test alias upgraded tofc4a2fd (same app as main2606334), seven own users/sessions/cookie sets/current profile roles and actual home pages PASS with original data/receipts unchanged. [Environment](isolated-uat-environment.md). Original mixed Task100 receipt six responsive/native200/keyboard/read-failure retry/reader-owner-deny cases PASS with zero commands; screen reader remains. [CO-04 twenty-five own seven-role actual import cases](import-role-uat-2026-10-01.md) PASS, findingverified_fixed. [Invitation thirteen keyboard/width/native200/no-send cases](invitation-keyboard-uat-2026-10-01.md) PASS; provider invitation and screen reader remain blocked. New docs-head CI pending. All30 CO/16 UAT and remaining/external gates retained; release NO-GO.
 
 ## Previous verified checkpoint — PR #145 / U10 source repair
 

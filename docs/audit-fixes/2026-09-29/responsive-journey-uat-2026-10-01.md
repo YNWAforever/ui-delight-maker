@@ -24,3 +24,11 @@ The U02 Lead/link/Quote, U07 labelled invoice controls, New Task error/focus/Tab
 Full original Lead/Quote/sheet/portions/Task rows before/after are unchanged. Real server preview reads occurred; no Task create/status/billing/bulk commit, real message, source change, migration or production operation. Existing actual U02/U07/U08 business workflows and prior Admin native200 proof remain separately linked in the [matrix](../2026-09-27/uat-results.md).
 
 This accepts the seventeen executed responsive/native/keyboard cases. Full mixed-outcome receipt/control rendering at each width, broader dialogs and screen-reader/operator evidence remain unexecuted. Automated DOM focus assertions do not substitute for a screen reader. U15 retains those gates, production held and release NO-GO.
+
+## Original Task100 mixed receipt on repaired source fc4a2fd
+
+[Six actual cases](evidence/mixed-receipt-fc4a2fd-2026-10-01.json) recover the same original operation24a3687b-2ff5-4d7b-bb6a-c6f915279bd8. Own sales at390/768/1440 and real native200 shows100 processed/70 succeeded/30 need review/30 selected. Summary, Download failures and Clear selection fit native viewport with no document horizontal overflow; terminal Resume absent. Keyboard Enter downloads the actual30-failure CSV. [Phone](evidence/mixed-receipt-390-fc4a2fd-2026-10-01.png), [native200](evidence/mixed-receipt-1440-native200-fc4a2fd-2026-10-01.png) visually inspected.
+
+A real owner GET transport failure retains the exact pointer and exposes reachable Retry loading result at390; keyboard retry restores the same server receipt. Own reader's pointer is discarded by the real owner denial, with no receipt/control leakage. Original Tasks, operation and100 items remain byte-equivalent snapshots; zero mutation POSTs. This used a real saved pointer/read of existing outcome, with no new command or mocked receipt. Initial schema-observer failure retained; composite position correction changed only the observer.
+
+Combined with the earlier seventeen sales/billing/Task preview width/keyboard cases and seventeen expanded Admin cases, this completes the executed U02/U07/U08 mixed-receipt responsive scope. Screen-reader/assistive-technology output remains unverified; broader action census/bulk domains and overall release NO-GO remain separate.

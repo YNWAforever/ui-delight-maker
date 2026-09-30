@@ -1,0 +1,176 @@
+{
+  "checkedAt": "2026-09-30T22:29:43.647Z",
+  "url": "https://clientops-uat-20260930.vercel.app",
+  "projectId": "prj_jlIsv7mLYGpZR4XEV4njX05jAZYJ",
+  "deploymentId": "dpl_5yqEDJext5SReES72yYWB6oCSCCh",
+  "sourceSha": "fc4a2fd311d38d05ca6295a43e4fc8571158fd6f",
+  "mergedApplicationSourceEquivalent": "2606334848c8e980128b2d3611ea9a41fc224747",
+  "independentDatabase": {
+    "projectId": "polished-forest-15724329",
+    "branchId": "br-solitary-butterfly-b3883kwo",
+    "database": "clientops_uat"
+  },
+  "independentAuthOriginSha256": "97b089a053f3c9844ea598a8f061b6c5b5abec7c6d64e0700644f6daec1901f1",
+  "success": true,
+  "cases": [
+    {
+      "role": "super_admin",
+      "profileId": "5ab19e68-667f-4d60-8515-a9578f1b164f",
+      "authUserId": "5ab19e68-667f-4d60-8515-a9578f1b164f",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Revenue Desk",
+      "pass": true
+    },
+    {
+      "role": "admin",
+      "profileId": "d0bf98f1-9ce2-4bb9-80a0-3dd3837908fe",
+      "authUserId": "d0bf98f1-9ce2-4bb9-80a0-3dd3837908fe",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Revenue Desk",
+      "pass": true
+    },
+    {
+      "role": "manager",
+      "profileId": "demo-manager-user",
+      "authUserId": "b59756f5-cd59-4366-8885-796c75f25671",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Revenue Desk",
+      "pass": true
+    },
+    {
+      "role": "sales",
+      "profileId": "demo-sales-user",
+      "authUserId": "38fd9036-54b4-4cd8-98f3-6d0e057a5fac",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Revenue Desk",
+      "pass": true
+    },
+    {
+      "role": "client_success",
+      "profileId": "demo-cs-user",
+      "authUserId": "abd1852f-ab38-4d6c-9bc0-0b09e432a744",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Revenue Desk",
+      "pass": true
+    },
+    {
+      "role": "accounting",
+      "profileId": "a8477476-90db-436e-89cd-f93201899883",
+      "authUserId": "a8477476-90db-436e-89cd-f93201899883",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Today",
+      "pass": true
+    },
+    {
+      "role": "read_only",
+      "profileId": "371f8cf3-4e59-47c6-9023-d36860893758",
+      "authUserId": "371f8cf3-4e59-47c6-9023-d36860893758",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Revenue Desk",
+      "pass": true
+    }
+  ],
+  "distinctAuthUsers": 7,
+  "distinctLiveSessions": 7,
+  "distinctOwnCookieSets": 7,
+  "syntheticDataAndOriginalReceiptsUnchanged": true,
+  "originalThree5000Imports": [
+    {
+      "id": "da09c949-4605-4e64-b40b-765b645c97e1",
+      "kind": "client",
+      "state": "completed",
+      "total": 5000
+    },
+    {
+      "id": "1785ae45-3bf9-4e97-83ed-4ba3cd98d808",
+      "kind": "event",
+      "state": "completed",
+      "total": 5000
+    },
+    {
+      "id": "a12ee6fd-c307-41cf-9f91-8062ea6e600f",
+      "kind": "lead",
+      "state": "completed",
+      "total": 5000
+    }
+  ],
+  "additionalRetainedInventory": [
+    {
+      "kind": "client",
+      "state": "completed",
+      "total": 5000,
+      "sessions": 1
+    },
+    {
+      "kind": "event",
+      "state": "completed",
+      "total": 5000,
+      "sessions": 1
+    },
+    {
+      "kind": "lead",
+      "state": "completed",
+      "total": 5000,
+      "sessions": 1
+    },
+    {
+      "kind": "lead",
+      "state": "paused",
+      "total": 5000,
+      "sessions": 1
+    }
+  ],
+  "noRunningWorkersOrLiveLeases": {
+    "import_leases": 0,
+    "bulk_leases": 0,
+    "running_imports": 0,
+    "running_bulk": 0
+  },
+  "sourceBackendAndSchemaUnchanged": true,
+  "noMutationPosts": true,
+  "realProductionPublicSource": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+  "productionRelease": false,
+  "finishedAt": "2026-09-30T22:30:27.700Z",
+  "screenshots": [
+    "stable-uat-fc4a2fd-super_admin-2026-10-01.png",
+    "stable-uat-fc4a2fd-admin-2026-10-01.png",
+    "stable-uat-fc4a2fd-manager-2026-10-01.png",
+    "stable-uat-fc4a2fd-sales-2026-10-01.png",
+    "stable-uat-fc4a2fd-client_success-2026-10-01.png",
+    "stable-uat-fc4a2fd-accounting-2026-10-01.png",
+    "stable-uat-fc4a2fd-read_only-2026-10-01.png"
+  ],
+  "retainedObserverFailures": [
+    "Full Auth URL hashed instead of origin; corrected to pinned origin without config change",
+    "Accounting expected Revenue Desk; actual policy-scoped Today landing, corrected expectation without app/role change",
+    "Aggregate 5000 inventory included one historical paused failure; gate uses three recorded original IDs plus globally zero running workers/live leases"
+  ]
+}
