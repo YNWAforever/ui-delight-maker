@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-09-30T15:11:16.978Z",
+  "sha": "a18aa46273b10edc9cc75dbb11188ad9d49c98e6",
+  "approvalId": "745a9f25-157c-4da3-ae89-db2258621e54",
+  "quoteId": "b11fb195-3647-47d8-8eb8-d1b740ea30ee",
+  "ownManagerAuthMatched": true,
+  "unassignedPendingVisibleInQueue": true,
+  "actualDetailGet": {
+    "httpStatus": 200,
+    "serializedError": true,
+    "error": "Target is outside your management scope"
+  },
+  "claimControlAbsent": true,
+  "approvalStateUnchanged": true,
+  "expected": "Linked-scope manager sees payload and Claim; explicit view/decision deny remains authoritative",
+  "success": false
+}

@@ -280,3 +280,7 @@ Merged source `176c770`, final head `995ba3e`, merge `000c19c18a04a61e9e66dd0d80
 ## R05 Client/Event executing checkpoint
 
 Actual own-manager Client20 and Event20 full upload/commit/loss/reload/Retry/read/replay/side-effect/7-role receipt/download pilots PASS; Client5000 and Event5000 real previews PASS with no business writes. [Exact source and raw evidence](../2026-09-29/client-event-import-uat-2026-09-30.md). Full 5,000-row lifecycles are executing at unchanged a18aa46; CO-17/18 stay `in_progress`, U09 remains incomplete. Original keys, worker count, chunk budget and all safety gates preserved. Inventory, retention, legacy/provider/operator release gates remain open.
+
+## T11/R04 follow-up — claimable detail and view deny
+
+Actual manager revision-B GET is denied while its linked-subject queue includes the pending request. Positive PostgreSQL regressions reproduce this plus an explicit-view-denied affordance/direct-claim gap (3 red /9 passing); repaired source passes 12 new and48 related real DB cases, types/lint/pure Vite/bundles. [Repair evidence](../2026-09-29/claimable-approval-uat-2026-09-30.md). Full no-skip/CI/hosted role recapture pending; CO-12 remains `in_progress`, U04 open. No new role grant/migration/provider/production action; ongoing imports retain original source and keys.
