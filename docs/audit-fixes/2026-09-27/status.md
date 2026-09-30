@@ -34,7 +34,7 @@ Allowed finding states: `open`, `in_progress`, `verified_fixed`, `already_fixed_
 
 ## Finding matrix
 
-Main now contains the remediation source at `f038919b95ff085190401f64078b78bc8781dd4d`, while the latest READY Production deployment still serves the audited `2904faa502f7494173f48f412875c1d0a3aba674` version. Finding states below remain evidence-based; a mock characterization probe or a merged code change alone does not satisfy role UI, data parity or production release gates.
+Current verified main is `000c19c18a04a61e9e66dd0d806f7760210f9bd3` after PR #139, with 2,313 real isolated PostgreSQL tests and zero skipped. Public production still serves `bed941b37d18d214d0e7658ebce2116a2fc33eb9` under the verified build hold. Earlier task-row blockers describe their original evidence time; seven distinct isolated sessions and authenticated runtime measurements now exist for linked executed slices. Finding states remain evidence-based; outstanding workflow, historical parity, provider and release gates retain their individual blockers.
 
 | Finding | Severity | Owner | State | Unit / real DB / role UI evidence | Blocker |
 |---|---|---|---|---|---|
@@ -272,3 +272,11 @@ R04 final local source verification: fresh empty `clientops_approval_final_20260
 - R05/U16 actual accountingreport and ownSA/admin pageCSV downloads, reader exactGETdenial and real LibreOffice/Excel fourteenliteraltextcells/negative-decimalnumeric/control2 PASS at0075e19. Effective audit.export deny still showedSA Export (serverGETrefused,noIDsleaked). Failed run retained; three validUI regressions red→green,61affectedpass; fullfresh actualPostgres **2,313/0skips/0todo**,315files andstatic/pureVite/bundles pass. Fixed-source hostedrecapture/CI pending. [Report](../2026-09-29/authenticated-export-uat-2026-09-30.md). All30CO/16UAT retained; external/remainingR05/release gates open.
 
 - R05/U16 fixed hosted176c770 all seven cases PASS: accountingReport/ownSA+adminCSV, ownreader exactGET refusal, matchingSAaudit.export deny hidescontrol, ownreader explicitallow actualdownload and revocation/reloaddeny. CSVwriter/aggregation unchanged; actual Officefiles14text/numeric/control2 verified. SourceCI **2,313/0skips**, replay/browser/types/lint/Vite/bundles/Vercel green; finaldocsheadCI follows. [Evidence](../2026-09-29/authenticated-export-uat-2026-09-30.md). CO29/U16 accepted in isolation; all30CO/16UAT and broaderClient/Event/inventory/retention/provider/legacy/operatorrelease gates retained.
+
+## PR #139 completed checkpoint
+
+Merged source `176c770`, final head `995ba3e`, merge `000c19c18a04a61e9e66dd0d806f7760210f9bd3` at 2026-09-30T14:12:07Z. Exact-head and post-merge main Checks/Database contract passed 2,313 tests, 315 files, zero skipped and isolated migration/seed replay. Actual own accounting/SA/admin/reader export UAT and Excel/LibreOffice are linked in [U16](../2026-09-29/authenticated-export-uat-2026-09-30.md). CO-29 remains `verified_fixed`; all 30 finding states and 16 UAT rows remain present. [Hold](../2026-09-29/evidence/production-hold-after-139-2026-09-30.json) confirms production was not promoted; legacy/provider/operator and unexecuted workflow gates remain open.
+
+## R05 Client/Event executing checkpoint
+
+Actual own-manager Client20 and Event20 full upload/commit/loss/reload/Retry/read/replay/side-effect/7-role receipt/download pilots PASS; Client5000 and Event5000 real previews PASS with no business writes. [Exact source and raw evidence](../2026-09-29/client-event-import-uat-2026-09-30.md). Full 5,000-row lifecycles are executing at unchanged a18aa46; CO-17/18 stay `in_progress`, U09 remains incomplete. Original keys, worker count, chunk budget and all safety gates preserved. Inventory, retention, legacy/provider/operator release gates remain open.

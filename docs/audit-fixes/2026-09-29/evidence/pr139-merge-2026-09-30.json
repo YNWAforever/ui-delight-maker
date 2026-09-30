@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-09-30T14:22:54.048Z",
+  "pr": 139,
+  "finalPrHead": "995ba3e68dfc1ed4b999848f675c1b5fa3081d95",
+  "source": "176c770c2b318dbf2f0288833b442637d706027e",
+  "mergeCommit": "000c19c18a04a61e9e66dd0d806f7760210f9bd3",
+  "mergedAt": "2026-09-30T14:12:07Z",
+  "prChecks": 36726261493,
+  "prDatabaseContract": 36726261163,
+  "mainChecks": 36727310601,
+  "mainDatabaseContract": 36727310570,
+  "tests": 2313,
+  "files": 315,
+  "skipped": 0,
+  "requiredChecks": "SUCCESS",
+  "scope": "Final-head and post-merge isolated CI, including migration/seed replay; scoped own-account U16 proof. No production release."
+}

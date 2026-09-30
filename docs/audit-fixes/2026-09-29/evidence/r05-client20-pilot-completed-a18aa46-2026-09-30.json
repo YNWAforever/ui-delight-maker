@@ -1,0 +1,189 @@
+{
+  "sha": "a18aa46273b10edc9cc75dbb11188ad9d49c98e6",
+  "createdAt": "2026-09-30T14:26:49.720Z",
+  "scope": "Actual independent manager client20 commit, response loss, reload, resume, replay, owner reads, issues CSV",
+  "kind": "client",
+  "total": 20,
+  "sessionId": "62451e99-e681-4b6c-b1c0-191cf6cc493f",
+  "actorRole": "manager",
+  "success": true,
+  "network": [
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "elapsedMs": 4932,
+      "bytes": 0,
+      "serializedError": null
+    },
+    {
+      "path": "/_serverFn/c8a9edc658b2fa7fb4effc24803c99c6627e5ad3bf6a0da6f805bdb502d79925",
+      "status": 200,
+      "elapsedMs": 4924,
+      "bytes": 0,
+      "serializedError": null
+    },
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "elapsedMs": 1316,
+      "bytes": 1836,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/c8a9edc658b2fa7fb4effc24803c99c6627e5ad3bf6a0da6f805bdb502d79925",
+      "status": 200,
+      "elapsedMs": 2834,
+      "bytes": 5273,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/c8a9edc658b2fa7fb4effc24803c99c6627e5ad3bf6a0da6f805bdb502d79925",
+      "status": 200,
+      "elapsedMs": 2409,
+      "bytes": 5273,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "elapsedMs": 1265,
+      "bytes": 1836,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/c8a9edc658b2fa7fb4effc24803c99c6627e5ad3bf6a0da6f805bdb502d79925",
+      "status": 200,
+      "elapsedMs": 2579,
+      "bytes": 5657,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/cac8e4aecf1e2b85ad431bf27fa5ef12eb237ff4ded6facf42b627d1d3753368",
+      "status": 200,
+      "elapsedMs": 13440,
+      "bytes": 5948,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/c8a9edc658b2fa7fb4effc24803c99c6627e5ad3bf6a0da6f805bdb502d79925",
+      "status": 200,
+      "elapsedMs": 3142,
+      "bytes": 5948,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/cac8e4aecf1e2b85ad431bf27fa5ef12eb237ff4ded6facf42b627d1d3753368",
+      "status": 200,
+      "elapsedMs": 6244,
+      "bytes": 5948,
+      "serializedError": false
+    }
+  ],
+  "roleReads": [
+    {
+      "role": "super_admin",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": false,
+      "denied": true,
+      "noBusinessIDsLeaked": true
+    },
+    {
+      "role": "admin",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": false,
+      "denied": true,
+      "noBusinessIDsLeaked": true
+    },
+    {
+      "role": "manager",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": true,
+      "denied": false,
+      "noBusinessIDsLeaked": null
+    },
+    {
+      "role": "sales",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": false,
+      "denied": true,
+      "noBusinessIDsLeaked": true
+    },
+    {
+      "role": "client_success",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": false,
+      "denied": true,
+      "noBusinessIDsLeaked": true
+    },
+    {
+      "role": "accounting",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": false,
+      "denied": true,
+      "noBusinessIDsLeaked": true
+    },
+    {
+      "role": "read_only",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": false,
+      "denied": true,
+      "noBusinessIDsLeaked": true
+    }
+  ],
+  "resumes": 0,
+  "firstCommitResponseLost": true,
+  "afterLostCounts": {
+    "ambiguous": 1,
+    "invalid": 2,
+    "skipped": 2,
+    "stale": 1,
+    "succeeded": 8,
+    "ready": 6
+  },
+  "savedKeySurvivedReload": true,
+  "firstKeyReplay": {
+    "previousRowsUnchanged": true,
+    "continuesOnlyUnprocessed": true,
+    "before": {
+      "ambiguous": 1,
+      "invalid": 2,
+      "skipped": 2,
+      "stale": 1,
+      "succeeded": 8,
+      "ready": 6
+    },
+    "after": {
+      "ambiguous": 1,
+      "invalid": 2,
+      "skipped": 2,
+      "stale": 1,
+      "succeeded": 14
+    }
+  },
+  "readAfterExternalReplay": true,
+  "terminal": {
+    "ambiguous": 1,
+    "invalid": 2,
+    "skipped": 2,
+    "stale": 1,
+    "succeeded": 14
+  },
+  "business": {
+    "created": 14,
+    "allOwnerManager": true,
+    "noDuplicateBusinessIDs": true,
+    "distinctSourcesSameName": true,
+    "chineseMultilinePreserved": true,
+    "sideEffectsValidated": true
+  },
+  "terminalReplayUnchanged": true,
+  "distinctActualAuthUsers": 7,
+  "distinctCookieSets": 7,
+  "download": {
+    "actualBrowserDownload": true,
+    "bom": true,
+    "issueRows": 4,
+    "skippedRowsExcluded": true
+  },
+  "finishedAt": "2026-09-30T14:28:56.066Z"
+}

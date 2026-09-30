@@ -1,5 +1,15 @@
 # Source and environment checkpoint — 2026-09-30 HKT
 
+## Current verified checkpoint — PR #139
+
+Main `000c19c18a04a61e9e66dd0d806f7760210f9bd3` includes [merged PR #139](https://github.com/YNWAforever/ui-delight-maker/pull/139), source `176c770`, final PR head `995ba3e`. Both the exact final-head and post-merge [Checks](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36727310601) and [Database contract](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36727310570) passed: **2,313 tests across 315 files, zero skipped**, plus isolated migration/seed replay. [Merge evidence](evidence/pr139-merge-2026-09-30.json).
+
+Seven distinct isolated role sessions and a separately created empty Neon/Auth test environment now exist. The earlier session-absence and authenticated timing blockers are resolved for the executed slices. Completed scoped acceptance includes opposed approval decisions, manager approval/admin issue boundaries, accounting/manual Xero, Task100 recovery, Lead5000 terminal lifecycle, held-risk rollback/replay, native Admin 200% zoom and actual CSV downloads opened in Excel/LibreOffice. Each full workflow retains its own unmet criteria in [UAT](../2026-09-27/uat-results.md); these observations do not complete all R00–R08 acceptance.
+
+[Read-only production hold evidence](evidence/production-hold-after-139-2026-09-30.json): the main deployment attempt was **CANCELED**, while the public build remains `bed941b37d18d214d0e7658ebce2116a2fc33eb9`. No production database operation, promotion or real provider/customer send occurred. Release remains **NO-GO**. Independent legacy/Neon snapshots, four historical anomaly dispositions, provider sandbox/callback receipts, full cross-entry and workflow coverage, screen reader and operator/PITR/release rehearsal remain open.
+
+Client/Event import preview and lifecycle observers are executing against stable isolated source `a18aa46`. The current main import service, server functions, shared import panel and both import routes are byte-for-byte unchanged from that source. This is an execution checkpoint; no Client/Event PASS is claimed yet.
+
 ## Source delivery
 
 [PR #123](https://github.com/YNWAforever/ui-delight-maker/pull/123) merged the R06 Chromium collector to main at `82d8ad7de342c673b08887325f9b46fd3caa2803`. Source commit: `2c14f0b50567910e6597d68e6b0a3621585bc5b9`; final PR head: `48f6b2a8fdbaa2f9145f2d75656409eaa34355e7`. Its protected preview `/api/build` returned that exact head.
