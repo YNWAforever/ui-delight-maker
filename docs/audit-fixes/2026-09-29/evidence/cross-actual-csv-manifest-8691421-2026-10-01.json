@@ -1,0 +1,51 @@
+{
+  "source": "8691421eb79a57e8bb3fdbc4a7e54367d493611f",
+  "archive": {
+    "file": "cross-actual-csv-8691421-2026-10-01.zip",
+    "sha256": "20a4e2fd46fe009ba89aa884aa22fdcec57361986d15fe1d360644f296424e1e"
+  },
+  "files": [
+    {
+      "file": "tasks-before.csv",
+      "bytes": 74,
+      "sha256": "b9a6f82a84a987c0dd74e43d71cc0362c3252265a1b9661508386780a0bbb67e",
+      "actualBrowserDownload": true,
+      "bom": true
+    },
+    {
+      "file": "tasks-after.csv",
+      "bytes": 74,
+      "sha256": "972d1af9aa6b1dab141935bbc5ea9613e61c2e70e508af045020fabee3565283",
+      "actualBrowserDownload": true,
+      "bom": true
+    },
+    {
+      "file": "reviews-before.csv",
+      "bytes": 154,
+      "sha256": "b7f534d5cf90099a28d98a781ad7f0c571c67ec52b2c6bf90a803cf6689f5a6b",
+      "actualBrowserDownload": true,
+      "bom": true
+    },
+    {
+      "file": "reviews-after.csv",
+      "bytes": 131,
+      "sha256": "aa07a253c8ede95d1b988b870d7af11f18f845d64da89165c20ccf3c5afab3a0",
+      "actualBrowserDownload": true,
+      "bom": true
+    },
+    {
+      "file": "sheet-before.csv",
+      "bytes": 195,
+      "sha256": "397a3d59fed4e4a8ff1a11cc854a0cb22911fc2ca7fa5aa106bc52c3337cffd0",
+      "actualBrowserDownload": true,
+      "bom": true
+    },
+    {
+      "file": "sheet-after.csv",
+      "bytes": 222,
+      "sha256": "e28a0ed7e766c18926e5b1ddeab08919ab1ea92f806736b0103a3a52c22fe828",
+      "actualBrowserDownload": true,
+      "bom": true
+    }
+  ]
+}

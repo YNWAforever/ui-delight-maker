@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-09-30T16:58:24.251Z",
+  "pr": 140,
+  "source": "8691421eb79a57e8bb3fdbc4a7e54367d493611f",
+  "finalPrHead": "9f8cd9ac3528e9c32a093bbe74dabb87b914e044",
+  "mergeCommit": "7ad12b9852702011dd99eb2f849a1269e014fea3",
+  "mergedAt": "2026-09-30T16:45:56Z",
+  "prChecks": 36745678173,
+  "prDatabaseContract": 36745678164,
+  "mainChecks": 36746596557,
+  "mainDatabaseContract": 36746596582,
+  "mainContractJob": 109994237057,
+  "tests": 2325,
+  "files": 316,
+  "skipped": 0,
+  "requiredChecks": "SUCCESS",
+  "scope": "Final-head and post-merge isolated CI/replay; own-role claim/U04/U14 proof. No production release."
+}

@@ -1,4 +1,14 @@
-# Source and environment checkpoint — 2026-09-30 HKT
+# Source and environment checkpoint — updated 2026-10-01 HKT
+
+## Current verified checkpoint — PR #140 / 2026-10-01 HKT
+
+Main `7ad12b9852702011dd99eb2f849a1269e014fea3` includes [merged PR #140](https://github.com/YNWAforever/ui-delight-maker/pull/140), source `8691421`, final head `9f8cd9a`. Exact final-head and post-merge [Checks](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36746596557)/[Database contract](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36746596582) pass **2,325 real isolated PostgreSQL tests, 316 files, zero skipped**, plus isolated migration/seed replay. [Merge evidence](evidence/pr140-merge-2026-10-01.json).
+
+Seven distinct real Auth identities/session cookies are available in an independent synthetic environment. Actual scoped acceptance now includes [ten claim/detail/override/replay cases](claimable-approval-uat-2026-09-30.md), [U04 immutable A/B](quote-role-uat-2026-09-30.md) and [U14 actual HK currency/date/report](hk-report-uat-2026-10-01.md), alongside previous Task100, Lead5000, billing, risk, native Admin zoom and real CSV/Excel/LibreOffice slices. [Sixteen-case matrix](../2026-09-27/uat-results.md) retains every case's unmet criteria; all30 CO remain tracked.
+
+[Production hold](evidence/production-hold-after-140-2026-10-01.json): canceled main deployment; public build remains `bed941b37d18d214d0e7658ebce2116a2fc33eb9`. No production DB operation, promotion or real provider/customer send. Release **NO-GO**; legacy/Neon parity, four historical anomaly dispositions, sandbox callbacks/provider receipts, remaining workflows, screen reader and operator/PITR/release rehearsal remain open.
+
+Stable sourcea18aa46 remains untouched while original Client/Event5000 receipts finish. Preview/pilots are complete; their full terminal/replay/side-effect/seven-role receipt/download proof is still pending. Current main import files remain unchanged from a18aa46.
 
 ## Current verified checkpoint — PR #139
 

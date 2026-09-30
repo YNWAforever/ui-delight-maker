@@ -1,0 +1,48 @@
+{
+  "sha": "7ad12b9852702011dd99eb2f849a1269e014fea3",
+  "startedAt": "2026-09-30T17:06:47.413Z",
+  "scope": "Actual isolated seven-day payload retention CLI rehearsal and aggregate inventory; one explicitly synthetic expired receipt, no production schedule",
+  "fixtureId": "6b5b66d2-c1ac-47e7-a1b3-0ba27182adbe",
+  "success": true,
+  "dryRun": {
+    "eligibleSessions": 1,
+    "syntheticFixtureOnly": true,
+    "payloadUnchanged": true,
+    "limit": 100
+  },
+  "executed": {
+    "expiredSessions": 1,
+    "replayExpiredSessions": 0,
+    "rowPayloadScrubbed": true,
+    "minimalStatusActorKeyAndReceiptRetained": true,
+    "identityMapRetained": true,
+    "businessRecordUnchanged": true,
+    "activeClientEventRetentionsUntouched": true
+  },
+  "aggregateInventoryDuringActiveImports": [
+    {
+      "resource_type": "account",
+      "duplicate_groups": 0,
+      "records_in_groups": 0
+    },
+    {
+      "resource_type": "client",
+      "duplicate_groups": 6,
+      "records_in_groups": 14
+    },
+    {
+      "resource_type": "identity_key",
+      "duplicate_groups": 0,
+      "records_in_groups": 13485
+    },
+    {
+      "resource_type": "lead",
+      "duplicate_groups": 1,
+      "records_in_groups": 6
+    }
+  ],
+  "inventoryCaveat": "Single read-only aggregate snapshot during ongoing imports; not terminal reconciliation or production inventory",
+  "productionScheduleConfigured": false,
+  "productionOwnerDecision": "blocked_external; operator must name owner/schedule/approved target before production maintenance",
+  "finishedAt": "2026-09-30T17:07:11.938Z"
+}
