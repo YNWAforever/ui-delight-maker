@@ -1042,7 +1042,7 @@ function ApprovalsInbox() {
                   <p className="text-xs text-muted-foreground">
                     <UserPlus className="mr-1 inline h-3 w-3" />
                     {approval.assigned_to
-                      ? "Routed to a reviewer. Decisions remain subject to each reviewer\u2019s record permissions."
+                      ? "Routed to a reviewer. Decisions remain subject to each reviewer's record permissions."
                       : "Unassigned. Eligible reviewers can claim it when the linked subject is in scope."}
                   </p>
                 </div>
@@ -1132,21 +1132,23 @@ function ApprovalsInbox() {
       {
         id: "notes",
         title: "Reviewer notes",
-        content: isDecidable(approval) ? (
-          <Textarea
-            aria-label="Reviewer notes or decision reason"
-            name={`decision-reason-${surface}`}
-            placeholder="Reviewer notes / reason for decision"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            disabled={isBusy}
-            className="h-20 text-sm"
-          />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {approval.reviewer_notes?.trim() || "No reviewer notes were recorded."}
-          </p>
-        ),
+        content:
+          isDecidable(approval) &&
+          (approval.can_decide === true || approval.can_request_changes === true) ? (
+            <Textarea
+              aria-label="Reviewer notes or decision reason"
+              name={`decision-reason-${surface}`}
+              placeholder="Reviewer notes / reason for decision"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              disabled={isBusy}
+              className="h-20 text-sm"
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {approval.reviewer_notes?.trim() || "No reviewer notes were recorded."}
+            </p>
+          ),
       },
     ];
     return sections;

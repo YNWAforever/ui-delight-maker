@@ -253,6 +253,63 @@ describe("work queue keyset pagination on isolated PostgreSQL", () => {
   );
 
   it.runIf(hasDatabase)(
+    "history keeps scoped overrides without treating terminal rows as claimable",
+    async () => {
+      await holder.client!.query("savepoint history_scope");
+      try {
+        const task = (await holder.client!.query("select id from tasks where title='Task 1'"))
+          .rows[0].id;
+        const run = (
+          await holder.client!.query(
+            "insert into agent_runs (id,status,subject_type,subject_id) values(gen_random_uuid(),'waiting_approval','task',$1) returning id",
+            [task],
+          )
+        ).rows[0].id;
+        const terminal = (
+          await holder.client!.query(
+            "insert into human_approvals (id,agent_run_id,approval_type,assigned_to,status,row_version,context_data,created_at) values(gen_random_uuid(),$1,'message_send',null,'approved',1,'{}',now()) returning id",
+            [run],
+          )
+        ).rows[0].id;
+        const denied = (
+          await holder.client!.query(
+            "select id from human_approvals where assigned_to='owner-a' and status='approved' limit 1",
+          )
+        ).rows[0].id;
+        const repo = await import("@/server/repositories/approvals");
+        const actor = context();
+        expect((await repo.listApprovalQueuePage({ group: "history" }, actor)).total).toBe(20);
+        actor.overrides = [
+          {
+            profileId: actor.actor.profileId,
+            capability: "approvals.view",
+            effect: "allow",
+            resourceType: "human_approval",
+            resourceId: terminal,
+          },
+          {
+            profileId: actor.actor.profileId,
+            capability: "approvals.view",
+            effect: "deny",
+            resourceType: "human_approval",
+            resourceId: denied,
+          },
+        ];
+        const allowed = await repo.listApprovalQueuePage({ group: "history" }, actor);
+        expect(allowed.total).toBe(20);
+        expect(allowed.items.some((row) => row.id === terminal)).toBe(true);
+        expect(allowed.items.some((row) => row.id === denied)).toBe(false);
+        actor.overrides[0].expiresAt = "2026-09-01T00:00:00Z";
+        const expired = await repo.listApprovalQueuePage({ group: "history" }, actor);
+        expect(expired.total).toBe(19);
+        expect(expired.items.some((row) => row.id === terminal)).toBe(false);
+      } finally {
+        await holder.client!.query("rollback to savepoint history_scope");
+      }
+    },
+  );
+
+  it.runIf(hasDatabase)(
     "approval server list omits payload while selected detail and aggregate stay scoped",
     async () => {
       const server = await import("../approvals");

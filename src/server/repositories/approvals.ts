@@ -99,11 +99,15 @@ export async function listApprovalQueuePage(
     sql.replace(/\$(\d+)/g, (_, index: string) => "$" + (Number(index) + offset));
   const clauses = [scope.sql];
   let from = "human_approvals ha";
-  if (context.actor.role === "manager") {
+  if (context.actor.role === "manager" && input.group === "pending") {
+    // Claims only apply to open unassigned rows; history keeps its ordinary visibility scope.
+    // OFFSET 0 keeps the linked-subject CASE as one lateral evaluation instead of repeating
+    // its subqueries in each view/decide predicate (and compiling them with PostgreSQL JIT).
     // Match the linked-subject ownership used by listClaimableApprovals, while applying
     // both view and decide overrides before counting or paging.
     from += ` left join agent_runs ar on ar.id=ha.agent_run_id
       cross join lateral (select case
+        when ha.assigned_to is not null then null
         when ar.status='waiting_approval' and ar.subject_type='lead'
           then (select l.assigned_to from leads l where l.id=ar.subject_id)
         when ar.status='waiting_approval' and ar.subject_type='engagement'
@@ -123,7 +127,7 @@ export async function listApprovalQueuePage(
           then (select coalesce(q.created_by,a.account_owner) from quotes q
                 left join accounts a on a.id=q.account_id
                 where q.id::text=ha.context_data->>'quote_id')
-      end as claim_owner) subject`;
+      end as claim_owner offset 0) subject`;
     const claimView = buildVisibilityScope(context, "human_approval", "ha", {
       ownerSql: "subject.claim_owner",
     });

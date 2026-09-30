@@ -423,6 +423,8 @@ describe("Server-evaluated approval action boundaries", () => {
     expect(screen.queryByRole("button", { name: "Claim for review" })).toBeNull();
     expect(screen.queryByRole("combobox", { name: /Assign reviewer/ })).toBeNull();
     expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Reviewer notes or decision reason" })).toBeNull();
+    expect(screen.getAllByText("No reviewer notes were recorded.").length).toBeGreaterThan(0);
     expect(decideApprovalMock).not.toHaveBeenCalled();
     expect(assignApprovalFnMock).not.toHaveBeenCalled();
   });
