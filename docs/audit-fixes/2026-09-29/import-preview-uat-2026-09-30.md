@@ -31,3 +31,5 @@ PR #135 merged at `f378fdf0f7c726238dabc03516fd6477d07612a6` after final-head Ch
 All 30 CO and 16 UAT rows remain tracked. Full Lead/Client/Event lifecycle, download authorization/encoding, retention dry run, source inventory, broader bulk/risk/admin/accessibility UAT, legacy/provider/anomaly/operator gates remain open. Rollback uses the previous dedicated UAT app; keep durable import receipts/identity mappings and never reset business versions.
 
 Full-suite first run: 2,270 passed / 21 failed because two pre-existing route mocks replaced the router without ClientOnly. Both now retain the real export; all 25 affected route/hydration UI cases pass. No assertion/skip gate removed. Fresh full rerun pending. The initial implementation run also exposed unexpanded SQL-writing placeholders, corrected before the passing production-adapter run; failed local logs retained privately.
+
+Fresh final source gate: **2,291 real PostgreSQL/full-suite tests / 0 skipped / 0 todo**,313files; TypeScript, full source lint, pure Vite client/SSR and bundle budgets pass. applyRow unchanged from merged main. Hosted exact-source verification and CI remain required.

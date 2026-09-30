@@ -50,13 +50,21 @@ export type PreparedImportRow = {
   targetId?: string | null;
   expectedVersion?: number | null;
 };
+export type ImportRowPreparer = (
+  context: RequestAuthorization,
+  kind: ImportKind,
+  values: ImportRow,
+  input: { sourceNamespace: string | null; campaignId: string | null; recordIndex: number },
+) => Promise<PreparedImportRow>;
 export type ImportHandler = {
-  prepareRow(
+  prepareRow: ImportRowPreparer;
+  /** Request-local read cache only. applyRow always rechecks the database. */
+  prepareBatch?(
     context: RequestAuthorization,
     kind: ImportKind,
-    values: ImportRow,
-    input: { sourceNamespace: string | null; campaignId: string | null; recordIndex: number },
-  ): Promise<PreparedImportRow>;
+    rows: ImportRow[],
+    input: { sourceNamespace: string | null; campaignId: string | null },
+  ): Promise<ImportRowPreparer>;
   applyRow(
     context: RequestAuthorization,
     kind: ImportKind,
@@ -237,6 +245,17 @@ export function createImportService(options: { handler: ImportHandler }) {
     const retainUntil = new Date(Date.now() + 7 * 24 * 60 * 60_000).toISOString();
     const sourceNamespace = input.sourceNamespace ?? null;
     const campaignId = input.campaignId ?? null;
+    const prepareRow = handler.prepareBatch
+      ? await handler.prepareBatch(
+          context,
+          input.kind,
+          parsed.rows.map((row) => row.values),
+          {
+            sourceNamespace,
+            campaignId,
+          },
+        )
+      : handler.prepareRow;
     const seenExternalIds = new Map<string, string>();
     const rows: Array<{
       position: number;
@@ -267,7 +286,7 @@ export function createImportService(options: { handler: ImportHandler }) {
                 : "Conflicting rows use the same external ID",
             ],
           }
-        : await handler.prepareRow(context, input.kind, parsedRow.values, {
+        : await prepareRow(context, input.kind, parsedRow.values, {
             sourceNamespace,
             campaignId,
             recordIndex: parsedRow.recordIndex,
