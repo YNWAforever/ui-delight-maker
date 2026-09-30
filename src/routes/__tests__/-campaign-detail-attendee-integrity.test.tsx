@@ -19,19 +19,23 @@ const toastSuccessMock = vi.hoisted(() => vi.fn());
 const useSearchMock = vi.hoisted(() => vi.fn());
 const useRouteContextMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => ({
-    options,
-    fullPath: "/campaigns/$id",
-    useLoaderData: vi.fn(),
-    useSearch: useSearchMock,
-    useRouteContext: useRouteContextMock,
-  }),
-  useNavigate: () => navigateMock,
-  useRouter: () => ({ invalidate: routerInvalidateMock }),
-  notFound: () => new Error("not found"),
-  Link: ({ to, children }: { to: string; children?: ReactNode }) => <a href={to}>{children}</a>,
-}));
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const { ClientOnly } = await importOriginal<typeof import("@tanstack/react-router")>();
+  return {
+    ClientOnly,
+    createFileRoute: () => (options: Record<string, unknown>) => ({
+      options,
+      fullPath: "/campaigns/$id",
+      useLoaderData: vi.fn(),
+      useSearch: useSearchMock,
+      useRouteContext: useRouteContextMock,
+    }),
+    useNavigate: () => navigateMock,
+    useRouter: () => ({ invalidate: routerInvalidateMock }),
+    notFound: () => new Error("not found"),
+    Link: ({ to, children }: { to: string; children?: ReactNode }) => <a href={to}>{children}</a>,
+  };
+});
 vi.mock("sonner", () => ({
   toast: { error: toastErrorMock, success: toastSuccessMock, message: vi.fn() },
 }));

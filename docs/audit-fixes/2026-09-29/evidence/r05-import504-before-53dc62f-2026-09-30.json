@@ -1,0 +1,41 @@
+{
+  "sha": "53dc62f8a19e4a2449c9e445651bbeb43bd3158b",
+  "createdAt": "2026-09-30T09:19:12.531Z",
+  "scope": "Actual independent sales Lead5000 upload/preview only",
+  "role": "sales",
+  "csv": {
+    "rows": 5000,
+    "bytes": 870716,
+    "bom": true,
+    "chinese": true,
+    "multiline": true,
+    "duplicateIdentical": true,
+    "duplicateConflicting": true,
+    "invalidEmail": true,
+    "invalidOwner": true,
+    "skip": true,
+    "missingExplicitTarget": true
+  },
+  "expected": {
+    "ready": 4994,
+    "invalid": 2,
+    "skipped": 2,
+    "ambiguous": 1,
+    "stale": 1
+  },
+  "requests": [
+    {
+      "path": "/_serverFn/4cfd67d21760cd649138f001811fa00fa5e451e113905bdbbe2f539b1c702a3c",
+      "status": 504,
+      "elapsedMs": 301568,
+      "bytes": 79,
+      "serializedError": false
+    }
+  ],
+  "success": false,
+  "elapsedMs": 301795,
+  "alerts": [
+    "Something went wrong. Please try again."
+  ],
+  "previewDidNotWrite": true
+}

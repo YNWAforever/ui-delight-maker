@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ClientOnly } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,17 +74,40 @@ function downloadFailures(result: ImportResult, kind: ImportKind) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function ImportSessionPanel({
-  kind,
-  campaignId,
-  title,
-  onProgress,
-}: {
+type ImportSessionPanelProps = {
   kind: ImportKind;
   campaignId?: string;
   title?: string;
   onProgress?: (result: ImportResult) => void | Promise<void>;
-}) {
+};
+
+export function ImportSessionPanel(props: ImportSessionPanelProps) {
+  return (
+    <ClientOnly
+      fallback={
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">{props.title ?? "CSV import"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p role="status" className="text-sm text-muted-foreground">
+              Loading CSV import…
+            </p>
+          </CardContent>
+        </Card>
+      }
+    >
+      <ImportSessionPanelContent {...props} />
+    </ClientOnly>
+  );
+}
+
+function ImportSessionPanelContent({
+  kind,
+  campaignId,
+  title,
+  onProgress,
+}: ImportSessionPanelProps) {
   const storageKey = `clientops-import:${kind}:${campaignId ?? ""}`;
   const [sourceNamespace, setSourceNamespace] = useState("");
   const [fileName, setFileName] = useState<string | null>(null);

@@ -12,15 +12,19 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   routerInvalidate: vi.fn(),
 }));
-vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => ({
-    options,
-    fullPath: "/clients/import",
-    useLoaderData: vi.fn(),
-  }),
-  useRouter: () => ({ invalidate: mocks.routerInvalidate }),
-  Link: ({ to, children }: { to: string; children?: ReactNode }) => <a href={to}>{children}</a>,
-}));
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const { ClientOnly } = await importOriginal<typeof import("@tanstack/react-router")>();
+  return {
+    ClientOnly,
+    createFileRoute: () => (options: Record<string, unknown>) => ({
+      options,
+      fullPath: "/clients/import",
+      useLoaderData: vi.fn(),
+    }),
+    useRouter: () => ({ invalidate: mocks.routerInvalidate }),
+    Link: ({ to, children }: { to: string; children?: ReactNode }) => <a href={to}>{children}</a>,
+  };
+});
 vi.mock("@/server-functions/import-sessions", () => ({
   previewImportFn: mocks.preview,
   commitImportFn: mocks.commit,
