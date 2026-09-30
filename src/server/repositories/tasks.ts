@@ -232,9 +232,10 @@ export async function listTaskQueuePage(
       " and (t.created_at,t.id) < ($" + dateIndex + "::timestamptz,$" + idIndex + "::uuid)";
   }
   const limitIndex = pageValues.push(limit + 1);
-  const rows = await query<Task & { owner_display_name: string | null }>(
+  const rows = await query<Task & { owner_display_name: string | null; cursor_created_at: string }>(
     `select t.id,t.title,t.description,t.assigned_to,t.account_id,t.due_date,
             t.priority,t.status,t.created_by_agent,t.created_at,
+            to_char(t.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_created_at,
             coalesce(nullif(trim(owner.name),''),'Name unavailable') as owner_display_name
        from tasks t left join profiles owner on owner.id=t.assigned_to ${pageWhere}
        order by t.created_at desc,t.id desc
@@ -242,15 +243,16 @@ export async function listTaskQueuePage(
     pageValues,
   );
   const hasMore = rows.length > limit;
-  const items = rows.slice(0, limit);
-  const last = items.at(-1);
+  // Keep PostgreSQL microseconds in the cursor, not in public row metadata.
+  const items = rows.slice(0, limit).map(({ cursor_created_at: _cursor, ...item }) => item);
+  const last = rows[Math.min(rows.length, limit) - 1];
   const nextCursor =
     hasMore && last
       ? Buffer.from(
           JSON.stringify({
             v: 1,
             signature,
-            createdAt: new Date(last.created_at).toISOString(),
+            createdAt: last.cursor_created_at,
             id: last.id,
           }),
         ).toString("base64url")

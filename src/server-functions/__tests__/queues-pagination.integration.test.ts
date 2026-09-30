@@ -328,6 +328,53 @@ describe("work queue keyset pagination on isolated PostgreSQL", () => {
   );
 
   it.runIf(hasDatabase)(
+    "Task and Approval cursors preserve microseconds across equal-time batches",
+    async () => {
+      await holder.client!.query("savepoint precise_cursors");
+      try {
+        await holder.client!.query(
+          "insert into tasks(id,title,description,assigned_to,status,priority,created_at) select gen_random_uuid(),'Precise Task '||i,'Synthetic precision fixture','owner-a','open','medium','2026-09-30T10:00:00.123456Z'::timestamptz from generate_series(1,101) i",
+        );
+        await holder.client!.query(
+          "insert into human_approvals(id,approval_type,assigned_to,status,row_version,context_data,context_summary,created_at) select gen_random_uuid(),'discount','owner-a','pending',0,'{}','Precise Approval '||i,'2026-09-30T10:00:00.123456Z'::timestamptz from generate_series(1,101) i",
+        );
+        const tasks = await import("@/server/repositories/tasks");
+        const approvals = await import("@/server/repositories/approvals");
+        for (const kind of ["task", "approval"] as const) {
+          let cursor: string | undefined;
+          const seen: string[] = [];
+          let firstCursor: string | null = null;
+          for (let pageIndex = 0; pageIndex < 4; pageIndex++) {
+            const page =
+              kind === "task"
+                ? await tasks.listTaskQueuePage(
+                    { search: "Precise Task", limit: 50, cursor },
+                    context(),
+                  )
+                : await approvals.listApprovalQueuePage(
+                    { group: "pending", type: "discount", limit: 50, cursor },
+                    context(),
+                  );
+            expect(page.total).toBe(101);
+            seen.push(...page.items.map((row) => row.id));
+            expect(page.items.some((row) => "cursor_created_at" in row)).toBe(false);
+            if (pageIndex === 0) firstCursor = page.nextCursor;
+            if (!page.nextCursor) break;
+            cursor = page.nextCursor;
+          }
+          expect(seen).toHaveLength(101);
+          expect(new Set(seen).size).toBe(101);
+          expect(
+            JSON.parse(Buffer.from(firstCursor!, "base64url").toString("utf8")).createdAt,
+          ).toBe("2026-09-30T10:00:00.123456Z");
+        }
+      } finally {
+        await holder.client!.query("rollback to savepoint precise_cursors");
+      }
+    },
+  );
+
+  it.runIf(hasDatabase)(
     "approval server list omits payload while selected detail and aggregate stay scoped",
     async () => {
       const server = await import("../approvals");
