@@ -1,0 +1,44 @@
+{
+  "sourceSha": "5568af93c817305a33499ab6f4cabd52380410c5",
+  "checkedAt": "2026-09-30T18:30:28.349Z",
+  "newPositiveCases": 9,
+  "validBefore": {
+    "failed": 7,
+    "passed": 11
+  },
+  "focusedAfter": {
+    "passed": 18
+  },
+  "localFull": {
+    "tests": 2334,
+    "files": 317,
+    "skipped": 0,
+    "todo": 0,
+    "seconds": 342.7,
+    "target": "new disposable loopback PG17.10 database"
+  },
+  "sourceCi": {
+    "checks": 36754343746,
+    "database": 36754343794,
+    "freshContractJob": 110020644325,
+    "tests": 2334,
+    "skipped": 0,
+    "isolatedMigrationSeedReplay": "PASS"
+  },
+  "static": [
+    "TypeScript",
+    "changed ESLint",
+    "pure bunx vite build",
+    "bundle gate",
+    "diff check"
+  ],
+  "hosted": {
+    "actualRoles": 7,
+    "distinctOwnAuthCookies": 7,
+    "cases": 8,
+    "matchedDenyNoPayload": true,
+    "temporaryDeniesRevoked": true,
+    "businessLeadUnchanged": true
+  },
+  "productionRelease": false
+}

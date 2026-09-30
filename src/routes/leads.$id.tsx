@@ -495,7 +495,9 @@ function LeadDetail() {
               <Separator />
               <div>
                 <p className="text-xs text-muted-foreground">Owner</p>
-                <p className="mt-1">{lead.assigned_to ?? "Unassigned"}</p>
+                <p className="mt-1">
+                  {lead.assigned_to ? lead.owner_display_name || "Name unavailable" : "Unassigned"}
+                </p>
               </div>
             </CardContent>
           </Card>

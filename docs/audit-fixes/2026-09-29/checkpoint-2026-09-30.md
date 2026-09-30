@@ -1,6 +1,12 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current verified checkpoint — PR #140 / 2026-10-01 HKT
+## Current verified checkpoint — PR #141 / 2026-10-01 HKT
+
+Main `f4e033ede7f5fcd2808aaaf93293baf73527ca80` includes [merged #141](https://github.com/YNWAforever/ui-delight-maker/pull/141). Exact final head and post-main [Checks](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36750799574)/[Database contract](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36750800091) pass 2,325 tests, 316 files, zero skipped, and isolated migration/seed replay. [Merge proof](evidence/pr141-merge-2026-10-01.json). Actual [U06 cross-entry](cross-entry-uat-2026-10-01.md), [U12 own Sales/CS manual statements](manual-message-uat-2026-10-01.md) and [isolated retention CLI](import-retention-rehearsal-2026-10-01.md) pass in their stated scopes. Lead, Client and Event 5,000-row terminal/replay/related-side-effect/seven-role receipt/download checks and final isolated source-key/target parity now PASS at source `a18aa46`. [Import evidence](client-event-import-uat-2026-09-30.md).
+
+[Production hold](evidence/production-hold-after-141-2026-10-01.json) remains active: this main attempt is CANCELED and public build stays `bed941b`. No production DB operation, customer/provider send or production release. Release NO-GO with historical/provider/snapshot/operator/screen-reader gates retained. Lead Owner source correction `5568af9` passes 2,334 zero-skip local/source-CI tests and eight actual seven-role cases. [Owner evidence](lead-owner-uat-2026-10-01.md). PR #142 final-head CI/merge is pending; U02 remains open on its unnumbered related Quote link follow-up.
+
+## Previous verified checkpoint — PR #140 / 2026-10-01 HKT
 
 Main `7ad12b9852702011dd99eb2f849a1269e014fea3` includes [merged PR #140](https://github.com/YNWAforever/ui-delight-maker/pull/140), source `8691421`, final head `9f8cd9a`. Exact final-head and post-merge [Checks](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36746596557)/[Database contract](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36746596582) pass **2,325 real isolated PostgreSQL tests, 316 files, zero skipped**, plus isolated migration/seed replay. [Merge evidence](evidence/pr140-merge-2026-10-01.json).
 

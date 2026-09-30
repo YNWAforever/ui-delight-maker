@@ -1,0 +1,24 @@
+{
+  "sourceSha": "a18aa46273b10edc9cc75dbb11188ad9d49c98e6",
+  "syntheticOnly": true,
+  "archive": {
+    "file": "r05-client5000-actual-csv-a18aa46-2026-10-01.zip",
+    "sha256": "3215a14d2f60f17ec02b04eb5f71dade1481491a3809b02a0717a146f1a84f35"
+  },
+  "files": [
+    {
+      "file": "client5000.csv",
+      "bytes": 1275797,
+      "sha256": "07809ac44df1a7920bad6cc8d500ca53eb5d12b6129150ab72ec8435d74763a0",
+      "bom": true,
+      "actualBrowserDownload": false
+    },
+    {
+      "file": "issues.csv",
+      "bytes": 292,
+      "sha256": "24bab4bd351dcb4304bc1b8938d34b683b63e924bea6d36f97860760d88b4a6f",
+      "bom": true,
+      "actualBrowserDownload": true
+    }
+  ]
+}

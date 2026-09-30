@@ -152,13 +152,15 @@ export async function getLeadWorkspaceData(id: string) {
   const activityLimit = 20;
   const quoteLimit = 25;
   const [lead, activityLogs, quoteRows] = await Promise.all([
-    queryOne<Lead>(
+    queryOne<Lead & { owner_display_name: string | null }>(
       `
-        select id, contact_id, account_id, source_campaign_id, campaign_member_id,
-               company_name, contact_name, contact_email, contact_phone, source, status,
-               assigned_to, lead_score, qualification_data, enquiry_text, created_at, updated_at
-        from leads
-        where id = $1
+        select l.id, l.contact_id, l.account_id, l.source_campaign_id, l.campaign_member_id,
+               l.company_name, l.contact_name, l.contact_email, l.contact_phone, l.source, l.status,
+               l.assigned_to, l.lead_score, l.qualification_data, l.enquiry_text, l.created_at, l.updated_at,
+               nullif(trim(p.name), '') as owner_display_name
+        from leads l
+        left join profiles p on p.id = l.assigned_to
+        where l.id = $1
       `,
       [id],
     ),

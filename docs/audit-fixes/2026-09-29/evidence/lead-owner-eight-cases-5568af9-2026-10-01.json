@@ -1,0 +1,249 @@
+{
+  "sha": "5568af93c817305a33499ab6f4cabd52380410c5",
+  "startedAt": "2026-09-30T17:59:06.699Z",
+  "scope": "Real isolated own-role Lead workspace UI/GET",
+  "success": true,
+  "cases": [
+    {
+      "case": "authorized own role sees name, not raw identifier in Owner UI",
+      "role": "super_admin",
+      "ownAuthMatched": true,
+      "actualOwnerLabel": "Owner\n\nUAT sales",
+      "authorizedSsrJoinedName": true,
+      "pass": true
+    },
+    {
+      "case": "authorized own role sees name, not raw identifier in Owner UI",
+      "role": "admin",
+      "ownAuthMatched": true,
+      "actualOwnerLabel": "Owner\n\nUAT sales",
+      "authorizedSsrJoinedName": true,
+      "pass": true
+    },
+    {
+      "case": "authorized own role sees name, not raw identifier in Owner UI",
+      "role": "manager",
+      "ownAuthMatched": true,
+      "actualOwnerLabel": "Owner\n\nUAT sales",
+      "authorizedSsrJoinedName": true,
+      "pass": true
+    },
+    {
+      "case": "authorized own role sees name, not raw identifier in Owner UI",
+      "role": "sales",
+      "ownAuthMatched": true,
+      "actualOwnerLabel": "Owner\n\nUAT sales",
+      "authorizedSsrJoinedName": true,
+      "pass": true
+    },
+    {
+      "case": "authorized own role sees name, not raw identifier in Owner UI",
+      "role": "client_success",
+      "ownAuthMatched": true,
+      "actualOwnerLabel": "Owner\n\nUAT sales",
+      "authorizedSsrJoinedName": true,
+      "pass": true
+    },
+    {
+      "case": "existing role denies Lead and owner payload",
+      "role": "accounting",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "authorized own role sees name, not raw identifier in Owner UI",
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "actualOwnerLabel": "Owner\n\nUAT sales",
+      "authorizedSsrJoinedName": true,
+      "pass": true
+    },
+    {
+      "case": "matching lead deny rejects frozen verified workspace GET without owner/name payload",
+      "role": "sales",
+      "ownAuthMatched": true,
+      "httpStatus": 200,
+      "serializedError": true,
+      "noPayload": true,
+      "pass": true
+    }
+  ],
+  "network": [
+    {
+      "role": "super_admin",
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "admin",
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "super_admin",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "manager",
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "admin",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "super_admin",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "sales",
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "manager",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "admin",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "super_admin",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "sales",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "manager",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "admin",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "super_admin",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "client_success",
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "sales",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "manager",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "admin",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "accounting",
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "super_admin",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "client_success",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "read_only",
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "sales",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "manager",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "admin",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "super_admin",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "client_success",
+      "path": "/_serverFn/986f6bd95df022fbc28c12a89f8c08e2ae437260464f52c39e933bee9afd931a",
+      "status": 200,
+      "serializedError": false
+    },
+    {
+      "role": "sales",
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "serializedError": false
+    }
+  ],
+  "leadId": "ab62985a-25ee-4e97-bc58-0e52679955bf",
+  "distinctOwnAuthCookies": 7,
+  "distinctActualAuthUsers": 7,
+  "temporaryDeniesRevoked": true,
+  "observerCorrection": "The APIRequestContext replay omitted browser same-origin transport headers and returned plain transport Forbidden before policy. Use actual browser fetch with the frozen verified Lead workspace GET; leave policy unchanged.",
+  "priorSevenRoleEvidence": "lead-owner-after-5568af9/result.json",
+  "businessLeadUnchanged": true,
+  "finishedAt": "2026-09-30T18:08:14.670Z"
+}

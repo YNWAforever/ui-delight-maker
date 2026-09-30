@@ -318,3 +318,22 @@ describe("Lead detail — optimistic status change", () => {
     });
   });
 });
+
+describe("Lead detail — owner display", () => {
+  it.each([
+    { assignedTo: "sales-text-profile-250", name: "Ada Chan", expected: "Ada Chan" },
+    { assignedTo: "sales-text-profile-250", name: null, expected: "Name unavailable" },
+    { assignedTo: null, name: null, expected: "Unassigned" },
+  ])("shows $expected without exposing an owner identifier", ({ assignedTo, name, expected }) => {
+    const data = {
+      ...workspaceRead,
+      lead: { ...workspaceRead.lead, assigned_to: assignedTo, owner_display_name: name },
+    };
+    getLeadWorkspaceReadMock.mockResolvedValue(data);
+    vi.mocked(Route.useLoaderData).mockReturnValue(data as never);
+    renderLead();
+    const owner = screen.getByText("Owner", { exact: true }).parentElement!;
+    expect(owner.textContent).toContain(expected);
+    if (assignedTo) expect(owner.textContent).not.toContain(assignedTo);
+  });
+});
