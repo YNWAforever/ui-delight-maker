@@ -4,7 +4,7 @@
 
 Main `6a915dd38d06e9a0a8aede89e337ccd83d152071` includes [merged #145](https://github.com/YNWAforever/ui-delight-maker/pull/145), exact final/post-main2,336/317/zero skipped and replay PASS. [Merge](evidence/pr145-merge-2026-10-01.json), [hold](evidence/production-hold-after-145-2026-10-01.json): canceled main attempt, publicbed941b unchanged.
 
-[U10 actual dialog defect/source repair](admin-dialog-uat-2026-10-01.md) is reviewable with local fresh2,340/zero skipped tests and static/pure Vite/bundles PASS. Fixed-source hosted genuine roles/lifecycle and final CI remain pending. All30 CO/16 UAT retained; full remaining/external gates stay open, release NO-GO.
+[U10 actual dialog defect/source repair](admin-dialog-uat-2026-10-01.md) is reviewable with local fresh2,340/zero skipped tests and static/pure Vite/bundles PASS. Fixed-source hosted12 cases plus valid prior250th/Team mixed cases complete defined U10; actual hydrated successor name also retained. SourceCI2,340 zero-skip PASS; final documentation-headCI remains pending. R03 actual role/lifecycle focus/Tab/Escape defects are reproduced and next. All30 CO/16 UAT retained; full remaining/external gates stay open, release NO-GO.
 
 ## Previous verified checkpoint — PR #144 / U15 responsive, 2026-10-01 HKT
 

@@ -1,0 +1,38 @@
+[
+  {
+    "run": "admin-u10-ea76d3b",
+    "sourceSha": "ea76d3b2b5a64b9efe98d403d7f8fff84331aee7",
+    "success": false,
+    "validCasesBeforeObserverFailure": 0,
+    "error": {
+      "stage": "super_admin selected-record",
+      "name": "TimeoutError",
+      "message": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: 'UAT U10 8870c468 250', exact: true }) to be visible\u001b[22m\n"
+    },
+    "originalRecordsRetained": true
+  },
+  {
+    "run": "admin-u10-ea76d3b-v2",
+    "sourceSha": "ea76d3b2b5a64b9efe98d403d7f8fff84331aee7",
+    "success": false,
+    "validCasesBeforeObserverFailure": 8,
+    "error": {
+      "stage": "team same original key replay",
+      "name": "AssertionError",
+      "message": "The expression evaluated to a falsy value:\n\n  assert(/not have this capability|outside.*scope/i.test(r.raw))\n"
+    },
+    "originalRecordsRetained": true
+  },
+  {
+    "run": "admin-u10-ea76d3b-v3",
+    "sourceSha": "ea76d3b2b5a64b9efe98d403d7f8fff84331aee7",
+    "success": false,
+    "validCasesBeforeObserverFailure": 9,
+    "error": {
+      "stage": "deactivate reassignment",
+      "name": "AssertionError",
+      "message": "Expected values to be strictly equal:\n\n0 !== 1\n"
+    },
+    "originalRecordsRetained": true
+  }
+]

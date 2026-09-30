@@ -108,3 +108,5 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 - R02 source `53dc62f` additionally passes actual Task100 response-loss/reload/receipt recovery and mixed-result replay, with 70 once-only writes and 30 failures retained. [U08 report](../2026-09-29/bulk-recovery-uat-2026-09-30.md). Team/other bulk domains, import/export, full U15 and external/operator gates remain unaccepted. No schema change or production release in this slice.
 
 - U10 genuine reader deep-link auto-dialog exposure reproduced; server POST denial/data unchanged confirmed. [Source repair](../2026-09-29/admin-dialog-uat-2026-10-01.md) passes local fresh2,340 zero-skip and static/build gates; hosted repaired roles/reassignment and exact final PR gate pending. No production/schema change.
+
+- PR#146 `ea76d3b`: defined U10 now PASS with exact-source2,340 zero-skip CI and genuine roles/original reassignment/audit. [Report](../2026-09-29/admin-dialog-uat-2026-10-01.md). Admin role/lifecycle initial focus/Tab/Escape actual FAIL remains R03/U15 next; final documentation-headCI required. Full release/external gates unchanged.

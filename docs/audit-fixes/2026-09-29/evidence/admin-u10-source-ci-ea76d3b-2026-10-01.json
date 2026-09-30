@@ -1,0 +1,109 @@
+{
+  "source": "ea76d3b2b5a64b9efe98d403d7f8fff84331aee7",
+  "sourceRequiredChecksGreen": true,
+  "tests": 2340,
+  "skipped": 0,
+  "freshContractJob": 110091185200,
+  "statusChecks": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T20:49:32Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36775184408/job/110091184176",
+      "name": "Types and lint",
+      "startedAt": "2026-09-30T20:48:22Z",
+      "status": "COMPLETED",
+      "workflowName": "Checks"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T20:52:29Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36775184414/job/110091185200",
+      "name": "contract",
+      "startedAt": "2026-09-30T20:48:22Z",
+      "status": "COMPLETED",
+      "workflowName": "Database contract"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T20:49:05Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36775184408/job/110091184680",
+      "name": "Browser collector integration",
+      "startedAt": "2026-09-30T20:48:22Z",
+      "status": "COMPLETED",
+      "workflowName": "Checks"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T20:49:54Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36775184414/job/110091185048",
+      "name": "Isolated migration and seed replay",
+      "startedAt": "2026-09-30T20:48:22Z",
+      "status": "COMPLETED",
+      "workflowName": "Database contract"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T20:48:19Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://supabase.com/dashboard/project/chwgijdmcyzmuuxzdkok/settings/integrations",
+      "name": "Supabase Preview",
+      "startedAt": "2026-09-30T20:48:19Z",
+      "status": "COMPLETED",
+      "workflowName": ""
+    },
+    {
+      "__typename": "StatusContext",
+      "context": "Vercel",
+      "startedAt": "2026-09-30T20:49:06Z",
+      "state": "SUCCESS",
+      "targetUrl": "https://vercel.com/ynwaforevers-projects/ui-delight-maker/3dsUhTcBZeF3CRZ2uZqeZe2G4uya"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-30T20:49:07Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://vercel.com/github",
+      "name": "Vercel Preview Comments",
+      "startedAt": "2026-09-30T20:49:07Z",
+      "status": "COMPLETED",
+      "workflowName": ""
+    }
+  ],
+  "sameFiles": [
+    {
+      "path": "src/components/people/profile-search-combobox.tsx",
+      "sha256": "5f3603dc99946488edd2b159482fedd05e2972103dacf92575bf772490028a28",
+      "unchangedFromPriorU10Source": true
+    },
+    {
+      "path": "src/components/admin/team-member-table.tsx",
+      "sha256": "85083f4e90fad8e3eb48d5f5ee55e8ebea723579ff2a8d7161c860ffe9cccd9b",
+      "unchangedFromPriorU10Source": true
+    },
+    {
+      "path": "src/components/admin/work-reassignment-table.tsx",
+      "sha256": "9bf5d5f906c3411dbd85a7e230a7b0cb393b1d6d2c4a9ccc955cb4b240b0e933",
+      "unchangedFromPriorU10Source": true
+    },
+    {
+      "path": "src/server/operations/bulk-actions.server.ts",
+      "sha256": "dc5c379c090840cbf8626405613a991f111aa9dc5657b1837ed8f5e11f4729ed",
+      "unchangedFromPriorU10Source": true
+    },
+    {
+      "path": "src/server/admin/reassignment.server.ts",
+      "sha256": "c000a5f4be3c21e10ccc986247cbc1878e5b108e8f3ea5079cdf0b513381c0fe",
+      "unchangedFromPriorU10Source": true
+    },
+    {
+      "path": "src/server-functions/admin-users.ts",
+      "sha256": "6e9064f5cc58b80961e19c21320de64facd2f5c7a072f263a7042f06588aa756",
+      "unchangedFromPriorU10Source": true
+    }
+  ],
+  "productionOperation": false
+}

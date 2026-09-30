@@ -1,0 +1,29 @@
+{
+  "sourceSha": "ea76d3b2b5a64b9efe98d403d7f8fff84331aee7",
+  "role": "admin",
+  "startedAt": "2026-09-30T21:03:09.586Z",
+  "scope": "Actual own Admin role/lifecycle keyboard defect probe plus fully hydrated successor name; no commit",
+  "success": true,
+  "probes": [
+    {
+      "kind": "role",
+      "expected": "initial focus inside; Tab stays inside; Escape closes and returns focus",
+      "initialInside": false,
+      "allTabsInside": false,
+      "escapeClosed": false,
+      "defectReproduced": true
+    },
+    {
+      "kind": "lifecycle",
+      "expected": "initial focus inside; Tab stays inside; Escape closes and returns focus",
+      "initialInside": false,
+      "allTabsInside": false,
+      "escapeClosed": false,
+      "defectReproduced": true
+    }
+  ],
+  "successorHydratedNameRetainedAcrossSearch": true,
+  "businessRowsUnchanged": true,
+  "noProviderOrCustomerSend": true,
+  "finishedAt": "2026-09-30T21:03:26.219Z"
+}

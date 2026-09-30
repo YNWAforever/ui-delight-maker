@@ -30,7 +30,7 @@ Seven genuine isolated Auth identities/cookie sessions now exist; the old absenc
 - R04/U02: actual Owner correction `5568af9` and accessible unnumbered Quote link source `0376f5c` now have [eleven actual same-record sales-day cases](sales-day-uat-2026-10-01.md) PASS. Source/local CI2,336/0 skips, three genuine-role link/Enter cases, reader direct-write authorization denial and manager handoff retain the original Lead/Task/Quote/approval.
 - Previously completed U03/U04/U05/U06/U07/U08/U12/U14/U16 scoped actual evidence remains retained. Manager/team/reassignment, provider recovery, full responsive journeys/screen reader, historical compatibility/provenance, legacy snapshots/parity and operator/PITR remain separate open or external gates.
 
-Main `6a915dd` / merged #145 passed exact-head/post-main2,336 zero-skip and replay gates; production hold/publicbed941b retained. U10 unauthorized auto-dialog is reproduced/source repaired/local2,340 zero-skip PASS; exact committed-source hosted roles/lifecycle and final PR checks remain pending. [Repair](admin-dialog-uat-2026-10-01.md). Release NO-GO.
+Main `6a915dd` / merged #145 passed exact-head/post-main2,336 zero-skip and replay gates; production hold/publicbed941b retained. U10 unauthorized auto-dialog is reproduced/source repaired/local2,340 zero-skip PASS; exact committed-source U10 role/reassignment acceptance now PASS; actual R03 role/lifecycle focus/Tab/Escape defects carry forward. Final documentation-head PR checks remain pending. [Repair](admin-dialog-uat-2026-10-01.md). Release NO-GO.
 
 ## Historical remaining acceptance at the earlier checkpoint
 
