@@ -168,6 +168,11 @@ function getQuoteId(approval: Approval): string | null {
 }
 
 export const Route = createFileRoute("/approvals")({
+  // Keep the authorized page loader on the server; render the interactive queue
+  // in the browser without duplicating its records as document markup.
+  ssr: "data-only",
+  pendingMinMs: 0,
+  pendingComponent: ApprovalsPendingState,
   validateSearch: approvalSearchSchema,
   loaderDeps: ({ search }) => ({ type: search.type }),
   loader: ({ context, deps }) =>
@@ -193,6 +198,14 @@ export const Route = createFileRoute("/approvals")({
   errorComponent: ApprovalsErrorState,
   component: ApprovalsInbox,
 });
+
+function ApprovalsPendingState() {
+  return (
+    <div role="status" className="px-4 py-6 text-sm text-muted-foreground md:px-6">
+      Loading approvals…
+    </div>
+  );
+}
 
 /**
  * Loader failures used to fall through to the root boundary, which renders `{error.message}`
