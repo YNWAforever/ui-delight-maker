@@ -1,0 +1,266 @@
+{
+  "sha": "a18aa46273b10edc9cc75dbb11188ad9d49c98e6",
+  "createdAt": "2026-09-30T14:28:20.824Z",
+  "scope": "Actual independent manager event20 commit, response loss, reload, resume, replay, owner reads, issues CSV",
+  "kind": "event",
+  "total": 20,
+  "sessionId": "70100200-d3a1-4f93-8896-432315b1decc",
+  "actorRole": "manager",
+  "success": true,
+  "network": [
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "elapsedMs": 4786,
+      "bytes": 0,
+      "serializedError": null
+    },
+    {
+      "path": "/_serverFn/adfa61cf7877b567e7bb0393a7eff1183937327fbc36dd19d4975caefe4b8983",
+      "status": 200,
+      "elapsedMs": 4774,
+      "bytes": 0,
+      "serializedError": null
+    },
+    {
+      "path": "/_serverFn/c8a9edc658b2fa7fb4effc24803c99c6627e5ad3bf6a0da6f805bdb502d79925",
+      "status": 200,
+      "elapsedMs": 4774,
+      "bytes": 0,
+      "serializedError": null
+    },
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "elapsedMs": 1280,
+      "bytes": 1836,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/c8a9edc658b2fa7fb4effc24803c99c6627e5ad3bf6a0da6f805bdb502d79925",
+      "status": 200,
+      "elapsedMs": 2999,
+      "bytes": 5275,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/adfa61cf7877b567e7bb0393a7eff1183937327fbc36dd19d4975caefe4b8983",
+      "status": 200,
+      "elapsedMs": 3424,
+      "bytes": 305,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/c8a9edc658b2fa7fb4effc24803c99c6627e5ad3bf6a0da6f805bdb502d79925",
+      "status": 200,
+      "elapsedMs": 2308,
+      "bytes": 5275,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "status": 200,
+      "elapsedMs": 1311,
+      "bytes": 1836,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/adfa61cf7877b567e7bb0393a7eff1183937327fbc36dd19d4975caefe4b8983",
+      "status": 200,
+      "elapsedMs": 1809,
+      "bytes": 5824,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/c8a9edc658b2fa7fb4effc24803c99c6627e5ad3bf6a0da6f805bdb502d79925",
+      "status": 200,
+      "elapsedMs": 2490,
+      "bytes": 5659,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/def35ee380bdd3c32fb9614ef82d433ee9a55b9400024a1edcce1bcbde13283f",
+      "status": 200,
+      "elapsedMs": 1883,
+      "bytes": 976,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/a9412db2c5850926593f90bd5884097ac6e0d7d90521be73b1c8229f2c3c28da",
+      "status": 200,
+      "elapsedMs": 3010,
+      "bytes": 3385,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/adfa61cf7877b567e7bb0393a7eff1183937327fbc36dd19d4975caefe4b8983",
+      "status": 200,
+      "elapsedMs": 3413,
+      "bytes": 5824,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/adfa61cf7877b567e7bb0393a7eff1183937327fbc36dd19d4975caefe4b8983",
+      "status": 200,
+      "elapsedMs": 3455,
+      "bytes": 5824,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/45354ce0ba2f8bbc8a0719c7642ba120dd1aef443db4d5f40c6c35554c2921aa",
+      "status": 200,
+      "elapsedMs": 2147,
+      "bytes": 1899,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/cac8e4aecf1e2b85ad431bf27fa5ef12eb237ff4ded6facf42b627d1d3753368",
+      "status": 200,
+      "elapsedMs": 14227,
+      "bytes": 5950,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/c8a9edc658b2fa7fb4effc24803c99c6627e5ad3bf6a0da6f805bdb502d79925",
+      "status": 200,
+      "elapsedMs": 2888,
+      "bytes": 5950,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/adfa61cf7877b567e7bb0393a7eff1183937327fbc36dd19d4975caefe4b8983",
+      "status": 200,
+      "elapsedMs": 1747,
+      "bytes": 9852,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/adfa61cf7877b567e7bb0393a7eff1183937327fbc36dd19d4975caefe4b8983",
+      "status": 200,
+      "elapsedMs": 3497,
+      "bytes": 9852,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/def35ee380bdd3c32fb9614ef82d433ee9a55b9400024a1edcce1bcbde13283f",
+      "status": 200,
+      "elapsedMs": 3789,
+      "bytes": 979,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/cac8e4aecf1e2b85ad431bf27fa5ef12eb237ff4ded6facf42b627d1d3753368",
+      "status": 200,
+      "elapsedMs": 7264,
+      "bytes": 5950,
+      "serializedError": false
+    }
+  ],
+  "roleReads": [
+    {
+      "role": "super_admin",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": false,
+      "denied": true,
+      "noBusinessIDsLeaked": true
+    },
+    {
+      "role": "admin",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": false,
+      "denied": true,
+      "noBusinessIDsLeaked": true
+    },
+    {
+      "role": "manager",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": true,
+      "denied": false,
+      "noBusinessIDsLeaked": null
+    },
+    {
+      "role": "sales",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": false,
+      "denied": true,
+      "noBusinessIDsLeaked": true
+    },
+    {
+      "role": "client_success",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": false,
+      "denied": true,
+      "noBusinessIDsLeaked": true
+    },
+    {
+      "role": "accounting",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": false,
+      "denied": true,
+      "noBusinessIDsLeaked": true
+    },
+    {
+      "role": "read_only",
+      "ownAuthIdentityMatched": true,
+      "ownerOnly": false,
+      "denied": true,
+      "noBusinessIDsLeaked": true
+    }
+  ],
+  "resumes": 0,
+  "firstCommitResponseLost": true,
+  "afterLostCounts": {
+    "ambiguous": 1,
+    "invalid": 2,
+    "skipped": 2,
+    "stale": 1,
+    "succeeded": 8,
+    "ready": 6
+  },
+  "savedKeySurvivedReload": true,
+  "firstKeyReplay": {
+    "previousRowsUnchanged": true,
+    "continuesOnlyUnprocessed": true,
+    "before": {
+      "ambiguous": 1,
+      "invalid": 2,
+      "skipped": 2,
+      "stale": 1,
+      "succeeded": 8,
+      "ready": 6
+    },
+    "after": {
+      "ambiguous": 1,
+      "invalid": 2,
+      "skipped": 2,
+      "stale": 1,
+      "succeeded": 14
+    }
+  },
+  "readAfterExternalReplay": true,
+  "terminal": {
+    "ambiguous": 1,
+    "invalid": 2,
+    "skipped": 2,
+    "stale": 1,
+    "succeeded": 14
+  },
+  "business": {
+    "created": 14,
+    "allOwnerManager": true,
+    "noDuplicateBusinessIDs": true,
+    "distinctSourcesSameName": true,
+    "chineseMultilinePreserved": true,
+    "sideEffectsValidated": true
+  },
+  "terminalReplayUnchanged": true,
+  "distinctActualAuthUsers": 7,
+  "distinctCookieSets": 7,
+  "download": {
+    "actualBrowserDownload": true,
+    "bom": true,
+    "issueRows": 4,
+    "skippedRowsExcluded": true
+  },
+  "finishedAt": "2026-09-30T14:30:23.718Z"
+}

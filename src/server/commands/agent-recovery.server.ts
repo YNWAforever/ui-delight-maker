@@ -42,7 +42,7 @@ async function subjectOwner(
 
 function requireScopedCapability(
   context: RequestAuthorization,
-  capability: "approvals.decide" | "agents.run",
+  capability: "approvals.view" | "approvals.decide" | "agents.run",
   resourceType: string,
   resourceId: string,
   ownerProfileId: string,
@@ -102,6 +102,7 @@ export async function canClaimApproval(
   };
   try {
     const owner = await claimSubjectOwner(reader, approval, false);
+    requireScopedCapability(context, "approvals.view", "human_approval", approval.id, owner);
     requireScopedCapability(context, "approvals.decide", "human_approval", approval.id, owner);
     return true;
   } catch (error) {
@@ -140,6 +141,7 @@ export async function claimApprovalCommand(
       throw new AdminError("STALE_ADMIN_STATE", "Approval changed since it was opened");
     }
     const owner = await claimSubjectOwner(db, current);
+    requireScopedCapability(context, "approvals.view", "human_approval", current.id, owner);
     requireScopedCapability(context, "approvals.decide", "human_approval", current.id, owner);
     const updated = (
       await db.query<HumanApproval>(

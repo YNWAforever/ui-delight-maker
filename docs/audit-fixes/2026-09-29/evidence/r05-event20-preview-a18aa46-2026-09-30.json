@@ -1,0 +1,67 @@
+{
+  "sha": "a18aa46273b10edc9cc75dbb11188ad9d49c98e6",
+  "createdAt": "2026-09-30T14:27:19.214Z",
+  "scope": "Actual independent manager event20 upload/preview only",
+  "role": "manager",
+  "kind": "event",
+  "total": 20,
+  "campaignId": "f655379f-a1d4-4cb6-84ae-1170101d209a",
+  "fixture": {
+    "kind": "event",
+    "total": 20,
+    "run": "8ce49727",
+    "prefix": "UAT event Import 8ce49727",
+    "source": "a18aa46273b10edc9cc75dbb11188ad9d49c98e6",
+    "role": "manager",
+    "campaignId": "f655379f-a1d4-4cb6-84ae-1170101d209a",
+    "productId": null,
+    "seedAccountIds": [
+      "c8d46216-8bfe-444b-89af-335089f34419",
+      "e6c23d71-e15e-4495-ab3a-bf400ff5f3f7"
+    ]
+  },
+  "csv": {
+    "rows": 20,
+    "bytes": 4016,
+    "bom": true,
+    "chinese": true,
+    "multiline": true,
+    "sha256": "237ddd79ee7eecb8146248a5fced995097d6558987959aade35438734a8487c6",
+    "sameFixtureAs": null,
+    "duplicateIdentical": true,
+    "duplicateConflicting": true,
+    "invalidEmail": true,
+    "invalidOwner": true,
+    "skip": true,
+    "missingExplicitTarget": true
+  },
+  "expected": {
+    "ready": 14,
+    "invalid": 2,
+    "skipped": 2,
+    "ambiguous": 1,
+    "stale": 1
+  },
+  "requests": [
+    {
+      "path": "/_serverFn/4cfd67d21760cd649138f001811fa00fa5e451e113905bdbbe2f539b1c702a3c",
+      "status": 200,
+      "elapsedMs": 5586,
+      "bytes": 5426,
+      "serializedError": false
+    }
+  ],
+  "success": true,
+  "elapsedMs": 5597,
+  "alerts": [],
+  "sessionId": "70100200-d3a1-4f93-8896-432315b1decc",
+  "actual": {
+    "ambiguous": 1,
+    "invalid": 2,
+    "ready": 14,
+    "skipped": 2,
+    "stale": 1
+  },
+  "uiProcessed": "Processed: 6 / 20",
+  "previewDidNotWrite": true
+}

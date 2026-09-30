@@ -1,0 +1,64 @@
+{
+  "sha": "a18aa46273b10edc9cc75dbb11188ad9d49c98e6",
+  "createdAt": "2026-09-30T14:25:16.014Z",
+  "scope": "Actual independent manager client20 upload/preview only",
+  "role": "manager",
+  "kind": "client",
+  "total": 20,
+  "campaignId": null,
+  "fixture": {
+    "kind": "client",
+    "total": 20,
+    "run": "dbf96f30",
+    "prefix": "UAT client Import dbf96f30",
+    "source": "a18aa46273b10edc9cc75dbb11188ad9d49c98e6",
+    "role": "manager",
+    "campaignId": null,
+    "productId": "3836fa05-bbca-466a-a5cd-a76ff3f188cc",
+    "seedAccountIds": []
+  },
+  "csv": {
+    "rows": 20,
+    "bytes": 5173,
+    "bom": true,
+    "chinese": true,
+    "multiline": true,
+    "sha256": "9ce4319b7a49fde67387ea7cbfdaa580713fc5e162ac56a7b5efe945743f59b2",
+    "sameFixtureAs": null,
+    "duplicateIdentical": true,
+    "duplicateConflicting": true,
+    "invalidEmail": true,
+    "invalidOwner": true,
+    "skip": true,
+    "missingExplicitTarget": true
+  },
+  "expected": {
+    "ready": 14,
+    "invalid": 2,
+    "skipped": 2,
+    "ambiguous": 1,
+    "stale": 1
+  },
+  "requests": [
+    {
+      "path": "/_serverFn/4cfd67d21760cd649138f001811fa00fa5e451e113905bdbbe2f539b1c702a3c",
+      "status": 200,
+      "elapsedMs": 4403,
+      "bytes": 5424,
+      "serializedError": false
+    }
+  ],
+  "success": true,
+  "elapsedMs": 4424,
+  "alerts": [],
+  "sessionId": "62451e99-e681-4b6c-b1c0-191cf6cc493f",
+  "actual": {
+    "ambiguous": 1,
+    "invalid": 2,
+    "ready": 14,
+    "skipped": 2,
+    "stale": 1
+  },
+  "uiProcessed": "Processed: 6 / 20",
+  "previewDidNotWrite": true
+}

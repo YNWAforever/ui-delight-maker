@@ -1,0 +1,31 @@
+{
+  "source": "8691421eb79a57e8bb3fdbc4a7e54367d493611f",
+  "archive": {
+    "file": "u14-actual-csv-8691421-2026-10-01.zip",
+    "sha256": "999f5147cd223919d5b5b9fc24ed755ecb6a7030b9a78ac674c4860aab0b05b4"
+  },
+  "files": [
+    {
+      "file": "before.csv",
+      "bytes": 72,
+      "sha256": "d550b358c149dd777cd4699bec99345c176e189e691cfd2bd4e1a6e7da65ac37",
+      "actualBrowserDownload": true,
+      "bom": true
+    },
+    {
+      "file": "after-la.csv",
+      "bytes": 118,
+      "sha256": "c073be4052870e06c344c6340476785f862bfa380f356ce9cd0b8a369ece6092",
+      "actualBrowserDownload": true,
+      "bom": true
+    },
+    {
+      "file": "after-auckland.csv",
+      "bytes": 118,
+      "sha256": "c073be4052870e06c344c6340476785f862bfa380f356ce9cd0b8a369ece6092",
+      "actualBrowserDownload": true,
+      "bom": true
+    }
+  ],
+  "note": "Exact original browser downloads; synthetic-only isolated report, CRLF retained."
+}

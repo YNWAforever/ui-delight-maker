@@ -1,6 +1,6 @@
 # ClientOps audit release candidate — 2026-09-28
 
-**Current state (2026-09-30): PR #123 merged; release acceptance NO-GO.** Public production now serves `bed941b`, from a separate READY deployment; the `82d8ad7` main production attempt was canceled. See the [current checkpoint](../2026-09-29/checkpoint-2026-09-30.md). The deployment actor/mechanism and release evidence remain unresolved. Earlier production identities below are historical.
+**Current state (2026-09-30): PR #139 merged at `000c19c`; release acceptance NO-GO.** Exact-head and post-merge main checks passed 2,313 isolated PostgreSQL tests with zero skipped. Seven independent UAT sessions are available; executed workflow scope and remaining gates are recorded in the [current checkpoint](../2026-09-29/checkpoint-2026-09-30.md). Production build hold canceled the main attempt; public production remains `bed941b`. No production promotion or database operation occurred. Earlier identities and acceptance snapshots below are historical.
 
 **Historical integration checkpoint:** The audited application baseline was main SHA `2904faa502f7494173f48f412875c1d0a3aba674`. PRs #82–#101 landed on `codex/clientops-reviewed-integration`; [PR #103](https://github.com/YNWAforever/ui-delight-maker/pull/103) merged that source into main at `f038919b95ff085190401f64078b78bc8781dd4d`. At that checkpoint, the latest READY Production deployment was `dpl_BubNGhS2HFmmvjcUYfiKiasDwcLU` at the audited SHA. The user-approved Vercel hold canceled automatic main builds; the later READY production identity requires operator reconciliation. The 30 finding states remain in [status](status.md); code CI does not upgrade blocked role, data-parity or provider gates.
 
@@ -18,7 +18,7 @@ The latest READY Production deployment is still audited SHA `2904faa502f7494173f
 
 ## Feature status and evidence map
 
-Every preview cell is **blocked** until an authenticated preview at the same candidate SHA is checked. The route labels show the affected entrypoints, not a claim that browser UAT passed.
+The table below is the historical source-delivery snapshot. Its preview cells are not current acceptance results; use the [current sixteen-case UAT matrix](uat-results.md) and linked exact-source browser/DB evidence for each executed scope.
 
 | Slice / findings | Route or entrypoint | Server owner | Migration | Local proof | Preview |
 |---|---|---|---|---|---|

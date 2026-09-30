@@ -59,17 +59,22 @@ export const getApprovalDetailFn = createServerFn({ method: "GET" })
   .validator((data: unknown) => parseOperationInput(IdSchema, data))
   .handler(async ({ data }) => {
     const context = await loadRequestAuthorization();
-    await requireCapability(
-      "approvals.view",
-      {
-        resourceType: "human_approval",
-        resourceId: data.id,
-      },
-      context,
-    );
     const approval = await getApproval(data.id);
+    // The queue also exposes open unassigned work under its persisted linked-subject
+    // view and decision grants. Reuse that proof before requiring an assigned owner.
+    const canClaim = await canClaimApproval(context, approval);
+    if (!canClaim) {
+      await requireCapability(
+        "approvals.view",
+        {
+          resourceType: "human_approval",
+          resourceId: data.id,
+        },
+        context,
+      );
+    }
     const [actions] = await withApprovalActionFlags(context, [serializeHumanApproval(approval)]);
-    return { ...actions, can_claim: await canClaimApproval(context, approval) };
+    return { ...actions, can_claim: canClaim };
   });
 
 export const decideApproval = createServerFn({ method: "POST" })
