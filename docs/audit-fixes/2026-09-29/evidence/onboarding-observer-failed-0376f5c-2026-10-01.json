@@ -1,0 +1,17 @@
+{
+  "sourceSha": "0376f5c0bffda1c9eae63cd70dbbe47d16d7b8e2",
+  "startedAt": "2026-09-30T19:45:46.960Z",
+  "scope": "Real own identity and isolated SQL fixture-state UI/GET rehearsal; no provider email/signup/actual invitation acceptance claim",
+  "success": false,
+  "cases": [
+    {
+      "case": "active own sales sign-in redirects once to workspace and real CRM read succeeds",
+      "state": "active",
+      "ownAuthMatched": true,
+      "pass": true
+    }
+  ],
+  "error": "The expression evaluated to a falsy value:\n\n  assert(/Unauthorized|not authenticated|sign.?in|session|not authorized/i.test(r.raw))\n",
+  "restoreError": "Expected values to be strictly deep-equal:\n+ actual - expected\n... Skipped lines\n\n  {\n    assignment_labels: [\n      'demo'\n    ],\n    availability_status: 'available',\n...\n    timezone: 'Asia/Hong_Kong',\n+   updated_at: 2026-09-30T19:46:11.958Z\n-   updated_at: 2026-09-29T18:43:53.665Z\n  }\n",
+  "finishedAt": "2026-09-30T19:46:06.704Z"
+}
