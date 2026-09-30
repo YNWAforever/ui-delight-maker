@@ -1,0 +1,100 @@
+{
+  "sourceSha": "0376f5c0bffda1c9eae63cd70dbbe47d16d7b8e2",
+  "startedAt": "2026-09-30T20:05:11.568Z",
+  "scope": "Actual U02/U07/U08 native Chromium 200 percent via tabs.setZoom, separate own-role browser profiles; no emulation/CSS/pinch",
+  "success": true,
+  "cases": [
+    {
+      "case": "U02 Lead real native200 link keyboard navigation",
+      "role": "sales",
+      "ownAuthMatched": true,
+      "nativeZoomFactor": 2,
+      "mode": "automatic",
+      "scope": "per-tab",
+      "before": {
+        "width": 1424,
+        "height": 905,
+        "dpr": 1
+      },
+      "after": {
+        "width": 712,
+        "height": 452,
+        "dpr": 2,
+        "clientWidth": 712,
+        "scrollWidth": 712
+      },
+      "pass": true
+    },
+    {
+      "case": "U02 same pending Quote native200 document fits",
+      "role": "sales",
+      "nativeZoomFactor": 2,
+      "mode": "automatic",
+      "scope": "per-tab",
+      "before": {
+        "width": 1424,
+        "height": 905,
+        "dpr": 1
+      },
+      "after": {
+        "width": 712,
+        "height": 452,
+        "dpr": 2,
+        "clientWidth": 712,
+        "scrollWidth": 712
+      },
+      "pass": true
+    },
+    {
+      "case": "U07 own accounting native200 labelled billing controls reachable",
+      "role": "accounting",
+      "ownAuthMatched": true,
+      "nativeZoomFactor": 2,
+      "mode": "automatic",
+      "scope": "per-tab",
+      "before": {
+        "width": 1424,
+        "height": 905,
+        "dpr": 1
+      },
+      "after": {
+        "width": 712,
+        "height": 452,
+        "dpr": 2,
+        "clientWidth": 712,
+        "scrollWidth": 712
+      },
+      "pass": true
+    },
+    {
+      "case": "New Task native200 Enter/initial focus/readable required error/Tab trap/Escape focus return",
+      "role": "sales",
+      "nativeZoomFactor": 2,
+      "mode": "automatic",
+      "scope": "per-tab",
+      "before": {
+        "width": 1424,
+        "height": 905,
+        "dpr": 1
+      },
+      "after": {
+        "width": 712,
+        "height": 452,
+        "dpr": 2,
+        "clientWidth": 712,
+        "scrollWidth": 712
+      },
+      "pass": true
+    },
+    {
+      "case": "U08 native200 real one-item preview/Tab/Escape and bulk controls reachable without commit",
+      "role": "sales",
+      "nativeZoomFactor": 2,
+      "pass": true
+    }
+  ],
+  "businessRowsUnchanged": true,
+  "noProviderOrCustomerSend": true,
+  "screenReader": "not verified",
+  "finishedAt": "2026-09-30T20:05:52.378Z"
+}

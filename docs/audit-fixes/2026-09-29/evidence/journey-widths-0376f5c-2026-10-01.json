@@ -1,0 +1,136 @@
+{
+  "sourceSha": "0376f5c0bffda1c9eae63cd70dbbe47d16d7b8e2",
+  "startedAt": "2026-09-30T19:57:37.829Z",
+  "scope": "Actual retained U02/U07/U08 responsive pages and keyboard dialogs; no Task/billing/bulk commit",
+  "success": true,
+  "cases": [
+    {
+      "case": "U02 same-record link/Enter and Quote visible without overflow",
+      "role": "sales",
+      "width": 390,
+      "ownAuthMatched": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pass": true
+    },
+    {
+      "case": "U07 retained billing record and labelled invoice control readable without overflow",
+      "role": "accounting",
+      "width": 390,
+      "ownAuthMatched": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pass": true
+    },
+    {
+      "case": "New Task Enter opens, initial title focus, readable required error, Tab/ShiftTab trap, Escape trigger return",
+      "role": "sales",
+      "width": 390,
+      "pass": true
+    },
+    {
+      "case": "U08 one real eligible preview, keyboard dialog trap/Escape and accessible bulk controls; no commit",
+      "role": "sales",
+      "width": 390,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pass": true
+    },
+    {
+      "case": "U02 same-record link/Enter and Quote visible without overflow",
+      "role": "sales",
+      "width": 768,
+      "ownAuthMatched": true,
+      "geometry": {
+        "clientWidth": 768,
+        "scrollWidth": 768,
+        "innerWidth": 768
+      },
+      "pass": true
+    },
+    {
+      "case": "U07 retained billing record and labelled invoice control readable without overflow",
+      "role": "accounting",
+      "width": 768,
+      "ownAuthMatched": true,
+      "geometry": {
+        "clientWidth": 768,
+        "scrollWidth": 768,
+        "innerWidth": 768
+      },
+      "pass": true
+    },
+    {
+      "case": "New Task Enter opens, initial title focus, readable required error, Tab/ShiftTab trap, Escape trigger return",
+      "role": "sales",
+      "width": 768,
+      "pass": true
+    },
+    {
+      "case": "U08 one real eligible preview, keyboard dialog trap/Escape and accessible bulk controls; no commit",
+      "role": "sales",
+      "width": 768,
+      "geometry": {
+        "clientWidth": 768,
+        "scrollWidth": 768,
+        "innerWidth": 768
+      },
+      "pass": true
+    },
+    {
+      "case": "U02 same-record link/Enter and Quote visible without overflow",
+      "role": "sales",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "geometry": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pass": true
+    },
+    {
+      "case": "U07 retained billing record and labelled invoice control readable without overflow",
+      "role": "accounting",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "geometry": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pass": true
+    },
+    {
+      "case": "New Task Enter opens, initial title focus, readable required error, Tab/ShiftTab trap, Escape trigger return",
+      "role": "sales",
+      "width": 1440,
+      "pass": true
+    },
+    {
+      "case": "U08 one real eligible preview, keyboard dialog trap/Escape and accessible bulk controls; no commit",
+      "role": "sales",
+      "width": 1440,
+      "geometry": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pass": true
+    }
+  ],
+  "businessRowsUnchanged": true,
+  "noProviderOrCustomerSend": true,
+  "screenReader": "not verified",
+  "nativeZoom": "next separate run",
+  "finishedAt": "2026-09-30T19:59:00.816Z"
+}

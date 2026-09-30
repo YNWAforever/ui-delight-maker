@@ -26,10 +26,11 @@ PR #115 and PR #116 added two further R04 People-directory fixes: a query refres
 Seven genuine isolated Auth identities/cookie sessions now exist; the old absence-of-session blocker is superseded. The original 751 audit scenarios and their historical counts remain unchanged. Current case-specific evidence is in the [16-case UAT matrix](../2026-09-27/uat-results.md) and [30-CO status](../2026-09-27/status.md).
 
 - R05/U09: all three actual 5,000-row Lead/Client/Event mixed-outcome lifecycles, original-key recovery/replay, side effects, seven-role owner-only receipt boundaries, real issue downloads and final read-only target/source-key parity PASS. Isolated retention dry-run/actual CLI/replay PASS. Production retention operator/schedule/approved target and legacy-key source inventory/backfill remain blocked_external.
+- R03/U15: [seventeen actual width/native200/keyboard cases](responsive-journey-uat-2026-10-01.md) PASS in retained sales/billing/Task/bulk-preview scopes. Full mixed receipt/broader dialogs/screen reader remain unexecuted.
 - R04/U02: actual Owner correction `5568af9` and accessible unnumbered Quote link source `0376f5c` now have [eleven actual same-record sales-day cases](sales-day-uat-2026-10-01.md) PASS. Source/local CI2,336/0 skips, three genuine-role link/Enter cases, reader direct-write authorization denial and manager handoff retain the original Lead/Task/Quote/approval.
 - Previously completed U03/U04/U05/U06/U07/U08/U12/U14/U16 scoped actual evidence remains retained. Manager/team/reassignment, provider recovery, full responsive journeys/screen reader, historical compatibility/provenance, legacy snapshots/parity and operator/PITR remain separate open or external gates.
 
-Main `e4f0555` / merged #142 retains the production hold; public production remains `bed941b`. Candidate source/isolated acceptance is not a production release. Final #143 documentation-head checks are still required before its authorized green-only merge.
+Main `d4e6383` / merged #144 retains the production hold; public production remains `bed941b`. Candidate source/isolated acceptance is not a production release. Final #145 documentation-head checks are still required before its authorized green-only merge.
 
 ## Historical remaining acceptance at the earlier checkpoint
 
