@@ -1,0 +1,590 @@
+{
+  "createdAt": "2026-10-01T06:50:02.587Z",
+  "defaultPlaywrightFocus": {
+    "createdAt": "2026-10-01T06:30:06.077Z",
+    "version": {
+      "protocolVersion": "1.3",
+      "product": "Chrome/153.0.8010.12",
+      "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+      "jsVersion": "15.3.76.4"
+    },
+    "flags": [
+      "--disable-field-trial-config",
+      "--disable-background-networking",
+      "--disable-back-forward-cache",
+      "--disable-breakpad",
+      "--disable-client-side-phishing-detection",
+      "--disable-component-extensions-with-background-pages",
+      "--disable-component-update",
+      "--no-default-browser-check",
+      "--disable-default-apps",
+      "--disable-dev-shm-usage",
+      "--disable-edgeupdater",
+      "--disable-extensions",
+      "--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion",
+      "--enable-features=CDPScreenshotNewSurface",
+      "--allow-pre-commit-input",
+      "--disable-hang-monitor",
+      "--disable-ipc-flooding-protection",
+      "--disable-popup-blocking",
+      "--disable-prompt-on-repost",
+      "--disable-updater-scheduler",
+      "--force-color-profile=srgb",
+      "--metrics-recording-only",
+      "--no-first-run",
+      "--password-store=basic",
+      "--use-mock-keychain",
+      "--no-service-autorun",
+      "--export-tagged-pdf",
+      "--disable-search-engine-choice-screen",
+      "--unsafely-disable-devtools-self-xss-warnings",
+      "--edge-skip-compat-layer-relaunch",
+      "--disable-infobars",
+      "--disable-search-engine-choice-screen",
+      "--disable-sync",
+      "--enable-unsafe-swiftshader",
+      "--no-sandbox",
+      "--enable-automation",
+      "--flag-switches-begin",
+      "--flag-switches-end",
+      "--enable-unsafe-swiftshader"
+    ],
+    "results": [
+      {
+        "label": "foreground",
+        "visibility": {
+          "visibility": "visible",
+          "hidden": false,
+          "focus": true
+        },
+        "window": {
+          "windowId": 225901901,
+          "bounds": {
+            "left": 10,
+            "top": 10,
+            "width": 1100,
+            "height": 854,
+            "windowState": "normal"
+          }
+        }
+      },
+      {
+        "label": "second-tab-foreground",
+        "visibility": {
+          "visibility": "visible",
+          "hidden": false,
+          "focus": true
+        },
+        "window": {
+          "windowId": 225901901,
+          "bounds": {
+            "left": 10,
+            "top": 10,
+            "width": 1100,
+            "height": 854,
+            "windowState": "normal"
+          }
+        }
+      },
+      {
+        "label": "window-minimized",
+        "visibility": {
+          "visibility": "visible",
+          "hidden": false,
+          "focus": true
+        },
+        "window": {
+          "windowId": 225901901,
+          "bounds": {
+            "left": 10,
+            "top": 10,
+            "width": 1100,
+            "height": 854,
+            "windowState": "minimized"
+          }
+        }
+      }
+    ],
+    "noMocks": true
+  },
+  "separateSessionDisableStillVisible": {
+    "createdAt": "2026-10-01T06:31:10.329Z",
+    "version": {
+      "protocolVersion": "1.3",
+      "product": "Chrome/153.0.8010.12",
+      "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+      "jsVersion": "15.3.76.4"
+    },
+    "flags": [
+      "--disable-field-trial-config",
+      "--disable-background-networking",
+      "--disable-back-forward-cache",
+      "--disable-breakpad",
+      "--disable-client-side-phishing-detection",
+      "--disable-component-extensions-with-background-pages",
+      "--disable-component-update",
+      "--no-default-browser-check",
+      "--disable-default-apps",
+      "--disable-dev-shm-usage",
+      "--disable-edgeupdater",
+      "--disable-extensions",
+      "--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion",
+      "--enable-features=CDPScreenshotNewSurface",
+      "--allow-pre-commit-input",
+      "--disable-hang-monitor",
+      "--disable-ipc-flooding-protection",
+      "--disable-popup-blocking",
+      "--disable-prompt-on-repost",
+      "--disable-updater-scheduler",
+      "--force-color-profile=srgb",
+      "--metrics-recording-only",
+      "--no-first-run",
+      "--password-store=basic",
+      "--use-mock-keychain",
+      "--no-service-autorun",
+      "--export-tagged-pdf",
+      "--disable-search-engine-choice-screen",
+      "--unsafely-disable-devtools-self-xss-warnings",
+      "--edge-skip-compat-layer-relaunch",
+      "--disable-infobars",
+      "--disable-search-engine-choice-screen",
+      "--disable-sync",
+      "--enable-unsafe-swiftshader",
+      "--no-sandbox",
+      "--enable-automation",
+      "--flag-switches-begin",
+      "--flag-switches-end",
+      "--enable-unsafe-swiftshader"
+    ],
+    "results": [
+      {
+        "label": "foreground",
+        "visibility": {
+          "visibility": "visible",
+          "hidden": false,
+          "focus": true
+        },
+        "window": {
+          "windowId": 1530336293,
+          "bounds": {
+            "left": 10,
+            "top": 10,
+            "width": 1100,
+            "height": 854,
+            "windowState": "normal"
+          }
+        }
+      },
+      {
+        "label": "second-tab-foreground",
+        "visibility": {
+          "visibility": "visible",
+          "hidden": false,
+          "focus": false
+        },
+        "window": {
+          "windowId": 1530336293,
+          "bounds": {
+            "left": 10,
+            "top": 10,
+            "width": 1100,
+            "height": 854,
+            "windowState": "normal"
+          }
+        }
+      },
+      {
+        "label": "window-minimized",
+        "visibility": {
+          "visibility": "visible",
+          "hidden": false,
+          "focus": false
+        },
+        "window": {
+          "windowId": 1530336293,
+          "bounds": {
+            "left": 10,
+            "top": 10,
+            "width": 1100,
+            "height": 854,
+            "windowState": "minimized"
+          }
+        }
+      }
+    ],
+    "noMocks": true
+  },
+  "nativeNoDefaults": {
+    "createdAt": "2026-10-01T06:32:59.925Z",
+    "version": {
+      "protocolVersion": "1.3",
+      "product": "Chrome/153.0.8010.12",
+      "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+      "jsVersion": "15.3.76.4"
+    },
+    "results": [
+      {
+        "label": "foreground",
+        "visibility": {
+          "visibility": "visible",
+          "hidden": false,
+          "focus": true
+        },
+        "window": {
+          "windowId": 604353767,
+          "bounds": {
+            "left": 10,
+            "top": 10,
+            "width": 1050,
+            "height": 786,
+            "windowState": "normal"
+          }
+        }
+      },
+      {
+        "label": "second-tab-foreground",
+        "visibility": {
+          "visibility": "hidden",
+          "hidden": true,
+          "focus": false
+        },
+        "window": {
+          "windowId": 604353767,
+          "bounds": {
+            "left": 10,
+            "top": 10,
+            "width": 1050,
+            "height": 786,
+            "windowState": "normal"
+          }
+        }
+      },
+      {
+        "label": "window-minimized",
+        "visibility": {
+          "visibility": "hidden",
+          "hidden": true,
+          "focus": false
+        },
+        "window": {
+          "windowId": 604353767,
+          "bounds": {
+            "left": 10,
+            "top": 10,
+            "width": 1050,
+            "height": 786,
+            "windowState": "minimized"
+          }
+        }
+      },
+      {
+        "label": "restored-foreground",
+        "visibility": {
+          "visibility": "visible",
+          "hidden": false,
+          "focus": true
+        },
+        "window": {
+          "windowId": 604353767,
+          "bounds": {
+            "left": 10,
+            "top": 10,
+            "width": 1050,
+            "height": 786,
+            "windowState": "normal"
+          }
+        }
+      }
+    ],
+    "launch": "headed native Chromium, own fresh profile, no Playwright defaults",
+    "noMocks": true
+  },
+  "observerAttempts": [
+    {
+      "success": false,
+      "error": {
+        "stage": "native-foreground-resumes-pending-only",
+        "name": "AssertionError",
+        "details": "Private error retained"
+      },
+      "cases": [
+        {
+          "case": "visible-pending-refresh",
+          "nativeVisibility": "visible",
+          "realElapsedMs": 35004,
+          "pendingRequests": 1,
+          "historyRequests": 0,
+          "allServerFunctionRequests": 1,
+          "fiftyRowMinimalList": true,
+          "pass": true
+        },
+        {
+          "case": "native-background-tab-stops-polling",
+          "nativeVisibility": "hidden",
+          "realElapsedMs": 35010,
+          "pendingRequests": 0,
+          "historyRequests": 0,
+          "allServerFunctionRequests": 0,
+          "fiftyRowMinimalList": true,
+          "pass": true
+        }
+      ],
+      "responses": [
+        {
+          "phase": "initial-load",
+          "group": "history",
+          "at": 1790836545653,
+          "status": 200,
+          "bytes": 36047,
+          "contextDataInList": false,
+          "rows": 50
+        },
+        {
+          "phase": "visible-pending-refresh",
+          "group": "pending",
+          "at": 1790836576415,
+          "status": 200,
+          "bytes": 36001,
+          "contextDataInList": false,
+          "rows": 50
+        },
+        {
+          "phase": "native-foreground-resumes-pending-only",
+          "group": "history",
+          "at": 1790836618634,
+          "status": 200,
+          "bytes": 36047,
+          "contextDataInList": false,
+          "rows": 50
+        },
+        {
+          "phase": "native-foreground-resumes-pending-only",
+          "group": "pending",
+          "at": 1790836618713,
+          "status": 200,
+          "bytes": 36001,
+          "contextDataInList": false,
+          "rows": 50
+        },
+        {
+          "phase": "native-foreground-resumes-pending-only",
+          "group": "pending",
+          "at": 1790836650149,
+          "status": 200,
+          "bytes": 36001,
+          "contextDataInList": false,
+          "rows": 50
+        }
+      ],
+      "serverRequests": [
+        {
+          "at": 1790836544868,
+          "phase": "initial-load",
+          "method": "GET",
+          "functionId": "d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf"
+        },
+        {
+          "at": 1790836544965,
+          "phase": "initial-load",
+          "method": "GET",
+          "functionId": "c37d647b566dec6bfc5a8087d1b196476c7ccb43d6847d41a3f3ee4813e59071"
+        },
+        {
+          "at": 1790836544967,
+          "phase": "initial-load",
+          "method": "GET",
+          "functionId": "800d7682791ba082cc04d6e243211e2b2240ebdddeb95a6c27c0f30b41f1b53a"
+        },
+        {
+          "at": 1790836544968,
+          "phase": "initial-load",
+          "method": "GET",
+          "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+        },
+        {
+          "at": 1790836574934,
+          "phase": "visible-pending-refresh",
+          "method": "GET",
+          "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+        },
+        {
+          "at": 1790836617154,
+          "phase": "native-foreground-resumes-pending-only",
+          "method": "GET",
+          "functionId": "d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf"
+        },
+        {
+          "at": 1790836617154,
+          "phase": "native-foreground-resumes-pending-only",
+          "method": "GET",
+          "functionId": "c37d647b566dec6bfc5a8087d1b196476c7ccb43d6847d41a3f3ee4813e59071"
+        },
+        {
+          "at": 1790836617157,
+          "phase": "native-foreground-resumes-pending-only",
+          "method": "GET",
+          "functionId": "800d7682791ba082cc04d6e243211e2b2240ebdddeb95a6c27c0f30b41f1b53a"
+        },
+        {
+          "at": 1790836617160,
+          "phase": "native-foreground-resumes-pending-only",
+          "method": "GET",
+          "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+        },
+        {
+          "at": 1790836617161,
+          "phase": "native-foreground-resumes-pending-only",
+          "method": "GET",
+          "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+        },
+        {
+          "at": 1790836648723,
+          "phase": "native-foreground-resumes-pending-only",
+          "method": "GET",
+          "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+        }
+      ],
+      "interpretation": "One-off stale focus refresh was wrongly attributed to interval observation. Corrected runner binds response phase to the corresponding request and awaits actual focus-refresh responses; app source unchanged."
+    },
+    {
+      "success": false,
+      "error": {
+        "stage": "native-foreground-resumes-pending-only",
+        "name": "AssertionError",
+        "details": "Private error retained"
+      },
+      "cases": [
+        {
+          "case": "visible-pending-refresh",
+          "nativeVisibility": "visible",
+          "realElapsedMs": 35037,
+          "pendingRequests": 1,
+          "historyRequests": 0,
+          "allServerFunctionRequests": 1,
+          "fiftyRowMinimalList": true,
+          "pass": true
+        },
+        {
+          "case": "native-background-tab-stops-polling",
+          "nativeVisibility": "hidden",
+          "realElapsedMs": 37261,
+          "pendingRequests": 0,
+          "historyRequests": 0,
+          "allServerFunctionRequests": 0,
+          "fiftyRowMinimalList": true,
+          "pass": true
+        }
+      ],
+      "responses": [
+        {
+          "phase": "initial-load",
+          "group": "history",
+          "at": 1790836815476,
+          "status": 200,
+          "bytes": 36047,
+          "contextDataInList": false,
+          "rows": 50
+        },
+        {
+          "phase": "visible-pending-refresh",
+          "group": "pending",
+          "at": 1790836856480,
+          "status": 200,
+          "bytes": 36001,
+          "contextDataInList": false,
+          "rows": 50
+        },
+        {
+          "phase": "native-foreground-resumes-pending-only",
+          "group": "history",
+          "at": 1790836904843,
+          "status": 200,
+          "bytes": 36047,
+          "contextDataInList": false,
+          "rows": 50
+        },
+        {
+          "phase": "native-foreground-resumes-pending-only",
+          "group": "pending",
+          "at": 1790836908262,
+          "status": 200,
+          "bytes": 36001,
+          "contextDataInList": false,
+          "rows": 50
+        }
+      ],
+      "serverRequests": [
+        {
+          "at": 1790836815085,
+          "phase": "initial-load",
+          "method": "GET",
+          "functionId": "d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf"
+        },
+        {
+          "at": 1790836815141,
+          "phase": "initial-load",
+          "method": "GET",
+          "functionId": "c37d647b566dec6bfc5a8087d1b196476c7ccb43d6847d41a3f3ee4813e59071"
+        },
+        {
+          "at": 1790836815164,
+          "phase": "initial-load",
+          "method": "GET",
+          "functionId": "800d7682791ba082cc04d6e243211e2b2240ebdddeb95a6c27c0f30b41f1b53a"
+        },
+        {
+          "at": 1790836815167,
+          "phase": "initial-load",
+          "method": "GET",
+          "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+        },
+        {
+          "at": 1790836843226,
+          "phase": "visible-pending-refresh",
+          "method": "GET",
+          "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+        },
+        {
+          "at": 1790836900745,
+          "phase": "foreground-focus-catchup",
+          "method": "GET",
+          "functionId": "d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf"
+        },
+        {
+          "at": 1790836900746,
+          "phase": "foreground-focus-catchup",
+          "method": "GET",
+          "functionId": "c37d647b566dec6bfc5a8087d1b196476c7ccb43d6847d41a3f3ee4813e59071"
+        },
+        {
+          "at": 1790836900746,
+          "phase": "foreground-focus-catchup",
+          "method": "GET",
+          "functionId": "800d7682791ba082cc04d6e243211e2b2240ebdddeb95a6c27c0f30b41f1b53a"
+        },
+        {
+          "at": 1790836900747,
+          "phase": "foreground-focus-catchup",
+          "method": "GET",
+          "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+        },
+        {
+          "at": 1790836900747,
+          "phase": "foreground-focus-catchup",
+          "method": "GET",
+          "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+        },
+        {
+          "at": 1790836938285,
+          "phase": "native-foreground-resumes-pending-only",
+          "method": "GET",
+          "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+        }
+      ],
+      "interpretation": "One-off stale focus refresh was wrongly attributed to interval observation. Corrected runner binds response phase to the corresponding request and awaits actual focus-refresh responses; app source unchanged."
+    }
+  ]
+}
