@@ -86,6 +86,11 @@ module.exports = async function verifyBoundaries({
     value("idempotencyKey").s = randomUUID();
     return { ...template, body: JSON.stringify(encoded) };
   }
+  function observeResponse(page, predicate) {
+    const pending = page.waitForResponse(predicate);
+    pending.catch(() => {}); // Native action failure is recorded by the owning try/finally; await still rejects.
+    return pending;
+  }
   async function direct(ctx, request, label) {
     assert.equal(new URL(request.url).origin, new URL(target).origin);
     assert.equal(
@@ -119,7 +124,8 @@ module.exports = async function verifyBoundaries({
       const dialog = p.getByRole("alertdialog");
       await dialog.waitFor();
       if (afterDialog) await afterDialog();
-      const wait = p.waitForResponse(
+      const wait = observeResponse(
+        p,
         (r) => r.request().method() === "POST" && r.request().postData()?.includes(f.id),
       );
       const button = dialog.getByRole("button", { name: decision, exact: true });
@@ -371,7 +377,8 @@ module.exports = async function verifyBoundaries({
           assert.equal(pending.audits, 0);
           assert.equal(pending.receipts, 0);
           await p.getByRole("button", { name: "Approve", exact: true }).click();
-          const wait = p.waitForResponse(
+          const wait = observeResponse(
+            p,
             (r) => r.request().method() === "POST" && r.request().postData()?.includes(f.id),
           );
           await p
@@ -437,7 +444,8 @@ module.exports = async function verifyBoundaries({
             await route.continue();
           });
         const waits = actors.map((x) =>
-          x.p.waitForResponse(
+          observeResponse(
+            x.p,
             (r) => r.request().method() === "POST" && r.request().postData()?.includes(race.id),
           ),
         );
@@ -504,10 +512,12 @@ module.exports = async function verifyBoundaries({
     }
     report.stage = "retained claim and assignment";
     const claim = await isolatedFixture("claim assignment", 7, { assignedTo: null }),
-      ctx = await ownContext("manager");
+      ctx = await ownContext("manager"),
+      assignmentCtx = await ownContext("admin");
     try {
       let p = await open(ctx, "/approvals", claim);
-      const claimResponse = p.waitForResponse(
+      const claimResponse = observeResponse(
+        p,
         (r) => r.request().method() === "POST" && r.request().postData()?.includes(claim.id),
       );
       await p.getByRole("button", { name: "Claim for review", exact: true }).click();
@@ -519,7 +529,7 @@ module.exports = async function verifyBoundaries({
       assert.equal(state.approval.row_version, 8);
       // Existing claim refreshes only its queue. Read current authorized detail before separate assignment.
       await p.close();
-      p = await open(ctx, "/approvals", claim);
+      p = await open(assignmentCtx, "/approvals", claim, "admin");
       const name = (
         await pool.query("select name from profiles where id=$1", [who("admin").profileId])
       ).rows[0].name;
@@ -528,7 +538,8 @@ module.exports = async function verifyBoundaries({
         exact: true,
       });
       await combo.fill(name);
-      const assignmentResponse = p.waitForResponse(
+      const assignmentResponse = observeResponse(
+        p,
         (r) => r.request().method() === "POST" && r.request().postData()?.includes(claim.id),
       );
       await p.getByRole("button", { name, exact: true }).first().click();
@@ -545,10 +556,13 @@ module.exports = async function verifyBoundaries({
         assignedVersion: 9,
         liveUi: true,
         authorizedDetailReloadBeforeAssignment: true,
-        existingClaimAffordanceRefreshRequired: true,
+        claimActor: "manager",
+        assignmentActor: "admin",
+        managerDirectoryScopeRetained: true,
       };
     } finally {
       await ctx.close();
+      await assignmentCtx.close();
     }
     report.stage = "retained manual handoff";
     const manual = await isolatedFixture("manual draft", 7, {
@@ -573,7 +587,8 @@ module.exports = async function verifyBoundaries({
       await manualPanel
         .getByRole("textbox", { name: "Manual send reference", exact: true })
         .fill("Synthetic Approval Review statement only");
-      const wait = p.waitForResponse(
+      const wait = observeResponse(
+        p,
         (r) =>
           r.request().method() === "POST" && new URL(r.url()).pathname.startsWith("/_serverFn/"),
       );
@@ -628,7 +643,8 @@ module.exports = async function verifyBoundaries({
         .click();
       const dialog = p.getByRole("dialog", { name: "Review bulk change" });
       await dialog.waitFor();
-      const wait = p.waitForResponse(
+      const wait = observeResponse(
+        p,
         (r) => r.request().method() === "POST" && r.request().postData()?.includes("previewToken"),
       );
       await dialog.getByRole("button", { name: "Process first 20", exact: true }).click();
