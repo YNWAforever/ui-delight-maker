@@ -106,6 +106,29 @@ module.exports = async function verifyBoundaries({
     fs.writeFileSync(path.join(dir, label + ".response.private.txt"), raw);
     return { status: response.status(), raw, error: failed(raw, response.status()) };
   }
+  async function nativeReplay(page, request, label) {
+    assert.equal(new URL(page.url()).origin, new URL(target).origin);
+    assert.equal(new URL(request.url).origin, new URL(target).origin);
+    const input = {
+      ...request,
+      headers: Object.fromEntries(
+        Object.entries(request.headers).filter(([key]) =>
+          ["accept", "content-type", "x-tsr-serverfn"].includes(key),
+        ),
+      ),
+    };
+    const response = await page.evaluate(async ({ url, body, headers }) => {
+      const actual = await fetch(url, {
+        method: "POST",
+        body,
+        headers,
+        credentials: "same-origin",
+      });
+      return { status: actual.status, raw: await actual.text() };
+    }, input);
+    fs.writeFileSync(path.join(dir, label + ".response.private.txt"), response.raw);
+    return { ...response, error: failed(response.raw, response.status) };
+  }
   async function uiDecision(
     role,
     route,
@@ -606,7 +629,7 @@ module.exports = async function verifyBoundaries({
       ).rows[0];
       assert.equal(state.handoff_status, "manual_send_recorded");
       assert.equal(state.recorded_by, who("manager").profileId);
-      const same = await direct(manualCtx, capture(res), "manual-original-key-replay");
+      const same = await nativeReplay(p, capture(res), "manual-original-key-replay");
       assert(!same.error);
       assert.deepEqual(
         (
@@ -622,6 +645,7 @@ module.exports = async function verifyBoundaries({
         copyControlVisible: true,
         statementRecorded: true,
         replayUnchanged: true,
+        nativeSameOriginReplay: true,
         noDeliveryClaim: true,
         noProviderConfigured: true,
       };
@@ -683,7 +707,7 @@ module.exports = async function verifyBoundaries({
         operationId,
       );
       const committed = await Promise.all(bulk.map(snapshot));
-      const replay = await direct(bulkCtx, capture(res), "bulk-original-commit-key-replay");
+      const replay = await nativeReplay(p, capture(res), "bulk-original-commit-key-replay");
       assert(!replay.error);
       assert.deepEqual(await Promise.all(bulk.map(snapshot)), committed);
       for (const f of bulk) assert.equal((await snapshot(f)).approval.row_version, 1);
@@ -697,6 +721,7 @@ module.exports = async function verifyBoundaries({
         originalReceiptRetainedAfterReload: true,
         originalCommitKeyPreserved: true,
         originalCommitReplayUnchanged: true,
+        nativeSameOriginReplay: true,
         resumedOperationIdPreserved: true,
         liveUi: true,
         allApprovedVersion1: true,
