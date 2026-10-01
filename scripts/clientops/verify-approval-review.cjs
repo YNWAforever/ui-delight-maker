@@ -60,19 +60,43 @@
         id,
       ])
     ).rows[0];
-  async function fixture(label, version = 0) {
+  async function fixture(label, version = 0, options = {}) {
     const id = randomUUID(),
       runId = randomUUID(),
       summary = "Synthetic Approval Review " + label + " " + id.slice(0, 8);
+    let subjectId = leadId;
+    if (options.freshLead) {
+      subjectId = randomUUID();
+      await pool.query(
+        "insert into leads(id,company_name,status,assigned_to) values($1,'Synthetic Approval Review boundary','qualified',$2)",
+        [subjectId, who("manager").profileId],
+      );
+    }
     await pool.query(
       "insert into agent_runs(id,agent_name,workflow_type,trigger_type,subject_type,subject_id,status,human_review_required,created_by) values($1,'Qualification Agent','qualify_lead','manual','lead',$2,'waiting_approval',true,$3)",
-      [runId, leadId, who("manager").profileId],
+      [runId, subjectId, who("manager").profileId],
     );
     await pool.query(
-      "insert into human_approvals(id,agent_run_id,approval_type,requested_by,assigned_to,status,row_version,context_summary,context_data) values($1,$2,'qualification_review',$3,$3,'pending',$4,$5,'{}'::jsonb)",
-      [id, runId, who("manager").profileId, version, summary],
+      "insert into human_approvals(id,agent_run_id,approval_type,requested_by,assigned_to,status,row_version,context_summary,context_data) values($1,$2,$6,$3,$7,'pending',$4,$5,$8::jsonb)",
+      [
+        id,
+        runId,
+        who("manager").profileId,
+        version,
+        summary,
+        options.approvalType ?? "qualification_review",
+        options.assignedTo === undefined ? who("manager").profileId : options.assignedTo,
+        JSON.stringify(options.contextData ?? {}),
+      ],
     );
-    const f = { id, runId, summary, version };
+    const f = {
+      id,
+      runId,
+      summary,
+      version,
+      subjectId,
+      approvalType: options.approvalType ?? "qualification_review",
+    };
     report.fixtures.push(f);
     return f;
   }
@@ -108,10 +132,18 @@
     assert.equal(profile.status, "active");
     return ctx;
   }
-  async function open(ctx, route, f) {
+  async function open(ctx, route, f, role = "manager") {
     const p = await ctx.newPage();
     report.stage = "navigate " + route;
-    await p.goto(target + route + (route === "/approvals" ? "?type=qualification_review" : ""));
+    await p.goto(
+      target +
+        route +
+        (route === "/approvals" ? "?type=" + (f.approvalType ?? "qualification_review") : ""),
+    );
+    if (role === "accounting" && route === "/ai-review") {
+      await p.getByText("You do not have this capability", { exact: true }).waitFor();
+      return p;
+    }
     report.stage = "select row " + route;
     try {
       if (route === "/ai-review") {
@@ -135,6 +167,19 @@
       throw e;
     }
   }
+  const capture = (response) => {
+    const q = response.request();
+    return {
+      url: q.url(),
+      body: q.postData(),
+      headers: Object.fromEntries(
+        Object.entries(q.headers()).filter(([k]) =>
+          ["accept", "content-type", "x-tsr-serverfn"].includes(k),
+        ),
+      ),
+    };
+  };
+  let template;
   const build = async () =>
     assert.equal(
       (await (await fetch(target + "/api/build")).json()).commitSha,
@@ -160,7 +205,7 @@
       const ctx = await ownContext(role);
       try {
         for (const route of ["/approvals", "/ai-review"]) {
-          const p = await open(ctx, route, roleFixture);
+          const p = await open(ctx, route, roleFixture, role);
           const allowed = ["super_admin", "admin", "manager"].includes(role);
           const button = p.getByRole("button", { name: "Approve", exact: true });
           const offered = (await button.count()) > 0;
@@ -213,6 +258,7 @@
                 ),
               );
           });
+          report.stage = "open confirmation " + route;
           await p.getByRole("button", { name: "Approve", exact: true }).click();
           const dialog = p.getByRole("alertdialog");
           await dialog.waitFor();
@@ -221,22 +267,36 @@
               r.request().method() === "POST" &&
               new URL(r.url()).pathname.startsWith("/_serverFn/"),
           );
+          report.stage = "confirm POST " + route;
           const begin = performance.now();
           await dialog.getByRole("button", { name: "Approve", exact: true }).click();
           const r = await response,
             raw = await r.text();
+          if (!template) template = { ...capture(r), approvalId: f.id };
           fs.writeFileSync(path.join(dir, f.id + ".response.private.txt"), raw);
           assert(!/\$TSR\/Error/.test(raw), "Decision response must succeed");
-          if (route === "/ai-review")
-            await p.getByRole("row").nth(1).getByText("Approved", { exact: true }).waitFor();
-          else
-            await p.waitForFunction(
-              (summary) =>
-                [...document.querySelectorAll("button")].some(
-                  (b) => b.textContent.includes(summary) && /\bApproved\b/i.test(b.textContent),
-                ),
-              f.summary,
+          report.stage = "confirmed final UI " + route;
+          try {
+            if (route === "/ai-review")
+              await p.getByRole("row").nth(1).getByText("Approved", { exact: true }).waitFor();
+            else {
+              // The terminal record leaves the pending queue; the selected detail stays visible.
+              await p.getByText(f.summary, { exact: true }).first().waitFor();
+              await p
+                .getByText("Approved", { exact: true })
+                .filter({ visible: true })
+                .first()
+                .waitFor();
+            }
+          } catch (e) {
+            await p.screenshot({ path: path.join(dir, "decision-failure.png"), fullPage: true });
+            fs.writeFileSync(
+              path.join(dir, "decision-failure.private.txt"),
+              await p.locator("body").innerText(),
             );
+            fs.writeFileSync(path.join(dir, "error.private.txt"), String(e.stack));
+            throw e;
+          }
           const uiMs = performance.now() - begin;
           await p.waitForLoadState("networkidle");
           await Promise.all(responseWork);
@@ -257,11 +317,26 @@
             databaseVersion: Number(after.row_version),
           });
           await p.close();
+          if ((index + 1) % 10 === 0)
+            console.log(JSON.stringify({ phase, route, samples: index + 1 }));
         }
       }
     } finally {
       await ctx.close();
     }
+    if (phase === "after")
+      await require("./verify-approval-review-boundaries.cjs")({
+        pool,
+        dir,
+        report,
+        fixture,
+        open,
+        ownContext,
+        who,
+        capture,
+        template,
+        target,
+      });
     await build();
     report.success = true;
   } finally {
