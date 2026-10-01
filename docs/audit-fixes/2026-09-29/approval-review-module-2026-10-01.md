@@ -148,3 +148,32 @@ Official first patched Start1.168.60 resolves core1.169.39; existing root Router
 Actual upgrade TypeScript failure (62 diagnostics) traced to five existing boundaries declaring error:Error, whereas the patched Router accepts unknown. Five one-token type-only edits now accept unknown; bodies retain existing safe message normalization/retry. TypeScript/runtime types/pure Vite/bundle gates pass; generated route output was proven identical modulo ordering then restored, with no manual routing change. Fresh whole-suite PG and exact patched hosted/native/CI gates are pending.
 
 This necessary existing-dependency security prerequisite changes the runtime chain, so application/lock equivalence to measured804b163 no longer holds. Its completed evidence remains valid for that source only; final patched source will recapture60 actual samples, all14 own-role/24 boundary/three neighbor gates and native polling from scratch. Final preview/merge stays blocked until those gates pass. Primary production hold remains; its existing served deployment is not patched by this local change and no production deployment is claimed.
+
+## Final patched-source acceptance / delivery checkpoint — 2026-10-02 HKT
+
+**PASS:** [patched-source evidence](evidence/approval-review-patched-2026-10-02/runtime-and-uat.json), [official release-age/integrity chain](evidence/approval-review-patched-2026-10-02/official-patch-chain.json). Measured/served application source **eb53700165e13098190fcf0079aaf1d99e3a8510**. All14 own-role,60 new actual runtime samples,24 boundaries and all three neighboring workflows recaptured from scratch with no continuation. All21 bulk rows complete actual8+8+5 after reload under original operation/key; full terminal replay unchanged. Seven-role screenshots and neighbor/native screenshots are in the same evidence folder; each role uses its own validated upstream/profile/session.
+
+Fresh newly empty clientops_approval_review_security_20261002 in task-only PG17.10/loopback64409: **2475 tests/326 files/zero skipped**,494.81s; aligned dependency installation completed before suite startup. Five boundary edits are type-only; final exact-head CI covers them. Patched head eb53700 exact Checks36903512326 / Database36903512314 pass **2475/326/zero skips**, isolated migration+seed replay, clean lint/types/pure Vite/bundles/browser. Primary source-only preview READY, dedicated UAT READY. Latest documentation/observer follow-up requires its own exact-head CI and UAT application-tree equivalence before green-only merge.
+
+### Final patched runtime vs actual original baseline
+
+| Route      | UI p50/p95 before ms | Patched UI p50/p95 ms | POST p50/p95 before ms | Patched POST p50/p95 ms | GET before -> patched |
+| ---------- | -------------------- | --------------------- | ---------------------- | ----------------------- | --------------------- |
+| /approvals | 3,631 / 4,093        | 3,707 / 4,229         | 3,310 / 3,779          | 3,344 / 3,849           | 2 -> 3                |
+| /ai-review | 3,578 / 3,779        | 3,724 / 4,144         | 3,266 / 3,404          | 3,417 / 3,620           | 1 -> 1                |
+
+30 real decisions per route/phase,1POST each, every actual DB approved/version1. The patched measurements are slower: UI p95 Approvals+136ms/3.3%, AI+365ms/9.6%; medians+76ms/+146ms. Growing retained synthetic datasets, sequential remote network runs and overlapping native diagnosis prevent assigning causality to the refactor/dependency patch. No performance improvement or whole-product performance PASS is claimed. Counts, tails and exact source are reported; Approvals retains its intentional additional authorized detail GET. Existing route bundle/zero-hidden/pending-only/minimal50-row budgets pass.
+
+### Strict native polling recovery and acceptance
+
+Native four actual35-second windows pass at the patched pure-Vite source on installed Chrome154.0.8037.58, its own fresh native profile, noDefaults=true and default sandbox; **1/0/1/0 pending requests**, history0 throughout periodic windows, no POST and all10k Tasks/100k Approvals/profile/receipt/audit hashes unchanged. Browser version differs from original Chromium153; it is stated separately, not substituted into the hosted timing samples. Native window established visible/focused before app mount.
+
+Earlier downloaded-Chromium startup/heading timeouts and two installed-Chrome visible-response timeouts retained. The diagnostic proved actual visible/focused/online Query interval30s became **hidden / intervalfalse** during overlapping shell work, with zero requests. This invalidated the foreground test window; it did not establish a polling app regression. Running the final native observer without concurrent shell activity yields all four strict cases, without changing timeout/35s/visibility/no-write gates or any app polling source. Optional known installed chrome channel makes this reproducible without disabling sandbox or granting filesystem ACLs. Private diagnostic is not acceptance. Owned runtime/browser closed after unchanged-hash verification.
+
+### Final release / rollback disposition
+
+P1–P6 implementation and original + patched isolated acceptance complete. P7 matrix/runbook/PR155/source-bound proofs are ready; exact final-head merge/main/production-hold results are maintained in [PR155's delivery record](https://github.com/YNWAforever/ui-delight-maker/pull/155). This source checkpoint precedes that final merge; it does not invent future SHAs/checks. Full sequential self-review repeated for the official dependency pins, five type-only boundaries and native observer; no independent agent review claimed.
+
+Rollback **must retain security commit eb53700** (patched packages/lock and unknown boundary type compatibility) together with P1 projection and P5 transaction coverage. Revert only P2–P4 UI/controller orchestration on a reviewed branch; preserve authorization, receipts, schema and data. The old vulnerable804b163 deployment is not an eligible UAT rollback target: rebuild a reviewed rollback with the patched chain, validate isolated gates, then bind only the dedicated UAT alias. No new migration/reconciliation; historical parity remains separately blocked.
+
+All30 CO statuses19 verified_fixed/11 blocked_external remain. Production held, not deployed; no production DB/Auth/provider operation or real customer message. Existing production is not patched by a local/UAT update. Separate external release NO-GO is unchanged.

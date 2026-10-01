@@ -1,0 +1,721 @@
+{
+  "before": {
+    "phase": "before",
+    "sourceSha": "7dc40fde8aba4c7033efaa67494fe31f70726926",
+    "success": true,
+    "startedAt": "2026-10-01T13:57:41.221Z",
+    "finishedAt": "2026-10-01T14:10:58.451Z",
+    "browser": "153.0.8010.12",
+    "runtime": {
+      "node": "v24.18.0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    "database": "clientops_uat",
+    "datasetBefore": {
+      "approvals": 148,
+      "runs": 31
+    },
+    "providersConfigured": false,
+    "noProductionOperation": true,
+    "sevenUniqueUpstreamUsersAndProfiles": true,
+    "roleCases": [
+      {
+        "role": "super_admin",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": true
+      },
+      {
+        "role": "super_admin",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": true
+      },
+      {
+        "role": "admin",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": true
+      },
+      {
+        "role": "admin",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": true
+      },
+      {
+        "role": "manager",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": true
+      },
+      {
+        "role": "manager",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": true
+      },
+      {
+        "role": "sales",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": false,
+        "approveEnabled": false
+      },
+      {
+        "role": "sales",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": false
+      },
+      {
+        "role": "client_success",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": false,
+        "approveEnabled": false
+      },
+      {
+        "role": "client_success",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": false
+      },
+      {
+        "role": "accounting",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": false,
+        "approveEnabled": false
+      },
+      {
+        "role": "accounting",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": false,
+        "approveEnabled": false
+      },
+      {
+        "role": "read_only",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": false,
+        "approveEnabled": false
+      },
+      {
+        "role": "read_only",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": false
+      }
+    ],
+    "routes": [
+      {
+        "route": "/approvals",
+        "n": 30,
+        "confirmToFinalUiMs": {
+          "p50": 3631.092100000009,
+          "p95": 4093.005700000038
+        },
+        "postDurationMs": {
+          "p50": 3310.4022000000114,
+          "p95": 3778.6177000000025
+        },
+        "postCounts": [
+          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+        ],
+        "getCounts": [
+          2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+        ],
+        "allDatabaseApprovedVersion1": true
+      },
+      {
+        "route": "/ai-review",
+        "n": 30,
+        "confirmToFinalUiMs": {
+          "p50": 3578.200400000089,
+          "p95": 3779.236399999936
+        },
+        "postDurationMs": {
+          "p50": 3265.892300000065,
+          "p95": 3404.1018999998923
+        },
+        "postCounts": [
+          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+        ],
+        "getCounts": [
+          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+        ],
+        "allDatabaseApprovedVersion1": true
+      }
+    ],
+    "privateReportSha256": "736cef1023752a2efb03f7cc5974028422f8890568f1f4c5b234b7eec923a617"
+  },
+  "after": {
+    "phase": "after",
+    "sourceSha": "eb53700165e13098190fcf0079aaf1d99e3a8510",
+    "success": true,
+    "startedAt": "2026-10-01T18:03:26.592Z",
+    "finishedAt": "2026-10-01T18:24:29.314Z",
+    "browser": "153.0.8010.12",
+    "runtime": {
+      "node": "v24.18.0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    "database": "clientops_uat",
+    "datasetBefore": {
+      "approvals": 369,
+      "runs": 252
+    },
+    "providersConfigured": false,
+    "noProductionOperation": true,
+    "sevenUniqueUpstreamUsersAndProfiles": true,
+    "roleCases": [
+      {
+        "role": "super_admin",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": true
+      },
+      {
+        "role": "super_admin",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": true
+      },
+      {
+        "role": "admin",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": true
+      },
+      {
+        "role": "admin",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": true
+      },
+      {
+        "role": "manager",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": true
+      },
+      {
+        "role": "manager",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": true
+      },
+      {
+        "role": "sales",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": false,
+        "approveEnabled": false
+      },
+      {
+        "role": "sales",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": false
+      },
+      {
+        "role": "client_success",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": false,
+        "approveEnabled": false
+      },
+      {
+        "role": "client_success",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": false
+      },
+      {
+        "role": "accounting",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": false,
+        "approveEnabled": false
+      },
+      {
+        "role": "accounting",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": false,
+        "approveEnabled": false
+      },
+      {
+        "role": "read_only",
+        "route": "/approvals",
+        "ownLiveSession": true,
+        "approveOffered": false,
+        "approveEnabled": false
+      },
+      {
+        "role": "read_only",
+        "route": "/ai-review",
+        "ownLiveSession": true,
+        "approveOffered": true,
+        "approveEnabled": false
+      }
+    ],
+    "routes": [
+      {
+        "route": "/approvals",
+        "n": 30,
+        "confirmToFinalUiMs": {
+          "p50": 3706.809099999984,
+          "p95": 4228.740800000029
+        },
+        "postDurationMs": {
+          "p50": 3343.82859999995,
+          "p95": 3848.9698000000208
+        },
+        "postCounts": [
+          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+        ],
+        "getCounts": [
+          3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+        ],
+        "allDatabaseApprovedVersion1": true
+      },
+      {
+        "route": "/ai-review",
+        "n": 30,
+        "confirmToFinalUiMs": {
+          "p50": 3724.3085999999894,
+          "p95": 4143.752300000051
+        },
+        "postDurationMs": {
+          "p50": 3417.2560999999987,
+          "p95": 3619.8789000000106
+        },
+        "postCounts": [
+          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+        ],
+        "getCounts": [
+          1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+        ],
+        "allDatabaseApprovedVersion1": true
+      }
+    ],
+    "boundaries": [
+      {
+        "label": "version7-allowed",
+        "role": "super_admin",
+        "route": "/approvals",
+        "version": 8,
+        "postCount": 1,
+        "auditCount": 1,
+        "receiptCount": 1,
+        "liveUi": true
+      },
+      {
+        "label": "version7-allowed",
+        "role": "super_admin",
+        "route": "/ai-review",
+        "version": 8,
+        "postCount": 1,
+        "auditCount": 1,
+        "receiptCount": 1,
+        "liveUi": true
+      },
+      {
+        "label": "version7-allowed",
+        "role": "admin",
+        "route": "/approvals",
+        "version": 8,
+        "postCount": 1,
+        "auditCount": 1,
+        "receiptCount": 1,
+        "liveUi": true
+      },
+      {
+        "label": "version7-allowed",
+        "role": "admin",
+        "route": "/ai-review",
+        "version": 8,
+        "postCount": 1,
+        "auditCount": 1,
+        "receiptCount": 1,
+        "liveUi": true
+      },
+      {
+        "label": "version7-allowed",
+        "role": "manager",
+        "route": "/approvals",
+        "version": 8,
+        "postCount": 1,
+        "auditCount": 1,
+        "receiptCount": 1,
+        "liveUi": true
+      },
+      {
+        "label": "version7-allowed",
+        "role": "manager",
+        "route": "/ai-review",
+        "version": 8,
+        "postCount": 1,
+        "auditCount": 1,
+        "receiptCount": 1,
+        "liveUi": true
+      },
+      {
+        "label": "own-role-server-denied",
+        "role": "sales",
+        "route": "/approvals",
+        "dbUnchanged": true,
+        "controlsBlocked": true,
+        "restrictedContentHidden": false,
+        "status": 200
+      },
+      {
+        "label": "own-role-server-denied",
+        "role": "sales",
+        "route": "/ai-review",
+        "dbUnchanged": true,
+        "controlsBlocked": true,
+        "restrictedContentHidden": false,
+        "status": 200
+      },
+      {
+        "label": "own-role-server-denied",
+        "role": "client_success",
+        "route": "/approvals",
+        "dbUnchanged": true,
+        "controlsBlocked": true,
+        "restrictedContentHidden": false,
+        "status": 200
+      },
+      {
+        "label": "own-role-server-denied",
+        "role": "client_success",
+        "route": "/ai-review",
+        "dbUnchanged": true,
+        "controlsBlocked": true,
+        "restrictedContentHidden": false,
+        "status": 200
+      },
+      {
+        "label": "own-role-server-denied",
+        "role": "accounting",
+        "route": "/approvals",
+        "dbUnchanged": true,
+        "controlsBlocked": true,
+        "restrictedContentHidden": false,
+        "status": 200
+      },
+      {
+        "label": "own-role-server-denied",
+        "role": "accounting",
+        "route": "/ai-review",
+        "dbUnchanged": true,
+        "controlsBlocked": true,
+        "restrictedContentHidden": false,
+        "status": 200
+      },
+      {
+        "label": "own-role-server-denied",
+        "role": "read_only",
+        "route": "/approvals",
+        "dbUnchanged": true,
+        "controlsBlocked": true,
+        "restrictedContentHidden": false,
+        "status": 200
+      },
+      {
+        "label": "own-role-server-denied",
+        "role": "read_only",
+        "route": "/ai-review",
+        "dbUnchanged": true,
+        "controlsBlocked": true,
+        "restrictedContentHidden": false,
+        "status": 200
+      },
+      {
+        "label": "scoped-reader-allow",
+        "role": "read_only",
+        "route": "/approvals",
+        "liveUi": true,
+        "aiRoleAdvisoryStillDisabled": true,
+        "serverAllowed": true
+      },
+      {
+        "label": "grant-withdrawn-after-dialog",
+        "role": "read_only",
+        "liveUi": true,
+        "serverDenied": true,
+        "dbUnchanged": true
+      },
+      {
+        "label": "scoped-manager-deny",
+        "role": "manager",
+        "serverDenied": true,
+        "dbUnchanged": true
+      },
+      {
+        "label": "expired-reader-allow",
+        "role": "read_only",
+        "serverDenied": true,
+        "dbUnchanged": true
+      },
+      {
+        "label": "outside-scoped-allow",
+        "role": "read_only",
+        "serverDenied": true,
+        "dbUnchanged": true
+      },
+      {
+        "label": "native-double-click",
+        "route": "/approvals",
+        "postCount": 1,
+        "version": 8,
+        "auditCount": 1,
+        "receiptCount": 1
+      },
+      {
+        "label": "native-double-click",
+        "route": "/ai-review",
+        "postCount": 1,
+        "version": 8,
+        "auditCount": 1,
+        "receiptCount": 1
+      },
+      {
+        "label": "explicit-original-payload-retry",
+        "route": "/approvals",
+        "inducedFault": "first actual UI request aborted before forwarding",
+        "originalPayloadAndKeyPreserved": true,
+        "onlyOneDatabaseCommit": true,
+        "version": 8,
+        "auditCount": 1,
+        "receiptCount": 1,
+        "originalReplayUnchanged": true
+      },
+      {
+        "label": "explicit-original-payload-retry",
+        "route": "/ai-review",
+        "inducedFault": "first actual UI request aborted before forwarding",
+        "originalPayloadAndKeyPreserved": true,
+        "onlyOneDatabaseCommit": true,
+        "version": 8,
+        "auditCount": 1,
+        "receiptCount": 1,
+        "originalReplayUnchanged": true
+      },
+      {
+        "label": "two-permitted-actors-opposed",
+        "actors": ["manager", "admin"],
+        "routes": ["/approvals", "/ai-review"],
+        "releasedTogether": true,
+        "winner": "manager",
+        "terminal": "approved",
+        "version": 8,
+        "auditCount": 1,
+        "receiptCount": 1,
+        "originalReplayUnchanged": true
+      }
+    ],
+    "neighbors": {
+      "claimAssignment": {
+        "claimedVersion": 8,
+        "assignedVersion": 9,
+        "liveUi": true,
+        "authorizedDetailReloadBeforeAssignment": true,
+        "claimActor": "manager",
+        "assignmentActor": "admin",
+        "managerDirectoryScopeRetained": true
+      },
+      "manual": {
+        "liveUi": true,
+        "copyControlVisible": true,
+        "statementRecorded": true,
+        "replayUnchanged": true,
+        "nativeSameOriginReplay": true,
+        "noDeliveryClaim": true,
+        "noProviderConfigured": true
+      },
+      "bulk": {
+        "items": 21,
+        "firstStep": 8,
+        "steps": [
+          {
+            "processed": 8,
+            "delta": 8,
+            "durationMs": 12871.977799999993
+          },
+          {
+            "processed": 16,
+            "delta": 8,
+            "durationMs": 10872.528699999908
+          },
+          {
+            "processed": 21,
+            "delta": 5,
+            "durationMs": 15419.80799999996
+          }
+        ],
+        "completed": true,
+        "boundedChunksObserved": true,
+        "fullReceiptReplayUnchanged": true,
+        "originalReceiptRetainedAfterReload": true,
+        "originalCommitKeyPreserved": true,
+        "originalCommitReplayUnchanged": true,
+        "nativeSameOriginReplay": true,
+        "resumedOperationIdPreserved": true,
+        "liveUi": true,
+        "allApprovedVersion1": true
+      }
+    },
+    "syntheticOverrideCleanup": true,
+    "actualMeasurementCapture": {
+      "sourceSha": "eb53700165e13098190fcf0079aaf1d99e3a8510",
+      "reportStartedAt": "2026-10-01T18:03:26.592Z",
+      "reportFinishedAt": "2026-10-01T18:24:29.314Z",
+      "privateReportSha256": "1f5304c6f39b3b353429fb450240d1d1d9f2726ffcb6fcaad4a7740f06a6e9cc",
+      "note": "All actual measurements, seven-role cases and boundaries recaptured from scratch after the official dependency security patch."
+    },
+    "privateReportSha256": "1f5304c6f39b3b353429fb450240d1d1d9f2726ffcb6fcaad4a7740f06a6e9cc"
+  },
+  "native": {
+    "sourceSha": "eb53700165e13098190fcf0079aaf1d99e3a8510",
+    "success": true,
+    "startedAt": "2026-10-01T18:33:05.278Z",
+    "finishedAt": "2026-10-01T18:35:36.510Z",
+    "role": "manager",
+    "launch": "headed native Chromium with own fresh profile; connectOverCDP noDefaults=true; no focus/media/download overrides",
+    "nativeChannel": "chrome",
+    "sandboxDisabled": false,
+    "noClockOrVisibilityMocks": true,
+    "dataset": {
+      "database": "clientops_perf_r06_20260930",
+      "tasks": 10000,
+      "approvals": 100000
+    },
+    "browser": {
+      "protocolVersion": "1.3",
+      "product": "Chrome/154.0.8037.58",
+      "revision": "@a654841425914cbb703a2931e07b70a83aedbafd",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+      "jsVersion": "15.4.80.11"
+    },
+    "foregroundBeforeAppMount": {
+      "visibility": "visible",
+      "hasFocus": true
+    },
+    "foregroundAfterAppMount": {
+      "visibility": "visible",
+      "hasFocus": true
+    },
+    "ownIndependentAuthBinding": true,
+    "cases": [
+      {
+        "case": "visible-pending-refresh",
+        "nativeVisibility": "visible",
+        "realElapsedMs": 35008,
+        "pendingRequests": 1,
+        "historyRequests": 0,
+        "allServerFunctionRequests": 1,
+        "fiftyRowMinimalList": true,
+        "pass": true
+      },
+      {
+        "case": "native-background-tab-stops-polling",
+        "nativeVisibility": "hidden",
+        "realElapsedMs": 35016,
+        "pendingRequests": 0,
+        "historyRequests": 0,
+        "allServerFunctionRequests": 0,
+        "fiftyRowMinimalList": true,
+        "pass": true
+      },
+      {
+        "case": "native-foreground-resumes-pending-only",
+        "nativeVisibility": "visible",
+        "realElapsedMs": 35014,
+        "pendingRequests": 1,
+        "historyRequests": 0,
+        "allServerFunctionRequests": 1,
+        "fiftyRowMinimalList": true,
+        "pass": true
+      },
+      {
+        "case": "native-minimized-window-stops-polling",
+        "nativeVisibility": "hidden",
+        "realElapsedMs": 35007,
+        "pendingRequests": 0,
+        "historyRequests": 0,
+        "allServerFunctionRequests": 0,
+        "fiftyRowMinimalList": true,
+        "pass": true
+      }
+    ],
+    "foregroundFocusCatchup": [
+      {
+        "group": "pending",
+        "status": 200,
+        "rows": 50,
+        "at": 1790879662538
+      },
+      {
+        "group": "history",
+        "status": 200,
+        "rows": 50,
+        "at": 1790879662770
+      }
+    ],
+    "visibilityEvents": [
+      {
+        "at": 1790879626571,
+        "visibility": "hidden",
+        "hidden": true
+      },
+      {
+        "at": 1790879661630,
+        "visibility": "visible",
+        "hidden": false
+      },
+      {
+        "at": 1790879697797,
+        "visibility": "hidden",
+        "hidden": true
+      },
+      {
+        "at": 1790879732816,
+        "visibility": "visible",
+        "hidden": false
+      }
+    ],
+    "actualMinimizedWindow": "minimized",
+    "noMutationPosts": true,
+    "databaseHashesUnchanged": true,
+    "privateReportSha256": "aaa25857afa0b941e70b318ea4b586d3d689d263e9ded07451dba8f2c522bf52"
+  },
+  "comparisonMethod": "Sequential real runtime; 30 fresh qualification_review version0 rows per route/phase, Manager owner, same browser/viewport/Auth/DB/provider-off config. Percentiles nearest rank of measured durations; datasets grow as synthetic rows are retained. Version7 and security boundaries separately tested. Variations are not a causal speed guarantee or Core Web Vitals; additional Approvals authorized GET is reported."
+}

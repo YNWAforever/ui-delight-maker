@@ -1,0 +1,120 @@
+{
+  "advisory": "https://github.com/TanStack/router/security/advisories/GHSA-qx66-fv34-fjm8",
+  "minimumReleaseAgeSeconds": 86400,
+  "agePolicyUnchanged": true,
+  "all16IntegrityValuesMatchedLock": true,
+  "chain": [
+    {
+      "package": "@tanstack/react-start",
+      "version": "1.168.60",
+      "published": "2026-09-30T17:48:34.385Z",
+      "eligibleAt": "2026-10-01T17:48:34.385Z",
+      "integrity": "sha512-WMOM0Xlh2lPbVlbjYM6uOxOpiaWRPvODm/dwkLsGKq5tjyHOHZmKckJgwlrZl7OQUqFlOZHYj8bKUTgoeg8cUQ=="
+    },
+    {
+      "package": "@tanstack/react-router",
+      "version": "1.170.41",
+      "published": "2026-09-30T17:48:34.218Z",
+      "eligibleAt": "2026-10-01T17:48:34.218Z",
+      "integrity": "sha512-Mpvw8Wm5MGDbTqI8Yc9flLKxbOHwoWocv0H2aGKcgw2a017oK5nZWqa954P+DrUx/8fI98YNywnHP5XcD3tQ9w=="
+    },
+    {
+      "package": "@tanstack/router-utils",
+      "version": "1.162.3",
+      "published": "2026-09-09T21:47:35.125Z",
+      "eligibleAt": "2026-09-10T21:47:35.125Z",
+      "integrity": "sha512-Icb0xGuG1+54IV0WMLRcc3ErTx2HeJWyPG661FkQ8UT6guoBq1FJjFRqlG/JS0xi4mFFkBhvwO7tbLa32f3yxA=="
+    },
+    {
+      "package": "@tanstack/react-start-rsc",
+      "version": "0.1.59",
+      "published": "2026-09-30T17:47:30.872Z",
+      "eligibleAt": "2026-10-01T17:47:30.872Z",
+      "integrity": "sha512-M2Lqxkk5C1zQncQs5paqX+/OLdOht51pg6D84YfLMrNsjhU/nzb6wd92MIja0mi5i23+L+fxLLjQYR2DObjBlw=="
+    },
+    {
+      "package": "@tanstack/start-client-core",
+      "version": "1.170.34",
+      "published": "2026-09-30T17:47:20.739Z",
+      "eligibleAt": "2026-10-01T17:47:20.739Z",
+      "integrity": "sha512-LfwZSbau2MLLZ/uPAoO+NC9fK3J66c0wLhnNQqIa+Goqw7bXPjkHwlsjY7evlUz1AnyhhQ1Qab95v+VmP0TZ9A=="
+    },
+    {
+      "package": "@tanstack/start-plugin-core",
+      "version": "1.171.49",
+      "published": "2026-09-30T17:49:13.427Z",
+      "eligibleAt": "2026-10-01T17:49:13.427Z",
+      "integrity": "sha512-HPOb7LnMc71k38cd5uvMybPPUU/Q/56KvSqQzSWz7cps1ZDFXaxUM6EFaFHLCdgTWqGexNGDdRE+sUVPVBM4Xg=="
+    },
+    {
+      "package": "@tanstack/start-server-core",
+      "version": "1.169.39",
+      "published": "2026-09-30T17:48:11.683Z",
+      "eligibleAt": "2026-10-01T17:48:11.683Z",
+      "integrity": "sha512-pqqkxhXY46nuFSYt6TsMGyABiplUzHFHndKAlRRGC0fWDrJCH1koWxVMoxySa51ZETV79f/z73b5UZ1jfIkXwQ=="
+    },
+    {
+      "package": "@tanstack/react-start-client",
+      "version": "1.168.39",
+      "published": "2026-09-30T17:51:06.661Z",
+      "eligibleAt": "2026-10-01T17:51:06.661Z",
+      "integrity": "sha512-Uby0uo37JlQgUKHU0snDwH9nYiEeAjm9+7pUOFgycU/UszEILC2SO2DSCoNnCMuHKj9z+4URKzBYIP2exT9+wg=="
+    },
+    {
+      "package": "@tanstack/react-start-server",
+      "version": "1.167.46",
+      "published": "2026-09-30T17:49:03.025Z",
+      "eligibleAt": "2026-10-01T17:49:03.025Z",
+      "integrity": "sha512-K7z8xBOEdp8u5CZCxWrbS0tFtk5XZGMdhssLeZlRZKlLDbX7BKLdMtJ7th5sR6QVt9MTUAg3LcoqvJMPSFF+lg=="
+    },
+    {
+      "package": "@tanstack/history",
+      "version": "1.162.4",
+      "published": "2026-09-13T13:18:41.220Z",
+      "eligibleAt": "2026-09-14T13:18:41.220Z",
+      "integrity": "sha512-utTS5L2OkeYUzXGohL1Z8sefu1GLNOJcxe8Hd6iIdc/Xo1K1nDB2JEp4iSFhvYh33xKC9V91TxrS8qfrpoKobQ=="
+    },
+    {
+      "package": "@tanstack/router-core",
+      "version": "1.171.34",
+      "published": "2026-09-30T17:50:05.181Z",
+      "eligibleAt": "2026-10-01T17:50:05.181Z",
+      "integrity": "sha512-X+19pGuuLVPvvAvPYw9v/+ktRk5cCll8AtfpBpOhDRmVgUMrfqze0467xtq8YRVVs/mmo5rVtWn/7Tp32RDBKw=="
+    },
+    {
+      "package": "@tanstack/start-fn-stubs",
+      "version": "1.162.0",
+      "published": "2026-05-15T19:27:59.969Z",
+      "eligibleAt": "2026-05-16T19:27:59.969Z",
+      "integrity": "sha512-QWfUZ3Yo923tdQn38LyKMU8rcTw69zc+T4dAvgTWV4O56SqFRsGfS0lSWIMhJRwXIx/bvdi7nTUBDdZtTHtpTQ=="
+    },
+    {
+      "package": "@tanstack/start-storage-context",
+      "version": "1.167.36",
+      "published": "2026-09-30T17:48:12.191Z",
+      "eligibleAt": "2026-10-01T17:48:12.191Z",
+      "integrity": "sha512-x+xCXK2GtFzY6NbXqAg8YpU6cwAjDfMeYSNzxfGzntpjbwBRHHrXeC/kYUnBBQCV7wK4kJ8vBBQGP0OyYTasUg=="
+    },
+    {
+      "package": "@tanstack/router-plugin",
+      "version": "1.168.42",
+      "published": "2026-09-30T17:48:34.007Z",
+      "eligibleAt": "2026-10-01T17:48:34.007Z",
+      "integrity": "sha512-vAR5WXJh/ErseEWQftDhsJcr2c++ucRQ6FbqN3ygMO44+ZxxRfW3sIpZmddHROVSmBk8jc6MrwjTPNjVhd62Vw=="
+    },
+    {
+      "package": "@tanstack/router-generator",
+      "version": "1.167.40",
+      "published": "2026-09-30T17:48:02.790Z",
+      "eligibleAt": "2026-10-01T17:48:02.790Z",
+      "integrity": "sha512-WkEueqEvsBBudzO0fx1nWfOmRNW8OAvBoVABTGls9bAWzjdC+KDGHvjCNrvn88ofs1F6gqL8aWnzKCbxW3dCyQ=="
+    },
+    {
+      "package": "@tanstack/virtual-file-routes",
+      "version": "1.162.0",
+      "published": "2026-05-15T19:28:06.633Z",
+      "eligibleAt": "2026-05-16T19:28:06.633Z",
+      "integrity": "sha512-uhOeFyxLcU41HzvrxsGpiWdcMbScY1EDgbZ5K7DVRMYInbLYWAC0EA/kx9wXAoSM8q82bUG2hRl8+EAjE6XAbA=="
+    }
+  ]
+}
