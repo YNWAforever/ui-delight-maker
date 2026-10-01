@@ -1,0 +1,12 @@
+{
+  "testedAt": "2026-10-01T02:02:39.328Z",
+  "db": "clientops_job_owner_scope_final_20261001_0957",
+  "loopbackOnly": true,
+  "postgres": "17.10",
+  "tests": 2393,
+  "files": 323,
+  "skipped": 0,
+  "todo": 0,
+  "failed": 0,
+  "elapsedMs": 512080
+}

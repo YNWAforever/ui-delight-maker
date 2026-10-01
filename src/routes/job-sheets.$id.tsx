@@ -252,6 +252,7 @@ function JobSheetDetailPage() {
 
   const canEditPlan = jobSheetQuery.data.canUpdateHeader === true;
   const commercialLocked = isJobSheetCommercialLocked(jobSheet.status, jobSheet.locked_at);
+  const canBulkEditInvoiceDate = canEditPlan && !commercialLocked;
   const hasUnsavedBillingChanges = useMemo(
     () => hasUnsavedBillingDraftChanges(portionDrafts, portions),
     [portionDrafts, portions],
@@ -669,7 +670,7 @@ function JobSheetDetailPage() {
                 portions={previewPortions}
               />
 
-              {((jobSheetQuery.data.canUpdateHeader && bulkPortionSelected.size > 0) ||
+              {((canBulkEditInvoiceDate && bulkPortionSelected.size > 0) ||
                 bulkPortionOperation.result ||
                 bulkPortionOperation.recoveryState) && (
                 <BulkActionBar
@@ -684,7 +685,7 @@ function JobSheetDetailPage() {
                     bulkPortionOperation.dismiss();
                   }}
                 >
-                  {jobSheetQuery.data.canUpdateHeader && bulkPortionSelected.size > 0 && (
+                  {canBulkEditInvoiceDate && bulkPortionSelected.size > 0 && (
                     <>
                       <Label className="flex items-center gap-2 text-xs">
                         Target invoice date
@@ -759,7 +760,7 @@ function JobSheetDetailPage() {
 
                   return (
                     <div key={portion.id} className="rounded-md border border-border p-4">
-                      {persisted && jobSheetQuery.data.canUpdateHeader && (
+                      {persisted && canBulkEditInvoiceDate && (
                         <Label className="mb-3 flex items-center gap-2 text-xs">
                           <Checkbox
                             checked={bulkPortionSelected.has(persisted.id)}

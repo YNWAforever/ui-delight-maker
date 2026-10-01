@@ -1,0 +1,37 @@
+{
+  "sourceSha": "026f64d481421a2b518a101bf446b58972c6999f",
+  "operationId": "b17c637b-694d-4d7d-8534-e347dcff0209",
+  "jobSheetId": "04dad0e9-a299-47a4-8d57-be98d104d9df",
+  "portionIds": [
+    "504a4019-5098-4cbe-9e13-596b56e3a8e5",
+    "3b61b909-ac44-489b-a698-961107d07588",
+    "be063bca-a0ac-429d-b862-3707d5a858e1"
+  ],
+  "originalKeyHash": "ff2c6678945b4f755a5dbc412f31bf8e259c0cd878ff30e20786ad25f17eebfb",
+  "outcomes": [
+    {
+      "status": "stale",
+      "code": "LOCKED"
+    },
+    {
+      "status": "stale",
+      "code": "LOCKED"
+    },
+    {
+      "status": "stale",
+      "code": "LOCKED"
+    }
+  ],
+  "actualUiPreviewThenIndependentAdminLock": true,
+  "allThreeDateWritesDenied": true,
+  "originalParentAcceptedAndPortionsDateNullVersionZero": true,
+  "originalPreviewAndLockReachedTerminalBeforeObserverError": true,
+  "originalNewDateControlStillOffered": true,
+  "terminalReplayMetadataGate": "FAIL: completed_at changed on actual owner resume",
+  "beforeCompletedAt": "2026-10-01T02:08:21.789Z",
+  "afterCompletedAt": "2026-10-01T02:11:55.382Z",
+  "businessWritesUnchanged": true,
+  "originalObserverError": "One-time commit storage check ran again during terminal replay and expected pending_commit after storage had become the operation ID; replay stopped before forwarding. Original completed operation continued without reseed or replacement preview.",
+  "correctedObserver": "Original owner receipt visible; actual terminal resume sent; full-row snapshot rejects changed completion timestamp. Failed private assertions retained; secret values omitted.",
+  "noProviderOrCustomerMessage": true
+}

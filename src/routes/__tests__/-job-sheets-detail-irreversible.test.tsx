@@ -123,9 +123,10 @@ function renderDetail(
     canUpdateHeader: true,
     canUpdateInvoiceByPortion: Object.fromEntries(portions.map((item) => [item.id, true])),
   },
+  sheetOverrides: Partial<JobSheet> = {},
 ) {
   vi.mocked(Route.useLoaderData).mockReturnValue({
-    jobSheet,
+    jobSheet: { ...jobSheet, ...sheetOverrides },
     portions,
     quote: null,
     client: null,
@@ -413,6 +414,31 @@ const ownedBulkReceipt = {
 };
 
 describe("Job Sheet invoice date durable bulk receipt recovery", () => {
+  it.each([
+    { status: "accepted" as const, locked_at: null },
+    { status: "accounting_review" as const, locked_at: "2026-10-01T00:00:00Z" },
+  ])(
+    "keeps owned results readable but removes new date selection when commercially locked: %j",
+    async (locked) => {
+      sessionStorage.setItem("clientops:bulk:job-sheet-portions:js-1", "owned-operation");
+      getBulkResultMock.mockResolvedValue({
+        ...ownedBulkReceipt,
+        state: "completed",
+        processed: 2,
+        results: [
+          ...ownedBulkReceipt.results,
+          { id: "pending-item", status: "stale", retryable: false },
+        ],
+      });
+      renderDetail([portion({})], { canUpdateHeader: true, canUpdateInvoiceByPortion: {} }, locked);
+      await screen.findByText(/2 of 2 processed/);
+      expect(screen.queryByRole("checkbox", { name: /for bulk date change/ })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Set invoice date" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Download failures" })).toBeTruthy();
+      expect(previewBulkMock).not.toHaveBeenCalled();
+      expect(commitBulkMock).not.toHaveBeenCalled();
+    },
+  );
   it("keeps and retries the original receipt with no selected rows, then resumes the exact saved commit key", async () => {
     const saved = JSON.stringify(savedBulkCommit);
     sessionStorage.setItem("clientops:bulk:job-sheet-portions:js-1", saved);
