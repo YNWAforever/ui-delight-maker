@@ -277,9 +277,9 @@ export type RowAuthorizer = {
  */
 export async function requirePageAuthorization(
   required: readonly Capability[],
-  options: { optional?: readonly Capability[] } = {},
+  options: { optional?: readonly Capability[]; context?: RequestAuthorization } = {},
 ): Promise<{ access: Partial<Record<Capability, boolean>>; rows: RowAuthorizer }> {
-  const context = await loadAuthorizationContext();
+  const context = options.context ?? (await loadAuthorizationContext());
   const access: Partial<Record<Capability, boolean>> = {};
 
   for (const capability of required) {

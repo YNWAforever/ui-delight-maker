@@ -1,0 +1,143 @@
+{
+  "sourceSha": "8b9479fb9063dc1d85cd10670656d28aae37954a",
+  "scope": "Actual seven own-role offered local recovery controls and Reader POST denial; two new synthetic isolated local runs, no provider dispatch",
+  "success": true,
+  "cases": [
+    {
+      "role": "super_admin",
+      "status": "running",
+      "ownAuthMatched": true,
+      "offered": {
+        "cancel": true,
+        "expire": true,
+        "retry": true
+      }
+    },
+    {
+      "role": "super_admin",
+      "status": "waiting_approval",
+      "ownAuthMatched": true,
+      "offered": {
+        "cancel": true,
+        "expire": true,
+        "retry": false
+      }
+    },
+    {
+      "role": "admin",
+      "status": "running",
+      "ownAuthMatched": true,
+      "offered": {
+        "cancel": true,
+        "expire": true,
+        "retry": true
+      }
+    },
+    {
+      "role": "admin",
+      "status": "waiting_approval",
+      "ownAuthMatched": true,
+      "offered": {
+        "cancel": true,
+        "expire": true,
+        "retry": false
+      }
+    },
+    {
+      "role": "manager",
+      "status": "running",
+      "ownAuthMatched": true,
+      "offered": {
+        "cancel": true,
+        "expire": true,
+        "retry": true
+      }
+    },
+    {
+      "role": "manager",
+      "status": "waiting_approval",
+      "ownAuthMatched": true,
+      "offered": {
+        "cancel": true,
+        "expire": true,
+        "retry": false
+      }
+    },
+    {
+      "role": "sales",
+      "status": "running",
+      "ownAuthMatched": true,
+      "offered": {
+        "cancel": true,
+        "expire": true,
+        "retry": true
+      }
+    },
+    {
+      "role": "sales",
+      "status": "waiting_approval",
+      "ownAuthMatched": true,
+      "offered": {
+        "cancel": true,
+        "expire": true,
+        "retry": false
+      }
+    },
+    {
+      "role": "client_success",
+      "status": "running",
+      "ownAuthMatched": true,
+      "offered": {
+        "cancel": true,
+        "expire": true,
+        "retry": true
+      }
+    },
+    {
+      "role": "client_success",
+      "status": "waiting_approval",
+      "ownAuthMatched": true,
+      "offered": {
+        "cancel": true,
+        "expire": true,
+        "retry": false
+      }
+    },
+    {
+      "role": "accounting",
+      "pageDenied": true,
+      "ownAuthMatched": true
+    },
+    {
+      "role": "read_only",
+      "status": "running",
+      "ownAuthMatched": true,
+      "offered": {
+        "cancel": true,
+        "expire": true,
+        "retry": true
+      }
+    },
+    {
+      "role": "read_only",
+      "status": "waiting_approval",
+      "ownAuthMatched": true,
+      "offered": {
+        "cancel": true,
+        "expire": true,
+        "retry": false
+      }
+    }
+  ],
+  "readerPostDenied": true,
+  "noRunApprovalAuditReceiptWrites": true,
+  "fixture": {
+    "leadId": "83852f83-ceb6-4ce9-93f6-09c6369a4863",
+    "waitingLeadId": "57a272d3-a779-445e-8db6-ebec7ca7378c",
+    "runningId": "9d96718b-bf36-4d3f-996d-2a7df63a3095",
+    "waitingId": "107d60eb-7d5a-41c9-8539-88e18f7c3f10",
+    "approvalId": "00f79707-6044-4642-8c8d-f99b65e703ee"
+  },
+  "actualRoleDefect": true,
+  "finishedAt": "2026-10-01T02:53:27.900Z"
+}

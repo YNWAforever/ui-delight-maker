@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   requireCapabilityChecks: vi.fn(),
   requireCapabilitySet: vi.fn(),
   requirePageAuthorization: vi.fn(),
+  loadRequestAuthorization: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => ({
@@ -30,6 +31,7 @@ vi.mock("@/server/auth/authorization.server", () => ({
   requireCapabilityChecks: mocks.requireCapabilityChecks,
   requireCapabilitySet: mocks.requireCapabilitySet,
   requirePageAuthorization: mocks.requirePageAuthorization,
+  loadRequestAuthorization: mocks.loadRequestAuthorization,
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
@@ -60,6 +62,18 @@ beforeEach(() => {
     rows: stubRowAuthorizer,
   });
   mocks.query.mockResolvedValue([]);
+  mocks.loadRequestAuthorization.mockResolvedValue({
+    actor: {
+      profileId: "user-1",
+      role: "manager",
+      status: "active",
+      directReportIds: [],
+      managedTeamIds: [],
+      managedDepartmentIds: [],
+    },
+    overrides: [],
+    now: new Date(),
+  });
 });
 
 describe("agent operational read models", () => {
@@ -89,7 +103,9 @@ describe("agent operational read models", () => {
     // requested as optional so the read model can redact per row without a second load.
     expect(mocks.requirePageAuthorization).toHaveBeenCalledWith(["agents.view"], {
       optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+      context: await mocks.loadRequestAuthorization.mock.results[0].value,
     });
+    expect(mocks.loadRequestAuthorization).toHaveBeenCalledTimes(1);
     expect(mocks.query).toHaveBeenNthCalledWith(1, expect.stringContaining("count(*)"), [
       "Qualification Agent",
     ]);

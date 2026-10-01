@@ -1,8 +1,8 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current checkpoint — PR150 exact-source bulk acceptance / final-head CI pending
+## Current checkpoint — PR150 merged; U11 local recovery repair
 
-Main3e0c455 includes149 finalabed594; production canceled/publicbed941b unchanged. PR150 source8b9479f passes local/exactCI2397/323/zero skipped/replay/static/browser and genuine own-role20 scoped owner +18 original100 receipt +13 original lock/replay +4 original Approve3 continuation cases. [Report](bulk-receipt-recovery-2026-10-01.md). CO-16/U08 defined mixed-result criteria verified_fixed/PASS; final documentation head must pass the same full gates before merge. Canonical UAT remainsfc4a2fd, protected dedicated candidate8b9479f uses same independent test DB/Auth/seven own identities; original data/keys remain. All30CO/16UAT retained, remaining U11 local recovery role slice and individual provider/legacy/history/operator/PITR/screen-reader gates stay open, release NO-GO.
+PR150 finalff4c015 and main9e96bc5 pass2,397/zero skipped/replay/types/lint/browser. Production latest attempt CANCELED/publicbed941b unchanged. [Merge](evidence/pr150-merge-2026-10-01.json), [hold](evidence/production-hold-after-150-2026-10-01.json). U08 mixed-result criteria PASS; original data/keys retained. U11 local recovery affordance/key repair passes local2,410/323/zero skipped/22 targeted/48 related/static/pure Vite/bundles, actual-role recapture and exact source CI pending. [Report](agent-recovery-uat-2026-10-01.md). All30CO/16UAT and individual external gates retained; release NO-GO.
 
 ## Previous verified checkpoint — PR #148 / focused Lead repair
 
