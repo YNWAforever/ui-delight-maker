@@ -4,15 +4,15 @@ Approved design/plan: planning repo commit `d8e0c71`; user approved execution in
 
 ## Fix matrix
 
-| Task | Implementation / verification | Role UI / runtime | Blocker |
-| --- | --- | --- | --- |
-| P1 real AI version projection | Minimal SELECT column added. Real PG RED3 failed/1 passed -> GREEN4/4, zero skipped. Identity stripping, denied/orphan redaction and two composed reads retained. | Independent pre-change capture in progress; actual fixture version7 test above. | Browser/runtime evidence pending; no broad release claim. |
-| P2 controller | pending | pending | none identified |
-| P3 Approvals adapter | pending | pending | none identified |
-| P4 AI confirmed adapter | pending | pending | none identified |
-| P5 transaction / full gate | pending | not role UAT | none identified |
-| P6 own-role UAT / runtime | pending | pending | existing external audit dependencies retained |
-| P7 PR / green merge | pending | exact final source required | P2-P6 acceptance pending |
+| Task                          | Implementation / verification                                                                                                                                                                 | Role UI / runtime                                                               | Blocker                                                   |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| P1 real AI version projection | Minimal SELECT column added. Real PG RED3 failed/1 passed -> GREEN4/4, zero skipped. Identity stripping, denied/orphan redaction and two composed reads retained.                             | Independent pre-change capture in progress; actual fixture version7 test above. | Browser/runtime evidence pending; no broad release claim. |
+| P2 controller                 | 34 interface tests PASS; notes allowlist RED -> GREEN; TypeScript PASS. Frozen intent, mount latch, original replay key, guarded cache rollback, quote metadata and authorized read retained. | Route/UI integration P3/P4 and actual role UAT P6 pending.                      | none identified                                           |
+| P3 Approvals adapter          | pending                                                                                                                                                                                       | pending                                                                         | none identified                                           |
+| P4 AI confirmed adapter       | pending                                                                                                                                                                                       | pending                                                                         | none identified                                           |
+| P5 transaction / full gate    | pending                                                                                                                                                                                       | not role UAT                                                                    | none identified                                           |
+| P6 own-role UAT / runtime     | pending                                                                                                                                                                                       | pending                                                                         | existing external audit dependencies retained             |
+| P7 PR / green merge           | pending                                                                                                                                                                                       | exact final source required                                                     | P2-P6 acceptance pending                                  |
 
 ## P1 evidence
 
@@ -21,10 +21,14 @@ Approved design/plan: planning repo commit `d8e0c71`; user approved execution in
 - New real-DB projection test: readable linked approval, denied linked approval, orphan approval each persist version7. Baseline fails all three because row_version is absent; fourth identity/two-query assertion passes. One-column repair passes4/4 with zero skips.
 - Existing production authorization/transactions/schema untouched. Controlled RowAuthorizer exercises projection; not a substitute for true ownership or login tests.
 - Private raw test reports and connection material remain ignored under `.clientops-perf/approval-review/`.
-- Pre-change UAT observed source `7dc40fde8aba4c7033efaa67494fe31f70726926` has application/config/schema equivalent to baseline. Observer failures are retained: desktop AI queue rows omit context summary; selected inline panel contains it; accounting correctly sees restricted content. These are observer findings, not reasons to widen read grants.
+- Pre-change UAT observed source `7dc40fde8aba4c7033efaa67494fe31f70726926` has application/config/schema equivalent to baseline. Observer failures are retained: desktop AI queue rows omit context summary; selected inline panel contains it; accounting is denied the entire AI Review read route. These are observer findings, not reasons to widen read grants.
 
 ## Migration / reconciliation and release
 
 No new migration, schema/seed operation or reconciliation required for this refactor. Historical snapshot parity and anomaly dispositions remain external audit blockers. All30 CO IDs remain in the existing status matrix (19 verified_fixed /11 blocked_external); this refactor does not relabel them without evidence.
 
 Production hold retained. No production DB/Auth/provider operations or deployment performed. Before merge: same-head real PG zero-skip suite, lint/tsc/pure Vite, GitHub checks/isolated replay and independent seven-role candidate UAT/runtime. Runbook/rollback detail will be finalized with P7 evidence.
+
+## P2 evidence
+
+Public controller interface tested with real QueryClient and BFF latency/shape doubles only, not authorization/DB substitutes. Prepare/cancel zero writes; synchronous latch; frozen version7/notes; quote approve/reject/escalate metadata; malformed quote blocked; submitted notes and already-visible content allowlist; restricted reply null content; exact original replay payload; newer assignment/refetch and captured filter isolation; success survives failed refresh; unmount has no extra write. Unknown errors remain unconfirmed, typed business rejection is not recorded. 34/34 PASS, TypeScript exit0. Real role and transaction acceptance remain P5/P6.
