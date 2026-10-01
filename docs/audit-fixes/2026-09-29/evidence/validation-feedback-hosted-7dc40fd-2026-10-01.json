@@ -1,0 +1,36 @@
+{
+  "sourceSha": "7dc40fde8aba4c7033efaa67494fe31f70726926",
+  "startedAt": "2026-10-01T04:58:51.439Z",
+  "scope": "Own Sales native Task error/correction workflow and Reader valid-write denial; real server and DB, no fabricated responses",
+  "success": true,
+  "cases": [
+    {
+      "case": "actual Sales impossible-date POST locates Due date, keeps draft and writes no Task/audit",
+      "role": "sales",
+      "pass": true
+    },
+    {
+      "case": "native actual Sales overlong title locates Title without echoing submitted value; draft and original DB unchanged",
+      "role": "sales",
+      "pass": true
+    },
+    {
+      "case": "native actual Sales excessive description locates Description and preserves draft/data",
+      "role": "sales",
+      "pass": true
+    },
+    {
+      "case": "corrected own Sales form creates exactly one synthetic Task, reload agrees and all original Tasks remain unchanged",
+      "role": "sales",
+      "pass": true
+    },
+    {
+      "case": "Reader actual valid-payload Task POST still denies without writes or using another actor cookie",
+      "role": "read_only",
+      "pass": true
+    }
+  ],
+  "originalTasksPreserved": true,
+  "noCustomerOrProviderMessage": true,
+  "finishedAt": "2026-10-01T04:59:28.275Z"
+}

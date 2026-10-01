@@ -1,0 +1,28 @@
+{
+  "source": "7dc40fde8aba4c7033efaa67494fe31f70726926",
+  "scope": "Real own-role server boundary errors from previous actual form wire; this is transport/DB non-write evidence, not native form feedback or business-state acceptance",
+  "success": true,
+  "cases": [
+    {
+      "role": "sales",
+      "case": "actual malformed currency rejects with application-owned label and no original financial/review/audit/receipt mutation",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "role": "accounting",
+      "case": "actual malformed invoiceDate rejects with application-owned label and no original financial/review/audit/receipt mutation",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "role": "manager",
+      "case": "actual malformed decision rejects with application-owned label and no original financial/review/audit/receipt mutation",
+      "ownAuthMatched": true,
+      "pass": true
+    }
+  ],
+  "originalCommercialReviewAuditReceiptsUnchanged": true,
+  "noProviderOrCustomerMessage": true,
+  "finishedAt": "2026-10-01T05:02:02.117Z"
+}

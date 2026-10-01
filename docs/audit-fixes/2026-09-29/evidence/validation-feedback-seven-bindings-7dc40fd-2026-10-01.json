@@ -1,0 +1,54 @@
+{
+  "source": "7dc40fde8aba4c7033efaa67494fe31f70726926",
+  "url": "https://clientops-uat-20260930-qh0x5m4eg-ynwaforevers-projects.vercel.app",
+  "projectId": "prj_jlIsv7mLYGpZR4XEV4njX05jAZYJ",
+  "cases": [
+    {
+      "role": "super_admin",
+      "ownAuthUserMatched": true,
+      "exactSourceMatched": true,
+      "pass": true
+    },
+    {
+      "role": "admin",
+      "ownAuthUserMatched": true,
+      "exactSourceMatched": true,
+      "pass": true
+    },
+    {
+      "role": "manager",
+      "ownAuthUserMatched": true,
+      "exactSourceMatched": true,
+      "pass": true
+    },
+    {
+      "role": "sales",
+      "ownAuthUserMatched": true,
+      "exactSourceMatched": true,
+      "pass": true
+    },
+    {
+      "role": "client_success",
+      "ownAuthUserMatched": true,
+      "exactSourceMatched": true,
+      "pass": true
+    },
+    {
+      "role": "accounting",
+      "ownAuthUserMatched": true,
+      "exactSourceMatched": true,
+      "pass": true
+    },
+    {
+      "role": "read_only",
+      "ownAuthUserMatched": true,
+      "exactSourceMatched": true,
+      "pass": true
+    }
+  ],
+  "success": true,
+  "distinctOwnUsers": 7,
+  "distinctLiveSessions": 7,
+  "scope": "Own live Auth sessions and exact build on independent protected UAT; this API binding check is not seven-role workflow acceptance",
+  "checkedAt": "2026-10-01T04:59:14.843Z"
+}

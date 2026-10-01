@@ -22,13 +22,26 @@
     "remoteLintUnchanged": true
   },
   "realFullPostgres": {
-    "database": "clientops_validation_feedback_final_20261001_1236",
+    "testedAt": "2026-10-01T04:53:33.947Z",
+    "db": "clientops_validation_feedback_final_20261001_1236",
     "loopbackOnly": true,
     "postgres": "17.10",
-    "status": "running"
+    "tests": 2424,
+    "files": 324,
+    "skipped": 0,
+    "todo": 0,
+    "failed": 0,
+    "elapsedMs": 461516,
+    "status": "PASS"
   },
-  "hostedAcceptance": "pending",
+  "hostedAcceptance": {
+    "nativeFormCases": 5,
+    "serverBoundaryCases": 3,
+    "distinctLiveIdentityBindings": 7,
+    "status": "PASS in stated scopes"
+  },
   "noMigration": true,
   "noRoleGrant": true,
-  "productionRelease": false
+  "productionRelease": false,
+  "fullProofAddedAt": "2026-10-01T05:08:11.786Z"
 }

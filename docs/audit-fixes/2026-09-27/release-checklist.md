@@ -1,6 +1,6 @@
 # ClientOps audit release candidate — 2026-09-28
 
-**Current state (2026-10-01 HKT): PR151 merged to main271095d; release NO-GO.** Exact final-head/post-main2,414/zero-skipped PostgreSQL CI/replay/static and actual own-role recovery/original-key/expiry proof PASS. Canonical dedicated UAT remainsfc4a2fd; real production remainsbed941b and this attempt wasCANCELED. CO30 safe field-feedback repair is in progress, not accepted yet. Historical/snapshot/provider/operator/screen-reader gates remain separately blocked. [Checkpoint](../2026-09-29/checkpoint-2026-09-30.md). Earlier entries below are historical.
+**Current state (2026-10-01 HKT): PR151 merged to main271095d; release NO-GO.** Exact final-head/post-main2,414/zero-skipped PostgreSQL CI/replay/static and actual own-role recovery/original-key/expiry proof PASS. Canonical dedicated UAT remainsfc4a2fd; real production remainsbed941b and this attempt wasCANCELED. CO30 source7dc40fd local/actual hosted criteria PASS with2,424/zero-skipped source CI; final documentation-head checks/merge pending. Historical/snapshot/provider/operator/screen-reader gates remain separately blocked. [Checkpoint](../2026-09-29/checkpoint-2026-09-30.md). Earlier entries below are historical.
 
 **Historical integration checkpoint:** The audited application baseline was main SHA `2904faa502f7494173f48f412875c1d0a3aba674`. PRs #82–#101 landed on `codex/clientops-reviewed-integration`; [PR #103](https://github.com/YNWAforever/ui-delight-maker/pull/103) merged that source into main at `f038919b95ff085190401f64078b78bc8781dd4d`. At that checkpoint, the latest READY Production deployment was `dpl_BubNGhS2HFmmvjcUYfiKiasDwcLU` at the audited SHA. The user-approved Vercel hold canceled automatic main builds; the later READY production identity requires operator reconciliation. The 30 finding states remain in [status](status.md); code CI does not upgrade blocked role, data-parity or provider gates.
 
@@ -44,7 +44,9 @@ The table below is the historical source-delivery snapshot. Its preview cells ar
 | Login initial static JS gzip | 222,420 bytes at T18 | 165,482 bytes at T19; 165,496 bytes at this T22 pure build | Actual emitted manifest assets, not browser transfer timing |
 | Task list+count SQL p95, 10,000 tasks | unavailable on same baseline | 33.5 ms at T19 | 30 real isolated DB samples; SQL component only |
 | Approval list+count SQL p95, 100,000 approvals | unavailable on same baseline | 522.6 ms at T19 | 30 real isolated DB samples; SQL component only |
-| Authenticated HTTP/browser route p95 | blocked | blocked | No same-environment before/after or role sessions; cannot claim 800 ms target |
+| Task browser warm readiness p95 |400.687ms |399.744ms |Actual same-machine/data10 cold/30 warm; defined queue PASS, [R06](../2026-09-29/r06-runtime-before-after-2026-09-30.md) |
+| Approval browser warm readiness p95 |689.450ms |636.795ms |Actual same-machine/data10 cold/30 warm; cold p95 regressed and remains recorded; [R06](../2026-09-29/r06-runtime-before-after-2026-09-30.md) |
+| Agent recovery authenticated SSR warm p50/p95 |7,101/8,009ms |5,820/7,568ms |Actual paired unchanged current dataset, each10 fresh-cookie contexts/30 warm; SSR request time, no full-product/CWV claim; [U11 samples](../2026-09-29/evidence/agent-owner-cache-runtime-2026-10-01.json) |
 
 See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The old fixture formula is synthetic and is excluded from this table.
 
