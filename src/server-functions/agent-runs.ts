@@ -80,6 +80,7 @@ export const getAgentHistoryPage = createServerFn({ method: "GET" })
     const { access, rows } = await requirePageAuthorization(["agents.view"], {
       optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
       context,
+      cacheRowOwners: true,
     });
     return loadAgentHistoryPage({ ...data, access, rows, recoveryContext: context });
   });

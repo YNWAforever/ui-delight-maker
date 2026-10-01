@@ -476,7 +476,7 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
     runs.map(({ subject_type, subject_id }) => ({ subject_type, subject_id })),
   );
   const recovery = input.recoveryContext
-    ? await loadAgentRecoveryAccess(input.recoveryContext, runs)
+    ? await loadAgentRecoveryAccess(input.recoveryContext, runs, input.rows)
     : new Map<string, AgentRecoveryAccess>();
 
   return {

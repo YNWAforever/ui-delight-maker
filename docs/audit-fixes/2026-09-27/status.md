@@ -381,3 +381,8 @@ Source4fb exact CI2,344/zero skipped/replay PASS and17 executed keyboard/entry c
 ## U11 local recovery repair — 2026-10-01 HKT
 
 Actual seven-role characterization at8b9479f confirms readable Reader/Sales/CS rows offer recovery writes the actual command denies. Both original synthetic runs, linked approval and receipts/audits remain unchanged. Existing scoped policy now supplies per-run recovery hints with bounded owner/approval reads; confirmation preserves an explicit key across response loss. Fresh real PostgreSQL full suite2,410/323/zero failed/skipped/todo, targeted22, related48 and static/pure Vite/bundles PASS. [Repair and evidence](../2026-09-29/agent-recovery-uat-2026-10-01.md). CO-12/U11 remain open pending exact-source CI and actual local-role recovery; provider callback/delivery remains separately blocked. No production/provider action or migration.
+
+
+### U11 source2d50f59 and performance follow-up
+
+Exact CI2,410/zero skips/replay and29 actual own-role local recovery cases PASS with original data/keys retained, including committed response loss/replay, scoped deny/expired allow, one-hour threshold and linked review closure. Authenticated matched SSR runtime regresses5.13→6.06s warm p95, so performance is not declared PASS. Request-local owner sharing now passes58 related/23 real PG/fresh full2,414/323/zero skips/static/pure Vite; exact-source CI and matched hosted timing/original-role receipt replay pending before #151 merge. [Evidence](../2026-09-29/agent-recovery-uat-2026-10-01.md). CO-12/U11 provider callback/new attempt remains separately blocked.

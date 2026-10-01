@@ -1,7 +1,7 @@
 import { evaluateAuthorization } from "@/lib/admin/policy";
 import { AGENT_RUN_STUCK_MINUTES } from "@/lib/agents";
 import type { AgentRun } from "@/lib/types";
-import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import type { RequestAuthorization, RowAuthorizer } from "@/server/auth/authorization.server";
 import {
   NEON_OWNED_RESOURCE_TYPES,
   neonOwnershipQuery,
@@ -17,6 +17,7 @@ type OpenApproval = { id: string; agent_run_id: string; assigned_to: string | nu
 export async function loadAgentRecoveryAccess(
   context: RequestAuthorization,
   runs: readonly RecoveryRun[],
+  rows?: Pick<RowAuthorizer, "owners">,
 ): Promise<Map<string, AgentRecoveryAccess>> {
   const result = new Map<string, AgentRecoveryAccess>();
   const active = runs.filter(
@@ -36,12 +37,18 @@ export async function loadAgentRecoveryAccess(
   const owners = new Map<string, string>();
   await Promise.all(
     [...byType].map(async ([type, ids]) => {
-      const rows = await query<{ id: string; owner_profile_id: string | null }>(
-        neonOwnershipQuery(type),
-        [[...ids]],
-      );
-      for (const row of rows) {
-        if (row.owner_profile_id) owners.set(`${type}:${row.id}`, row.owner_profile_id);
+      const facts = rows?.owners
+        ? await rows.owners(type, [...ids])
+        : new Map(
+            (
+              await query<{ id: string; owner_profile_id: string | null }>(
+                neonOwnershipQuery(type),
+                [[...ids]],
+              )
+            ).map((row) => [row.id, row.owner_profile_id]),
+          );
+      for (const [id, owner] of facts) {
+        if (owner) owners.set(`${type}:${id}`, owner);
       }
     }),
   );

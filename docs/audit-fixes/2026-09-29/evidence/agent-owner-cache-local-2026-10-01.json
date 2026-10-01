@@ -1,0 +1,40 @@
+{
+  "checkedAt": "2026-10-01T03:48:22.601Z",
+  "scope": "Local working source; committed exact-source CI and hosted runtime/role replay still required",
+  "oldSource": "2d50f59c2482c61421070efe416f6ebcbbe04d8e",
+  "positiveCacheRedCases": 3,
+  "observerBaselineFailure": "One existing case also failed from an unconsumed mockRejectedValueOnce after absent owners method; reset fixture state corrected, not product evidence",
+  "relatedPassed": 58,
+  "targetedPostgres": {
+    "testedAt": "2026-10-01T03:35:52.915Z",
+    "db": "clientops_agent_recovery_cache_20261001_1138",
+    "loopbackOnly": true,
+    "postgres": "17.10",
+    "tests": 23,
+    "files": 1,
+    "skipped": 0,
+    "todo": 0,
+    "failed": 0,
+    "elapsedMs": 3825
+  },
+  "full": {
+    "testedAt": "2026-10-01T03:43:12.034Z",
+    "db": "clientops_agent_owner_cache_final_20261001_1140",
+    "loopbackOnly": true,
+    "postgres": "17.10",
+    "tests": 2414,
+    "files": 323,
+    "skipped": 0,
+    "todo": 0,
+    "failed": 0,
+    "elapsedMs": 298385
+  },
+  "types": true,
+  "lint": {
+    "passed": true,
+    "existingWarnings": 1
+  },
+  "pureViteBuild": true,
+  "bundles": true,
+  "wrapperBuildRun": false
+}

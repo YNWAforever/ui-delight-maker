@@ -104,6 +104,7 @@ describe("agent operational read models", () => {
     expect(mocks.requirePageAuthorization).toHaveBeenCalledWith(["agents.view"], {
       optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
       context: await mocks.loadRequestAuthorization.mock.results[0].value,
+      cacheRowOwners: true,
     });
     expect(mocks.loadRequestAuthorization).toHaveBeenCalledTimes(1);
     expect(mocks.query).toHaveBeenNthCalledWith(1, expect.stringContaining("count(*)"), [

@@ -39,6 +39,7 @@ import {
   recoverAgentRunCommand,
 } from "@/server/commands/agent-recovery.server";
 import { loadAgentRecoveryAccess } from "@/server/read-models/agent-recovery-access";
+import { requirePageAuthorization } from "@/server/auth/authorization.server";
 import { createAgentRun, updateAgentRunResult } from "@/server/repositories/agent-runs";
 import { writeReplyDraftResult } from "@/server/workflows/writebacks";
 import { listClaimableApprovals } from "@/server/repositories/approvals";
@@ -94,6 +95,32 @@ async function fixture(owner: string | null = report) {
 }
 
 describe("approval claim and agent recovery on isolated PostgreSQL", () => {
+  it.runIf(hasDatabase)(
+    "reuses the real view-owner batch for recovery hints without caching capability verdicts",
+    async () => {
+      const f = await fixture(report);
+      const run = (await db().query("select * from agent_runs where id=$1", [f.runId])).rows[0];
+      const request = context(managerA, [report]);
+      const { rows } = await requirePageAuthorization(["agents.view"], {
+        context: request,
+        cacheRowOwners: true,
+      });
+      const spy = vi.spyOn(db(), "query");
+      try {
+        expect((await rows.allow("leads.view", "lead", [f.leadId])).get(f.leadId)).toBe(true);
+        expect((await loadAgentRecoveryAccess(request, [run], rows)).get(f.runId)?.cancel).toBe(
+          true,
+        );
+        expect(spy).toHaveBeenCalledTimes(2);
+        expect((await rows.allow("permissions.override", "lead", [f.leadId])).get(f.leadId)).toBe(
+          false,
+        );
+        expect(spy).toHaveBeenCalledTimes(2);
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
   it.runIf(hasDatabase)(
     "assesses 25 real rows with one owner batch and one linked-review read",
     async () => {

@@ -256,6 +256,8 @@ export async function requireCapabilitySet(
  * no context load at all, because the context is captured when the authorizer is built.
  */
 export type RowAuthorizer = {
+  /** Optional request-local ownership facts for read hints, never a permission verdict. */
+  owners?(resourceType: string, ids: readonly string[]): Promise<Map<string, string | null>>;
   allow(
     capability: Capability,
     resourceType: string,
@@ -277,7 +279,11 @@ export type RowAuthorizer = {
  */
 export async function requirePageAuthorization(
   required: readonly Capability[],
-  options: { optional?: readonly Capability[]; context?: RequestAuthorization } = {},
+  options: {
+    optional?: readonly Capability[];
+    context?: RequestAuthorization;
+    cacheRowOwners?: boolean;
+  } = {},
 ): Promise<{ access: Partial<Record<Capability, boolean>>; rows: RowAuthorizer }> {
   const context = options.context ?? (await loadAuthorizationContext());
   const access: Partial<Record<Capability, boolean>> = {};
@@ -292,12 +298,25 @@ export async function requirePageAuthorization(
     access[capability] = evaluate(context, capability, {}).allowed;
   }
 
+  const ownerCache = new Map<string, Map<string, string | null>>();
+  async function ownersFor(resourceType: string, ids: readonly string[]) {
+    if (!options.cacheRowOwners) return resolveOwnerProfileIds(resourceType, ids);
+    const cached = ownerCache.get(resourceType) ?? new Map<string, string | null>();
+    const missing = [...new Set(ids)].filter((id) => !cached.has(id));
+    if (missing.length) {
+      const loaded = await resolveOwnerProfileIds(resourceType, missing);
+      for (const id of missing) cached.set(id, loaded.get(id) ?? null);
+      ownerCache.set(resourceType, cached);
+    }
+    return new Map(ids.map((id) => [id, cached.get(id) ?? null]));
+  }
   const rows: RowAuthorizer = {
+    ...(options.cacheRowOwners ? { owners: ownersFor } : {}),
     async allow(capability, resourceType, ids) {
       const decided = new Map<string, boolean>();
       if (ids.length === 0) return decided;
 
-      const owners = await resolveOwnerProfileIds(resourceType, ids);
+      const owners = await ownersFor(resourceType, ids);
       for (const id of ids) {
         const ownerProfileId = owners.get(id) ?? null;
         // Built exactly as resolveAuthorizationTarget does — the key is OMITTED when there is
