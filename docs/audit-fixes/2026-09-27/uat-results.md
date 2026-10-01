@@ -67,3 +67,7 @@ Dedicated UAT source `f4f5c97` repeats the real seven-role Task mutation/denial,
 ## 2026-10-01 canonical test site / complete request-count follow-up
 
 [Actual seven distinct canonical identity/session/cookie/profile/role home bindings](../2026-09-29/evidence/stable-uat-upgrade-7dc40fd-2026-10-01.json) PASS at7dc40fd (same app as merged main22817d4) with17 synthetic table hashes unchanged. [Current role request counts and defined timezone scope](../2026-09-29/final-local-acceptance-2026-10-01.md) retain all16 cases. Actual Manager foreground polling/minimal list PASS; native background state was not obtained and is blocked, not filled as PASS. Remaining provider/legacy/historical/operator/screen-reader gates remain explicit. No whole-product or751-scenario browser pass claimed.
+
+## 2026-10-01 — native queue observation completed
+
+Observer/evidence commit e9f8fc48466f9e16d4a09bd6d50087635d40ec03: own live Manager / real10k Tasks /100k approvals / app-equivalent mained3cccfe passes four native35s visible/background-tab/resume/minimized-window cases. Hidden scopes issue zero server-function requests; foreground periodic requests fetch50 pending rows/no context_data, history's one-off focus update separately retained. Five hashes unchanged/no POST. [Actual cases, UI and runnable observer](../2026-09-29/native-queue-polling-uat-2026-10-01.md). Earlier native-background blocker is resolved; all16 canonical cases remain scoped, with provider/history/legacy/operator/human screen-reader gates open. CO15 verified_fixed; release NO-GO.

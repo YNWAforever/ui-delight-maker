@@ -118,3 +118,7 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 - PR#146 `ea76d3b`: defined U10 now PASS with exact-source2,340 zero-skip CI and genuine roles/original reassignment/audit. [Report](../2026-09-29/admin-dialog-uat-2026-10-01.md). Admin role/lifecycle initial focus/Tab/Escape actual FAIL remains R03/U15 next; final documentation-headCI required. Full release/external gates unchanged.
 
 - R03 keyboard/narrow repair passes local2,344 zero-skip and21/static/build gates; [report](../2026-09-29/admin-keyboard-uat-2026-10-01.md). Exact-source hosted acceptance/source-finalCI pending; no production release.
+
+## Native queue gate delta — 2026-10-01 HKT
+
+Commit e9f8fc48466f9e16d4a09bd6d50087635d40ec03: [real native polling acceptance](../2026-09-29/native-queue-polling-uat-2026-10-01.md) closes CO15 using four actual35s cases, own Manager and disposable100k approval data, without app/schema changes or mocked visibility. Current finding matrix19 verified_fixed /11 blocked_external, all30 IDs/16 UAT retained. Exact final-head CI/no-skip/replay/preview is still required before merging this evidence slice. Production release remains NO-GO: legacy/history/provider/human screen reader/operator/PITR/rollback inputs remain unresolved. No production action is authorized by this local acceptance delta.

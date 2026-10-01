@@ -24,10 +24,14 @@ The new PostgreSQL pagination test failed because the page functions did not exi
 - Pure `bunx vite build` completed client and SSR with exit 0. The client build still warns about chunks above 500 kB; T19 owns representative runtime and bundle before/after measurements. `bun run build` was not used because it also migrates and seeds.
 - No authenticated manager, sales, client-success, admin or accounting sessions were available for role UI/network UAT. No production database, customer message, provider call, deploy or seed was performed.
 
-## Remaining gates
+## Historical remaining gates at the original T12 checkpoint
 
 CO-14, CO-15 and CO-20 remain in_progress until authenticated role UI and representative runtime measurements. T19 owns the 10k-task/100k-approval before/after performance proof. The standalone Admin directory screen and team management remain T17. The production migration and release remain gated.
 
-## Current defined queue acceptance — 2026-10-01 HKT
+## Earlier partial queue acceptance — 2026-10-01 HKT
 
 [Actual R06](../2026-09-29/r06-runtime-before-after-2026-09-30.md) provides both10k/100k queue scopes and40 navigations/source. Own Manager current foreground35s observation confirms pending30s polling, no history polling,50-row response and no context_data in list. [Partial proof](../2026-09-29/evidence/queue-visible-polling-main22817d4-2026-10-01.json). Native background remains blocked: runner reports visible despite real same-window activation/minimization. No synthetic hidden state is accepted; [resolution](../2026-09-29/final-local-acceptance-2026-10-01.md).
+
+## Native queue acceptance completed — 2026-10-01 HKT
+
+Current app-equivalent mained3cccfe own Manager /10k Tasks /100k approvals passes four real35s foreground/background-tab/resume/minimized-window cases. Native visibility observed; hidden scopes issue zero server-function requests, visible scopes pending-only50-row minimal polling. One-off focus refresh retained separately; five table hashes unchanged/no POST. Supported noDefaults attachment removes Playwright default focus emulation; no synthetic visibility/timer. CO15 verified_fixed alongside existing actual SQL/runtime criteria. [Full evidence and runnable observer](../2026-09-29/native-queue-polling-uat-2026-10-01.md). Production release and distinct external gates remain blocked.
