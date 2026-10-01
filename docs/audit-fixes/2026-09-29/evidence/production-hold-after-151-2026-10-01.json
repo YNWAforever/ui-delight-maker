@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-10-01T04:34:30.778Z",
+  "primaryProjectId": "prj_28RsIf31nvcD0YS3UIQqdnvJlHki",
+  "productionAttemptId": "dpl_5DLDYSYXxo7x7n7Nx2xVeFXhuRij",
+  "attemptSource": "271095da051820f0f54616d77120adc3a9e5df11",
+  "state": "CANCELED",
+  "publicProductionSource": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+  "noProductionDbAccess": true,
+  "noPromotion": true,
+  "release": "NO-GO"
+}
