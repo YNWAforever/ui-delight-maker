@@ -6,7 +6,9 @@
   const { randomUUID, createHash } = require("node:crypto");
   const { Pool } = require("@neondatabase/serverless");
   const { chromium } = require("playwright");
-  const [phase, sha, target, previousReport, capturedTemplate] = process.argv.slice(2);
+  const [phase, sha, target, previousReport, capturedTemplate, continuationScope] =
+    process.argv.slice(2);
+  assert(!continuationScope || (continuationScope === "neighbors" && previousReport));
   assert.equal(
     Boolean(previousReport),
     Boolean(capturedTemplate),
@@ -193,6 +195,7 @@
     };
   };
   let template;
+  let boundaryContinuation;
   if (previousReport) {
     const previous = JSON.parse(fs.readFileSync(previousReport));
     assert.equal(previous.sourceSha, sha);
@@ -208,7 +211,7 @@
       );
     }
     report.samples = previous.samples;
-    report.measurementDatasetBefore = previous.datasetBefore;
+    report.measurementDatasetBefore = previous.measurementDatasetBefore ?? previous.datasetBefore;
     report.continuation = {
       previousReportSha256: createHash("sha256")
         .update(fs.readFileSync(previousReport))
@@ -216,6 +219,44 @@
       retainedActualMeasurements: 60,
       reason: "Observer serialization correction; served application source unchanged",
     };
+    if (continuationScope === "neighbors") {
+      assert.equal(previous.boundaries.length, 24);
+      assert.equal(previous.syntheticOverrideCleanup, true);
+      const counts = previous.boundaries.reduce((counts, row) => {
+        counts[row.label] = (counts[row.label] ?? 0) + 1;
+        return counts;
+      }, {});
+      assert.deepEqual(counts, {
+        "version7-allowed": 6,
+        "own-role-server-denied": 8,
+        "scoped-reader-allow": 1,
+        "grant-withdrawn-after-dialog": 1,
+        "scoped-manager-deny": 1,
+        "expired-reader-allow": 1,
+        "outside-scoped-allow": 1,
+        "native-double-click": 2,
+        "explicit-original-payload-retry": 2,
+        "two-permitted-actors-opposed": 1,
+      });
+      assert(
+        previous.boundaries
+          .filter(
+            (x) =>
+              x.label === "explicit-original-payload-retry" ||
+              x.label === "two-permitted-actors-opposed",
+          )
+          .every((x) => x.originalReplayUnchanged === true),
+      );
+      boundaryContinuation = previous.boundaries;
+      report.boundaryContinuation = {
+        verifiedActualCases: 24,
+        previousReportSha256: createHash("sha256")
+          .update(fs.readFileSync(previousReport))
+          .digest("hex"),
+        reason:
+          "Only neighbor observer completion timing changed; served application source and captured Origin transport unchanged",
+      };
+    }
     template = JSON.parse(fs.readFileSync(capturedTemplate));
     assert.equal(new URL(template.url).origin, new URL(target).origin);
     assert.equal(new URL(template.headers.origin).origin, new URL(target).origin);
@@ -381,6 +422,7 @@
         capture,
         template,
         target,
+        boundaryContinuation,
       });
     await build();
     report.success = true;

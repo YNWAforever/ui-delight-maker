@@ -10,12 +10,13 @@ module.exports = async function verifyBoundaries({
   capture,
   template,
   target,
+  boundaryContinuation,
 }) {
   const fs = require("node:fs"),
     path = require("node:path"),
     assert = require("node:assert/strict"),
     { randomUUID } = require("node:crypto");
-  report.boundaries = [];
+  report.boundaries = boundaryContinuation ?? [];
   report.neighbors = {};
   const grants = [];
   const failed = (raw, status = 200) => {
@@ -175,332 +176,343 @@ module.exports = async function verifyBoundaries({
     console.log(JSON.stringify({ phase: "after", boundary: label, pass: true }));
   };
   try {
-    for (const role of ["super_admin", "admin", "manager"])
-      for (const route of ["/approvals", "/ai-review"]) {
-        report.stage = "version7 " + role + " " + route;
-        const f = await isolatedFixture(role + route + " version7", 7),
-          r = await uiDecision(role, route, f);
-        assert(!r.error);
-        assert.equal(r.state.approval.status, "approved");
-        assert.equal(Number(r.state.approval.row_version), 8);
-        assert.equal(r.state.audits, 1);
-        assert.equal(r.state.receipts, 1);
-        assert.deepEqual(r.state.run, { status: "completed", human_review_required: false });
-        record("version7-allowed", {
-          role,
-          route,
-          version: 8,
-          postCount: 1,
-          auditCount: 1,
-          receiptCount: 1,
-          liveUi: true,
-        });
-      }
-    const denied = await isolatedFixture("denied roles", 7),
-      before = await snapshot(denied);
-    for (const role of ["sales", "client_success", "accounting", "read_only"])
-      for (const route of ["/approvals", "/ai-review"]) {
-        report.stage = "server denial " + role + " " + route;
-        const ctx = await ownContext(role),
-          p = await open(ctx, route, denied, role);
-        try {
-          const button = p.getByRole("button", { name: "Approve", exact: true });
-          assert((await button.count()) === 0 || (await button.first().isDisabled()));
-          const r = await direct(ctx, requestFor(denied), "deny-" + role + route.replace("/", "-"));
-          assert(r.error);
-          assert(/FORBIDDEN|do not have this capability|not authorized/i.test(r.raw));
-          assert.deepEqual(await snapshot(denied), before);
-          const restricted =
-            (await p
-              .getByText(
-                "Restricted. This approval is about a record you do not have permission to view.",
-                { exact: true },
-              )
-              .count()) > 0;
-          if (restricted) {
-            assert.equal(await p.getByText(denied.summary, { exact: true }).count(), 0);
-            assert(/Restricted/.test(await p.locator("details pre").innerText()));
-          }
-          record("own-role-server-denied", {
+    if (!boundaryContinuation) {
+      for (const role of ["super_admin", "admin", "manager"])
+        for (const route of ["/approvals", "/ai-review"]) {
+          report.stage = "version7 " + role + " " + route;
+          const f = await isolatedFixture(role + route + " version7", 7),
+            r = await uiDecision(role, route, f);
+          assert(!r.error);
+          assert.equal(r.state.approval.status, "approved");
+          assert.equal(Number(r.state.approval.row_version), 8);
+          assert.equal(r.state.audits, 1);
+          assert.equal(r.state.receipts, 1);
+          assert.deepEqual(r.state.run, { status: "completed", human_review_required: false });
+          record("version7-allowed", {
             role,
             route,
+            version: 8,
+            postCount: 1,
+            auditCount: 1,
+            receiptCount: 1,
+            liveUi: true,
+          });
+        }
+      const denied = await isolatedFixture("denied roles", 7),
+        before = await snapshot(denied);
+      for (const role of ["sales", "client_success", "accounting", "read_only"])
+        for (const route of ["/approvals", "/ai-review"]) {
+          report.stage = "server denial " + role + " " + route;
+          const ctx = await ownContext(role),
+            p = await open(ctx, route, denied, role);
+          try {
+            const button = p.getByRole("button", { name: "Approve", exact: true });
+            assert((await button.count()) === 0 || (await button.first().isDisabled()));
+            const r = await direct(
+              ctx,
+              requestFor(denied),
+              "deny-" + role + route.replace("/", "-"),
+            );
+            assert(r.error);
+            assert(/FORBIDDEN|do not have this capability|not authorized/i.test(r.raw));
+            assert.deepEqual(await snapshot(denied), before);
+            const restricted =
+              (await p
+                .getByText(
+                  "Restricted. This approval is about a record you do not have permission to view.",
+                  { exact: true },
+                )
+                .count()) > 0;
+            if (restricted) {
+              assert.equal(await p.getByText(denied.summary, { exact: true }).count(), 0);
+              assert(/Restricted/.test(await p.locator("details pre").innerText()));
+            }
+            record("own-role-server-denied", {
+              role,
+              route,
+              dbUnchanged: true,
+              controlsBlocked: true,
+              restrictedContentHidden: restricted,
+              status: r.status,
+            });
+          } finally {
+            await ctx.close();
+          }
+        }
+      const allowed = await isolatedFixture("reader scoped allow"),
+        allowId = await grant("read_only", allowed, "allow");
+      try {
+        const ctx = await ownContext("read_only"),
+          p = await open(ctx, "/ai-review", allowed, "read_only");
+        assert(await p.getByRole("button", { name: "Approve", exact: true }).isDisabled());
+        await ctx.close();
+        const r = await uiDecision("read_only", "/approvals", allowed);
+        assert(!r.error);
+        assert.equal(r.state.approval.status, "approved");
+        record("scoped-reader-allow", {
+          role: "read_only",
+          route: "/approvals",
+          liveUi: true,
+          aiRoleAdvisoryStillDisabled: true,
+          serverAllowed: true,
+        });
+      } finally {
+        await revoke(allowId);
+      }
+      const revokeFixture = await isolatedFixture("grant removed after dialog"),
+        revokeId = await grant("read_only", revokeFixture, "allow"),
+        prior = await snapshot(revokeFixture);
+      const revoked = await uiDecision("read_only", "/approvals", revokeFixture, "Approve", {
+        afterDialog: () => revoke(revokeId),
+      });
+      assert(revoked.error);
+      assert.deepEqual(revoked.state, prior);
+      assert(/FORBIDDEN|do not have this capability|not authorized/i.test(revoked.raw));
+      record("grant-withdrawn-after-dialog", {
+        role: "read_only",
+        liveUi: true,
+        serverDenied: true,
+        dbUnchanged: true,
+      });
+      for (const [role, effect, expiry, label] of [
+        ["manager", "deny", null, "scoped-manager-deny"],
+        ["read_only", "allow", new Date(Date.now() - 60000), "expired-reader-allow"],
+      ]) {
+        const f = await isolatedFixture(label),
+          id = await grant(role, f, effect, expiry),
+          old = await snapshot(f);
+        try {
+          const ctx = await ownContext(role);
+          try {
+            const r = await direct(ctx, requestFor(f), label);
+            assert(r.error);
+            assert(/FORBIDDEN|do not have this capability|not authorized/i.test(r.raw));
+            assert.deepEqual(await snapshot(f), old);
+            record(label, { role, serverDenied: true, dbUnchanged: true });
+          } finally {
+            await ctx.close();
+          }
+        } finally {
+          await revoke(id);
+        }
+      }
+      const f1 = await isolatedFixture("reader allow one row"),
+        f2 = await isolatedFixture("reader outside override");
+      const scopeId = await grant("read_only", f1, "allow");
+      try {
+        const ctx = await ownContext("read_only");
+        try {
+          const old = await snapshot(f2),
+            r = await direct(ctx, requestFor(f2), "reader-outside-scope");
+          assert(r.error);
+          assert.deepEqual(await snapshot(f2), old);
+          record("outside-scoped-allow", {
+            role: "read_only",
+            serverDenied: true,
             dbUnchanged: true,
-            controlsBlocked: true,
-            restrictedContentHidden: restricted,
-            status: r.status,
+          });
+        } finally {
+          await ctx.close();
+        }
+      } finally {
+        await revoke(scopeId);
+      }
+      for (const route of ["/approvals", "/ai-review"]) {
+        const f = await isolatedFixture("double click " + route, 7),
+          r = await uiDecision("manager", route, f, "Approve", { doubleClick: true });
+        assert(!r.error);
+        assert.equal(r.state.approval.row_version, 8);
+        assert.equal(r.state.audits, 1);
+        assert.equal(r.state.receipts, 1);
+        record("native-double-click", {
+          route,
+          postCount: 1,
+          version: 8,
+          auditCount: 1,
+          receiptCount: 1,
+        });
+      }
+      for (const route of ["/approvals", "/ai-review"]) {
+        report.stage = "explicit original retry " + route;
+        const f = await isolatedFixture("explicit original retry " + route, 7),
+          ctx = await ownContext("manager");
+        try {
+          const p = await open(ctx, route, f),
+            requests = [];
+          let original;
+          await p.route("**/_serverFn/**", async (intercepted) => {
+            const q = intercepted.request();
+            if (q.method() === "POST" && q.postData()?.includes(f.id)) {
+              const req = capture({ request: () => q });
+              requests.push(req);
+              if (!original) {
+                original = req;
+                await intercepted.abort("failed");
+                return;
+              }
+            }
+            await intercepted.continue();
+          });
+          await p.getByRole("button", { name: "Approve", exact: true }).click();
+          await p
+            .getByRole("alertdialog")
+            .getByRole("button", { name: "Approve", exact: true })
+            .click();
+          await p
+            .getByText(
+              "The result is unconfirmed. Refresh to check the recorded status before retrying.",
+              { exact: true },
+            )
+            .waitFor();
+          await p.waitForLoadState("networkidle");
+          const pending = await snapshot(f);
+          assert.equal(pending.approval.status, "pending");
+          assert.equal(pending.approval.row_version, 7);
+          assert.equal(pending.audits, 0);
+          assert.equal(pending.receipts, 0);
+          await p.getByRole("button", { name: "Approve", exact: true }).click();
+          const wait = p.waitForResponse(
+            (r) => r.request().method() === "POST" && r.request().postData()?.includes(f.id),
+          );
+          await p
+            .getByRole("alertdialog")
+            .getByRole("button", { name: "Approve", exact: true })
+            .click();
+          const response = await wait;
+          assert(!failed(await response.text(), response.status()));
+          await p.waitForLoadState("networkidle");
+          assert.equal(requests.length, 2);
+          assert.equal(requests[1].body, original.body);
+          const state = await snapshot(f);
+          assert.equal(state.approval.status, "approved");
+          assert.equal(state.approval.row_version, 8);
+          assert.equal(state.audits, 1);
+          assert.equal(state.receipts, 1);
+          const replay = await direct(
+            ctx,
+            original,
+            "explicit-retry-original" + route.replace("/", "-"),
+          );
+          assert(!replay.error);
+          assert.deepEqual(await snapshot(f), state);
+          await p.screenshot({
+            path: path.join(dir, "explicit-retry" + route.replace("/", "-") + ".png"),
+            fullPage: true,
+          });
+          record("explicit-original-payload-retry", {
+            route,
+            inducedFault: "first actual UI request aborted before forwarding",
+            originalPayloadAndKeyPreserved: true,
+            onlyOneDatabaseCommit: true,
+            version: 8,
+            auditCount: 1,
+            receiptCount: 1,
+            originalReplayUnchanged: true,
           });
         } finally {
           await ctx.close();
         }
       }
-    const allowed = await isolatedFixture("reader scoped allow"),
-      allowId = await grant("read_only", allowed, "allow");
-    try {
-      const ctx = await ownContext("read_only"),
-        p = await open(ctx, "/ai-review", allowed, "read_only");
-      assert(await p.getByRole("button", { name: "Approve", exact: true }).isDisabled());
-      await ctx.close();
-      const r = await uiDecision("read_only", "/approvals", allowed);
-      assert(!r.error);
-      assert.equal(r.state.approval.status, "approved");
-      record("scoped-reader-allow", {
-        role: "read_only",
-        route: "/approvals",
-        liveUi: true,
-        aiRoleAdvisoryStillDisabled: true,
-        serverAllowed: true,
-      });
-    } finally {
-      await revoke(allowId);
-    }
-    const revokeFixture = await isolatedFixture("grant removed after dialog"),
-      revokeId = await grant("read_only", revokeFixture, "allow"),
-      prior = await snapshot(revokeFixture);
-    const revoked = await uiDecision("read_only", "/approvals", revokeFixture, "Approve", {
-      afterDialog: () => revoke(revokeId),
-    });
-    assert(revoked.error);
-    assert.deepEqual(revoked.state, prior);
-    assert(/FORBIDDEN|do not have this capability|not authorized/i.test(revoked.raw));
-    record("grant-withdrawn-after-dialog", {
-      role: "read_only",
-      liveUi: true,
-      serverDenied: true,
-      dbUnchanged: true,
-    });
-    for (const [role, effect, expiry, label] of [
-      ["manager", "deny", null, "scoped-manager-deny"],
-      ["read_only", "allow", new Date(Date.now() - 60000), "expired-reader-allow"],
-    ]) {
-      const f = await isolatedFixture(label),
-        id = await grant(role, f, effect, expiry),
-        old = await snapshot(f);
+      report.stage = "opposed actual actors";
+      const race = await isolatedFixture("opposed two-role race", 7),
+        actors = [];
+      const held = [],
+        release = [];
       try {
-        const ctx = await ownContext(role);
-        try {
-          const r = await direct(ctx, requestFor(f), label);
-          assert(r.error);
-          assert(/FORBIDDEN|do not have this capability|not authorized/i.test(r.raw));
-          assert.deepEqual(await snapshot(f), old);
-          record(label, { role, serverDenied: true, dbUnchanged: true });
-        } finally {
-          await ctx.close();
+        for (const [role, route] of [
+          ["manager", "/approvals"],
+          ["admin", "/ai-review"],
+        ]) {
+          const ctx = await ownContext(role),
+            p = await open(ctx, route, race, role);
+          actors.push({ role, route, ctx, p });
         }
-      } finally {
-        await revoke(id);
-      }
-    }
-    const f1 = await isolatedFixture("reader allow one row"),
-      f2 = await isolatedFixture("reader outside override");
-    const scopeId = await grant("read_only", f1, "allow");
-    try {
-      const ctx = await ownContext("read_only");
-      try {
-        const old = await snapshot(f2),
-          r = await direct(ctx, requestFor(f2), "reader-outside-scope");
-        assert(r.error);
-        assert.deepEqual(await snapshot(f2), old);
-        record("outside-scoped-allow", {
-          role: "read_only",
-          serverDenied: true,
-          dbUnchanged: true,
-        });
-      } finally {
-        await ctx.close();
-      }
-    } finally {
-      await revoke(scopeId);
-    }
-    for (const route of ["/approvals", "/ai-review"]) {
-      const f = await isolatedFixture("double click " + route, 7),
-        r = await uiDecision("manager", route, f, "Approve", { doubleClick: true });
-      assert(!r.error);
-      assert.equal(r.state.approval.row_version, 8);
-      assert.equal(r.state.audits, 1);
-      assert.equal(r.state.receipts, 1);
-      record("native-double-click", {
-        route,
-        postCount: 1,
-        version: 8,
-        auditCount: 1,
-        receiptCount: 1,
-      });
-    }
-    for (const route of ["/approvals", "/ai-review"]) {
-      report.stage = "explicit original retry " + route;
-      const f = await isolatedFixture("explicit original retry " + route, 7),
-        ctx = await ownContext("manager");
-      try {
-        const p = await open(ctx, route, f),
-          requests = [];
-        let original;
-        await p.route("**/_serverFn/**", async (intercepted) => {
-          const q = intercepted.request();
-          if (q.method() === "POST" && q.postData()?.includes(f.id)) {
-            const req = capture({ request: () => q });
-            requests.push(req);
-            if (!original) {
-              original = req;
-              await intercepted.abort("failed");
-              return;
+        for (const [i, actor] of actors.entries())
+          await actor.p.route("**/_serverFn/**", async (route) => {
+            const q = route.request();
+            if (q.method() === "POST" && q.postData()?.includes(race.id) && !held[i]) {
+              held[i] = capture({ request: () => q });
+              await new Promise((resolve) => (release[i] = resolve));
             }
-          }
-          await intercepted.continue();
-        });
-        await p.getByRole("button", { name: "Approve", exact: true }).click();
-        await p
-          .getByRole("alertdialog")
-          .getByRole("button", { name: "Approve", exact: true })
-          .click();
-        await p
-          .getByText(
-            "The result is unconfirmed. Refresh to check the recorded status before retrying.",
-            { exact: true },
-          )
-          .waitFor();
-        await p.waitForLoadState("networkidle");
-        const pending = await snapshot(f);
-        assert.equal(pending.approval.status, "pending");
-        assert.equal(pending.approval.row_version, 7);
-        assert.equal(pending.audits, 0);
-        assert.equal(pending.receipts, 0);
-        await p.getByRole("button", { name: "Approve", exact: true }).click();
-        const wait = p.waitForResponse(
-          (r) => r.request().method() === "POST" && r.request().postData()?.includes(f.id),
+            await route.continue();
+          });
+        const waits = actors.map((x) =>
+          x.p.waitForResponse(
+            (r) => r.request().method() === "POST" && r.request().postData()?.includes(race.id),
+          ),
         );
-        await p
-          .getByRole("alertdialog")
-          .getByRole("button", { name: "Approve", exact: true })
-          .click();
-        const response = await wait;
-        assert(!failed(await response.text(), response.status()));
-        await p.waitForLoadState("networkidle");
-        assert.equal(requests.length, 2);
-        assert.equal(requests[1].body, original.body);
-        const state = await snapshot(f);
-        assert.equal(state.approval.status, "approved");
+        for (const [i, x] of actors.entries()) {
+          await x.p
+            .getByRole("button", { name: i === 0 ? "Approve" : "Reject", exact: true })
+            .click();
+          await x.p.getByRole("alertdialog").waitFor();
+        }
+        const clicks = actors.map((x, i) =>
+          x.p
+            .getByRole("alertdialog")
+            .getByRole("button", { name: i === 0 ? "Approve" : "Reject", exact: true })
+            .click(),
+        );
+        const end = Date.now() + 15000;
+        while (release.filter(Boolean).length < 2) {
+          assert(Date.now() < end, "Two actual requests must reach barrier");
+          await new Promise((r) => setTimeout(r, 20));
+        }
+        release.forEach((r) => r());
+        await Promise.all(clicks);
+        const responses = await Promise.all(waits),
+          raw = await Promise.all(responses.map((r) => r.text()));
+        const errors = raw.map((body, i) => failed(body, responses[i].status()));
+        assert.equal(errors.filter(Boolean).length, 1);
+        assert(
+          /STALE_ADMIN_STATE|CONFLICT|changed since|terminal decision/i.test(
+            raw[errors.indexOf(true)],
+          ),
+        );
+        const winner = errors.indexOf(false),
+          state = await snapshot(race);
+        assert.equal(state.approval.status, winner === 0 ? "approved" : "rejected");
         assert.equal(state.approval.row_version, 8);
         assert.equal(state.audits, 1);
         assert.equal(state.receipts, 1);
         const replay = await direct(
-          ctx,
-          original,
-          "explicit-retry-original" + route.replace("/", "-"),
+          actors[winner].ctx,
+          held[winner],
+          "opposed-winner-original-replay",
         );
         assert(!replay.error);
-        assert.deepEqual(await snapshot(f), state);
-        await p.screenshot({
-          path: path.join(dir, "explicit-retry" + route.replace("/", "-") + ".png"),
-          fullPage: true,
-        });
-        record("explicit-original-payload-retry", {
-          route,
-          inducedFault: "first actual UI request aborted before forwarding",
-          originalPayloadAndKeyPreserved: true,
-          onlyOneDatabaseCommit: true,
+        assert.deepEqual(await snapshot(race), state);
+        for (const [i, x] of actors.entries()) {
+          fs.writeFileSync(path.join(dir, "race-" + x.role + ".response.private.txt"), raw[i]);
+          await x.p.screenshot({ path: path.join(dir, "race-" + x.role + ".png"), fullPage: true });
+        }
+        record("two-permitted-actors-opposed", {
+          actors: ["manager", "admin"],
+          routes: ["/approvals", "/ai-review"],
+          releasedTogether: true,
+          winner: actors[winner].role,
+          terminal: state.approval.status,
           version: 8,
           auditCount: 1,
           receiptCount: 1,
           originalReplayUnchanged: true,
         });
       } finally {
-        await ctx.close();
+        release.forEach((r) => r());
+        for (const x of actors) await x.ctx.close();
       }
-    }
-    report.stage = "opposed actual actors";
-    const race = await isolatedFixture("opposed two-role race", 7),
-      actors = [];
-    const held = [],
-      release = [];
-    try {
-      for (const [role, route] of [
-        ["manager", "/approvals"],
-        ["admin", "/ai-review"],
-      ]) {
-        const ctx = await ownContext(role),
-          p = await open(ctx, route, race, role);
-        actors.push({ role, route, ctx, p });
-      }
-      for (const [i, actor] of actors.entries())
-        await actor.p.route("**/_serverFn/**", async (route) => {
-          const q = route.request();
-          if (q.method() === "POST" && q.postData()?.includes(race.id) && !held[i]) {
-            held[i] = capture({ request: () => q });
-            await new Promise((resolve) => (release[i] = resolve));
-          }
-          await route.continue();
-        });
-      const waits = actors.map((x) =>
-        x.p.waitForResponse(
-          (r) => r.request().method() === "POST" && r.request().postData()?.includes(race.id),
-        ),
-      );
-      for (const [i, x] of actors.entries()) {
-        await x.p
-          .getByRole("button", { name: i === 0 ? "Approve" : "Reject", exact: true })
-          .click();
-        await x.p.getByRole("alertdialog").waitFor();
-      }
-      const clicks = actors.map((x, i) =>
-        x.p
-          .getByRole("alertdialog")
-          .getByRole("button", { name: i === 0 ? "Approve" : "Reject", exact: true })
-          .click(),
-      );
-      const end = Date.now() + 15000;
-      while (release.filter(Boolean).length < 2) {
-        assert(Date.now() < end, "Two actual requests must reach barrier");
-        await new Promise((r) => setTimeout(r, 20));
-      }
-      release.forEach((r) => r());
-      await Promise.all(clicks);
-      const responses = await Promise.all(waits),
-        raw = await Promise.all(responses.map((r) => r.text()));
-      const errors = raw.map((body, i) => failed(body, responses[i].status()));
-      assert.equal(errors.filter(Boolean).length, 1);
-      assert(
-        /STALE_ADMIN_STATE|CONFLICT|changed since|terminal decision/i.test(
-          raw[errors.indexOf(true)],
-        ),
-      );
-      const winner = errors.indexOf(false),
-        state = await snapshot(race);
-      assert.equal(state.approval.status, winner === 0 ? "approved" : "rejected");
-      assert.equal(state.approval.row_version, 8);
-      assert.equal(state.audits, 1);
-      assert.equal(state.receipts, 1);
-      const replay = await direct(
-        actors[winner].ctx,
-        held[winner],
-        "opposed-winner-original-replay",
-      );
-      assert(!replay.error);
-      assert.deepEqual(await snapshot(race), state);
-      for (const [i, x] of actors.entries()) {
-        fs.writeFileSync(path.join(dir, "race-" + x.role + ".response.private.txt"), raw[i]);
-        await x.p.screenshot({ path: path.join(dir, "race-" + x.role + ".png"), fullPage: true });
-      }
-      record("two-permitted-actors-opposed", {
-        actors: ["manager", "admin"],
-        routes: ["/approvals", "/ai-review"],
-        releasedTogether: true,
-        winner: actors[winner].role,
-        terminal: state.approval.status,
-        version: 8,
-        auditCount: 1,
-        receiptCount: 1,
-        originalReplayUnchanged: true,
-      });
-    } finally {
-      release.forEach((r) => r());
-      for (const x of actors) await x.ctx.close();
     }
     report.stage = "retained claim and assignment";
     const claim = await isolatedFixture("claim assignment", 7, { assignedTo: null }),
       ctx = await ownContext("manager");
     try {
       const p = await open(ctx, "/approvals", claim);
+      const claimResponse = p.waitForResponse(
+        (r) => r.request().method() === "POST" && r.request().postData()?.includes(claim.id),
+      );
       await p.getByRole("button", { name: "Claim for review", exact: true }).click();
+      const claimResult = await claimResponse;
+      assert(!failed(await claimResult.text(), claimResult.status()));
       await p.waitForLoadState("networkidle");
       let state = await snapshot(claim);
       assert.equal(state.approval.assigned_to, who("manager").profileId);
@@ -513,7 +525,12 @@ module.exports = async function verifyBoundaries({
         exact: true,
       });
       await combo.fill(name);
+      const assignmentResponse = p.waitForResponse(
+        (r) => r.request().method() === "POST" && r.request().postData()?.includes(claim.id),
+      );
       await p.getByRole("button", { name, exact: true }).first().click();
+      const assignmentResult = await assignmentResponse;
+      assert(!failed(await assignmentResult.text(), assignmentResult.status()));
       await p.waitForLoadState("networkidle");
       state = await snapshot(claim);
       assert.equal(state.approval.assigned_to, who("admin").profileId);
@@ -536,18 +553,20 @@ module.exports = async function verifyBoundaries({
     const manualCtx = await ownContext("manager");
     try {
       const p = await open(manualCtx, "/approvals", manual);
-      await p.getByRole("button", { name: "Copy approved draft", exact: true }).waitFor();
-      await p
+      const manualPanel = p.getByRole("dialog");
+      await manualPanel.waitFor();
+      await manualPanel.getByRole("button", { name: "Copy approved draft", exact: true }).waitFor();
+      await manualPanel
         .getByRole("textbox", { name: "Manual send reference", exact: true })
         .fill("Synthetic Approval Review statement only");
       const wait = p.waitForResponse(
         (r) =>
           r.request().method() === "POST" && new URL(r.url()).pathname.startsWith("/_serverFn/"),
       );
-      await p.getByRole("button", { name: "Record manual send", exact: true }).click();
+      await manualPanel.getByRole("button", { name: "Record manual send", exact: true }).click();
       const res = await wait;
       assert(!failed(await res.text(), res.status()));
-      await p
+      await manualPanel
         .getByText(/Manual send recorded:/)
         .first()
         .waitFor();
