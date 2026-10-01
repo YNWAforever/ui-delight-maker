@@ -217,7 +217,7 @@
         .update(fs.readFileSync(previousReport))
         .digest("hex"),
       retainedActualMeasurements: 60,
-      reason: "Observer serialization correction; served application source unchanged",
+      reason: "Observer-only corrections; served application source unchanged",
     };
     if (continuationScope === "neighbors") {
       assert.equal(previous.boundaries.length, 24);
@@ -254,7 +254,7 @@
           .update(fs.readFileSync(previousReport))
           .digest("hex"),
         reason:
-          "Only neighbor observer completion timing changed; served application source and captured Origin transport unchanged",
+          "Validated native cases retained; neighboring workflow observer corrected with served application source and captured Origin transport unchanged",
       };
     }
     template = JSON.parse(fs.readFileSync(capturedTemplate));
