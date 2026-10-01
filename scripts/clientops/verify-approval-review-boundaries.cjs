@@ -506,7 +506,7 @@ module.exports = async function verifyBoundaries({
     const claim = await isolatedFixture("claim assignment", 7, { assignedTo: null }),
       ctx = await ownContext("manager");
     try {
-      const p = await open(ctx, "/approvals", claim);
+      let p = await open(ctx, "/approvals", claim);
       const claimResponse = p.waitForResponse(
         (r) => r.request().method() === "POST" && r.request().postData()?.includes(claim.id),
       );
@@ -517,6 +517,9 @@ module.exports = async function verifyBoundaries({
       let state = await snapshot(claim);
       assert.equal(state.approval.assigned_to, who("manager").profileId);
       assert.equal(state.approval.row_version, 8);
+      // Existing claim refreshes only its queue. Read current authorized detail before separate assignment.
+      await p.close();
+      p = await open(ctx, "/approvals", claim);
       const name = (
         await pool.query("select name from profiles where id=$1", [who("admin").profileId])
       ).rows[0].name;
@@ -537,7 +540,13 @@ module.exports = async function verifyBoundaries({
       assert.equal(state.approval.row_version, 9);
       assert.equal(state.approval.status, "pending");
       await p.screenshot({ path: path.join(dir, "retained-claim-assignment.png"), fullPage: true });
-      report.neighbors.claimAssignment = { claimedVersion: 8, assignedVersion: 9, liveUi: true };
+      report.neighbors.claimAssignment = {
+        claimedVersion: 8,
+        assignedVersion: 9,
+        liveUi: true,
+        authorizedDetailReloadBeforeAssignment: true,
+        existingClaimAffordanceRefreshRequired: true,
+      };
     } finally {
       await ctx.close();
     }
@@ -556,6 +565,11 @@ module.exports = async function verifyBoundaries({
       const manualPanel = p.getByRole("dialog");
       await manualPanel.waitFor();
       await manualPanel.getByRole("button", { name: "Copy approved draft", exact: true }).waitFor();
+      assert(
+        await manualPanel
+          .getByRole("button", { name: "Copy approved draft", exact: true })
+          .isEnabled(),
+      );
       await manualPanel
         .getByRole("textbox", { name: "Manual send reference", exact: true })
         .fill("Synthetic Approval Review statement only");
