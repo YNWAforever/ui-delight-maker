@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-10-01T04:11:30.486Z",
+  "headSha": "879911bbdbaff65cb31758006a5efbc03c0757e2",
+  "tests": 2414,
+  "files": 323,
+  "skipped": 0,
+  "noSkipGateFromActualLog": true,
+  "runs": [
+    {
+      "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36812214380",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "Types and lint",
+          "id": 110209533048,
+          "conclusion": "success"
+        },
+        {
+          "name": "Browser collector integration",
+          "id": 110209533298,
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36812214419",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "Isolated migration and seed replay",
+          "id": 110209533473,
+          "conclusion": "success"
+        },
+        {
+          "name": "contract",
+          "id": 110209533810,
+          "conclusion": "success"
+        }
+      ]
+    }
+  ]
+}

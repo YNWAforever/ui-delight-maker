@@ -1,0 +1,64 @@
+{
+  "sourceSha": "2d50f59c2482c61421070efe416f6ebcbbe04d8e",
+  "scope": "New distinct synthetic escalated approval; seven genuine own-role UI review boundaries and own-manager manual-only approval/replay",
+  "cases": [
+    {
+      "case": "actual own-role escalated detail/read and approve boundary",
+      "role": "super_admin",
+      "ownAuthMatched": true,
+      "approveEnabled": true,
+      "pass": true
+    },
+    {
+      "case": "actual own-role escalated detail/read and approve boundary",
+      "role": "admin",
+      "ownAuthMatched": true,
+      "approveEnabled": true,
+      "pass": true
+    },
+    {
+      "case": "actual own-role escalated detail/read and approve boundary",
+      "role": "manager",
+      "ownAuthMatched": true,
+      "approveEnabled": true,
+      "pass": true
+    },
+    {
+      "case": "actual own-role escalated detail/read and approve boundary",
+      "role": "sales",
+      "ownAuthMatched": true,
+      "approveEnabled": false,
+      "pass": true
+    },
+    {
+      "case": "actual own-role escalated detail/read and approve boundary",
+      "role": "client_success",
+      "ownAuthMatched": true,
+      "approveEnabled": false,
+      "pass": true
+    },
+    {
+      "case": "actual own-role escalated detail/read and approve boundary",
+      "role": "accounting",
+      "ownAuthMatched": true,
+      "approveEnabled": false,
+      "pass": true
+    },
+    {
+      "case": "actual own-role escalated detail/read and approve boundary",
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "approveEnabled": false,
+      "pass": true
+    },
+    {
+      "case": "own Manager approves actual escalated draft; one approval audit and awaiting_manual_send handoff; same-key replay unchanged",
+      "role": "manager",
+      "pass": true
+    }
+  ],
+  "success": true,
+  "noProviderDispatchOrCustomerMessage": true,
+  "originalFixtureRetained": true,
+  "finishedAt": "2026-10-01T04:00:46.635Z"
+}

@@ -1,0 +1,19 @@
+{
+  "sourceSha": "879911bbdbaff65cb31758006a5efbc03c0757e2",
+  "scope": "Own Sales real Task form submit with impossible date injected into actual outgoing payload; original draft and DB rows preserved. Observer of field-error presentation, not mocked server response.",
+  "success": true,
+  "cases": [
+    {
+      "case": "real impossible-date POST rejects without Task/audit writes and keeps actual own-Sales form draft",
+      "role": "sales",
+      "pass": true
+    }
+  ],
+  "fieldErrorPresentation": {
+    "responseMentionsFieldErrors": false,
+    "responseMentionsDueDate": false,
+    "uiMentionsDueField": false,
+    "uiGenericInvalidInputVisible": true
+  },
+  "finishedAt": "2026-10-01T04:14:58.988Z"
+}

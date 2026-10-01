@@ -1,0 +1,96 @@
+{
+  "sourceSha": "879911bbdbaff65cb31758006a5efbc03c0757e2",
+  "scope": "Seven genuine own-role UI boundaries and five exact original recovery receipt replays on cached source; no fixture replacement",
+  "success": true,
+  "cases": [
+    {
+      "case": "current-source own-role active eligibility and terminal no-action/cost metadata",
+      "role": "super_admin",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "current-source own-role active eligibility and terminal no-action/cost metadata",
+      "role": "admin",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "current-source own-role active eligibility and terminal no-action/cost metadata",
+      "role": "manager",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "current-source own-role active eligibility and terminal no-action/cost metadata",
+      "role": "sales",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "current-source own-role active eligibility and terminal no-action/cost metadata",
+      "role": "client_success",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "current-source own-role active eligibility and terminal no-action/cost metadata",
+      "role": "accounting",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "current-source own-role active eligibility and terminal no-action/cost metadata",
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "exact original actor/body/idempotency key returns owned receipt without changing rows/approval/audits/receipt/timestamps",
+      "role": "super_admin",
+      "pass": true
+    },
+    {
+      "case": "exact original actor/body/idempotency key returns owned receipt without changing rows/approval/audits/receipt/timestamps",
+      "role": "admin",
+      "pass": true
+    },
+    {
+      "case": "exact original actor/body/idempotency key returns owned receipt without changing rows/approval/audits/receipt/timestamps",
+      "role": "manager",
+      "pass": true
+    },
+    {
+      "case": "exact original actor/body/idempotency key returns owned receipt without changing rows/approval/audits/receipt/timestamps",
+      "role": "sales",
+      "pass": true
+    },
+    {
+      "case": "exact original actor/body/idempotency key returns owned receipt without changing rows/approval/audits/receipt/timestamps",
+      "role": "client_success",
+      "pass": true
+    },
+    {
+      "case": "actual current-source forbidden recovery POST leaves original fixture and receipts unchanged",
+      "role": "read_only",
+      "pass": true
+    },
+    {
+      "case": "actual current-source forbidden recovery POST leaves original fixture and receipts unchanged",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "current cached source exact Reader allow does not expand neighbour; expiry denies prepared actual POST and removes controls on next request without changing originals",
+      "role": "read_only",
+      "pass": true
+    }
+  ],
+  "separateAuthIdentities": 7,
+  "separateOwnCookies": 7,
+  "originalDataUnchanged": true,
+  "noProviderDispatchOrCustomerMessage": true,
+  "finishedAt": "2026-10-01T04:17:37.655Z",
+  "continuesSameOriginal14CurrentCases": true,
+  "temporaryOverrideRevoked": true
+}
