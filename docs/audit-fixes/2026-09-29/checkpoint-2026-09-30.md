@@ -1,6 +1,12 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current checkpoint — PR151 merged; CO30 safe field feedback
+## Current checkpoint — PR152 merged; independent UAT upgraded
+
+Main22817d4 includes [PR152](https://github.com/YNWAforever/ui-delight-maker/pull/152); exact finale3ac9c5 and post-main2,424/324/zero-skip/replay/static/browser PASS. [Merge](evidence/pr152-merge-2026-10-01.json), [hold](evidence/production-hold-after-152-2026-10-01.json): actual production attemptCANCELED/publicbed941b unchanged. Canonical independent test URL now serves7dc40fd with matching app/config/schema, seven distinct own users/sessions/cookies/roles/actual homes, zero running workers/leases and17 synthetic table snapshots unchanged. [Environment](isolated-uat-environment.md).
+
+[Current local evidence and feature map](final-local-acceptance-2026-10-01.md) closes the defined CO22 actual request-count and CO26 date criteria; CO30 actual native workflow and CO27 latest-main/protected-source/documentation evidence are verified. CO15 foreground30s/minimal50-row response PASS, real hidden-state background acceptance remains blocked by the native runner. All30 CO/16 UAT retained. Historical/snapshot/provider/retention/operator-PITR/screen-reader/native-background gates remain externally blocked; production release NO-GO. This evidence-only follow-up requires its own final-head CI before authorized merge.
+
+## Previous checkpoint — PR151 merged; CO30 safe field feedback
 
 Main271095d after [PR151](https://github.com/YNWAforever/ui-delight-maker/pull/151) passes exact final-head/post-main2,414/323/zero-skip PostgreSQL CI/replay/static. [Merge](evidence/pr151-merge-2026-10-01.json), [hold](evidence/production-hold-after-151-2026-10-01.json): production attemptCANCELED, publicbed941b unchanged. Actual seven-own-role local recovery/original-key/expiry, escalated manual-only review and both runtime rounds are retained in [U11](agent-recovery-uat-2026-10-01.md). Canonical independent UAT remainsfc4a2fd; protected recovery candidate879 has the verified binding.
 
@@ -108,11 +114,11 @@ No branch was created or resumed, no connection string was retrieved, and no dat
 | R01 | Local synthetic multi-role commercial/risk/billing guards, concurrency/rollback/replay PASS; four historical dispositions/provenance and disposable legacy compatibility rehearsal BLOCKED. |
 | R02 | Defined Task/Lead/Approval/Job100 and Team3 original-receipt/retry/offline/reconnect/replay scopes PASS; receipts and successful writes retained. |
 | R03 | Scoped actual keyboard/width/native200/dialog/shell PASS; human screen-reader acceptance BLOCKED. |
-| R04 | Recorded seven-role local handoff/visibility/Admin and same-record workflows PASS in the sixteen-case matrix; provider invite/signup/acceptance and legacy journeys remain separately blocked. CO30 field localization remains executable. |
+| R04 | Recorded seven-role local handoff/visibility/Admin and same-record workflows PASS in the sixteen-case matrix; provider invite/signup/acceptance and legacy journeys remain separately blocked. CO30 defined field localization and native correction/deny workflow now PASS. |
 | R05 | Actual Lead/Client/Event5000 import/source parity, formula-safe real spreadsheet apps and isolated retention rehearsal PASS; real legacy source inventory and production retention owner/schedule BLOCKED. |
 | R06 | Same-machine/data browser10 cold/30 warm with10k tasks/100k approvals and raw SQL/transfer metrics PASS for defined queues. Recovery SSR regression/cache samples retained; no full-product CWV claim. |
 | R07 | Local recovery/escalated/manual-only handoff proof now PASS; de-identified five-domain legacy+Neon snapshots and real sandbox callback/receipt contract BLOCKED. |
-| R08 | Current-source CI/UAT/review packet available; final docs head and merge still pending. Release requires the historical/snapshot/provider/screen-reader/operator/PITR/compatibility gates; hold remains active. |
+| R08 | Current-source CI/UAT/review packet available; PR152 exact final/main and canonical seven roles PASS; current evidence-only follow-up final CI/merge still required. Release requires the historical/snapshot/provider/screen-reader/operator/PITR/compatibility gates; hold remains active. |
 
 All 30 CO IDs remain tracked in [status](../2026-09-27/status.md). Missing role, snapshot, provider or runtime proof is not promoted to PASS by source CI. The [release and rollback checklist](../2026-09-27/release-checklist.md), [UAT results](../2026-09-27/uat-results.md) and [migration/reconciliation disposition](../2026-09-27/production-reconciliation-disposition.md) remain the operational handoff.
 

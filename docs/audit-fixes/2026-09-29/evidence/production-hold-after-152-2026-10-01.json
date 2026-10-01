@@ -1,0 +1,14 @@
+{
+  "checkedAt": "2026-10-01T05:25:31.671Z",
+  "primaryProjectId": "prj_28RsIf31nvcD0YS3UIQqdnvJlHki",
+  "productionAttemptId": "dpl_3RYg8heqeyKHwpoTeFCnbC5wBvM6",
+  "attemptSource": "22817d4a7313ea72918e04e73c26f92a02d23e5c",
+  "state": "CANCELED",
+  "ignoreBuildHoldVerified": true,
+  "noProductionDbAccess": true,
+  "noPromotion": true,
+  "release": "NO-GO",
+  "publicProductionSource": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+  "canonicalUatSource": "7dc40fde8aba4c7033efaa67494fe31f70726926",
+  "sevenOwnCanonicalRoleHomesVerified": true
+}
