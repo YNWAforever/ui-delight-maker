@@ -435,11 +435,13 @@ function JobSheetsIndex() {
           </div>
         </form>
 
-        {(bulkSelected.size > 0 || bulkOperation.result) && (
+        {(bulkSelected.size > 0 || bulkOperation.result || bulkOperation.recoveryState) && (
           <BulkActionBar
             selectedCount={bulkSelected.size}
             busy={bulkOperation.busy}
             result={bulkOperation.result}
+            recoveryState={bulkOperation.recoveryState}
+            onRetryResult={bulkOperation.retryLoadResult}
             onResume={() => void bulkOperation.resume()}
             onClear={() => {
               setBulkSelected(new Set());

@@ -1,0 +1,12 @@
+{
+  "testedAt": "2026-10-01T00:49:14.630Z",
+  "db": "clientops_bulk_recovery_verify_20261001",
+  "loopbackOnly": true,
+  "postgres": "17.10",
+  "tests": 2377,
+  "files": 322,
+  "skipped": 0,
+  "todo": 0,
+  "failed": 0,
+  "elapsedMs": 287149
+}

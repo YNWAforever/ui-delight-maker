@@ -669,55 +669,58 @@ function JobSheetDetailPage() {
                 portions={previewPortions}
               />
 
-              {jobSheetQuery.data.canUpdateHeader &&
-                (bulkPortionSelected.size > 0 || bulkPortionOperation.result) && (
-                  <BulkActionBar
-                    selectedCount={bulkPortionSelected.size}
-                    busy={bulkPortionOperation.busy}
-                    result={bulkPortionOperation.result}
-                    onResume={() => void bulkPortionOperation.resume()}
-                    onClear={() => {
-                      setBulkPortionSelected(new Set());
-                      bulkPortionOperation.dismiss();
-                    }}
-                  >
-                    {bulkPortionSelected.size > 0 && (
-                      <>
-                        <Label className="flex items-center gap-2 text-xs">
-                          Target invoice date
-                          <Input
-                            type="date"
-                            value={bulkInvoiceDate}
-                            onChange={(event) => setBulkInvoiceDate(event.target.value)}
-                            className="w-40"
-                          />
-                        </Label>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={
-                            bulkPortionOperation.busy ||
-                            editorBusy ||
-                            hasUnsavedBillingChanges ||
-                            hasUnsavedXeroChanges
-                          }
-                          onClick={() =>
-                            void bulkPortionOperation.prepare(
-                              {
-                                type: "job_sheet.invoice_date",
-                                targetInvoiceDate: bulkInvoiceDate || null,
-                              },
-                              Array.from(bulkPortionSelected),
-                            )
-                          }
-                        >
-                          Set invoice date
-                        </Button>
-                      </>
-                    )}
-                  </BulkActionBar>
-                )}
+              {((jobSheetQuery.data.canUpdateHeader && bulkPortionSelected.size > 0) ||
+                bulkPortionOperation.result ||
+                bulkPortionOperation.recoveryState) && (
+                <BulkActionBar
+                  selectedCount={bulkPortionSelected.size}
+                  busy={bulkPortionOperation.busy}
+                  result={bulkPortionOperation.result}
+                  recoveryState={bulkPortionOperation.recoveryState}
+                  onRetryResult={bulkPortionOperation.retryLoadResult}
+                  onResume={() => void bulkPortionOperation.resume()}
+                  onClear={() => {
+                    setBulkPortionSelected(new Set());
+                    bulkPortionOperation.dismiss();
+                  }}
+                >
+                  {jobSheetQuery.data.canUpdateHeader && bulkPortionSelected.size > 0 && (
+                    <>
+                      <Label className="flex items-center gap-2 text-xs">
+                        Target invoice date
+                        <Input
+                          type="date"
+                          value={bulkInvoiceDate}
+                          onChange={(event) => setBulkInvoiceDate(event.target.value)}
+                          className="w-40"
+                        />
+                      </Label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={
+                          bulkPortionOperation.busy ||
+                          editorBusy ||
+                          hasUnsavedBillingChanges ||
+                          hasUnsavedXeroChanges
+                        }
+                        onClick={() =>
+                          void bulkPortionOperation.prepare(
+                            {
+                              type: "job_sheet.invoice_date",
+                              targetInvoiceDate: bulkInvoiceDate || null,
+                            },
+                            Array.from(bulkPortionSelected),
+                          )
+                        }
+                      >
+                        Set invoice date
+                      </Button>
+                    </>
+                  )}
+                </BulkActionBar>
+              )}
               <BulkPreviewDialog
                 preview={bulkPortionOperation.preview}
                 busy={bulkPortionOperation.busy}
