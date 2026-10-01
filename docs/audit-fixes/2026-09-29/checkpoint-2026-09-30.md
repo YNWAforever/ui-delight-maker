@@ -1,8 +1,10 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current checkpoint — main PR150; PR151 source acceptance complete
+## Current checkpoint — PR151 merged; CO30 safe field feedback
 
-Main9e96bc5 after150 passes2,397/zero-skip/replay/static. Candidate879911b for [PR151](https://github.com/YNWAforever/ui-delight-maker/pull/151) passes2,414/323/zero-skip CI/replay/static and actual fifteen-case seven-own-role/original receipt/expired allow acceptance. Source2d29 local recovery and eight escalated/manual review cases are retained. Actual paired SSR timing records p50/p95 improvement with all80 samples and explicit scope. [Report](agent-recovery-uat-2026-10-01.md). Final docs-head check/merge is pending; source is not production deployed. Canonical dedicated UAT remainsfc4a2fd; protected candidate binding is independent. Real production remainsbed941b and held. All30CO/16UAT are tracked; CO30 real field feedback is the next executable repair. External snapshot/provider/historical/operator/screen-reader gates remain NO-GO.
+Main271095d after [PR151](https://github.com/YNWAforever/ui-delight-maker/pull/151) passes exact final-head/post-main2,414/323/zero-skip PostgreSQL CI/replay/static. [Merge](evidence/pr151-merge-2026-10-01.json), [hold](evidence/production-hold-after-151-2026-10-01.json): production attemptCANCELED, publicbed941b unchanged. Actual seven-own-role local recovery/original-key/expiry, escalated manual-only review and both runtime rounds are retained in [U11](agent-recovery-uat-2026-10-01.md). Canonical independent UAT remainsfc4a2fd; protected recovery candidate879 has the verified binding.
+
+CO30 hosted strict validation/data preservation passes but field feedback is reproduced missing. The next focused repair passes ten corrected red-to-green cases and46 related tests, TypeScript and tracked-source lint/pure Vite/bundles. Fresh full PG is running; committed-source hosted recapture and final CI remain pending. [Report](validation-feedback-uat-2026-10-01.md). All30CO/16UAT retained; no production DB access, customer/provider send or release. External legacy/provider/historical/operator/screen-reader gates remain NO-GO.
 
 ## Previous verified checkpoint — PR #148 / focused Lead repair
 

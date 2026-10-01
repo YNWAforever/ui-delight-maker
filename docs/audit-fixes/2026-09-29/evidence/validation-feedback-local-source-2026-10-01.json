@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-10-01T04:54:23.711Z",
+  "baselineMain": "271095da051820f0f54616d77120adc3a9e5df11",
+  "red": {
+    "tests": 10,
+    "failed": 10,
+    "validCorrectedFixture": true
+  },
+  "focused": {
+    "tests": 46,
+    "failed": 0,
+    "skipped": 0,
+    "files": 5
+  },
+  "static": {
+    "wholeTypeScript": "PASS",
+    "allTrackedSourceLint": "PASS",
+    "existingWarning": 1,
+    "pureVite": "PASS",
+    "bundleGate": "PASS",
+    "onlyUntrackedPrivateDiagnosticsExcluded": true,
+    "remoteLintUnchanged": true
+  },
+  "realFullPostgres": {
+    "database": "clientops_validation_feedback_final_20261001_1236",
+    "loopbackOnly": true,
+    "postgres": "17.10",
+    "status": "running"
+  },
+  "hostedAcceptance": "pending",
+  "noMigration": true,
+  "noRoleGrant": true,
+  "productionRelease": false
+}
