@@ -1,0 +1,133 @@
+{
+  "checkedAt": "2026-10-01T05:25:31.670Z",
+  "pullRequest": {
+    "headRefOid": "e3ac9c50ab095ba2a20701f4488112382eb2366e",
+    "mergeCommit": {
+      "oid": "22817d4a7313ea72918e04e73c26f92a02d23e5c"
+    },
+    "mergedAt": "2026-10-01T05:19:01Z",
+    "number": 152,
+    "state": "MERGED",
+    "url": "https://github.com/YNWAforever/ui-delight-maker/pull/152"
+  },
+  "finalHeadChecks": {
+    "headRefOid": "e3ac9c50ab095ba2a20701f4488112382eb2366e",
+    "mergeStateStatus": "CLEAN",
+    "state": "OPEN",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-01T05:11:26Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36818475690/job/110228658413",
+        "name": "Types and lint",
+        "startedAt": "2026-10-01T05:10:01Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-01T05:13:45Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36818475659/job/110228659014",
+        "name": "contract",
+        "startedAt": "2026-10-01T05:10:02Z",
+        "status": "COMPLETED",
+        "workflowName": "Database contract"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-01T05:10:43Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36818475690/job/110228658223",
+        "name": "Browser collector integration",
+        "startedAt": "2026-10-01T05:10:01Z",
+        "status": "COMPLETED",
+        "workflowName": "Checks"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-01T05:11:39Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36818475659/job/110228659073",
+        "name": "Isolated migration and seed replay",
+        "startedAt": "2026-10-01T05:10:02Z",
+        "status": "COMPLETED",
+        "workflowName": "Database contract"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-01T05:09:55Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://supabase.com/dashboard/project/chwgijdmcyzmuuxzdkok/branches",
+        "name": "Supabase Preview",
+        "startedAt": "2026-10-01T05:09:55Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      },
+      {
+        "__typename": "StatusContext",
+        "context": "Vercel",
+        "startedAt": "2026-10-01T05:10:34Z",
+        "state": "SUCCESS",
+        "targetUrl": "https://vercel.com/ynwaforevers-projects/ui-delight-maker/F62SoBb6eVthq2eH6sPLf7beohR5"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-10-01T05:10:35Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://vercel.com/github",
+        "name": "Vercel Preview Comments",
+        "startedAt": "2026-10-01T05:10:35Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ]
+  },
+  "finalHead": {
+    "tests": 2424,
+    "files": 324,
+    "skipped": 0,
+    "noSkipActualLog": true
+  },
+  "postMain": {
+    "tests": 2424,
+    "files": 324,
+    "skipped": 0,
+    "noSkipActualLog": true,
+    "runs": [
+      {
+        "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36819188014",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Types and lint",
+            "id": 110230836755,
+            "conclusion": "success"
+          },
+          {
+            "name": "Browser collector integration",
+            "id": 110230836886,
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36819188192",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Isolated migration and seed replay",
+            "id": 110230837198,
+            "conclusion": "success"
+          },
+          {
+            "name": "contract",
+            "id": 110230837710,
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  }
+}

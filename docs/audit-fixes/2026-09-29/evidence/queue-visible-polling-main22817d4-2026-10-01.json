@@ -1,0 +1,89 @@
+{
+  "sourceSha": "22817d4a7313ea72918e04e73c26f92a02d23e5c",
+  "environment": "Real compiled app / Chromium native foreground-background tabs / isolated 100k PostgreSQL approvals / own live Manager",
+  "startedAt": "2026-10-01T05:39:03.694Z",
+  "success": false,
+  "cases": [
+    {
+      "case": "native visible pending queue polls after its 30s interval; decided history and payload never poll",
+      "realElapsedMs": 35006,
+      "pendingRequests": 1,
+      "historyRequests": 0,
+      "pass": true
+    }
+  ],
+  "responses": [
+    {
+      "group": "history",
+      "at": 1790833145408,
+      "status": 200,
+      "bytes": 36047,
+      "contextDataInList": false,
+      "itemsNodeShape": {
+        "t": 9,
+        "keys": [
+          "t",
+          "i",
+          "a",
+          "o"
+        ],
+        "arrayLength": 50
+      }
+    },
+    {
+      "group": "pending",
+      "at": 1790833175907,
+      "status": 200,
+      "bytes": 36001,
+      "contextDataInList": false,
+      "itemsNodeShape": {
+        "t": 9,
+        "keys": [
+          "t",
+          "i",
+          "a",
+          "o"
+        ],
+        "arrayLength": 50
+      }
+    },
+    {
+      "group": "pending",
+      "at": 1790833206556,
+      "status": 200,
+      "bytes": 36001,
+      "contextDataInList": false,
+      "itemsNodeShape": {
+        "t": 9,
+        "keys": [
+          "t",
+          "i",
+          "a",
+          "o"
+        ],
+        "arrayLength": 50
+      }
+    }
+  ],
+  "finishedAt": "2026-10-01T05:41:56.160Z",
+  "initialNativeTabDidNotBecomeHidden": true,
+  "nativeBackgroundContinuationAt": "2026-10-01T05:41:38.733Z",
+  "error": {
+    "stage": "native-window-minimize",
+    "name": "TimeoutError",
+    "details": "Private failure retained"
+  },
+  "scope": "Foreground native polling and bounded DTO PASS; actual native background-state acceptance BLOCKED by Windows browser runner",
+  "backgroundAcceptance": "blocked_external",
+  "nativeCapabilityProbe": {
+    "createdAt": "2026-10-01T05:47:45.838Z",
+    "before": "visible",
+    "afterTab": "visible",
+    "afterMin": "visible",
+    "sameWindow": true,
+    "nativeWindowState": "minimized",
+    "browserContextPresent": true,
+    "noVisibilityOrClockMocks": true
+  },
+  "noVisibilityOrClockMocks": true
+}

@@ -1,5 +1,7 @@
 # Backend Dependencies
 
+**Historical revision register.** Current implemented server paths, migrations, actual role evidence and remaining external dependencies are in the [2026-10-01 feature/source/acceptance map](../audit-fixes/2026-09-29/final-local-acceptance-2026-10-01.md) and canonical thirty-finding status. Older missing-import/reviewer-assignment/quote-redaction descriptions below record their original revision, not the current application.
+
 One entry per gap that stops the frontend telling the truth. Template per execution plan §11.5.
 
 **This register is deliberately short.** Of 217 integrity findings, 169 are frontend-owned and only 12 need backend work — and the audit demoted several candidates that looked like backend gaps but were not. Those demotions are recorded at the bottom, because a dependency filed against work that is already possible is worse than no entry at all: it parks a fixable defect behind an imaginary blocker.

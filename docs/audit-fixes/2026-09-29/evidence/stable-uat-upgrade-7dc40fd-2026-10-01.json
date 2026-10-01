@@ -1,0 +1,117 @@
+{
+  "checkedAt": "2026-10-01T05:26:02.770Z",
+  "url": "https://clientops-uat-20260930.vercel.app",
+  "projectId": "prj_jlIsv7mLYGpZR4XEV4njX05jAZYJ",
+  "deploymentId": "dpl_A3d5J6CP9HTCVd8tWJspR5WbV6PL",
+  "sourceSha": "7dc40fde8aba4c7033efaa67494fe31f70726926",
+  "mergedApplicationSourceEquivalent": "22817d4a7313ea72918e04e73c26f92a02d23e5c",
+  "independentDatabase": {
+    "projectId": "polished-forest-15724329",
+    "branchId": "br-solitary-butterfly-b3883kwo",
+    "database": "clientops_uat"
+  },
+  "independentAuthOriginSha256": "97b089a053f3c9844ea598a8f061b6c5b5abec7c6d64e0700644f6daec1901f1",
+  "success": true,
+  "cases": [
+    {
+      "role": "super_admin",
+      "profileId": "5ab19e68-667f-4d60-8515-a9578f1b164f",
+      "authUserId": "5ab19e68-667f-4d60-8515-a9578f1b164f",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Revenue Desk",
+      "pass": true
+    },
+    {
+      "role": "admin",
+      "profileId": "d0bf98f1-9ce2-4bb9-80a0-3dd3837908fe",
+      "authUserId": "d0bf98f1-9ce2-4bb9-80a0-3dd3837908fe",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Revenue Desk",
+      "pass": true
+    },
+    {
+      "role": "manager",
+      "profileId": "demo-manager-user",
+      "authUserId": "b59756f5-cd59-4366-8885-796c75f25671",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Revenue Desk",
+      "pass": true
+    },
+    {
+      "role": "sales",
+      "profileId": "demo-sales-user",
+      "authUserId": "38fd9036-54b4-4cd8-98f3-6d0e057a5fac",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Revenue Desk",
+      "pass": true
+    },
+    {
+      "role": "client_success",
+      "profileId": "demo-cs-user",
+      "authUserId": "abd1852f-ab38-4d6c-9bc0-0b09e432a744",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Revenue Desk",
+      "pass": true
+    },
+    {
+      "role": "accounting",
+      "profileId": "a8477476-90db-436e-89cd-f93201899883",
+      "authUserId": "a8477476-90db-436e-89cd-f93201899883",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Today",
+      "pass": true
+    },
+    {
+      "role": "read_only",
+      "profileId": "371f8cf3-4e59-47c6-9023-d36860893758",
+      "authUserId": "371f8cf3-4e59-47c6-9023-d36860893758",
+      "ownUpstreamIdentityMatched": true,
+      "ownIndependentProfileRoleMatched": true,
+      "activeStatus": true,
+      "ownCookieSet": true,
+      "actualRoleHomeLoaded": true,
+      "expectedHomeHeading": "Revenue Desk",
+      "pass": true
+    }
+  ],
+  "distinctAuthUsers": 7,
+  "distinctLiveSessions": 7,
+  "distinctOwnCookieSets": 7,
+  "syntheticDataAndOriginalReceiptsUnchanged": true,
+  "originalSeventeenTableSnapshotsUnchanged": true,
+  "noRunningWorkersOrLiveLeases": {
+    "import_leases": 0,
+    "bulk_leases": 0,
+    "running_imports": 0,
+    "running_bulk": 0
+  },
+  "applicationSourceEquivalentToGreenMergedMain": true,
+  "noMutationPosts": true,
+  "realProductionPublicSource": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+  "productionRelease": false,
+  "finishedAt": "2026-10-01T05:26:51.498Z"
+}

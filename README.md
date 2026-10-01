@@ -42,6 +42,10 @@ see the [T20 evidence](docs/audit-fixes/2026-09-27/t20-evidence.md).
 The read-only `/api/build` endpoint exposes only the deployment commit SHA,
 or `null` if the platform supplied no valid SHA.
 
+## Independent UAT
+
+[ClientOps test sign-in](https://clientops-uat-20260930.vercel.app/login/sign-in) uses a separate synthetic database and Auth with seven genuinely distinct role accounts. The [environment and private local account/session paths](docs/audit-fixes/2026-09-29/isolated-uat-environment.md) and [current source/evidence/gates](docs/audit-fixes/2026-09-29/final-local-acceptance-2026-10-01.md) document the verified binding. Test cookies and credentials must remain untracked.
+
 ## Production Gates
 
 - Configure `N8N_USER_INVITATION_WEBHOOK_URL` only after an operator explicitly approves the n8n workflow, recipient handling, and secret configuration.

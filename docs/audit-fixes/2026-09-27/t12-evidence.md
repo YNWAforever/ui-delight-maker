@@ -27,3 +27,7 @@ The new PostgreSQL pagination test failed because the page functions did not exi
 ## Remaining gates
 
 CO-14, CO-15 and CO-20 remain in_progress until authenticated role UI and representative runtime measurements. T19 owns the 10k-task/100k-approval before/after performance proof. The standalone Admin directory screen and team management remain T17. The production migration and release remain gated.
+
+## Current defined queue acceptance — 2026-10-01 HKT
+
+[Actual R06](../2026-09-29/r06-runtime-before-after-2026-09-30.md) provides both10k/100k queue scopes and40 navigations/source. Own Manager current foreground35s observation confirms pending30s polling, no history polling,50-row response and no context_data in list. [Partial proof](../2026-09-29/evidence/queue-visible-polling-main22817d4-2026-10-01.json). Native background remains blocked: runner reports visible despite real same-window activation/minimization. No synthetic hidden state is accepted; [resolution](../2026-09-29/final-local-acceptance-2026-10-01.md).

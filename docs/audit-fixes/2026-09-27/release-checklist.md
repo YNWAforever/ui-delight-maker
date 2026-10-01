@@ -1,6 +1,10 @@
 # ClientOps audit release candidate — 2026-09-28
 
-**Current state (2026-10-01 HKT): PR151 merged to main271095d; release NO-GO.** Exact final-head/post-main2,414/zero-skipped PostgreSQL CI/replay/static and actual own-role recovery/original-key/expiry proof PASS. Canonical dedicated UAT remainsfc4a2fd; real production remainsbed941b and this attempt wasCANCELED. CO30 source7dc40fd local/actual hosted criteria PASS with2,424/zero-skipped source CI; final documentation-head checks/merge pending. Historical/snapshot/provider/operator/screen-reader gates remain separately blocked. [Checkpoint](../2026-09-29/checkpoint-2026-09-30.md). Earlier entries below are historical.
+## Current acceptance checkpoint — PR152 / 2026-10-01 HKT
+
+[Current feature → route/server → migration → test/live evidence map and gate owners](../2026-09-29/final-local-acceptance-2026-10-01.md) supersedes historical blocked-preview cells below. PR152 exact final/main2424/324/zero-skip/replay/static/browser and canonical seven distinct own roles PASS; current independent UAT source7dc40fd equals main22817d4 app/config/schema. Production attempt CANCELED/publicbed941b/hold unchanged. **Release NO-GO** pending historical/paired snapshots/provider/retention/operator-PITR/human screen-reader/native-background evidence. Current follow-up documentation must pass its own exact final head before merge; no production release authorized by this packet.
+
+**Previous checkpoint (2026-10-01 HKT): PR151 merged to main271095d; release NO-GO.** Exact final-head/post-main2,414/zero-skipped PostgreSQL CI/replay/static and actual own-role recovery/original-key/expiry proof PASS. Canonical dedicated UAT remainsfc4a2fd; real production remainsbed941b and this attempt wasCANCELED. CO30 source7dc40fd local/actual hosted criteria PASS with2,424/zero-skipped source CI; final documentation-head checks/merge pending. Historical/snapshot/provider/operator/screen-reader gates remain separately blocked. [Checkpoint](../2026-09-29/checkpoint-2026-09-30.md). Earlier entries below are historical.
 
 **Historical integration checkpoint:** The audited application baseline was main SHA `2904faa502f7494173f48f412875c1d0a3aba674`. PRs #82–#101 landed on `codex/clientops-reviewed-integration`; [PR #103](https://github.com/YNWAforever/ui-delight-maker/pull/103) merged that source into main at `f038919b95ff085190401f64078b78bc8781dd4d`. At that checkpoint, the latest READY Production deployment was `dpl_BubNGhS2HFmmvjcUYfiKiasDwcLU` at the audited SHA. The user-approved Vercel hold canceled automatic main builds; the later READY production identity requires operator reconciliation. The 30 finding states remain in [status](status.md); code CI does not upgrade blocked role, data-parity or provider gates.
 
@@ -16,7 +20,7 @@ Main application source `5607b4d06514fe15da892303f0b2f7d7cb2d77a3` includes the 
 
 The latest READY Production deployment is still audited SHA `2904faa502f7494173f48f412875c1d0a3aba674` under the approved build hold. Seven distinct role sessions, legacy/Neon snapshots, four historical anomaly dispositions, provider sandbox receipts, authenticated full-route performance before/after, 200% zoom/screen-reader UAT and operator/PITR rehearsal are not supplied. Release stays **NO-GO**; no production migration, data mutation, provider send, customer message or promotion was performed.
 
-## Feature status and evidence map
+## Historical source-delivery map
 
 The table below is the historical source-delivery snapshot. Its preview cells are not current acceptance results; use the [current sixteen-case UAT matrix](uat-results.md) and linked exact-source browser/DB evidence for each executed scope.
 
