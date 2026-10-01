@@ -1,0 +1,254 @@
+{
+  "sourceSha": "8b9479fb9063dc1d85cd10670656d28aae37954a",
+  "startedAt": "2026-10-01T02:22:50.317Z",
+  "scope": "Actual own seven-role named Job Sheet owner controls and exact scoped picker, existing read/export retained",
+  "success": true,
+  "cases": [
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "super_admin",
+      "width": 390,
+      "ownAuthMatched": true,
+      "ownerOffered": true,
+      "readExportRetained": true,
+      "directSearchDenied": false,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pass": true
+    },
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "super_admin",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "ownerOffered": true,
+      "readExportRetained": true,
+      "directSearchDenied": false,
+      "geometry": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pass": true
+    },
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "admin",
+      "width": 390,
+      "ownAuthMatched": true,
+      "ownerOffered": true,
+      "readExportRetained": true,
+      "directSearchDenied": false,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pass": true
+    },
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "admin",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "ownerOffered": true,
+      "readExportRetained": true,
+      "directSearchDenied": false,
+      "geometry": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pass": true
+    },
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "manager",
+      "width": 390,
+      "ownAuthMatched": true,
+      "ownerOffered": false,
+      "readExportRetained": true,
+      "directSearchDenied": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pass": true
+    },
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "manager",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "ownerOffered": false,
+      "readExportRetained": true,
+      "directSearchDenied": true,
+      "geometry": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pass": true
+    },
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "sales",
+      "width": 390,
+      "ownAuthMatched": true,
+      "ownerOffered": false,
+      "readExportRetained": true,
+      "directSearchDenied": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pass": true
+    },
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "sales",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "ownerOffered": false,
+      "readExportRetained": true,
+      "directSearchDenied": true,
+      "geometry": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pass": true
+    },
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "client_success",
+      "width": 390,
+      "ownAuthMatched": true,
+      "ownerOffered": false,
+      "readExportRetained": true,
+      "directSearchDenied": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pass": true
+    },
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "client_success",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "ownerOffered": false,
+      "readExportRetained": true,
+      "directSearchDenied": true,
+      "geometry": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pass": true
+    },
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "accounting",
+      "width": 390,
+      "ownAuthMatched": true,
+      "ownerOffered": true,
+      "readExportRetained": true,
+      "directSearchDenied": false,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pass": true
+    },
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "accounting",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "ownerOffered": true,
+      "readExportRetained": true,
+      "directSearchDenied": false,
+      "geometry": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pass": true
+    },
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "read_only",
+      "width": 390,
+      "ownAuthMatched": true,
+      "ownerOffered": false,
+      "readExportRetained": true,
+      "directSearchDenied": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390,
+        "innerWidth": 390
+      },
+      "pass": true
+    },
+    {
+      "case": "own role exact existing owner grant, named eligible picker, selection/export and bounds",
+      "role": "read_only",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "ownerOffered": false,
+      "readExportRetained": true,
+      "directSearchDenied": true,
+      "geometry": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440,
+        "innerWidth": 1440
+      },
+      "pass": true
+    },
+    {
+      "case": "Reader exact scoped allow exposes named eligible owner on that selected resource; unrelated selected row does not expand the grant",
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "same Reader scoped allow cannot expose unrelated selected resource or direct candidate list",
+      "role": "read_only",
+      "pass": true
+    },
+    {
+      "case": "revoked exact allow removes owner form and denies original candidate request",
+      "role": "read_only",
+      "pass": true
+    },
+    {
+      "case": "expired exact allow never exposes controls/candidates",
+      "role": "read_only",
+      "pass": true
+    },
+    {
+      "case": "Accounting explicit scoped deny removes owner controls and denies original scoped candidate request",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "revoking temporary deny restores only original writer grant",
+      "role": "accounting",
+      "pass": true
+    }
+  ],
+  "noMutationPosts": true,
+  "originalJobSheetsUnchanged": true,
+  "screenReader": "not verified",
+  "overrideCleanup": true,
+  "finishedAt": "2026-10-01T02:26:15.488Z"
+}

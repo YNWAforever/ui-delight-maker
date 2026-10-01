@@ -1,0 +1,19 @@
+{
+  "sourceSha": "8b9479fb9063dc1d85cd10670656d28aae37954a",
+  "checkedAt": "2026-10-01T02:35:43.698Z",
+  "checksRun": 36805299978,
+  "databaseRun": 36805300038,
+  "contractJob": 110188186231,
+  "replayJob": 110188185993,
+  "tests": 2397,
+  "files": 323,
+  "skipped": 0,
+  "todo": 0,
+  "contract": "PASS",
+  "migrationSeedReplay": "PASS",
+  "typesLintBrowser": "PASS",
+  "vercel": "PASS",
+  "supabaseInformational": "SKIPPED; not acceptance",
+  "exactSourceGate": true,
+  "finalDocsHeadPending": true
+}

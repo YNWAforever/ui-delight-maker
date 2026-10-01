@@ -1,0 +1,35 @@
+{
+  "sourceSha": "8b9479fb9063dc1d85cd10670656d28aae37954a",
+  "operationId": "721d8f03-aae3-4b96-99ae-46d880220f15",
+  "fixtureIds": [
+    "f989fc70-52df-4547-9380-77a5e85e1793",
+    "eb6fb4fe-1c58-4d68-98a0-f5306c7f743e",
+    "bcc55cf0-e8dc-46c4-90b7-7259e5b7a9a6"
+  ],
+  "startedAt": "2026-10-01T02:27:48.959Z",
+  "scope": "Continue exact original three approved rows/token/key after wrong audit-object observer filter; no reseed/new preview",
+  "success": true,
+  "cases": [
+    {
+      "case": "same original three approvals have exactly three correct approval audit rows and command receipts, approved/version1",
+      "pass": true
+    },
+    {
+      "case": "actual same original token/key terminal commit replay keeps all operation/items/approvals/audits/receipts unchanged",
+      "pass": true
+    },
+    {
+      "case": "actual reload restores original successful terminal receipt, no Resume",
+      "pass": true
+    },
+    {
+      "case": "own Reader actual GET denies original Manager receipt without item IDs",
+      "pass": true
+    }
+  ],
+  "onceOnlyAuditAndCommandReceipts": 3,
+  "originalObserverFailureRetained": true,
+  "noReplacementFixturePreviewOrNewBusinessWrite": true,
+  "noProviderOrCustomerMessage": true,
+  "finishedAt": "2026-10-01T02:28:22.647Z"
+}

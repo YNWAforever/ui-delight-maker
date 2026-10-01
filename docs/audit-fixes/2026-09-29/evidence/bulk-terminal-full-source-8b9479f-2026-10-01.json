@@ -1,0 +1,20 @@
+{
+  "testedAt": "2026-10-01T02:22:37.737Z",
+  "db": "clientops_bulk_terminal_final_20261001_1017",
+  "loopbackOnly": true,
+  "postgres": "17.10",
+  "tests": 2397,
+  "files": 323,
+  "skipped": 0,
+  "todo": 0,
+  "failed": 0,
+  "elapsedMs": 376870,
+  "sourceSha": "8b9479fb9063dc1d85cd10670656d28aae37954a",
+  "static": {
+    "typescript": "PASS",
+    "sourceLint": "PASS; one existing warning",
+    "pureViteClientSsr": "PASS",
+    "existingRouteBundleGate": "PASS"
+  },
+  "migrationOrSeedBuildWrapperRunLocally": false
+}

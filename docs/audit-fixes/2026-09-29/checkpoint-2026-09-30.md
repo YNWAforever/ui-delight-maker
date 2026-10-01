@@ -1,8 +1,8 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current checkpoint — PR149 merged / PR150 bulk receipt and owner controls
+## Current checkpoint — PR150 exact-source bulk acceptance / final-head CI pending
 
-Main3e0c455 includes merged149 finalabed594, exact/post-main2368/321/zero skipped/replay/static/browser PASS; actual production attemptCANCELED/publicbed941b unchanged. PR150 source2cdc01d exactCI2377/322/zero skipped/replay PASS and actual original Approval/Job owner/invoice-date10070/10/10/10 key recovery/replay pass. [Report](bulk-receipt-recovery-2026-10-01.md). Follow-up768 container/per-row owner/picker scoped policy repairs are under corrected full/static and actual seven-role acceptance; no merge until exact final green. Canonical isolated UAT remainsfc4a2fd; separate candidate uses the same seven distinct own identities and isolated DB. All30 CO/16 UAT and external gates retained; release NO-GO.
+Main3e0c455 includes149 finalabed594; production canceled/publicbed941b unchanged. PR150 source8b9479f passes local/exactCI2397/323/zero skipped/replay/static/browser and genuine own-role20 scoped owner +18 original100 receipt +13 original lock/replay +4 original Approve3 continuation cases. [Report](bulk-receipt-recovery-2026-10-01.md). CO-16/U08 defined mixed-result criteria verified_fixed/PASS; final documentation head must pass the same full gates before merge. Canonical UAT remainsfc4a2fd, protected dedicated candidate8b9479f uses same independent test DB/Auth/seven own identities; original data/keys remain. All30CO/16UAT retained, remaining U11 local recovery role slice and individual provider/legacy/history/operator/PITR/screen-reader gates stay open, release NO-GO.
 
 ## Previous verified checkpoint — PR #148 / focused Lead repair
 
