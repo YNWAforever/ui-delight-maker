@@ -422,3 +422,7 @@ P1 commit `6e30193`. Shared controller now passes34 public-interface cases and T
 ## 2026-10-01 — Approval Review P3 optimistic surface
 
 P2 `01f70cc`; Approvals now uses the common preparation/confirmation flow.25 route +34 controller cases PASS; TypeScript PASS after retaining the original bulk-only error wrapper. Scoped assignment/claim/manual handoff and durable original-key bulk recovery tests retained. Version7 quote reject metadata and missing-version safe refresh verified. Before runtime14 own-role cases/60 actual decisions complete at7dc40fd, without provider/production activity. [Matrix](../2026-09-29/approval-review-module-2026-10-01.md). P4-P7 still pending; all30 CO statuses/external blockers unchanged.
+
+## 2026-10-01 — Approval Review P4 confirmed surface
+
+P3 `7d19783`; AI Review now shares controller decisions while retaining confirmed-only timing, created-at ordering, next selection and role advisory. Five behavior regressions RED -> GREEN;22 AI/25 Approvals/34 hook tests81/81 PASS, TypeScript PASS. Restricted refreshed rows erase formerly visible content; recorded writes survive refresh failure. [Matrix](../2026-09-29/approval-review-module-2026-10-01.md). Real transaction/full-suite and candidate own-role/runtime/CI gates P5-P7 remain; all30 CO/external blockers and production hold retained. No migration or production/provider action.

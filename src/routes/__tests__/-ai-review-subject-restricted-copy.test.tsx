@@ -2,7 +2,7 @@
 
 import type { ComponentType, ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -19,8 +19,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * end via `Route.options.component`, mocking the same server-function seam.
  */
 
-const { routerInvalidateMock } = vi.hoisted(() => ({
+const { routerInvalidateMock, decideApprovalMock } = vi.hoisted(() => ({
   routerInvalidateMock: vi.fn(),
+  decideApprovalMock: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -41,7 +42,8 @@ vi.mock("sonner", () => ({
 vi.mock("@/server-functions/agent-runs", () => ({ getAiReviewRead: vi.fn() }));
 vi.mock("@/server-functions/approvals", () => ({
   getLastReviewedAtFn: vi.fn().mockResolvedValue(null),
-  decideApproval: vi.fn(),
+  decideApproval: decideApprovalMock,
+  getApprovalDetailFn: vi.fn(),
 }));
 vi.mock("@/server-functions/quotes", () => ({
   approveQuote: vi.fn(),
@@ -93,9 +95,11 @@ function renderQueue(approvals: Approval[]) {
       <Component />
     </QueryClientProvider>,
   );
+  return queryClient;
 }
 
 beforeEach(() => {
+  decideApprovalMock.mockReset();
   routerInvalidateMock.mockReset().mockResolvedValue(undefined);
 });
 
@@ -130,4 +134,66 @@ describe("/ai-review renders the redaction copy subject_restricted implies", () 
     expect(disclosure?.querySelector("pre")?.textContent).toContain("confidence_score");
     expect(screen.queryByText(RESTRICTED_COPY)).toBeNull();
   });
+});
+
+it("restricted mutation reply cannot reintroduce raw content or notes", async () => {
+  const row = approval({
+    subject_restricted: true,
+    context_data: null,
+    context_summary: null,
+    reviewer_notes: null,
+    row_version: 7,
+  });
+  decideApprovalMock.mockResolvedValue({
+    ...row,
+    status: "approved",
+    row_version: 8,
+    context_data: { secret: "synthetic-restricted-secret" },
+    context_summary: "synthetic-restricted-secret",
+    reviewer_notes: "synthetic-restricted-secret",
+  });
+  const client = renderQueue([row]);
+  vi.spyOn(client, "invalidateQueries").mockResolvedValue();
+  fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+  const dialog = await screen.findByRole("alertdialog");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Approve" }));
+  await waitFor(() => expect(screen.getByText(/cannot be undone/)).toBeTruthy());
+  expect(screen.queryByText("synthetic-restricted-secret")).toBeNull();
+  expect(screen.getAllByText(RESTRICTED_COPY)).toHaveLength(2);
+});
+
+it("a newly restricted authorized read removes previously visible confirmed content", async () => {
+  const row = approval({
+    row_version: 7,
+    context_summary: "synthetic-prior-visible-content",
+    context_data: { memo: "synthetic-prior-visible-content" },
+  });
+  decideApprovalMock.mockResolvedValue({ ...row, status: "approved", row_version: 8 });
+  const client = renderQueue([row]);
+  vi.spyOn(client, "invalidateQueries").mockResolvedValue();
+  fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+  const dialog = await screen.findByRole("alertdialog");
+  fireEvent.click(within(dialog).getByRole("button", { name: "Approve" }));
+  await waitFor(() => expect(screen.getByText(/cannot be undone/)).toBeTruthy());
+  const { crmQueryKeys } = await import("@/lib/query-keys");
+  await act(async () => {
+    client.setQueryData(crmQueryKeys.aiReview.list({ view: "queue" }), {
+      approvals: [
+        {
+          ...row,
+          status: "approved",
+          row_version: 8,
+          subject_restricted: true,
+          context_summary: null,
+          context_data: null,
+          reviewer_notes: null,
+        },
+      ],
+      humanReviewRuns: [],
+    });
+  });
+  await waitFor(() =>
+    expect(screen.queryAllByText("synthetic-prior-visible-content")).toHaveLength(0),
+  );
+  expect(screen.getAllByText(RESTRICTED_COPY)).toHaveLength(2);
 });
