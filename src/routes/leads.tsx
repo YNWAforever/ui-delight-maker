@@ -421,6 +421,7 @@ function LeadsPage() {
             )
           ) : (
             <ResponsiveRecordList
+              breakpoint="container"
               caption="Leads"
               columns={columns}
               rows={filtered}

@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-09-30T23:40:42.105Z",
+  "projectId": "prj_jlIsv7mLYGpZR4XEV4njX05jAZYJ",
+  "deploymentId": "dpl_5YUjX4HqVMGF85EeFUp66htCgN3B",
+  "candidateUrl": "https://clientops-uat-20260930-lm33wprac-ynwaforevers-projects.vercel.app",
+  "candidateSource": "988e66beee8130f253c349973268abf844b83543",
+  "stableUatSource": "fc4a2fd311d38d05ca6295a43e4fc8571158fd6f",
+  "realProductionSource": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+  "hostingProtectionPreserved": true,
+  "separateRoleIdentities": 7,
+  "separateOwnAuthCookies": 7,
+  "skipDomainRequested": true,
+  "canonicalStableAliasUnchanged": true,
+  "defaultDedicatedTeamAliasUpdatedByCLI": true
+}

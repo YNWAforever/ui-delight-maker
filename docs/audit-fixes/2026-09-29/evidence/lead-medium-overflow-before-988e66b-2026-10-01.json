@@ -1,0 +1,206 @@
+{
+  "sourceSha": "988e66beee8130f253c349973268abf844b83543",
+  "operationId": "c212aeb9-2da1-4ec5-8ee5-43f83600ef6e",
+  "width": 768,
+  "geometry": {
+    "width": 768,
+    "clientWidth": 768,
+    "scrollWidth": 994,
+    "overflowing": [
+      {
+        "tag": "TABLE",
+        "class": "w-full border-collapse text-left text-sm",
+        "rect": {
+          "x": 280,
+          "y": 923,
+          "width": 714.484375,
+          "height": 5759.5,
+          "top": 923,
+          "right": 994.484375,
+          "bottom": 6682.5,
+          "left": 280
+        },
+        "clientWidth": 714,
+        "scrollWidth": 714
+      },
+      {
+        "tag": "THEAD",
+        "class": "[&_tr]:border-b",
+        "rect": {
+          "x": 280,
+          "y": 923,
+          "width": 714.484375,
+          "height": 40,
+          "top": 923,
+          "right": 994.484375,
+          "bottom": 963,
+          "left": 280
+        },
+        "clientWidth": 714,
+        "scrollWidth": 714
+      },
+      {
+        "tag": "TR",
+        "class": "border-b transition-colors data-[state=selected]:bg-muted hover:bg-transparent",
+        "rect": {
+          "x": 280,
+          "y": 923,
+          "width": 714.484375,
+          "height": 40,
+          "top": 923,
+          "right": 994.484375,
+          "bottom": 963,
+          "left": 280
+        },
+        "clientWidth": 714,
+        "scrollWidth": 714
+      },
+      {
+        "tag": "TH",
+        "class": "h-10 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] px-3 py-2.5 text-xs hidden md:table-cell",
+        "rect": {
+          "x": 576.75,
+          "y": 923,
+          "width": 268.921875,
+          "height": 40,
+          "top": 923,
+          "right": 845.671875,
+          "bottom": 963,
+          "left": 576.75
+        },
+        "clientWidth": 269,
+        "scrollWidth": 269
+      },
+      {
+        "tag": "TH",
+        "class": "h-10 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] px-3 py-2.5 text-xs",
+        "rect": {
+          "x": 845.671875,
+          "y": 923,
+          "width": 93.34375,
+          "height": 40,
+          "top": 923,
+          "right": 939.015625,
+          "bottom": 963,
+          "left": 845.671875
+        },
+        "clientWidth": 93,
+        "scrollWidth": 93
+      },
+      {
+        "tag": "TH",
+        "class": "h-10 align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] px-3 py-2.5 text-xs text-right",
+        "rect": {
+          "x": 939.015625,
+          "y": 923,
+          "width": 55.46875,
+          "height": 40,
+          "top": 923,
+          "right": 994.484375,
+          "bottom": 963,
+          "left": 939.015625
+        },
+        "clientWidth": 55,
+        "scrollWidth": 55
+      },
+      {
+        "tag": "TBODY",
+        "class": "[&_tr:last-child]:border-0",
+        "rect": {
+          "x": 280,
+          "y": 963.5,
+          "width": 714.484375,
+          "height": 5719,
+          "top": 963.5,
+          "right": 994.484375,
+          "bottom": 6682.5,
+          "left": 280
+        },
+        "clientWidth": 714,
+        "scrollWidth": 714
+      },
+      {
+        "tag": "TR",
+        "class": "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+        "rect": {
+          "x": 280,
+          "y": 963.5,
+          "width": 714.484375,
+          "height": 56.5,
+          "top": 963.5,
+          "right": 994.484375,
+          "bottom": 1020,
+          "left": 280
+        },
+        "clientWidth": 714,
+        "scrollWidth": 714
+      },
+      {
+        "tag": "TD",
+        "class": "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] px-3 py-2.5 hidden md:table-cell",
+        "rect": {
+          "x": 576.75,
+          "y": 963.5,
+          "width": 268.921875,
+          "height": 56.5,
+          "top": 963.5,
+          "right": 845.671875,
+          "bottom": 1020,
+          "left": 576.75
+        },
+        "clientWidth": 269,
+        "scrollWidth": 269
+      },
+      {
+        "tag": "DIV",
+        "class": "min-w-0",
+        "rect": {
+          "x": 588.75,
+          "y": 973.5,
+          "width": 244.921875,
+          "height": 36,
+          "top": 973.5,
+          "right": 833.671875,
+          "bottom": 1009.5,
+          "left": 588.75
+        },
+        "clientWidth": 245,
+        "scrollWidth": 245
+      },
+      {
+        "tag": "SPAN",
+        "class": "block truncate",
+        "rect": {
+          "x": 588.75,
+          "y": 973.5,
+          "width": 244.921875,
+          "height": 20,
+          "top": 973.5,
+          "right": 833.671875,
+          "bottom": 993.5,
+          "left": 588.75
+        },
+        "clientWidth": 245,
+        "scrollWidth": 245
+      },
+      {
+        "tag": "SPAN",
+        "class": "block truncate text-xs text-muted-foreground",
+        "rect": {
+          "x": 588.75,
+          "y": 993.5,
+          "width": 244.921875,
+          "height": 16,
+          "top": 993.5,
+          "right": 833.671875,
+          "bottom": 1009.5,
+          "left": 588.75
+        },
+        "clientWidth": 245,
+        "scrollWidth": 245
+      }
+    ]
+  },
+  "defectReproduced": true,
+  "noBusinessCommands": true
+}

@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-09-30T23:46:52.838Z",
+  "sourceSha": "988e66beee8130f253c349973268abf844b83543",
+  "pullRequest": 149,
+  "checksRun": 36792059552,
+  "databaseRun": 36792059616,
+  "contractJob": 110147003095,
+  "migrationSeedReplayJob": 110147003393,
+  "fullTests": 2368,
+  "files": 321,
+  "skipped": 0,
+  "todo": 0,
+  "sourceStaticAndBrowser": "PASS",
+  "isolatedReplay": "PASS",
+  "freshContractLogChecked": true,
+  "actualHostedCases": 20,
+  "productionOperation": false
+}
