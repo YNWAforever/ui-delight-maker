@@ -1,0 +1,269 @@
+{
+  "sourceSha": "ed3cccfe71189da061646c55f51ae64a23a08fa3",
+  "startedAt": "2026-10-01T06:46:03.526Z",
+  "success": true,
+  "role": "manager",
+  "cases": [
+    {
+      "case": "visible-pending-refresh",
+      "nativeVisibility": "visible",
+      "realElapsedMs": 35013,
+      "pendingRequests": 1,
+      "historyRequests": 0,
+      "allServerFunctionRequests": 1,
+      "fiftyRowMinimalList": true,
+      "pass": true
+    },
+    {
+      "case": "native-background-tab-stops-polling",
+      "nativeVisibility": "hidden",
+      "realElapsedMs": 35016,
+      "pendingRequests": 0,
+      "historyRequests": 0,
+      "allServerFunctionRequests": 0,
+      "fiftyRowMinimalList": true,
+      "pass": true
+    },
+    {
+      "case": "native-foreground-resumes-pending-only",
+      "nativeVisibility": "visible",
+      "realElapsedMs": 35013,
+      "pendingRequests": 1,
+      "historyRequests": 0,
+      "allServerFunctionRequests": 1,
+      "fiftyRowMinimalList": true,
+      "pass": true
+    },
+    {
+      "case": "native-minimized-window-stops-polling",
+      "nativeVisibility": "hidden",
+      "realElapsedMs": 35007,
+      "pendingRequests": 0,
+      "historyRequests": 0,
+      "allServerFunctionRequests": 0,
+      "fiftyRowMinimalList": true,
+      "pass": true
+    }
+  ],
+  "responses": [
+    {
+      "phase": "initial-load",
+      "group": "history",
+      "at": 1790837182492,
+      "status": 200,
+      "bytes": 36047,
+      "contextDataInList": false,
+      "rows": 50
+    },
+    {
+      "phase": "visible-pending-refresh",
+      "group": "pending",
+      "at": 1790837210224,
+      "status": 200,
+      "bytes": 36001,
+      "contextDataInList": false,
+      "rows": 50
+    },
+    {
+      "phase": "foreground-focus-catchup",
+      "group": "history",
+      "at": 1790837254443,
+      "status": 200,
+      "bytes": 36047,
+      "contextDataInList": false,
+      "rows": 50
+    },
+    {
+      "phase": "foreground-focus-catchup",
+      "group": "pending",
+      "at": 1790837254465,
+      "status": 200,
+      "bytes": 36001,
+      "contextDataInList": false,
+      "rows": 50
+    },
+    {
+      "phase": "native-foreground-resumes-pending-only",
+      "group": "pending",
+      "at": 1790837285166,
+      "status": 200,
+      "bytes": 36001,
+      "contextDataInList": false,
+      "rows": 50
+    }
+  ],
+  "allServerRequests": [
+    {
+      "at": 1790837179751,
+      "phase": "initial-load",
+      "method": "GET",
+      "functionId": "d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf"
+    },
+    {
+      "at": 1790837179752,
+      "phase": "initial-load",
+      "method": "GET",
+      "functionId": "c37d647b566dec6bfc5a8087d1b196476c7ccb43d6847d41a3f3ee4813e59071"
+    },
+    {
+      "at": 1790837179762,
+      "phase": "initial-load",
+      "method": "GET",
+      "functionId": "800d7682791ba082cc04d6e243211e2b2240ebdddeb95a6c27c0f30b41f1b53a"
+    },
+    {
+      "at": 1790837179772,
+      "phase": "initial-load",
+      "method": "GET",
+      "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+    },
+    {
+      "at": 1790837209281,
+      "phase": "visible-pending-refresh",
+      "method": "GET",
+      "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+    },
+    {
+      "at": 1790837253513,
+      "phase": "foreground-focus-catchup",
+      "method": "GET",
+      "functionId": "d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf"
+    },
+    {
+      "at": 1790837253514,
+      "phase": "foreground-focus-catchup",
+      "method": "GET",
+      "functionId": "c37d647b566dec6bfc5a8087d1b196476c7ccb43d6847d41a3f3ee4813e59071"
+    },
+    {
+      "at": 1790837253515,
+      "phase": "foreground-focus-catchup",
+      "method": "GET",
+      "functionId": "800d7682791ba082cc04d6e243211e2b2240ebdddeb95a6c27c0f30b41f1b53a"
+    },
+    {
+      "at": 1790837253515,
+      "phase": "foreground-focus-catchup",
+      "method": "GET",
+      "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+    },
+    {
+      "at": 1790837253515,
+      "phase": "foreground-focus-catchup",
+      "method": "GET",
+      "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+    },
+    {
+      "at": 1790837284474,
+      "phase": "native-foreground-resumes-pending-only",
+      "method": "GET",
+      "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+    },
+    {
+      "at": 1790837324527,
+      "phase": "native-minimized-window-stops-polling",
+      "method": "GET",
+      "functionId": "d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf"
+    },
+    {
+      "at": 1790837324530,
+      "phase": "native-minimized-window-stops-polling",
+      "method": "GET",
+      "functionId": "c37d647b566dec6bfc5a8087d1b196476c7ccb43d6847d41a3f3ee4813e59071"
+    },
+    {
+      "at": 1790837324531,
+      "phase": "native-minimized-window-stops-polling",
+      "method": "GET",
+      "functionId": "800d7682791ba082cc04d6e243211e2b2240ebdddeb95a6c27c0f30b41f1b53a"
+    },
+    {
+      "at": 1790837324532,
+      "phase": "native-minimized-window-stops-polling",
+      "method": "GET",
+      "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+    },
+    {
+      "at": 1790837324533,
+      "phase": "native-minimized-window-stops-polling",
+      "method": "GET",
+      "functionId": "8691b4c7c1ac7af4f5861e5c6602439f455e2d50a5ae6bc9b5b8762e43dfcf7d"
+    }
+  ],
+  "visibilityEvents": [
+    {
+      "at": 1790837218202,
+      "visibility": "hidden",
+      "hidden": true
+    },
+    {
+      "at": 1790837253502,
+      "visibility": "visible",
+      "hidden": false
+    },
+    {
+      "at": 1790837289487,
+      "visibility": "hidden",
+      "hidden": true
+    },
+    {
+      "at": 1790837324512,
+      "visibility": "visible",
+      "hidden": false
+    }
+  ],
+  "launch": "headed native Chromium with own fresh profile; connectOverCDP noDefaults=true; no focus/media/download overrides",
+  "noClockOrVisibilityMocks": true,
+  "dataset": {
+    "database": "clientops_perf_r06_20260930",
+    "tasks": 10000,
+    "approvals": 100000
+  },
+  "browser": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/153.0.8010.12",
+    "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+    "jsVersion": "15.3.76.4"
+  },
+  "ownIndependentAuthBinding": true,
+  "foregroundFocusCatchup": [
+    {
+      "group": "history",
+      "status": 200,
+      "rows": 50,
+      "at": 1790837254443
+    },
+    {
+      "group": "pending",
+      "status": 200,
+      "rows": 50,
+      "at": 1790837254465
+    }
+  ],
+  "actualMinimizedWindow": "minimized",
+  "noMutationPosts": true,
+  "databaseHashesUnchanged": true,
+  "finishedAt": "2026-10-01T06:48:49.818Z",
+  "applicationSourceEquivalent": "7dc40fde8aba4c7033efaa67494fe31f70726926",
+  "databaseBefore": {
+    "database": "clientops_perf_r06_20260930",
+    "tasks": 10000,
+    "approvals": 100000,
+    "profiles_hash": "484c094b346e2d8d3677da0230acb632",
+    "tasks_hash": "341d228a119004d0b5925626e19d82cf",
+    "approvals_hash": "172f82e47fad85f0d2350ac3a2bac99b",
+    "receipts_hash": "d751713988987e9331980363e24189ce",
+    "audit_hash": "d751713988987e9331980363e24189ce"
+  },
+  "databaseAfter": {
+    "database": "clientops_perf_r06_20260930",
+    "tasks": 10000,
+    "approvals": 100000,
+    "profiles_hash": "484c094b346e2d8d3677da0230acb632",
+    "tasks_hash": "341d228a119004d0b5925626e19d82cf",
+    "approvals_hash": "172f82e47fad85f0d2350ac3a2bac99b",
+    "receipts_hash": "d751713988987e9331980363e24189ce",
+    "audit_hash": "d751713988987e9331980363e24189ce"
+  }
+}
