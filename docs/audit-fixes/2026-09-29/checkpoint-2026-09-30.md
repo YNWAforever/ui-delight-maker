@@ -1,6 +1,10 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current verified checkpoint — PR #148 / focused Lead repair pending hosted acceptance
+## Current verified checkpoint — PR #149 updated-source acceptance / final-head CI pending
+
+[Lead source4a0e06b](lead-access-owner-uat-2026-10-01.md) passes actual20 own seven-role cases and six same-original-Lead100 receipt width/native200/keyboard/retry/reader cases. Original mixed70/10/10/10 and named owner255/Mark lost keys remain verified;768 overflow repaired using existing container surface. Exact source CI2,368/321/zero skipped/replay/static/browser PASS; final documentation-head CI required before merge. Main remains5f34361; canonical UAT remainsfc4a2fd, actual production heldbed941b. CO-16 Approval/Job Sheet and external gates remain; all30 CO/16 UAT retained, release NO-GO.
+
+## Previous verified checkpoint — PR #148 / focused Lead repair
 
 Main `5f3436190248c2bbe74255dd2f02a5ecd5a5d13d` includes [merged #148](https://github.com/YNWAforever/ui-delight-maker/pull/148), exact final/post-main2,344/319/zero skipped and replay/static PASS. [Merge](evidence/pr148-merge-2026-10-01.json), [hold](evidence/production-hold-after-148-2026-10-01.json): canceled actual production attempt/publicbed941b unchanged.
 
