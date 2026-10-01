@@ -18,7 +18,7 @@ module.exports = async function verifyBoundaries({
   report.boundaries = [];
   report.neighbors = {};
   const grants = [];
-  const failed = (raw) => /\$TSR\/Error/.test(raw);
+  const failed = (raw, status = 200) => status >= 400 || /\$TSR\/Error/.test(raw);
   const snapshot = async (f) => ({
     approval: (
       await pool.query(
@@ -45,16 +45,36 @@ module.exports = async function verifyBoundaries({
   const isolatedFixture = (label, version = 0, options = {}) =>
     fixture(label, version, { freshLead: true, ...options });
   function requestFor(f, decision = "approved") {
-    const previous = template.body.match(/"idempotencyKey":"([^"\s]+)"/);
-    assert(previous, "Actual UI key must be present");
-    let body = template.body
-      .replaceAll(template.approvalId, f.id)
-      .replaceAll(previous[1], randomUUID());
-    assert.equal((body.match(/"expectedVersion":0/g) || []).length, 1);
-    body = body
-      .replace('"expectedVersion":0', '"expectedVersion":' + f.version)
-      .replace('"decision":"approved"', '"decision":"' + decision + '"');
-    return { ...template, body };
+    const encoded = JSON.parse(template.body);
+    function dataNode(node) {
+      if (!node || typeof node !== "object") return null;
+      if (
+        Array.isArray(node.p?.k) &&
+        ["id", "decision", "expectedVersion", "idempotencyKey"].every((key) =>
+          node.p.k.includes(key),
+        )
+      )
+        return node.p;
+      for (const value of Object.values(node)) {
+        const found = dataNode(value);
+        if (found) return found;
+      }
+      return null;
+    }
+    const data = dataNode(encoded);
+    assert(data, "Actual TanStack UI command data must be present");
+    const value = (key) => data.v[data.k.indexOf(key)];
+    assert.equal(value("id").s, template.approvalId);
+    assert.equal(value("id").t, 1);
+    assert.equal(value("decision").t, 1);
+    assert.equal(value("expectedVersion").t, 0);
+    assert.equal(value("idempotencyKey").t, 1);
+    assert(Number.isSafeInteger(value("expectedVersion").s));
+    value("id").s = f.id;
+    value("decision").s = decision;
+    value("expectedVersion").s = f.version;
+    value("idempotencyKey").s = randomUUID();
+    return { ...template, body: JSON.stringify(encoded) };
   }
   async function direct(ctx, request, label) {
     assert.equal(new URL(request.url).origin, new URL(target).origin);
@@ -64,7 +84,7 @@ module.exports = async function verifyBoundaries({
     });
     const raw = await response.text();
     fs.writeFileSync(path.join(dir, label + ".response.private.txt"), raw);
-    return { status: response.status(), raw, error: failed(raw) };
+    return { status: response.status(), raw, error: failed(raw, response.status()) };
   }
   async function uiDecision(
     role,
@@ -103,7 +123,7 @@ module.exports = async function verifyBoundaries({
       });
       assert.equal(posts.length, 1, "One mounted confirmation must produce one POST");
       return {
-        error: failed(raw),
+        error: failed(raw, response.status()),
         raw,
         status: response.status(),
         request: capture(response),
@@ -339,7 +359,7 @@ module.exports = async function verifyBoundaries({
           .getByRole("button", { name: "Approve", exact: true })
           .click();
         const response = await wait;
-        assert(!failed(await response.text()));
+        assert(!failed(await response.text(), response.status()));
         await p.waitForLoadState("networkidle");
         assert.equal(requests.length, 2);
         assert.equal(requests[1].body, original.body);
@@ -422,7 +442,7 @@ module.exports = async function verifyBoundaries({
       await Promise.all(clicks);
       const responses = await Promise.all(waits),
         raw = await Promise.all(responses.map((r) => r.text()));
-      const errors = raw.map(failed);
+      const errors = raw.map((body, i) => failed(body, responses[i].status()));
       assert.equal(errors.filter(Boolean).length, 1);
       assert(
         /STALE_ADMIN_STATE|CONFLICT|changed since|terminal decision/i.test(
@@ -512,7 +532,7 @@ module.exports = async function verifyBoundaries({
       );
       await p.getByRole("button", { name: "Record manual send", exact: true }).click();
       const res = await wait;
-      assert(!failed(await res.text()));
+      assert(!failed(await res.text(), res.status()));
       await p
         .getByText(/Manual send recorded:/)
         .first()
@@ -566,7 +586,7 @@ module.exports = async function verifyBoundaries({
       );
       await dialog.getByRole("button", { name: "Process first 20", exact: true }).click();
       const res = await wait;
-      assert(!failed(await res.text()));
+      assert(!failed(await res.text(), res.status()));
       await p.getByText(/20 of 21 processed; 20 succeeded; 0 need review/).waitFor();
       const saved = await p.evaluate(() => sessionStorage.getItem("clientops:bulk:approvals"));
       assert(saved);
@@ -621,6 +641,14 @@ module.exports = async function verifyBoundaries({
     } finally {
       await bulkCtx.close();
     }
+  } catch (error) {
+    fs.writeFileSync(path.join(dir, "boundary-error.private.txt"), String(error.stack));
+    report.boundaryError = {
+      name: error.name,
+      code: error.code ?? null,
+      details: "Private diagnostic retained",
+    };
+    throw error;
   } finally {
     for (const id of grants) await revoke(id);
     report.syntheticOverrideCleanup = true;

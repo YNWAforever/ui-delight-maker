@@ -6,7 +6,13 @@
   const { randomUUID, createHash } = require("node:crypto");
   const { Pool } = require("@neondatabase/serverless");
   const { chromium } = require("playwright");
-  const [phase, sha, target] = process.argv.slice(2);
+  const [phase, sha, target, previousReport, capturedTemplate] = process.argv.slice(2);
+  assert.equal(
+    Boolean(previousReport),
+    Boolean(capturedTemplate),
+    "Continuation requires both actual report and captured template",
+  );
+  if (previousReport) assert.equal(phase, "after");
   assert(["before", "after"].includes(phase), "Expected before or after");
   assert.match(sha || "", /^[a-f0-9]{40}$/, "Full source SHA required");
   const root = ".clientops-perf/uat",
@@ -180,6 +186,32 @@
     };
   };
   let template;
+  if (previousReport) {
+    const previous = JSON.parse(fs.readFileSync(previousReport));
+    assert.equal(previous.sourceSha, sha);
+    assert.equal(previous.phase, "after");
+    assert.equal(previous.samples.length, 60);
+    for (const route of ["/approvals", "/ai-review"]) {
+      const samples = previous.samples.filter((x) => x.route === route);
+      assert.equal(samples.length, 30);
+      assert(
+        samples.every(
+          (x) => x.postCount === 1 && x.databaseStatus === "approved" && x.databaseVersion === 1,
+        ),
+      );
+    }
+    report.samples = previous.samples;
+    report.measurementDatasetBefore = previous.datasetBefore;
+    report.continuation = {
+      previousReportSha256: createHash("sha256")
+        .update(fs.readFileSync(previousReport))
+        .digest("hex"),
+      retainedActualMeasurements: 60,
+      reason: "Observer serialization correction; served application source unchanged",
+    };
+    template = JSON.parse(fs.readFileSync(capturedTemplate));
+    assert.equal(new URL(template.url).origin, new URL(target).origin);
+  }
   const build = async () =>
     assert.equal(
       (await (await fetch(target + "/api/build")).json()).commitSha,
@@ -232,97 +264,102 @@
     }
     // Leave the matrix fixture readable, but unpark this task's run before the next fixture.
     await pool.query("update agent_runs set status='completed' where id=$1", [roleFixture.runId]);
-    const ctx = await ownContext("manager");
-    try {
-      for (const route of ["/approvals", "/ai-review"]) {
-        for (let index = 0; index < 30; index++) {
-          const f = await fixture(route.slice(1) + " sample " + index, 0);
-          const p = await open(ctx, route, f),
-            started = [];
-          const timings = [],
-            responseWork = [];
-          p.on("request", (req) => {
-            if (new URL(req.url()).pathname.startsWith("/_serverFn/"))
-              started.push({ req, at: performance.now(), method: req.method() });
-          });
-          p.on("response", (res) => {
-            const event = started.find((x) => x.req === res.request());
-            if (event)
-              responseWork.push(
-                res.finished().then(() =>
-                  timings.push({
-                    method: event.method,
-                    durationMs: performance.now() - event.at,
-                    status: res.status(),
-                  }),
-                ),
-              );
-          });
-          report.stage = "open confirmation " + route;
-          await p.getByRole("button", { name: "Approve", exact: true }).click();
-          const dialog = p.getByRole("alertdialog");
-          await dialog.waitFor();
-          const response = p.waitForResponse(
-            (r) =>
-              r.request().method() === "POST" &&
-              new URL(r.url()).pathname.startsWith("/_serverFn/"),
-          );
-          report.stage = "confirm POST " + route;
-          const begin = performance.now();
-          await dialog.getByRole("button", { name: "Approve", exact: true }).click();
-          const r = await response,
-            raw = await r.text();
-          if (!template) template = { ...capture(r), approvalId: f.id };
-          fs.writeFileSync(path.join(dir, f.id + ".response.private.txt"), raw);
-          assert(!/\$TSR\/Error/.test(raw), "Decision response must succeed");
-          report.stage = "confirmed final UI " + route;
-          try {
-            if (route === "/ai-review")
-              await p.getByRole("row").nth(1).getByText("Approved", { exact: true }).waitFor();
-            else {
-              // The terminal record leaves the pending queue; the selected detail stays visible.
-              await p.getByText(f.summary, { exact: true }).first().waitFor();
-              await p
-                .getByText("Approved", { exact: true })
-                .filter({ visible: true })
-                .first()
-                .waitFor();
-            }
-          } catch (e) {
-            await p.screenshot({ path: path.join(dir, "decision-failure.png"), fullPage: true });
-            fs.writeFileSync(
-              path.join(dir, "decision-failure.private.txt"),
-              await p.locator("body").innerText(),
+    if (!previousReport) {
+      const ctx = await ownContext("manager");
+      try {
+        for (const route of ["/approvals", "/ai-review"]) {
+          for (let index = 0; index < 30; index++) {
+            const f = await fixture(route.slice(1) + " sample " + index, 0);
+            const p = await open(ctx, route, f),
+              started = [];
+            const timings = [],
+              responseWork = [];
+            p.on("request", (req) => {
+              if (new URL(req.url()).pathname.startsWith("/_serverFn/"))
+                started.push({ req, at: performance.now(), method: req.method() });
+            });
+            p.on("response", (res) => {
+              const event = started.find((x) => x.req === res.request());
+              if (event)
+                responseWork.push(
+                  res.finished().then(() =>
+                    timings.push({
+                      method: event.method,
+                      durationMs: performance.now() - event.at,
+                      status: res.status(),
+                    }),
+                  ),
+                );
+            });
+            report.stage = "open confirmation " + route;
+            await p.getByRole("button", { name: "Approve", exact: true }).click();
+            const dialog = p.getByRole("alertdialog");
+            await dialog.waitFor();
+            const response = p.waitForResponse(
+              (r) =>
+                r.request().method() === "POST" &&
+                new URL(r.url()).pathname.startsWith("/_serverFn/"),
             );
-            fs.writeFileSync(path.join(dir, "error.private.txt"), String(e.stack));
-            throw e;
+            report.stage = "confirm POST " + route;
+            const begin = performance.now();
+            await dialog.getByRole("button", { name: "Approve", exact: true }).click();
+            const r = await response,
+              raw = await r.text();
+            if (!template) {
+              template = { ...capture(r), approvalId: f.id };
+              fs.writeFileSync(path.join(dir, "template.private.json"), JSON.stringify(template));
+            }
+            fs.writeFileSync(path.join(dir, f.id + ".response.private.txt"), raw);
+            assert(r.status() < 400 && !/\$TSR\/Error/.test(raw), "Decision response must succeed");
+            report.stage = "confirmed final UI " + route;
+            try {
+              if (route === "/ai-review")
+                await p.getByRole("row").nth(1).getByText("Approved", { exact: true }).waitFor();
+              else {
+                // The terminal record leaves the pending queue; the selected detail stays visible.
+                await p.getByText(f.summary, { exact: true }).first().waitFor();
+                await p
+                  .getByText("Approved", { exact: true })
+                  .filter({ visible: true })
+                  .first()
+                  .waitFor();
+              }
+            } catch (e) {
+              await p.screenshot({ path: path.join(dir, "decision-failure.png"), fullPage: true });
+              fs.writeFileSync(
+                path.join(dir, "decision-failure.private.txt"),
+                await p.locator("body").innerText(),
+              );
+              fs.writeFileSync(path.join(dir, "error.private.txt"), String(e.stack));
+              throw e;
+            }
+            const uiMs = performance.now() - begin;
+            await p.waitForLoadState("networkidle");
+            await Promise.all(responseWork);
+            const after = await read(f.id);
+            assert.equal(after.status, "approved");
+            assert.equal(Number(after.row_version), 1);
+            assert.equal(started.filter((x) => x.method === "POST").length, 1);
+            report.samples.push({
+              route,
+              index,
+              approvalId: f.id,
+              fixtureVersion: 0,
+              confirmToFinalUiMs: uiMs,
+              postCount: 1,
+              getCount: started.filter((x) => x.method === "GET").length,
+              requests: timings,
+              databaseStatus: after.status,
+              databaseVersion: Number(after.row_version),
+            });
+            await p.close();
+            if ((index + 1) % 10 === 0)
+              console.log(JSON.stringify({ phase, route, samples: index + 1 }));
           }
-          const uiMs = performance.now() - begin;
-          await p.waitForLoadState("networkidle");
-          await Promise.all(responseWork);
-          const after = await read(f.id);
-          assert.equal(after.status, "approved");
-          assert.equal(Number(after.row_version), 1);
-          assert.equal(started.filter((x) => x.method === "POST").length, 1);
-          report.samples.push({
-            route,
-            index,
-            approvalId: f.id,
-            fixtureVersion: 0,
-            confirmToFinalUiMs: uiMs,
-            postCount: 1,
-            getCount: started.filter((x) => x.method === "GET").length,
-            requests: timings,
-            databaseStatus: after.status,
-            databaseVersion: Number(after.row_version),
-          });
-          await p.close();
-          if ((index + 1) % 10 === 0)
-            console.log(JSON.stringify({ phase, route, samples: index + 1 }));
         }
+      } finally {
+        await ctx.close();
       }
-    } finally {
-      await ctx.close();
     }
     if (phase === "after")
       await require("./verify-approval-review-boundaries.cjs")({
