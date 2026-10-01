@@ -1,8 +1,8 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current verified checkpoint — PR #149 updated-source acceptance / final-head CI pending
+## Current checkpoint — PR149 merged / PR150 bulk receipt and owner controls
 
-[Lead source4a0e06b](lead-access-owner-uat-2026-10-01.md) passes actual20 own seven-role cases and six same-original-Lead100 receipt width/native200/keyboard/retry/reader cases. Original mixed70/10/10/10 and named owner255/Mark lost keys remain verified;768 overflow repaired using existing container surface. Exact source CI2,368/321/zero skipped/replay/static/browser PASS; final documentation-head CI required before merge. Main remains5f34361; canonical UAT remainsfc4a2fd, actual production heldbed941b. CO-16 Approval/Job Sheet and external gates remain; all30 CO/16 UAT retained, release NO-GO.
+Main3e0c455 includes merged149 finalabed594, exact/post-main2368/321/zero skipped/replay/static/browser PASS; actual production attemptCANCELED/publicbed941b unchanged. PR150 source2cdc01d exactCI2377/322/zero skipped/replay PASS and actual original Approval/Job owner/invoice-date10070/10/10/10 key recovery/replay pass. [Report](bulk-receipt-recovery-2026-10-01.md). Follow-up768 container/per-row owner/picker scoped policy repairs are under corrected full/static and actual seven-role acceptance; no merge until exact final green. Canonical isolated UAT remainsfc4a2fd; separate candidate uses the same seven distinct own identities and isolated DB. All30 CO/16 UAT and external gates retained; release NO-GO.
 
 ## Previous verified checkpoint — PR #148 / focused Lead repair
 

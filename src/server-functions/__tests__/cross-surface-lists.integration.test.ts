@@ -147,12 +147,13 @@ describe("job-sheet queue SQL visibility", () => {
       id text, number text, quote_id text, status text, po_number text,
       client_order_number text, created_at timestamptz, total_amount numeric,
       currency text, sales_owner text, accounting_owner text,
-      account_id text, client_id text, accounting_notes text, xero_customer_reference text
+      account_id text, client_id text, accounting_notes text, xero_customer_reference text,
+      locked_at timestamptz
     ) on commit drop`);
     await holder.client.query(`insert into job_sheets values
-      ('sheet-allowed','JS-1','quote-1','ready',null,null,now(),100.25,'HKD','actor-1',null,null,null,'allowed private note',null),
-      ('sheet-denied','JS-2','quote-2','ready',null,null,now(),200.50,'HKD','actor-1',null,null,null,'denied private note',null),
-      ('sheet-other','JS-3','quote-3','ready',null,null,now(),300.75,'HKD','other-1',null,null,null,'other private note',null)`);
+      ('sheet-allowed','JS-1','quote-1','ready',null,null,now(),100.25,'HKD','actor-1',null,null,null,'allowed private note',null,'2026-09-27T04:00:00Z'),
+      ('sheet-denied','JS-2','quote-2','ready',null,null,now(),200.50,'HKD','actor-1',null,null,null,'denied private note',null,null),
+      ('sheet-other','JS-3','quote-3','ready',null,null,now(),300.75,'HKD','other-1',null,null,null,'other private note',null,null)`);
     // Temporary tables are not auto-analyzed. Missing statistics inflated the
     // visibility plan cost and triggered seconds of JIT for empty fixture tables.
     // Keep production SQL, JIT settings, assertions and timeouts unchanged.
@@ -175,6 +176,7 @@ describe("job-sheet queue SQL visibility", () => {
     const page = await listJobSheetsPage({ page: 1, limit: 10 }, context);
     expect(page.total).toBe(1);
     expect(page.items.map((item) => item.id)).toEqual(["sheet-allowed"]);
+    expect(new Date(page.items[0].locked_at!).toISOString()).toBe("2026-09-27T04:00:00.000Z");
     expect(page.items[0]).not.toHaveProperty("accounting_notes");
   });
 
@@ -226,6 +228,7 @@ describe("job-sheet queue SQL visibility", () => {
     async () => {
       const items = await listJobSheets({}, context);
       expect(items.map((item) => item.id)).toEqual(["sheet-allowed"]);
+      expect(new Date(items[0].locked_at!).toISOString()).toBe("2026-09-27T04:00:00.000Z");
       expect(items[0]).not.toHaveProperty("accounting_notes");
     },
   );

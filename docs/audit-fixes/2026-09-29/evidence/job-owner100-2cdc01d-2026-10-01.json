@@ -1,0 +1,332 @@
+{
+  "sha": "2cdc01d779fc5cb895601500010a8d25c873bac3",
+  "createdAt": "2026-10-01T01:04:33.058Z",
+  "scope": "Job Sheet owner100 actual mixed assignment commit, response loss, reload, same-key replay/resume and owner-only receipts",
+  "actorRole": "accounting",
+  "independentAccounts": true,
+  "run": "2773bd5e",
+  "prefix": "UAT JOB BULK 2773bd5e",
+  "expected": {
+    "succeeded": 70,
+    "forbidden": 10,
+    "stale": 10,
+    "not_found": 10,
+    "failedSelected": 30
+  },
+  "success": true,
+  "network": [
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "method": "GET",
+      "status": 200,
+      "elapsedMs": 2771,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/79c5392dc6dacb7266388f595b2fc0835fc8bf5200cab884a285e017c567412b",
+      "method": "GET",
+      "status": 200,
+      "elapsedMs": 2561,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/800d7682791ba082cc04d6e243211e2b2240ebdddeb95a6c27c0f30b41f1b53a",
+      "method": "GET",
+      "status": 200,
+      "elapsedMs": 1270,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/3ca82ac80b395ae5a11fe18d190c1e71e1087afe2b4dceead79b05ef184d9319",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 13609,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/538fc10d9457b2625c449b4fd3026d47f0e422c911cdafbbcf4f7458c5333802",
+      "method": "POST",
+      "elapsedMs": 11384,
+      "transportFailure": "net::ERR_INTERNET_DISCONNECTED"
+    },
+    {
+      "path": "/_serverFn/c468ea80aa5ae6ed1110e0ef28d3654953798ca7072bd9e1a0df7fe80656cb1f",
+      "method": "GET",
+      "elapsedMs": 4,
+      "transportFailure": "net::ERR_INTERNET_DISCONNECTED"
+    },
+    {
+      "path": "/_serverFn/c468ea80aa5ae6ed1110e0ef28d3654953798ca7072bd9e1a0df7fe80656cb1f",
+      "method": "GET",
+      "elapsedMs": 26,
+      "transportFailure": "net::ERR_INTERNET_DISCONNECTED"
+    },
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "method": "GET",
+      "status": 200,
+      "elapsedMs": 1081,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/c468ea80aa5ae6ed1110e0ef28d3654953798ca7072bd9e1a0df7fe80656cb1f",
+      "method": "GET",
+      "status": 200,
+      "elapsedMs": 1680,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/a9412db2c5850926593f90bd5884097ac6e0d7d90521be73b1c8229f2c3c28da",
+      "method": "GET",
+      "status": 200,
+      "elapsedMs": 1066,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/0ca4ea9b7a72eb5b02918fc67b37213bb8abc91c54d723cced4f3a7920189440",
+      "method": "GET",
+      "status": 200,
+      "elapsedMs": 1441,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/538fc10d9457b2625c449b4fd3026d47f0e422c911cdafbbcf4f7458c5333802",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 10666,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 10188,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 10336,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 10093,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 9714,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 9844,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 10785,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 10091,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 9989,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 11868,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 6785,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 4564,
+      "serializedError": false
+    }
+  ],
+  "existingSyntheticFixtureManifestReused": true,
+  "targetProfileId": "uat-job-bulk-accounting-2773bd5e",
+  "targetProfileName": "UAT Bulk Accounting 2773bd5e",
+  "preview": {
+    "count": 100,
+    "eligible": 100,
+    "allInitiallyAllowed": true,
+    "elapsedMs": 17163
+  },
+  "previewDidNotWrite": true,
+  "afterPreviewChanges": {
+    "denied": 10,
+    "stale": 10,
+    "missing": 10
+  },
+  "responseLoss": {
+    "actualCommitForwarded": true,
+    "actualResponseAborted": true,
+    "pendingOperationId": "045586c2-92e3-486c-bdc1-f41f1d002295",
+    "keyHash": "ea852a43219b5d6a4b1e43de081783cc794eb408d2e1388c77d23e82567b5a90"
+  },
+  "offlineReload": {
+    "retryOffered": true,
+    "sameSavedKey": true
+  },
+  "ownerRecoveredActualReceipt": true,
+  "terminal": {
+    "state": "completed",
+    "counts": {
+      "succeeded": 70,
+      "not_found": 10,
+      "stale": 10,
+      "forbidden": 10
+    },
+    "items": 100,
+    "allSuccessRowsVersionOne": true,
+    "forbiddenUnchanged": true,
+    "staleConcurrentVersionRetained": true,
+    "missingNotRecreated": true,
+    "replayUnchanged": true,
+    "realResumeRequests": 13,
+    "operationId": "045586c2-92e3-486c-bdc1-f41f1d002295"
+  },
+  "otherActorResultRead": {
+    "role": "read_only",
+    "forbidden": true,
+    "noItemIdsLeaked": true
+  },
+  "finalSelection": {
+    "expected": 30,
+    "actual": 30
+  },
+  "overrideCleanup": true,
+  "fixtureIds": [
+    "b881a62c-5140-43c1-b7fa-2860fd9e736c",
+    "a10fe37f-2da4-4f6d-b269-9332dba6c0df",
+    "b8f8e904-ee69-4833-aee6-c9c72f48a8cf",
+    "b50f5ca4-1202-4f2d-818c-42007c75a893",
+    "14fd9563-72bd-4825-9aa9-22072372dc31",
+    "27401c7b-d18b-434d-a27e-b0d1233b1461",
+    "015bdd49-ae22-44d8-8c1a-9c189a1797d3",
+    "e4db5000-5d3e-4b17-97c1-1ad59477ce4a",
+    "5b8702f1-cbaf-458b-bf0e-334846f8d581",
+    "3ee1d9d8-fc4b-4bc3-b912-82f1fa26e297",
+    "723ef8dd-685a-4098-92d4-273aa04be651",
+    "b3d6b1d7-93ff-4669-870e-2c6b13f8bfb8",
+    "6ebbacfc-8bba-4b72-86e0-0fa91cdf3aa1",
+    "3f6852a6-5e61-4316-a337-868a6a3c0451",
+    "2e3466cf-547f-41fa-85d9-83058a355c96",
+    "ad97d563-444b-459f-ad47-505899a7afb2",
+    "a4e8398d-e467-4dc1-bb33-3c42b9200a8b",
+    "c3bcb11e-c6d1-4c35-b586-6c5041e1c3ca",
+    "13725e05-51bf-4948-9139-c60298cddd78",
+    "8188f768-78cc-492c-a6c1-4859f1c607ce",
+    "755e71c9-cf4d-4365-a6b1-b32738aa8829",
+    "cd88cbef-2c76-4c2e-909a-d4891fc6a084",
+    "de041677-a104-49e2-a518-4c235e394093",
+    "093734f9-9087-40d4-a2d1-4e05dba3b5a3",
+    "ebd76ad0-1c67-424f-b41d-9d13de5577a7",
+    "7b2c4d15-0f60-43c6-8e39-8cbb173496dd",
+    "e0c9dea4-bfda-4e05-9300-c1e5ac4d4607",
+    "28a419b1-23c8-46ce-8137-bff832598f44",
+    "0de1ec5e-80d2-4c0a-b484-83933897b447",
+    "6fbcdf62-a3b1-4706-9b1b-5968d5ccc637",
+    "aaa55e61-9cbb-4ab6-9b83-2c1fa753f5b1",
+    "2faca586-263d-482f-9d02-0e7b6a5bdc8c",
+    "fcae00b0-5272-407e-990c-e6dd2645bdac",
+    "04152af7-dca2-47bb-a5a9-2d17d59a775c",
+    "34075165-cc09-48cb-8c13-a5f7a2dc2f70",
+    "98669c06-52d7-47fa-864f-a2005e5598c2",
+    "9b799d67-76e8-4baf-81ae-376403925a93",
+    "940f98ce-f472-46ca-8fce-82d8622a5b63",
+    "37265b0e-087b-406d-980c-3f0beb28fe61",
+    "e22b643d-95dd-4a0a-bbf8-9e90ecfa33e6",
+    "6972f8eb-51b4-41fa-8f64-4efaeeb35f3a",
+    "8b3a913d-17d1-41f5-84bb-6149e4ed70f8",
+    "0a5c5081-b6e2-41b2-9d39-ec50ea1c9ad4",
+    "bbacec79-0d72-461d-9877-112eb87e0569",
+    "32d4c907-3ace-40f3-aaa4-f277bc2009d0",
+    "c1582c97-4cbc-4603-8e0e-3ed6ee102077",
+    "12417f98-153d-4458-8d5f-e22f88dd6527",
+    "cc5e5181-6f43-4a66-9896-57b341961938",
+    "1f14ec4f-9932-4268-b1c8-00c65046670d",
+    "6d78f132-4ccd-4411-8e44-5a1f55bacb4f",
+    "6f2a93d3-a533-4031-b8ab-88aee4e7d9e4",
+    "070d3bab-5a3f-4ec8-bb13-38eb53e437cc",
+    "f759cede-1fcb-4ef2-9474-af83060b6092",
+    "6ec82a84-7402-4fc9-9ae1-5c932c7ed40f",
+    "b71ba107-1347-4d7c-ab65-bfa8f0f23c8d",
+    "6e55bf1e-a73f-449b-8571-d69c998b404a",
+    "0824fc41-578f-447e-816f-ee02e5a711c7",
+    "c5a18c07-0476-41a1-b7bf-85ed37241820",
+    "c7332f67-d267-4203-9aa5-d264919ee7d5",
+    "41ae4b28-f327-4137-a989-f249be7c31a2",
+    "c096a716-800f-4e7f-97b6-6ad10bbfd9ac",
+    "a5e83209-d9c8-484b-b20f-3c89a6fa782e",
+    "22c6077c-026e-43e5-9e1b-1cc25f33e922",
+    "92a614be-d131-41c8-a206-9879c53c9988",
+    "2c2072cf-7c66-4cd6-89fe-5834135206a5",
+    "4182e4f4-b409-405a-bb13-2c0493d11600",
+    "ff49a86c-0261-4d25-ae8e-b9117379734f",
+    "e12fe15a-84ad-443e-9072-6c4b00cfd79d",
+    "c6cec563-a10c-414d-be74-8968b4f0ab21",
+    "a12e3239-d199-4ad2-8fdb-34892e5d14fc",
+    "78f78f63-cdf9-45f7-ab3a-69b0194439a1",
+    "b689e73d-38ca-40ff-9607-a91fb395fe94",
+    "d810341c-1c83-45bc-9594-0165a4bd9d7f",
+    "072a1a53-cb1b-4b28-b5bd-80105259c69a",
+    "99385241-2772-4374-97a1-7db00c38bf53",
+    "b6fa9b20-7afa-477e-92ad-53d37e29bd44",
+    "a2de5a13-740e-43ed-b01a-4a19018dfdcd",
+    "848edb11-3d66-4f65-a305-c8ce75450b28",
+    "c13073db-ec7d-441e-8612-7c0047f5d307",
+    "80962e4c-4867-446e-bbf4-f735255209ec",
+    "0461bb91-d977-496c-85f8-eb3572f0988b",
+    "43f25319-9f0e-4dd3-a41f-4e26a016c0ea",
+    "17294dd9-e166-48d5-8b5c-4bf6a0ec7f20",
+    "511d1fd8-8223-48fd-b426-13cd6eb3a27a",
+    "3e029361-1f75-4912-b1bc-0aeed699bdec",
+    "0377b1f9-d5f0-4c18-88c2-388582e781d6",
+    "14d98ec7-61d6-4139-93aa-dd5c45f5204d",
+    "598ea075-7b29-4260-8fad-2ecc53fc6661",
+    "0cc48c85-63f0-499f-87a0-8fd37d71ae05",
+    "0434c5e4-13c8-4a76-a77c-0b6e12a09409",
+    "38828d32-8c0c-47b6-b3d3-440e1fabb511",
+    "9f93a60e-51f0-4e99-bda1-863c84f2f268",
+    "0a0113a4-7243-4c82-8f5b-9af34001e8ba",
+    "c35cec78-c5f6-4c32-ae97-01fd0486155e",
+    "6ab5d0aa-caaa-4abc-af9f-9f88eb28a51c",
+    "55701c7f-e2c9-43e0-9bd8-5b4d43650e6e",
+    "8d5ae6f0-e7a1-4aae-91e1-81ebf281f2a8",
+    "8e39a29d-5628-4add-81da-25899e5fb32d",
+    "eed8c51c-5b46-4617-9975-b7a161dbde64",
+    "b0737939-7812-4709-9021-cc183960e5d0"
+  ]
+}

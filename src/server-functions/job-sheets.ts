@@ -1,4 +1,5 @@
 import { parseOperationInput } from "@/lib/operations/errors";
+import { evaluateAuthorization } from "@/lib/admin/policy";
 import { loadRequestAuthorization, requireCapability } from "@/server/auth/authorization.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -55,7 +56,27 @@ export const getJobSheetsPage = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const context = await loadRequestAuthorization();
     await requireCapability("job_sheets.view", {}, context);
-    return listJobSheetsPage(data, context);
+    const page = await listJobSheetsPage(data, context);
+    return {
+      ...page,
+      items: page.items.map((sheet) => ({
+        ...sheet,
+        can_assign_owner:
+          sheet.status === "accounting_review" &&
+          !sheet.locked_at &&
+          evaluateAuthorization({
+            actor: context.actor,
+            capability: "job_sheets.update_billing",
+            target: {
+              resourceType: "job_sheet",
+              resourceId: sheet.id,
+              ...(sheet.accounting_owner ? { ownerProfileId: sheet.accounting_owner } : {}),
+            },
+            overrides: context.overrides,
+            now: context.now,
+          }).allowed,
+      })),
+    };
   });
 
 export const getJobSheet = createServerFn({ method: "GET" })

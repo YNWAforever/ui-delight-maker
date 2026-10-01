@@ -84,6 +84,26 @@ async function permitsLeadAssignment(context: RequestAuthorization, resourceId?:
   }).allowed;
 }
 
+async function permitsJobSheetOwner(context: RequestAuthorization, resourceId?: string) {
+  if (!resourceId) return permits(context, "job_sheets.update_billing");
+  const [sheet] = await query<{ accounting_owner: string | null }>(
+    "select accounting_owner from job_sheets where id=$1",
+    [resourceId],
+  );
+  if (!sheet) return false;
+  return evaluateAuthorization({
+    actor: context.actor,
+    capability: "job_sheets.update_billing",
+    target: {
+      resourceType: "job_sheet",
+      resourceId,
+      ...(sheet.accounting_owner ? { ownerProfileId: sheet.accounting_owner } : {}),
+    },
+    overrides: context.overrides,
+    now: context.now,
+  }).allowed;
+}
+
 function parseCursor(cursor: string | undefined, signature: string) {
   if (!cursor) return null;
   if (cursor.length > 2048) throw new AdminError("VALIDATION_FAILED", "Invalid people cursor");
@@ -121,7 +141,7 @@ export async function listAssignableProfiles(
           : purpose === "approval_reviewer"
             ? await permitsApprovalReviewer(context, input.resourceId)
             : purpose === "job_sheet_owner"
-              ? permits(context, "job_sheets.update_billing")
+              ? await permitsJobSheetOwner(context, input.resourceId)
               : purpose === "job_sheet_owner_filter"
                 ? permits(context, "job_sheets.view")
                 : purpose === "admin_access"
@@ -273,7 +293,7 @@ export async function resolveAssignableProfile(
           : purpose === "approval_reviewer"
             ? await permitsApprovalReviewer(context, input.resourceId)
             : purpose === "job_sheet_owner"
-              ? permits(context, "job_sheets.update_billing")
+              ? await permitsJobSheetOwner(context, input.resourceId)
               : purpose === "job_sheet_owner_filter"
                 ? permits(context, "job_sheets.view")
                 : purpose === "admin_access"

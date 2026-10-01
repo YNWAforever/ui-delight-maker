@@ -198,6 +198,9 @@ function JobSheetsIndex() {
   const router = useRouter();
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(() => new Set());
   const [bulkOwner, setBulkOwner] = useState("");
+  const assignmentIds = rows
+    .filter((row) => bulkSelected.has(row.id) && row.can_assign_owner === true)
+    .map((row) => row.id);
   const bulkOperation = useBulkOperation("clientops:bulk:job-sheets", async (result) => {
     setBulkSelected((current) => new Set(remainingBulkSelection(Array.from(current), result)));
     await queryClient.invalidateQueries({ queryKey: crmQueryKeys.jobSheets.lists() });
@@ -461,26 +464,31 @@ function JobSheetsIndex() {
                 >
                   Export selected on this page
                 </Button>
-                <ProfileSearchCombobox
-                  purpose="job_sheet_owner_filter"
-                  label="Bulk accounting owner"
-                  value={bulkOwner}
-                  onChange={setBulkOwner}
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={bulkOperation.busy || !bulkOwner}
-                  onClick={() =>
-                    void bulkOperation.prepare(
-                      { type: "job_sheet.assign", profileId: bulkOwner },
-                      Array.from(bulkSelected),
-                    )
-                  }
-                >
-                  Assign owner
-                </Button>
+                {assignmentIds.length > 0 && (
+                  <>
+                    <ProfileSearchCombobox
+                      purpose="job_sheet_owner"
+                      resourceId={assignmentIds[0]}
+                      label="Bulk accounting owner"
+                      value={bulkOwner}
+                      onChange={setBulkOwner}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={bulkOperation.busy || !bulkOwner}
+                      onClick={() =>
+                        void bulkOperation.prepare(
+                          { type: "job_sheet.assign", profileId: bulkOwner },
+                          assignmentIds,
+                        )
+                      }
+                    >
+                      Assign owner
+                    </Button>
+                  </>
+                )}
               </>
             )}
           </BulkActionBar>
@@ -510,6 +518,7 @@ function JobSheetsIndex() {
           <>
             <Card className="p-0">
               <ResponsiveRecordList
+                breakpoint="container"
                 columns={columns}
                 rows={rows}
                 rowKey={(row) => row.id}

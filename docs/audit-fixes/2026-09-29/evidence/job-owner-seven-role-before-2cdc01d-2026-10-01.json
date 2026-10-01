@@ -1,0 +1,82 @@
+{
+  "sourceSha": "2cdc01d779fc5cb895601500010a8d25c873bac3",
+  "startedAt": "2026-10-01T01:19:34.073Z",
+  "scope": "Actual own seven-role selected Job Sheet export/owner controls; no commands",
+  "cases": [
+    {
+      "role": "super_admin",
+      "ownAuthMatched": true,
+      "readExportSelectionAllowed": true,
+      "exportOffered": true,
+      "ownerPickerOffered": true,
+      "assignOffered": true,
+      "assignEnabled": true,
+      "expectedWriteGrant": true
+    },
+    {
+      "role": "admin",
+      "ownAuthMatched": true,
+      "readExportSelectionAllowed": true,
+      "exportOffered": true,
+      "ownerPickerOffered": true,
+      "assignOffered": true,
+      "assignEnabled": true,
+      "expectedWriteGrant": true
+    },
+    {
+      "role": "manager",
+      "ownAuthMatched": true,
+      "readExportSelectionAllowed": true,
+      "exportOffered": true,
+      "ownerPickerOffered": true,
+      "assignOffered": true,
+      "assignEnabled": false,
+      "expectedWriteGrant": false
+    },
+    {
+      "role": "sales",
+      "ownAuthMatched": true,
+      "readExportSelectionAllowed": true,
+      "exportOffered": true,
+      "ownerPickerOffered": true,
+      "assignOffered": true,
+      "assignEnabled": true,
+      "expectedWriteGrant": false
+    },
+    {
+      "role": "client_success",
+      "ownAuthMatched": true,
+      "readExportSelectionAllowed": true,
+      "exportOffered": true,
+      "ownerPickerOffered": true,
+      "assignOffered": true,
+      "assignEnabled": true,
+      "expectedWriteGrant": false
+    },
+    {
+      "role": "accounting",
+      "ownAuthMatched": true,
+      "readExportSelectionAllowed": true,
+      "exportOffered": true,
+      "ownerPickerOffered": true,
+      "assignOffered": true,
+      "assignEnabled": true,
+      "expectedWriteGrant": true
+    },
+    {
+      "role": "read_only",
+      "ownAuthMatched": true,
+      "readExportSelectionAllowed": true,
+      "exportOffered": true,
+      "ownerPickerOffered": true,
+      "assignOffered": true,
+      "assignEnabled": true,
+      "expectedWriteGrant": false
+    }
+  ],
+  "success": true,
+  "noMutationPosts": true,
+  "originalJobSheetsUnchanged": true,
+  "defectReproduced": true,
+  "finishedAt": "2026-10-01T01:20:37.180Z"
+}

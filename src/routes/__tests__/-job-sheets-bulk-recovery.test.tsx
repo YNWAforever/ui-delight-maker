@@ -7,6 +7,9 @@ const getBulkResultMock = vi.hoisted(() => vi.fn());
 const commitBulkMock = vi.hoisted(() => vi.fn());
 const resumeBulkMock = vi.hoisted(() => vi.fn());
 const previewBulkMock = vi.hoisted(() => vi.fn());
+const pageMock = vi.hoisted(() => vi.fn());
+const listPeopleMock = vi.hoisted(() => vi.fn());
+const resolvePersonMock = vi.hoisted(() => vi.fn());
 vi.mock("@/server-functions/bulk-operations", () => ({
   getBulkResultFn: getBulkResultMock,
   commitBulkFn: commitBulkMock,
@@ -16,7 +19,7 @@ vi.mock("@/server-functions/bulk-operations", () => ({
 vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
     options,
-    useLoaderData: () => ({ items: [], total: 0, page: 1, limit: 50 }),
+    useLoaderData: pageMock,
     useSearch: () => ({
       page: 1,
       limit: 50,
@@ -37,12 +40,13 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("@/lib/routing-utils", () => ({ useIsExactPath: () => true }));
 vi.mock("@/server-functions/job-sheets", () => ({ getJobSheetsPage: vi.fn() }));
 vi.mock("@/server-functions/assignable-profiles", () => ({
-  listAssignableProfilesFn: vi.fn(),
-  resolveAssignableProfileFn: vi.fn(),
+  listAssignableProfilesFn: listPeopleMock,
+  resolveAssignableProfileFn: resolvePersonMock,
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn(), message: vi.fn() } }));
 import { Route } from "../job-sheets";
-function renderSheets() {
+function renderSheets(items: Array<Record<string, unknown>> = []) {
+  pageMock.mockReturnValue({ items, total: items.length, page: 1, limit: 50 });
   const q = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   vi.spyOn(q, "invalidateQueries").mockResolvedValue();
   const Component = Route.options.component as ComponentType;
@@ -58,6 +62,24 @@ beforeEach(() => {
   commitBulkMock.mockReset();
   resumeBulkMock.mockReset();
   previewBulkMock.mockReset();
+  listPeopleMock.mockReset().mockResolvedValue({
+    items: [
+      {
+        id: "accountant-2",
+        displayName: "Named accounting owner",
+        isEligible: true,
+        reason: null,
+      },
+    ],
+    total: 1,
+    nextCursor: null,
+  });
+  resolvePersonMock.mockReset().mockResolvedValue({
+    id: "accountant-2",
+    displayName: "Named accounting owner",
+    isEligible: true,
+    reason: null,
+  });
 });
 afterEach(() => {
   cleanup();
@@ -132,5 +154,51 @@ describe("Job Sheet owner durable bulk receipt recovery", () => {
     expect(document.body.textContent).not.toContain("another-actor-operation");
     expect(commitBulkMock).not.toHaveBeenCalled();
     expect(previewBulkMock).not.toHaveBeenCalled();
+  });
+});
+
+const sheetRow = (id: string, canAssign?: boolean) => ({
+  id,
+  number: "JS " + id,
+  quote_id: "quote-1",
+  status: "accounting_review",
+  created_at: "2026-10-01T00:00:00Z",
+  currency: "HKD",
+  total_amount: 200.5,
+  accounting_owner: "accountant-1",
+  accounting_owner_name: "Current owner",
+  can_assign_owner: canAssign,
+});
+describe("Job Sheet selection keeps permitted export separate from owner writes", () => {
+  it.each([false, undefined])(
+    "keeps read/export selection while omitting owner controls when assignment is %s",
+    (canAssign) => {
+      renderSheets([sheetRow("js-1", canAssign)]);
+      const checkbox = screen.getAllByRole("checkbox", { name: "Select row js-1" })[0];
+      expect((checkbox as HTMLButtonElement).disabled).toBe(false);
+      fireEvent.click(checkbox);
+      expect(screen.getByRole("button", { name: "Export selected on this page" })).toBeTruthy();
+      expect(screen.queryByRole("combobox", { name: "Bulk accounting owner search" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Assign owner" })).toBeNull();
+    },
+  );
+  it("previews only independently authorized selected rows with the named writer-purpose picker", async () => {
+    renderSheets([sheetRow("js-1", true), sheetRow("js-denied", false)]);
+    for (const id of ["js-1", "js-denied"])
+      fireEvent.click(screen.getAllByRole("checkbox", { name: "Select row " + id })[0]);
+    fireEvent.change(screen.getByRole("combobox", { name: "Bulk accounting owner search" }), {
+      target: { value: "Named" },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Named accounting owner" }));
+    fireEvent.click(screen.getByRole("button", { name: "Assign owner" }));
+    await waitFor(() =>
+      expect(previewBulkMock).toHaveBeenCalledWith({
+        data: { action: { type: "job_sheet.assign", profileId: "accountant-2" }, ids: ["js-1"] },
+      }),
+    );
+    expect(listPeopleMock).toHaveBeenCalledWith({
+      data: { purpose: "job_sheet_owner", query: "Named", limit: 50, resourceId: "js-1" },
+    });
+    expect(screen.getByText("2 selected")).toBeTruthy();
   });
 });

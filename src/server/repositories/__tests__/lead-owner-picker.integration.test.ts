@@ -37,9 +37,12 @@ describe("Lead owner picker on isolated PostgreSQL", () => {
     await holder.client.query(`
       create temp table profiles(id text primary key,name text,status text,role text,email text);
       create temp table leads(id text primary key,assigned_to text);
+      create temp table job_sheets(id text primary key,accounting_owner text);
       insert into profiles select 'person-'||i,'Picker Person '||lpad(i::text,3,'0'),'active','sales','private-'||i||'@audit.test' from generate_series(1,250) i;
       insert into profiles values('viewer','Picker Viewer','active','sales','private-viewer@audit.test'),('inactive','Picker Inactive','suspended','sales','private-inactive@audit.test');
       insert into leads values('lead-owned','person-250'),('lead-outside','person-001');
+      insert into profiles values('bookkeeper-250','Picker Accountant 250','active','accounting','private-bookkeeper@audit.test'),('bookkeeper-other','Picker Accountant Other','active','accounting','private-other@audit.test'),('bookkeeper-inactive','Picker Accountant Inactive','suspended','accounting','private-inactive-bookkeeper@audit.test');
+      insert into job_sheets values('sheet-owned','bookkeeper-250'),('sheet-outside','bookkeeper-other');
     `);
   });
   afterAll(async () => {
@@ -194,6 +197,127 @@ describe("Lead owner picker on isolated PostgreSQL", () => {
       ];
       await expect(
         listAssignableProfiles({ purpose: "lead_assign", resourceId: "lead-owned" }, admin),
+      ).rejects.toThrow("not authorized");
+    },
+  );
+  it.runIf(hasDatabase)(
+    "Job Sheet owner search and resolution preserve the three writer grants",
+    async () => {
+      for (const role of ["super_admin", "admin", "accounting"] as UserRole[]) {
+        const selected = await resolveAssignableProfile(
+          { purpose: "job_sheet_owner", id: "bookkeeper-250", resourceId: "sheet-owned" },
+          context(role),
+        );
+        expect(selected).toEqual({
+          id: "bookkeeper-250",
+          displayName: "Picker Accountant 250",
+          isEligible: true,
+          reason: null,
+        });
+      }
+      for (const role of ["manager", "sales", "client_success", "read_only"] as UserRole[]) {
+        await expect(
+          listAssignableProfiles(
+            { purpose: "job_sheet_owner", resourceId: "sheet-owned" },
+            context(role),
+          ),
+        ).rejects.toThrow("not authorized");
+        await expect(
+          resolveAssignableProfile(
+            { purpose: "job_sheet_owner", id: "bookkeeper-250", resourceId: "sheet-owned" },
+            context(role),
+          ),
+        ).rejects.toThrow("not authorized");
+      }
+    },
+  );
+  it.runIf(hasDatabase)(
+    "Job Sheet exact scoped allow works for search/selected name while neighbours, expiry and deny fail closed",
+    async () => {
+      const ctx = context("read_only");
+      ctx.overrides = [
+        {
+          profileId: "viewer",
+          capability: "job_sheets.update_billing",
+          effect: "allow",
+          resourceType: "job_sheet",
+          resourceId: "sheet-owned",
+        },
+      ];
+      expect(
+        (
+          await listAssignableProfiles(
+            {
+              purpose: "job_sheet_owner",
+              query: "Picker Accountant 250",
+              resourceId: "sheet-owned",
+            },
+            ctx,
+          )
+        ).items.map((r) => r.id),
+      ).toEqual(["bookkeeper-250"]);
+      expect(
+        (
+          await resolveAssignableProfile(
+            { purpose: "job_sheet_owner", id: "bookkeeper-250", resourceId: "sheet-owned" },
+            ctx,
+          )
+        )?.id,
+      ).toBe("bookkeeper-250");
+      await expect(
+        listAssignableProfiles({ purpose: "job_sheet_owner", resourceId: "sheet-outside" }, ctx),
+      ).rejects.toThrow("not authorized");
+      await expect(listAssignableProfiles({ purpose: "job_sheet_owner" }, ctx)).rejects.toThrow(
+        "not authorized",
+      );
+      ctx.overrides[0].expiresAt = "2026-09-30T00:00:00Z";
+      await expect(
+        resolveAssignableProfile(
+          { purpose: "job_sheet_owner", id: "bookkeeper-250", resourceId: "sheet-owned" },
+          ctx,
+        ),
+      ).rejects.toThrow("not authorized");
+      const admin = context();
+      admin.overrides = [
+        {
+          profileId: "viewer",
+          capability: "job_sheets.update_billing",
+          effect: "deny",
+          resourceType: "job_sheet",
+          resourceId: "sheet-owned",
+        },
+      ];
+      await expect(
+        listAssignableProfiles({ purpose: "job_sheet_owner", resourceId: "sheet-owned" }, admin),
+      ).rejects.toThrow("not authorized");
+    },
+  );
+  it.runIf(hasDatabase)(
+    "Job Sheet owner roster excludes inactive/non-accounting people and missing resources without private fields",
+    async () => {
+      const page = await listAssignableProfiles(
+        { purpose: "job_sheet_owner", query: "Picker Accountant", resourceId: "sheet-owned" },
+        context(),
+      );
+      expect(page.items.map((r) => r.id)).toEqual(["bookkeeper-250", "bookkeeper-other"]);
+      expect(JSON.stringify(page)).not.toContain("private-");
+      expect(
+        await resolveAssignableProfile(
+          { purpose: "job_sheet_owner", id: "bookkeeper-inactive", resourceId: "sheet-owned" },
+          context(),
+        ),
+      ).toBeNull();
+      expect(
+        await resolveAssignableProfile(
+          { purpose: "job_sheet_owner", id: "person-250", resourceId: "sheet-owned" },
+          context(),
+        ),
+      ).toBeNull();
+      await expect(
+        listAssignableProfiles(
+          { purpose: "job_sheet_owner", resourceId: "missing-sheet" },
+          context(),
+        ),
       ).rejects.toThrow("not authorized");
     },
   );

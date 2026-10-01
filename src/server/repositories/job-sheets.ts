@@ -139,6 +139,7 @@ export type JobSheetListItem = Pick<
   | "number"
   | "quote_id"
   | "status"
+  | "locked_at"
   | "po_number"
   | "client_order_number"
   | "created_at"
@@ -152,7 +153,7 @@ export type JobSheetListItem = Pick<
 };
 
 const JOB_SHEET_LIST_COLUMNS =
-  "js.id, js.number, js.quote_id, js.status, js.po_number, js.client_order_number, js.created_at, js.total_amount, js.currency, js.accounting_owner, q.number as quote_number, coalesce(c.company_name,a.name,l.company_name) as company_name, (js.xero_customer_reference is not null) as has_xero_customer_reference";
+  "js.id, js.number, js.quote_id, js.status, js.locked_at, js.po_number, js.client_order_number, js.created_at, js.total_amount, js.currency, js.accounting_owner, q.number as quote_number, coalesce(c.company_name,a.name,l.company_name) as company_name, (js.xero_customer_reference is not null) as has_xero_customer_reference";
 const JOB_SHEET_LIST_FROM =
   "from job_sheets js left join quotes q on q.id=js.quote_id left join leads l on l.id=q.lead_id left join clients c on c.id=js.client_id left join accounts a on a.id=js.account_id";
 
