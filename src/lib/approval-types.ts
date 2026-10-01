@@ -8,9 +8,7 @@ import type { ApprovalType } from "@/lib/types";
  * `neon/migrations/001_clientops_runtime.sql`. A new approval type is therefore a compile
  * error here rather than an unlabelled row with an invented description.
  *
- * `/approvals` carries an identical label map inline; it predates this module and is left
- * alone in this change. When that file is next touched it should import from here so the two
- * screens cannot drift into two words for one state.
+ * Both review surfaces use these shared labels and truthful effect descriptions.
  */
 export const APPROVAL_TYPE_LABELS: Record<ApprovalType, string> = {
   quote_send: "Quote send",

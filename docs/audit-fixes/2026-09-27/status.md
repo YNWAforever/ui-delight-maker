@@ -418,3 +418,7 @@ Approved design/plan `d8e0c71`; app branch `codex/approval-review-20261001`, obs
 ## 2026-10-01 — Approval Review P2 controller
 
 P1 commit `6e30193`. Shared controller now passes34 public-interface cases and TypeScript, including raw reply notes reproducer RED -> allowlisted frozen notes GREEN, original key/payload retry, newer version/assignment protection, captured filter cache isolation and quote reject version/key/notes. [Evidence](../2026-09-29/approval-review-module-2026-10-01.md). Route adapters and actual seven-role/runtime/transaction gates remain pending; unit doubles are not role or PostgreSQL acceptance. All30 CO statuses/11 external blockers and production hold retained. No migration or production/provider action.
+
+## 2026-10-01 — Approval Review P3 optimistic surface
+
+P2 `01f70cc`; Approvals now uses the common preparation/confirmation flow.25 route +34 controller cases PASS; TypeScript PASS after retaining the original bulk-only error wrapper. Scoped assignment/claim/manual handoff and durable original-key bulk recovery tests retained. Version7 quote reject metadata and missing-version safe refresh verified. Before runtime14 own-role cases/60 actual decisions complete at7dc40fd, without provider/production activity. [Matrix](../2026-09-29/approval-review-module-2026-10-01.md). P4-P7 still pending; all30 CO statuses/external blockers unchanged.

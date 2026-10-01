@@ -6,6 +6,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AdminError } from "@/lib/admin/errors";
 import type { SerializableHumanApproval } from "@/lib/serializable";
 
 const decideApprovalMock = vi.hoisted(() => vi.fn());
@@ -109,7 +110,7 @@ const quoteSend = (overrides: Partial<SerializableHumanApproval> = {}) =>
   approval({
     id: "ap-quote",
     approval_type: "quote_send",
-    context_data: { quote_id: "q-1" },
+    context_data: { quote_id: "22222222-2222-4222-8222-222222222222" },
     context_summary: "Send QT-1042 to Northstar",
     ...overrides,
   });
@@ -164,11 +165,12 @@ function renderInbox(approvals: SerializableHumanApproval[]) {
     makePage(history),
   );
   const Component = Route.options.component as ComponentType;
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <Component />
     </QueryClientProvider>,
   );
+  return { ...view, queryClient };
 }
 
 /** The inline detail card on the right of the desk, where the decision buttons live. */
@@ -181,11 +183,27 @@ beforeEach(() => {
   commitBulkMock.mockReset();
   resumeBulkMock.mockReset();
   previewBulkMock.mockReset();
-  decideApprovalMock.mockReset().mockResolvedValue(undefined);
+  decideApprovalMock.mockReset().mockImplementation(async ({ data }) =>
+    approval({
+      id: data.id,
+      status: data.decision,
+      row_version: data.expectedVersion + 1,
+      reviewer_notes: data.notes ?? null,
+      decided_at: now,
+    }),
+  );
   getApprovalsPageMock.mockReset();
   getApprovalDetailFnMock.mockReset();
-  approveQuoteMock.mockReset().mockResolvedValue(undefined);
-  rejectQuoteMock.mockReset().mockResolvedValue(undefined);
+  approveQuoteMock.mockReset().mockResolvedValue({
+    id: "22222222-2222-4222-8222-222222222222",
+    status: "approved",
+    row_version: 999,
+  });
+  rejectQuoteMock.mockReset().mockResolvedValue({
+    id: "22222222-2222-4222-8222-222222222222",
+    status: "rejected",
+    row_version: 999,
+  });
   navigateMock.mockReset();
   getMessageHandoffFnMock.mockReset().mockResolvedValue({
     approvalId: "ap-1",
@@ -248,7 +266,8 @@ describe("Every approval decision is confirmed, and the confirmation names the c
     renderInbox([messageSend()]);
     fireEvent.click(decisionButton(/^Approve$/));
     const text = (await screen.findByRole("alertdialog")).textContent ?? "";
-    expect(text).toMatch(/draft.*approved.*manual send/i);
+    expect(text).toMatch(/draft.*manual handoff/i);
+    expect(text).toMatch(/ClientOps does not send or confirm delivery/i);
     expect(text).not.toMatch(/agent proceeds immediately/i);
   });
 
@@ -279,7 +298,7 @@ describe("Every approval decision is confirmed, and the confirmation names the c
     const dialog = await screen.findByRole("alertdialog");
     const text = dialog.textContent ?? "";
     expect(text).toMatch(/marks the quote approved/i);
-    expect(text).toMatch(/separate action for an authorized issuer/i);
+    expect(text).toMatch(/separate authorized action/i);
     expect(text).not.toMatch(/issues a quote version immediately/i);
     expect(approveQuoteMock).not.toHaveBeenCalled();
   });
@@ -291,8 +310,8 @@ describe("Every approval decision is confirmed, and the confirmation names the c
 
     const dialog = await screen.findByRole("alertdialog");
     const text = dialog.textContent ?? "";
-    expect(text).toMatch(/no reopen action/i);
-    expect(text).toMatch(/revised and submitted for approval again/i);
+    expect(text).toMatch(/Reopening it means revising/i);
+    expect(text).toMatch(/requesting approval again/i);
     expect(rejectQuoteMock).not.toHaveBeenCalled();
   });
 
@@ -572,5 +591,116 @@ describe("Approval durable bulk receipt recovery", () => {
     expect(document.body.textContent).not.toContain("another-actor-operation");
     expect(commitBulkMock).not.toHaveBeenCalled();
     expect(previewBulkMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("Approval Review integration contract", () => {
+  it("quote reject passes frozen nonzero version, key and notes", async () => {
+    renderInbox([quoteSend({ row_version: 7 })]);
+    fireEvent.change(
+      screen.getAllByRole("textbox", { name: "Reviewer notes or decision reason" })[0],
+      { target: { value: " checked " } },
+    );
+    fireEvent.click(decisionButton(/^Reject$/));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Reject" }));
+    await waitFor(() =>
+      expect(rejectQuoteMock).toHaveBeenCalledWith({
+        data: {
+          id: "22222222-2222-4222-8222-222222222222",
+          approvalId: "ap-quote",
+          expectedVersion: 7,
+          idempotencyKey: expect.any(String),
+          notes: "checked",
+        },
+      }),
+    );
+    expect(decideApprovalMock).not.toHaveBeenCalled();
+  });
+  it("blocks missing version and permits a real version after refreshing", async () => {
+    const row = approval({ row_version: undefined as unknown as number });
+    const { queryClient } = renderInbox([row]);
+    fireEvent.click(decisionButton(/^Approve$/));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(decideApprovalMock).not.toHaveBeenCalled();
+    const { toast } = await import("sonner");
+    expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/current version/));
+    row.row_version = 7;
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<{ items: ApprovalView[] }>([
+          "approvals",
+          "list",
+          { group: "pending", type: "all" },
+        ])?.items[0].row_version,
+      ).toBe(7),
+    );
+    fireEvent.click(decisionButton(/^Approve$/));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Approve" }));
+    await waitFor(() =>
+      expect(decideApprovalMock).toHaveBeenCalledWith({
+        data: expect.objectContaining({ expectedVersion: 7 }),
+      }),
+    );
+  });
+  it("optimistically updates only the selected row and preserves server counts", async () => {
+    let release!: (value: ApprovalView) => void;
+    decideApprovalMock.mockImplementation(
+      () =>
+        new Promise((r) => {
+          release = r;
+        }),
+    );
+    const { queryClient } = renderInbox([
+      approval({ row_version: 7 }),
+      approval({ id: "ap-2", context_summary: "Other row" }),
+    ]);
+    const key = ["approvals", "list", { group: "pending", type: "all" }];
+    const before = queryClient.getQueryData<{ items: ApprovalView[]; counts: unknown }>(key)!;
+    fireEvent.click(screen.getAllByRole("button", { name: /Discount of 15% on renewal/ })[0]);
+    fireEvent.click(decisionButton(/^Approve$/));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Approve" }));
+    await waitFor(() => expect(decideApprovalMock).toHaveBeenCalledTimes(1));
+    const during = queryClient.getQueryData<typeof before>(key)!;
+    expect(during.items[0].status).toBe("approved");
+    expect(during.items[1]).toEqual(before.items[1]);
+    expect(during.counts).toEqual(before.counts);
+    release(approval({ status: "approved", row_version: 8, decided_at: now }));
+    await waitFor(() => expect(screen.getAllByText(/cannot be undone/).length).toBeGreaterThan(0));
+  });
+  it("denied writes preserve a newer assigned row from refetch", async () => {
+    let reject!: (error: unknown) => void;
+    decideApprovalMock.mockImplementation(
+      () =>
+        new Promise((_r, j) => {
+          reject = j;
+        }),
+    );
+    const { queryClient } = renderInbox([approval({ row_version: 7 })]);
+    const key = ["approvals", "list", { group: "pending", type: "all" }];
+    fireEvent.click(decisionButton(/^Approve$/));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Approve" }));
+    await waitFor(() => expect(decideApprovalMock).toHaveBeenCalledTimes(1));
+    const page = queryClient.getQueryData<{ items: ApprovalView[] }>(key)!;
+    const newer = {
+      ...page.items[0],
+      status: "pending" as const,
+      row_version: 8,
+      assigned_to: "profile-2",
+    };
+    queryClient.setQueryData(key, { ...page, items: [newer] });
+    getApprovalDetailFnMock.mockResolvedValue(newer);
+    getApprovalsPageMock.mockResolvedValue({ ...page, items: [newer] });
+    reject(new AdminError("STALE_ADMIN_STATE", "Refresh this approval."));
+    await waitFor(() =>
+      expect(queryClient.getQueryData<typeof page>(key)?.items[0]).toEqual(newer),
+    );
+    const { toast } = await import("sonner");
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(decideApprovalMock).toHaveBeenCalledTimes(1);
   });
 });
