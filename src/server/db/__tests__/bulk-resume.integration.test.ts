@@ -117,6 +117,70 @@ async function finish(operationId: string) {
 }
 
 describe("persistent bulk receipts on isolated PostgreSQL", () => {
+  async function terminalSnapshot(operationId: string, ids: string[]) {
+    return {
+      operation: (await db().query("select * from bulk_operations where id=$1", [operationId]))
+        .rows,
+      items: (
+        await db().query(
+          "select * from bulk_operation_items where operation_id=$1 order by position",
+          [operationId],
+        )
+      ).rows,
+      targets: (
+        await db().query("select * from bulk_probe_items where id=any($1::uuid[]) order by id", [
+          ids,
+        ])
+      ).rows,
+    };
+  }
+
+  it.runIf(hasDatabase)(
+    "keeps the whole terminal receipt unchanged across same-key commit and resume",
+    async () => {
+      const ids = await fixture(1),
+        prepared = await preview(ids),
+        key = randomUUID();
+      await service.commitBulk(context(), { previewToken: prepared.token, idempotencyKey: key });
+      const before = await terminalSnapshot(prepared.operationId, ids);
+      expect(before.operation[0].state).toBe("completed");
+      expect(before.operation[0].completed_at).toBeTruthy();
+      await service.commitBulk(context(), { previewToken: prepared.token, idempotencyKey: key });
+      await service.resumeBulk(context(), { operationId: prepared.operationId });
+      expect(await terminalSnapshot(prepared.operationId, ids)).toEqual(before);
+      await expect(
+        service.commitBulk(context(), {
+          previewToken: prepared.token,
+          idempotencyKey: randomUUID(),
+        }),
+      ).rejects.toThrow("idempotency key");
+      await expect(
+        service.resumeBulk(context(otherActorId), { operationId: prepared.operationId }),
+      ).rejects.toThrow("owner access denied");
+      expect(await terminalSnapshot(prepared.operationId, ids)).toEqual(before);
+    },
+  );
+
+  it.runIf(hasDatabase)(
+    "keeps terminal timestamps, attempts and writes unchanged with competing replays",
+    async () => {
+      const ids = await fixture(2),
+        prepared = await preview(ids),
+        key = randomUUID();
+      await service.commitBulk(context(), { previewToken: prepared.token, idempotencyKey: key });
+      const before = await terminalSnapshot(prepared.operationId, ids);
+      expect(before.operation[0].state).toBe("completed");
+      const results = await Promise.all([
+        service.commitBulk(context(), { previewToken: prepared.token, idempotencyKey: key }),
+        service.resumeBulk(context(), { operationId: prepared.operationId }),
+        service.resumeBulk(context(), { operationId: prepared.operationId }),
+      ]);
+      expect(results.every((result) => result.state === "completed")).toBe(true);
+      expect(await terminalSnapshot(prepared.operationId, ids)).toEqual(before);
+      expect(before.targets.every((target) => target.write_count === 1)).toBe(true);
+    },
+  );
+
   beforeAll(async () => {
     if (!hasDatabase) return;
     holder.pool = new Pool({ connectionString: process.env.DATABASE_TEST_URL, max: 8 });

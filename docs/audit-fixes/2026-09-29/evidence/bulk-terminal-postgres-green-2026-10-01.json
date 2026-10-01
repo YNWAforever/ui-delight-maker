@@ -1,0 +1,12 @@
+{
+  "testedAt": "2026-10-01T02:15:45.842Z",
+  "db": "clientops_bulk_terminal_green_20261001",
+  "loopbackOnly": true,
+  "postgres": "17.10",
+  "tests": 29,
+  "files": 3,
+  "skipped": 0,
+  "todo": 0,
+  "failed": 0,
+  "elapsedMs": 10604
+}

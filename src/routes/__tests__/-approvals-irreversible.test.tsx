@@ -14,6 +14,17 @@ const getApprovalDetailFnMock = vi.hoisted(() => vi.fn());
 const approveQuoteMock = vi.hoisted(() => vi.fn());
 const rejectQuoteMock = vi.hoisted(() => vi.fn());
 const navigateMock = vi.hoisted(() => vi.fn());
+const getBulkResultMock = vi.hoisted(() => vi.fn());
+const commitBulkMock = vi.hoisted(() => vi.fn());
+const resumeBulkMock = vi.hoisted(() => vi.fn());
+const previewBulkMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/server-functions/bulk-operations", () => ({
+  getBulkResultFn: getBulkResultMock,
+  commitBulkFn: commitBulkMock,
+  resumeBulkFn: resumeBulkMock,
+  previewBulkFn: previewBulkMock,
+}));
 
 const assignApprovalFnMock = vi.hoisted(() => vi.fn());
 const listAssignableProfilesFnMock = vi.hoisted(() => vi.fn());
@@ -165,6 +176,11 @@ const decisionButton = (name: RegExp | string) =>
   screen.getAllByRole("button", { name }).at(-1) as HTMLButtonElement;
 
 beforeEach(() => {
+  sessionStorage.clear();
+  getBulkResultMock.mockReset();
+  commitBulkMock.mockReset();
+  resumeBulkMock.mockReset();
+  previewBulkMock.mockReset();
   decideApprovalMock.mockReset().mockResolvedValue(undefined);
   getApprovalsPageMock.mockReset();
   getApprovalDetailFnMock.mockReset();
@@ -484,5 +500,77 @@ describe("Server-evaluated approval action boundaries", () => {
     expect(screen.queryByRole("button", { name: "Record manual send" })).toBeNull();
     expect(screen.queryByRole("textbox", { name: "Manual send reference" })).toBeNull();
     expect(recordManualMessageSentFnMock).not.toHaveBeenCalled();
+  });
+});
+
+const savedBulkCommit = {
+  kind: "pending_commit",
+  operationId: "owned-operation",
+  previewToken: "original-preview",
+  idempotencyKey: "original-key",
+};
+const ownedBulkReceipt = {
+  operationId: "owned-operation",
+  state: "paused" as const,
+  processed: 1,
+  total: 2,
+  remainingIds: ["pending-item"],
+  results: [{ id: "succeeded-item", status: "succeeded" as const, retryable: false }],
+};
+
+describe("Approval durable bulk receipt recovery", () => {
+  it("keeps and retries the original receipt with no selected rows, then resumes the exact saved commit key", async () => {
+    const saved = JSON.stringify(savedBulkCommit);
+    sessionStorage.setItem("clientops:bulk:approvals", saved);
+    getBulkResultMock
+      .mockRejectedValueOnce(new TypeError("Network unavailable"))
+      .mockResolvedValue(ownedBulkReceipt);
+    commitBulkMock.mockResolvedValue({
+      ...ownedBulkReceipt,
+      state: "completed",
+      processed: 2,
+      results: [
+        ...ownedBulkReceipt.results,
+        { id: "pending-item", status: "forbidden", retryable: false },
+      ],
+    });
+    renderInbox([]);
+    const retry = await screen.findByRole("button", { name: "Retry loading result" });
+    expect(sessionStorage.getItem("clientops:bulk:approvals")).toBe(saved);
+    expect(commitBulkMock).not.toHaveBeenCalled();
+    expect(previewBulkMock).not.toHaveBeenCalled();
+    fireEvent.click(retry);
+    fireEvent.click(await screen.findByRole("button", { name: "Resume" }));
+    await waitFor(() =>
+      expect(commitBulkMock).toHaveBeenCalledWith({
+        data: { previewToken: "original-preview", idempotencyKey: "original-key" },
+      }),
+    );
+    expect(resumeBulkMock).not.toHaveBeenCalled();
+    expect(previewBulkMock).not.toHaveBeenCalled();
+    await screen.findByText(/2 of 2 processed; 1 succeeded; 1 need review/);
+    expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Download failures" })).toBeTruthy();
+    expect(sessionStorage.getItem("clientops:bulk:approvals")).toBe("owned-operation");
+  });
+  it("keeps an owned receipt readable when no row can be changed and can dismiss it without a command", async () => {
+    sessionStorage.setItem("clientops:bulk:approvals", JSON.stringify(savedBulkCommit));
+    getBulkResultMock.mockResolvedValue({ ...ownedBulkReceipt, state: "completed", processed: 2 });
+    renderInbox([]);
+    await screen.findByText(/2 of 2 processed/);
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+    expect(sessionStorage.getItem("clientops:bulk:approvals")).toBeNull();
+    expect(commitBulkMock).not.toHaveBeenCalled();
+    expect(previewBulkMock).not.toHaveBeenCalled();
+  });
+  it("discards an inaccessible receipt without exposing its details or offering a write", async () => {
+    sessionStorage.setItem("clientops:bulk:approvals", "another-actor-operation");
+    getBulkResultMock.mockRejectedValue(new Error("Bulk operation owner access denied"));
+    renderInbox([]);
+    await waitFor(() => expect(sessionStorage.getItem("clientops:bulk:approvals")).toBeNull());
+    expect(screen.queryByRole("button", { name: "Retry loading result" })).toBeNull();
+    expect(document.body.textContent).not.toContain("another-actor-operation");
+    expect(commitBulkMock).not.toHaveBeenCalled();
+    expect(previewBulkMock).not.toHaveBeenCalled();
   });
 });

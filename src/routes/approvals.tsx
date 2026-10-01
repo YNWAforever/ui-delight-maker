@@ -1213,7 +1213,7 @@ function ApprovalsInbox() {
           columns={4}
         />
 
-        {!hasAnyApproval ? (
+        {!hasAnyApproval && !bulkOperation.result && !bulkOperation.recoveryState ? (
           <EmptyWorkspaceState
             title="No approvals yet"
             description="Agent approval requests appear here when quote sends, discounts or qualification decisions need a human."
@@ -1244,11 +1244,13 @@ function ApprovalsInbox() {
               resultCount={approvalsQuery.data.total}
             />
 
-            {(bulk.size > 0 || bulkOperation.result) && (
+            {(bulk.size > 0 || bulkOperation.result || bulkOperation.recoveryState) && (
               <BulkActionBar
                 selectedCount={bulk.size}
                 busy={bulkOperation.busy}
                 result={bulkOperation.result}
+                recoveryState={bulkOperation.recoveryState}
+                onRetryResult={bulkOperation.retryLoadResult}
                 onResume={() => void bulkOperation.resume()}
                 onClear={() => {
                   setBulk(new Set());

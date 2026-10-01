@@ -1,0 +1,109 @@
+{
+  "sourceSha": "8b9479fb9063dc1d85cd10670656d28aae37954a",
+  "startedAt": "2026-10-01T02:22:50.838Z",
+  "operationId": "8e2b02fa-fb5a-4414-8ba9-b0947b9cd464",
+  "scope": "Actual persisted original Job Sheet portion100 mixed receipt, no new business command",
+  "success": true,
+  "cases": [
+    {
+      "case": "original mixed receipt/control bounds/keyboard CSV/30 failures retained",
+      "role": "accounting",
+      "width": 390,
+      "ownAuthMatched": true,
+      "geometry": {
+        "width": 390,
+        "height": 900,
+        "clientWidth": 390,
+        "scrollWidth": 390
+      },
+      "actualFailureCsvRows": 30,
+      "failedSelection": 30,
+      "terminalResumeAbsent": true,
+      "receiptPointerPreserved": true,
+      "pass": true
+    },
+    {
+      "case": "original mixed receipt/control bounds/keyboard CSV/30 failures retained",
+      "role": "accounting",
+      "width": 768,
+      "ownAuthMatched": true,
+      "geometry": {
+        "width": 768,
+        "height": 900,
+        "clientWidth": 768,
+        "scrollWidth": 768
+      },
+      "actualFailureCsvRows": 30,
+      "failedSelection": 30,
+      "terminalResumeAbsent": true,
+      "receiptPointerPreserved": true,
+      "pass": true
+    },
+    {
+      "case": "original mixed receipt/control bounds/keyboard CSV/30 failures retained",
+      "role": "accounting",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "geometry": {
+        "width": 1440,
+        "height": 900,
+        "clientWidth": 1440,
+        "scrollWidth": 1440
+      },
+      "actualFailureCsvRows": 30,
+      "failedSelection": 30,
+      "terminalResumeAbsent": true,
+      "receiptPointerPreserved": true,
+      "pass": true
+    },
+    {
+      "case": "original mixed receipt at real native200/control bounds/keyboard CSV",
+      "role": "accounting",
+      "width": 1440,
+      "nativeZoom": {
+        "factor": 2,
+        "before": {
+          "width": 1424,
+          "height": 905,
+          "dpr": 1
+        },
+        "after": {
+          "width": 712,
+          "height": 452,
+          "dpr": 2
+        },
+        "nativeAutomaticPerTab": true
+      },
+      "ownAuthMatched": true,
+      "geometry": {
+        "width": 712,
+        "height": 452,
+        "clientWidth": 712,
+        "scrollWidth": 712
+      },
+      "actualFailureCsvRows": 30,
+      "failedSelection": 30,
+      "terminalResumeAbsent": true,
+      "receiptPointerPreserved": true,
+      "pass": true
+    },
+    {
+      "case": "actual owner receipt GET transport failure retains pointer; keyboard retry restores same real terminal receipt",
+      "role": "accounting",
+      "width": 390,
+      "blockedReads": 1,
+      "pass": true
+    },
+    {
+      "case": "own reader inaccessible original owner pointer discarded without receipt/control leakage",
+      "role": "read_only",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true
+    }
+  ],
+  "noMutationPosts": true,
+  "originalPortionsOperationItemsUnchanged": true,
+  "screenReader": "not verified",
+  "finishedAt": "2026-10-01T02:24:02.948Z"
+}

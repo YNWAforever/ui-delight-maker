@@ -295,6 +295,7 @@ export function createBulkService(options: { handler: BulkActionHandler }) {
         context,
       );
       if (operation.state === "preview") throw new Error("Bulk preview has not been committed");
+      if (operation.state === "completed") return { operation, claimed: [] as ItemRow[] };
       await db.query(
         "update bulk_operations set state='running' where id=$1 and state<>'completed'",
         [operationId],
@@ -315,6 +316,10 @@ export function createBulkService(options: { handler: BulkActionHandler }) {
             ).rows;
       return { operation, claimed: claimed.sort((left, right) => left.position - right.position) };
     });
+
+    // Owner/key checks have already run. A terminal replay is a receipt read,
+    // including its original timestamp, leases and attempt counters.
+    if (operation.state === "completed") return getBulkResult(context, { operationId });
 
     const deadline = Date.now() + 5_000;
     for (let index = 0; index < claimed.length; index += WORKER_CONCURRENCY) {
@@ -353,7 +358,7 @@ export function createBulkService(options: { handler: BulkActionHandler }) {
             ? "running"
             : "paused";
       await db.query(
-        "update bulk_operations set state=$2,completed_at=case when $2='completed' then now() else null end where id=$1",
+        "update bulk_operations set state=$2,completed_at=case when $2='completed' then now() else null end where id=$1 and state<>'completed'",
         [operationId, state],
       );
     });

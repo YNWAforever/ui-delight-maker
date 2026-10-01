@@ -1,0 +1,118 @@
+{
+  "sourceSha": "8b9479fb9063dc1d85cd10670656d28aae37954a",
+  "startedAt": "2026-10-01T02:29:46.106Z",
+  "jobSheetId": "04dad0e9-a299-47a4-8d57-be98d104d9df",
+  "portionIds": [
+    "504a4019-5098-4cbe-9e13-596b56e3a8e5",
+    "3b61b909-ac44-489b-a698-961107d07588",
+    "be063bca-a0ac-429d-b862-3707d5a858e1"
+  ],
+  "scope": "Exact original completed three-portion lock race receipt and token/key replay plus all seven own-role accepted planning controls",
+  "success": true,
+  "cases": [
+    {
+      "case": "same original locked receipt, three failed selection and keyboard three-row CSV; planning selection/date action absent",
+      "role": "accounting",
+      "width": 390,
+      "ownAuthMatched": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      },
+      "pass": true
+    },
+    {
+      "case": "same original locked receipt, three failed selection and keyboard three-row CSV; planning selection/date action absent",
+      "role": "accounting",
+      "width": 768,
+      "ownAuthMatched": true,
+      "geometry": {
+        "clientWidth": 768,
+        "scrollWidth": 768
+      },
+      "pass": true
+    },
+    {
+      "case": "same original locked receipt, three failed selection and keyboard three-row CSV; planning selection/date action absent",
+      "role": "accounting",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "geometry": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440
+      },
+      "pass": true
+    },
+    {
+      "case": "actual commit replay with exact original persisted token/key after expiry keeps whole receipt/complete time/attempts/commercial data unchanged",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "actual original owner resume retains exact terminal timestamp, operation/items and no commercial effects",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "own role sees original accepted planning locked, no new bulk date selection/action",
+      "role": "super_admin",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own role sees original accepted planning locked, no new bulk date selection/action",
+      "role": "admin",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own role sees original accepted planning locked, no new bulk date selection/action",
+      "role": "manager",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own role sees original accepted planning locked, no new bulk date selection/action",
+      "role": "sales",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own role sees original accepted planning locked, no new bulk date selection/action",
+      "role": "client_success",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own role sees original accepted planning locked, no new bulk date selection/action",
+      "role": "accounting",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own role sees original accepted planning locked, no new bulk date selection/action",
+      "role": "read_only",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own Reader GET cannot read Accounting original locked receipt or item IDs",
+      "role": "read_only",
+      "pass": true
+    }
+  ],
+  "operationId": "b17c637b-694d-4d7d-8534-e347dcff0209",
+  "originalReceiptNoReplacementFixtureOrPreview": true,
+  "originalHeaderPortionsOperationItemsUnchanged": true,
+  "completedAtUnchanged": true,
+  "twoActualOriginalKeyReplays": true,
+  "noNewBusinessWritesProviderOrCustomerMessage": true,
+  "finishedAt": "2026-10-01T02:31:55.914Z"
+}

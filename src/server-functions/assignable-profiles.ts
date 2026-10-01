@@ -53,8 +53,19 @@ async function requirePurpose(
   } as const;
   await requireCapability(
     capability[purpose],
-    (purpose === "approval_reviewer" || purpose === "lead_assign") && resourceId
-      ? { resourceType: purpose === "lead_assign" ? "lead" : "human_approval", resourceId }
+    (purpose === "approval_reviewer" ||
+      purpose === "lead_assign" ||
+      purpose === "job_sheet_owner") &&
+      resourceId
+      ? {
+          resourceType:
+            purpose === "lead_assign"
+              ? "lead"
+              : purpose === "job_sheet_owner"
+                ? "job_sheet"
+                : "human_approval",
+          resourceId,
+        }
       : {},
     context,
   );
