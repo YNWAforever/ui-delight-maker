@@ -43,9 +43,27 @@ vi.mock("@/server-functions/bulk-operations", () => ({
   getBulkResultFn: getBulkResultMock,
 }));
 
+vi.mock("@/server-functions/assignable-profiles", () => ({
+  listAssignableProfilesFn: vi.fn().mockResolvedValue({
+    items: [{ id: "user-77", displayName: "Named owner", isEligible: true, reason: null }],
+    total: 1,
+    nextCursor: null,
+  }),
+  resolveAssignableProfileFn: vi.fn().mockResolvedValue({
+    id: "user-77",
+    displayName: "Named owner",
+    isEligible: true,
+    reason: null,
+  }),
+}));
+import { listAssignableProfilesFn } from "@/server-functions/assignable-profiles";
 import { Route } from "../leads";
 
-const makeLead = (id: string, name: string): Lead => ({
+const makeLead = (
+  id: string,
+  name: string,
+): Lead & { can_update: boolean; owner_display_name?: string | null } => ({
+  can_update: true,
   id,
   company_name: name,
   contact_id: null,
@@ -124,6 +142,7 @@ beforeEach(() => {
   getBulkResultMock.mockResolvedValue(partialResult);
   vi.mocked(Route.useLoaderData).mockReturnValue({
     items: LEADS,
+    can_create: true,
     total: 2,
     page: 1,
     limit: 50,
@@ -142,7 +161,16 @@ function renderLeads() {
       <Component />
     </QueryClientProvider>,
   );
-  return { invalidateQueries, unmount: view.unmount };
+  return {
+    invalidateQueries,
+    unmount: view.unmount,
+    rerender: () =>
+      view.rerender(
+        <QueryClientProvider client={queryClient}>
+          <Component />
+        </QueryClientProvider>,
+      ),
+  };
 }
 const rowCheckbox = (id: string) =>
   screen.getAllByRole("checkbox", { name: "Select row " + id, hidden: true })[0];
@@ -257,17 +285,21 @@ describe("Leads bulk preview and durable partial results", () => {
     expect(previewBulkMock).toHaveBeenCalledTimes(1);
   });
 
-  it("trims an owner ID, and refuses an empty one before preview", async () => {
+  it("selects a named eligible owner and refuses an empty selection before preview", async () => {
     renderLeads();
     selectEveryLead();
     fireEvent.click(screen.getByRole("button", { name: "Assign owner" }));
     const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("Owner user ID"), { target: { value: "   " } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Assign" }));
     expect(previewBulkMock).not.toHaveBeenCalled();
-    fireEvent.change(within(dialog).getByLabelText("Owner user ID"), {
-      target: { value: "  user-77  " },
+    fireEvent.change(within(dialog).getByRole("combobox", { name: "Owner search" }), {
+      target: { value: "Named" },
     });
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Named owner" }));
+    expect(listAssignableProfilesFn).toHaveBeenCalledWith({
+      data: { purpose: "lead_assign", query: "Named", limit: 50, resourceId: "lead-1" },
+    });
+    expect(within(dialog).queryByLabelText("Owner user ID")).toBeNull();
     fireEvent.click(within(dialog).getByRole("button", { name: "Assign" }));
     await waitFor(() =>
       expect(previewBulkMock).toHaveBeenCalledWith({
@@ -282,12 +314,13 @@ describe("Leads bulk preview and durable partial results", () => {
     selectEveryLead();
     fireEvent.click(screen.getByRole("button", { name: "Assign owner" }));
     const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText("Owner user ID"), {
-      target: { value: "user-77" },
+    fireEvent.change(within(dialog).getByRole("combobox", { name: "Owner search" }), {
+      target: { value: "Named" },
     });
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Named owner" }));
     fireEvent.click(within(dialog).getByRole("button", { name: "Assign" }));
     await waitFor(() => expect(toastErrorMock).toHaveBeenCalledOnce());
-    expect(within(dialog).getByLabelText("Owner user ID")).toHaveProperty("value", "user-77");
+    expect(await within(dialog).findByText("Named owner", { exact: false })).toBeTruthy();
     expect(rowCheckbox("lead-1").getAttribute("aria-checked")).toBe("true");
     expect(rowCheckbox("lead-2").getAttribute("aria-checked")).toBe("true");
   });
@@ -324,5 +357,90 @@ describe("Leads bulk preview and durable partial results", () => {
     await waitFor(() => expect(sessionStorage.getItem("clientops:bulk:leads")).toBeNull());
     expect(screen.queryByRole("button", { name: "Retry loading result" })).toBeNull();
     expect(document.body.textContent).not.toContain("operation-from-another-actor");
+  });
+});
+
+describe("Lead controls reflect the server decision", () => {
+  function page(
+    items: Array<Lead & { can_update?: boolean; owner_display_name?: string | null }>,
+    can_create?: boolean,
+  ) {
+    vi.mocked(Route.useLoaderData).mockReturnValue({
+      items,
+      can_create,
+      total: items.length,
+      page: 1,
+      limit: 50,
+    } as never);
+  }
+  it.each([false, undefined])("keeps denied or legacy responses read-only (%s)", (allowed) => {
+    page(
+      LEADS.map((row) => ({ ...row, can_update: allowed })),
+      allowed,
+    );
+    renderLeads();
+    expect(screen.queryByRole("button", { name: "New lead" })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: "Select all rows" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Mark qualified" })).toBeNull();
+    expect(createLeadMock).not.toHaveBeenCalled();
+  });
+  it("select-all and preview exclude an explicitly denied row", async () => {
+    page([{ ...LEADS[0], can_update: false }, LEADS[1]], false);
+    renderLeads();
+    expect(rowCheckbox("lead-1").hasAttribute("disabled")).toBe(true);
+    selectEveryLead();
+    await prepareQualified();
+    expect(previewBulkMock).toHaveBeenCalledWith({
+      data: { action: { type: "lead.status", status: "qualified" }, ids: ["lead-2"] },
+    });
+    expect(rowCheckbox("lead-1").getAttribute("aria-checked")).toBe("false");
+  });
+  it("retains a revoked selection for review while removing fresh write actions", async () => {
+    const view = renderLeads();
+    selectEveryLead();
+    page(
+      LEADS.map((row) => ({ ...row, can_update: false })),
+      false,
+    );
+    view.rerender();
+    await waitFor(() => expect(rowCheckbox("lead-1").hasAttribute("disabled")).toBe(true));
+    expect(rowCheckbox("lead-1").getAttribute("aria-checked")).toBe("true");
+    expect(screen.queryByRole("button", { name: "Assign owner" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "New lead" })).toBeNull();
+    expect(previewBulkMock).not.toHaveBeenCalled();
+  });
+  it("keeps an owned durable receipt readable after write permission is removed", async () => {
+    sessionStorage.setItem("clientops:bulk:leads", "operation-1");
+    page(
+      LEADS.map((row) => ({ ...row, can_update: false })),
+      false,
+    );
+    renderLeads();
+    await waitFor(() => expect(screen.getByText(/2 of 2 processed/)).toBeTruthy());
+    expect(rowCheckbox("lead-2").getAttribute("aria-checked")).toBe("true");
+    expect(rowCheckbox("lead-2").hasAttribute("disabled")).toBe(true);
+    expect(sessionStorage.getItem("clientops:bulk:leads")).toBe("operation-1");
+    expect(screen.queryByRole("button", { name: "Mark lost" })).toBeNull();
+    expect(commitBulkMock).not.toHaveBeenCalled();
+  });
+  it("shows owner names and distinguishes missing historical owners from unassigned rows", () => {
+    page(
+      [
+        {
+          ...LEADS[0],
+          assigned_to: "internal-profile-250",
+          owner_display_name: "Owner beyond first page",
+        },
+        { ...LEADS[1], assigned_to: "orphan-profile", owner_display_name: null },
+        { ...makeLead("lead-3", "Unassigned lead"), owner_display_name: null },
+      ],
+      true,
+    );
+    renderLeads();
+    expect(screen.getAllByText("Owner beyond first page").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Owner unavailable").length).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toContain("internal-profile-250");
+    expect(document.body.textContent).not.toContain("orphan-profile");
+    expect(screen.getAllByText("Unassigned").length).toBeGreaterThan(0);
   });
 });

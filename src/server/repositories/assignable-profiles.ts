@@ -9,6 +9,7 @@ import { query } from "@/server/db/neon.server";
 export type ProfilePurpose =
   | "task_filter"
   | "task_assign"
+  | "lead_assign"
   | "approval_reviewer"
   | "job_sheet_owner"
   | "job_sheet_owner_filter"
@@ -63,6 +64,26 @@ async function permitsApprovalReviewer(context: RequestAuthorization, resourceId
   }).allowed;
 }
 
+async function permitsLeadAssignment(context: RequestAuthorization, resourceId?: string) {
+  if (!resourceId) return permits(context, "leads.update");
+  const [lead] = await query<{ assigned_to: string | null }>(
+    "select assigned_to from leads where id=$1",
+    [resourceId],
+  );
+  if (!lead) return false;
+  return evaluateAuthorization({
+    actor: context.actor,
+    capability: "leads.update",
+    target: {
+      resourceType: "lead",
+      resourceId,
+      ...(lead.assigned_to ? { ownerProfileId: lead.assigned_to } : {}),
+    },
+    overrides: context.overrides,
+    now: context.now,
+  }).allowed;
+}
+
 function parseCursor(cursor: string | undefined, signature: string) {
   if (!cursor) return null;
   if (cursor.length > 2048) throw new AdminError("VALIDATION_FAILED", "Invalid people cursor");
@@ -95,19 +116,21 @@ export async function listAssignableProfiles(
       ? permits(context, "tasks.view")
       : purpose === "task_assign"
         ? permits(context, "tasks.update")
-        : purpose === "approval_reviewer"
-          ? await permitsApprovalReviewer(context, input.resourceId)
-          : purpose === "job_sheet_owner"
-            ? permits(context, "job_sheets.update_billing")
-            : purpose === "job_sheet_owner_filter"
-              ? permits(context, "job_sheets.view")
-              : purpose === "admin_access"
-                ? permits(context, "permissions.override")
-                : purpose === "admin_directory"
-                  ? permits(context, "users.view")
-                  : purpose === "successor"
-                    ? permits(context, "users.manage")
-                    : false;
+        : purpose === "lead_assign"
+          ? await permitsLeadAssignment(context, input.resourceId)
+          : purpose === "approval_reviewer"
+            ? await permitsApprovalReviewer(context, input.resourceId)
+            : purpose === "job_sheet_owner"
+              ? permits(context, "job_sheets.update_billing")
+              : purpose === "job_sheet_owner_filter"
+                ? permits(context, "job_sheets.view")
+                : purpose === "admin_access"
+                  ? permits(context, "permissions.override")
+                  : purpose === "admin_directory"
+                    ? permits(context, "users.view")
+                    : purpose === "successor"
+                      ? permits(context, "users.manage")
+                      : false;
   if (!authorized) throw new AdminError("FORBIDDEN", "People search is not authorized");
   const search = input.query?.trim().toLowerCase() ?? "";
   if (search.length > 200) throw new AdminError("VALIDATION_FAILED", "Search is too long");
@@ -140,6 +163,7 @@ export async function listAssignableProfiles(
     values.push(...scope.values);
   } else if (
     purpose === "task_assign" ||
+    purpose === "lead_assign" ||
     purpose === "approval_reviewer" ||
     purpose === "job_sheet_owner" ||
     purpose === "job_sheet_owner_filter" ||
@@ -244,19 +268,21 @@ export async function resolveAssignableProfile(
       ? permits(context, "tasks.view")
       : purpose === "task_assign"
         ? permits(context, "tasks.update")
-        : purpose === "approval_reviewer"
-          ? await permitsApprovalReviewer(context, input.resourceId)
-          : purpose === "job_sheet_owner"
-            ? permits(context, "job_sheets.update_billing")
-            : purpose === "job_sheet_owner_filter"
-              ? permits(context, "job_sheets.view")
-              : purpose === "admin_access"
-                ? permits(context, "permissions.override")
-                : purpose === "admin_directory"
-                  ? permits(context, "users.view")
-                  : purpose === "successor"
-                    ? permits(context, "users.manage")
-                    : false;
+        : purpose === "lead_assign"
+          ? await permitsLeadAssignment(context, input.resourceId)
+          : purpose === "approval_reviewer"
+            ? await permitsApprovalReviewer(context, input.resourceId)
+            : purpose === "job_sheet_owner"
+              ? permits(context, "job_sheets.update_billing")
+              : purpose === "job_sheet_owner_filter"
+                ? permits(context, "job_sheets.view")
+                : purpose === "admin_access"
+                  ? permits(context, "permissions.override")
+                  : purpose === "admin_directory"
+                    ? permits(context, "users.view")
+                    : purpose === "successor"
+                      ? permits(context, "users.manage")
+                      : false;
   if (!authorized) throw new AdminError("FORBIDDEN", "People search is not authorized");
   const values: unknown[] = [input.id];
   const clauses = ["p.id=$1", "p.status='active'"];

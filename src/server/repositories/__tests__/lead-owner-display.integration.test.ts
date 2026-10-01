@@ -9,7 +9,7 @@ vi.mock("@/server/db/neon.server", () => ({
   queryOne: async (sql: string, values: readonly unknown[] = []) =>
     (await holder.client!.query(sql, [...values])).rows[0] ?? null,
 }));
-import { getLeadWorkspaceData } from "../leads";
+import { getLeadWorkspaceData, listLeadsPage } from "../leads";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 let pool: Pool | null = null;
@@ -116,6 +116,56 @@ describe("lead owner display on isolated PostgreSQL", () => {
         assigned_to: null,
         owner_display_name: null,
       });
+    },
+  );
+  it.skipIf(!hasDatabase)(
+    "hydrates a paged owner beyond the roster first page with filters and stable counts",
+    async () => {
+      await holder.client!.query(
+        "update leads set status='new', source='website', created_at=now()",
+      );
+      const page = await listLeadsPage({
+        status: "new",
+        source: "website",
+        assigned_to: "sales-text-profile-250",
+        page: 1,
+        limit: 1,
+      });
+      expect(page).toMatchObject({
+        total: 1,
+        page: 1,
+        limit: 1,
+        items: [
+          { assigned_to: "sales-text-profile-250", owner_display_name: "Synthetic owner 250" },
+        ],
+      });
+      expect(page.items[0]).not.toHaveProperty("owner_email");
+      expect(page.items[0]).not.toHaveProperty("owner_status");
+      expect((await listLeadsPage({ status: "qualified" })).items).toEqual([]);
+    },
+  );
+  it.skipIf(!hasDatabase)(
+    "preserves missing, blank and inactive list owners without changing persisted ownership",
+    async () => {
+      for (const mode of ["inactive", "blank", "orphan", "unassigned"]) {
+        if (mode === "inactive")
+          await holder.client!.query(
+            "update profiles set name='  Renamed owner  ',status='inactive' where id='sales-text-profile-250'",
+          );
+        if (mode === "blank")
+          await holder.client!.query(
+            "update profiles set name=' ' where id='sales-text-profile-250'",
+          );
+        if (mode === "orphan")
+          await holder.client!.query("delete from profiles where id='sales-text-profile-250'");
+        if (mode === "unassigned") await holder.client!.query("update leads set assigned_to=null");
+        const page = await listLeadsPage();
+        expect(page.total).toBe(1);
+        expect(page.items[0]).toMatchObject({
+          assigned_to: mode === "unassigned" ? null : "sales-text-profile-250",
+          owner_display_name: mode === "inactive" ? "Renamed owner" : null,
+        });
+      }
     },
   );
   it.skipIf(!hasDatabase)("keeps the existing missing lead error", async () => {

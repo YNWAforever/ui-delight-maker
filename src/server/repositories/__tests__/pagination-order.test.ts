@@ -68,7 +68,11 @@ const CASES: Array<{ name: string; run: () => Promise<unknown>; tieBreaker: RegE
     run: () => listClientsPage({}),
     tieBreaker: /order by c\.company_name, c\.id desc/i,
   },
-  { name: "leads", run: () => listLeadsPage({}), tieBreaker: /order by created_at desc, id desc/i },
+  {
+    name: "leads",
+    run: () => listLeadsPage({}),
+    tieBreaker: /order by l\.created_at desc, l\.id desc/i,
+  },
   {
     name: "campaigns",
     run: () => listCampaignsPage({}),

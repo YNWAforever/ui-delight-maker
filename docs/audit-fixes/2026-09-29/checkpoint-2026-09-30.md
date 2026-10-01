@@ -1,6 +1,16 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current verified checkpoint — PR #147 / stable isolated UAT and mixed receipt
+## Current verified checkpoint — PR #149 updated-source acceptance / final-head CI pending
+
+[Lead source4a0e06b](lead-access-owner-uat-2026-10-01.md) passes actual20 own seven-role cases and six same-original-Lead100 receipt width/native200/keyboard/retry/reader cases. Original mixed70/10/10/10 and named owner255/Mark lost keys remain verified;768 overflow repaired using existing container surface. Exact source CI2,368/321/zero skipped/replay/static/browser PASS; final documentation-head CI required before merge. Main remains5f34361; canonical UAT remainsfc4a2fd, actual production heldbed941b. CO-16 Approval/Job Sheet and external gates remain; all30 CO/16 UAT retained, release NO-GO.
+
+## Previous verified checkpoint — PR #148 / focused Lead repair
+
+Main `5f3436190248c2bbe74255dd2f02a5ecd5a5d13d` includes [merged #148](https://github.com/YNWAforever/ui-delight-maker/pull/148), exact final/post-main2,344/319/zero skipped and replay/static PASS. [Merge](evidence/pr148-merge-2026-10-01.json), [hold](evidence/production-hold-after-148-2026-10-01.json): canceled actual production attempt/publicbed941b unchanged.
+
+[Lead access/owner repair](lead-access-owner-uat-2026-10-01.md) reproduces actual read_only misleading writes/raw owner workflow, converts defects to positive tests, and passes fresh isolatedPG2,368/321/zero skipped plus focused43, affected pagination27, static/pure build/bundles. Exact-source hosted own-role acceptance and final-headCI pending. CO-16 other domains/external gates remain; all30 CO/16 UAT retained; release NO-GO.
+
+## Previous verified checkpoint — PR #147 / stable isolated UAT and mixed receipt
 
 Main `2606334848c8e980128b2d3611ea9a41fc224747` includes [merged #147](https://github.com/YNWAforever/ui-delight-maker/pull/147), final05a3897 and post-main2,344/319/zero skipped/replay/static PASS. [Merge](evidence/pr147-merge-2026-10-01.json), [hold](evidence/production-hold-after-147-2026-10-01.json): canceled main attempt/publicbed941b unchanged.
 

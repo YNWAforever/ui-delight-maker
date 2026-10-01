@@ -177,7 +177,7 @@ describe("paginated lead repository", () => {
     });
 
     const [listSql, listValues] = mockQuery.mock.calls[0];
-    expect(listSql).toMatch(/order by created_at desc[\s\S]+limit \$1 offset \$2/i);
+    expect(listSql).toMatch(/order by l\.created_at desc, l\.id desc[\s\S]+limit \$1 offset \$2/i);
     expect(listValues).toEqual([50, 0]);
     expect(mockQueryOne).toHaveBeenCalledWith(expect.stringContaining("count(*)"), []);
   });

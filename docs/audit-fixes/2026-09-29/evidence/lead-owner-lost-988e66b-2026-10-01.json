@@ -1,0 +1,41 @@
+{
+  "createdAt": "2026-10-01T00:00:54.452Z",
+  "sourceSha": "988e66beee8130f253c349973268abf844b83543",
+  "scope": "Actual named bulk Lead assignment beyond roster page1 and Mark lost; original commit-key terminal replay",
+  "role": "admin",
+  "prefix": "UAT Lead Actions e602ea4e",
+  "fixtureIds": [
+    "addc8aca-f82d-4a0a-a304-18764d9f80fd",
+    "6f0ff0a6-e2fd-43f0-be27-df86b6c242b0",
+    "088f23c7-0169-4e17-b730-b61ba201f519"
+  ],
+  "ownerRosterPosition": 255,
+  "actions": [
+    {
+      "type": "lead.assign",
+      "operationId": "84b367e9-eb5b-4fd6-8cb0-8bf0663ce2fa",
+      "items": 3,
+      "succeeded": 3,
+      "ownerNameResolved": true,
+      "status": "new",
+      "rowVersion": 1,
+      "originalCommitKeyReplayUnchanged": true,
+      "keyHash": "d435a5c9a892a8c840b18bca281a1c801a74d9f79aad41c83f7317676bc833d1",
+      "continuedOriginalFixture": true
+    },
+    {
+      "type": "lead.status.lost",
+      "operationId": "b2019663-deef-4c4d-b6b6-585707dc5abc",
+      "items": 3,
+      "succeeded": 3,
+      "ownerNameResolved": true,
+      "status": "lost",
+      "rowVersion": 2,
+      "originalCommitKeyReplayUnchanged": true,
+      "keyHash": "315c2f89caf4fe63a258ff204c1cb20af9f3258053f2e3efeed4f65d50eae05f"
+    }
+  ],
+  "success": true,
+  "ownAuthMatched": true,
+  "noProviderOrProductionOperation": true
+}

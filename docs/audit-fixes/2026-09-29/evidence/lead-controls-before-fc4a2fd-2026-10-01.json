@@ -1,0 +1,68 @@
+{
+  "sourceSha": "fc4a2fd311d38d05ca6295a43e4fc8571158fd6f",
+  "createdAt": "2026-09-30T23:03:52.555Z",
+  "scope": "Actual Lead authorized/reader write-control characterization; no mutation submitted",
+  "prefix": "UAT Lead Boundary e426efb3",
+  "fixtureIds": [
+    "f9a9e972-d970-4577-a05e-99682a6cb3eb",
+    "145a8aca-104e-4c26-bf4b-ae0bbb39df84",
+    "bd8e0646-536b-48fe-9d8b-6bc872a0ae6a"
+  ],
+  "observations": [
+    {
+      "role": "sales",
+      "width": 390,
+      "ownAuthMatched": true,
+      "selectable": true,
+      "controls": {
+        "newLead": 1,
+        "assignOwner": 1,
+        "markQualified": 1,
+        "markLost": 1
+      },
+      "readerMisleadingWriteControls": false
+    },
+    {
+      "role": "sales",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "selectable": true,
+      "controls": {
+        "newLead": 1,
+        "assignOwner": 1,
+        "markQualified": 1,
+        "markLost": 1
+      },
+      "readerMisleadingWriteControls": false
+    },
+    {
+      "role": "read_only",
+      "width": 390,
+      "ownAuthMatched": true,
+      "selectable": true,
+      "controls": {
+        "newLead": 1,
+        "assignOwner": 1,
+        "markQualified": 1,
+        "markLost": 1
+      },
+      "readerMisleadingWriteControls": true
+    },
+    {
+      "role": "read_only",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "selectable": true,
+      "controls": {
+        "newLead": 1,
+        "assignOwner": 1,
+        "markQualified": 1,
+        "markLost": 1
+      },
+      "readerMisleadingWriteControls": true
+    }
+  ],
+  "noMutationPosts": true,
+  "businessUnchanged": true,
+  "defectReproduced": true
+}

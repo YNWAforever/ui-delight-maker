@@ -1,0 +1,208 @@
+{
+  "createdAt": "2026-10-01T00:20:23.859Z",
+  "sourceSha": "4a0e06ba223dc56973e1855ef851843e1a5bb74c",
+  "deploymentId": "dpl_Go1PRKJxFrnoyDxzS9KJkxkyW765",
+  "candidateUrl": "https://clientops-uat-20260930-d3tzyfyxk-ynwaforevers-projects.vercel.app",
+  "scope": "Actual own seven-role Lead controls, names, scoped allow/deny/expiry and named picker; original business unchanged",
+  "prefix": "UAT Lead Boundary e426efb3",
+  "fixtureIds": [
+    "f9a9e972-d970-4577-a05e-99682a6cb3eb",
+    "145a8aca-104e-4c26-bf4b-ae0bbb39df84",
+    "bd8e0646-536b-48fe-9d8b-6bc872a0ae6a"
+  ],
+  "observations": [
+    {
+      "role": "super_admin",
+      "width": 390,
+      "ownAuthMatched": true,
+      "effectiveCanCreate": true,
+      "effectiveCanUpdate": true,
+      "ownerNameMatched": true,
+      "noRawOwnerId": true,
+      "namedPicker": false,
+      "elapsedMs": 7177
+    },
+    {
+      "role": "super_admin",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "effectiveCanCreate": true,
+      "effectiveCanUpdate": true,
+      "ownerNameMatched": true,
+      "noRawOwnerId": true,
+      "namedPicker": false,
+      "elapsedMs": 5461
+    },
+    {
+      "role": "admin",
+      "width": 390,
+      "ownAuthMatched": true,
+      "effectiveCanCreate": true,
+      "effectiveCanUpdate": true,
+      "ownerNameMatched": true,
+      "noRawOwnerId": true,
+      "namedPicker": false,
+      "elapsedMs": 5235
+    },
+    {
+      "role": "admin",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "effectiveCanCreate": true,
+      "effectiveCanUpdate": true,
+      "ownerNameMatched": true,
+      "noRawOwnerId": true,
+      "namedPicker": false,
+      "elapsedMs": 5384
+    },
+    {
+      "role": "manager",
+      "width": 390,
+      "ownAuthMatched": true,
+      "effectiveCanCreate": true,
+      "effectiveCanUpdate": true,
+      "ownerNameMatched": true,
+      "noRawOwnerId": true,
+      "namedPicker": false,
+      "elapsedMs": 6128
+    },
+    {
+      "role": "manager",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "effectiveCanCreate": true,
+      "effectiveCanUpdate": true,
+      "ownerNameMatched": true,
+      "noRawOwnerId": true,
+      "namedPicker": false,
+      "elapsedMs": 6031
+    },
+    {
+      "role": "sales",
+      "width": 390,
+      "ownAuthMatched": true,
+      "effectiveCanCreate": true,
+      "effectiveCanUpdate": true,
+      "ownerNameMatched": true,
+      "noRawOwnerId": true,
+      "namedPicker": false,
+      "elapsedMs": 6153
+    },
+    {
+      "role": "sales",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "effectiveCanCreate": true,
+      "effectiveCanUpdate": true,
+      "ownerNameMatched": true,
+      "noRawOwnerId": true,
+      "namedPicker": true,
+      "elapsedMs": 6154
+    },
+    {
+      "role": "client_success",
+      "width": 390,
+      "ownAuthMatched": true,
+      "effectiveCanCreate": false,
+      "effectiveCanUpdate": false,
+      "ownerNameMatched": true,
+      "noRawOwnerId": true,
+      "namedPicker": false,
+      "elapsedMs": 7016
+    },
+    {
+      "role": "client_success",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "effectiveCanCreate": false,
+      "effectiveCanUpdate": false,
+      "ownerNameMatched": true,
+      "noRawOwnerId": true,
+      "namedPicker": false,
+      "elapsedMs": 6286
+    },
+    {
+      "role": "accounting",
+      "width": 390,
+      "ownAuthMatched": true,
+      "establishedLeadReadDenied": true,
+      "businessNotLeaked": true,
+      "elapsedMs": 4066
+    },
+    {
+      "role": "accounting",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "establishedLeadReadDenied": true,
+      "businessNotLeaked": true,
+      "elapsedMs": 3911
+    },
+    {
+      "role": "read_only",
+      "width": 390,
+      "ownAuthMatched": true,
+      "effectiveCanCreate": false,
+      "effectiveCanUpdate": false,
+      "ownerNameMatched": true,
+      "noRawOwnerId": true,
+      "namedPicker": false,
+      "elapsedMs": 5254
+    },
+    {
+      "role": "read_only",
+      "width": 1440,
+      "ownAuthMatched": true,
+      "effectiveCanCreate": false,
+      "effectiveCanUpdate": false,
+      "ownerNameMatched": true,
+      "noRawOwnerId": true,
+      "namedPicker": false,
+      "elapsedMs": 5105
+    },
+    {
+      "role": "read_only",
+      "width": 390,
+      "ownAuthMatched": true,
+      "directPickerDenied": true,
+      "noCandidateNameLeaked": true
+    },
+    {
+      "role": "client_success",
+      "width": 390,
+      "ownAuthMatched": true,
+      "directPickerDenied": true,
+      "noCandidateNameLeaked": true
+    },
+    {
+      "role": "accounting",
+      "width": 390,
+      "ownAuthMatched": true,
+      "directPickerDenied": true,
+      "noCandidateNameLeaked": true
+    },
+    {
+      "role": "read_only",
+      "width": 390,
+      "exactScopedAllow": true,
+      "otherRowsDisabled": 2,
+      "createDenied": true,
+      "namedPickerScoped": true
+    },
+    {
+      "role": "read_only",
+      "width": 390,
+      "expiredAllowDenied": true
+    },
+    {
+      "role": "sales",
+      "width": 1440,
+      "exactScopedDeny": true,
+      "otherRowsRemainPermitted": true
+    }
+  ],
+  "success": true,
+  "noMutationPosts": true,
+  "originalLeadsUnchanged": true,
+  "sevenDistinctOwnIdentities": true,
+  "temporaryOverridesRevoked": true
+}

@@ -1,0 +1,294 @@
+{
+  "sha": "988e66beee8130f253c349973268abf844b83543",
+  "createdAt": "2026-09-30T23:45:12.292Z",
+  "scope": "Lead100 actual mixed status commit, response loss, reload, same-key replay/resume and owner-only receipts",
+  "actorRole": "sales",
+  "independentAccounts": true,
+  "run": "95a29cb3",
+  "prefix": "UAT Lead Bulk 95a29cb3",
+  "expected": {
+    "succeeded": 70,
+    "forbidden": 10,
+    "stale": 10,
+    "not_found": 10,
+    "failedSelected": 30
+  },
+  "success": true,
+  "network": [
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "method": "GET",
+      "status": 200,
+      "elapsedMs": 2313,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/3ca82ac80b395ae5a11fe18d190c1e71e1087afe2b4dceead79b05ef184d9319",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 14362,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/538fc10d9457b2625c449b4fd3026d47f0e422c911cdafbbcf4f7458c5333802",
+      "method": "POST",
+      "elapsedMs": 11270,
+      "transportFailure": "net::ERR_INTERNET_DISCONNECTED"
+    },
+    {
+      "path": "/_serverFn/c468ea80aa5ae6ed1110e0ef28d3654953798ca7072bd9e1a0df7fe80656cb1f",
+      "method": "GET",
+      "elapsedMs": 4,
+      "transportFailure": "net::ERR_INTERNET_DISCONNECTED"
+    },
+    {
+      "path": "/_serverFn/c468ea80aa5ae6ed1110e0ef28d3654953798ca7072bd9e1a0df7fe80656cb1f",
+      "method": "GET",
+      "elapsedMs": 21,
+      "transportFailure": "net::ERR_INTERNET_DISCONNECTED"
+    },
+    {
+      "path": "/_serverFn/d3294b7ec799af8e144b9d40198176b9d62195c854f38ed1b8148c2a41937abf",
+      "method": "GET",
+      "status": 200,
+      "elapsedMs": 1335,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/c468ea80aa5ae6ed1110e0ef28d3654953798ca7072bd9e1a0df7fe80656cb1f",
+      "method": "GET",
+      "status": 200,
+      "elapsedMs": 1910,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/a9412db2c5850926593f90bd5884097ac6e0d7d90521be73b1c8229f2c3c28da",
+      "method": "GET",
+      "status": 200,
+      "elapsedMs": 1271,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/97bd82245ca193b0dcb853e54a6c8acde22b78451e4984301bf32fba7fe114a8",
+      "method": "GET",
+      "status": 200,
+      "elapsedMs": 2977,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/538fc10d9457b2625c449b4fd3026d47f0e422c911cdafbbcf4f7458c5333802",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 12076,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 11446,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 11576,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 12102,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 11421,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 12104,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 11424,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 9963,
+      "serializedError": false
+    },
+    {
+      "path": "/_serverFn/91f67431a4ac1c8bfa30971d41f62030afb9e17d8b7297e6022f40fd8fa6b576",
+      "method": "POST",
+      "status": 200,
+      "elapsedMs": 4702,
+      "serializedError": false
+    }
+  ],
+  "preview": {
+    "count": 100,
+    "eligible": 100,
+    "allInitiallyAllowed": true,
+    "elapsedMs": 15184
+  },
+  "previewDidNotWrite": true,
+  "afterPreviewChanges": {
+    "denied": 10,
+    "stale": 10,
+    "missing": 10
+  },
+  "responseLoss": {
+    "actualCommitForwarded": true,
+    "actualResponseAborted": true,
+    "pendingOperationId": "c212aeb9-2da1-4ec5-8ee5-43f83600ef6e",
+    "keyHash": "bc33ca22f0e9cb2ccc1c9f8a0e7116cf6fe48b9cd9d90afa09a63af7bab16fef"
+  },
+  "offlineReload": {
+    "retryOffered": true,
+    "sameSavedKey": true
+  },
+  "ownerRecoveredActualReceipt": true,
+  "terminal": {
+    "state": "completed",
+    "counts": {
+      "succeeded": 70,
+      "not_found": 10,
+      "forbidden": 10,
+      "stale": 10
+    },
+    "items": 100,
+    "allSuccessRowsVersionOne": true,
+    "forbiddenUnchanged": true,
+    "staleConcurrentVersionRetained": true,
+    "missingNotRecreated": true,
+    "replayUnchanged": true,
+    "realResumeRequests": 10,
+    "operationId": "c212aeb9-2da1-4ec5-8ee5-43f83600ef6e"
+  },
+  "otherActorResultRead": {
+    "role": "read_only",
+    "forbidden": true,
+    "noItemIdsLeaked": true
+  },
+  "finalSelection": {
+    "expected": 30,
+    "actual": 30
+  },
+  "overrideCleanup": true,
+  "fixtureIds": [
+    "ed6efc96-7917-4aac-bc30-f7450df6a096",
+    "edae9361-d45c-4092-8c13-4632685a4158",
+    "7d227ae3-b38c-463e-a40c-fa08a72eda94",
+    "33e95478-3b12-4ef2-88ed-55e3bc07ba8e",
+    "046af618-68ae-4b74-b18a-aa30e620ff32",
+    "89c5d4c9-1899-45d7-bb8a-64b283fbe440",
+    "57513c96-2858-44c8-92c1-97e4cd30c87a",
+    "ed8fe17f-04f0-49b6-bbed-d087ad3a0a06",
+    "7137d2dd-7403-4a45-a9f3-6e3cfb8173c6",
+    "49a55c5b-1d7d-4fe0-9387-8925dffe71f3",
+    "ac9a144b-84ab-46ec-8106-f65384c058ef",
+    "e732fd41-0289-44bc-a183-9364c25a2fd7",
+    "de981be2-0eb1-44e6-aca7-937d42898a28",
+    "a1acf634-1e0a-4b40-b144-7590c06689fa",
+    "cddd5ada-3831-40c0-b87b-116c9e069130",
+    "21a62fae-81fb-4397-8821-b6a9a5e28ed8",
+    "7dc3766a-6861-416a-8f12-a4015c3c0da7",
+    "4e06db35-7351-45c5-b041-9ac490fe3471",
+    "b57c7d14-9df1-4112-bad7-849c75b40f63",
+    "6524dfe8-67bc-44ad-bfd1-ece7b577ca0e",
+    "61f7e450-f7a5-4a26-a2d1-9af61fd971f2",
+    "78ff71c5-6831-4faa-9934-9fa9e3b692f6",
+    "f144e2ce-0d5b-4b79-96bf-33f443bd54b6",
+    "f960d728-640d-4bcd-a0e1-83ae384d32ef",
+    "7ca2adbf-00c7-4479-83b3-8a63d5c31561",
+    "2ce1180a-41fe-4c96-b406-12cc1637696c",
+    "31133ea9-8ff2-4b1b-a58a-5e4a69072e2d",
+    "5cfbb670-2dcb-416d-ae08-f392ff27bd9e",
+    "9b0838e7-441b-4a7d-8815-9448613f712f",
+    "7d22f733-c455-4d03-8ff7-bf11be04fea5",
+    "d639a3a8-84a4-49bf-ad7e-a005bebe8755",
+    "6e86c3f6-be02-44ef-9452-70696ae95694",
+    "4fc6c15b-b81b-4ff7-8a8b-53da6734ce82",
+    "bb1bdc08-60f5-432d-8b37-58326e113e15",
+    "54ceea65-929e-4b03-91d7-311eb80dedbc",
+    "599ed46e-2802-4333-ac37-78499e16ce5e",
+    "93e348a8-8490-4bc3-9fbb-56801d14b1e7",
+    "c23c7e55-6136-43f1-936e-ca7ea909195f",
+    "32786559-8eb2-4fd5-8864-8bea3ef6c766",
+    "988db472-ea95-4996-aa53-5ab327db5988",
+    "9fd9e9eb-fb70-4316-9c72-a166c8e2e6aa",
+    "2286cf5e-466a-46d0-a41b-d2e8e1e48a3a",
+    "50114238-d4a3-4e24-8000-a7c67cc47b2c",
+    "7c134808-2c86-4156-bb9f-7d42e406df9a",
+    "a0a0d5f2-1320-4f93-ae12-9823be6bbf21",
+    "08b4473f-85f1-45ca-9fae-4cb17195ab9b",
+    "c4988305-3d90-481f-9012-256b4c226730",
+    "b61820f5-5646-4bec-bff6-bbda7f3355f2",
+    "0feece9b-1cc5-4fab-b6dc-b44ef114233e",
+    "aa1b4cbe-490e-4212-998d-89414ef6aaa3",
+    "a8d89c6c-f7a0-49a8-8730-e97293158630",
+    "8a87f976-095b-4b03-bcf8-4cafb807e4aa",
+    "31b0cc15-a54c-4ec2-8b16-7eb255e5fcc3",
+    "d8f93978-c82c-4aa5-bd9b-c8f7be19a4f3",
+    "a7230a90-35f4-499f-8446-82284bdd21e5",
+    "140c0901-1ea5-42d6-8230-6f3242ac856a",
+    "c69ea3fc-60f0-4001-8bc9-747d35f34a27",
+    "a9db2164-190c-410d-9017-a1e28df42059",
+    "eb130f29-e3eb-40c7-872e-68756fea3340",
+    "08875750-0c8c-4caa-91bb-01725158541e",
+    "8d119d07-6cf1-4c6c-82f5-7eabdf51220b",
+    "91ce7527-58b7-46c5-b811-1513771f42fa",
+    "bb814122-2e60-46c9-8095-01ac94720d24",
+    "e9bd5cf8-4ed8-40d8-a96c-c30cf473fb9e",
+    "3f163265-883a-4785-9fa6-21a6f114ede4",
+    "06f8d81f-a93f-49e7-a803-493704195585",
+    "7ae2edaf-8598-4908-8b3c-40e31f20c6dd",
+    "49edc23c-45f1-4a1b-aef1-ef418ddeeb97",
+    "9b323ff6-baec-4c01-b5a0-8b97c42d6636",
+    "7e5a8601-1e3e-4662-8de2-9e3fe94f4f95",
+    "35b27ffe-7fe4-4f25-90e3-211eaf448cdb",
+    "d9830fbe-ebb4-4cff-bb7a-007a9d7a644c",
+    "e2164ccd-d216-4192-81b3-e4332dcf9e0a",
+    "d629a8eb-1718-4565-8cc0-e69a4433cada",
+    "50658c23-67e5-455a-b8b9-3927cf44f959",
+    "e3741698-7c32-4942-8c98-2ea144f38003",
+    "cafbe6b2-1a3c-43a5-a522-41bd5952f65c",
+    "05369c65-560f-4893-865f-ea228c35808a",
+    "d012a5a9-6b33-4447-9cd5-68f37e94ef36",
+    "e07d99af-94d3-4cd6-9894-e9fc5819d3cb",
+    "d6cf04c0-6132-417b-8b9e-b4956818676e",
+    "ee4b06f0-6e5e-4cb8-82ef-259f1e3d6cd2",
+    "a6007d41-9187-45a0-9d31-785ced9f6415",
+    "af8ab2fa-9822-4c16-927b-d1d6d4dacaa1",
+    "53b32b80-5218-4497-9879-fe313a857d4e",
+    "7d6649cb-35cd-49d7-882c-90943483ba26",
+    "80417657-653c-4a77-a716-557124899b06",
+    "76578f3e-a7e7-459d-95b9-3ece0f8b3587",
+    "2bf3d8c0-05c5-490f-8db3-9fa6dad6c8ea",
+    "33458338-24b7-47e9-bc9e-08d0a0410951",
+    "08764511-cd78-4f47-9a25-ff6422744b9d",
+    "fe312b3b-f86d-4f03-92a5-616cd0757529",
+    "cace3778-a998-4415-97ee-8893d5266ab3",
+    "947b9049-bf0e-42e0-b671-590ef9047fe6",
+    "94b16b95-a87d-46df-8499-888d0a82a1bd",
+    "3879860b-c266-447b-a441-f919a10aaabf",
+    "b81d07d6-4006-4f11-a57a-41e2cb501577",
+    "9cbb3bcc-92d3-4d0c-9733-fa261d577e5a",
+    "3592af93-8160-4744-a891-2beafe8d685b",
+    "3e404f2f-88d5-46a0-83b4-6e14863448f9"
+  ]
+}

@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
   return {
     createServerFnChain,
     requireCapability: vi.fn(),
+    loadRequestAuthorization: vi.fn(),
     requireSession: vi.fn(),
     listAccountsPage: vi.fn(),
     listClientsPage: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock("@tanstack/react-start", () => ({
 
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapability: mocks.requireCapability,
+  loadRequestAuthorization: mocks.loadRequestAuthorization,
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
@@ -150,6 +152,18 @@ describe("paginated client server function", () => {
 describe("paginated lead server function", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.loadRequestAuthorization.mockResolvedValue({
+      actor: {
+        profileId: "user-1",
+        role: "sales",
+        status: "active",
+        managedDepartmentIds: [],
+        managedTeamIds: [],
+        directReportIds: [],
+      },
+      overrides: [],
+      now: new Date("2026-10-01T00:00:00Z"),
+    });
     mocks.requireCapability.mockResolvedValue({
       user: { id: "user-1" },
       profile: { id: "user-1", role: "sales", status: "active" },
@@ -168,7 +182,11 @@ describe("paginated lead server function", () => {
 
     await getPage({ data: leadPageData });
 
-    expect(mocks.requireCapability).toHaveBeenCalledWith("leads.view");
+    expect(mocks.requireCapability).toHaveBeenCalledWith(
+      "leads.view",
+      {},
+      await mocks.loadRequestAuthorization.mock.results[0].value,
+    );
     expect(mocks.requireSession).toHaveBeenCalledOnce();
     expect(mocks.listLeadsPage).toHaveBeenCalledWith(leadPageData);
     expect(mocks.requireCapability.mock.invocationCallOrder[0]).toBeLessThan(

@@ -56,7 +56,8 @@ import type { Lead } from "@/lib/types";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { normalizeQualificationData } from "@/lib/workflows/qualification";
 import { routeQueryOptions } from "@/lib/route-query";
-import { getLeadsPage, createLead } from "@/server-functions/leads";
+import { getLeadsPage, createLead, type LeadListItem } from "@/server-functions/leads";
+import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
 import { BulkActionBar } from "@/components/operations/bulk-action-bar";
 import { remainingBulkSelection } from "@/components/operations/bulk-results";
 import { BulkPreviewDialog } from "@/components/operations/bulk-preview-dialog";
@@ -131,7 +132,7 @@ function LeadsPage() {
       }),
       replace: true,
     });
-  const [rows, setRows] = useState<Lead[]>(loaderLeads);
+  const [rows, setRows] = useState<LeadListItem[]>(loaderLeads);
   useEffect(() => setRows(loaderLeads), [loaderLeads]);
   const [query, setQuery] = useState("");
   const status = search.status ?? "all";
@@ -144,8 +145,13 @@ function LeadsPage() {
     await queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.lists() });
     await router.invalidate({ filter: (match) => match.routeId === "/leads" });
   });
+  const canCreate = leadPage.can_create === true;
+  const writableIds = new Set(
+    rows.filter((lead) => lead.can_update === true).map((lead) => lead.id),
+  );
+  const selectedWritable = new Set([...selected].filter((id) => writableIds.has(id)));
   const applyToSelected = (action: BulkAction) =>
-    bulkOperation.prepare(action, Array.from(selected));
+    bulkOperation.prepare(action, Array.from(selectedWritable));
 
   const handleCreateLead = async (formData: {
     company_name: string;
@@ -154,6 +160,7 @@ function LeadsPage() {
     contact_name?: string;
     contact_email?: string;
   }) => {
+    if (!canCreate) return;
     await createLead({ data: formData });
     await queryClient.invalidateQueries({ queryKey: crmQueryKeys.leads.lists() });
     await router.invalidate({ filter: (match) => match.routeId === "/leads" });
@@ -194,7 +201,9 @@ function LeadsPage() {
     .filter(Boolean)
     .join(" · ");
 
-  const columns: ColumnDef<Lead>[] = [
+  const ownerName = (lead: LeadListItem) =>
+    lead.assigned_to ? (lead.owner_display_name ?? "Owner unavailable") : "Unassigned";
+  const columns: ColumnDef<LeadListItem>[] = [
     {
       id: "company",
       header: "Company",
@@ -248,7 +257,7 @@ function LeadsPage() {
       id: "owner",
       header: "Owner",
       priority: "tertiary",
-      cell: (lead) => <span className="text-sm">{lead.assigned_to ?? "Unassigned"}</span>,
+      cell: (lead) => <span className="text-sm">{ownerName(lead)}</span>,
     },
     {
       id: "suggestion",
@@ -275,7 +284,9 @@ function LeadsPage() {
         title="Lead Inbox"
         description={`${formatCount(leadPage.total)} leads. Status and source filter the whole pipeline; search and sort narrow only the ${formatCount(rows.length)} rows on this page.`}
         primaryAction={
-          <NewLeadDialog open={newOpen} onOpenChange={setNewOpen} onCreate={handleCreateLead} />
+          canCreate ? (
+            <NewLeadDialog open={newOpen} onOpenChange={setNewOpen} onCreate={handleCreateLead} />
+          ) : undefined
         }
         secondaryActions={[
           <Button key="import-csv" variant="outline" size="sm" asChild>
@@ -359,9 +370,10 @@ function LeadsPage() {
             />
           </Card>
 
-          {selected.size > 0 && (
+          {selectedWritable.size > 0 && (
             <LeadsBulkBar
-              count={selected.size}
+              count={selectedWritable.size}
+              resourceId={Array.from(selectedWritable)[0]}
               busy={bulkOperation.busy}
               onAssign={(uid) => applyToSelected({ type: "lead.assign", profileId: uid })}
               onMarkStatus={(nextStatus) =>
@@ -399,29 +411,41 @@ function LeadsPage() {
                 title="No leads yet"
                 description="Leads arrive from the website, campaigns and inbound email. Add one to keep the sales queue moving."
                 action={
-                  <Button size="sm" variant="outline" onClick={() => setNewOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" aria-hidden="true" /> New lead
-                  </Button>
+                  canCreate ? (
+                    <Button size="sm" variant="outline" onClick={() => setNewOpen(true)}>
+                      <Plus className="mr-2 h-4 w-4" aria-hidden="true" /> New lead
+                    </Button>
+                  ) : undefined
                 }
               />
             )
           ) : (
             <ResponsiveRecordList
+              breakpoint="container"
               caption="Leads"
               columns={columns}
               rows={filtered}
               rowKey={(lead) => lead.id}
               rowHref={(lead) => `/leads/${lead.id}`}
-              selection={{
-                selected,
-                onChange: (next) => {
-                  if (next.size > 100) {
-                    toast.error("Select at most 100 leads per bulk operation.");
-                    return;
-                  }
-                  setSelected(next);
-                },
-              }}
+              selection={
+                writableIds.size > 0 || selected.size > 0
+                  ? {
+                      selected,
+                      isRowSelectable: (lead) => lead.can_update === true,
+                      onChange: (next) => {
+                        if (next.size > 100) {
+                          toast.error("Select at most 100 leads per bulk operation.");
+                          return;
+                        }
+                        setSelected(
+                          new Set(
+                            [...next].filter((id) => selected.has(id) || writableIds.has(id)),
+                          ),
+                        );
+                      },
+                    }
+                  : undefined
+              }
               renderCard={(lead) => (
                 <div className="space-y-1">
                   <div className="flex items-start justify-between gap-2">
@@ -435,6 +459,7 @@ function LeadsPage() {
                     Score {lead.lead_score} ·{" "}
                     {lead.source ? sourceLabel(lead.source) : "Unknown source"}
                   </p>
+                  <p className="text-xs text-muted-foreground">Owner: {ownerName(lead)}</p>
                 </div>
               )}
             />
@@ -616,12 +641,14 @@ function NewLeadDialog({
 
 function LeadsBulkBar({
   count,
+  resourceId,
   busy,
   onAssign,
   onMarkStatus,
   onClear,
 }: {
   count: number;
+  resourceId: string;
   busy: boolean;
   onAssign: (uid: string) => Promise<boolean>;
   onMarkStatus: (s: "qualified" | "lost") => Promise<boolean>;
@@ -658,7 +685,7 @@ function LeadsBulkBar({
     // `assigned_to` is `text references profiles(id)`, so an empty string is an FK
     // violation, not a "clear the owner". The write is not attempted without a value.
     if (owner === "") {
-      toast.error("Enter the owner's user ID before assigning.");
+      toast.error("Select an owner before assigning.");
       return;
     }
     // Awaited before the dialog closes: it used to `void` the promise and close
@@ -728,25 +755,16 @@ function LeadsBulkBar({
               Assign {formatCount(count)} lead{count > 1 ? "s" : ""}
             </DialogTitle>
             <DialogDescription>
-              Owners are identified by their user ID. There is no owner picker yet, so the ID has to
-              be pasted; reassignment is logged.
+              Select an eligible owner by name. Reassignment is logged.
             </DialogDescription>
           </DialogHeader>
-          <div>
-            <Label htmlFor="owner-uuid" className="text-xs">
-              Owner user ID
-            </Label>
-            <Input
-              id="owner-uuid"
-              name="owner-uuid"
-              autoComplete="off"
-              spellCheck={false}
-              className="mt-1"
-              placeholder="Paste the owner's user ID…"
-              value={assignee}
-              onChange={(e) => setAssignee(e.target.value)}
-            />
-          </div>
+          <ProfileSearchCombobox
+            purpose="lead_assign"
+            label="Owner"
+            value={assignee}
+            onChange={setAssignee}
+            resourceId={resourceId}
+          />
           <DialogFooter>
             <Button variant="outline" disabled={busy} onClick={() => setAssignOpen(false)}>
               Cancel
