@@ -671,45 +671,90 @@ module.exports = async function verifyBoundaries({
         p,
         (r) => r.request().method() === "POST" && r.request().postData()?.includes("previewToken"),
       );
+      const steps = [];
+      let started = performance.now();
       await dialog.getByRole("button", { name: "Process first 20", exact: true }).click();
       const res = await wait;
+      const firstDurationMs = performance.now() - started;
       assert(!failed(await res.text(), res.status()));
-      await p.getByText(/20 of 21 processed; 20 succeeded; 0 need review/).waitFor();
+      const originalRequest = capture(res);
+      fs.writeFileSync(
+        path.join(dir, "bulk-original-request.private.json"),
+        JSON.stringify(originalRequest),
+      );
+      await p.getByRole("button", { name: "Resume", exact: true }).waitFor();
       const saved = await p.evaluate(() => sessionStorage.getItem("clientops:bulk:approvals"));
       assert(saved);
       const operationId = JSON.parse(saved.startsWith("{") ? saved : JSON.stringify(saved));
       assert.equal(typeof operationId, "string");
-      const original = (
-        await pool.query("select id,state,commit_key from bulk_operations where id=$1", [
-          operationId,
-        ])
-      ).rows[0];
-      assert.equal(original.state, "paused");
-      assert(original.commit_key);
+      const receipt = async () => ({
+        operation: (await pool.query("select * from bulk_operations where id=$1", [operationId]))
+          .rows[0],
+        items: (
+          await pool.query(
+            "select * from bulk_operation_items where operation_id=$1 order by position",
+            [operationId],
+          )
+        ).rows,
+      });
+      const progress = async (durationMs) => {
+        const state = await receipt();
+        assert.equal(state.items.length, 21);
+        assert(state.items.every((x) => x.status === null || x.status === "succeeded"));
+        const processed = state.items.filter((x) => x.status === "succeeded").length;
+        const previous = steps.at(-1)?.processed ?? 0;
+        assert(
+          processed > previous && processed - previous <= 20,
+          "Actual bounded chunk must advance by 1–20 items",
+        );
+        assert.equal(state.operation.state, processed === 21 ? "completed" : "paused");
+        await p
+          .getByText(processed + " of 21 processed; " + processed + " succeeded; 0 need review", {
+            exact: true,
+          })
+          .waitFor();
+        steps.push({ processed, delta: processed - previous, durationMs });
+        fs.writeFileSync(
+          path.join(dir, "bulk-progress.private.json"),
+          JSON.stringify({ operationId, steps, state: state.operation.state }),
+        );
+        return state;
+      };
+      const original = await progress(firstDurationMs);
+      assert(original.operation.commit_key);
+      assert.equal(original.operation.state, "paused");
       await p.reload();
       await p.getByRole("button", { name: "Resume", exact: true }).waitFor();
-      const resume = p.waitForRequest(
-        (r) => r.method() === "POST" && r.postData()?.includes(operationId),
+      assert.equal(
+        await p.evaluate(() => sessionStorage.getItem("clientops:bulk:approvals")),
+        operationId,
       );
-      await p.getByRole("button", { name: "Resume", exact: true }).click();
-      const req = await resume;
-      assert(req.postData().includes(operationId));
-      await p.getByText(/21 of 21 processed; 21 succeeded; 0 need review/).waitFor();
-      const final = (
-        await pool.query("select id,state,commit_key from bulk_operations where id=$1", [
-          operationId,
-        ])
-      ).rows[0];
-      assert.equal(final.state, "completed");
-      assert.equal(final.commit_key, original.commit_key);
+      let final = original;
+      for (let step = 0; final.operation.state !== "completed" && step < 21; step++) {
+        const resumeResponse = observeResponse(
+          p,
+          (r) => r.request().method() === "POST" && r.request().postData()?.includes(operationId),
+        );
+        started = performance.now();
+        await p.getByRole("button", { name: "Resume", exact: true }).click();
+        const response = await resumeResponse;
+        const durationMs = performance.now() - started;
+        assert(response.request().postData().includes(operationId));
+        assert(!failed(await response.text(), response.status()));
+        final = await progress(durationMs);
+        assert.equal(final.operation.id, operationId);
+        assert.equal(final.operation.commit_key, original.operation.commit_key);
+      }
+      assert.equal(final.operation.state, "completed");
       assert.equal(
         await p.evaluate(() => sessionStorage.getItem("clientops:bulk:approvals")),
         operationId,
       );
       const committed = await Promise.all(bulk.map(snapshot));
-      const replay = await nativeReplay(p, capture(res), "bulk-original-commit-key-replay");
+      const replay = await nativeReplay(p, originalRequest, "bulk-original-commit-key-replay");
       assert(!replay.error);
       assert.deepEqual(await Promise.all(bulk.map(snapshot)), committed);
+      assert.deepEqual(await receipt(), final);
       for (const f of bulk) assert.equal((await snapshot(f)).approval.row_version, 1);
       await p.screenshot({
         path: path.join(dir, "retained-original-bulk-resume.png"),
@@ -717,7 +762,11 @@ module.exports = async function verifyBoundaries({
       });
       report.neighbors.bulk = {
         items: 21,
-        firstStep: 20,
+        firstStep: steps[0].processed,
+        steps,
+        completed: true,
+        boundedChunksObserved: true,
+        fullReceiptReplayUnchanged: true,
         originalReceiptRetainedAfterReload: true,
         originalCommitKeyPreserved: true,
         originalCommitReplayUnchanged: true,
