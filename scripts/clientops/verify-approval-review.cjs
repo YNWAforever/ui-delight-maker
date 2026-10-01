@@ -180,7 +180,14 @@
       body: q.postData(),
       headers: Object.fromEntries(
         Object.entries(q.headers()).filter(([k]) =>
-          ["accept", "content-type", "x-tsr-serverfn"].includes(k),
+          [
+            "accept",
+            "content-type",
+            "x-tsr-serverfn",
+            "origin",
+            "referer",
+            "sec-fetch-site",
+          ].includes(k),
         ),
       ),
     };
@@ -211,6 +218,7 @@
     };
     template = JSON.parse(fs.readFileSync(capturedTemplate));
     assert.equal(new URL(template.url).origin, new URL(target).origin);
+    assert.equal(new URL(template.headers.origin).origin, new URL(target).origin);
   }
   const build = async () =>
     assert.equal(

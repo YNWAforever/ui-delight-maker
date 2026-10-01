@@ -18,7 +18,16 @@ module.exports = async function verifyBoundaries({
   report.boundaries = [];
   report.neighbors = {};
   const grants = [];
-  const failed = (raw, status = 200) => status >= 400 || /\$TSR\/Error/.test(raw);
+  const failed = (raw, status = 200) => {
+    if (status >= 400 || /\$TSR\/Error/.test(raw)) return true;
+    const encoded = JSON.parse(raw);
+    const root = encoded.p;
+    assert(Array.isArray(root?.k) && Array.isArray(root?.v), "Actual response envelope required");
+    const index = root.k.indexOf("error");
+    assert(index >= 0, "Actual response error field required");
+    const error = root.v[index];
+    return !(error?.t === 2 && [0, 1].includes(error.s));
+  };
   const snapshot = async (f) => ({
     approval: (
       await pool.query(
@@ -78,6 +87,11 @@ module.exports = async function verifyBoundaries({
   }
   async function direct(ctx, request, label) {
     assert.equal(new URL(request.url).origin, new URL(target).origin);
+    assert.equal(
+      new URL(request.headers.origin).origin,
+      new URL(target).origin,
+      "Captured same-origin browser headers required",
+    );
     const response = await ctx.request.post(request.url, {
       headers: request.headers,
       data: request.body,
