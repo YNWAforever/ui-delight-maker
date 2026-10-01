@@ -9,7 +9,20 @@
   const root = ".clientops-perf/uat",
     dir = root + "/native-queue-polling/" + Date.now(),
     base = "http://localhost:5199",
-    sha = process.argv[2];
+    sha = process.argv[2],
+    nativeChannel = process.argv[3] ?? "chromium";
+  a(["chromium", "chrome"].includes(nativeChannel), "Use a known installed native browser channel");
+  const browserExecutable =
+    nativeChannel === "chrome"
+      ? path.join(
+          process.env.ProgramFiles ?? "C:\\Program Files",
+          "Google",
+          "Chrome",
+          "Application",
+          "chrome.exe",
+        )
+      : chromium.executablePath();
+  a(fs.existsSync(browserExecutable), "Selected native executable must already be installed");
   a.match(
     sha || "",
     /^[0-9a-f]{40}$/,
@@ -58,6 +71,8 @@
     startedAt: new Date().toISOString(),
     success: false,
     role: "manager",
+    nativeChannel,
+    sandboxDisabled: false,
     cases: [],
     responses: [],
     allServerRequests: [],
@@ -92,7 +107,7 @@
     fs.mkdirSync(profile, { recursive: true });
     logFd = fs.openSync(dir + "/chrome.private.log", "a");
     child = cp.spawn(
-      chromium.executablePath(),
+      browserExecutable,
       [
         "--remote-debugging-port=0",
         "--remote-debugging-address=127.0.0.1",
@@ -119,6 +134,18 @@
     p = ctx.pages()[0];
     cdp = await ctx.newCDPSession(p);
     report.browser = await cdp.send("Browser.getVersion");
+    stage = "native foreground before app mount";
+    const initialWindow = await cdp.send("Browser.getWindowForTarget");
+    await cdp.send("Browser.setWindowBounds", {
+      windowId: initialWindow.windowId,
+      bounds: { windowState: "normal" },
+    });
+    await p.bringToFront();
+    await p.waitForFunction(() => document.visibilityState === "visible");
+    report.foregroundBeforeAppMount = await p.evaluate(() => ({
+      visibility: document.visibilityState,
+      hasFocus: document.hasFocus(),
+    }));
     stage = "own-manager-binding";
     a.equal(
       (await (await ctx.request.get(base + "/api/auth/get-session")).json()).user.id,
@@ -182,6 +209,10 @@
     await p.getByRole("heading", { name: "Approval Desk", exact: true }).waitFor();
     await p.waitForLoadState("networkidle");
     await Promise.all(pending);
+    report.foregroundAfterAppMount = await p.evaluate(() => ({
+      visibility: document.visibilityState,
+      hasFocus: document.hasFocus(),
+    }));
     await p.evaluate(() => {
       window.__clientopsVisibilityEvidence = [];
       document.addEventListener("visibilitychange", () =>

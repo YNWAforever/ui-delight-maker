@@ -21,7 +21,7 @@ export const Route = createFileRoute("/quotes/$id_/pdf")({
  * "Immutable quote snapshot is missing or malformed" and any Neon driver text — into the
  * page body.
  */
-function QuotePdfError({ error, reset }: { error: Error; reset: () => void }) {
+function QuotePdfError({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
 

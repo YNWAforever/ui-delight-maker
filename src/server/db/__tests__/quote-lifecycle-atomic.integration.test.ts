@@ -4,7 +4,7 @@ import { Pool, type PoolClient, types as pgTypes } from "pg";
 import type { Queryable } from "@/server/db/neon.server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-const holder = vi.hoisted(() => ({ pool: null as Pool | null }));
+const holder = vi.hoisted(() => ({ pool: null as Pool | null, connectionPids: new Set<number>() }));
 vi.mock("@/server/db/neon.server", () => ({
   query: async <T>(text: string, values: readonly unknown[] = [], db?: Queryable): Promise<T[]> =>
     (await (db ?? holder.pool!).query(text, [...values])).rows as T[],
@@ -18,6 +18,7 @@ vi.mock("@/server/db/neon.server", () => ({
     const client = await holder.pool!.connect();
     try {
       await client.query("begin");
+      holder.connectionPids.add((await client.query("select pg_backend_pid() as pid")).rows[0].pid);
       const result = await work(client as unknown as Queryable);
       await client.query("commit");
       return result;
@@ -38,9 +39,11 @@ import {
   acceptQuoteInTransaction,
   approveAndIssueQuoteCommand,
   decideQuoteSendInTransaction,
+  decideQuoteSendCommand,
   issueQuoteInTransaction,
   requestQuoteApprovalInTransaction,
 } from "@/server/commands/quote-lifecycle.server";
+import { assignApproval } from "@/server/repositories/approvals";
 import type { RequestAuthorization } from "@/server/auth/authorization.server";
 import type { AppSession } from "@/lib/auth/neon-auth.server";
 
@@ -88,12 +91,18 @@ async function seedQuote(
   return id;
 }
 
-async function seedApproval(db: PoolClient | Pool, quoteId: string, owner: string, status: string) {
+async function seedApproval(
+  db: PoolClient | Pool,
+  quoteId: string,
+  owner: string,
+  status: string,
+  version = 0,
+) {
   const quote = (await db.query("select * from quotes where id=$1", [quoteId])).rows[0];
   const result = await db.query(
     `insert into human_approvals
-       (approval_type,status,requested_by,assigned_to,context_data)
-     values ('quote_send',$1,$2,$2,$3::jsonb) returning id`,
+       (approval_type,status,requested_by,assigned_to,context_data,row_version)
+     values ('quote_send',$1,$2,$2,$3::jsonb,$4) returning id`,
     [
       status,
       owner,
@@ -103,6 +112,7 @@ async function seedApproval(db: PoolClient | Pool, quoteId: string, owner: strin
         total_value: quote.total_value,
         currency: quote.currency,
       }),
+      version,
     ],
   );
   return result.rows[0].id as string;
@@ -574,4 +584,156 @@ describe("atomic quote lifecycle on isolated PostgreSQL", () => {
       ).rows[0].n,
     ).toBe(1);
   });
+
+  async function rejectionState(id: string, approvalId: string, keys: string[]) {
+    return {
+      quote: (await holder.pool!.query("select * from quotes where id=$1", [id])).rows,
+      approval: (
+        await holder.pool!.query(
+          "select status,row_version,assigned_to,reviewer_notes,decided_at from human_approvals where id=$1",
+          [approvalId],
+        )
+      ).rows,
+      audits: (
+        await holder.pool!.query(
+          "select * from activity_logs where object_type='approval' and object_id=$1 order by id",
+          [approvalId],
+        )
+      ).rows,
+      receipts: (
+        await holder.pool!.query(
+          "select * from command_receipts where idempotency_key=any($1::text[]) order by id",
+          [keys],
+        )
+      ).rows,
+      issued: (await holder.pool!.query("select id from quote_versions where quote_id=$1", [id]))
+        .rows,
+    };
+  }
+
+  it.runIf(hasDatabase)(
+    "replays version7 quote rejection without a second audit/receipt/version or issuance",
+    async () => {
+      const id = await seedQuote(holder.pool!, managerId, "pending_approval"),
+        approvalId = await seedApproval(holder.pool!, id, managerId, "pending", 7);
+      expect(
+        (
+          await holder.pool!.query("select row_version from human_approvals where id=$1", [
+            approvalId,
+          ])
+        ).rows[0].row_version,
+      ).toBe(7);
+      const input = {
+        id,
+        approvalId,
+        decision: "rejected" as const,
+        expectedVersion: 7,
+        idempotencyKey: randomUUID(),
+        notes: "Scope needs revision",
+      };
+      const first = await decideQuoteSendCommand(context(managerId, "manager"), input);
+      const before = await rejectionState(id, approvalId, [input.idempotencyKey]);
+      const replay = await decideQuoteSendCommand(context(managerId, "manager"), input);
+      expect(JSON.parse(JSON.stringify(replay))).toEqual(JSON.parse(JSON.stringify(first)));
+      expect(await rejectionState(id, approvalId, [input.idempotencyKey])).toEqual(before);
+      expect(before.approval[0]).toMatchObject({
+        status: "rejected",
+        row_version: 8,
+        reviewer_notes: "Scope needs revision",
+      });
+      expect(before.quote[0]).toMatchObject({ status: "rejected", issued_version_id: null });
+      expect(before.audits).toHaveLength(1);
+      expect(before.receipts).toHaveLength(1);
+      expect(before.issued).toHaveLength(0);
+      await expect(
+        decideQuoteSendCommand(context(managerId, "manager"), {
+          ...input,
+          notes: "Different payload",
+        }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+      expect(await rejectionState(id, approvalId, [input.idempotencyKey])).toEqual(before);
+    },
+  );
+
+  it.runIf(hasDatabase)(
+    "stale quote reject7 after assignment8 writes no quote/approval/audit/receipt",
+    async () => {
+      const id = await seedQuote(holder.pool!, managerId, "pending_approval"),
+        approvalId = await seedApproval(holder.pool!, id, managerId, "pending", 7);
+      expect(
+        (
+          await holder.pool!.query("select row_version from human_approvals where id=$1", [
+            approvalId,
+          ])
+        ).rows[0].row_version,
+      ).toBe(7);
+      const assigned = await assignApproval(
+        { id: approvalId, assignedTo: actorId, expectedVersion: 7 },
+        context(actorId, "admin"),
+      );
+      expect(assigned.row_version).toBe(8);
+      const key = randomUUID(),
+        before = await rejectionState(id, approvalId, [key]);
+      await expect(
+        decideQuoteSendCommand(context(actorId, "admin"), {
+          id,
+          approvalId,
+          decision: "rejected",
+          expectedVersion: 7,
+          idempotencyKey: key,
+        }),
+      ).rejects.toMatchObject({ code: "STALE_ADMIN_STATE" });
+      expect(await rejectionState(id, approvalId, [key])).toEqual(before);
+      expect(before.approval[0]).toMatchObject({
+        status: "pending",
+        row_version: 8,
+        assigned_to: actorId,
+      });
+      expect(before.quote[0].status).toBe("pending_approval");
+      expect(before.issued).toHaveLength(0);
+    },
+  );
+
+  it.runIf(hasDatabase)(
+    "two distinct PostgreSQL backends permit only one opposed version7 quote decision",
+    async () => {
+      const id = await seedQuote(holder.pool!, managerId, "pending_approval"),
+        approvalId = await seedApproval(holder.pool!, id, managerId, "pending", 7);
+      expect(
+        (
+          await holder.pool!.query("select row_version from human_approvals where id=$1", [
+            approvalId,
+          ])
+        ).rows[0].row_version,
+      ).toBe(7);
+      const keys = [randomUUID(), randomUUID()];
+      holder.connectionPids.clear();
+      const results = await Promise.allSettled([
+        decideQuoteSendCommand(context(managerId, "manager"), {
+          id,
+          approvalId,
+          decision: "approved",
+          expectedVersion: 7,
+          idempotencyKey: keys[0],
+        }),
+        decideQuoteSendCommand(context(actorId, "admin"), {
+          id,
+          approvalId,
+          decision: "rejected",
+          expectedVersion: 7,
+          idempotencyKey: keys[1],
+        }),
+      ]);
+      expect(holder.connectionPids.size).toBe(2);
+      expect(results.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+      expect(results.filter((x) => x.status === "rejected")).toHaveLength(1);
+      const after = await rejectionState(id, approvalId, keys);
+      expect(["approved", "rejected"]).toContain(after.approval[0].status);
+      expect(after.quote[0].status).toBe(after.approval[0].status);
+      expect(after.approval[0].row_version).toBe(8);
+      expect(after.audits).toHaveLength(1);
+      expect(after.receipts).toHaveLength(1);
+      expect(after.issued).toHaveLength(0);
+    },
+  );
 });

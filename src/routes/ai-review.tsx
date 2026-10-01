@@ -34,22 +34,17 @@ import { useClientNow } from "@/hooks/use-client-now";
 import { agentSlugForDisplayName } from "@/lib/agents";
 import { ROLE_GRANTS } from "@/lib/admin/policy";
 import type { Capability } from "@/lib/admin/types";
-import {
-  approvalProposedAction,
-  approvalRejectionEffect,
-  approvalTypeLabel,
-} from "@/lib/approval-types";
+import { approvalProposedAction, approvalTypeLabel } from "@/lib/approval-types";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatDateTime, formatPercent, relativeTime } from "@/lib/format";
-import { getOperationalMutationKeys } from "@/lib/operational-invalidation";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { getStatusLabel } from "@/lib/status-labels";
 import { cn } from "@/lib/utils";
 import type { AgentDirectoryRunSummary, AiReviewRead } from "@/server-functions/agent-runs";
 import { getAiReviewRead } from "@/server-functions/agent-runs";
-import { decideApproval, getLastReviewedAtFn } from "@/server-functions/approvals";
-import { approveQuote, rejectQuote } from "@/server-functions/quotes";
+import { getLastReviewedAtFn } from "@/server-functions/approvals";
+import { useApprovalReview } from "@/components/approvals/use-approval-review";
 
 /**
  * The redacted shape `loadAiReviewRead` returns — `SerializableHumanApproval` plus
@@ -206,10 +201,10 @@ function AiReviewPage() {
    * reads as "did that work?" rather than as "done". The record is written here only after the
    * server confirms, so nothing on screen is ever a status the database did not take.
    */
-  const [decided, setDecided] = useState<ReadonlyMap<string, Approval>>(new Map());
+  const review = useApprovalReview({ kind: "ai-review" });
+  const decided = review.confirmed;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
-  const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [confirm, setConfirm] = useState<null | {
     title: string;
@@ -230,10 +225,38 @@ function AiReviewPage() {
   const queue = useMemo(() => {
     const merged = new Map<string, Approval>();
     for (const approval of data.approvals) {
-      merged.set(approval.id, decided.get(approval.id) ?? approval);
+      const saved = decided.get(approval.id);
+      const retained = saved && saved.row_version >= approval.row_version;
+      // A read can withdraw content without erasing a confirmed decision from this session.
+      merged.set(
+        approval.id,
+        retained
+          ? approval.subject_restricted
+            ? {
+                ...approval,
+                status: saved.status,
+                row_version: saved.row_version,
+                decided_at: saved.decided_at,
+                context_data: null,
+                context_summary: null,
+                reviewer_notes: null,
+              }
+            : {
+                ...approval,
+                ...saved,
+                context_data: saved.context_data ?? null,
+                subject_restricted: saved.subject_restricted === true,
+              }
+          : approval,
+      );
     }
     for (const [id, approval] of decided) {
-      if (!merged.has(id)) merged.set(id, approval);
+      if (!merged.has(id))
+        merged.set(id, {
+          ...approval,
+          context_data: approval.context_data ?? null,
+          subject_restricted: approval.subject_restricted === true,
+        });
     }
     return [...merged.values()].sort((left, right) =>
       right.created_at.localeCompare(left.created_at),
@@ -248,7 +271,7 @@ function AiReviewPage() {
   const selected =
     queue.find((approval) => approval.id === selectedId) ?? pendingQueue[0] ?? queue[0] ?? null;
 
-  const isSubmitting = submittingId !== null;
+  const isSubmitting = review.busy;
 
   const roleGrants = profile?.role ? ROLE_GRANTS[profile.role] : null;
   /**
@@ -295,103 +318,52 @@ function AiReviewPage() {
 
   const refreshBusy = refreshing || queueQuery.isFetching;
 
-  /** Quote-send decisions update the approval and quote in one server transaction. */
-  const runDecision = async (approval: Approval, decision: Decision) => {
-    const trimmed = notes.trim() || undefined;
-    const quoteId = approval.approval_type === "quote_send" ? linkedRecord(approval) : null;
-
-    if (approval.approval_type === "quote_send" && quoteId?.kind !== "quote") {
-      throw new Error("This quote-send approval is missing its quote reference.");
-    }
-
-    if (approval.approval_type === "quote_send" && quoteId?.kind === "quote") {
-      if (decision === "approved") {
-        await approveQuote({
-          data: {
-            id: quoteId.id,
-            approvalId: approval.id,
-            expectedVersion: approval.row_version,
-            idempotencyKey: crypto.randomUUID(),
-            ...(trimmed ? { notes: trimmed } : {}),
-          },
-        });
-        return;
-      }
-      if (decision === "rejected") {
-        await rejectQuote({
-          data: { id: quoteId.id, approvalId: approval.id, ...(trimmed ? { notes: trimmed } : {}) },
-        });
-        return;
-      }
-    }
-
-    await decideApproval({
-      data: {
-        id: approval.id,
-        decision,
-        notes: trimmed,
-        expectedVersion: approval.row_version,
-        idempotencyKey: crypto.randomUUID(),
-      },
+  const showDecision = (approval: Approval, decision: Decision, blockedReason: string | null) => {
+    const preparation = review.prepare({
+      record: approval,
+      decision,
+      notes,
+      availability: { blockedReason },
     });
-  };
-
-  const decide = (approval: Approval, decision: Decision) => {
-    // The in-flight lock is checked before anything else, so a second click while the first
-    // write is open cannot re-enter — and every action is disabled for the duration anyway.
-    if (submittingId) return;
-    setSubmittingId(approval.id);
-
+    if (preparation.kind === "blocked") {
+      toast.error(preparation.reason);
+      return;
+    }
     const nextIndex = pendingQueue.findIndex((item) => item.id === approval.id);
     const nextPending =
       nextIndex === -1
         ? (pendingQueue.find((item) => item.id !== approval.id) ?? null)
         : (pendingQueue[nextIndex + 1] ?? pendingQueue[nextIndex - 1] ?? null);
-
-    void (async () => {
-      try {
-        await runDecision(approval, decision);
-
-        setDecided((current) => {
-          const next = new Map(current);
-          next.set(approval.id, {
-            ...approval,
-            status: decision,
-            reviewer_notes: notes.trim() || null,
-            decided_at: new Date().toISOString(),
-          });
-          return next;
-        });
-        setSelectedId(nextPending?.id ?? approval.id);
-        setNotes("");
-
-        await Promise.all(
-          [
-            ...getOperationalMutationKeys({ type: "approval-decision", id: approval.id }),
-            // `decideApproval` also completes the agent run that was parked on this approval
-            // (`update agent_runs set status='completed'`), so every agent surface is stale
-            // until this key is invalidated too. Only `/approvals` did this before.
-            crmQueryKeys.agents.all(),
-          ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-        );
-
-        toast.success(
-          decision === "approved"
-            ? approval.approval_type === "quote_send"
-              ? "Quote approved. Issuance is a separate step."
-              : approval.approval_type === "message_send"
-                ? "Draft approved. Copy it in Approvals for manual sending; no delivery is confirmed."
-                : "Approved — recorded and the agent run released"
-            : decision === "rejected"
-              ? "Rejected — recorded and the agent run released"
-              : "Changes requested",
-        );
-      } catch (error) {
-        toast.error(toSafeErrorMessage(error));
-      } finally {
-        setSubmittingId(null);
-      }
-    })();
+    setConfirm({
+      ...preparation,
+      action: () => {
+        void preparation
+          .confirm()
+          .then((outcome) => {
+            if (outcome.kind === "busy") return;
+            if (outcome.kind !== "recorded") {
+              toast.error(outcome.message);
+              return;
+            }
+            setSelectedId(nextPending?.id ?? approval.id);
+            setNotes("");
+            toast.success(
+              decision === "approved"
+                ? approval.approval_type === "quote_send"
+                  ? "Quote approved. Issuance is a separate step."
+                  : approval.approval_type === "message_send"
+                    ? "Draft approved. Copy it in Approvals for manual sending; no delivery is confirmed."
+                    : "Approved — recorded and the agent run released"
+                : decision === "rejected"
+                  ? "Rejected — recorded and the agent run released"
+                  : "Changes requested",
+            );
+            if (outcome.refreshFailed)
+              toast.message("Decision recorded. Refresh to see the latest queue.");
+          })
+          .catch((error) => toast.error(toSafeErrorMessage(error)));
+      },
+    });
   };
 
   const totals = useMemo(() => {
@@ -675,15 +647,7 @@ function AiReviewPage() {
             size="sm"
             disabled={busy || Boolean(decideDenied)}
             aria-describedby={decideDenied ? DECIDE_DENIED_ID : undefined}
-            onClick={() =>
-              setConfirm({
-                title: "Request changes on this request?",
-                description:
-                  "The request is marked Needs attention with your reviewer notes, and the agent run stays parked until a new approval is raised from the record itself.",
-                label: "Request changes",
-                action: () => decide(approval, "escalated"),
-              })
-            }
+            onClick={() => showDecision(approval, "escalated", decideDenied)}
           >
             <AlertTriangle className="mr-2 h-4 w-4" aria-hidden="true" /> Request changes
           </Button>
@@ -692,14 +656,7 @@ function AiReviewPage() {
             size="sm"
             disabled={busy || Boolean(rejectBlocked)}
             aria-describedby={rejectBlocked ? DECIDE_DENIED_ID : undefined}
-            onClick={() =>
-              setConfirm({
-                title: isQuoteSend ? "Reject this quote send?" : "Reject this request?",
-                description: approvalRejectionEffect(approval.approval_type),
-                label: "Reject",
-                action: () => decide(approval, "rejected"),
-              })
-            }
+            onClick={() => showDecision(approval, "rejected", rejectBlocked)}
           >
             <XCircle className="mr-2 h-4 w-4" aria-hidden="true" /> Reject
           </Button>
@@ -707,17 +664,10 @@ function AiReviewPage() {
             size="sm"
             disabled={busy || Boolean(approveBlocked)}
             aria-describedby={approveBlocked ? DECIDE_DENIED_ID : undefined}
-            onClick={() =>
-              setConfirm({
-                title: isQuoteSend ? "Approve this quote?" : "Approve this request?",
-                description: approvalProposedAction(approval.approval_type),
-                label: "Approve",
-                action: () => decide(approval, "approved"),
-              })
-            }
+            onClick={() => showDecision(approval, "approved", approveBlocked)}
           >
             <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
-            {busy && submittingId === approval.id ? "Recording…" : "Approve"}
+            {busy && review.decidingIds.has(approval.id) ? "Recording…" : "Approve"}
           </Button>
         </div>
         {reasons.length > 0 && (

@@ -66,7 +66,7 @@ function NotFoundComponent() {
  * with a generic, actionable one. The full value still reaches `console.error` above, where
  * it belongs.
  */
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   return (

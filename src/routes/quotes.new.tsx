@@ -92,7 +92,7 @@ export const Route = createFileRoute("/quotes/new")({
  * which renders `error.message` into the page body verbatim. Every string `ErrorState`
  * paints goes through `toSafeErrorMessage` first.
  */
-function QuoteBuilderErrorBoundary({ error, reset }: { error: Error; reset: () => void }) {
+function QuoteBuilderErrorBoundary({ error, reset }: { error: unknown; reset: () => void }) {
   const router = useRouter();
 
   return (

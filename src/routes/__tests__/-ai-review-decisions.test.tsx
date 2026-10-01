@@ -2,7 +2,7 @@
 
 import type { ComponentType, ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { crmQueryKeys } from "@/lib/query-keys";
@@ -26,6 +26,7 @@ import type { SerializableHumanApproval } from "@/lib/serializable";
 const {
   decideApprovalMock,
   getLastReviewedAtMock,
+  getApprovalDetailMock,
   approveQuoteMock,
   rejectQuoteMock,
   routerInvalidateMock,
@@ -34,6 +35,7 @@ const {
 } = vi.hoisted(() => ({
   decideApprovalMock: vi.fn(),
   getLastReviewedAtMock: vi.fn(),
+  getApprovalDetailMock: vi.fn(),
   approveQuoteMock: vi.fn(),
   rejectQuoteMock: vi.fn(),
   routerInvalidateMock: vi.fn(),
@@ -59,6 +61,7 @@ vi.mock("sonner", () => ({
 vi.mock("@/server-functions/agent-runs", () => ({ getAiReviewRead: vi.fn() }));
 vi.mock("@/server-functions/approvals", () => ({
   getLastReviewedAtFn: getLastReviewedAtMock,
+  getApprovalDetailFn: getApprovalDetailMock,
   decideApproval: decideApprovalMock,
 }));
 vi.mock("@/server-functions/quotes", () => ({
@@ -87,7 +90,7 @@ const approval = (
   requested_by: "Reply Draft Agent",
   assigned_to: null,
   status: "pending",
-  row_version: 0,
+  row_version: 7,
   superseded_by: null,
   context_data: { lead_id: "lead-1", confidence_score: 0.82, risk_notes: ["Unverified budget"] },
   context_summary: "Reply drafted for Northstar",
@@ -110,7 +113,11 @@ const quoteSend = approval({
   id: "ap-quote",
   approval_type: "quote_send",
   requested_by: "Quote Draft Agent",
-  context_data: { lead_id: "lead-1", quote_id: "q-1", confidence_score: 0.9 },
+  context_data: {
+    lead_id: "lead-1",
+    quote_id: "22222222-2222-4222-8222-222222222222",
+    confidence_score: 0.9,
+  },
   context_summary: "Send QT-1042 to Northstar",
 });
 
@@ -129,14 +136,14 @@ const run = {
 
 function renderQueue(
   approvals: SerializableHumanApproval[],
-  options: { role?: string; runs?: unknown[] } = {},
+  options: { role?: string | null; runs?: unknown[] } = {},
 ) {
   vi.mocked(Route.useLoaderData).mockReturnValue({
     approvals,
     humanReviewRuns: options.runs ?? [run],
   } as never);
   vi.mocked(Route.useRouteContext).mockReturnValue({
-    profile: { id: "user-1", role: options.role ?? "manager" },
+    profile: options.role === null ? null : { id: "user-1", role: options.role ?? "manager" },
   } as never);
 
   const queryClient = new QueryClient({
@@ -169,9 +176,31 @@ const tableRowText = () =>
   [...document.querySelectorAll("tbody tr")].map((row) => row.textContent ?? "");
 
 beforeEach(() => {
-  decideApprovalMock.mockReset().mockResolvedValue(undefined);
-  approveQuoteMock.mockReset().mockResolvedValue(undefined);
-  rejectQuoteMock.mockReset().mockResolvedValue(undefined);
+  decideApprovalMock.mockReset().mockImplementation(async ({ data }) =>
+    approval({
+      id: data.id,
+      status: data.decision,
+      row_version: data.expectedVersion + 1,
+      reviewer_notes: data.notes ?? null,
+      decided_at: "2026-08-02T10:00:00.000Z",
+    }),
+  );
+  approveQuoteMock.mockReset().mockResolvedValue({
+    id: "22222222-2222-4222-8222-222222222222",
+    status: "approved",
+    row_version: 999,
+  });
+  rejectQuoteMock.mockReset().mockResolvedValue({
+    id: "22222222-2222-4222-8222-222222222222",
+    status: "rejected",
+    row_version: 999,
+  });
+  getApprovalDetailMock.mockReset().mockResolvedValue({
+    ...quoteSend,
+    status: "approved",
+    row_version: 8,
+    decided_at: "2026-08-02T10:00:00.000Z",
+  });
   getLastReviewedAtMock.mockReset().mockResolvedValue(null);
   routerInvalidateMock.mockReset().mockResolvedValue(undefined);
   toastSuccessMock.mockReset();
@@ -230,7 +259,7 @@ describe("a decided item keeps its place and the queue moves on", () => {
 
 describe("one decision at a time", () => {
   it("disables every decision while a write is in flight and cannot submit twice", async () => {
-    const pending = deferred<void>();
+    const pending = deferred<SerializableHumanApproval>();
     decideApprovalMock.mockReturnValue(pending.promise);
     renderQueue([approval()]);
 
@@ -245,7 +274,7 @@ describe("one decision at a time", () => {
     fireEvent.click(decisionButton(/Recording…/));
     expect(decideApprovalMock).toHaveBeenCalledTimes(1);
 
-    pending.resolve();
+    pending.resolve(approval({ status: "approved", row_version: 8 }));
     await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledTimes(1));
   });
 });
@@ -259,7 +288,7 @@ describe("a quote send is decided the same way it is on /approvals", () => {
     await waitFor(() =>
       expect(approveQuoteMock).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          id: "q-1",
+          id: "22222222-2222-4222-8222-222222222222",
           approvalId: "ap-quote",
           expectedVersion: quoteSend.row_version,
           idempotencyKey: expect.any(String),
@@ -276,7 +305,13 @@ describe("a quote send is decided the same way it is on /approvals", () => {
 
     await waitFor(() =>
       expect(rejectQuoteMock).toHaveBeenCalledWith({
-        data: { id: "q-1", approvalId: "ap-quote" },
+        data: {
+          id: "22222222-2222-4222-8222-222222222222",
+          approvalId: "ap-quote",
+          expectedVersion: 7,
+          idempotencyKey: expect.any(String),
+          notes: undefined,
+        },
       }),
     );
     expect(decideApprovalMock).not.toHaveBeenCalled();
@@ -310,7 +345,9 @@ describe("the write's aftermath", () => {
     const message = String(toastErrorMock.mock.calls[0][0]);
     expect(message).not.toContain("agent_runs_active_idx");
     expect(message).not.toMatch(/duplicate key/i);
-    expect(message).toBe("Something went wrong. Please try again.");
+    expect(message).toBe(
+      "The result is unconfirmed. Refresh to check the recorded status before retrying.",
+    );
     expect(toastSuccessMock).not.toHaveBeenCalled();
 
     // The row is untouched: nothing is marked decided on a write that did not land.
@@ -340,9 +377,7 @@ describe("the decision controls are honest about who may use them", () => {
   });
 
   it("leaves them live when the profile is unavailable, because the server decides", () => {
-    vi.mocked(Route.useRouteContext).mockReturnValue({ profile: null } as never);
-    renderQueue([approval()], { role: "manager" });
-    vi.mocked(Route.useRouteContext).mockReturnValue({ profile: null } as never);
+    renderQueue([approval()], { role: null });
 
     expect(decisionButton(/^Approve$/).disabled).toBe(false);
   });
@@ -377,5 +412,67 @@ describe("the raw agent payload", () => {
     // The agent's own words are on the page (in the detail panel and in the flagged-run
     // list), while its JSON is not.
     expect(screen.getAllByText(/Drafted a reply covering pricing and timeline/).length).toBe(2);
+  });
+});
+
+describe("shared confirmed AI Review contract", () => {
+  it("keeps status and existing notes unchanged before success at version7", async () => {
+    const pending = deferred<SerializableHumanApproval>();
+    decideApprovalMock.mockReturnValue(pending.promise);
+    const old = approval({ reviewer_notes: "Original visible notes" });
+    const { queryClient } = renderQueue([old]);
+    await confirmDecision(/^Approve$/, /^Approve$/);
+    await waitFor(() => expect(decideApprovalMock).toHaveBeenCalledTimes(1));
+    expect(tableRowText()[0]).toContain("Waiting approval");
+    expect(
+      queryClient.getQueryData<{ approvals: SerializableHumanApproval[] }>(
+        crmQueryKeys.aiReview.list({ view: "queue" }),
+      )?.approvals[0],
+    ).toEqual(old);
+    expect(decideApprovalMock.mock.calls[0][0].data.expectedVersion).toBe(7);
+    pending.resolve(approval({ status: "approved", row_version: 8 }));
+    await waitFor(() => expect(tableRowText()[0]).toContain("Approved"));
+  });
+  it("retains confirmed decision and reports stale refresh without another POST", async () => {
+    const { invalidateQueries } = renderQueue([approval()]);
+    invalidateQueries.mockRejectedValue(new Error("Fetch failed"));
+    await confirmDecision(/^Approve$/, /^Approve$/);
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledTimes(1));
+    expect(tableRowText()[0]).toContain("Approved");
+    expect(toastErrorMock).not.toHaveBeenCalled();
+    expect(decideApprovalMock).toHaveBeenCalledTimes(1);
+    const { toast } = await import("sonner");
+    expect(toast.message).toHaveBeenCalledWith(expect.stringMatching(/recorded.*Refresh/));
+  });
+  it("blocks missing version until a fresh real projection arrives", async () => {
+    const { queryClient } = renderQueue([
+      approval({ row_version: undefined as unknown as number }),
+    ]);
+    fireEvent.click(decisionButton(/^Approve$/));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(decideApprovalMock).not.toHaveBeenCalled();
+    await act(async () => {
+      queryClient.setQueryData(crmQueryKeys.aiReview.list({ view: "queue" }), {
+        approvals: [approval({ context_summary: "Fresh approval version7" })],
+        humanReviewRuns: [run],
+      });
+    });
+    await screen.findAllByText("Fresh approval version7");
+    await confirmDecision(/^Approve$/, /^Approve$/);
+    await waitFor(() =>
+      expect(decideApprovalMock).toHaveBeenCalledWith({
+        data: expect.objectContaining({ expectedVersion: 7 }),
+      }),
+    );
+  });
+  it("refreshes an approved quote through authorized approval detail without borrowing quote metadata", async () => {
+    renderQueue([quoteSend]);
+    await confirmDecision(/^Approve$/, /^Approve$/);
+    await waitFor(() =>
+      expect(getApprovalDetailMock).toHaveBeenCalledWith({ data: { id: "ap-quote" } }),
+    );
+    await waitFor(() => expect(screen.getByText(/Decided 02 Aug 2026, 18:00/)).toBeTruthy());
+    expect(approveQuoteMock).toHaveBeenCalledTimes(1);
+    expect(decideApprovalMock).not.toHaveBeenCalled();
   });
 });

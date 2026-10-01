@@ -544,7 +544,7 @@ export async function loadAiReviewRead(
   const [approvals, humanReviewRuns] = await Promise.all([
     query<ApprovalRow>(`
       select
-        a.id, a.agent_run_id, a.approval_type, a.requested_by, a.assigned_to, a.status,
+        a.id, a.agent_run_id, a.approval_type, a.requested_by, a.assigned_to, a.status, a.row_version,
         a.context_data, a.context_summary, a.reviewer_notes, a.decided_at, a.created_at,
         r.subject_type, r.subject_id
       from human_approvals a
