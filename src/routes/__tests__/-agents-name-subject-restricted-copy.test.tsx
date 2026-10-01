@@ -196,6 +196,7 @@ describe("/agents/$name renders the redaction copy subject_restricted implies", 
     renderDetail([
       historyItem({
         id: "run-stuck",
+        recovery: { cancel: true, expire: true, retry: true },
         status: "running",
         created_at: "2026-08-27T10:00:00.000Z",
       }),
@@ -213,11 +214,68 @@ describe("/agents/$name renders the redaction copy subject_restricted implies", 
           runId: "run-stuck",
           action: "retry",
           reason: "Provider callback missing; external state checked",
+          idempotencyKey: expect.any(String),
         },
       }),
     );
   });
 
+  it("keeps readable runs without write permission free of recovery controls", () => {
+    renderDetail([
+      historyItem({
+        id: "readable-run",
+        status: "running",
+        recovery: { cancel: false, expire: false, retry: false },
+      }),
+    ]);
+    fireEvent.click(screen.getByRole("button", { expanded: false }));
+    expect(screen.getByText("Input data")).toBeTruthy();
+    expect(screen.getByText("Cost: unrecorded")).toBeTruthy();
+    expect(screen.queryByText(/\$0\.00/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cancel local run" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Mark expired" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Prepare retry" })).toBeNull();
+  });
+  it("reuses the exact command key after a lost response and rotates it when the reason changes", async () => {
+    recoverAgentRunFnMock.mockRejectedValue(new Error("Response unavailable"));
+    renderDetail([
+      historyItem({
+        id: "recover-key",
+        status: "running",
+        recovery: { cancel: true, expire: true, retry: true },
+      }),
+    ]);
+    fireEvent.click(screen.getByRole("button", { expanded: false }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel local run" }));
+    fireEvent.change(screen.getByLabelText("Recovery reason"), {
+      target: { value: "Synthetic original recovery reason" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm local recovery" }));
+    await waitFor(() => expect(recoverAgentRunFnMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Confirm local recovery" }).hasAttribute("disabled"),
+      ).toBe(false),
+    );
+    const first = recoverAgentRunFnMock.mock.calls[0][0];
+    expect(first.data.idempotencyKey).toMatch(/^[a-f0-9-]{36}$/);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm local recovery" }));
+    await waitFor(() => expect(recoverAgentRunFnMock).toHaveBeenCalledTimes(2));
+    expect(recoverAgentRunFnMock.mock.calls[1][0]).toEqual(first);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Confirm local recovery" }).hasAttribute("disabled"),
+      ).toBe(false),
+    );
+    fireEvent.change(screen.getByLabelText("Recovery reason"), {
+      target: { value: "Synthetic revised recovery reason" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm local recovery" }));
+    await waitFor(() => expect(recoverAgentRunFnMock).toHaveBeenCalledTimes(3));
+    expect(recoverAgentRunFnMock.mock.calls[2][0].data.idempotencyKey).not.toBe(
+      first.data.idempotencyKey,
+    );
+  });
   it("does not offer recovery for a restricted subject", () => {
     renderDetail([
       historyItem({ id: "run-restricted", status: "running", subject_restricted: true }),

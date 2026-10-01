@@ -1,0 +1,44 @@
+{
+  "checkedAt": "2026-10-01T03:13:23.935Z",
+  "scope": "Precommit local source checks; exact committed-source hosted/CI evidence remains required",
+  "uiRed": {
+    "passed": 5,
+    "failed": 2
+  },
+  "related": {
+    "passed": 48,
+    "failed": 0
+  },
+  "targetedPostgres": {
+    "testedAt": "2026-10-01T03:01:24.752Z",
+    "db": "clientops_agent_recovery_batched_20261001_1110",
+    "loopbackOnly": true,
+    "postgres": "17.10",
+    "tests": 22,
+    "files": 1,
+    "skipped": 0,
+    "todo": 0,
+    "failed": 0,
+    "elapsedMs": 3463
+  },
+  "full": {
+    "testedAt": "2026-10-01T03:10:09.734Z",
+    "db": "clientops_agent_recovery_final_20261001_1112",
+    "loopbackOnly": true,
+    "postgres": "17.10",
+    "tests": 2410,
+    "files": 323,
+    "skipped": 0,
+    "todo": 0,
+    "failed": 0,
+    "elapsedMs": 440756
+  },
+  "types": true,
+  "lint": {
+    "passed": true,
+    "existingWarnings": 1
+  },
+  "pureViteBuild": true,
+  "bundles": true,
+  "wrapperBuildRun": false
+}

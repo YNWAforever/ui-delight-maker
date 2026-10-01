@@ -1,0 +1,513 @@
+{
+  "scope": "Actual paired authenticated SSR GET /agents/draft-reply, two unchanged original terminal runs, five role fixtures and the same approved escalated fixture; each source 10 fresh cookie contexts plus 30 warm sequential requests. Fresh context is not compute/database cold start. No formula timing.",
+  "startedAt": "2026-10-01T04:04:19.947Z",
+  "before": [
+    {
+      "index": 0,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 6900.421199999999,
+      "bytes": 96345
+    },
+    {
+      "index": 1,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7431.755300000001,
+      "bytes": 96345
+    },
+    {
+      "index": 2,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7443.438300000002,
+      "bytes": 96345
+    },
+    {
+      "index": 3,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7330.740099999995,
+      "bytes": 96345
+    },
+    {
+      "index": 4,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7308.387499999997,
+      "bytes": 96345
+    },
+    {
+      "index": 5,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7320.391900000002,
+      "bytes": 96345
+    },
+    {
+      "index": 6,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7276.057399999991,
+      "bytes": 96345
+    },
+    {
+      "index": 7,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 6620.458900000012,
+      "bytes": 96345
+    },
+    {
+      "index": 8,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7246.689899999998,
+      "bytes": 96345
+    },
+    {
+      "index": 9,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7300.588500000013,
+      "bytes": 96345
+    },
+    {
+      "index": 0,
+      "kind": "warm_sequential",
+      "elapsedMs": 7885.104300000006,
+      "bytes": 96345
+    },
+    {
+      "index": 1,
+      "kind": "warm_sequential",
+      "elapsedMs": 8092.908799999976,
+      "bytes": 96345
+    },
+    {
+      "index": 2,
+      "kind": "warm_sequential",
+      "elapsedMs": 5390.304999999993,
+      "bytes": 96345
+    },
+    {
+      "index": 3,
+      "kind": "warm_sequential",
+      "elapsedMs": 7703.135500000004,
+      "bytes": 96345
+    },
+    {
+      "index": 4,
+      "kind": "warm_sequential",
+      "elapsedMs": 5335.85070000001,
+      "bytes": 96345
+    },
+    {
+      "index": 5,
+      "kind": "warm_sequential",
+      "elapsedMs": 7100.623400000011,
+      "bytes": 96345
+    },
+    {
+      "index": 6,
+      "kind": "warm_sequential",
+      "elapsedMs": 6005.945500000002,
+      "bytes": 96345
+    },
+    {
+      "index": 7,
+      "kind": "warm_sequential",
+      "elapsedMs": 7737.748100000026,
+      "bytes": 96345
+    },
+    {
+      "index": 8,
+      "kind": "warm_sequential",
+      "elapsedMs": 5378.627500000002,
+      "bytes": 96345
+    },
+    {
+      "index": 9,
+      "kind": "warm_sequential",
+      "elapsedMs": 7699.338800000027,
+      "bytes": 96345
+    },
+    {
+      "index": 10,
+      "kind": "warm_sequential",
+      "elapsedMs": 5433.713099999994,
+      "bytes": 96345
+    },
+    {
+      "index": 11,
+      "kind": "warm_sequential",
+      "elapsedMs": 7738.515500000038,
+      "bytes": 96345
+    },
+    {
+      "index": 12,
+      "kind": "warm_sequential",
+      "elapsedMs": 5350.207999999984,
+      "bytes": 96345
+    },
+    {
+      "index": 13,
+      "kind": "warm_sequential",
+      "elapsedMs": 7782.901000000013,
+      "bytes": 96345
+    },
+    {
+      "index": 14,
+      "kind": "warm_sequential",
+      "elapsedMs": 5367.3268999999855,
+      "bytes": 96345
+    },
+    {
+      "index": 15,
+      "kind": "warm_sequential",
+      "elapsedMs": 7661.5461999999825,
+      "bytes": 96345
+    },
+    {
+      "index": 16,
+      "kind": "warm_sequential",
+      "elapsedMs": 5348.545400000003,
+      "bytes": 96345
+    },
+    {
+      "index": 17,
+      "kind": "warm_sequential",
+      "elapsedMs": 7778.65340000001,
+      "bytes": 96345
+    },
+    {
+      "index": 18,
+      "kind": "warm_sequential",
+      "elapsedMs": 5451.655399999989,
+      "bytes": 96345
+    },
+    {
+      "index": 19,
+      "kind": "warm_sequential",
+      "elapsedMs": 7152.029599999951,
+      "bytes": 96345
+    },
+    {
+      "index": 20,
+      "kind": "warm_sequential",
+      "elapsedMs": 5991.617899999954,
+      "bytes": 96345
+    },
+    {
+      "index": 21,
+      "kind": "warm_sequential",
+      "elapsedMs": 7929.988300000026,
+      "bytes": 96345
+    },
+    {
+      "index": 22,
+      "kind": "warm_sequential",
+      "elapsedMs": 5324.410899999959,
+      "bytes": 96345
+    },
+    {
+      "index": 23,
+      "kind": "warm_sequential",
+      "elapsedMs": 7741.888800000015,
+      "bytes": 96345
+    },
+    {
+      "index": 24,
+      "kind": "warm_sequential",
+      "elapsedMs": 5472.165000000037,
+      "bytes": 96345
+    },
+    {
+      "index": 25,
+      "kind": "warm_sequential",
+      "elapsedMs": 7833.552299999981,
+      "bytes": 96345
+    },
+    {
+      "index": 26,
+      "kind": "warm_sequential",
+      "elapsedMs": 5363.6185000000405,
+      "bytes": 96345
+    },
+    {
+      "index": 27,
+      "kind": "warm_sequential",
+      "elapsedMs": 7720.679699999979,
+      "bytes": 96345
+    },
+    {
+      "index": 28,
+      "kind": "warm_sequential",
+      "elapsedMs": 5324.7482999999775,
+      "bytes": 96345
+    },
+    {
+      "index": 29,
+      "kind": "warm_sequential",
+      "elapsedMs": 8009.01939999999,
+      "bytes": 96345
+    }
+  ],
+  "after": [
+    {
+      "index": 0,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7034.1481,
+      "bytes": 96345
+    },
+    {
+      "index": 1,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7052.360700000001,
+      "bytes": 96345
+    },
+    {
+      "index": 2,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 6612.992299999998,
+      "bytes": 96345
+    },
+    {
+      "index": 3,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7058.696300000003,
+      "bytes": 96345
+    },
+    {
+      "index": 4,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7079.527999999991,
+      "bytes": 96345
+    },
+    {
+      "index": 5,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7090.794299999994,
+      "bytes": 96345
+    },
+    {
+      "index": 6,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7069.257400000002,
+      "bytes": 96345
+    },
+    {
+      "index": 7,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7254.06210000001,
+      "bytes": 96345
+    },
+    {
+      "index": 8,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7068.479200000002,
+      "bytes": 96345
+    },
+    {
+      "index": 9,
+      "kind": "fresh_cookie_context",
+      "elapsedMs": 7025.98510000002,
+      "bytes": 96345
+    },
+    {
+      "index": 0,
+      "kind": "warm_sequential",
+      "elapsedMs": 6937.057499999995,
+      "bytes": 96345
+    },
+    {
+      "index": 1,
+      "kind": "warm_sequential",
+      "elapsedMs": 5156.753100000002,
+      "bytes": 96345
+    },
+    {
+      "index": 2,
+      "kind": "warm_sequential",
+      "elapsedMs": 6921.034299999999,
+      "bytes": 96345
+    },
+    {
+      "index": 3,
+      "kind": "warm_sequential",
+      "elapsedMs": 5176.545500000007,
+      "bytes": 96345
+    },
+    {
+      "index": 4,
+      "kind": "warm_sequential",
+      "elapsedMs": 7438.561099999992,
+      "bytes": 96345
+    },
+    {
+      "index": 5,
+      "kind": "warm_sequential",
+      "elapsedMs": 5151.866800000018,
+      "bytes": 96345
+    },
+    {
+      "index": 6,
+      "kind": "warm_sequential",
+      "elapsedMs": 7502.176899999991,
+      "bytes": 96345
+    },
+    {
+      "index": 7,
+      "kind": "warm_sequential",
+      "elapsedMs": 5145.478999999992,
+      "bytes": 96345
+    },
+    {
+      "index": 8,
+      "kind": "warm_sequential",
+      "elapsedMs": 7574.35010000004,
+      "bytes": 96345
+    },
+    {
+      "index": 9,
+      "kind": "warm_sequential",
+      "elapsedMs": 5647.316200000001,
+      "bytes": 96345
+    },
+    {
+      "index": 10,
+      "kind": "warm_sequential",
+      "elapsedMs": 7294.430399999954,
+      "bytes": 96345
+    },
+    {
+      "index": 11,
+      "kind": "warm_sequential",
+      "elapsedMs": 5816.236700000009,
+      "bytes": 96345
+    },
+    {
+      "index": 12,
+      "kind": "warm_sequential",
+      "elapsedMs": 7461.194599999988,
+      "bytes": 96345
+    },
+    {
+      "index": 13,
+      "kind": "warm_sequential",
+      "elapsedMs": 5173.151399999973,
+      "bytes": 96345
+    },
+    {
+      "index": 14,
+      "kind": "warm_sequential",
+      "elapsedMs": 7567.839799999958,
+      "bytes": 96345
+    },
+    {
+      "index": 15,
+      "kind": "warm_sequential",
+      "elapsedMs": 5754.179899999988,
+      "bytes": 96345
+    },
+    {
+      "index": 16,
+      "kind": "warm_sequential",
+      "elapsedMs": 7554.142500000016,
+      "bytes": 96345
+    },
+    {
+      "index": 17,
+      "kind": "warm_sequential",
+      "elapsedMs": 5139.970499999996,
+      "bytes": 96345
+    },
+    {
+      "index": 18,
+      "kind": "warm_sequential",
+      "elapsedMs": 7520.725600000005,
+      "bytes": 96345
+    },
+    {
+      "index": 19,
+      "kind": "warm_sequential",
+      "elapsedMs": 5110.552800000005,
+      "bytes": 96345
+    },
+    {
+      "index": 20,
+      "kind": "warm_sequential",
+      "elapsedMs": 7028.561799999967,
+      "bytes": 96345
+    },
+    {
+      "index": 21,
+      "kind": "warm_sequential",
+      "elapsedMs": 5819.82070000004,
+      "bytes": 96345
+    },
+    {
+      "index": 22,
+      "kind": "warm_sequential",
+      "elapsedMs": 6897.305900000036,
+      "bytes": 96345
+    },
+    {
+      "index": 23,
+      "kind": "warm_sequential",
+      "elapsedMs": 5717.854799999972,
+      "bytes": 96345
+    },
+    {
+      "index": 24,
+      "kind": "warm_sequential",
+      "elapsedMs": 6812.371199999994,
+      "bytes": 96345
+    },
+    {
+      "index": 25,
+      "kind": "warm_sequential",
+      "elapsedMs": 5731.983500000031,
+      "bytes": 96345
+    },
+    {
+      "index": 26,
+      "kind": "warm_sequential",
+      "elapsedMs": 7529.261800000037,
+      "bytes": 96345
+    },
+    {
+      "index": 27,
+      "kind": "warm_sequential",
+      "elapsedMs": 5170.988099999959,
+      "bytes": 96345
+    },
+    {
+      "index": 28,
+      "kind": "warm_sequential",
+      "elapsedMs": 7472.07209999999,
+      "bytes": 96345
+    },
+    {
+      "index": 29,
+      "kind": "warm_sequential",
+      "elapsedMs": 5107.969700000016,
+      "bytes": 96345
+    }
+  ],
+  "success": true,
+  "beforeSummary": {
+    "source": "2d50f59c2482c61421070efe416f6ebcbbe04d8e",
+    "freshContexts": 10,
+    "warmSamples": 30,
+    "p50Ms": 7100.623400000011,
+    "p95Ms": 8009.01939999999,
+    "maxMs": 8092.908799999976
+  },
+  "afterSummary": {
+    "source": "879911bbdbaff65cb31758006a5efbc03c0757e2",
+    "freshContexts": 10,
+    "warmSamples": 30,
+    "p50Ms": 5819.82070000004,
+    "p95Ms": 7567.839799999958,
+    "maxMs": 7574.35010000004
+  },
+  "comparison": {
+    "p50ChangeMs": -1280.802699999971,
+    "p95ChangeMs": -441.1796000000322,
+    "p50ChangePercent": -18.037890870257524,
+    "p95ChangePercent": -5.508534540446142
+  },
+  "fixtureRunsApprovalsAuditsReceiptsHandoffsUnchanged": true,
+  "finishedAt": "2026-10-01T04:13:46.623Z"
+}

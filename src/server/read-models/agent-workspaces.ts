@@ -7,6 +7,8 @@ import type { JsonValue, SerializableHumanApproval } from "@/lib/serializable";
 import { serializeHumanApproval, toJsonValue } from "@/lib/serializable";
 import { loadEffectiveAgentCatalogue } from "@/server/read-models/agent-catalogue";
 import type { RowAuthorizer } from "@/server/auth/authorization.server";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import { loadAgentRecoveryAccess, type AgentRecoveryAccess } from "./agent-recovery-access";
 
 /**
  * A per-subject verdict, as `decideAgentSubjects` returns it: `true` only when the actor holds
@@ -140,6 +142,7 @@ export type AgentHistoryPageInput = {
    * same subject type.
    */
   rows: RowAuthorizer;
+  recoveryContext?: RequestAuthorization;
 };
 
 /**
@@ -192,6 +195,7 @@ export type AgentHistoryItem = Omit<
   subject_id: string | null;
   subject_type: string | null;
   subject_restricted: boolean;
+  recovery?: AgentRecoveryAccess;
 };
 
 function numeric(value: number | string | null | undefined) {
@@ -471,6 +475,9 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
     input.rows,
     runs.map(({ subject_type, subject_id }) => ({ subject_type, subject_id })),
   );
+  const recovery = input.recoveryContext
+    ? await loadAgentRecoveryAccess(input.recoveryContext, runs, input.rows)
+    : new Map<string, AgentRecoveryAccess>();
 
   return {
     items: runs.map((run): AgentHistoryItem => {
@@ -495,6 +502,9 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
         input_data: allowed ? toJsonValue(input_data) : null,
         output_summary: allowed ? output_summary : null,
         subject_restricted: !allowed,
+        recovery: allowed
+          ? (recovery.get(run.id) ?? { cancel: false, expire: false, retry: false })
+          : { cancel: false, expire: false, retry: false },
       };
     }),
     total,

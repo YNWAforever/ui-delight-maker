@@ -1,8 +1,8 @@
 # Source and environment checkpoint — updated 2026-10-01 HKT
 
-## Current checkpoint — PR150 exact-source bulk acceptance / final-head CI pending
+## Current checkpoint — main PR150; PR151 source acceptance complete
 
-Main3e0c455 includes149 finalabed594; production canceled/publicbed941b unchanged. PR150 source8b9479f passes local/exactCI2397/323/zero skipped/replay/static/browser and genuine own-role20 scoped owner +18 original100 receipt +13 original lock/replay +4 original Approve3 continuation cases. [Report](bulk-receipt-recovery-2026-10-01.md). CO-16/U08 defined mixed-result criteria verified_fixed/PASS; final documentation head must pass the same full gates before merge. Canonical UAT remainsfc4a2fd, protected dedicated candidate8b9479f uses same independent test DB/Auth/seven own identities; original data/keys remain. All30CO/16UAT retained, remaining U11 local recovery role slice and individual provider/legacy/history/operator/PITR/screen-reader gates stay open, release NO-GO.
+Main9e96bc5 after150 passes2,397/zero-skip/replay/static. Candidate879911b for [PR151](https://github.com/YNWAforever/ui-delight-maker/pull/151) passes2,414/323/zero-skip CI/replay/static and actual fifteen-case seven-own-role/original receipt/expired allow acceptance. Source2d29 local recovery and eight escalated/manual review cases are retained. Actual paired SSR timing records p50/p95 improvement with all80 samples and explicit scope. [Report](agent-recovery-uat-2026-10-01.md). Final docs-head check/merge is pending; source is not production deployed. Canonical dedicated UAT remainsfc4a2fd; protected candidate binding is independent. Real production remainsbed941b and held. All30CO/16UAT are tracked; CO30 real field feedback is the next executable repair. External snapshot/provider/historical/operator/screen-reader gates remain NO-GO.
 
 ## Previous verified checkpoint — PR #148 / focused Lead repair
 
@@ -100,17 +100,17 @@ No branch was created or resumed, no connection string was retrieved, and no dat
 
 ## Remaining acceptance by backlog
 
-| Backlog | Required proof still blocked |
+| Backlog | Current proof and remaining gate |
 | --- | --- |
-| R00 | Seven distinct isolated role sessions, same-record fixtures, app/auth/DB binding and worker/flag identity. |
-| R01 | Four historical anomaly owner dispositions/provenance and disposable compatibility rehearsal. |
-| R02 | Authenticated bulk retry, offline/reconnect and independent receipt read. |
-| R03 | Authenticated dialog/shell keyboard, required widths, 200% zoom and screen reader; public anonymous proof remains separate. |
-| R04 | Seven-role same-record workflow, handoff, visibility and state UAT. |
-| R05 | Authenticated import/export lifecycle, source identity inventory and retention dry run/owner. |
-| R06 | Same-data/machine authenticated before/after, 10 cold + 30 warm navigations, 10k tasks/100k approvals and DB binding. |
-| R07 | De-identified legacy and Neon snapshots for five-domain parity; provider/n8n sandbox callbacks and delivery receipts. |
-| R08 | Those gates, deployment provenance, operator/PITR/compatibility and release/rollback rehearsal. |
+| R00 | Seven genuine users, own cookies, independent Auth/DB identity, synthetic data and exact candidate binding are verified. Sandbox worker/provider version still needs external evidence. |
+| R01 | Local synthetic multi-role commercial/risk/billing guards, concurrency/rollback/replay PASS; four historical dispositions/provenance and disposable legacy compatibility rehearsal BLOCKED. |
+| R02 | Defined Task/Lead/Approval/Job100 and Team3 original-receipt/retry/offline/reconnect/replay scopes PASS; receipts and successful writes retained. |
+| R03 | Scoped actual keyboard/width/native200/dialog/shell PASS; human screen-reader acceptance BLOCKED. |
+| R04 | Recorded seven-role local handoff/visibility/Admin and same-record workflows PASS in the sixteen-case matrix; provider invite/signup/acceptance and legacy journeys remain separately blocked. CO30 field localization remains executable. |
+| R05 | Actual Lead/Client/Event5000 import/source parity, formula-safe real spreadsheet apps and isolated retention rehearsal PASS; real legacy source inventory and production retention owner/schedule BLOCKED. |
+| R06 | Same-machine/data browser10 cold/30 warm with10k tasks/100k approvals and raw SQL/transfer metrics PASS for defined queues. Recovery SSR regression/cache samples retained; no full-product CWV claim. |
+| R07 | Local recovery/escalated/manual-only handoff proof now PASS; de-identified five-domain legacy+Neon snapshots and real sandbox callback/receipt contract BLOCKED. |
+| R08 | Current-source CI/UAT/review packet available; final docs head and merge still pending. Release requires the historical/snapshot/provider/screen-reader/operator/PITR/compatibility gates; hold remains active. |
 
 All 30 CO IDs remain tracked in [status](../2026-09-27/status.md). Missing role, snapshot, provider or runtime proof is not promoted to PASS by source CI. The [release and rollback checklist](../2026-09-27/release-checklist.md), [UAT results](../2026-09-27/uat-results.md) and [migration/reconciliation disposition](../2026-09-27/production-reconciliation-disposition.md) remain the operational handoff.
 

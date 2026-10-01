@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-10-01T04:09:19.221Z",
+  "primaryProjectId": "prj_28RsIf31nvcD0YS3UIQqdnvJlHki",
+  "deploymentId": "dpl_FGCJQucVj2ThRmnb2CZ42wqnfHZy",
+  "source": "879911bbdbaff65cb31758006a5efbc03c0757e2",
+  "target": null,
+  "state": "READY",
+  "effectiveBuildCommand": "bunx vite build && node scripts/vercel-build.mjs",
+  "logCompleted": true,
+  "migrationOrSeedCommandObserved": false,
+  "scope": "Read-only Preview metadata/build-log inspection only; no preview runtime business request or production DB access. Historical unknown preview binding/provenance remains blocked."
+}

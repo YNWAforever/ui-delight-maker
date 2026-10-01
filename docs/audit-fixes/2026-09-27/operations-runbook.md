@@ -32,7 +32,7 @@ This describes the candidate UI and server behavior; production rollout is **not
 ## Approval, agent and AI recovery
 
 - An unassigned approval is claimable only when its subject scope is established. Two operators claiming concurrently yield one owner. A terminal decision is immutable; refresh and review audit history on conflict.
-- A stuck agent run may be superseded through the scoped recovery action. Keep old/new run IDs and the decision record; late callbacks for the old run cannot change the newer run's subject. Do not retry an ambiguous n8n dispatch automatically, since the provider may already have received it.
+- Agent history exposes local recovery only for the current subject/approval permissions. Cancel closes an active local record with a reason; expiry and Prepare retry require at least60 minutes. Prepare retry marks the old run retry_requested and does not create or dispatch a new attempt. After response loss, keep the form reason/key unchanged and retry the same command. Editing the reason creates a new key. If permissions expire, the command denies and the next read removes the control. Preserve original rows, linked approvals, audits and receipts; an ambiguous external outcome still needs provider confirmation.
 - Note tidy is governed and keyed for same-note retry. A timeout/failure is not a zero-cost or zero-token run. Usage absent from the provider remains **unrecorded**. Provider sandbox and deployed n8n contract still require verification.
 - Manual message handoff means copy and send outside ClientOps by an authorized person, then record the reference. A handoff record is not a delivery receipt. This candidate never sends a real customer message.
 

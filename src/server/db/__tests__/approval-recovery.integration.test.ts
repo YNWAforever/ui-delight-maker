@@ -38,6 +38,8 @@ import {
   canClaimApproval,
   recoverAgentRunCommand,
 } from "@/server/commands/agent-recovery.server";
+import { loadAgentRecoveryAccess } from "@/server/read-models/agent-recovery-access";
+import { requirePageAuthorization } from "@/server/auth/authorization.server";
 import { createAgentRun, updateAgentRunResult } from "@/server/repositories/agent-runs";
 import { writeReplyDraftResult } from "@/server/workflows/writebacks";
 import { listClaimableApprovals } from "@/server/repositories/approvals";
@@ -93,6 +95,184 @@ async function fixture(owner: string | null = report) {
 }
 
 describe("approval claim and agent recovery on isolated PostgreSQL", () => {
+  it.runIf(hasDatabase)(
+    "reuses the real view-owner batch for recovery hints without caching capability verdicts",
+    async () => {
+      const f = await fixture(report);
+      const run = (await db().query("select * from agent_runs where id=$1", [f.runId])).rows[0];
+      const request = context(managerA, [report]);
+      const { rows } = await requirePageAuthorization(["agents.view"], {
+        context: request,
+        cacheRowOwners: true,
+      });
+      const spy = vi.spyOn(db(), "query");
+      try {
+        expect((await rows.allow("leads.view", "lead", [f.leadId])).get(f.leadId)).toBe(true);
+        expect((await loadAgentRecoveryAccess(request, [run], rows)).get(f.runId)?.cancel).toBe(
+          true,
+        );
+        expect(spy).toHaveBeenCalledTimes(2);
+        expect((await rows.allow("permissions.override", "lead", [f.leadId])).get(f.leadId)).toBe(
+          false,
+        );
+        expect(spy).toHaveBeenCalledTimes(2);
+      } finally {
+        spy.mockRestore();
+      }
+    },
+  );
+  it.runIf(hasDatabase)(
+    "assesses 25 real rows with one owner batch and one linked-review read",
+    async () => {
+      const runs = [];
+      for (let index = 0; index < 25; index++) {
+        const f = await fixture(report);
+        runs.push((await db().query("select * from agent_runs where id=$1", [f.runId])).rows[0]);
+      }
+      const before = (
+        await db().query("select * from agent_runs where id=any($1::uuid[]) order by id", [
+          runs.map((run) => run.id),
+        ])
+      ).rows;
+      const spy = vi.spyOn(db(), "query");
+      try {
+        const access = await loadAgentRecoveryAccess(context(managerA, [report]), runs);
+        expect(access.size).toBe(25);
+        expect(
+          [...access.values()].every((value) => value.cancel && value.expire && !value.retry),
+        ).toBe(true);
+        expect(spy).toHaveBeenCalledTimes(2);
+        expect(spy.mock.calls[0][1]).toEqual([runs.map((run) => run.subject_id)]);
+        expect(spy.mock.calls[1][1]).toEqual([runs.map((run) => run.id)]);
+        expect(
+          spy.mock.calls.every(
+            ([sql]) => typeof sql === "string" && sql.trim().startsWith("select"),
+          ),
+        ).toBe(true);
+      } finally {
+        spy.mockRestore();
+      }
+      expect(
+        (
+          await db().query("select * from agent_runs where id=any($1::uuid[]) order by id", [
+            runs.map((run) => run.id),
+          ])
+        ).rows,
+      ).toEqual(before);
+    },
+  );
+  it.runIf(hasDatabase).each([
+    ["super_admin", true, true],
+    ["admin", true, true],
+    ["manager", true, true],
+    ["sales", true, false],
+    ["client_success", true, false],
+    ["accounting", false, false],
+    ["read_only", false, false],
+  ] as const)(
+    "matches %s recovery affordances to actual grants and linked review",
+    async (role, runningAllowed, waitingAllowed) => {
+      const f = await fixture(report);
+      const request = context(managerA, [report]);
+      request.actor.role = role;
+      const waiting = (await db().query("select * from agent_runs where id=$1", [f.runId])).rows[0];
+      expect((await loadAgentRecoveryAccess(request, [waiting])).get(f.runId)).toEqual({
+        cancel: waitingAllowed,
+        expire: waitingAllowed,
+        retry: false,
+      });
+      await db().query("update human_approvals set status='rejected' where id=$1", [f.approvalId]);
+      await db().query("update agent_runs set status='running' where id=$1", [f.runId]);
+      const running = (await db().query("select * from agent_runs where id=$1", [f.runId])).rows[0];
+      expect((await loadAgentRecoveryAccess(request, [running])).get(f.runId)).toEqual({
+        cancel: runningAllowed,
+        expire: runningAllowed,
+        retry: runningAllowed,
+      });
+    },
+  );
+  it.runIf(hasDatabase)(
+    "requires proven owner, active actor and manager scope even for read-only affordances",
+    async () => {
+      for (const owner of [null, outsider]) {
+        const f = await fixture(owner);
+        const run = (await db().query("select * from agent_runs where id=$1", [f.runId])).rows[0];
+        expect(
+          (await loadAgentRecoveryAccess(context(managerA, [report]), [run])).get(f.runId),
+        ).toEqual({ cancel: false, expire: false, retry: false });
+        if (!owner) {
+          const root = context(managerA);
+          root.actor.role = "super_admin";
+          expect((await loadAgentRecoveryAccess(root, [run])).get(f.runId)?.cancel).toBe(false);
+        }
+      }
+      const f = await fixture(report),
+        run = (await db().query("select * from agent_runs where id=$1", [f.runId])).rows[0],
+        request = context(managerA, [report]);
+      request.actor.status = "deactivated";
+      expect((await loadAgentRecoveryAccess(request, [run])).get(f.runId)?.cancel).toBe(false);
+    },
+  );
+  it.runIf(hasDatabase)(
+    "uses exact run/review overrides, expiry and persisted assignee",
+    async () => {
+      const f = await fixture(report),
+        run = (await db().query("select * from agent_runs where id=$1", [f.runId])).rows[0],
+        request = context(managerA, [report]);
+      request.overrides = [
+        {
+          profileId: managerA,
+          capability: "agents.run",
+          effect: "deny",
+          resourceType: "lead",
+          resourceId: f.leadId,
+        },
+      ];
+      expect((await loadAgentRecoveryAccess(request, [run])).get(f.runId)?.cancel).toBe(false);
+      request.overrides[0].resourceId = randomUUID();
+      expect((await loadAgentRecoveryAccess(request, [run])).get(f.runId)?.cancel).toBe(true);
+      request.overrides = [
+        {
+          profileId: managerA,
+          capability: "approvals.decide",
+          effect: "deny",
+          resourceType: "human_approval",
+          resourceId: f.approvalId,
+        },
+      ];
+      expect((await loadAgentRecoveryAccess(request, [run])).get(f.runId)?.cancel).toBe(false);
+      request.overrides[0].expiresAt = new Date(Date.now() - 1000).toISOString();
+      expect((await loadAgentRecoveryAccess(request, [run])).get(f.runId)?.cancel).toBe(true);
+      request.overrides = [];
+      await db().query("update human_approvals set assigned_to=$2 where id=$1", [
+        f.approvalId,
+        outsider,
+      ]);
+      expect((await loadAgentRecoveryAccess(request, [run])).get(f.runId)?.cancel).toBe(false);
+    },
+  );
+  it.runIf(hasDatabase)(
+    "keeps young cancel available, withholds young retry/expiry and inconsistent open reviews",
+    async () => {
+      const f = await fixture(report);
+      await db().query("update agent_runs set created_at=now() where id=$1", [f.runId]);
+      const request = context(managerA, [report]);
+      let run = (await db().query("select * from agent_runs where id=$1", [f.runId])).rows[0];
+      expect((await loadAgentRecoveryAccess(request, [run])).get(f.runId)).toEqual({
+        cancel: true,
+        expire: false,
+        retry: false,
+      });
+      await db().query("update agent_runs set status='running' where id=$1", [f.runId]);
+      run = (await db().query("select * from agent_runs where id=$1", [f.runId])).rows[0];
+      expect((await loadAgentRecoveryAccess(request, [run])).get(f.runId)).toEqual({
+        cancel: false,
+        expire: false,
+        retry: false,
+      });
+    },
+  );
+
   beforeAll(async () => {
     if (!hasDatabase) return;
     holder.pool = new Pool({ connectionString: process.env.DATABASE_TEST_URL, max: 4 });

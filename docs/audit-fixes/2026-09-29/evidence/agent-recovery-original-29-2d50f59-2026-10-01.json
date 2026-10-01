@@ -1,0 +1,687 @@
+{
+  "sourceSha": "2d50f59c2482c61421070efe416f6ebcbbe04d8e",
+  "startedAt": "2026-10-01T03:18:09.927Z",
+  "scope": "Seven independent authenticated roles; local-only recovery/expiry/retry markers, original loss/key replay, scoped deny/expired allow and no provider/customer dispatch",
+  "success": true,
+  "cases": [
+    {
+      "case": "own role readable local running record has only eligible recovery controls and unrecorded cost",
+      "role": "super_admin",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "case": "own role readable local waiting record has only eligible recovery controls and unrecorded cost",
+      "role": "super_admin",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "case": "own role readable local running record has only eligible recovery controls and unrecorded cost",
+      "role": "admin",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "case": "own role readable local waiting record has only eligible recovery controls and unrecorded cost",
+      "role": "admin",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "case": "own role readable local running record has only eligible recovery controls and unrecorded cost",
+      "role": "manager",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "case": "own role readable local waiting record has only eligible recovery controls and unrecorded cost",
+      "role": "manager",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "case": "own role readable local running record has only eligible recovery controls and unrecorded cost",
+      "role": "sales",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "case": "own role readable local waiting record has only eligible recovery controls and unrecorded cost",
+      "role": "sales",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "case": "own role readable local running record has only eligible recovery controls and unrecorded cost",
+      "role": "client_success",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "case": "own role readable local waiting record has only eligible recovery controls and unrecorded cost",
+      "role": "client_success",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "case": "actual own Accounting agent history denied",
+      "role": "accounting",
+      "ownAuthMatched": true,
+      "pass": true
+    },
+    {
+      "case": "own role readable local running record has only eligible recovery controls and unrecorded cost",
+      "role": "read_only",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "case": "own role readable local waiting record has only eligible recovery controls and unrecorded cost",
+      "role": "read_only",
+      "width": 390,
+      "ownAuthMatched": true,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      }
+    },
+    {
+      "case": "actual forwarded committed response loss, same form keeps exact key and replay changes no row/time/audit/receipt",
+      "role": "super_admin",
+      "pass": true
+    },
+    {
+      "case": "actual keyboard confirmed reasoned local cancel, one receipt/audit, exact-key replay and reload agree",
+      "role": "super_admin",
+      "width": 768,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 768,
+        "scrollWidth": 768
+      },
+      "shortReasonDisabled": true
+    },
+    {
+      "case": "own role actual recovery POST denied; all fixture rows/audits/receipts unchanged",
+      "role": "read_only",
+      "pass": true
+    },
+    {
+      "case": "own role actual recovery POST denied; all fixture rows/audits/receipts unchanged",
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "case": "own role actual recovery POST denied; all fixture rows/audits/receipts unchanged",
+      "role": "sales",
+      "pass": true
+    },
+    {
+      "case": "own role actual recovery POST denied; all fixture rows/audits/receipts unchanged",
+      "role": "client_success",
+      "pass": true
+    },
+    {
+      "case": "matching scoped agents.run deny hides recovery and denies actual POST without writes",
+      "role": "manager",
+      "pass": true
+    },
+    {
+      "case": "matching scoped approvals.decide deny hides recovery and denies actual POST without writes",
+      "role": "manager",
+      "pass": true
+    },
+    {
+      "case": "exact Reader allow does not expand neighbour; expiry denies stale UI POST with all state unchanged and removes controls on reload",
+      "role": "read_only",
+      "pass": true
+    },
+    {
+      "case": "actual keyboard confirmed reasoned local expire, one receipt/audit, exact-key replay and reload agree",
+      "role": "admin",
+      "width": 390,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      },
+      "shortReasonDisabled": true
+    },
+    {
+      "case": "actual keyboard confirmed reasoned local expire, one receipt/audit, exact-key replay and reload agree",
+      "role": "manager",
+      "width": 1440,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440
+      },
+      "shortReasonDisabled": true
+    },
+    {
+      "case": "Manager local expiry atomically closes exact original linked approval with one approval audit",
+      "role": "manager",
+      "pass": true
+    },
+    {
+      "case": "young run omits expiry/retry; both forced actual POSTs deny below one hour without writes",
+      "role": "sales",
+      "pass": true
+    },
+    {
+      "case": "actual keyboard confirmed reasoned local cancel, one receipt/audit, exact-key replay and reload agree",
+      "role": "sales",
+      "width": 390,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      },
+      "shortReasonDisabled": true
+    },
+    {
+      "case": "actual keyboard confirmed reasoned local retry, one receipt/audit, exact-key replay and reload agree",
+      "role": "client_success",
+      "width": 390,
+      "pass": true,
+      "geometry": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      },
+      "shortReasonDisabled": true
+    },
+    {
+      "case": "CS prepare retry writes only old terminal retry_requested marker; no new attempt/provider dispatch",
+      "role": "client_success",
+      "pass": true
+    }
+  ],
+  "distinctActualAuthUsers": 7,
+  "distinctOwnAuthCookieSets": 7,
+  "runtime": {
+    "scope": "Actual authenticated SSR GET /agents/draft-reply on the same independent DB and unchanged fixture; 10 fresh browser cookie contexts and30 sequential warm requests per source. No compute/DB cold-start claim, formula timing, or provider call.",
+    "before": [
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 7858.253300000011,
+        "bytes": 90958
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 4970.182400000005,
+        "bytes": 90958
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 5043.042399999991,
+        "bytes": 90958
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 4950.398199999996,
+        "bytes": 90958
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 4922.256399999998,
+        "bytes": 90958
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 4930.7485000000015,
+        "bytes": 90958
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 5870.454100000003,
+        "bytes": 90958
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 4985.146199999988,
+        "bytes": 90958
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 5004.3321,
+        "bytes": 90958
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 5089.760000000009,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5025.216099999991,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 4969.020499999984,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5133.9902,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5017.156499999983,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5016.199900000007,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5060.88440000001,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5018.991299999994,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5013.223100000003,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5085.119100000011,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 4959.9134000000195,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5002.502599999978,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5067.438900000008,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5016.018100000016,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5026.277700000006,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5042.306099999987,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5011.959700000007,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5043.398499999981,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5029.087499999994,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5024.733499999973,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5072.356999999989,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5091.345499999996,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5017.748700000026,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5055.87950000001,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5085.548299999995,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5148.584900000016,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5094.86540000001,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5071.406900000002,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5026.489300000016,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 4996.440799999982,
+        "bytes": 90958
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 4991.798299999966,
+        "bytes": 90958
+      }
+    ],
+    "after": [
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 7740.1499000000185,
+        "bytes": 91390
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 5401.14300000004,
+        "bytes": 91390
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 5415.161299999978,
+        "bytes": 91390
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 5579.255999999994,
+        "bytes": 91390
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 5414.299100000004,
+        "bytes": 91390
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 5435.968599999964,
+        "bytes": 91390
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 5525.60890000005,
+        "bytes": 91390
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 5457.679700000037,
+        "bytes": 91390
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 5380.906899999944,
+        "bytes": 91390
+      },
+      {
+        "kind": "fresh_cookie_context",
+        "elapsedMs": 5303.109699999972,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5360.098499999964,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 6011.881400000013,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 6034.60129999998,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5366.743599999987,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 6024.212100000004,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 6035.714899999963,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5386.0783999999985,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5334.992800000007,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5392.802599999995,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5408.326600000029,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5972.575399999972,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 6032.332800000033,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5373.590099999972,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5466.935300000012,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5385.694699999993,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5374.802399999986,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5355.738399999973,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5381.38870000001,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5362.483599999978,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5306.594700000016,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5374.708500000008,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5381.547900000005,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5353.7402,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 6078.041499999992,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5427.250999999989,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5314.586299999966,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5428.215499999991,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5411.687600000005,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 5475.292799999996,
+        "bytes": 91390
+      },
+      {
+        "kind": "warm_sequential",
+        "elapsedMs": 6063.536900000006,
+        "bytes": 91390
+      }
+    ],
+    "beforeSummary": {
+      "source": "8b9479fb9063dc1d85cd10670656d28aae37954a",
+      "freshContexts": 10,
+      "warmSamples": 30,
+      "p50Ms": 5026.277700000006,
+      "p95Ms": 5133.9902,
+      "maxMs": 5148.584900000016
+    },
+    "afterSummary": {
+      "source": "2d50f59c2482c61421070efe416f6ebcbbe04d8e",
+      "freshContexts": 10,
+      "warmSamples": 30,
+      "p50Ms": 5386.0783999999985,
+      "p95Ms": 6063.536900000006,
+      "maxMs": 6078.041499999992
+    },
+    "fixtureRunsApprovalsAuditsReceiptsUnchanged": true
+  },
+  "temporaryOverridesRevoked": true,
+  "finishedAt": "2026-10-01T03:33:04.520Z",
+  "continuesOriginalFixtureAnd21ValidCases": true,
+  "noExternalDispatchOrCustomerMessage": true,
+  "originalFixturesRetained": true
+}

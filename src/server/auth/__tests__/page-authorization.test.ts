@@ -26,8 +26,49 @@ const ACTOR = {
 };
 
 describe("requirePageAuthorization", () => {
+  it("shares bounded owner facts between hints and distinct capability checks within one opted-in request", async () => {
+    const { requirePageAuthorization } = await import("../authorization.server");
+    mocks.resolveOwnerProfileIds.mockResolvedValue(
+      new Map([
+        ["lead-1", "actor-1"],
+        ["lead-2", null],
+      ]),
+    );
+    const { rows } = await requirePageAuthorization(["leads.view"], { cacheRowOwners: true });
+    await rows.allow("leads.view", "lead", ["lead-1", "lead-2"]);
+    expect(await rows.owners!("lead", ["lead-1", "lead-2"])).toEqual(
+      new Map([
+        ["lead-1", "actor-1"],
+        ["lead-2", null],
+      ]),
+    );
+    expect((await rows.allow("api_keys.manage", "lead", ["lead-1"])).get("lead-1")).toBe(false);
+    expect(mocks.resolveOwnerProfileIds).toHaveBeenCalledTimes(1);
+  });
+  it("refreshes cached owner facts on the next request and keeps new ids and resource types separate", async () => {
+    const { requirePageAuthorization } = await import("../authorization.server");
+    mocks.resolveOwnerProfileIds.mockResolvedValue(new Map([["record-1", "first-owner"]]));
+    const first = await requirePageAuthorization(["leads.view"], { cacheRowOwners: true });
+    expect((await first.rows.owners!("lead", ["record-1"])).get("record-1")).toBe("first-owner");
+    mocks.resolveOwnerProfileIds.mockResolvedValue(new Map([["record-1", "new-owner"]]));
+    const next = await requirePageAuthorization(["leads.view"], { cacheRowOwners: true });
+    expect((await next.rows.owners!("lead", ["record-1"])).get("record-1")).toBe("new-owner");
+    await next.rows.owners!("quote", ["record-1"]);
+    await next.rows.owners!("lead", ["record-2"]);
+    expect(mocks.resolveOwnerProfileIds).toHaveBeenCalledTimes(4);
+  });
+  it("does not cache an ownership failure or convert it to a permission verdict", async () => {
+    const { requirePageAuthorization } = await import("../authorization.server");
+    const { rows } = await requirePageAuthorization(["leads.view"], { cacheRowOwners: true });
+    mocks.resolveOwnerProfileIds.mockRejectedValueOnce(new Error("ownership store unavailable"));
+    await expect(rows.owners!("lead", ["lead-1"])).rejects.toThrow("ownership store unavailable");
+    mocks.resolveOwnerProfileIds.mockResolvedValue(new Map([["lead-1", "actor-1"]]));
+    expect((await rows.owners!("lead", ["lead-1"])).get("lead-1")).toBe("actor-1");
+    expect(mocks.resolveOwnerProfileIds).toHaveBeenCalledTimes(2);
+  });
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.resolveOwnerProfileIds.mockReset();
     mocks.requireNeonAuthSession.mockResolvedValue(ACTOR);
     mocks.query.mockResolvedValue([]);
     mocks.resolveOwnerProfileIds.mockResolvedValue(new Map());

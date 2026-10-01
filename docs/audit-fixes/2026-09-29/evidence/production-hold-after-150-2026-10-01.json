@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-10-01T03:02:41.248Z",
+  "scope": "Read-only hold and public build metadata; no production DB connection or mutation",
+  "projectId": "prj_28RsIf31nvcD0YS3UIQqdnvJlHki",
+  "ignoreCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then exit 0; else exit 1; fi",
+  "attempt": {
+    "id": "dpl_F8FZ9K3CfcrvXC7aawnartoBtHok",
+    "state": "CANCELED",
+    "source": "9e96bc5973406d8645d49a4b5de7807488caefc8"
+  },
+  "servedSha": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+  "productionDeployedOrPromoted": false
+}

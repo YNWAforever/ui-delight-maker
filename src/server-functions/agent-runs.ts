@@ -76,10 +76,13 @@ export const getAgentHistoryPage = createServerFn({ method: "GET" })
     // the subject capabilities come back as booleans, and `rows` lets the read model resolve
     // real ownership for the subjects this page's rows actually name, so a deny override
     // scoped to one record redacts that record and not its neighbours.
+    const context = await loadRequestAuthorization();
     const { access, rows } = await requirePageAuthorization(["agents.view"], {
       optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+      context,
+      cacheRowOwners: true,
     });
-    return loadAgentHistoryPage({ ...data, access, rows });
+    return loadAgentHistoryPage({ ...data, access, rows, recoveryContext: context });
   });
 
 export const getAiReviewRead = createServerFn({ method: "GET" }).handler(async () => {
