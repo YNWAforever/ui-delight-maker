@@ -42,3 +42,15 @@ Baseline runtime capture is complete on independent pre-change7dc40fd:30 decisio
 ## P4 evidence
 
 P3 commit `7d19783`. AI decisions now use the same frozen version/key/notes and quote/generic command routing without optimistic status/notes writes. Existing ordering, next selection, empty/last-reviewed, Advanced disclosure and role-baseline/profile-null advisory retained. Actual query refresh tests prove missing version blocks POST until version7 arrives; restricted mutation raw content and later restricted authorized read cannot reintroduce content. Successful write + rejected invalidation remains recorded with stale hint/onePOST. Quote-only reply cannot supply approval metadata; authorized detail timestamp is rendered.22 AI route +25 Approvals +34 hook =81/81 PASS; TypeScript exit0. No role/grant/schema change.
+
+## P5 transaction and whole-branch evidence
+
+P4 commit `e462096`. Added only three coverage gaps in the existing quote atomic suite: persisted version7 rejection exact replay/payload conflict with unchanged full quote/approval/audit/receipt; real assignment7->8 followed by stale reject7 with no changes; opposed quote decisions on two distinct actual pg_backend_pid values, one terminal success/audit/receipt, no issuance.71/71 real PG cases pass, zero skipped, preserving existing generic race/audit rollback/parked recovery/risk/immutable issuance cases. No server command changes required.
+
+Initial test harness errors retained: direct UPDATE cannot seed arbitrary7 because the real version trigger increments by1; seed starting7 by INSERT and assert persisted7. Quotes have no row_version; compare their actual full rows, and approval version separately. These are fixture corrections, not server fixes.
+
+First full run reused the baseline DB and failed an existing invitation beforeAll on its fixed leftover profile;2473 pass/2 skipped was rejected. New database `clientops_approval_review_final_20261001` in the same task-only PG17.10 container was verified empty before the final run:2475 tests/326 files pass, zero skips,411.75s. Failed run reports retained privately.
+
+Root package lint also scanned ignored historical deployment exports:11930 style errors including one own test formatting error. After formatting the own file, all774 tracked code/config/test files pass the same ESLint config. Actual `bun run lint` in a clean source export also exits0, with one existing warning in data-table-shell.tsx:82. TypeScript and pure Vite exit0; actual route bundle budget command exit0. No lint policy changed, migration/seed wrapper not run locally.
+
+Whole-branch self-review traced both adapters and the shared controller against frozen intent, optimistic/confirmed timing, allowed metadata, original replay payload, newer/refreshed/restricted precedence and neighboring workflow retention. No new grant/count formula/raw server content spread/schema/production operation. User forbids agents/model switches, so no separate-agent review is claimed. Exact final-head hosted/CI acceptance remains P6/P7.

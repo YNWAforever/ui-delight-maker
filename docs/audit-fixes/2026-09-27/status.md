@@ -426,3 +426,7 @@ P2 `01f70cc`; Approvals now uses the common preparation/confirmation flow.25 rou
 ## 2026-10-01 — Approval Review P4 confirmed surface
 
 P3 `7d19783`; AI Review now shares controller decisions while retaining confirmed-only timing, created-at ordering, next selection and role advisory. Five behavior regressions RED -> GREEN;22 AI/25 Approvals/34 hook tests81/81 PASS, TypeScript PASS. Restricted refreshed rows erase formerly visible content; recorded writes survive refresh failure. [Matrix](../2026-09-29/approval-review-module-2026-10-01.md). Real transaction/full-suite and candidate own-role/runtime/CI gates P5-P7 remain; all30 CO/external blockers and production hold retained. No migration or production/provider action.
+
+## 2026-10-01 — Approval Review P5 transaction/full gate
+
+P4 `e462096`;71 actual PG transaction/race/replay cases pass including quote reject7 exact replay, assignment8 stale rejection and two distinct database backends. Fresh empty isolated final DB full2475 tests/326 files/zero skips PASS; reused-DB invitation fixture failure retained and rejected. Clean-export package lint PASS0 errors/1 existing warning, tracked774 source lint PASS, TypeScript/pure Vite/bundle budgets PASS. [Detailed failures and evidence](../2026-09-29/approval-review-module-2026-10-01.md). Self-review respects no-agent instruction. Candidate actual roles/runtime/final-head CI P6/P7 remain; all30 CO/external blockers and production hold unchanged. No migration/reconciliation, production query/mutation/deploy/send.
