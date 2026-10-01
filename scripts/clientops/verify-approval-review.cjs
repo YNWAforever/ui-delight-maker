@@ -355,7 +355,23 @@
             const r = await response,
               raw = await r.text();
             if (!template) {
-              template = { ...capture(r), approvalId: f.id };
+              const actualHeaders = await r.request().allHeaders();
+              template = {
+                ...capture(r),
+                headers: Object.fromEntries(
+                  Object.entries(actualHeaders).filter(([key]) =>
+                    [
+                      "accept",
+                      "content-type",
+                      "x-tsr-serverfn",
+                      "origin",
+                      "referer",
+                      "sec-fetch-site",
+                    ].includes(key),
+                  ),
+                ),
+                approvalId: f.id,
+              };
               fs.writeFileSync(path.join(dir, "template.private.json"), JSON.stringify(template));
             }
             fs.writeFileSync(path.join(dir, f.id + ".response.private.txt"), raw);

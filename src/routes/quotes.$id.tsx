@@ -96,7 +96,7 @@ export const Route = createFileRoute("/quotes/$id")({
  * message or a capability refusal reaches the reader verbatim. A route-local boundary keeps
  * the raw text in the console and shows a sanitized sentence with a way back.
  */
-function QuoteDetailError({ error, reset }: { error: Error; reset: () => void }) {
+function QuoteDetailError({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
 

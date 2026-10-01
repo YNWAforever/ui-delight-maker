@@ -137,7 +137,7 @@ export const Route = createFileRoute("/quotes")({
  * `toSafeErrorMessage`, and retrying here re-runs this route's loader rather than the
  * whole router.
  */
-function QuotesErrorBoundary({ error, reset }: { error: Error; reset: () => void }) {
+function QuotesErrorBoundary({ error, reset }: { error: unknown; reset: () => void }) {
   const router = useRouter();
 
   return (
