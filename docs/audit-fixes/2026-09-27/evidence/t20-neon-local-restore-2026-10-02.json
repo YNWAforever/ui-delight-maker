@@ -1,0 +1,118 @@
+{
+  "formatVersion": 1,
+  "sourceCommit": "6eb9281bf7e512853e86055979fa5850ce9324d2",
+  "scope": "Approved real Neon T20 read-only table backup and isolated local partial restore",
+  "source": {
+    "projectId": "delicate-cake-75532180",
+    "branchId": "br-young-rice-aoyk6gjz",
+    "database": "neondb",
+    "version": "18.6 (4e955f5)",
+    "snapshotTime": "2026-10-02 15:24:59.012844+00",
+    "snapshotId": "0000001E-00000002-1",
+    "transactionReadOnly": "on",
+    "isolation": "repeatable read"
+  },
+  "approvedOperations": ["read-only backup", "new local Docker restore"],
+  "sourceWrites": false,
+  "neonBackupSha256": "49c3040abe0a4f92644e59aab76bd146249c78497802bd02fbcb3911524889f7",
+  "sourceAndRestoredCounts": {
+    "accounts": 9,
+    "permission_overrides": 0,
+    "profiles": 9,
+    "tasks": 5
+  },
+  "selectedTableCountAndHashParity": true,
+  "missingNeonTables": [
+    "customer_success_profiles",
+    "success_touchpoints",
+    "projects",
+    "deals",
+    "engagement_events",
+    "channel_identities",
+    "automation_playbooks",
+    "automation_runs"
+  ],
+  "localCopy": {
+    "container": "clientops-t20-neon-20261002-24440e4b",
+    "forwarder": "clientops-t20-port-20261002-24440e4b",
+    "network": "clientops-t20-local-24440e4b",
+    "volume": "clientops-t20-copy-24440e4b",
+    "database": "clientops_snapshot_neon_20261002_24440e4b",
+    "host": "127.0.0.1",
+    "port": 62470,
+    "internalNetwork": true,
+    "sourceCredentialMounted": false
+  },
+  "excludedRestoreObjectCount": 9,
+  "excludedRestoreObjects": [
+    "3808; 2620 286725 TRIGGER public accounts accounts_import_row_version neondb_owner",
+    "3809; 2620 204815 TRIGGER public accounts accounts_updated_at neondb_owner",
+    "3806; 2620 204800 TRIGGER public profiles profiles_updated_at neondb_owner",
+    "3807; 2620 278586 TRIGGER public tasks tasks_bulk_row_version neondb_owner",
+    "3801; 2606 180446 FK CONSTRAINT public permission_overrides permission_overrides_department_id_fkey neondb_owner",
+    "3805; 2606 180451 FK CONSTRAINT public permission_overrides permission_overrides_team_id_fkey neondb_owner",
+    "3793; 2606 180283 FK CONSTRAINT public profiles profiles_primary_department_id_fkey neondb_owner",
+    "3797; 2606 49291 FK CONSTRAINT public tasks tasks_client_id_fkey neondb_owner",
+    "3798; 2606 49286 FK CONSTRAINT public tasks tasks_lead_id_fkey neondb_owner"
+  ],
+  "fullSchemaRestore": false,
+  "readerPrivileges": {
+    "rolsuper": false,
+    "rolcreaterole": false,
+    "rolcreatedb": false,
+    "rolreplication": false,
+    "rolbypassrls": false
+  },
+  "localWriteDenial": {
+    "readOnlySqlstate": "25006",
+    "selectOnlySqlstate": "42501",
+    "rollbackRecovered": true
+  },
+  "actualLocalExporterCounts": {
+    "tasks": 5,
+    "permission_overrides": 0,
+    "profiles": 9,
+    "accounts": 9
+  },
+  "runtimeMilliseconds": {
+    "sourcePgDump": 10298.811,
+    "localPgRestore": 3713.0113999999994,
+    "actualLocalExport": 110.22389999999999
+  },
+  "runtimeClaim": "One real operator run each; no application speedup or before/after claim",
+  "legacy": {
+    "projectId": "chwgijdmcyzmuuxzdkok",
+    "status": "INACTIVE",
+    "organizationPlan": "free",
+    "edgeFunctions": 0,
+    "databaseInventoryQuery": "connection timeout",
+    "conditionalSafeResumeApproved": true,
+    "schedulerAndOutboundSafetyVerified": false,
+    "resumeExecuted": false,
+    "backupObtained": false
+  },
+  "all30CoStates": {
+    "verifiedFixed": 19,
+    "blockedExternal": 11
+  },
+  "co25": "blocked_external",
+  "legacyPairAvailable": false,
+  "pairedProvenance": false,
+  "rolePolicyAcceptance": false,
+  "releaseAccepted": false,
+  "productionDeployment": false,
+  "privateEvidenceFiles": [
+    {
+      "privateFile": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\snapshots\\neon-restore-20261002-231842\\backup-receipt.private.json",
+      "sha256": "e0d00e168993abdb2da2bec5aec91f3e24320da6c4584414dcda540c5561ee1d"
+    },
+    {
+      "privateFile": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\snapshots\\neon-restore-20261002-231842\\restore-verification.private.json",
+      "sha256": "46c00f8fb046675b0e4b681e2fa5daf8cb06556f82f141c78340f14b5136abfe"
+    },
+    {
+      "privateFile": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\snapshots\\neon-restore-20261002-231842\\reader-verification.private.json",
+      "sha256": "1a0aa410d96fb570f48e0e98dad539961ecc3a7fb8c7952d42042a4702f961fa"
+    }
+  ]
+}
