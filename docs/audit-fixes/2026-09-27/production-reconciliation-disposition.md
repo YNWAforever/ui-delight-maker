@@ -4,7 +4,7 @@ The user authorized direct production read-only investigation. Existing T07–T0
 
 The [machine-readable report](evidence/production-reconciliation-2026-09-28.json) records counts only. The [SQL](production-reconciliation-readonly.sql) is a bounded repeatable inventory, not a repair. No customer content, credentials or row IDs are exported.
 
-## Current findings and disposition
+## Observed findings and disposition — 2026-09-28
 
 | Finding | Evidence | Disposition / evidence needed |
 |---|---|---|
@@ -25,6 +25,10 @@ These are current-state anomalies, not proof that a particular preview caused th
 
 These aggregate results do not cover commercial snapshot drift, every authorization path, external Xero reconciliation, or historical before/after parity. They cannot mark any CO finding fully verified without its remaining acceptance gates.
 
-## Next executable boundary
+## Inspection boundary — 2026-09-28 (historical)
 
 The inventory and disposition are complete. Production mutation remains outside this read-only inspection. Historical documents, decision evidence and a reviewed repair scope are needed for the four anomalies. T20 still requires complete isolated legacy/Neon snapshots; seven-role sessions, provider sandbox, full-route runtime evidence and operator release prerequisites remain unavailable. Production build hold and NO-GO remain in force.
+
+## Current acceptance boundary — 2026-10-02 HKT
+
+The four aggregate observations above are historical evidence, not a fresh current-state production count or proof of preview causality. No production DB was queried in this continuation. [Current accepted source/UAT and remaining owner gates](../2026-09-29/final-local-acceptance-2026-10-01.md) records seven independent role sessions, defined actual workflows, runtime/native polling and zero-skip PG CI now available. Those do not supply historical source/disposition records, #102 impact evidence or complete paired legacy/Neon snapshots. Provider, retention/PITR/release operator and human screen-reader evidence also remain external. No guessed timestamp/version/target, data repair or production release; NO-GO/hold remains.
