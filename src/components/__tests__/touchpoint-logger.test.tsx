@@ -13,20 +13,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * consistency bug rather than a missing feature.
  */
 
-const { createTouchpointMock, tidyTouchpointNoteMock, toastErrorMock, toastSuccessMock } =
-  vi.hoisted(() => ({
-    createTouchpointMock: vi.fn(),
-    tidyTouchpointNoteMock: vi.fn(),
-    toastErrorMock: vi.fn(),
-    toastSuccessMock: vi.fn(),
-  }));
+const {
+  createTouchpointMock,
+  isAiNoteTidyAvailableMock,
+  tidyTouchpointNoteMock,
+  toastErrorMock,
+  toastSuccessMock,
+} = vi.hoisted(() => ({
+  createTouchpointMock: vi.fn(),
+  isAiNoteTidyAvailableMock: vi.fn(),
+  tidyTouchpointNoteMock: vi.fn(),
+  toastErrorMock: vi.fn(),
+  toastSuccessMock: vi.fn(),
+}));
 
 vi.mock("sonner", () => ({
   toast: { error: toastErrorMock, success: toastSuccessMock, message: vi.fn() },
 }));
 vi.mock("@/server-functions/touchpoints", () => ({ createTouchpoint: createTouchpointMock }));
 vi.mock("@/server-functions/ai-note-tidy", () => ({
-  isAiNoteTidyAvailable: () => Promise.resolve({ available: true }),
+  isAiNoteTidyAvailable: isAiNoteTidyAvailableMock,
   tidyTouchpointNote: tidyTouchpointNoteMock,
 }));
 
@@ -58,6 +64,7 @@ function renderLogger(onLogged = vi.fn()) {
 
 beforeEach(() => {
   createTouchpointMock.mockReset();
+  isAiNoteTidyAvailableMock.mockReset().mockResolvedValue({ available: true });
   tidyTouchpointNoteMock.mockReset();
   toastErrorMock.mockReset();
   toastSuccessMock.mockReset();
@@ -66,6 +73,25 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("touchpoint logger", () => {
+  it("keeps manual notes usable when optional AI availability is denied", async () => {
+    isAiNoteTidyAvailableMock.mockRejectedValue(new Error("You do not have this capability"));
+    renderLogger();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "Manual note retained" } });
+    expect((screen.getByLabelText("Notes") as HTMLTextAreaElement).value).toBe(
+      "Manual note retained",
+    );
+    expect(screen.queryByRole("button", { name: "Tidy with AI" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Save touchpoint" }).hasAttribute("disabled")).toBe(
+      false,
+    );
+    expect(tidyTouchpointNoteMock).not.toHaveBeenCalled();
+    expect(createTouchpointMock).not.toHaveBeenCalled();
+    expect(toastSuccessMock).not.toHaveBeenCalled();
+  });
+
   it("retries the same note with the same idempotency key and changes key after an edit", async () => {
     tidyTouchpointNoteMock
       .mockRejectedValueOnce(new Error("temporary provider error"))

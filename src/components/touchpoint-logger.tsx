@@ -69,7 +69,10 @@ export function TouchpointLogger({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    isAiNoteTidyAvailable().then((r) => setAiAvailable(r.available));
+    isAiNoteTidyAvailable().then(
+      (result) => setAiAvailable(result.available),
+      () => setAiAvailable(false),
+    );
   }, []);
 
   const tidy = async () => {
