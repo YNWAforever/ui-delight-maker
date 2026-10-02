@@ -93,7 +93,7 @@ bun scripts/clientops/reconcile-legacy-domains.ts `
 
 - RED：初始 raw pass-through／缺 guard 18/22失敗；實際 PG exporter／transaction 缺行為6/6失敗；CLI無檔案生成2/5失敗；decimal rounding／Unicode replacement兩項實際誤判 matched。
 - GREEN：40項針對性測試、0 skipped，包括兩個獨立真實 PostgreSQL copies 的 CLI／穩定 MVCC／寫入25006拒絕及 rollback／RLS拒絕／數值精度／view拒絕／pair masked FK／missing／duplicates／stdout無 secret／原有對帳 CLI 相容。
-- 第一輪完整 suite：329 files／2,514 tests／0 skipped。whole-source lint：0 errors／1 existing warning；app tsc、standalone runtime tsc、純 Vite build PASS。自我審查另修正port=0的環境 fallback（1項RED -> GREEN）、加強新目錄內 partial-file清理；最終40項及runtime typecheck／changed lint PASS。最後來源的全套fresh PG／CI仍在執行，結果完成後追加。角色 UI：N/A（本次僅本機 CLI，沒有 application／policy/UI修改）；現有七角色證據保留，不能代替 legacy 對帳。
+- 第一輪完整 suite：329 files／2,514 tests／0 skipped。whole-source lint：0 errors／1 existing warning；app tsc、standalone runtime tsc、純 Vite build PASS。自我審查另修正port=0的環境 fallback（1項RED -> GREEN）、加強新目錄內 partial-file清理；最終40項及runtime typecheck／changed lint PASS。最後來源commit1cd638d的fresh PG全套2,515 tests／329 files／0 skipped PASS（Vitest report1,011.2348s）。final app／runtime types、whole-source lint、clean source-only Vite／bundle budgets亦PASS；[allowlisted evidence](evidence/t20-snapshot-tool-2026-10-02.json)。角色 UI：N/A（本次僅本機 CLI，沒有 application／policy/UI修改）；現有七角色證據保留，不能代替 legacy 對帳。
 - 執行測試只使用自行新建的隔離 DB 和 synthetic rows。沒有真實來源 export、migration、backfill、seed-on-production、cutover、provider/customer send 或 production deployment。
 
 ## Runbook／rollback／release
@@ -115,3 +115,9 @@ bun scripts/clientops/reconcile-legacy-domains.ts `
 | 最後guard來源重測 | 1392.403 / 872.6988 / 376.447  | 2822.6648 / 3283.9509 / 3279.2296 | true                     |
 
 環境波動使最後量測較慢，兩次都保留。唯讀與完整pipeline工作量不同；不稱為before/after加速，不代替application runtime／production／實際legacy驗收。兩個run僅工具synthetic量測；sourceProvenanceVerified=false，releaseAccepted=false。CLI是新增功能，既有application performance before/after不適用；既有Approval Review量測沒有改寫。
+
+### Reviewable delivery
+
+Implementation commit：`1cd638d947ec804ec71946cc4035ff8a40cbef96`。Branch：`codex/clientops-snapshot-export-20261002`。[PR157](https://github.com/YNWAforever/ui-delight-maker/pull/157)。最後head／main CI、source-only preview及green-only merge紀錄會寫入PR157 body。40項RED/GREEN證據與最後全套raw-report hashes已保存；self-review不開agents。
+
+六份工具效能測試pair另存ignored量測目錄並加synthetic-only標記，不作actual acceptance input。目前operator目錄只有空白設定模板，沒有真正legacy／Neon pair；待收到副本設定／來源紀錄路徑才執行真實匯出。Production最新READY仍bed941b；hold已從provider metadata核實。沒有production deployment或資料操作。
