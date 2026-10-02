@@ -73,10 +73,18 @@ let pool: Pool;
 
 describe.runIf(enabled)("Neon-only domain storage on real PostgreSQL", () => {
   beforeAll(async () => {
-    delete process.env.SUPABASE_URL;
-    delete process.env.SUPABASE_ANON_KEY;
-    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-    pool = new Pool({ connectionString: process.env.DATABASE_TEST_URL });
+    const testUrl = process.env.DATABASE_TEST_URL!;
+    const target = new URL(testUrl);
+    if (
+      !["localhost", "127.0.0.1", "[::1]"].includes(target.hostname) ||
+      !/^\/clientops_[a-z0-9_]+$/.test(target.pathname)
+    )
+      throw new Error("Neon domain integration requires an isolated loopback test database");
+    vi.stubEnv("DATABASE_URL", testUrl);
+    vi.stubEnv("SUPABASE_URL", undefined);
+    vi.stubEnv("SUPABASE_ANON_KEY", undefined);
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", undefined);
+    pool = new Pool({ connectionString: testUrl });
     await runClientOpsMigrations(
       pool,
       await Promise.all(
@@ -116,42 +124,46 @@ describe.runIf(enabled)("Neon-only domain storage on real PostgreSQL", () => {
     );
   }, 60_000);
   afterAll(async () => {
-    if (pool) {
-      await pool
-        .query("drop trigger if exists neon_only_fail_touch on customer_success_profiles")
-        .catch(() => undefined);
-      await pool
-        .query("drop trigger if exists neon_only_fail_event on campaign_members")
-        .catch(() => undefined);
-      await pool.query("drop function if exists neon_only_fail_stamp()").catch(() => undefined);
-      for (const table of [
-        "automation_runs",
-        "engagement_events",
-        "channel_identities",
-        "success_touchpoints",
-        "customer_success_profiles",
-        "projects",
-        "deals",
-        "campaign_members",
-        "account_contacts",
-        "tasks",
-      ]) {
+    try {
+      if (pool) {
         await pool
-          .query(`delete from ${table} where account_id=$1`, [accountId])
+          .query("drop trigger if exists neon_only_fail_touch on customer_success_profiles")
           .catch(() => undefined);
+        await pool
+          .query("drop trigger if exists neon_only_fail_event on campaign_members")
+          .catch(() => undefined);
+        await pool.query("drop function if exists neon_only_fail_stamp()").catch(() => undefined);
+        for (const table of [
+          "automation_runs",
+          "engagement_events",
+          "channel_identities",
+          "success_touchpoints",
+          "customer_success_profiles",
+          "projects",
+          "deals",
+          "campaign_members",
+          "account_contacts",
+          "tasks",
+        ]) {
+          await pool
+            .query(`delete from ${table} where account_id=$1`, [accountId])
+            .catch(() => undefined);
+        }
+        await pool
+          .query("delete from automation_playbooks where created_by=$1", [owner])
+          .catch(() => undefined);
+        await pool.query("delete from campaigns where id=$1", [campaignId]);
+        await pool.query("delete from accounts where id=$1", [accountId]);
+        await pool.query("delete from profiles where id=$1", [owner]);
+        await pool.query("delete from profiles where id=any($1::text[])", [
+          roles.map((role) => "neon-only-role-" + role),
+        ]);
+        await pool.end();
       }
-      await pool
-        .query("delete from automation_playbooks where created_by=$1", [owner])
-        .catch(() => undefined);
-      await pool.query("delete from campaigns where id=$1", [campaignId]);
-      await pool.query("delete from accounts where id=$1", [accountId]);
-      await pool.query("delete from profiles where id=$1", [owner]);
-      await pool.query("delete from profiles where id=any($1::text[])", [
-        roles.map((role) => "neon-only-role-" + role),
-      ]);
-      await pool.end();
+      await Promise.all(transport.pools.map((p) => p.end()));
+    } finally {
+      vi.unstubAllEnvs();
     }
-    await Promise.all(transport.pools.map((p) => p.end()));
   });
 
   it("registers all eight domain tables with default-deny row security", async () => {

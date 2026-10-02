@@ -476,5 +476,28 @@
     "canonicalUatSha": "97891b9411686381634ea2d3c07ef660e062c94d",
     "aliasPromoted": false,
     "credentialUseExplicitlyApprovedForIndependentUatOnly": true
+  },
+  "ciFixtureCorrection": {
+    "initialHead": "10ce6812ab03b6eef89c5b67e3e9bdcdde493c7f",
+    "runId": 37047794051,
+    "initialFullPassed": 2524,
+    "initialFullFailed": 19,
+    "initialFullSkipped": 0,
+    "rootCause": "New integration fixture did not bind DATABASE_TEST_URL to runtime DATABASE_URL; CI supplies only test URL",
+    "isolatedLocalRed": {
+      "passed": 5,
+      "failed": 19,
+      "skipped": 0,
+      "reportSha256": "9ce9bca1bc9ee293e6b591afaad757b026fa7b139aec12af1e395c8360446031"
+    },
+    "isolatedLocalGreen": {
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "reportSha256": "2d40ca2ea71b1eddccb6f9bfef9268ce468ee41519a31706ccc9473272e739c9"
+    },
+    "fix": "Validate isolated loopback clientops_* DB; scoped Vitest env binding/restoration",
+    "runtimeSqlOrAssertionsChanged": false,
+    "finalExactHeadHostedGate": "Required before merge"
   }
 }
