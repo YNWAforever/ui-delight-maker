@@ -1,5 +1,10 @@
 # Final local acceptance and external gates — 2026-10-02 HKT
 
+## Current scope override — 2026-10-03 HKT
+
+[Scope instruction](../2026-09-27/scope-no-supabase-2026-10-03.md) removes Supabase recovery/acquisition from active work and withdraws the backup-page/file-path request. Five existing guarded legacy domains and eight absent Neon tables remain unverified. All30 CO19fixed/11external remain tracked; historical/provider/operator/screen-reader gates still apply. Prior paired-snapshot requests below are historical and superseded for active delivery.
+
+
 ## Current source and test environment — 2026-10-02 HKT
 
 [PR #155](https://github.com/YNWAforever/ui-delight-maker/pull/155) merged at `100153e6a4b72cc7775890e3778a634135e53b9d` after exact final head `97891b9411686381634ea2d3c07ef660e062c94d` passed required checks. Final head and fresh merged main each executed **2,475 tests / 326 files / zero skipped**, plus isolated migration/seed replay, Types/lint and browser collector. Actual main log explicitly asserts2,475/zero skipped. [Immutable merge/binding proof](evidence/pr155-merge-2026-10-02.json); [final-head Checks](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36908451351), [final-head Database](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36908451145), [main Checks](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36910357909), [main Database/replay](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36910357896). This documentation-only follow-up requires its own final-head/main checks; these source-specific results do not certify an unknown future commit.
@@ -76,7 +81,7 @@ CO27's original drift finding is verified_fixed at this current source/evidence 
 | Gate | Owner role required | Concrete evidence needed |
 | --- | --- | --- |
 | Historical anomalies / old preview impact | Data owner and DB operator |Four signed source/disposition records; #102 deployment/database binding and impact evidence; disposable compatibility rehearsal |
-| Legacy reconciliation | Legacy and Neon data owners |De-identified paired snapshots for five domains, stable IDs/owners/tasks/overrides, counts/hashes/allow-deny parity and approved reconciliation |
+| Legacy reconciliation | Recovery excluded by user on2026-10-03 |Supabase acquisition/resume/restore no longer active; full five-domain schema/data/policy acceptance remains unverified. See current scope override above. |
 | Provider/invitation/worker telemetry | Provider/n8n operator |Independent sandbox/version/recipient configuration, real callback/receipt/token-cost contract, invitation signup/acceptance evidence; no real customer sends |
 | Production retention/PITR/release rehearsal | DB/release operator |Approved target/retention owner and schedule, backup/PITR marker, compatibility/rollback rehearsal and release window |
 | Human screen reader | Accessibility QA operator |Actual assistive-technology acceptance for recorded role/dialog/receipt/invitation scopes |

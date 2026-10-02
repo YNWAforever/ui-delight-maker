@@ -1,5 +1,10 @@
 # T20 — legacy data-source reconciliation
 
+## Current scope override — 2026-10-03 HKT
+
+The user has removed Supabase recovery from active delivery. Earlier backup/download/resume requests and restore plans are superseded; see [scope](scope-no-supabase-2026-10-03.md). The verified Neon partial local copy is retained. No paired parity, domain migration or CO25 completion is claimed, and existing source guards remain unchanged.
+
+
 Code commit: `27bbb00`. Review PR: [draft #98](https://github.com/YNWAforever/ui-delight-maker/pull/98). No production migration, backfill, read cutover, write cutover or deployment occurred.
 
 ## Reachable source inventory

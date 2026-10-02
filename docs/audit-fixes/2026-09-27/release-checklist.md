@@ -1,5 +1,10 @@
 # ClientOps audit release candidate — 2026-09-28
 
+## Current scope override — 2026-10-03 HKT
+
+[User-approved scope](scope-no-supabase-2026-10-03.md) removes Supabase backup/resume/restore and withdraws its pending backup request. Legacy acquisition is no longer an active deliverable. Existing domain compatibility remains unverified; production is NO-GO pending applicable domain, historical, provider, retention/PITR/rollback and human screen-reader evidence. This does not reclassify any blocked CO as verified.
+
+
 ## Current acceptance checkpoint — PR155 / 2026-10-02 HKT
 
 [Current feature → route/server → migration → test/live evidence map and gate owners](../2026-09-29/final-local-acceptance-2026-10-01.md) supersedes historical blocked-preview cells below. PR155 final97891b9 / merged main100153e required CI **2,475/326/zero skipped**, isolated replay/static/browser/source-only Preview PASS; dedicated independent UAT actually serves97891b9 with app/config/schema/lock equivalent to measured patchedeb53700 and merged main. Seven distinct real upstream/profile/sidebar roles and defined workflows/native background polling PASS. [Actual merge, live GET binding and read-only hold proof](../2026-09-29/evidence/pr155-merge-2026-10-02.json). Supabase Preview SKIPPED/legacy-disabled is not integration acceptance; this docs-only follow-up requires its own exact-head/main checks before merge.
