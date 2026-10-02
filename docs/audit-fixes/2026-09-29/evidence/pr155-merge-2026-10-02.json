@@ -1,0 +1,170 @@
+{
+  "checkedAt": "2026-10-02T01:34:00.604Z",
+  "pullRequest": {
+    "headRefOid": "97891b9411686381634ea2d3c07ef660e062c94d",
+    "mergeCommit": {
+      "oid": "100153e6a4b72cc7775890e3778a634135e53b9d"
+    },
+    "mergedAt": "2026-10-01T18:54:37Z",
+    "number": 155,
+    "state": "MERGED",
+    "url": "https://github.com/YNWAforever/ui-delight-maker/pull/155"
+  },
+  "testedApplication": {
+    "measuredSource": "eb53700165e13098190fcf0079aaf1d99e3a8510",
+    "finalHead": "97891b9411686381634ea2d3c07ef660e062c94d",
+    "mergedMain": "100153e6a4b72cc7775890e3778a634135e53b9d",
+    "applicationConfigSchemaLockEquivalent": true,
+    "finalHeadAndMergedTrackedTreeEqual": true
+  },
+  "postMergeMain": {
+    "tests": 2475,
+    "files": 326,
+    "skipped": 0,
+    "noSkipActualLog": true,
+    "actualNoSkipLogSha256": "e02ef8b6c4d9bbdd182f053d30c4b5bf9e675fc673eaaad67635d56d23d991dd",
+    "runs": [
+      {
+        "id": "36910357909",
+        "headSha": "100153e6a4b72cc7775890e3778a634135e53b9d",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Types and lint",
+            "conclusion": "success",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36910357909/job/110531193467"
+          },
+          {
+            "name": "Browser collector integration",
+            "conclusion": "success",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36910357909/job/110531193729"
+          }
+        ]
+      },
+      {
+        "id": "36910357896",
+        "headSha": "100153e6a4b72cc7775890e3778a634135e53b9d",
+        "status": "completed",
+        "conclusion": "success",
+        "jobs": [
+          {
+            "name": "Isolated migration and seed replay",
+            "conclusion": "success",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36910357896/job/110531189616"
+          },
+          {
+            "name": "contract",
+            "conclusion": "success",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/36910357896/job/110531190218"
+          }
+        ]
+      }
+    ]
+  },
+  "uat": {
+    "url": "https://clientops-uat-20260930.vercel.app",
+    "liveApiBuildSha": "97891b9411686381634ea2d3c07ef660e062c94d",
+    "projectId": "prj_jlIsv7mLYGpZR4XEV4njX05jAZYJ",
+    "neonProjectId": "polished-forest-15724329",
+    "neonBranchId": "br-solitary-butterfly-b3883kwo",
+    "database": "clientops_uat",
+    "independentAuthOriginSha256": "97b089a053f3c9844ea598a8f061b6c5b5abec7c6d64e0700644f6daec1901f1",
+    "roleSmokeObservedAt": "2026-10-01T18:53:14.500Z",
+    "roleSmokeRawSha256": "6633ef212ff7745b18a16cbaf726fd9782aa51c865af5c066bff07dbd3caaf3b",
+    "sevenDistinctRealUpstreamUsers": true,
+    "roleControls": [
+      {
+        "role": "super_admin",
+        "ownUpstreamAndActiveProfileBound": true,
+        "actualSidebarRoleMatched": true,
+        "approvalDeskLoaded": true,
+        "approveEnabled": true,
+        "posts": 0
+      },
+      {
+        "role": "admin",
+        "ownUpstreamAndActiveProfileBound": true,
+        "actualSidebarRoleMatched": true,
+        "approvalDeskLoaded": true,
+        "approveEnabled": true,
+        "posts": 0
+      },
+      {
+        "role": "manager",
+        "ownUpstreamAndActiveProfileBound": true,
+        "actualSidebarRoleMatched": true,
+        "approvalDeskLoaded": true,
+        "approveEnabled": true,
+        "posts": 0
+      },
+      {
+        "role": "sales",
+        "ownUpstreamAndActiveProfileBound": true,
+        "actualSidebarRoleMatched": true,
+        "approvalDeskLoaded": true,
+        "approveEnabled": false,
+        "posts": 0
+      },
+      {
+        "role": "client_success",
+        "ownUpstreamAndActiveProfileBound": true,
+        "actualSidebarRoleMatched": true,
+        "approvalDeskLoaded": true,
+        "approveEnabled": false,
+        "posts": 0
+      },
+      {
+        "role": "accounting",
+        "ownUpstreamAndActiveProfileBound": true,
+        "actualSidebarRoleMatched": true,
+        "approvalDeskLoaded": true,
+        "approveEnabled": false,
+        "posts": 0
+      },
+      {
+        "role": "read_only",
+        "ownUpstreamAndActiveProfileBound": true,
+        "actualSidebarRoleMatched": true,
+        "approvalDeskLoaded": true,
+        "approveEnabled": false,
+        "posts": 0
+      }
+    ],
+    "exactMergedMainDeployment": false
+  },
+  "production": {
+    "metadataReadOnly": true,
+    "holdUnchanged": true,
+    "mergedMainAttempt": {
+      "id": "dpl_BQJSf9qyz164dqzvUwGpnQ9ipYmn",
+      "sourceSha": "100153e6a4b72cc7775890e3778a634135e53b9d",
+      "state": "CANCELED"
+    },
+    "latestReady": {
+      "id": "dpl_2XjJ6dX9xPT4uT2LCtQt2GujiDEY",
+      "sourceSha": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+      "state": "READY"
+    },
+    "deployedByTask": false,
+    "databaseAccessByThisContinuation": false
+  },
+  "findings": {
+    "total": 30,
+    "verifiedFixed": 19,
+    "blockedExternal": 11
+  },
+  "remainingExternalGates": [
+    "complete paired legacy/Neon snapshots and cutover parity",
+    "historical source/disposition records and #102 database-impact evidence",
+    "independent provider/n8n/invitation sandbox receipts and usage",
+    "approved production retention owner/target/schedule and PITR/rollback rehearsal",
+    "human screen-reader acceptance"
+  ],
+  "supabasePreview": {
+    "state": "SKIPPED",
+    "reason": "legacy-disabled; not accepted as integration acceptance"
+  },
+  "productionRelease": "NO-GO",
+  "newMigrationOrReconciliation": false
+}

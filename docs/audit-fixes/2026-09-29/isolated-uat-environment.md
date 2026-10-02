@@ -1,6 +1,14 @@
 # Isolated ClientOps UAT — 2026-09-30 HKT
 
-## Entry point and binding
+## Current reviewed binding — 2026-10-02 HKT / PR155
+
+Stable test URL remains https://clientops-uat-20260930.vercel.app/login/sign-in and fresh GET/api/build serves `97891b9411686381634ea2d3c07ef660e062c94d`. Application/config/schema/lock equals measured security-patched `eb53700165e13098190fcf0079aaf1d99e3a8510` and merged main `100153e6a4b72cc7775890e3778a634135e53b9d`; UAT is not an exact merged-main deployment. Independent project/database/Auth below remain bound. [Current merge/no-skip/role/live binding and read-only hold proof](evidence/pr155-merge-2026-10-02.json); [P1–P7 actual acceptance](approval-review-module-2026-10-01.md). Seven own upstream IDs/active profiles/actual sidebar roles/controls pass final GET-only smoke,0POST; no copied super_admin state.
+
+PR155 final-head and fresh main **2,475/326/zero skipped**, isolated replay/static/browser PASS. Actual native background polling passes four35s windows at patched source, no fake visibility/clock. Defined same-record/bulk/import/keyboard/runtime criteria retain their source-bound reports; legacy/history/provider/retention/operator-PITR/human screen-reader gates remain external. Production hold unchanged/main100153e attemptCANCELED/latestREADYbed941b unchanged; **未部署 production / release NO-GO**. No provider credentials were inherited.
+
+All sections below describe **historical provisioning/source-specific observations**. Initial fixture counts are not current counts, and old pre-security deployment URLs are not eligible rollback targets. Current UI rollback requires a patched rebuild retaining P1/server/receipts/schema/data. Current account/session paths remain private and expiry requires each role's own login.
+
+## Initial entry point and binding
 
 - Test URL: https://clientops-uat-20260930.vercel.app/login/sign-in
 - Vercel project: `clientops-uat-20260930` / `prj_jlIsv7mLYGpZR4XEV4njX05jAZYJ`.
@@ -71,13 +79,13 @@ Supersedes the earlier checkpoint's absence of role sessions and disposable Neon
 - No schema changes for these fixes. To revert UAT UI only, redeploy the clean source at `4d8424ae27a387774f9153c29c2bbbdeba23f65c` to this UAT project, or promote its UAT deployment `dpl_7GR7XgypZEQZWVXjwkLwhJTRdbGw`. Do not change the actual production project/build hold.
 - Account/password reference remains private: `.clientops-perf/uat/TEST-ACCOUNTS.zh-HK.md`. Session files remain `.clientops-perf/uat/sessions/<role>.json`.
 
-## Latest independently verified application source
+## Historical independently verified application source
 
 Approval source `fac59c90eb47be77c4f75554b3cee6e624b26622`, deployment `dpl_7J8H98mVBo23qrAuLXd8Z3EiDxmJ`; stable alias returned exact SHA before/after complete seven-role, scoped override, actual opposed-decision and manual-statement UI capture. The dedicated database/auth IDs and seven account identities above are unchanged. [Evidence](approval-role-uat-2026-09-30.md). No schema replay or provider configuration changes; production deployment/data remains untouched.
 
-## Latest R02 source-bound UAT
+## Historical R02 source-bound UAT
 
-Source `53dc62f8a19e4a2449c9e445651bbeb43bd3158b`, deployment `dpl_32SR9Ea7Z75GAVyB3nuus7m1nVJC`; stable alias SHA checked before/after actual 100-row mixed Task recovery acceptance. Dedicated project, database, Auth and seven distinct identities remain unchanged. [U08 evidence](bulk-recovery-uat-2026-09-30.md). No migration, real provider configuration or production operation. Previous UAT source deployment `dpl_BfrAUnkawVzUSVfXFFcGZZy3tsvn` is source `df14575`; rollback there retains precise cursors but restores slower preview.
+Source `53dc62f8a19e4a2449c9e445651bbeb43bd3158b`, deployment `dpl_32SR9Ea7Z75GAVyB3nuus7m1nVJC`; stable alias SHA checked before/after actual 100-row mixed Task recovery acceptance. Dedicated project, database, Auth and seven distinct identities remain unchanged. [U08 evidence](bulk-recovery-uat-2026-09-30.md). No migration, real provider configuration or production operation. Previous UAT source deployment `dpl_BfrAUnkawVzUSVfXFFcGZZy3tsvn` is source `df14575`; that historical rollback comparison retains precise cursors but restores slower preview; this pre-security deployment is not an eligible current rollback target. Rebuild the UI revert on the patched chain.
 
 ## Stable test-site upgrade — 2026-10-01 HKT
 
@@ -89,7 +97,7 @@ Before alias change, all three original recorded5000 IDs were completed, and glo
 
 Only dedicated test alias changed. Actual production project retains the hold; #147 production attemptCANCELED and publicbed941b unchanged. [Read-only hold proof](evidence/production-hold-after-147-2026-10-01.json). Never copy these credentials/storage-state files into Git or chat; expiry requires each corresponding account's own fresh login.
 
-## Current stable test-site upgrade — 2026-10-01 HKT / PR152
+## Historical stable test-site upgrade — 2026-10-01 HKT / PR152
 
 Stable URL remains https://clientops-uat-20260930.vercel.app/login/sign-in; application source7dc40fde8aba4c7033efaa67494fe31f70726926, deploymentdpl_A3d5J6CP9HTCVd8tWJspR5WbV6PL equals merged main22817d4 in application/config/schema. [Actual upgrade/seven own identities and homes](evidence/stable-uat-upgrade-7dc40fd-2026-10-01.json). Dedicated project/independent DB/Auth/protection unchanged. Before/after17 complete public synthetic table snapshots match; no running import/bulk workers or leases before alias switch. Same private accounts and seven corresponding session paths above; no copied super_admin state.
 
