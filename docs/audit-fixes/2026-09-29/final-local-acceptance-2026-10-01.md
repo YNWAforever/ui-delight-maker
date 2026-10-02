@@ -5,7 +5,11 @@
 [Scope instruction](../2026-09-27/scope-no-supabase-2026-10-03.md) removes Supabase recovery/acquisition from active work and withdraws the backup-page/file-path request. Five existing guarded legacy domains and eight absent Neon tables remain unverified. All30 CO19fixed/11external remain tracked; historical/provider/operator/screen-reader gates still apply. Prior paired-snapshot requests below are historical and superseded for active delivery.
 
 
-## Current source and test environment — 2026-10-02 HKT
+## Current source and acceptance — 2026-10-03 HKT
+
+The [current acceptance checkpoint](current-acceptance-2026-10-03.md) records merged main08ae873, exact-source2543/331/zero-skip PostgreSQL CI, canonical Neon-only UAT runtime87c5438, migration022 and remaining owner gates. This corrects the obsolete five-domain source map below. Supabase runtime and acquisition/resume/restore are forbidden. Historical product journeys and performance samples below retain their original source/time; they are not reclassified as freshly rerun by the documentation update.
+
+## Historical source and test environment — 2026-10-02 HKT
 
 [PR #155](https://github.com/YNWAforever/ui-delight-maker/pull/155) merged at `100153e6a4b72cc7775890e3778a634135e53b9d` after exact final head `97891b9411686381634ea2d3c07ef660e062c94d` passed required checks. Final head and fresh merged main each executed **2,475 tests / 326 files / zero skipped**, plus isolated migration/seed replay, Types/lint and browser collector. Actual main log explicitly asserts2,475/zero skipped. [Immutable merge/binding proof](evidence/pr155-merge-2026-10-02.json); [final-head Checks](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36908451351), [final-head Database](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36908451145), [main Checks](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36910357909), [main Database/replay](https://github.com/YNWAforever/ui-delight-maker/actions/runs/36910357896). This documentation-only follow-up requires its own final-head/main checks; these source-specific results do not certify an unknown future commit.
 
@@ -53,9 +57,9 @@ CO15's defined queue/polling criterion is verified_fixed. All30 finding IDs rema
 
 [T09's real PostgreSQL/format contracts](../2026-09-27/t09-evidence.md) cover HK23:59/00:00, New Year, date-only and SSR/CSR explicit `Asia/Hong_Kong`. [Actual U14](hk-report-uat-2026-10-01.md) uses own Accounting contexts in America/Los_Angeles and Pacific/Auckland: both display the same HK00:30 timestamp, identical date-filtered report/CSV values, midnight inclusion and pre-midnight exclusion. Existing actual [invoice dates](billing-role-uat-2026-09-30.md) and [Duplicate calendar values](quote-role-uat-2026-09-30.md) supply the date-only UI proof. Main's full suite executes these contracts. This meets the original CO26 timestamp/date-only criterion; an undefined broader date-entry requirement is removed. Historical accepted-date provenance remains a separate unresolved CO10 gate.
 
-## Current feature → implementation → evidence map
+## Historical feature → implementation → evidence map — through PR155
 
-Registered migrations remain001–021; this continuation changes no schema or app source. The original dependency register remains historical, with this current map authoritative for audit acceptance.
+This PR155 observation used registered migrations001–021. PR160 subsequently added022 and Neon-only domain storage/authorization. The [current map](current-acceptance-2026-10-03.md) is authoritative for source/operations; this table preserves the earlier evidence scope.
 
 | Feature/CO scope | Route/entrypoint → server owner | Migration | Current test/live evidence and gate |
 | --- | --- | --- | --- |
@@ -76,7 +80,9 @@ Registered migrations remain001–021; this continuation changes no schema or ap
 
 CO27's original drift finding is verified_fixed at this current source/evidence checkpoint. Closing it does not grant release authority or waive any external gate. All30 CO and16 UAT rows remain canonical; the751-case audit inventory is not represented as751 executed browser scenarios.
 
-## Remaining external acceptance and how to resolve
+## Historical external acceptance — 2026-10-02 HKT
+
+Use the [current external owner ledger](current-acceptance-2026-10-03.md) for remaining work. Seven distinct sessions and the independent Neon-only UAT already exist; the user excluded Supabase acquisition/restoration. The source-specific observations below remain historical and do not request that excluded work.
 
 | Gate | Owner role required | Concrete evidence needed |
 | --- | --- | --- |

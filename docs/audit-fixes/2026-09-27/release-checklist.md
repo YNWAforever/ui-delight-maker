@@ -5,7 +5,13 @@
 [User-approved scope](scope-no-supabase-2026-10-03.md) removes Supabase backup/resume/restore and withdraws its pending backup request. Legacy acquisition is no longer an active deliverable. Existing domain compatibility remains unverified; production is NO-GO pending applicable domain, historical, provider, retention/PITR/rollback and human screen-reader evidence. This does not reclassify any blocked CO as verified.
 
 
-## Current acceptance checkpoint — PR155 / 2026-10-02 HKT
+## Current acceptance checkpoint — 2026-10-03 HKT
+
+Use the [current source/CI/UAT, R00–R08 matrix and external owner ledger](../2026-09-29/current-acceptance-2026-10-03.md). PR160 is merged at `08ae873f81de48d46516649d9f64ab4a7ecf1fe4`; exact main Checks and real PostgreSQL CI passed2543 tests/331 files/zero skipped with isolated migration/seed replay. The canonical independent UAT serves runtime `87c5438f015b3bbc632cb935285e64aaa2c557c2`; its runtime/config/schema match that main, with documentation and test setup differences explicitly recorded. Migration022 and seven own-role identity/home UI are verified on this independent target. Production hold/older READY `bed941b` remain unchanged; no production migration, seed or promotion occurred. Historical compatibility, real provider/invitation/worker, operator release and human screen-reader gates remain open. Supabase acquisition/restoration is excluded, and Supabase runtime functions are forbidden.
+
+This continuation also corrects actual SSR capability/scope denials from500 to403 through the supported server entry, without changing authorization or schema. Its own exact-head/main full checks and patched own-role UAT are required. Existing source-specific commercial workflows and performance observations retain their original scope; they are not a fresh full-product run on main08ae873 or the new HTTP correction.
+
+## Historical acceptance checkpoint — PR155 / 2026-10-02 HKT
 
 [Current feature → route/server → migration → test/live evidence map and gate owners](../2026-09-29/final-local-acceptance-2026-10-01.md) supersedes historical blocked-preview cells below. PR155 final97891b9 / merged main100153e required CI **2,475/326/zero skipped**, isolated replay/static/browser/source-only Preview PASS; dedicated independent UAT actually serves97891b9 with app/config/schema/lock equivalent to measured patchedeb53700 and merged main. Seven distinct real upstream/profile/sidebar roles and defined workflows/native background polling PASS. [Actual merge, live GET binding and read-only hold proof](../2026-09-29/evidence/pr155-merge-2026-10-02.json). Supabase Preview SKIPPED/legacy-disabled is not integration acceptance; this docs-only follow-up requires its own exact-head/main checks before merge.
 
@@ -63,7 +69,9 @@ The table below is the historical source-delivery snapshot. Its preview cells ar
 
 See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The old fixture formula is synthetic and is excluded from this table.
 
-## Migration and data reconciliation
+## Migration and data reconciliation — historical through PR155
+
+The observations below retain their original dates and source. Current candidate migrations are001–022, the five domain repositories are Neon-only, and Supabase backup/resume/restore/source reversal is excluded. Use the current checkpoint and Neon-only runbook above for operations.
 
 - Commit `876ddef` makes Vercel's automatic PR/production build command source-only (`bunx vite build` plus output packaging). The first two PR #100 previews used the former wrapper and failed during seed with `Quote version is immutable`; its database isolation was not verified. Do not use an automatic build to apply migration or seed. Before a future release, rehearse and separately authorize the schema/data operation on an identified target, then deploy the source.
 - The linked Neon production ledger already contains migrations 010–021, applied on 2026-09-27; current catalog inspection confirms enabled integrity guards. The old READY application SHA does not imply an unchanged database. Historical preview binding, full schema compatibility and reconciliation remain unverified; see [production read-only findings](preview-database-triage.md).
@@ -90,13 +98,13 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 | Backup/PITR, migration rehearsal, change window | blocked; operator evidence unavailable | production operator |
 | Release approval | NO-GO: production serves `bed941b`; latest main build was canceled. Deployment provenance and outstanding acceptance gates require reconciliation; see the 2026-09-30 checkpoint | user/owner after all gates, including target-specific migration, UAT and snapshot reconciliation |
 
-## Rollforward and rollback sequence
+## Current rollforward and rollback sequence
 
 1. Before release, freeze candidate SHA and PR dependency order. Verify all required checks and preview SHA. Record schema version, inventory counts, backup/PITR marker and maintenance window without copying secrets into tickets.
-2. Rehearse additive migrations 010–021 and data checks on a disposable copy. Reconcile counts and immutable histories; resolve anomalies with source evidence. Keep the five legacy domains on their guarded source.
+2. Rehearse registered migrations001–022 and data checks on a matching, confirmed disposable Neon/Postgres copy. Reconcile counts and immutable histories; resolve anomalies with source evidence and owner disposition. Supabase functions and recovery are excluded. Existing UAT/CI replay is evidence for those targets, not an operator-approved production rehearsal.
 3. Deploy only after explicit production authorization and gates above. Observe 403/409 rates, pending approvals, stuck agent runs, bulk/import item status, slow queries, initial JS and route p95 during an agreed window. Record timestamps and source of measurements.
 4. If a new operation misbehaves, stop its entrypoint, retain operation receipts and histories, diagnose, then roll forward to a compatible fix. Do not restore the old authorization/transaction bypass. Additive tables and immutable quote/approval history stay intact.
-5. If a legacy domain has begun Neon writes, freeze writes, compare the delta and obtain a signed reverse-sync plan before any source reversal. A toggle alone is not a safe rollback.
+5. If a domain has begun Neon writes, stop affected operations, preserve migration022 tables and compare the delta before a compatible Neon-only repair. Do not restore Supabase access, flip a source toggle, drop history/receipts or discard new writes. Production recovery requires then-current operator approval.
 6. Record final disposition and customer-impact decision with the operator. No real customer message was sent; database effects of the failed #102 preview remain unverified.
 
 **Release decision at the 2026-09-28 checkpoint:** NO-GO for production while external gates above remain blocked. Main contains the source at `f038919` but the user-approved production hold remains active; the live READY deployment is still the audited `2904faa` version.
@@ -116,7 +124,7 @@ See [T19 measurements](t19-evidence.md) and its machine-readable artifact. The o
 - The first #102 preview used the old `bun run build`, attempted migration and seed on a target of unverified isolation, and failed with `Quote version is immutable`. Database effects of that failed preview are not yet ruled out. Its later preview used the source-only command and passed. No deliberate production migration or customer message was sent.
 
 
-## Current evidence delta — independent UAT / R06
+## Historical evidence delta — independent UAT / R06
 
 [Independent seven-role UAT](../2026-09-29/isolated-uat-environment.md), scoped Quote U03 and billing U07 replace their earlier absence-of-session blockers. [Authenticated runtime comparison](../2026-09-29/r06-runtime-before-after-2026-09-30.md) satisfies the measured Task/Approval queue budgets on real 10k/100k PostgreSQL fixtures. Approval cold p95 regression and unresolved first CI/capture failures remain disclosed. Release is still **NO-GO** for broader UAT, legacy/provider/anomaly/operator gates. No production rollback or promotion was performed; current public build is `bed941b` with the persistent build hold active.
 
