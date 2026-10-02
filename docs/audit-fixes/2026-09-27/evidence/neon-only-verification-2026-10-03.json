@@ -1,0 +1,480 @@
+{
+  "checkedAt": "2026-10-02T18:13:48.437Z",
+  "sourceSha": "87c5438f015b3bbc632cb935285e64aaa2c557c2",
+  "schemaCommit": "49dad02ba57bb0d17c6eed51fa43674f0895773c",
+  "productionMutation": false,
+  "fullSuite": {
+    "passed": 2543,
+    "failed": 0,
+    "skipped": 0,
+    "reportSha256": "d43f3b8f0e5fae97087bf073bae2b2e2a9f137bab798fd19e378f57b3c0f413f",
+    "database": "clientops_neon_only_0de3d9a93aa3",
+    "transport": "real loopback PostgreSQL 17"
+  },
+  "focusedSuite": {
+    "passed": 24,
+    "skipped": 0,
+    "reportSha256": "209bafa51885a68af019c3a5e99a010fa89c740157c43a62ecf623e3480eb3cb",
+    "database": "clientops_neon_only_be24424a5b81",
+    "distinctPersistedRoleFixtures": 7,
+    "authBrowserAcceptance": false
+  },
+  "staticChecks": [
+    {
+      "check": "types",
+      "exitCode": 0,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "check": "runtime-types",
+      "exitCode": 0,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "e4f821f36a2e30b400647b29ef8deac95b11f2aefafabd0f3f1b81325ba3c1b3"
+    },
+    {
+      "check": "lint",
+      "exitCode": 0,
+      "stdoutSha256": "fb8a1d6f269b1e32da1908bcee1372414e12c94ab8ac2251a84c9568586eb895",
+      "stderrSha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1"
+    },
+    {
+      "check": "vite",
+      "exitCode": 0,
+      "stdoutSha256": "897179e08590391927182cf2c5bd813f653c991f08d4a79b8ed9dc345be84e4a",
+      "stderrSha256": "8f488b0f1537db144706c4db1f9940aca29f90816a9a2c53cd9b664df703bf93"
+    },
+    {
+      "check": "bundles",
+      "exitCode": 0,
+      "stdoutSha256": "e4236590c0f99b92fdc024a896f5b061e4c4bea3e334981a6d419aebfd2326db",
+      "stderrSha256": "800a5558244b6fab4451511b2b380259bd4e76828b743b859eb08e441ebf1058"
+    }
+  ],
+  "uatSchema": {
+    "startedAt": "2026-10-02T17:46:06.964Z",
+    "finishedAt": "2026-10-02T17:46:26.276Z",
+    "projectId": "polished-forest-15724329",
+    "branchId": "br-solitary-butterfly-b3883kwo",
+    "database": "clientops_uat",
+    "applied": [
+      "neon/migrations/022_neon_domain_storage.sql"
+    ],
+    "replayApplied": 0,
+    "replaySkipped": 22,
+    "ready": true,
+    "unchangedOriginalTables": 45,
+    "before": {
+      "access_requests": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "account_contacts": {
+        "count": 5024,
+        "hash": "06e3e6a8e83707f847711fdd9fba1643"
+      },
+      "accounts": {
+        "count": 5029,
+        "hash": "4d4b6b201cef8220c3b9c4690142da3b"
+      },
+      "activity_logs": {
+        "count": 408,
+        "hash": "d99340de965963bda68c5d0d0ff75d83"
+      },
+      "admin_audit_logs": {
+        "count": 23,
+        "hash": "93ff68bc3f64faadae1376afbea3f501"
+      },
+      "agent_policy_versions": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "agent_runs": {
+        "count": 354,
+        "hash": "7d58511076c22349023045fe824773f4"
+      },
+      "agent_tool_calls": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "approval_message_handoffs": {
+        "count": 9,
+        "hash": "cd482b41228c4ed72ccccf4af78f4d74"
+      },
+      "bulk_operation_items": {
+        "count": 1082,
+        "hash": "52ee388bf34a0bf1a54b66e82efb878e"
+      },
+      "bulk_operations": {
+        "count": 22,
+        "hash": "d1827970860867b30757eb4467eab460"
+      },
+      "campaign_members": {
+        "count": 5022,
+        "hash": "50d9b30127a26b844283a2bbf2bed07a"
+      },
+      "campaigns": {
+        "count": 11,
+        "hash": "0da3b1ece5f6270e4bb14d70ea187064"
+      },
+      "client_contacts": {
+        "count": 5032,
+        "hash": "fee384333592fc8aff2e8c951ee07602"
+      },
+      "clients": {
+        "count": 5041,
+        "hash": "1f6583b103b24c1ef5a076a392a1772e"
+      },
+      "command_receipts": {
+        "count": 410,
+        "hash": "03a777905ec1ce5381b9b354bbf5a37e"
+      },
+      "departments": {
+        "count": 1,
+        "hash": "183ca6e53b307025c0970dbb91f99cd2"
+      },
+      "engagements": {
+        "count": 5042,
+        "hash": "24132db2cc0acfcf2247aafb3693d2c9"
+      },
+      "human_approvals": {
+        "count": 471,
+        "hash": "26e15ecf5f56110fe836d46b2b92983f"
+      },
+      "import_identity_keys": {
+        "count": 15053,
+        "hash": "cf6902754ee23178a1befa6c5764a48a"
+      },
+      "import_session_rows": {
+        "count": 20102,
+        "hash": "d93bf9ce68a0efcf2d1121b238cc6c62"
+      },
+      "import_sessions": {
+        "count": 30,
+        "hash": "685c20c74aeb9b6c7c0e73c67183138b"
+      },
+      "job_sheet_activity": {
+        "count": 142,
+        "hash": "6347d2873b25eca087b8c22c1d16f1c1"
+      },
+      "job_sheet_portions": {
+        "count": 97,
+        "hash": "fc4f996c2671b5f39cbea49bd91423de"
+      },
+      "job_sheets": {
+        "count": 96,
+        "hash": "63801de6cd76fc4cdd7083388f98d589"
+      },
+      "leads": {
+        "count": 5275,
+        "hash": "ed9c352608ef4dbc646efd7a062f4b6d"
+      },
+      "notifications": {
+        "count": 17,
+        "hash": "f48a9351ea1c343d38bfee0725a78fa4"
+      },
+      "pdf_templates": {
+        "count": 2,
+        "hash": "e0ed4674573ca20a35c514f9eea44a43"
+      },
+      "permission_overrides": {
+        "count": 152,
+        "hash": "4551ec8c6db480d4b75f92b9c4db7434"
+      },
+      "pricing_templates": {
+        "count": 6,
+        "hash": "3c21d864494127f8e27df6c8c55063f6"
+      },
+      "products": {
+        "count": 19,
+        "hash": "7ad3b1d3f0142622d976febf667ba83e"
+      },
+      "profiles": {
+        "count": 310,
+        "hash": "a05fd2f2ff87e410922a28eb5eda8923"
+      },
+      "quote_line_items": {
+        "count": 8,
+        "hash": "0486495a33db21f53c6ff3097becf262"
+      },
+      "quote_templates": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "quote_versions": {
+        "count": 120,
+        "hash": "dc7d27a37ade71bd8d1b8c8005b40406"
+      },
+      "quotes": {
+        "count": 122,
+        "hash": "5dd63ac09383154f871569e151e1abec"
+      },
+      "relationship_signals": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "tasks": {
+        "count": 581,
+        "hash": "808f95bb93b1a442039d7d6b5231f3bc"
+      },
+      "team_memberships": {
+        "count": 9,
+        "hash": "643544b8893bfc786e290ac8485eb715"
+      },
+      "teams": {
+        "count": 2,
+        "hash": "297827433607de74116fab79855111ea"
+      },
+      "touchpoints": {
+        "count": 5,
+        "hash": "88abcf8300d318757ed5c7a1cb7a4451"
+      },
+      "user_invitations": {
+        "count": 1,
+        "hash": "28459958a1b6350a335df9a739444237"
+      },
+      "work_delegations": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "workspace_favorites": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "workspace_views": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      }
+    },
+    "after": {
+      "access_requests": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "account_contacts": {
+        "count": 5024,
+        "hash": "06e3e6a8e83707f847711fdd9fba1643"
+      },
+      "accounts": {
+        "count": 5029,
+        "hash": "4d4b6b201cef8220c3b9c4690142da3b"
+      },
+      "activity_logs": {
+        "count": 408,
+        "hash": "d99340de965963bda68c5d0d0ff75d83"
+      },
+      "admin_audit_logs": {
+        "count": 23,
+        "hash": "93ff68bc3f64faadae1376afbea3f501"
+      },
+      "agent_policy_versions": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "agent_runs": {
+        "count": 354,
+        "hash": "7d58511076c22349023045fe824773f4"
+      },
+      "agent_tool_calls": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "approval_message_handoffs": {
+        "count": 9,
+        "hash": "cd482b41228c4ed72ccccf4af78f4d74"
+      },
+      "bulk_operation_items": {
+        "count": 1082,
+        "hash": "52ee388bf34a0bf1a54b66e82efb878e"
+      },
+      "bulk_operations": {
+        "count": 22,
+        "hash": "d1827970860867b30757eb4467eab460"
+      },
+      "campaign_members": {
+        "count": 5022,
+        "hash": "50d9b30127a26b844283a2bbf2bed07a"
+      },
+      "campaigns": {
+        "count": 11,
+        "hash": "0da3b1ece5f6270e4bb14d70ea187064"
+      },
+      "client_contacts": {
+        "count": 5032,
+        "hash": "fee384333592fc8aff2e8c951ee07602"
+      },
+      "clients": {
+        "count": 5041,
+        "hash": "1f6583b103b24c1ef5a076a392a1772e"
+      },
+      "command_receipts": {
+        "count": 410,
+        "hash": "03a777905ec1ce5381b9b354bbf5a37e"
+      },
+      "departments": {
+        "count": 1,
+        "hash": "183ca6e53b307025c0970dbb91f99cd2"
+      },
+      "engagements": {
+        "count": 5042,
+        "hash": "24132db2cc0acfcf2247aafb3693d2c9"
+      },
+      "human_approvals": {
+        "count": 471,
+        "hash": "26e15ecf5f56110fe836d46b2b92983f"
+      },
+      "import_identity_keys": {
+        "count": 15053,
+        "hash": "cf6902754ee23178a1befa6c5764a48a"
+      },
+      "import_session_rows": {
+        "count": 20102,
+        "hash": "d93bf9ce68a0efcf2d1121b238cc6c62"
+      },
+      "import_sessions": {
+        "count": 30,
+        "hash": "685c20c74aeb9b6c7c0e73c67183138b"
+      },
+      "job_sheet_activity": {
+        "count": 142,
+        "hash": "6347d2873b25eca087b8c22c1d16f1c1"
+      },
+      "job_sheet_portions": {
+        "count": 97,
+        "hash": "fc4f996c2671b5f39cbea49bd91423de"
+      },
+      "job_sheets": {
+        "count": 96,
+        "hash": "63801de6cd76fc4cdd7083388f98d589"
+      },
+      "leads": {
+        "count": 5275,
+        "hash": "ed9c352608ef4dbc646efd7a062f4b6d"
+      },
+      "notifications": {
+        "count": 17,
+        "hash": "f48a9351ea1c343d38bfee0725a78fa4"
+      },
+      "pdf_templates": {
+        "count": 2,
+        "hash": "e0ed4674573ca20a35c514f9eea44a43"
+      },
+      "permission_overrides": {
+        "count": 152,
+        "hash": "4551ec8c6db480d4b75f92b9c4db7434"
+      },
+      "pricing_templates": {
+        "count": 6,
+        "hash": "3c21d864494127f8e27df6c8c55063f6"
+      },
+      "products": {
+        "count": 19,
+        "hash": "7ad3b1d3f0142622d976febf667ba83e"
+      },
+      "profiles": {
+        "count": 310,
+        "hash": "a05fd2f2ff87e410922a28eb5eda8923"
+      },
+      "quote_line_items": {
+        "count": 8,
+        "hash": "0486495a33db21f53c6ff3097becf262"
+      },
+      "quote_templates": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "quote_versions": {
+        "count": 120,
+        "hash": "dc7d27a37ade71bd8d1b8c8005b40406"
+      },
+      "quotes": {
+        "count": 122,
+        "hash": "5dd63ac09383154f871569e151e1abec"
+      },
+      "relationship_signals": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "tasks": {
+        "count": 581,
+        "hash": "808f95bb93b1a442039d7d6b5231f3bc"
+      },
+      "team_memberships": {
+        "count": 9,
+        "hash": "643544b8893bfc786e290ac8485eb715"
+      },
+      "teams": {
+        "count": 2,
+        "hash": "297827433607de74116fab79855111ea"
+      },
+      "touchpoints": {
+        "count": 5,
+        "hash": "88abcf8300d318757ed5c7a1cb7a4451"
+      },
+      "user_invitations": {
+        "count": 1,
+        "hash": "28459958a1b6350a335df9a739444237"
+      },
+      "work_delegations": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "workspace_favorites": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      },
+      "workspace_views": {
+        "count": 0,
+        "hash": "d751713988987e9331980363e24189ce"
+      }
+    },
+    "newTables": [
+      {
+        "table": "deals",
+        "rows": 0
+      },
+      {
+        "table": "projects",
+        "rows": 0
+      },
+      {
+        "table": "engagement_events",
+        "rows": 0
+      },
+      {
+        "table": "channel_identities",
+        "rows": 0
+      },
+      {
+        "table": "automation_playbooks",
+        "rows": 0
+      },
+      {
+        "table": "automation_runs",
+        "rows": 0
+      },
+      {
+        "table": "customer_success_profiles",
+        "rows": 0
+      },
+      {
+        "table": "success_touchpoints",
+        "rows": 0
+      }
+    ],
+    "seed": false,
+    "legacyImport": false,
+    "productionMutation": false
+  },
+  "candidate": {
+    "projectId": "prj_jlIsv7mLYGpZR4XEV4njX05jAZYJ",
+    "deploymentId": "dpl_7iqLiCNrnAUVfNxHmKbcXHXfPgX4",
+    "state": "READY",
+    "sourceSha": "87c5438f015b3bbc632cb935285e64aaa2c557c2",
+    "protectedBuildMetadataVerified": true,
+    "protectedSevenRoleUi": "PASS: seven independent role identity/profile/session/home UI bindings; 45 original tables unchanged",
+    "canonicalUatSha": "97891b9411686381634ea2d3c07ef660e062c94d",
+    "aliasPromoted": false,
+    "credentialUseExplicitlyApprovedForIndependentUatOnly": true
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "sourceSha": "87c5438f015b3bbc632cb935285e64aaa2c557c2",
+  "startedAt": "2026-10-02T18:21:58.949Z",
+  "finishedAt": "2026-10-02T18:22:58.171Z",
+  "scope": "Own live Auth session / persisted profile / visible home UI name and role; no full historical or domain UI parity claim",
+  "roleResults": [
+    {
+      "role": "super_admin",
+      "pass": true
+    },
+    {
+      "role": "admin",
+      "pass": true
+    },
+    {
+      "role": "manager",
+      "pass": true
+    },
+    {
+      "role": "sales",
+      "pass": true
+    },
+    {
+      "role": "client_success",
+      "pass": true
+    },
+    {
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "role": "read_only",
+      "pass": true
+    }
+  ],
+  "distinctAuthUsers": 7,
+  "distinctProfiles": 7,
+  "distinctSessions": 7,
+  "distinctCookieSets": 7,
+  "originalPublicTablesUnchanged": 45,
+  "supabaseRequests": 0,
+  "mutationPosts": 0,
+  "productionMutation": false,
+  "protectionRetained": true,
+  "publicScreenshots": false,
+  "privateArtifactsRetained": true,
+  "privateResultSha256": "f3368f543fa64b4264725a8a15887ce91d366dc8f010f8a5b2ae7c3ebad07cc0",
+  "privateScreenshotHashes": [
+    {
+      "role": "super_admin",
+      "sha256": "20ac4d86307c0abf7216c4bd7667d7dd6a48b6181ce989a44b448c3d396da0cf"
+    },
+    {
+      "role": "admin",
+      "sha256": "d850ddc637eea1181d92cf119c6731915f85bff80af92b919b85c04e847a3e73"
+    },
+    {
+      "role": "manager",
+      "sha256": "1126e21393abc6af7dc49f2c338b861d403e5c953857992295800f0fdad68f0c"
+    },
+    {
+      "role": "sales",
+      "sha256": "e6997e6ca17b340612a4a2a5c4d213f420c9b8cb884b67ccb9a8a9aeb2070c84"
+    },
+    {
+      "role": "client_success",
+      "sha256": "a848e9006d5a2c0d4ec855fd26a43bcde3c26c17067743aee1909a37ff02edcc"
+    },
+    {
+      "role": "accounting",
+      "sha256": "14a530f9fdc4e4647b72d35f590a4e65ac02bc3068afc272672d805599b7f2e7"
+    },
+    {
+      "role": "read_only",
+      "sha256": "2592b05debe41e353f5b73c3cd3d5a5f0c79f27797de95fc79f9cddf19e2427d"
+    }
+  ],
+  "success": true
+}
