@@ -22,7 +22,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "typecheck:runtime": "tsc --noEmit --strict --module esnext --moduleResolution bundler --target es2022 --types node --esModuleInterop --skipLibCheck --allowImportingTsExtensions scripts/clientops/measure-runtime.ts scripts/clientops/measure-browser-runtime.ts scripts/clientops/check-browser-collector.ts",
+    "typecheck:runtime": "tsc --noEmit --strict --module esnext --moduleResolution bundler --target es2022 --types node --esModuleInterop --skipLibCheck --allowImportingTsExtensions scripts/clientops/measure-runtime.ts scripts/clientops/measure-browser-runtime.ts scripts/clientops/check-browser-collector.ts scripts/clientops/export-legacy-snapshots.ts scripts/clientops/snapshot-export.ts scripts/clientops/snapshot-export-files.ts",
     "test": "vitest run --no-file-parallelism",
     "format": "prettier --write ."
   },

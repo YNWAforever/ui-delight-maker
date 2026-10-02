@@ -1,0 +1,93 @@
+{
+  "formatVersion": 1,
+  "generatedAt": "2026-10-02T12:46:09.335Z",
+  "baselineMain": "cec0cdeb5e3c01ef9e73ac363e8822f008549d77",
+  "implementationCommit": "1cd638d947ec804ec71946cc4035ff8a40cbef96",
+  "scope": "local_snapshot_export_preparation_only",
+  "local": {
+    "full": {
+      "tests": 2515,
+      "files": 329,
+      "skipped": 0,
+      "reportHash": "489fb092f42a5f90f92b59f8159521eb4c09b9374578fd1fba6163b26bbe3965",
+      "vitestReportElapsedSeconds": 1011.2348002929688
+    },
+    "focused": {
+      "tests": 40,
+      "skipped": 0,
+      "reportHash": "6bd8a123c95bb8cfb962dc57493c23b030634ec2884b39e5a379ec88343ec011"
+    },
+    "types": "passed",
+    "runtimeTypes": "passed",
+    "wholeSourceLint": {
+      "errors": 0,
+      "existingWarnings": 1
+    },
+    "sourceOnlyBuild": "passed",
+    "bundleBudgets": "passed",
+    "selfReview": "completed_no_agents",
+    "generatedOrderingResidue": "verified_equivalent_and_restored"
+  },
+  "runtime": {
+    "actualCounts": {
+      "legacy": 10000,
+      "neon": 10000
+    },
+    "distinctLocalDatabases": true,
+    "initial": {
+      "pairedReadOnlyMs": [401.6164, 231.0538, 320.0879],
+      "pairedReadMaskWriteMs": [1119.2369, 679.7032, 1112.1032],
+      "source": "actual_initial_tool_output"
+    },
+    "final": {
+      "syntheticOnly": true,
+      "database": "isolated_postgresql_17_10_loopback",
+      "taskRowsPerCopy": 10000,
+      "samples": 3,
+      "pairedReadOnlyMs": [1392.4029999999998, 872.6988000000001, 376.4470000000001],
+      "pairedReadMaskWriteMs": [2822.6648, 3283.9509, 3279.2296000000006],
+      "outputBytesPerPair": [14661818, 14661818, 14661818],
+      "parityMatched": true,
+      "fixtureUnchanged": true,
+      "releaseAccepted": false,
+      "disclaimer": "Different workloads; no application or production performance comparison is claimed."
+    },
+    "finalReportHash": "960335a54ff1d1709729fdb22eb0abfd6c4a106f39c513bd9f122f66a8945ff1",
+    "warning": "Runs vary; no application or production speedup claim. Different workloads are not a before-after comparison."
+  },
+  "sources": {
+    "userReportsIndependentLocalCopies": true,
+    "configPathReceived": false,
+    "provenanceVerified": false,
+    "actualLegacyNeonPairExported": false,
+    "syntheticBenchmarkPairsArchivedSeparately": 6
+  },
+  "production": {
+    "hold": {
+      "checkedAt": "2026-10-02T12:36:08.542Z",
+      "projectId": "prj_28RsIf31nvcD0YS3UIQqdnvJlHki",
+      "productionHold": true
+    },
+    "ready": {
+      "checkedAt": "2026-10-02T12:39:51.157Z",
+      "latestReady": {
+        "id": "dpl_2XjJ6dX9xPT4uT2LCtQt2GujiDEY",
+        "state": "READY",
+        "source": "bed941b37d18d214d0e7658ebce2116a2fc33eb9"
+      },
+      "morePages": false
+    },
+    "access": "deployment_metadata_only",
+    "deployedByThisTask": false
+  },
+  "acceptance": {
+    "roleUI": "not_applicable_no_application_or_policy_change",
+    "legacyRoleAcceptance": "blocked_external",
+    "coIds": 30,
+    "verifiedFixed": 19,
+    "blockedExternal": 11,
+    "CO25": "blocked_external",
+    "migrationBackfillCutover": "not_performed",
+    "releaseAccepted": false
+  }
+}
