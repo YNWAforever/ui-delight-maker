@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "dateHkt": "2026-10-03",
+  "baselineMain": "932f65a6b232d860c625650902007a2c9ab3f15d",
+  "humanInstruction": "please skip supabase, no need to restore from supabase",
+  "supabaseRecoveryInScope": false,
+  "pendingBackupRequest": "withdrawn",
+  "supabaseRecoveryActionsAfterInstruction": 0,
+  "applicationSourceChanged": false,
+  "dataSourceChanged": false,
+  "legacyParityAccepted": false,
+  "neonFullDomainSchemaAccepted": false,
+  "coTotal": 30,
+  "coVerified": 19,
+  "coBlockedExternal": 11,
+  "remainingExternalGateGroups": [
+    "historical-dispositions-and-preview-impact",
+    "provider-invitation-worker-telemetry",
+    "retention-PITR-compatible-rollback",
+    "human-screen-reader"
+  ],
+  "releaseAcceptance": "NO-GO",
+  "deployed": false,
+  "roleUiForDocsOnly": "N/A",
+  "performanceForDocsOnly": "N/A",
+  "baselineCi": {
+    "checksRun": 37031225390,
+    "databaseRun": 37031225465,
+    "testsPassed": 2515,
+    "testsSkipped": 0,
+    "migrationSeedReplay": "pass"
+  },
+  "newHeadCi": "required before merge"
+}
