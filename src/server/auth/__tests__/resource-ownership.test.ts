@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { queryMock } = vi.hoisted(() => ({ queryMock: vi.fn() }));
 
 vi.mock("@/server/db/neon.server", () => ({ query: queryMock }));
-vi.mock("@/legacy-supabase/server", () => ({ createSupabaseServerClient: vi.fn() }));
 
 describe("batch ownership resolution", () => {
   beforeEach(() => {

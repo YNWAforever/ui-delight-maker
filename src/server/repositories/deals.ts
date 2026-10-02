@@ -1,24 +1,16 @@
-import { createLegacyDomainClient, loadWorkspaceTaskRows } from "./legacy-domain-source.server";
-import type { Deal, EngagementEvent, Project, Task } from "@/lib/types";
-import { pickColumns, supabaseOperationFailed } from "./supabase-writes";
+import { query, transaction } from "@/server/db/neon.server";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import {
+  readDomainWorkspace,
+  domainOperation,
+  insertDomainRow,
+  updateDomainRow,
+  readDomainRows,
+  requireDomainRow,
+  pickColumns,
+} from "./domain-sql";
 
-/**
- * Deals, and the workspace read around a single deal.
- *
- * These rows live in the quarantined Supabase project rather than Neon — see "Migration In
- * Progress" in CLAUDE.md. The point of this module is that the fact stops leaking into the BFF
- * layer: `src/server-functions/deals.ts` now holds its capability checks and nothing else, and
- * moving `deals` onto Neon becomes a change to the function bodies here instead of a rewrite of
- * every handler. It is the same seam this repo already put around ownership resolution.
- *
- * The reads are a faithful move of what those handlers did inline, including the parts that look
- * incidental and are not: the workspace read issues its four queries concurrently and only checks
- * their errors afterwards, so all four run even when the first fails.
- *
- * The writes are not quite a move. Both now go through the same `DEAL_WRITE_COLUMNS` allowlist —
- * the update always had one, the insert did not — and failures no longer carry the driver's
- * message to the caller. See `./supabase-writes.ts` for why both changed.
- */
+import type { Deal, EngagementEvent, Project, Task } from "@/lib/types";
 
 const DEAL_WRITE_COLUMNS = [
   "account_id",
@@ -76,104 +68,65 @@ export type DealWorkspace = {
   tasks: Task[];
 };
 
-export async function listDeals(filters: DealFilters = {}): Promise<Deal[]> {
-  const supabase = createLegacyDomainClient("deals");
-  let query = supabase.from("deals").select("*").order("created_at", { ascending: false });
-
-  if (filters.status) query = query.eq("status", filters.status);
-  if (filters.stage) query = query.eq("stage", filters.stage);
-  if (filters.owner) query = query.eq("owner", filters.owner);
-  if (filters.account_id) query = query.eq("account_id", filters.account_id);
-  if (filters.contact_id) query = query.eq("contact_id", filters.contact_id);
-  if (filters.source_campaign_id) {
-    query = query.eq("source_campaign_id", filters.source_campaign_id);
-  }
-
-  const { data, error } = await query;
-  if (error) throw supabaseOperationFailed("load deals", error);
-  return data as Deal[];
-}
-
-/**
- * The deal plus everything the detail view shows beside it.
- *
- * The four reads stay in one `Promise.all` and their errors stay checked afterwards. Awaiting
- * them in sequence would short-circuit on the first failure — fewer round trips to Supabase, and
- * a different error surfaced for a deal whose events and projects both fail.
- */
-export async function getDealWorkspace(id: string): Promise<DealWorkspace> {
-  const supabase = createLegacyDomainClient("deals");
-  const [dealResult, eventsResult, projectsResult, tasksResult] = await Promise.all([
-    supabase.from("deals").select("*").eq("id", id).single(),
-    supabase
-      .from("engagement_events")
-      .select("*")
-      .eq("deal_id", id)
-      .order("occurred_at", { ascending: false })
-      .limit(50),
-    supabase.from("projects").select("*").eq("deal_id", id),
-    loadWorkspaceTaskRows("deal_id", id, () =>
-      supabase.from("tasks").select("*").eq("deal_id", id),
+export async function listDeals(
+  filters: DealFilters = {},
+  context?: RequestAuthorization,
+): Promise<Deal[]> {
+  return domainOperation("load deals", () =>
+    readDomainRows<Deal>(
+      "deals",
+      pickColumns(filters, [
+        "status",
+        "stage",
+        "owner",
+        "account_id",
+        "contact_id",
+        "source_campaign_id",
+      ]),
+      context,
     ),
-  ]);
-
-  if (dealResult.error) throw supabaseOperationFailed("load this deal", dealResult.error);
-  if (eventsResult.error) {
-    throw supabaseOperationFailed("load this deal's engagement events", eventsResult.error);
-  }
-  if (projectsResult.error) {
-    throw supabaseOperationFailed("load this deal's projects", projectsResult.error);
-  }
-  if (tasksResult.error) throw supabaseOperationFailed("load this deal's tasks", tasksResult.error);
-
-  return {
-    deal: dealResult.data,
-    engagementEvents: (eventsResult.data ?? []) as EngagementEvent[],
-    projects: (projectsResult.data ?? []) as Project[],
-    tasks: (tasksResult.data ?? []) as Task[],
-  };
+  );
 }
-
+export async function getDealWorkspace(
+  id: string,
+  context?: RequestAuthorization,
+): Promise<DealWorkspace> {
+  return readDomainWorkspace<DealWorkspace>({
+    deal: { description: "load this deal", promise: requireDomainRow<Deal>("deals", id, context) },
+    engagementEvents: {
+      description: "load this deal's engagement events",
+      promise: readDomainRows<EngagementEvent>("engagement_events", { deal_id: id }, context, {
+        order: "d.occurred_at desc,d.id",
+        limit: 50,
+      }),
+    },
+    projects: {
+      description: "load this deal's projects",
+      promise: readDomainRows<Project>("projects", { deal_id: id }, context),
+    },
+    tasks: {
+      description: "load this deal's tasks",
+      promise: readDomainRows<Task>("tasks", { deal_id: id }, context),
+    },
+  });
+}
 export async function createDeal(input: CreateDealInput): Promise<Deal> {
-  const supabase = createLegacyDomainClient("deals");
-  const { data, error } = await supabase
-    .from("deals")
-    .insert(pickColumns(input, DEAL_WRITE_COLUMNS))
-    .select()
-    .single();
-  if (error) throw supabaseOperationFailed("create this deal", error);
-  return data as Deal;
+  return domainOperation("create this deal", () =>
+    insertDomainRow<Deal>("deals", pickColumns(input, DEAL_WRITE_COLUMNS)),
+  );
 }
-
-/**
- * Updates a deal, one named column at a time.
- *
- * The allowlist is the mass-assignment guard: `updates` arrives from the client through a
- * `data as { updates: Partial<Deal> }` cast that validates nothing, so spreading it would let a
- * caller write `id`, `created_at`, or any column Supabase happens to expose. Adding a field to
- * `Deal` deliberately does not make it writable here.
- */
 export async function updateDeal(id: string, updates: Partial<Deal>): Promise<Deal> {
-  const supabase = createLegacyDomainClient("deals");
-  const { data, error } = await supabase
-    .from("deals")
-    .update(pickColumns(updates, DEAL_WRITE_COLUMNS))
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw supabaseOperationFailed("update this deal", error);
-  return data as Deal;
+  return domainOperation("update this deal", () =>
+    updateDomainRow<Deal>("deals", id, pickColumns(updates, DEAL_WRITE_COLUMNS)),
+  );
 }
-
-/** Open deals, which is the set the weighted forecast is computed over. */
-export async function listOpenDeals(filters: ForecastDealFilters = {}): Promise<Deal[]> {
-  const supabase = createLegacyDomainClient("deals");
-  let query = supabase.from("deals").select("*").eq("status", "open");
-
-  if (filters.owner) query = query.eq("owner", filters.owner);
-  if (filters.close_before) query = query.lte("expected_close_date", filters.close_before);
-
-  const { data, error } = await query;
-  if (error) throw supabaseOperationFailed("load open deals", error);
-  return (data ?? []) as Deal[];
+export async function listOpenDeals(
+  filters: ForecastDealFilters = {},
+  context?: RequestAuthorization,
+): Promise<Deal[]> {
+  return domainOperation("load the forecast", () =>
+    readDomainRows<Deal>("deals", { status: "open", owner: filters.owner }, context, {
+      before: filters.close_before ? ["expected_close_date", filters.close_before] : undefined,
+    }),
+  );
 }

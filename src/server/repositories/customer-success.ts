@@ -1,23 +1,16 @@
-import { createLegacyDomainClient, loadWorkspaceTaskRows } from "./legacy-domain-source.server";
-import type { CustomerSuccessProfile, Project, SuccessTouchpoint, Task } from "@/lib/types";
-import { pickColumns, supabaseOperationFailed } from "./supabase-writes";
+import { query, transaction } from "@/server/db/neon.server";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import {
+  readDomainWorkspace,
+  domainOperation,
+  insertDomainRow,
+  updateDomainRow,
+  readDomainRows,
+  requireDomainRow,
+  pickColumns,
+} from "./domain-sql";
 
-/**
- * Customer-success profiles and the touchpoints against them.
- *
- * Supabase-backed for now — see "Migration In Progress" in CLAUDE.md and the note at the top of
- * `./deals.ts`, which this follows. Named for the domain rather than the table because
- * `./touchpoints.ts` already exists and is the Neon `touchpoints` table, a different thing.
- *
- * Two inherited behaviours survive deliberately:
- *
- * - `listCustomerSuccessProfiles` casts without `?? []`; the dashboard read coalesces.
- * - Stamping `last_touch_at` after a touchpoint is written does not check its error, so a failed
- *   stamp leaves the touchpoint recorded and the profile stale, silently.
- *
- * The upsert used to spread the caller's object where the update wrote a column list; both go
- * through an allowlist now. See `./supabase-writes.ts`.
- */
+import type { CustomerSuccessProfile, Project, SuccessTouchpoint, Task } from "@/lib/types";
 
 const PROFILE_UPSERT_COLUMNS = [
   "account_id",
@@ -100,13 +93,11 @@ export type CustomerSuccessAccountWorkspace = {
   tasks: Task[];
 };
 
-/** What the risk assessment needs about a profile as it stands today. */
 export type CustomerSuccessRiskInputs = Pick<
   CustomerSuccessProfile,
   "health_score" | "renewal_date"
 >;
 
-/** The two fields a recomputed risk overwrites, or null when no risk was recomputed. */
 export type RenewalRiskOverride = Pick<
   CustomerSuccessProfile,
   "renewal_risk" | "next_best_action"
@@ -114,182 +105,103 @@ export type RenewalRiskOverride = Pick<
 
 export async function listCustomerSuccessProfiles(
   filters: CustomerSuccessProfileFilters = {},
+  context?: RequestAuthorization,
 ): Promise<CustomerSuccessProfile[]> {
-  const supabase = createLegacyDomainClient("customer_success");
-  let query = supabase
-    .from("customer_success_profiles")
-    .select("*")
-    .order("renewal_date", { ascending: true });
-
-  if (filters.cs_owner) query = query.eq("cs_owner", filters.cs_owner);
-  if (filters.renewal_risk) query = query.eq("renewal_risk", filters.renewal_risk);
-  if (filters.onboarding_status) query = query.eq("onboarding_status", filters.onboarding_status);
-  // The input is named `renewal_before`; the column is `renewal_date`.
-  if (filters.renewal_before) query = query.lte("renewal_date", filters.renewal_before);
-
-  const { data, error } = await query;
-  if (error) throw supabaseOperationFailed("load customer success profiles", error);
-  return data as CustomerSuccessProfile[];
+  return domainOperation("load customer-success profiles", () =>
+    readDomainRows<CustomerSuccessProfile>(
+      "customer_success_profiles",
+      pickColumns(filters, ["cs_owner", "renewal_risk", "onboarding_status"]),
+      context,
+      {
+        order: "d.renewal_date asc nulls last,d.id",
+        before: filters.renewal_before ? ["renewal_date", filters.renewal_before] : undefined,
+      },
+    ),
+  );
 }
-
-/** Every profile, renewal-soonest first, for the dashboard's aggregates. */
-export async function listCustomerSuccessProfilesForDashboard(): Promise<CustomerSuccessProfile[]> {
-  const supabase = createLegacyDomainClient("customer_success");
-  const { data, error } = await supabase
-    .from("customer_success_profiles")
-    .select("*")
-    .order("renewal_date", { ascending: true });
-  if (error) throw supabaseOperationFailed("load the customer success dashboard", error);
-  return (data ?? []) as CustomerSuccessProfile[];
+export async function listCustomerSuccessProfilesForDashboard(
+  context?: RequestAuthorization,
+): Promise<CustomerSuccessProfile[]> {
+  return listCustomerSuccessProfiles({}, context);
 }
-
-/**
- * An account's customer-success picture.
- *
- * One `Promise.all`, errors checked afterwards in the order profile -> touchpoints -> projects ->
- * tasks. The profile uses `maybeSingle()`, so an account with no profile is `null` rather than an
- * error — the caller distinguishes those.
- */
 export async function getCustomerSuccessAccountWorkspace(
   accountId: string,
+  context?: RequestAuthorization,
 ): Promise<CustomerSuccessAccountWorkspace> {
-  const supabase = createLegacyDomainClient("customer_success");
-  const [profileResult, touchpointsResult, projectsResult, tasksResult] = await Promise.all([
-    supabase
-      .from("customer_success_profiles")
-      .select("*")
-      .eq("account_id", accountId)
-      .maybeSingle(),
-    supabase
-      .from("success_touchpoints")
-      .select("*")
-      .eq("account_id", accountId)
-      .order("occurred_at", { ascending: false })
-      .limit(50),
-    supabase
-      .from("projects")
-      .select("*")
-      .eq("account_id", accountId)
-      .order("created_at", { ascending: false }),
-    loadWorkspaceTaskRows("account_id", accountId, () =>
-      supabase
-        .from("tasks")
-        .select("*")
-        .eq("account_id", accountId)
-        .order("created_at", { ascending: false }),
-    ),
-  ]);
-
-  if (profileResult.error) {
-    throw supabaseOperationFailed("load this account's success profile", profileResult.error);
-  }
-  if (touchpointsResult.error) {
-    throw supabaseOperationFailed("load this account's touchpoints", touchpointsResult.error);
-  }
-  if (projectsResult.error) {
-    throw supabaseOperationFailed("load this account's projects", projectsResult.error);
-  }
-  if (tasksResult.error) {
-    throw supabaseOperationFailed("load this account's tasks", tasksResult.error);
-  }
-
-  return {
-    profile: profileResult.data as CustomerSuccessProfile | null,
-    touchpoints: (touchpointsResult.data ?? []) as SuccessTouchpoint[],
-    projects: (projectsResult.data ?? []) as Project[],
-    tasks: (tasksResult.data ?? []) as Task[],
-  };
+  return readDomainWorkspace<CustomerSuccessAccountWorkspace>({
+    profile: {
+      description: "load this customer-success profile",
+      promise: readDomainRows<CustomerSuccessProfile>(
+        "customer_success_profiles",
+        { account_id: accountId },
+        context,
+      ).then((rows) => rows[0] ?? null),
+    },
+    touchpoints: {
+      description: "load this account's success touchpoints",
+      promise: readDomainRows<SuccessTouchpoint>(
+        "success_touchpoints",
+        { account_id: accountId },
+        context,
+        { order: "d.occurred_at desc,d.id", limit: 50 },
+      ),
+    },
+    projects: {
+      description: "load this account's projects",
+      promise: readDomainRows<Project>("projects", { account_id: accountId }, context),
+    },
+    tasks: {
+      description: "load this account's tasks",
+      promise: readDomainRows<Task>("tasks", { account_id: accountId }, context),
+    },
+  });
 }
-
-/**
- * Creates or replaces an account's profile.
- *
- * `account_id` is in the allowlist here and not in the update's, because it is the conflict
- * target: an upsert has to carry it to know which row it is replacing, and an update must not be
- * able to move a profile to a different account.
- */
 export async function upsertCustomerSuccessProfile(
-  input: UpsertCustomerSuccessProfileInput & {
-    renewal_risk: CustomerSuccessProfile["renewal_risk"];
-    next_best_action: CustomerSuccessProfile["next_best_action"];
-  },
+  input: UpsertCustomerSuccessProfileInput,
 ): Promise<CustomerSuccessProfile> {
-  const supabase = createLegacyDomainClient("customer_success");
-  const { data, error } = await supabase
-    .from("customer_success_profiles")
-    .upsert(pickColumns(input, PROFILE_UPSERT_COLUMNS), { onConflict: "account_id" })
-    .select()
-    .single();
-  if (error) throw supabaseOperationFailed("save this customer success profile", error);
-  return data as CustomerSuccessProfile;
+  return domainOperation("save this customer-success profile", () =>
+    insertDomainRow<CustomerSuccessProfile>(
+      "customer_success_profiles",
+      pickColumns(input, PROFILE_UPSERT_COLUMNS),
+      undefined,
+      { columns: ["account_id"], update: PROFILE_UPDATE_COLUMNS },
+    ),
+  );
 }
-
-/**
- * The stored health score and renewal date, read only when one of them is being changed.
- *
- * `single()`, so a profile that does not exist is an error — the update that follows would fail
- * anyway, and failing here keeps the message about the profile rather than the patch.
- */
 export async function getCustomerSuccessRiskInputs(id: string): Promise<CustomerSuccessRiskInputs> {
-  const supabase = createLegacyDomainClient("customer_success");
-  const { data, error } = await supabase
-    .from("customer_success_profiles")
-    .select("health_score, renewal_date")
-    .eq("id", id)
-    .single();
-  if (error) throw supabaseOperationFailed("load this profile's renewal inputs", error);
-  return data as CustomerSuccessRiskInputs;
+  return domainOperation("load this customer-success profile", async () => {
+    const row = await requireDomainRow<CustomerSuccessProfile>("customer_success_profiles", id);
+    return { health_score: row.health_score, renewal_date: row.renewal_date };
+  });
 }
-
-/**
- * Updates a profile through a fixed column list, with any recomputed risk applied last.
- *
- * "Last" is load-bearing: when the caller sends an explicit `renewal_risk` *and* changes the
- * health score, the recomputed value wins, because its spread comes after. Moving the override
- * earlier would silently flip which one takes effect.
- */
 export async function updateCustomerSuccessProfile(
   id: string,
-  updates: Partial<Omit<CustomerSuccessProfile, "id" | "account_id">>,
+  updates: Partial<CustomerSuccessProfile>,
   riskOverride: RenewalRiskOverride = null,
 ): Promise<CustomerSuccessProfile> {
-  const supabase = createLegacyDomainClient("customer_success");
-  const { data, error } = await supabase
-    .from("customer_success_profiles")
-    .update({
+  return domainOperation("update this customer-success profile", () =>
+    updateDomainRow<CustomerSuccessProfile>("customer_success_profiles", id, {
       ...pickColumns(updates, PROFILE_UPDATE_COLUMNS),
-      // Last, so a recomputed risk still beats an explicit one sent alongside a health change.
-      ...(riskOverride && riskOverride),
-    })
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw supabaseOperationFailed("update this customer success profile", error);
-  return data as CustomerSuccessProfile;
+      ...riskOverride,
+    }),
+  );
 }
-
-/**
- * Records a touchpoint and stamps the account's `last_touch_at` from it.
- *
- * The stamp's error is never inspected, so a profile that does not exist yet — or a permission
- * failure on that table — leaves the touchpoint recorded and the profile untouched, with nothing
- * surfaced. Existing contract; the touchpoint comes back either way.
- */
 export async function createSuccessTouchpoint(
   input: CreateSuccessTouchpointInput,
 ): Promise<SuccessTouchpoint> {
-  const supabase = createLegacyDomainClient("customer_success");
-  const { data: touchpoint, error } = await supabase
-    .from("success_touchpoints")
-    .insert(pickColumns(input, TOUCHPOINT_CREATE_COLUMNS))
-    .select()
-    .single();
-  if (error) throw supabaseOperationFailed("record this touchpoint", error);
-
-  await supabase
-    .from("customer_success_profiles")
-    .update({ last_touch_at: touchpoint.occurred_at })
-    .eq("account_id", input.account_id);
-
-  return touchpoint as SuccessTouchpoint;
+  return domainOperation("record this success touchpoint", () =>
+    transaction(async (db) => {
+      const row = await insertDomainRow<SuccessTouchpoint>(
+        "success_touchpoints",
+        pickColumns(input, TOUCHPOINT_CREATE_COLUMNS),
+        db,
+      );
+      await query(
+        "update customer_success_profiles set last_touch_at=greatest(last_touch_at,$2::timestamptz),updated_at=now() where account_id=$1",
+        [row.account_id, row.occurred_at],
+        db,
+      );
+      return row;
+    }),
+  );
 }

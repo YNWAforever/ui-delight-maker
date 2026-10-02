@@ -1,6 +1,7 @@
+import { authorizeDomainLinks } from "@/server/auth/domain-links.server";
 // src/server-functions/customer-success.ts
 import { createServerFn } from "@tanstack/react-start";
-import { requireCapability } from "@/server/auth/authorization.server";
+import { requireCapability, loadRequestAuthorization } from "@/server/auth/authorization.server";
 import { assessRenewalRisk } from "@/lib/lifecycle-utils";
 import {
   createSuccessTouchpoint as createSuccessTouchpointInRepository,
@@ -20,27 +21,38 @@ import type { CustomerSuccessProfile } from "@/lib/types";
 export const getCustomerSuccessProfiles = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as CustomerSuccessProfileFilters)
   .handler(async ({ data }) => {
-    await requireCapability("engagements.view");
-    return listCustomerSuccessProfiles(data);
+    const context = await loadRequestAuthorization();
+    await requireCapability("engagements.view", {}, context);
+    return listCustomerSuccessProfiles(data, context);
   });
 
 export const getCustomerSuccessProfile = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { accountId: string })
   .handler(async ({ data }) => {
-    await requireCapability("engagements.view", {
-      resourceType: "supabase_account",
-      resourceId: data.accountId,
-    });
-    return getCustomerSuccessAccountWorkspace(data.accountId);
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "engagements.view",
+      {
+        resourceType: "account",
+        resourceId: data.accountId,
+      },
+      context,
+    );
+    return getCustomerSuccessAccountWorkspace(data.accountId, context);
   });
 
 export const upsertCustomerSuccessProfile = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as UpsertCustomerSuccessProfileInput)
   .handler(async ({ data }) => {
-    await requireCapability("engagements.update", {
-      resourceType: "supabase_account",
-      resourceId: data.account_id,
-    });
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "engagements.update",
+      {
+        resourceType: "account",
+        resourceId: data.account_id,
+      },
+      context,
+    );
     // Risk is derived here, not in the repository: it is a judgement about the data, and it
     // reads the clock, which is the kind of thing a data-access function should not do.
     const risk = assessRenewalRisk({
@@ -48,6 +60,7 @@ export const upsertCustomerSuccessProfile = createServerFn({ method: "POST" })
       renewal_date: data.renewal_date ?? null,
     });
 
+    await authorizeDomainLinks("engagements.update", data, context);
     return upsertCustomerSuccessProfileInRepository({
       ...data,
       renewal_risk: data.renewal_risk ?? risk.level,
@@ -61,10 +74,15 @@ export const updateCustomerSuccessProfile = createServerFn({ method: "POST" })
       data as { id: string; updates: Partial<Omit<CustomerSuccessProfile, "id" | "account_id">> },
   )
   .handler(async ({ data }) => {
-    await requireCapability("engagements.update", {
-      resourceType: "customer_success_profile",
-      resourceId: data.id,
-    });
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "engagements.update",
+      {
+        resourceType: "customer_success_profile",
+        resourceId: data.id,
+      },
+      context,
+    );
 
     // Only worth recomputing when one of its two inputs is changing; otherwise the stored risk
     // stands and no read happens at all.
@@ -78,24 +96,32 @@ export const updateCustomerSuccessProfile = createServerFn({ method: "POST" })
       riskOverride = { renewal_risk: risk.level, next_best_action: risk.nextBestAction };
     }
 
+    await authorizeDomainLinks("engagements.update", data.updates, context);
     return updateCustomerSuccessProfileInRepository(data.id, data.updates, riskOverride);
   });
 
 export const createSuccessTouchpoint = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateSuccessTouchpointInput)
   .handler(async ({ data }) => {
-    await requireCapability("engagements.create", {
-      resourceType: "supabase_account",
-      resourceId: data.account_id,
-    });
-    return createSuccessTouchpointInRepository(data);
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "engagements.create",
+      {
+        resourceType: "account",
+        resourceId: data.account_id,
+      },
+      context,
+    );
+    await authorizeDomainLinks("engagements.create", data, context);
+    return createSuccessTouchpointInRepository({ ...data, created_by: context.actor.profileId });
   });
 
 export const getCustomerSuccessDashboard = createServerFn({ method: "GET" }).handler(async () => {
-  await requireCapability("engagements.view");
+  const context = await loadRequestAuthorization();
+  await requireCapability("engagements.view", {}, context);
   const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-  const rows = await listCustomerSuccessProfilesForDashboard();
+  const rows = await listCustomerSuccessProfilesForDashboard(context);
   const healthTotal = rows.reduce((sum, profile) => sum + profile.health_score, 0);
 
   return {

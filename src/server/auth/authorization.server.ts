@@ -120,9 +120,7 @@ function decisionError(decision: AuthorizationDecision) {
 /**
  * Widens a target with its owning profile so the policy can answer manager-scope questions.
  *
- * Which store holds that owner — Neon, or the quarantined Supabase project — is not this
- * module's concern; `@/server/auth/resource-ownership` owns that decision, and owns the
- * queries. This file is left with the decision itself.
+ * Neon repositories own the batched ownership queries; this module evaluates policy.
  */
 async function resolveAuthorizationTarget(
   target: AuthorizationTarget,

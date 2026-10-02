@@ -11,11 +11,7 @@ vi.mock("@/server/db/neon.server", () => ({
 import { CLIENTOPS_MIGRATION_PATHS } from "@/lib/clientops-relationship-schema";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
 import { listTasks } from "@/server/repositories/tasks";
-import {
-  loadWorkspaceTaskRows,
-  selectLegacyDomainSource,
-  selectLegacyTaskReadSource,
-} from "@/server/repositories/legacy-domain-source.server";
+import { readDomainRows } from "@/server/repositories/domain-sql";
 import { reconcileLegacySnapshots } from "@/server/db/legacy-domain-parity";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
@@ -62,73 +58,15 @@ describe("legacy domain reconciliation", () => {
     holder.pool = null;
   });
 
-  it("defaults to legacy and refuses production or unverified Neon task reads", () => {
-    expect(selectLegacyTaskReadSource({})).toBe("legacy");
-    expect(selectLegacyDomainSource("projects", {})).toBe("legacy");
-    expect(() =>
-      selectLegacyDomainSource("projects", { CLIENTOPS_LEGACY_PROJECTS_SOURCE: "neon" }),
-    ).toThrow(/No verified Neon cutover/);
-    expect(() => selectLegacyTaskReadSource({ CLIENTOPS_LEGACY_TASK_READ_SOURCE: "neon" })).toThrow(
-      /rehearsal/i,
-    );
-    expect(() =>
-      selectLegacyTaskReadSource({
-        CLIENTOPS_LEGACY_TASK_READ_SOURCE: "neon",
-        CLIENTOPS_LEGACY_TASK_REHEARSAL: "1",
-        NODE_ENV: "production",
-        DATABASE_URL: "postgresql://localhost/clientops_t20_test",
-      }),
-    ).toThrow(/production/i);
-  });
-
-  it("accepts only the matching disposable CI database in test mode", () => {
-    const localTestUrl = "postgresql://localhost/clientops_test";
-    const rehearsal = {
-      CLIENTOPS_LEGACY_TASK_READ_SOURCE: "neon",
-      CLIENTOPS_LEGACY_TASK_REHEARSAL: "1",
-      NODE_ENV: "test",
-      DATABASE_URL: localTestUrl,
-      DATABASE_TEST_URL: localTestUrl,
-    };
-    expect(selectLegacyTaskReadSource(rehearsal)).toBe("neon");
-    expect(() =>
-      selectLegacyTaskReadSource({
-        ...rehearsal,
-        DATABASE_TEST_URL: "postgresql://localhost/other",
-      }),
-    ).toThrow(/disposable local database/);
-    expect(() =>
-      selectLegacyTaskReadSource({
-        ...rehearsal,
-        DATABASE_URL: "postgresql://db.example/clientops_test",
-      }),
-    ).toThrow(/disposable local database/);
-    expect(() => selectLegacyTaskReadSource({ ...rehearsal, NODE_ENV: "production" })).toThrow(
-      /production/i,
-    );
-  });
-
   it.runIf(hasDatabase)(
     "reads the same task ID, owner, status, and scope from Neon as the main task list",
     async () => {
       const main = await listTasks({ account_id: accountId });
-      const workspace = await loadWorkspaceTaskRows(
-        "account_id",
-        accountId,
-        async () => {
-          throw new Error("legacy was called");
-        },
-        {
-          CLIENTOPS_LEGACY_TASK_READ_SOURCE: "neon",
-          CLIENTOPS_LEGACY_TASK_REHEARSAL: "1",
-          NODE_ENV: "test",
-          DATABASE_URL: process.env.DATABASE_TEST_URL,
-          DATABASE_TEST_URL: process.env.DATABASE_TEST_URL,
-        },
-      );
-      expect(workspace.error).toBeNull();
+      const workspace = await readDomainRows<import("@/lib/types").Task>("tasks", {
+        account_id: accountId,
+      });
       expect(
-        workspace.data?.map((row) => ({
+        workspace.map((row) => ({
           id: row.id,
           assigned_to: row.assigned_to,
           status: row.status,
@@ -144,20 +82,6 @@ describe("legacy domain reconciliation", () => {
       );
     },
   );
-
-  it("surfaces a legacy outage instead of returning an empty task list", async () => {
-    const result = await loadWorkspaceTaskRows(
-      "project_id",
-      projectId,
-      async () => ({
-        data: null,
-        error: { message: "legacy unavailable" },
-      }),
-      {},
-    );
-    expect(result.error?.message).toContain("legacy unavailable");
-    expect(result.data).toBeNull();
-  });
 
   it.runIf(hasDatabase)(
     "compares exact IDs, owner, scope, status and permission overrides from real PostgreSQL rows",
