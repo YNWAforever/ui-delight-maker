@@ -26,9 +26,18 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/019_import_sessions_and_identity_keys.sql",
   "neon/migrations/020_job_sheet_handoff_fields.sql",
   "neon/migrations/021_ai_invocation_telemetry.sql",
+  "neon/migrations/022_neon_domain_storage.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
+  "deals",
+  "projects",
+  "engagement_events",
+  "channel_identities",
+  "automation_playbooks",
+  "automation_runs",
+  "customer_success_profiles",
+  "success_touchpoints",
   "profiles",
   "leads",
   "clients",
@@ -76,6 +85,15 @@ export const CLIENTOPS_REQUIRED_TABLES = [
 ] as const;
 
 export const CLIENTOPS_REQUIRED_COLUMNS = [
+  "deals.owner",
+  "projects.deal_id",
+  "engagement_events.campaign_member_id",
+  "channel_identities.external_id",
+  "automation_playbooks.steps",
+  "automation_runs.context_data",
+  "customer_success_profiles.cs_owner",
+  "success_touchpoints.account_id",
+  "campaign_members.last_event_at",
   "profiles.status",
   "profiles.primary_department_id",
   "profiles.manager_profile_id",

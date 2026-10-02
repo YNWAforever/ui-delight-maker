@@ -6,7 +6,17 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist/**", ".output/**", ".vercel/**", ".vinxi/**", ".tmp/**", ".worktrees/**"] },
+  {
+    ignores: [
+      "dist/**",
+      ".output/**",
+      ".vercel/**",
+      ".vinxi/**",
+      ".tmp/**",
+      ".worktrees/**",
+      ".clientops-perf/**",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -23,6 +33,12 @@ export default tseslint.config(
       "no-restricted-imports": [
         "error",
         {
+          patterns: [
+            {
+              group: ["@supabase/*", "@/legacy-supabase/*"],
+              message: "Supabase access is forbidden; use Neon repositories and Neon Auth.",
+            },
+          ],
           paths: [
             {
               name: "server-only",

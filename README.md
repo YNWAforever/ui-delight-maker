@@ -36,9 +36,8 @@ The audit remediation is tracked in [status](docs/audit-fixes/2026-09-27/status.
 with [release checklist](docs/audit-fixes/2026-09-27/release-checklist.md),
 [operator runbook](docs/audit-fixes/2026-09-27/operations-runbook.md),
 and [role UAT results](docs/audit-fixes/2026-09-27/uat-results.md).
-Migrations `001`–`021` are registered in the ClientOps migration contract.
-Five legacy Supabase domains still require snapshot parity before any Neon cutover;
-see the [T20 evidence](docs/audit-fixes/2026-09-27/t20-evidence.md).
+Migrations `001`–`022` are registered in the ClientOps migration contract.
+All application storage and authentication use Neon. Supabase runtime/SDK/source switches are forbidden; frozen legacy SQL is historical only. [Neon-only implementation, migration and acceptance limits](docs/audit-fixes/2026-09-27/neon-only-2026-10-03.md).
 The read-only `/api/build` endpoint exposes only the deployment commit SHA,
 or `null` if the platform supplied no valid SHA.
 

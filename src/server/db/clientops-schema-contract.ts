@@ -125,6 +125,14 @@ const ADMIN_SCHEMA_COLUMNS = {
 } as const;
 export const CLIENTOPS_SCHEMA_CONTRACT = {
   relations: [
+    "deals",
+    "projects",
+    "engagement_events",
+    "channel_identities",
+    "automation_playbooks",
+    "automation_runs",
+    "customer_success_profiles",
+    "success_touchpoints",
     "accounts",
     "account_contacts",
     "clients",
@@ -153,6 +161,14 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "agent_policy_versions",
   ] as const,
   columns: {
+    "deals.owner": { type: "text", nullable: true },
+    "deals.contact_id": { type: "uuid", nullable: true },
+    "projects.owner": { type: "text", nullable: true },
+    "customer_success_profiles.cs_owner": { type: "text", nullable: true },
+    "automation_playbooks.created_by": { type: "text", nullable: true },
+    "engagement_events.created_by": { type: "text", nullable: true },
+    "success_touchpoints.created_by": { type: "text", nullable: true },
+    "campaign_members.last_event_at": { type: "timestamp with time zone", nullable: true },
     "accounts.id": { type: "uuid", nullable: false },
     "account_contacts.account_id": { type: "uuid", nullable: false },
     "clients.account_id": { type: "uuid", nullable: true },

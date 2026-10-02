@@ -1,0 +1,101 @@
+{
+  "canonicalUrl": "https://clientops-uat-20260930.vercel.app",
+  "sourceSha": "87c5438f015b3bbc632cb935285e64aaa2c557c2",
+  "ciHeadSha": "fd2a712f9012466953ac9a7f12c24d6286844c07",
+  "nonRuntimeDiff": [
+    "CLAUDE.md",
+    "README.md",
+    "docs/audit-fixes/2026-09-27/evidence/neon-only-runtime-2026-10-03.json",
+    "docs/audit-fixes/2026-09-27/evidence/neon-only-uat-roles-2026-10-03.json",
+    "docs/audit-fixes/2026-09-27/evidence/neon-only-verification-2026-10-03.json",
+    "docs/audit-fixes/2026-09-27/neon-only-2026-10-03.md",
+    "docs/audit-fixes/2026-09-27/status.md",
+    "docs/audit-fixes/2026-09-27/uat-results.md",
+    "src/server/db/__tests__/neon-domain-storage.integration.test.ts"
+  ],
+  "aliasPromotionAt": "2026-10-02T18:48:04.943Z",
+  "roleVerificationStartedAt": "2026-10-02T18:49:42.791Z",
+  "roleVerificationFinishedAt": "2026-10-02T18:50:39.184Z",
+  "scope": "Seven own live sessions; upstream identity, persisted profile, visible home profile name and role. No whole-product/domain/historical parity claim.",
+  "roleResults": [
+    {
+      "role": "super_admin",
+      "pass": true
+    },
+    {
+      "role": "admin",
+      "pass": true
+    },
+    {
+      "role": "manager",
+      "pass": true
+    },
+    {
+      "role": "sales",
+      "pass": true
+    },
+    {
+      "role": "client_success",
+      "pass": true
+    },
+    {
+      "role": "accounting",
+      "pass": true
+    },
+    {
+      "role": "read_only",
+      "pass": true
+    }
+  ],
+  "distinctAuthUsers": 7,
+  "distinctProfiles": 7,
+  "distinctSessions": 7,
+  "distinctCookieSets": 7,
+  "unchangedOriginalTables": 45,
+  "supabaseBrowserRequests": 0,
+  "mutationPosts": 0,
+  "actualProductionPromotion": false,
+  "privateRoleResultSha256": "4e4d2c347a3369829883f41bb46dbdf3b106afe91c884281c45e7dbed1cfdc5a",
+  "privateScreenshotHashes": [
+    {
+      "role": "super_admin",
+      "sha256": "20ac4d86307c0abf7216c4bd7667d7dd6a48b6181ce989a44b448c3d396da0cf"
+    },
+    {
+      "role": "admin",
+      "sha256": "d850ddc637eea1181d92cf119c6731915f85bff80af92b919b85c04e847a3e73"
+    },
+    {
+      "role": "manager",
+      "sha256": "1126e21393abc6af7dc49f2c338b861d403e5c953857992295800f0fdad68f0c"
+    },
+    {
+      "role": "sales",
+      "sha256": "e6997e6ca17b340612a4a2a5c4d213f420c9b8cb884b67ccb9a8a9aeb2070c84"
+    },
+    {
+      "role": "client_success",
+      "sha256": "a848e9006d5a2c0d4ec855fd26a43bcde3c26c17067743aee1909a37ff02edcc"
+    },
+    {
+      "role": "accounting",
+      "sha256": "14a530f9fdc4e4647b72d35f590a4e65ac02bc3068afc272672d805599b7f2e7"
+    },
+    {
+      "role": "read_only",
+      "sha256": "2592b05debe41e353f5b73c3cd3d5a5f0c79f27797de95fc79f9cddf19e2427d"
+    }
+  ],
+  "publicScreenshots": false,
+  "prChecks": {
+    "headSha": "fd2a712f9012466953ac9a7f12c24d6286844c07",
+    "checksRun": 37049253697,
+    "databaseRun": 37049253702,
+    "allRequiredPassed": true,
+    "tests": 2543,
+    "skipped": 0,
+    "databaseLogSha256": "d46e177acef8e01520294033cf7ecaa08be54a7b73bca6f2ba4b01b30ad8c8c5"
+  },
+  "finalDocumentationHeadAndMerge": "See PR160 live delivery record",
+  "success": true
+}

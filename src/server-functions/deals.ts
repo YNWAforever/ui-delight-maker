@@ -1,6 +1,7 @@
+import { authorizeDomainLinks } from "@/server/auth/domain-links.server";
 // src/server-functions/deals.ts
 import { createServerFn } from "@tanstack/react-start";
-import { requireCapability } from "@/server/auth/authorization.server";
+import { requireCapability, loadRequestAuthorization } from "@/server/auth/authorization.server";
 import { calculateWeightedForecast } from "@/lib/lifecycle-utils";
 import {
   createDeal as createDealInRepository,
@@ -17,37 +18,50 @@ import type { Deal } from "@/lib/types";
 export const getDeals = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as DealFilters)
   .handler(async ({ data }) => {
-    await requireCapability("accounts.view");
-    return listDeals(data);
+    const context = await loadRequestAuthorization();
+    await requireCapability("accounts.view", {}, context);
+    return listDeals(data, context);
   });
 
 export const getDeal = createServerFn({ method: "GET" })
   .validator((data: unknown) => data as { id: string })
   .handler(async ({ data }) => {
-    await requireCapability("accounts.view", { resourceType: "deal", resourceId: data.id });
-    return getDealWorkspace(data.id);
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "accounts.view",
+      { resourceType: "deal", resourceId: data.id },
+      context,
+    );
+    return getDealWorkspace(data.id, context);
   });
 
 export const createDeal = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as CreateDealInput)
   .handler(async ({ data }) => {
-    await requireCapability("accounts.create");
+    const context = await loadRequestAuthorization();
+    await requireCapability("accounts.create", {}, context);
+    await authorizeDomainLinks("accounts.create", data, context);
     return createDealInRepository(data);
   });
 
 export const updateDeal = createServerFn({ method: "POST" })
   .validator((data: unknown) => data as { id: string; updates: Partial<Deal> })
   .handler(async ({ data }) => {
-    await requireCapability("accounts.update", { resourceType: "deal", resourceId: data.id });
+    const context = await loadRequestAuthorization();
+    await requireCapability(
+      "accounts.update",
+      { resourceType: "deal", resourceId: data.id },
+      context,
+    );
+    await authorizeDomainLinks("accounts.update", data.updates, context);
     return updateDealInRepository(data.id, data.updates);
   });
 
 export const getForecast = createServerFn({ method: "GET" })
   .validator((data: unknown) => (data ?? {}) as ForecastDealFilters)
   .handler(async ({ data }) => {
-    await requireCapability("accounts.view");
-    // The forecast maths stays here: it is a pure function over the rows, and keeping the
-    // repository layer to data access is what lets the Supabase reads below be swapped for Neon
-    // without touching anything that interprets them.
-    return calculateWeightedForecast(await listOpenDeals(data));
+    const context = await loadRequestAuthorization();
+    await requireCapability("accounts.view", {}, context);
+    // Forecast calculations remain a pure interpretation of scoped Neon rows.
+    return calculateWeightedForecast(await listOpenDeals(data, context));
   });

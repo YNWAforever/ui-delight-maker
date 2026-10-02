@@ -7,10 +7,20 @@ import type { RequestAuthorization } from "./authorization.server";
  * produces FALSE so a new list cannot silently fall back to an unscoped read.
  */
 const VIEW_CAPABILITY = {
+  deal: "accounts.view",
+  project: "engagements.view",
+  customer_success_profile: "engagements.view",
+  engagement_event: "engagements.view",
+  contact: "contacts.view",
+  channel_identity: "engagements.view",
+  automation_playbook: "automation.manage",
+  automation_run: "automation.manage",
+  success_touchpoint: "engagements.view",
   account: "accounts.view",
   client: "accounts.view",
   lead: "leads.view",
   campaign: "campaigns.view",
+  campaign_member: "campaigns.view",
   task: "tasks.view",
   engagement: "engagements.view",
   human_approval: "approvals.view",
@@ -41,6 +51,24 @@ export function hasPotentialVisibility(
 
 function ownerExpression(resourceType: VisibleResourceType, alias: string): string {
   switch (resourceType) {
+    case "deal":
+      return `coalesce((select a.account_owner from accounts a where a.id=${alias}.account_id),${alias}.owner)`;
+    case "project":
+      return `coalesce((select a.account_owner from accounts a where a.id=${alias}.account_id),${alias}.owner)`;
+    case "customer_success_profile":
+      return `coalesce((select a.account_owner from accounts a where a.id=${alias}.account_id),${alias}.cs_owner)`;
+    case "engagement_event":
+      return `coalesce(${alias}.created_by,(select a.account_owner from accounts a where a.id=${alias}.account_id),(select a.account_owner from account_contacts c join accounts a on a.id=c.account_id where c.id=${alias}.contact_id))`;
+    case "contact":
+      return `(select a.account_owner from accounts a where a.id=${alias}.account_id)`;
+    case "channel_identity":
+      return `case when ${alias}.account_id is not null then (select a.account_owner from accounts a where a.id=${alias}.account_id) else (select a.account_owner from account_contacts c join accounts a on a.id=c.account_id where c.id=${alias}.contact_id) end`;
+    case "automation_playbook":
+      return `${alias}.created_by`;
+    case "automation_run":
+      return `coalesce((select a.account_owner from accounts a where a.id=${alias}.account_id),(select p.created_by from automation_playbooks p where p.id=${alias}.playbook_id))`;
+    case "success_touchpoint":
+      return `(select a.account_owner from accounts a where a.id=${alias}.account_id)`;
     case "account":
       return `${alias}.account_owner`;
     case "client":
@@ -49,6 +77,8 @@ function ownerExpression(resourceType: VisibleResourceType, alias: string): stri
       return `${alias}.assigned_to`;
     case "campaign":
       return `${alias}.owner`;
+    case "campaign_member":
+      return `coalesce((select c.owner from campaigns c where c.id=${alias}.campaign_id),${alias}.follow_up_owner,(select a.account_owner from accounts a where a.id=${alias}.account_id))`;
     case "task":
       return `${alias}.assigned_to`;
     case "engagement":

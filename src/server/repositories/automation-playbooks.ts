@@ -1,19 +1,16 @@
-import { createLegacyDomainClient } from "./legacy-domain-source.server";
-import type { AutomationPlaybook, AutomationRun } from "@/lib/types";
-import { pickColumns, supabaseOperationFailed } from "./supabase-writes";
+import { query, transaction } from "@/server/db/neon.server";
+import type { RequestAuthorization } from "@/server/auth/authorization.server";
+import {
+  readDomainWorkspace,
+  domainOperation,
+  insertDomainRow,
+  updateDomainRow,
+  readDomainRows,
+  requireDomainRow,
+  pickColumns,
+} from "./domain-sql";
 
-/**
- * Automation playbooks and their runs.
- *
- * These rows live in the quarantined Supabase project rather than Neon — see "Migration In
- * Progress" in CLAUDE.md. Moving the access down here leaves `src/server-functions/
- * automation-playbooks.ts` holding its capability checks and its serialization, and makes
- * migrating these two tables a change to the bodies below.
- *
- * Serialization deliberately stays in the caller. This seam moves data access and nothing else;
- * folding a second refactor into it would make the diff impossible to review as behaviour-
- * preserving, which is the only property that matters here.
- */
+import type { AutomationPlaybook, AutomationRun } from "@/lib/types";
 
 const PLAYBOOK_CREATE_COLUMNS = [
   "name",
@@ -73,104 +70,65 @@ export type AutomationPlaybookDetail = {
 
 export async function listAutomationPlaybooks(
   filters: AutomationPlaybookFilters = {},
+  context?: RequestAuthorization,
 ): Promise<AutomationPlaybook[]> {
-  const supabase = createLegacyDomainClient("automation_playbooks");
-  let query = supabase
-    .from("automation_playbooks")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (filters.status) query = query.eq("status", filters.status);
-  if (filters.trigger_type) query = query.eq("trigger_type", filters.trigger_type);
-
-  const { data, error } = await query;
-  if (error) throw supabaseOperationFailed("load automation playbooks", error);
-  return (data ?? []) as AutomationPlaybook[];
+  return domainOperation("load automation playbooks", () =>
+    readDomainRows<AutomationPlaybook>(
+      "automation_playbooks",
+      pickColumns(filters, ["status", "trigger_type"]),
+      context,
+    ),
+  );
 }
-
-/**
- * A playbook with its most recent runs.
- *
- * Both reads stay in one `Promise.all` with their errors checked afterwards, matching what the
- * handler did: the runs query is issued even when the playbook read fails, and a failure in both
- * reports the playbook's message rather than whichever lost the race.
- */
-export async function getAutomationPlaybookDetail(id: string): Promise<AutomationPlaybookDetail> {
-  const supabase = createLegacyDomainClient("automation_playbooks");
-  const [playbookResult, runsResult] = await Promise.all([
-    supabase.from("automation_playbooks").select("*").eq("id", id).single(),
-    supabase
-      .from("automation_runs")
-      .select("*")
-      .eq("playbook_id", id)
-      .order("created_at", { ascending: false })
-      .limit(100),
-  ]);
-
-  if (playbookResult.error) {
-    throw supabaseOperationFailed("load this automation playbook", playbookResult.error);
-  }
-  if (runsResult.error) {
-    throw supabaseOperationFailed("load this playbook's runs", runsResult.error);
-  }
-
-  return {
-    playbook: playbookResult.data as AutomationPlaybook,
-    runs: (runsResult.data ?? []) as AutomationRun[],
-  };
+export async function getAutomationPlaybookDetail(
+  id: string,
+  context?: RequestAuthorization,
+): Promise<AutomationPlaybookDetail> {
+  return readDomainWorkspace<AutomationPlaybookDetail>({
+    playbook: {
+      description: "load this automation playbook",
+      promise: requireDomainRow<AutomationPlaybook>("automation_playbooks", id, context),
+    },
+    runs: {
+      description: "load this playbook's runs",
+      promise: readDomainRows<AutomationRun>("automation_runs", { playbook_id: id }, context, {
+        limit: 100,
+      }),
+    },
+  });
 }
-
 export async function createAutomationPlaybook(
   input: CreateAutomationPlaybookInput,
 ): Promise<AutomationPlaybook> {
-  const supabase = createLegacyDomainClient("automation_playbooks");
-  const { data, error } = await supabase
-    .from("automation_playbooks")
-    .insert(pickColumns(input, PLAYBOOK_CREATE_COLUMNS))
-    .select()
-    .single();
-  if (error) throw supabaseOperationFailed("create this automation playbook", error);
-  return data as AutomationPlaybook;
+  return domainOperation("create this automation playbook", () =>
+    insertDomainRow<AutomationPlaybook>(
+      "automation_playbooks",
+      pickColumns(input, PLAYBOOK_CREATE_COLUMNS),
+    ),
+  );
 }
-
-/** Updates a playbook through a fixed column list — see the note in `deals.ts`. */
 export async function updateAutomationPlaybook(
   id: string,
   updates: Partial<AutomationPlaybook>,
 ): Promise<AutomationPlaybook> {
-  const supabase = createLegacyDomainClient("automation_playbooks");
-  const { data, error } = await supabase
-    .from("automation_playbooks")
-    .update(pickColumns(updates, PLAYBOOK_UPDATE_COLUMNS))
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw supabaseOperationFailed("update this automation playbook", error);
-  return data as AutomationPlaybook;
+  return domainOperation("update this automation playbook", () =>
+    updateDomainRow<AutomationPlaybook>(
+      "automation_playbooks",
+      id,
+      pickColumns(updates, PLAYBOOK_UPDATE_COLUMNS),
+    ),
+  );
 }
-
 export async function createAutomationRun(input: CreateAutomationRunInput): Promise<AutomationRun> {
-  const supabase = createLegacyDomainClient("automation_playbooks");
-  const { data, error } = await supabase
-    .from("automation_runs")
-    .insert(pickColumns(input, RUN_CREATE_COLUMNS))
-    .select()
-    .single();
-  if (error) throw supabaseOperationFailed("start this automation run", error);
-  return data as AutomationRun;
+  return domainOperation("start this automation run", () =>
+    insertDomainRow<AutomationRun>("automation_runs", pickColumns(input, RUN_CREATE_COLUMNS)),
+  );
 }
-
 export async function updateAutomationRun(
   id: string,
   updates: Partial<AutomationRun>,
 ): Promise<AutomationRun> {
-  const supabase = createLegacyDomainClient("automation_playbooks");
-  const { data, error } = await supabase
-    .from("automation_runs")
-    .update(pickColumns(updates, RUN_UPDATE_COLUMNS))
-    .eq("id", id)
-    .select()
-    .single();
-  if (error) throw supabaseOperationFailed("update this automation run", error);
-  return data as AutomationRun;
+  return domainOperation("update this automation run", () =>
+    updateDomainRow<AutomationRun>("automation_runs", id, pickColumns(updates, RUN_UPDATE_COLUMNS)),
+  );
 }

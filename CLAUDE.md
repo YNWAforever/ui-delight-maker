@@ -60,7 +60,7 @@ src/server-functions/  BFF layer — every client data call goes through here
 src/server/            Server-only: repositories, read-models, auth, db, workflows
 src/components/        Feature components; components/ui/ = shadcn primitives
 src/lib/               types.ts (source of truth), format.ts, query-keys.ts, n8n.ts
-neon/migrations/       Registered SQL migrations (001–021)
+neon/migrations/       Registered SQL migrations (001–022)
 scripts/clientops/     Migrate, verify, seed, perf-budget, bootstrap scripts
 n8n/workflows/         Agent workflow JSON definitions
 ```
@@ -94,21 +94,11 @@ n8n/workflows/         Agent workflow JSON definitions
   without explicit operator approval — see `README.md` production gates.
 - Seed env vars (`CLIENTOPS_SEED_*`) must never point at production.
 
-## Migration In Progress: Supabase → Neon
+## Neon-only runtime
 
-Neon is the target. Five legacy domains still use Supabase behind explicit source guards. No cutover has been approved or proven; see `docs/audit-fixes/2026-09-27/t20-evidence.md`.
-Still importing it (do not add more):
+User forbids all Supabase functions. Storage, ownership and authentication use Neon exclusively. Do not add Supabase SDKs, credentials, source switches, network requests, restore jobs or database functions. `supabase/migrations/` is frozen historical SQL and is never registered/executed.
 
-- `src/server/repositories/` — `automation-playbooks`, `customer-success`, `deals`,
-  `engagement-events`, `projects`. These sit behind the normal repository seam, so
-  `src/server-functions/` no longer touches Supabase at all and moving one of these tables to
-  Neon is a change to the repository body rather than to a handler.
-- `src/server/auth/resource-ownership.ts` — ownership lookups for the eight Supabase-owned
-  resource types. This one is on the **authorization** path, so `SUPABASE_URL` and
-  `SUPABASE_ANON_KEY` are required at runtime: without them `createSupabaseServerClient()`
-  throws and every guarded deal / project / contact / customer-success / automation route
-  answers 500 from inside the capability check rather than degrading. Both are in
-  `.env.example`.
+Eight domain tables are registered in migration022; contacts use `account_contacts`, profile IDs are text, and all domain BFF reads use the existing visibility/capability policy. Preserve transaction, parent-link authorization and write allowlists. See [migration and evidence](docs/audit-fixes/2026-09-27/neon-only-2026-10-03.md). Historical data equivalence is unverified; no source import is authorized by this change.
 
 `src/lib/mock-data.ts` (1689 lines) has zero importers, but it is not free-standing: the test
 `src/lib/__tests__/clientops-relationship-schema.test.ts` reads it off disk with `readFileSync`

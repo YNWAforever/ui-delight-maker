@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  readMeasurementEnv,
-  verdictFor,
-} from "../../../scripts/clientops/measure-supabase-surface";
+import { verdictFor } from "../../../scripts/clientops/compare-snapshot-ids";
 
 /**
  * Phase 0's whole value is that its answers can be acted on, and two of the outcomes it reports
@@ -12,7 +9,7 @@ import {
 describe("verdictFor", () => {
   it("reports an empty table as safe to migrate by deletion", () => {
     expect(verdictFor({ sampled: 0, alsoInNeon: 0, complete: true })).toContain(
-      "no rows in Supabase",
+      "no rows in source snapshot",
     );
   });
 
@@ -64,41 +61,5 @@ describe("verdictFor", () => {
         expect(verdictFor({ sampled, alsoInNeon, complete })).toMatch(/\(\d+\/\d+/);
       }
     }
-  });
-});
-
-describe("readMeasurementEnv", () => {
-  const complete = {
-    SUPABASE_URL: "https://project.supabase.co",
-    SUPABASE_SERVICE_ROLE_KEY: "service-role-key",
-    DATABASE_URL: "postgres://user@example/neondb",
-  };
-
-  it("returns the three values the run needs", () => {
-    expect(readMeasurementEnv(complete)).toEqual({
-      supabaseUrl: complete.SUPABASE_URL,
-      serviceRoleKey: complete.SUPABASE_SERVICE_ROLE_KEY,
-      databaseUrl: complete.DATABASE_URL,
-    });
-  });
-
-  it("refuses to run without the service-role key, and says why", () => {
-    // Under RLS the anon key reports 0 rows for tables that are not empty, and "0 rows" is the
-    // one wrong answer that licenses deleting the code.
-    expect(() => readMeasurementEnv({ ...complete, SUPABASE_SERVICE_ROLE_KEY: undefined })).toThrow(
-      /anon key is not sufficient/,
-    );
-  });
-
-  it("refuses to run without a Supabase URL", () => {
-    expect(() => readMeasurementEnv({ ...complete, SUPABASE_URL: undefined })).toThrow(
-      /SUPABASE_URL/,
-    );
-  });
-
-  it("refuses to run without the Neon connection it compares against", () => {
-    expect(() => readMeasurementEnv({ ...complete, DATABASE_URL: undefined })).toThrow(
-      /DATABASE_URL is required/,
-    );
   });
 });
