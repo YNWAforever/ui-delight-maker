@@ -1,5 +1,9 @@
 # Role UAT — audit release candidate
 
+## Current additional readonly AI/renewal slice — 2026-10-03 HKT
+
+Source3d851c2 actual dedicated UAT: seven distinct own Auth/profile/session/cookie bindings;21 `/agents`, `/ai-review`, `/renewals` navigations (19 HTTP200/Accounting2 HTTP403) and7 existing touchpoint dialogs PASS. Optional AI availability denial no longer creates an unhandled rejection; synthetic notes remain usable. All54 public-table counts/hashes are unchanged across original/intermediate/final probes; zero POST/external/provider requests. [Anonymous scoped result](../2026-09-29/evidence/current-acceptance-2026-10-03.json), [current source and owner ledger](../2026-09-29/current-acceptance-2026-10-03.md). Screenshots/raw identity information stay private. No Save/AI action, provider cost/usage, full-product or historical parity acceptance is claimed. Existing16 cases below retain their source-specific scope. Exact final-head/main full CI is required before merge; production remains held.
+
 **Execution state: in progress; release acceptance incomplete.** On 2026-09-30 the dedicated UAT database, independent Auth and seven distinct account sessions were provisioned and verified. The earlier absence-of-sessions blocker is superseded. [Environment](../2026-09-29/isolated-uat-environment.md). On source `6c7ecb0`, sales created a task assigned to a text profile ID; six permitted identities changed its status, while read_only's direct POST was rejected with unchanged database status/version. [Actual browser/DB observations](../2026-09-29/evidence/task-seven-role-before-ui-2026-09-30.json). This is partial U02/U06/U15 evidence, not completion of the full workflows below. The eight baseline probes remain defect evidence, not release gates.
 
 | Case | Role and disposable data required | Expected browser and network result | Actual UAT | Supporting local proof |
@@ -21,7 +25,9 @@
 | U15 responsive/keyboard | U02/U07/U08 at 390, 768, 1440 px and 200% zoom | visible focus, Enter/Escape/Tab, dialog return focus, readable errors, unobscured bulk bar | PASS seventeen actual retained sales/billing/Task/bulk preview/control width+native200/focus/error cases; previous public/Admin proof retained; original mixed receipt six actual width/native200/keyboard retry/reader denial cases PASS; screen reader pending; invitation thirteen actual cases PASS; actual Admin role/lifecycle focus and390 clipping failures retained; repairedfc4a2fd expanded seventeen cases PASS, unchanged rows/no writes | [Actual U15](../2026-09-29/responsive-journey-uat-2026-10-01.md), [Admin repair evidence](../2026-09-29/admin-keyboard-uat-2026-10-01.md) |
 | U16 spreadsheet-safe export | report/Admin exporter role with synthetic formula-shaped text and -12.50 numeric amount | downloaded CSV opens with text, no formula evaluation; amount stays numeric | PASS: actual accountingreport/SA+admin auditCSV downloads; ownreader GETdeny/effectiveallow/revocation and real LibreOffice+Excel14literaltextcells/negative-decimalnumeric/control2 | [Authenticated U16](../2026-09-29/authenticated-export-uat-2026-09-30.md), [T14](t14-evidence.md), [render](evidence/co29-libreoffice-render.png) |
 
-## Role and override coverage to run
+## Additional full-product role coverage
+
+The seven independent identities and the defined workflows above are available and executed for their linked source/scopes. The broader coverage below is not implied by identity/home smoke or the sixteen canonical cases; it does not request new or copied sessions. Use [current source and remaining gates](../2026-09-29/current-acceptance-2026-10-03.md).
 
 | Identity | Required positive path | Required negative path | Result |
 |---|---|---|---|

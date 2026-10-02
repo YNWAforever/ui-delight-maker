@@ -1,0 +1,272 @@
+{
+  "checkedAt": "2026-10-02T19:54:49.350Z",
+  "sourceSha": "3d851c23dc0d1b5aa52cae8f8e51fc68e8ae9c63",
+  "candidateUrl": "https://clientops-uat-20260930-dw4pldwv4-ynwaforevers-projects.vercel.app",
+  "scope": "read-only AI Ops, AI Review, Renewal Board and existing touchpoint dialog; no invocation or persistence",
+  "wholeProductAcceptance": false,
+  "providerAcceptance": false,
+  "productionDeployed": false,
+  "distinctOwnUsers": 7,
+  "distinctOwnSessions": 7,
+  "distinctOwnCookieSets": 7,
+  "roleResults": [
+    {
+      "role": "super_admin",
+      "ownIdentityAndPersistedRole": true,
+      "surfaces": [
+        {
+          "path": "/agents",
+          "httpStatus": 200,
+          "denied": false
+        },
+        {
+          "path": "/ai-review",
+          "httpStatus": 200,
+          "denied": false
+        },
+        {
+          "path": "/renewals",
+          "httpStatus": 200,
+          "denied": false
+        }
+      ],
+      "dialog": {
+        "opened": true,
+        "notesEditable": true,
+        "aiButtonVisible": false,
+        "saveClicked": false,
+        "aiClicked": false
+      },
+      "pageErrors": 0
+    },
+    {
+      "role": "admin",
+      "ownIdentityAndPersistedRole": true,
+      "surfaces": [
+        {
+          "path": "/agents",
+          "httpStatus": 200,
+          "denied": false
+        },
+        {
+          "path": "/ai-review",
+          "httpStatus": 200,
+          "denied": false
+        },
+        {
+          "path": "/renewals",
+          "httpStatus": 200,
+          "denied": false
+        }
+      ],
+      "dialog": {
+        "opened": true,
+        "notesEditable": true,
+        "aiButtonVisible": false,
+        "saveClicked": false,
+        "aiClicked": false
+      },
+      "pageErrors": 0
+    },
+    {
+      "role": "manager",
+      "ownIdentityAndPersistedRole": true,
+      "surfaces": [
+        {
+          "path": "/agents",
+          "httpStatus": 200,
+          "denied": false
+        },
+        {
+          "path": "/ai-review",
+          "httpStatus": 200,
+          "denied": false
+        },
+        {
+          "path": "/renewals",
+          "httpStatus": 200,
+          "denied": false
+        }
+      ],
+      "dialog": {
+        "opened": true,
+        "notesEditable": true,
+        "aiButtonVisible": false,
+        "saveClicked": false,
+        "aiClicked": false
+      },
+      "pageErrors": 0
+    },
+    {
+      "role": "sales",
+      "ownIdentityAndPersistedRole": true,
+      "surfaces": [
+        {
+          "path": "/agents",
+          "httpStatus": 200,
+          "denied": false
+        },
+        {
+          "path": "/ai-review",
+          "httpStatus": 200,
+          "denied": false
+        },
+        {
+          "path": "/renewals",
+          "httpStatus": 200,
+          "denied": false
+        }
+      ],
+      "dialog": {
+        "opened": true,
+        "notesEditable": true,
+        "aiButtonVisible": false,
+        "saveClicked": false,
+        "aiClicked": false
+      },
+      "pageErrors": 0
+    },
+    {
+      "role": "client_success",
+      "ownIdentityAndPersistedRole": true,
+      "surfaces": [
+        {
+          "path": "/agents",
+          "httpStatus": 200,
+          "denied": false
+        },
+        {
+          "path": "/ai-review",
+          "httpStatus": 200,
+          "denied": false
+        },
+        {
+          "path": "/renewals",
+          "httpStatus": 200,
+          "denied": false
+        }
+      ],
+      "dialog": {
+        "opened": true,
+        "notesEditable": true,
+        "aiButtonVisible": false,
+        "saveClicked": false,
+        "aiClicked": false
+      },
+      "pageErrors": 0
+    },
+    {
+      "role": "accounting",
+      "ownIdentityAndPersistedRole": true,
+      "surfaces": [
+        {
+          "path": "/agents",
+          "httpStatus": 403,
+          "denied": true
+        },
+        {
+          "path": "/ai-review",
+          "httpStatus": 403,
+          "denied": true
+        },
+        {
+          "path": "/renewals",
+          "httpStatus": 200,
+          "denied": false
+        }
+      ],
+      "dialog": {
+        "opened": true,
+        "notesEditable": true,
+        "aiButtonVisible": false,
+        "saveClicked": false,
+        "aiClicked": false
+      },
+      "pageErrors": 0
+    },
+    {
+      "role": "read_only",
+      "ownIdentityAndPersistedRole": true,
+      "surfaces": [
+        {
+          "path": "/agents",
+          "httpStatus": 200,
+          "denied": false
+        },
+        {
+          "path": "/ai-review",
+          "httpStatus": 200,
+          "denied": false
+        },
+        {
+          "path": "/renewals",
+          "httpStatus": 200,
+          "denied": false
+        }
+      ],
+      "dialog": {
+        "opened": true,
+        "notesEditable": true,
+        "aiButtonVisible": false,
+        "saveClicked": false,
+        "aiClicked": false
+      },
+      "pageErrors": 0
+    }
+  ],
+  "unchangedPublicTables": 54,
+  "unchangedSinceOriginalProbe": true,
+  "browserMutationRequests": 0,
+  "browserExternalRequests": 0,
+  "providerInvocations": 0,
+  "publicScreenshots": false,
+  "initialFailure": {
+    "sourceSha": "87c5438f015b3bbc632cb935285e64aaa2c557c2",
+    "accountingDeniedNavigationStatus": 500,
+    "remainingRolesNotCompleted": true,
+    "privateReceiptSha256": "a54a564c6caf438ed4355dcc83c381b60f6bea606b289b8aa991497d2ab827fe"
+  },
+  "intermediateFailure": {
+    "sourceSha": "1481ec1cad5db919b122eedbb7559ff0fa6f2ca6",
+    "accountingDeniedNavigationStatus": 403,
+    "unhandledOptionalAvailability": true,
+    "remainingRolesNotCompleted": true,
+    "privateReceiptSha256": "b8ddf9acd3bfa9fd12f48a60182178a35c2cdb7858a6acd3b00907033bbc7c1a"
+  },
+  "focused": {
+    "passed": 38,
+    "failed": 0,
+    "skipped": 0,
+    "files": 4,
+    "unhandledErrors": 0,
+    "reportSha256": "8123cb191ca46a5b2f1ae49780e66ad10959738148c1b9c75cf7167878ad13a8"
+  },
+  "staticChecks": [
+    {
+      "check": "types",
+      "exitCode": 0
+    },
+    {
+      "check": "runtime-types",
+      "exitCode": 0
+    },
+    {
+      "check": "lint",
+      "exitCode": 0
+    },
+    {
+      "check": "vite",
+      "exitCode": 0
+    },
+    {
+      "check": "bundles",
+      "exitCode": 0
+    }
+  ],
+  "privateGreenReceiptSha256": "af234c6925c7494b2a88cbda6576a278036c3813f918c6c7b99e8e8b699d4e44",
+  "finalExactHeadFullCi": "Required before merge; actual delivery recorded in pull request",
+  "remainingCoStates": {
+    "verifiedFixed": 19,
+    "blockedExternal": 11
+  }
+}

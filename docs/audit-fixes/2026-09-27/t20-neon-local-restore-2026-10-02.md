@@ -1,5 +1,7 @@
 # T20 真實 Neon 唯讀備份及本機有限恢復 — 2026-10-02 HKT
 
+> Historical operator record. On2026-10-03 the user excluded Supabase backup/resume/restore and forbade every Supabase function. The acquisition/recovery next steps below are withdrawn, not an active instruction. Application domains now use Neon migration022; historical equivalence remains unverified. Use [current acceptance and owner gates](../2026-09-29/current-acceptance-2026-10-03.md) and [Neon-only evidence](neon-only-2026-10-03.md).
+
 Source main: `6eb9281bf7e512853e86055979fa5850ce9324d2`；既有 exporter implementation `1cd638d` / [merged PR157](https://github.com/YNWAforever/ui-delight-maker/pull/157)。本批只有證據文件，不改 application、schema migrations、Auth、source guard、部署或 integration 設定。
 
 ## 已實際完成
