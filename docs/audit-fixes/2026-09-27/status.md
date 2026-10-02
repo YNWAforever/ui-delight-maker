@@ -1,5 +1,11 @@
 # ClientOps audit remediation status
 
+## Current acceptance continuation — 2026-10-03 HKT
+
+Base main `08ae873f81de48d46516649d9f64ab4a7ecf1fe4` freshly verified; no open PRs at that checkpoint. Exact main Checks/Database2543/331/zero skips passed. Actual production hold, older READYbed941b and canceled08ae873 attempt were read back unchanged. Seven existing own sessions are available; Supabase functions/acquisition/restoration remain forbidden.
+
+A new read-only own-role UI observer found Accounting's correctly denied AI Ops/AI Review pages returned HTTP500. The supported TanStack server entry now maps only actual `AdminError` FORBIDDEN/OUTSIDE_SCOPE rendered500 responses to403, retaining safe body, stream cleanup and headers, with private/no-store caching. All other responses/failures and authorization policy remain unchanged. Fourteen regressions, including actual Router loader denials and stream cancellation, pass; actual candidate recheck and exact-head/main full gates remain required before delivery. The failed browser receipt is retained privately; CO28 remains blocked_external for its incomplete provider/historical criteria. No provider invocation or persisted UAT mutation occurred in the observer.
+
 ## Current Neon-only implementation — 2026-10-03 HKT
 
 User forbids every Supabase function and selects Neon exclusively. The eight missing domain tables, five repositories, ownership/workspace reads and SDK/source-switch removal are implemented on `codex/clientops-neon-only-20261003`. [Implementation, migration, real-Postgres regressions, runtime and remaining gates](neon-only-2026-10-03.md). Supabase backup/resume/restore/network access is excluded. All30 findings remain19 verified_fixed /11 blocked_external until their complete criteria pass; historical parity is not claimed. Production is held and release NO-GO. Earlier source/recovery plans below are superseded.
