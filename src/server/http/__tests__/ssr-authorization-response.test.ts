@@ -1,4 +1,9 @@
-import { createMemoryHistory, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import { getSsrStatus } from "@tanstack/router-core/ssr/server";
 import { describe, expect, it } from "vitest";
 import { AdminError } from "@/lib/admin/errors";
