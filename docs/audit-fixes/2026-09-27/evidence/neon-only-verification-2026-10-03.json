@@ -473,9 +473,10 @@
     "sourceSha": "87c5438f015b3bbc632cb935285e64aaa2c557c2",
     "protectedBuildMetadataVerified": true,
     "protectedSevenRoleUi": "PASS: seven independent role identity/profile/session/home UI bindings; 45 original tables unchanged",
-    "canonicalUatSha": "97891b9411686381634ea2d3c07ef660e062c94d",
-    "aliasPromoted": false,
-    "credentialUseExplicitlyApprovedForIndependentUatOnly": true
+    "canonicalUatSha": "87c5438f015b3bbc632cb935285e64aaa2c557c2",
+    "aliasPromoted": true,
+    "credentialUseExplicitlyApprovedForIndependentUatOnly": true,
+    "canonicalUrl": "https://clientops-uat-20260930.vercel.app"
   },
   "ciFixtureCorrection": {
     "initialHead": "10ce6812ab03b6eef89c5b67e3e9bdcdde493c7f",
@@ -498,6 +499,11 @@
     },
     "fix": "Validate isolated loopback clientops_* DB; scoped Vitest env binding/restoration",
     "runtimeSqlOrAssertionsChanged": false,
-    "finalExactHeadHostedGate": "Required before merge"
+    "finalExactHeadHostedGate": "Final documentation head results recorded in PR160 live delivery record",
+    "correctedHead": "fd2a712f9012466953ac9a7f12c24d6286844c07",
+    "correctedChecksRun": 37049253697,
+    "correctedDatabaseRun": 37049253702,
+    "correctedFullPassed": 2543,
+    "correctedFullSkipped": 0
   }
 }
