@@ -139,3 +139,7 @@ The observations below retain their original dates and source. Current candidate
 ## Native queue gate delta — 2026-10-01 HKT
 
 Commit e9f8fc48466f9e16d4a09bd6d50087635d40ec03: [real native polling acceptance](../2026-09-29/native-queue-polling-uat-2026-10-01.md) closes CO15 using four actual35s cases, own Manager and disposable100k approval data, without app/schema changes or mocked visibility. Current finding matrix19 verified_fixed /11 blocked_external, all30 IDs/16 UAT retained. Exact final-head CI/no-skip/replay/preview is still required before merging this evidence slice. Production release remains NO-GO: legacy/history/provider/human screen reader/operator/PITR/rollback inputs remain unresolved. No production action is authorized by this local acceptance delta.
+
+## 2026-10-03 AI GPT-6.1 candidate gate
+
+The reviewed AI candidate adds registered migrations023–025 and is documented in [AI release/rollback](../2026-10-03-ai-gpt61/release-and-rollback.md), [finding matrix](../2026-10-03-ai-gpt61/finding-matrix.md) and [execution ledger](../2026-10-03-ai-gpt61/execution-ledger.md). Historical checkpoints above retain their original source and acceptance limits. This new candidate remains NO-GO: data dispositions, genuine provider/native workers, exact seven-role UAT/accessibility, actual sweep duration and p95 owner review, production backup/PITR/window and release authority are unresolved. Green source CI alone does not authorize release or hold removal. No production migration or deployment occurred in this remediation.

@@ -1,0 +1,587 @@
+{
+  "recordedAt": "2026-10-03T12:27:49.282Z",
+  "kind": "reviewable candidate; not production release",
+  "releaseDecision": "NO-GO",
+  "app": {
+    "codeVerifiedCommit": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+    "sourceTrees": {
+      "src": "e99cc7f37e864dd7f535124ffd963b039700cd6d",
+      "neon": "a45443f775b7e65d42dc31259f33b48b73e1c527",
+      "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
+      "scripts": "1f6e50b4c09f3492a0dbed042d938707f2f39885"
+    },
+    "package": {
+      "path": "package.json",
+      "sha256": "70e1c69e602b985259970f44858da61793108cc05aa11b6ab290bcbed7736659",
+      "gitBlob": "b9262cfe887636ad4a58364ea09411980ca92749"
+    },
+    "lock": {
+      "path": "bun.lock",
+      "sha256": "5bce664aedbd85728dbc3335af74b87b40ba0a3d2a1a3b8cd5b73776b1746b85",
+      "gitBlob": "b624d731c6d674a6c0990f09d88abe214784366a"
+    },
+    "dependency24hGuard": "unchanged",
+    "finalReviewPr": "https://github.com/YNWAforever/ui-delight-maker/pull/174",
+    "finalHeadBinding": "Require exact final PR HEAD Actions; evidence-only final revision and exact CI are recorded on that PR, avoiding a self-referential manifest commit",
+    "releaseFreezeSha": null
+  },
+  "inputs": {
+    "originalZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
+    "planSha256": "37e03bf6cff9564ce68c35c7cd838ae5c6348c37575158d1743cad48bef6ce38",
+    "auditSha": "953ec0a36806d4362fad9e2b2d8cd17a49adbb26",
+    "latestMainSha": "953ec0a36806d4362fad9e2b2d8cd17a49adbb26",
+    "originalEvidenceUnchanged": true
+  },
+  "verification": {
+    "full": {
+      "checkedAt": "2026-10-03T12:10:43.995Z",
+      "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+      "db": "clientops_ai_gpt61_b42ac78e68",
+      "loopbackOnly": true,
+      "providerConfigurationAbsent": true,
+      "command": [
+        "bunx",
+        "vitest",
+        "run",
+        "--no-file-parallelism",
+        "--testTimeout=30000",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-exact-final-vitest.private.json"
+      ],
+      "exitCode": 0,
+      "passed": 2825,
+      "failed": 0,
+      "skipped": 0,
+      "total": 2825,
+      "files": 354,
+      "elapsedMs": 550130,
+      "reportSha256": "86a6e6ccb081687973a8f65c48ee1c2f72336e67dcf364503b4c1909227753f9"
+    },
+    "statics": [
+      {
+        "command": [
+          "bun",
+          "run",
+          "typecheck"
+        ],
+        "exitCode": 0,
+        "elapsedMs": 50691,
+        "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+        "dbAbsent": true,
+        "providerAbsent": true
+      },
+      {
+        "command": [
+          "bun",
+          "run",
+          "typecheck:runtime"
+        ],
+        "exitCode": 0,
+        "elapsedMs": 4880,
+        "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+        "dbAbsent": true,
+        "providerAbsent": true
+      },
+      {
+        "command": [
+          "bun",
+          "run",
+          "lint"
+        ],
+        "exitCode": 0,
+        "elapsedMs": 39196,
+        "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+        "dbAbsent": true,
+        "providerAbsent": true
+      },
+      {
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "exitCode": 0,
+        "elapsedMs": 140,
+        "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+        "dbAbsent": true,
+        "providerAbsent": true
+      }
+    ],
+    "build": [
+      {
+        "command": [
+          "bunx",
+          "vite",
+          "build"
+        ],
+        "exitCode": 0,
+        "elapsedMs": 69135,
+        "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+        "dbAbsent": true,
+        "providerAbsent": true
+      },
+      {
+        "command": [
+          "bun",
+          "run",
+          "performance:bundles"
+        ],
+        "exitCode": 0,
+        "elapsedMs": 202,
+        "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+        "dbAbsent": true,
+        "providerAbsent": true
+      },
+      {
+        "command": [
+          "bun",
+          "run",
+          "test:browser-collector"
+        ],
+        "exitCode": 0,
+        "elapsedMs": 7655,
+        "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+        "dbAbsent": true,
+        "providerAbsent": true
+      },
+      {
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "exitCode": 0,
+        "elapsedMs": 89,
+        "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+        "dbAbsent": true,
+        "providerAbsent": true
+      }
+    ],
+    "schema": {
+      "checkedAt": "2026-10-03T12:23:51.839Z",
+      "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+      "db": "clientops_ai_gpt61_a4ed6c5aad",
+      "loopbackOnly": true,
+      "providerConfigurationAbsent": true,
+      "command": [
+        "bun",
+        "run",
+        "test:database-contract",
+        "--no-file-parallelism",
+        "--testTimeout=30000",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-package-schema-vitest.private.json"
+      ],
+      "exitCode": 0,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "total": 1,
+      "files": 1,
+      "elapsedMs": 3730,
+      "reportSha256": "ba8013d5dce1f81b6631c4aed3c4892dba1689462bb7defdbac198532aab6600"
+    },
+    "noSkips": [
+      {
+        "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+        "command": [
+          "bun",
+          "scripts/clientops/assert-vitest-no-skips.ts",
+          ".clientops-perf/ai-gpt61-20261003/r11-exact-final-vitest.private.json"
+        ],
+        "exitCode": 0,
+        "elapsedMs": 76,
+        "summary": "Database contract gate passed: 2825 tests, 0 skipped",
+        "reportSha256": "86a6e6ccb081687973a8f65c48ee1c2f72336e67dcf364503b4c1909227753f9"
+      },
+      {
+        "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+        "command": [
+          "bun",
+          "scripts/clientops/assert-vitest-no-skips.ts",
+          ".clientops-perf/ai-gpt61-20261003/r11-package-schema-vitest.private.json"
+        ],
+        "exitCode": 0,
+        "elapsedMs": 97,
+        "summary": "Database contract gate passed: 1 tests, 0 skipped",
+        "reportSha256": "ba8013d5dce1f81b6631c4aed3c4892dba1689462bb7defdbac198532aab6600"
+      }
+    ],
+    "codeCi": {
+      "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+      "runId": 37121607318,
+      "scope": "GitHub isolated PG17 service",
+      "summary": [
+        "Database contract gate passed: 2825 tests, 0 skipped"
+      ],
+      "logSha256": "bf1002e410cb014d2a115c5525e22afed429698a6145ae427aaa4f05a2a0ae30"
+    },
+    "sourceKeyGuards": "all original20 retained; R10 targeted109 source passes; not external acceptance",
+    "review": "author only; no subagent/model switch"
+  },
+  "migrations": [
+    {
+      "path": "neon/migrations/001_clientops_runtime.sql",
+      "sha256": "21b09dcfdf37dea91f4659c4bd9643d18ac343858033a136e62c932e92137291",
+      "gitBlob": "31cbfe0e68e8aa4e7d93767109338b48f2ec7a82"
+    },
+    {
+      "path": "neon/migrations/002_retention_client_360.sql",
+      "sha256": "bbcc93017e2429e2252a7736cea91ed806468e5f61fa7a58a7504b9f9930cbb7",
+      "gitBlob": "7e1215942922a9edde880be99cdf4e50dfaba5d8"
+    },
+    {
+      "path": "neon/migrations/003_client_relationship_360.sql",
+      "sha256": "bfea7e85a2067af12feab132a4719a9c1e8127fcd040d7a8c772e0fa17cdcb1f",
+      "gitBlob": "1ed4b0f82ca78636522aa7b9ee93c0701ff78895"
+    },
+    {
+      "path": "neon/migrations/004_clientops_schema_hardening.sql",
+      "sha256": "6737e39cbb28cc930cdd3358fe648d8a9165667391e3e35208b1ea76fc77793b",
+      "gitBlob": "606bfd04729e0614c6bf7f1128c579b2abc7ad9a"
+    },
+    {
+      "path": "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
+      "sha256": "c88878884520f4c3854a820633bd1578902e8f5becd5c8f12ba9a91658a98702",
+      "gitBlob": "654e8ef68f2822c15fe1cedddc19691db6fc4944"
+    },
+    {
+      "path": "neon/migrations/006_unified_crm_workspace_foundation.sql",
+      "sha256": "311cc5cc88ef1f4247d3110f6de4aa5d0784f17e4c7e3f197cf1bace7c564ef5",
+      "gitBlob": "9b5db25faa9308297d44643b891227f0f755ac6b"
+    },
+    {
+      "path": "neon/migrations/007_admin_team_user_management.sql",
+      "sha256": "ee4ea0994870acb1ad44b91fce6cdd8a8778afd8fe7d3403d21be6fdb74a0960",
+      "gitBlob": "1f73fd8d35c8f3a0f001e1515d8d31715eccfaec"
+    },
+    {
+      "path": "neon/migrations/008_read_path_indexes.sql",
+      "sha256": "dcee6d863146b210b4f3d063edfe470b90fe013d68c6e22f8aea0deb1195c8d1",
+      "gitBlob": "861db79c579ef7dc4103882d61cca018bc923138"
+    },
+    {
+      "path": "neon/migrations/009_agent_policy_versions.sql",
+      "sha256": "746b6fd603c847d9265577236f54723fd6f1798b38a43c84e3ae47892cb32c4b",
+      "gitBlob": "8dcac912ee5f3772b09dda7e9e8ee0d52b00c308"
+    },
+    {
+      "path": "neon/migrations/010_command_versions_and_receipts.sql",
+      "sha256": "1174c3719fbe93067e2a047b44667852b7b9a4bee8dc74c6c0d3d2198e51e328",
+      "gitBlob": "f9c96a282235a3baac0aa55c97626f80a2394835"
+    },
+    {
+      "path": "neon/migrations/011_quote_version_integrity.sql",
+      "sha256": "649e56f380c8cd44877bbeea2a7b148feb050589b9166830b5ef9cd0cc1690d4",
+      "gitBlob": "149f670fb62a42835736f74d1d6ac3225723157f"
+    },
+    {
+      "path": "neon/migrations/012_quote_open_approval_constraint.sql",
+      "sha256": "b9e230d6159d31ffdffdd2270a0d53c423216462ad771917bc4e17fe2b13fc38",
+      "gitBlob": "a1c1ec9fbd87d3fd22c0691a7bf76fbcb02a2f61"
+    },
+    {
+      "path": "neon/migrations/013_xero_entry_transitions.sql",
+      "sha256": "93747eadb092890c15f5ffe51e2ec92649a22e5f6a88cdf56235a32d19c85525",
+      "gitBlob": "634ca6faa9ff7a2e892ad9eed24339e77204b0e0"
+    },
+    {
+      "path": "neon/migrations/014_locked_job_sheet_portions.sql",
+      "sha256": "5ce0685407388696fc51912259ae1f2deddc02d0a26fe1564e02ef9855106d64",
+      "gitBlob": "21e9bdada482fcbba40a93f0ee767ed28a4851d6"
+    },
+    {
+      "path": "neon/migrations/015_agent_recovery_metadata.sql",
+      "sha256": "0c983f011d05859aad48f9f7e419ea387cf664db106dcf1fa1d3f7b7175ad3aa",
+      "gitBlob": "da7bf4564ce42b63b13c37ff49f5964ec9011323"
+    },
+    {
+      "path": "neon/migrations/016_work_queue_pagination_indexes.sql",
+      "sha256": "c78c17b061468086fbfe32ac187d84513163c5a37a7941ea559c391a73ac7759",
+      "gitBlob": "101f513bfd277aa166494511330aff55f82cd7f4"
+    },
+    {
+      "path": "neon/migrations/017_bulk_operations.sql",
+      "sha256": "a737d080b7fb12f3eb33e504896655485e63b879c6062ccabb63453de1ffe3a6",
+      "gitBlob": "d8e3128eb09230112d0f5721d211b5427d1b0fd1"
+    },
+    {
+      "path": "neon/migrations/018_bulk_row_versions.sql",
+      "sha256": "d9fe716bd9a828b82d971783dcf5c1b6ccd5cad14ffbe99fbae947dbf648bb5f",
+      "gitBlob": "b65eaef390cbabb3190c805cbc52e95388f49dfb"
+    },
+    {
+      "path": "neon/migrations/019_import_sessions_and_identity_keys.sql",
+      "sha256": "3cff1fb97d5113a6d2b439daf8905ea692d7d858bc3959daa9419aee05d6f496",
+      "gitBlob": "8dcbb371022bebaf6ee414c67aa9da6fe3264e4f"
+    },
+    {
+      "path": "neon/migrations/020_job_sheet_handoff_fields.sql",
+      "sha256": "34d9ff54ea8c63514214baf944410ec2d481f302a9f052a4a00ed2b674ad5338",
+      "gitBlob": "ab909cef0501d31ff51d9d87707f80bf3ad5559f"
+    },
+    {
+      "path": "neon/migrations/021_ai_invocation_telemetry.sql",
+      "sha256": "e5f954e0f523d98c467a934b63f4c89de42730c137238c30c0ab70e347b69f7b",
+      "gitBlob": "9dc381d3109da783abdbf305ea3982fa01348e7a"
+    },
+    {
+      "path": "neon/migrations/022_neon_domain_storage.sql",
+      "sha256": "877215ab74243dce5eea72469f42aa9335a3e3bfd4461d40af7aeeacb71509ca",
+      "gitBlob": "a07514457b5b944073efb13efdd4146d8e408f72"
+    },
+    {
+      "path": "neon/migrations/023_ai_execution_provenance.sql",
+      "sha256": "05cac119b5a7f2fe1fb128d5c65f1ad8e9e46c8b1669c0089858cd30c0614de2",
+      "gitBlob": "94f9ed94ba7f586eee4843a4461382a80cffd888"
+    },
+    {
+      "path": "neon/migrations/024_ai_invalid_output.sql",
+      "sha256": "986ff8ce1780e47fba911656c29b45b76518039a29b7193255d0e7c91048d58b",
+      "gitBlob": "65c0f55b01ff89b4876ee9c1fa8b5af6705c383f"
+    },
+    {
+      "path": "neon/migrations/025_retention_sweep_checkpoints.sql",
+      "sha256": "8c04f5bafc6600433c7c2f70bcbcfcf6782cb87101fd287eb70cc966653ef0cb",
+      "gitBlob": "74528363679d10cd1f2a692056ea444b586f813c"
+    }
+  ],
+  "workers": [
+    {
+      "path": "n8n/workflows/clientops-qualify-lead.json",
+      "sha256": "d2bda332c7a5abc498b2dd5d053e66b4edf91a4b1ffa3d5fa7c0200d9f782924",
+      "gitBlob": "80ca7ae97d99cb7b10ff230a723a1a3e80e6179b",
+      "deployedHash": null,
+      "nativeRuntimeAcceptance": "blocked: operator evidence/authority"
+    },
+    {
+      "path": "n8n/workflows/clientops-draft-reply.json",
+      "sha256": "3b75cc9a3b8a71bae890a1b2493a223876e7909f96d93395a0208bfe8c2cdb41",
+      "gitBlob": "43c32a095730c1a609d3a9df9c7b4ff34f30a933",
+      "deployedHash": null,
+      "nativeRuntimeAcceptance": "blocked: operator evidence/authority"
+    },
+    {
+      "path": "n8n/workflows/clientops-draft-quote.json",
+      "sha256": "c1280411a94f6e3f3b0bd97cfec94d501102453ee51d9f8930ebe6823966dc24",
+      "gitBlob": "199c7594520b64fd7dfe7756b2c1557dd42a8db9",
+      "deployedHash": null,
+      "nativeRuntimeAcceptance": "blocked: operator evidence/authority"
+    },
+    {
+      "path": "n8n/workflows/clientops-score-renewal-risk.json",
+      "sha256": "b053fafaa2687593dca225ac2419ddc218f328bca733d8047561abcf113a1693",
+      "gitBlob": "b7da167a71ad3c486be7a32fee67a3632787bf8a",
+      "deployedHash": null,
+      "nativeRuntimeAcceptance": "blocked: operator evidence/authority"
+    },
+    {
+      "path": "n8n/workflows/clientops-relationship-intelligence.json",
+      "sha256": "d3a18a5e31a817e5a53aab4eaf95864978563df215b6738ced1a08b16966d5f3",
+      "gitBlob": "f8fb5855b97ed42258b09d26ce243d6c43424d15",
+      "deployedHash": null,
+      "nativeRuntimeAcceptance": "blocked: operator evidence/authority"
+    },
+    {
+      "path": "n8n/workflows/clientops-retention-sweep.json",
+      "sha256": "d55e9a0e6a662fb16a149317d5b0dc937be3998682025b768e255a7040e02151",
+      "gitBlob": "64d6d209ebfe50f10e10caf44218bad214442c20",
+      "deployedHash": null,
+      "nativeRuntimeAcceptance": "blocked: operator evidence/authority"
+    }
+  ],
+  "directNoteTidy": {
+    "workerHash": "N/A",
+    "callback": "N/A",
+    "providerAcceptance": "blocked",
+    "modelUsageCost": "unknown; no paid execution"
+  },
+  "dataDisposition": {
+    "evidence": "reconciliation-disposition.md",
+    "status": "blocked",
+    "mutations": 0
+  },
+  "uat": {
+    "evidence": "evidence/r11-final-uat-environment-result.json",
+    "observedAt": "2026-10-03T12:24:33.068Z",
+    "targetSourceSha": "3d851c23dc0d1b5aa52cae8f8e51fc68e8ae9c63",
+    "targetSchema": [
+      "neon/migrations/001_clientops_runtime.sql",
+      "neon/migrations/002_retention_client_360.sql",
+      "neon/migrations/003_client_relationship_360.sql",
+      "neon/migrations/004_clientops_schema_hardening.sql",
+      "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
+      "neon/migrations/006_unified_crm_workspace_foundation.sql",
+      "neon/migrations/007_admin_team_user_management.sql",
+      "neon/migrations/008_read_path_indexes.sql",
+      "neon/migrations/009_agent_policy_versions.sql",
+      "neon/migrations/010_command_versions_and_receipts.sql",
+      "neon/migrations/011_quote_version_integrity.sql",
+      "neon/migrations/012_quote_open_approval_constraint.sql",
+      "neon/migrations/013_xero_entry_transitions.sql",
+      "neon/migrations/014_locked_job_sheet_portions.sql",
+      "neon/migrations/015_agent_recovery_metadata.sql",
+      "neon/migrations/016_work_queue_pagination_indexes.sql",
+      "neon/migrations/017_bulk_operations.sql",
+      "neon/migrations/018_bulk_row_versions.sql",
+      "neon/migrations/019_import_sessions_and_identity_keys.sql",
+      "neon/migrations/020_job_sheet_handoff_fields.sql",
+      "neon/migrations/021_ai_invocation_telemetry.sql",
+      "neon/migrations/022_neon_domain_storage.sql"
+    ],
+    "distinctActiveProfiles": 7,
+    "distinctCookieSets": 7,
+    "liveSessions": "not-tested",
+    "exactCandidateRoleJourneys": "not-tested",
+    "nativeDesktopMobileKeyboard200ZoomAT": "not-tested",
+    "blockingNextAction": "QA/operator exact independent candidate provisioning/migrations and seven own sessions; never copy super_admin"
+  },
+  "performance": {
+    "evidence": "performance-before-after.md",
+    "samples": 960,
+    "actualReadModelSql": true,
+    "thresholdPercent": 10,
+    "status": "blocked: disclosed warm p95 regressions need owner review; production/browser SLO not-tested"
+  },
+  "providerCases": {
+    "proposed": 120,
+    "approved": 0,
+    "executed": 0,
+    "passed": 0,
+    "blocked": 120,
+    "evidence": "evidence/provider-acceptance.json",
+    "owner": "business/provider/worker operator"
+  },
+  "sweepRuntime": {
+    "limit": 50,
+    "concurrency": 3,
+    "deadline": "server-only min55s/(verified duration-5s),15s+5s reserve",
+    "deploymentMaxDuration": null,
+    "nativeContinuation": null,
+    "status": "blocked: verify actual runtime and native worker before flags/schedule"
+  },
+  "restore": {
+    "evidence": "evidence/r11-restore-result.json",
+    "syntheticOnly": true,
+    "tables": 56,
+    "rows": 57,
+    "hashesEqual": true,
+    "immutableDenied": true,
+    "migrationReplay": 25,
+    "productionPitr": "blocked"
+  },
+  "production": {
+    "evidence": "evidence/r11-final-hold-result.json",
+    "observedAt": "2026-10-03T12:23:59.136Z",
+    "sha": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+    "hold": "if [ \"$VERCEL_ENV\" = \"production\" ]; then exit 0; else exit 1; fi",
+    "migrationLedger": "blocked: operator evidence",
+    "merged": false,
+    "released": false,
+    "productionMutations": 0,
+    "customerMessages": 0,
+    "paidProviderCalls": 0,
+    "cloudWorkerActivation": false
+  },
+  "stackAsObservedBeforeEvidenceOnlyCommit": [
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/clientops-ai-gpt61-remediation",
+      "headRefOid": "23261dcf9cb71f7f5fd575013842f525be1c4b67",
+      "isDraft": true,
+      "number": 163,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/pull/163"
+    },
+    {
+      "baseRefName": "codex/clientops-ai-gpt61-remediation",
+      "headRefName": "codex/clientops-ai-r01-identity",
+      "headRefOid": "abd506066c3b819e49e8011f0cb9bef93276b8e9",
+      "isDraft": true,
+      "number": 164,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/pull/164"
+    },
+    {
+      "baseRefName": "codex/clientops-ai-r01-identity",
+      "headRefName": "codex/clientops-ai-r02-provenance",
+      "headRefOid": "6a2ab0272f0db037168380eccf5c4e1c3753970e",
+      "isDraft": true,
+      "number": 165,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/pull/165"
+    },
+    {
+      "baseRefName": "codex/clientops-ai-r02-provenance",
+      "headRefName": "codex/clientops-ai-r03-output-contracts",
+      "headRefOid": "b1befc05b57362b1589d1d71a1507064ec0642eb",
+      "isDraft": true,
+      "number": 166,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/pull/166"
+    },
+    {
+      "baseRefName": "codex/clientops-ai-r03-output-contracts",
+      "headRefName": "codex/clientops-ai-r04-reconciliation",
+      "headRefOid": "7bb476f69ac9dfc8b0835cc8d36c5d0ec80e54c5",
+      "isDraft": true,
+      "number": 167,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/pull/167"
+    },
+    {
+      "baseRefName": "codex/clientops-ai-r04-reconciliation",
+      "headRefName": "codex/clientops-ai-r05-policy-controls",
+      "headRefOid": "fa61f068c7cb7e606211ee0c7ef9147228dc83c9",
+      "isDraft": true,
+      "number": 168,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/pull/168"
+    },
+    {
+      "baseRefName": "codex/clientops-ai-r05-policy-controls",
+      "headRefName": "codex/clientops-ai-r06-auxiliary-ops",
+      "headRefOid": "ea944d42fd667c3f717775d53e2c8d0fc69c4424",
+      "isDraft": true,
+      "number": 169,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/pull/169"
+    },
+    {
+      "baseRefName": "codex/clientops-ai-r06-auxiliary-ops",
+      "headRefName": "codex/clientops-ai-r07-complete-queues",
+      "headRefOid": "914e0e554de66cb7169408b7760d15aef8492ddb",
+      "isDraft": true,
+      "number": 170,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/pull/170"
+    },
+    {
+      "baseRefName": "codex/clientops-ai-r07-complete-queues",
+      "headRefName": "codex/clientops-ai-r08-bulk-maintenance",
+      "headRefOid": "9956d5b9818370a3c8c210524fc1e456aca7872f",
+      "isDraft": true,
+      "number": 171,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/pull/171"
+    },
+    {
+      "baseRefName": "codex/clientops-ai-r08-bulk-maintenance",
+      "headRefName": "codex/clientops-ai-r09-bounded-sweep",
+      "headRefOid": "1d2812288614b70f6fa14e85415df51974842a3d",
+      "isDraft": true,
+      "number": 172,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/pull/172"
+    },
+    {
+      "baseRefName": "codex/clientops-ai-r09-bounded-sweep",
+      "headRefName": "codex/clientops-ai-r10-acceptance-pack",
+      "headRefOid": "b9d2925330eac98aca07baa05a34c728c12c766f",
+      "isDraft": true,
+      "number": 173,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/pull/173"
+    },
+    {
+      "baseRefName": "codex/clientops-ai-r10-acceptance-pack",
+      "headRefName": "codex/clientops-ai-r11-release-evidence",
+      "headRefOid": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+      "isDraft": true,
+      "number": 174,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/pull/174"
+    }
+  ],
+  "rollback": "release-and-rollback.md"
+}
