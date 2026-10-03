@@ -1,0 +1,52 @@
+[
+  {
+    "command": [
+      "bun",
+      "run",
+      "typecheck"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 26218,
+    "sourceSha": "abd506066c3b819e49e8011f0cb9bef93276b8e9"
+  },
+  {
+    "command": [
+      "bunx",
+      "eslint",
+      "src/lib/__tests__/clientops-relationship-schema.test.ts",
+      "src/lib/clientops-relationship-schema.ts",
+      "src/lib/types.ts",
+      "src/lib/workflows/__tests__/n8n-provider-routing.test.ts",
+      "src/lib/workflows/types.ts",
+      "src/routes/agents.$name.tsx",
+      "src/routes/api/workflows/relationship-intelligence.ts",
+      "src/server/db/clientops-schema-contract.ts",
+      "src/server/read-models/agent-workspaces.ts",
+      "src/server/repositories/__tests__/agent-runs.test.ts",
+      "src/server/repositories/agent-runs.ts",
+      "src/server/workflows/__tests__/writebacks-human-approval.test.ts",
+      "src/server/workflows/__tests__/writebacks.test.ts",
+      "src/server/workflows/context-engagement.server.ts",
+      "src/server/workflows/context.server.ts",
+      "src/server/workflows/writeback-payloads.server.ts",
+      "src/server/workflows/writebacks.ts",
+      "src/lib/workflows/__tests__/provenance.test.ts",
+      "src/lib/workflows/provenance.ts",
+      "src/server/workflows/__tests__/provenance.integration.test.ts",
+      "src/server/workflows/__tests__/writeback-payload-size.test.ts"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 3688,
+    "sourceSha": "abd506066c3b819e49e8011f0cb9bef93276b8e9"
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 73,
+    "sourceSha": "abd506066c3b819e49e8011f0cb9bef93276b8e9"
+  }
+]

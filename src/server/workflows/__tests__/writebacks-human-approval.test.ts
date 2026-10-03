@@ -117,6 +117,7 @@ describe("human_approval decides whether a writeback parks a run", () => {
   it("completes a reply draft instead of parking it when the flag says no approval", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
       id: "run-f1",
+      workflow_type: "draft_reply",
       status: "running",
       output_data: null,
       subject_type: "lead",
@@ -146,6 +147,7 @@ describe("human_approval decides whether a writeback parks a run", () => {
   it("completes a quote draft the payload asked to park, when the flag says no approval", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
       id: "run-f2",
+      workflow_type: "draft_quote",
       status: "running",
       output_data: null,
       subject_type: "lead",
@@ -175,6 +177,7 @@ describe("human_approval decides whether a writeback parks a run", () => {
   it("applies a raise to high risk directly when the flag says no approval", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
       id: "run-f3",
+      workflow_type: "score_renewal_risk",
       status: "running",
       output_data: null,
       subject_type: "engagement",

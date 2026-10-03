@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T06:31:05.439Z",
+  "sourceSha": "d8dd15a10effe5bba030413e8f77151d506b0570",
+  "db": "clientops_ai_gpt61_95ad672a8a",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/workflows/__tests__/writeback-payload-size.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r02-size-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 0,
+  "failed": 1,
+  "skipped": 0,
+  "total": 1,
+  "files": 1,
+  "elapsedMs": 4921,
+  "reportSha256": "46e20dd40f4b7b36d030ccf34795b5ad20451c6400a7668160eb7592cf142567"
+}

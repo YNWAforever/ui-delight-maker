@@ -51,6 +51,7 @@ export async function getLeadWorkflowContext({
         model_used,
         confidence_score,
         human_review_required,
+        attempt_id,
         created_at
       from agent_runs
       where id = $1

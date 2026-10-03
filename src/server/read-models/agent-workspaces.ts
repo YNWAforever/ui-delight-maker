@@ -5,6 +5,7 @@ import {
   agentWorkflowTypeForDisplayName,
 } from "@/lib/agents";
 import { decideAgentSubjects } from "@/lib/agent-run-visibility";
+import { normalizeAIExecutionProvenance } from "@/lib/workflows/provenance";
 import type { Capability } from "@/lib/admin/types";
 import type { AgentRun, HumanApproval } from "@/lib/types";
 import { query } from "@/server/db/neon.server";
@@ -62,6 +63,8 @@ export type AgentRunSummary = Pick<
   | "status"
   | "duration_ms"
   | "tokens_used"
+  | "usage_data"
+  | "execution_metadata"
   | "confidence_score"
   | "human_review_required"
   | "created_at"
@@ -173,6 +176,8 @@ type AgentHistoryRow = Pick<
   | "status"
   | "duration_ms"
   | "tokens_used"
+  | "usage_data"
+  | "execution_metadata"
   | "confidence_score"
   | "human_review_required"
   | "outcome_code"
@@ -476,7 +481,7 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
       `
         select
           id, agent_name, workflow_type, trigger_type, subject_type, subject_id,
-          input_data, output_summary, status, duration_ms, tokens_used, confidence_score,
+          input_data, output_summary, status, duration_ms, tokens_used, usage_data, execution_metadata, confidence_score,
           human_review_required, outcome_code, retry_of, recovery_reason, recovered_at,
           created_at, updated_at
         from agent_runs
@@ -528,6 +533,7 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
       const { input_data, output_summary, subject_id, subject_type, ...rest } = run;
       return {
         ...rest,
+        execution_metadata: normalizeAIExecutionProvenance(run.execution_metadata),
         subject_id: allowed ? subject_id : null,
         subject_type: allowed ? subject_type : null,
         input_data: allowed ? toJsonValue(input_data) : null,

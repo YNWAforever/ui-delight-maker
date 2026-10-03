@@ -34,7 +34,7 @@ const context = {
   lead: { id: "synthetic-lead", company_name: "Synthetic company", enquiry_text: "CRM" },
   engagement: { id: "synthetic-engagement", account_id: "synthetic-account" },
   account: { id: "synthetic-account", name: "Synthetic company" },
-  agent_run: { id: "synthetic-run" },
+  agent_run: { id: "synthetic-run", attempt_id: "synthetic-attempt" },
   pricing_templates: [],
 };
 const trigger = {
@@ -51,10 +51,11 @@ function executeCode(
   apiKey: string | undefined,
 ): Item {
   if (!node.parameters.jsCode) throw new Error(`Missing code: ${node.name}`);
-  const result: unknown = new Function("$input", "$", "$env", node.parameters.jsCode)(
+  const result: unknown = new Function("$input", "$", "$env", "$execution", node.parameters.jsCode)(
     { first: () => input },
     (name: string) => ({ first: () => bindings[name] }),
     { OPENROUTER_API_KEY: apiKey },
+    { id: "synthetic-worker-execution" },
   );
   if (!Array.isArray(result) || result.length !== 1 || !result[0]?.json) {
     throw new Error(`Invalid code result: ${node.name}`);
@@ -134,5 +135,94 @@ describe.each(workflows)("%s provider routing", (name) => {
     expect(workflow.connections["OpenRouter Request"].main[0]).toEqual([
       { node: "Resolve Output", type: "main", index: 0 },
     ]);
+  });
+
+  function providerOutput(envelope: Record<string, unknown> = {}) {
+    const prepared = executeCode(
+      prepare!,
+      { json: context },
+      { "Validate Trigger": { json: trigger } },
+      "synthetic-unit-key",
+    );
+    const content = {
+      ...(prepared.json.fallback as Record<string, unknown>),
+      model_used: "fake-content-model",
+      execution_metadata: { source: "provider", actualModel: "fake-metadata" },
+    };
+    const response = {
+      id: "synthetic-provider-receipt",
+      model: "synthetic/transport-model",
+      usage: {
+        prompt_tokens: 100,
+        completion_tokens: 25,
+        total_tokens: 125,
+        cost: 0.001,
+        currency: "USD",
+      },
+      choices: [{ message: { content: JSON.stringify(content) } }],
+      ...envelope,
+    };
+    return executeCode(
+      resolver!,
+      { json: response },
+      { [prepare!.name]: prepared },
+      "synthetic-unit-key",
+    ).json;
+  }
+
+  it("preserves_125_tokens_for_all_five_workflows and prefers_transport_provenance", () => {
+    const output = providerOutput();
+    expect(output.usage).toEqual({
+      inputTokens: 100,
+      outputTokens: 25,
+      totalTokens: 125,
+      cost: 0.001,
+      currency: "USD",
+      source: "openrouter",
+    });
+    expect(output.model_used).toBe("synthetic/transport-model");
+    expect(output.attempt_id).toBe("synthetic-attempt");
+    expect(output.execution_metadata).toMatchObject({
+      source: "provider",
+      providerRequestId: "synthetic-provider-receipt",
+      actualModel: "synthetic/transport-model",
+      requestedModel: "anthropic/claude-sonnet-4-6",
+      fallbackReason: null,
+      workerExecutionId: "synthetic-worker-execution",
+    });
+  });
+
+  it("preserves_unknown_usage and knows zero without estimating cost", () => {
+    expect(providerOutput({ usage: { total_tokens: 0 } }).usage).toEqual({
+      totalTokens: 0,
+      source: "openrouter",
+    });
+    expect(providerOutput({ usage: { prompt_tokens: 100 } }).usage).toEqual({
+      inputTokens: 100,
+      source: "openrouter",
+    });
+    expect(providerOutput({ usage: undefined })).not.toHaveProperty("usage");
+  });
+
+  it.each([-1, Number.NaN])("rejects invalid transport usage %s", (total_tokens) => {
+    expect(() => providerOutput({ usage: { total_tokens } })).toThrow("INVALID_PROVIDER_USAGE");
+  });
+
+  it("does not mark an unavailable provider as provider success", () => {
+    const output = providerOutput({
+      error: { message: "do not persist upstream body" },
+      choices: undefined,
+      usage: undefined,
+      model: undefined,
+      id: undefined,
+    });
+    expect(output.execution_metadata).toMatchObject({
+      source: "deterministic_fallback",
+      actualModel: null,
+      providerRequestId: null,
+      fallbackReason: "provider_error",
+    });
+    expect(output.model_used).toBeUndefined();
+    expect(JSON.stringify(output.execution_metadata)).not.toContain("do not persist");
   });
 });

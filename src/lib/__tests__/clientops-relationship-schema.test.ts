@@ -54,6 +54,7 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/020_job_sheet_handoff_fields.sql",
       "neon/migrations/021_ai_invocation_telemetry.sql",
       "neon/migrations/022_neon_domain_storage.sql",
+      "neon/migrations/023_ai_execution_provenance.sql",
     ]);
   });
 

@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T06:18:28.396Z",
+  "sourceSha": "d8dd15a10effe5bba030413e8f77151d506b0570",
+  "db": "clientops_ai_gpt61_28bab7982a",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/workflows/__tests__/writebacks.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r02-binding-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 30,
+  "failed": 10,
+  "skipped": 0,
+  "total": 40,
+  "files": 1,
+  "elapsedMs": 1292,
+  "reportSha256": "917e18b30af94a312661983de77c0559750fce0c3e88c142763db73d287dad9d"
+}

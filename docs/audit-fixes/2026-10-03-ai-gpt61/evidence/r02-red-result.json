@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-03T06:16:42.368Z",
+  "sourceSha": "d8dd15a10effe5bba030413e8f77151d506b0570",
+  "db": "clientops_ai_gpt61_8a702c28ef",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/lib/workflows/__tests__/provenance.test.ts",
+    "src/lib/workflows/__tests__/n8n-provider-routing.test.ts",
+    "src/lib/workflows/__tests__/n8n-templates.test.ts",
+    "src/server/repositories/__tests__/agent-runs.test.ts",
+    "src/server/workflows/__tests__/writebacks.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r02-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 60,
+  "failed": 27,
+  "skipped": 0,
+  "total": 87,
+  "files": 5,
+  "elapsedMs": 2569,
+  "reportSha256": "a299c1517c14ff8959cf538aa5b7efc45a95d445fca39ecd6a3db393b3563cfa"
+}

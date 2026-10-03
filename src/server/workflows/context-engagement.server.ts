@@ -61,6 +61,7 @@ export async function getEngagementWorkflowContext(input: {
     open_overdue_task_count: Number(overdueTasksResult[0]?.count ?? "0"),
     agent_run: {
       id: run.id,
+      attempt_id: run.attempt_id,
       agent_name: run.agent_name,
       input_data: run.input_data,
       status: run.status,

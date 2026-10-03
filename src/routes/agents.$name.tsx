@@ -22,6 +22,7 @@ import { toSafeErrorMessage } from "@/lib/errors";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { formatCount, formatDateTime, formatPercent } from "@/lib/format";
+import { normalizeAIExecutionProvenance } from "@/lib/workflows/provenance";
 import { getAgentHistoryPage, recoverAgentRunFn } from "@/server-functions/agent-runs";
 import { getEffectiveAgentCatalogue } from "@/server-functions/agents-catalogue";
 
@@ -286,6 +287,7 @@ function AgentDetail() {
                   ) : (
                     <ul className="divide-y divide-border">
                       {runs.map((run) => {
+                        const provenance = normalizeAIExecutionProvenance(run.execution_metadata);
                         const open = expanded === run.id;
                         const active =
                           run.status === "running" || run.status === "waiting_approval";
@@ -338,7 +340,38 @@ function AgentDetail() {
                                       ? JSON.stringify(run.input_data, null, 2)
                                       : "—"}
                                 </pre>
-                                <p className="text-xs text-muted-foreground">Cost: unrecorded</p>
+                                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 break-all text-xs text-muted-foreground">
+                                  <dt>Result source</dt>
+                                  <dd>
+                                    {provenance.source === "provider"
+                                      ? "Provider"
+                                      : provenance.source === "deterministic_fallback"
+                                        ? "Deterministic fallback"
+                                        : "Unknown"}
+                                  </dd>
+                                  <dt>Actual model</dt>
+                                  <dd>{provenance.actualModel ?? "Unknown"}</dd>
+                                  <dt>Requested model</dt>
+                                  <dd>{provenance.requestedModel ?? "Unknown"}</dd>
+                                  <dt>Provider receipt</dt>
+                                  <dd>{provenance.providerRequestId ?? "Unrecorded"}</dd>
+                                  <dt>Worker execution</dt>
+                                  <dd>{provenance.workerExecutionId ?? "Unrecorded"}</dd>
+                                  <dt>Worker version</dt>
+                                  <dd>{provenance.workerVersion ?? "Unrecorded"}</dd>
+                                  {provenance.fallbackReason && (
+                                    <>
+                                      <dt>Fallback reason</dt>
+                                      <dd>{provenance.fallbackReason}</dd>
+                                    </>
+                                  )}
+                                  <dt>Cost</dt>
+                                  <dd>
+                                    {run.usage_data?.cost == null
+                                      ? "Unknown"
+                                      : `${run.usage_data.cost} ${run.usage_data.currency ?? "(currency unknown)"}`}
+                                  </dd>
+                                </dl>
                                 {run.outcome_code && (
                                   <div className="rounded-md border border-border p-3 text-xs">
                                     <p>Recovery outcome: {run.outcome_code}</p>
