@@ -1,0 +1,33 @@
+[
+  {
+    "command": [
+      "bun",
+      "run",
+      "typecheck"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 36608,
+    "sourceSha": "b9d2925330eac98aca07baa05a34c728c12c766f"
+  },
+  {
+    "command": [
+      "bunx",
+      "eslint",
+      "src/components/agents/__tests__/queue-navigation.test.tsx",
+      "src/components/agents/run-queue-panel.tsx"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 3345,
+    "sourceSha": "b9d2925330eac98aca07baa05a34c728c12c766f"
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 153,
+    "sourceSha": "b9d2925330eac98aca07baa05a34c728c12c766f"
+  }
+]

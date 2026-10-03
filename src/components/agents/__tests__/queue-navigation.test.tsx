@@ -49,14 +49,70 @@ const result = {
 function mount(filters = agentQueueSearchSchema.parse({})) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const change = vi.fn();
-  render(
+  const view = render(
     <QueryClientProvider client={client}>
       <RunQueuePanel filters={filters} onChange={change} />
     </QueryClientProvider>,
   );
-  return { client, change };
+  return { client, change, ...view };
 }
 describe("server queue navigation", () => {
+  it("clears selection for external URL filter changes while retaining same-query pagination", async () => {
+    vi.mocked(getAgentQueue).mockResolvedValue({
+      ...result,
+      totalMatching: 1,
+      nextCursor: null,
+    } as never);
+    const { client, change, rerender } = mount();
+    await screen.findByRole("button", { name: "Select this page" });
+    fireEvent.click(screen.getByRole("button", { name: "Select this page" }));
+    const again = (filters: ReturnType<typeof agentQueueSearchSchema.parse>) =>
+      rerender(
+        <QueryClientProvider client={client}>
+          <RunQueuePanel filters={filters} onChange={change} />
+        </QueryClientProvider>,
+      );
+    again(agentQueueSearchSchema.parse({ cursor: "next-page" }));
+    expect(await screen.findByRole("checkbox", { name: "Select run " + runId })).toHaveProperty(
+      "checked",
+      true,
+    );
+    again(agentQueueSearchSchema.parse({ workflowType: "qualify_lead" }));
+    await screen.findByRole("checkbox", { name: "Select run " + runId });
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: "Select run " + runId })).toHaveProperty(
+        "checked",
+        false,
+      ),
+    );
+    expect(screen.queryByRole("button", { name: "Preview 1 selected" })).toBeNull();
+    client.clear();
+  });
+  it("does not restore old selection when all-matching response arrives after a filter change", async () => {
+    const one = { ...result, totalMatching: 1, nextCursor: null };
+    vi.mocked(getAgentQueue).mockResolvedValue(one as never);
+    mount();
+    await screen.findByRole("button", { name: "Select all 1 matching runs" });
+    let complete!: (value: unknown) => void;
+    vi.mocked(getAgentQueue).mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          complete = r;
+        }) as never,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Select all 1 matching runs" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Workflow" }), {
+      target: { value: "qualify_lead" },
+    });
+    await act(async () => {
+      complete(one);
+    });
+    expect(screen.queryByRole("button", { name: "Preview 1 selected" })).toBeNull();
+    expect(screen.getByRole("checkbox", { name: "Select run " + runId })).toHaveProperty(
+      "checked",
+      false,
+    );
+  });
   it("polls at 45 seconds only while foreground and resumes after focus", async () => {
     vi.useFakeTimers();
     focusManager.setFocused(true);
