@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { redactUiDiagnostic } from "./redact-ui-diagnostics.ts";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { Pool } from "pg";
@@ -107,11 +108,7 @@ const pool = new Pool({ connectionString: fixture.connectionString }),
   identities = new Set(),
   sessionIds = new Set(),
   fingerprints = new Set();
-const safe = (message: unknown) =>
-  String(message)
-    .replace(/https?:\/\/[^\s]+/g, "[URL]")
-    .replace(/[\w.+-]+@[\w.-]+/g, "[email]")
-    .slice(0, 600);
+const safe = redactUiDiagnostic;
 try {
   for (const role of [
     "super_admin",
