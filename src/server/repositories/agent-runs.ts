@@ -83,18 +83,21 @@ export async function getAgentRunForUpdate(id: string, db: Queryable) {
   return queryOne<AgentRun>("select * from agent_runs where id = $1 for update", [id], db);
 }
 
-export async function createAgentRun(input: {
-  agent_name: string;
-  workflow_type: WorkflowType;
-  subject_id: string;
-  subject_type?: SubjectType;
-  trigger_type?: "manual" | "webhook" | "schedule" | "orchestrator";
-  input_data: unknown;
-  created_by: string | null;
-}) {
+export async function createAgentRun(
+  input: {
+    agent_name: string;
+    workflow_type: WorkflowType;
+    subject_id: string;
+    subject_type?: SubjectType;
+    trigger_type?: "manual" | "webhook" | "schedule" | "orchestrator";
+    input_data: unknown;
+    created_by: string | null;
+  },
+  existingDb?: Queryable,
+) {
   const subjectType = input.subject_type ?? "lead";
   const triggerType = input.trigger_type ?? "manual";
-  const run = await transaction(async (db) => {
+  const work = async (db: Queryable) => {
     // A retry request is only a local recovery marker. The existing dispatch caller
     // creates this new attempt after checking its webhook and policy.
     const retry = (
@@ -136,7 +139,8 @@ export async function createAgentRun(input: {
       );
     }
     return inserted;
-  });
+  };
+  const run = await (existingDb ? work(existingDb) : transaction(work));
 
   if (run) {
     return { run, created: true as const };

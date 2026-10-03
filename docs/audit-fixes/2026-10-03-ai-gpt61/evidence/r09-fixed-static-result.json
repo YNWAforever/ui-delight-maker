@@ -1,0 +1,42 @@
+[
+  {
+    "command": [
+      "bun",
+      "run",
+      "typecheck"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 21694,
+    "sourceSha": "9956d5b9818370a3c8c210524fc1e456aca7872f"
+  },
+  {
+    "command": [
+      "bunx",
+      "eslint",
+      "src/components/agents/__tests__/queue-navigation.test.tsx",
+      "src/lib/clientops-relationship-schema.ts",
+      "src/routes/api/workflows/retention-sweep.ts",
+      "src/server/repositories/agent-runs.ts",
+      "src/server/workflows/__tests__/retention-sweep-agent-dispatch.test.ts",
+      "src/server/workflows/retention-sweep.server.ts",
+      "scripts/clientops/measure-ai-ops.ts",
+      "src/server/repositories/retention-sweeps.ts",
+      "src/server/workflows/__tests__/retention-sweep-checkpoint.integration.test.ts",
+      "src/server/workflows/__tests__/retention-sweep-runtime.test.ts",
+      "src/server/workflows/retention-sweep-batch.server.ts"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 2838,
+    "sourceSha": "9956d5b9818370a3c8c210524fc1e456aca7872f"
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 63,
+    "sourceSha": "9956d5b9818370a3c8c210524fc1e456aca7872f"
+  }
+]

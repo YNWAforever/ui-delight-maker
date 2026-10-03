@@ -2,12 +2,23 @@
   "name": "clientops-retention-sweep",
   "nodes": [
     {
-      "parameters": { "rule": { "interval": [{ "field": "days" }] } },
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days"
+            }
+          ]
+        }
+      },
       "id": "retention-sweep-schedule",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -16,23 +27,124 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-workflow-token", "value": "={{$env.N8N_WORKFLOW_TOKEN}}" }
+            {
+              "name": "x-workflow-token",
+              "value": "={{$env.N8N_WORKFLOW_TOKEN}}"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {} }}",
-        "options": {}
+        "jsonBody": "={{ $json.sweepId ? { sweepId: $json.sweepId, cursor: $json.nextCursor } : {} }}",
+        "options": {
+          "timeout": 65000
+        }
       },
       "id": "call-retention-sweep",
       "name": "Call Retention Sweep",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "id": "sweep-needs-continuation",
+      "name": "Continue Sweep?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "not-complete",
+              "leftValue": "={{ $json.complete }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "sweep-yield",
+      "name": "Yield Before Resume",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        -100
+      ],
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "webhookId": "clientops-retention-sweep-resume"
     }
   ],
   "connections": {
-    "Schedule Trigger": { "main": [[{ "node": "Call Retention Sweep", "type": "main", "index": 0 }]] }
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Call Retention Sweep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Retention Sweep": {
+      "main": [
+        [
+          {
+            "node": "Continue Sweep?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Continue Sweep?": {
+      "main": [
+        [
+          {
+            "node": "Yield Before Resume",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Yield Before Resume": {
+      "main": [
+        [
+          {
+            "node": "Call Retention Sweep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" }
+  "settings": {
+    "executionOrder": "v1"
+  }
 }

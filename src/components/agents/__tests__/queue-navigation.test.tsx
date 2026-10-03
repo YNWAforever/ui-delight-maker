@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider, focusManager } from "@tanstack/react-query";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { agentQueueSearchSchema } from "@/lib/agent-queue-input";
@@ -23,6 +23,8 @@ vi.mock("@tanstack/react-router", () => ({
 afterEach(() => {
   cleanup();
   vi.resetAllMocks();
+  vi.useRealTimers();
+  focusManager.setFocused(undefined);
 });
 const runId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const result = {
@@ -55,6 +57,36 @@ function mount(filters = agentQueueSearchSchema.parse({})) {
   return { client, change };
 }
 describe("server queue navigation", () => {
+  it("polls at 45 seconds only while foreground and resumes after focus", async () => {
+    vi.useFakeTimers();
+    focusManager.setFocused(true);
+    vi.mocked(getAgentQueue).mockResolvedValue(result as never);
+    const { client } = mount();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(getAgentQueue).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(45000);
+    });
+    expect(getAgentQueue).toHaveBeenCalledTimes(2);
+    focusManager.setFocused(false);
+    const hiddenCount = vi.mocked(getAgentQueue).mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(90000);
+    });
+    expect(getAgentQueue).toHaveBeenCalledTimes(hiddenCount);
+    await act(async () => {
+      focusManager.setFocused(true);
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    const resumed = vi.mocked(getAgentQueue).mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(45000);
+    });
+    expect(getAgentQueue).toHaveBeenCalledTimes(resumed + 1);
+    client.clear();
+  });
   it("select all matching is disabled above 100 while page selection remains explicit", async () => {
     vi.mocked(getAgentQueue).mockResolvedValue(result as never);
     mount();
