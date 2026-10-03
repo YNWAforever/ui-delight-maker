@@ -405,6 +405,7 @@ export interface Task {
 }
 
 export interface AgentRun {
+  execution_metadata?: import("@/lib/workflows/provenance").AIExecutionProvenance | null;
   id: string;
   agent_name: string;
   /**

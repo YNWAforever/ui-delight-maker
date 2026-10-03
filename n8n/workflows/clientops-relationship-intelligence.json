@@ -11,7 +11,10 @@
       "name": "clientops-relationship-intelligence",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -21,7 +24,10 @@
       "name": "Validate Trigger",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [220, 0]
+      "position": [
+        220,
+        0
+      ]
     },
     {
       "parameters": {
@@ -30,7 +36,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-workflow-token", "value": "={{$env.N8N_WORKFLOW_TOKEN}}" }
+            {
+              "name": "x-workflow-token",
+              "value": "={{$env.N8N_WORKFLOW_TOKEN}}"
+            }
           ]
         },
         "sendBody": true,
@@ -42,7 +51,10 @@
       "name": "Fetch Account Context",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [440, 0]
+      "position": [
+        440,
+        0
+      ]
     },
     {
       "parameters": {
@@ -52,7 +64,10 @@
       "name": "Relationship Intelligence",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [660, 0]
+      "position": [
+        660,
+        0
+      ]
     },
     {
       "parameters": {
@@ -83,7 +98,10 @@
       "name": "Provider Configured?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [770, -140]
+      "position": [
+        770,
+        -140
+      ]
     },
     {
       "parameters": {
@@ -92,8 +110,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{'Bearer ' + $env.OPENROUTER_API_KEY}}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "={{'Bearer ' + $env.OPENROUTER_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -105,18 +129,24 @@
       "name": "OpenRouter Request",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, 0],
+      "position": [
+        880,
+        0
+      ],
       "continueOnFail": true
     },
     {
       "parameters": {
-        "jsCode": "const prepared = $('Relationship Intelligence').first().json;\nconst fallback = prepared.fallback;\nconst response = $input.first()?.json ?? {};\n\nfunction parsePayload(value) {\n  const content = value.choices?.[0]?.message?.content;\n  if (typeof content === 'string') {\n    try { return JSON.parse(content); } catch (error) { return undefined; }\n  }\n  return isPlainObject(content) ? content : undefined;\n}\nfunction isPlainObject(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }\nfunction finiteNumber(value, fallbackValue) { const number = typeof value === 'number' ? value : Number(value); return Number.isFinite(number) ? number : fallbackValue; }\nfunction clampNumber(value, fallbackValue, min, max) { return Math.min(max, Math.max(min, finiteNumber(value, fallbackValue))); }\nfunction safeString(value, fallbackValue, maxLength = 1200) { return typeof value === 'string' && value.trim() ? value.trim().slice(0, maxLength) : fallbackValue; }\nfunction safeNullableString(value, fallbackValue, maxLength = 240) {\n  if (value === null) return null;\n  return safeString(value, fallbackValue, maxLength);\n}\nfunction safeChoice(value, allowed, fallbackValue) { return allowed.includes(value) ? value : fallbackValue; }\nfunction safeSignals(value, fallbackValue) {\n  if (!Array.isArray(value)) return fallbackValue;\n  const signals = [];\n  for (const entry of value.slice(0, 10)) {\n    if (!isPlainObject(entry)) continue;\n    const signalType = safeChoice(entry.signal_type, ['missing_decision_maker', 'missing_champion', 'stale_touchpoint', 'post_event_follow_up_due', 'stale_quote', 'coverage_gap', 'high_risk_engagement', 'negative_sentiment', 'unowned_account', 'cross_sell_opportunity'], null);\n    const severity = safeChoice(entry.severity, ['low', 'medium', 'high'], null);\n    const title = safeString(entry.title, '', 140);\n    const reason = safeString(entry.reason, '', 600);\n    const suggestedAction = safeNullableString(entry.suggested_action, null, 240);\n    const dedupeKey = safeString(entry.dedupe_key, '', 120);\n    if (!signalType || !severity || !title || !reason || !dedupeKey) continue;\n    signals.push({ signal_type: signalType, severity, title, reason, suggested_action: suggestedAction, dedupe_key: dedupeKey });\n  }\n  return signals.length > 0 ? signals : fallbackValue;\n}\n\nconst parsed = parsePayload(response);\nconst output = {\n  account_id: fallback.account_id,\n  agent_run_id: fallback.agent_run_id,\n  output_summary: safeString(parsed?.output_summary, fallback.output_summary),\n  next_action: safeNullableString(parsed?.next_action, fallback.next_action, 240),\n  signals: safeSignals(parsed?.signals, fallback.signals),\n  confidence_score: clampNumber(parsed?.confidence_score, fallback.confidence_score, 0, 1),\n  model_used: safeString(parsed?.model_used, fallback.model_used, 120),\n};\nreturn [{ json: output }];"
+        "jsCode": "const prepared = $('Relationship Intelligence').first().json;\nconst fallback = prepared.fallback;\nconst response = $input.first()?.json ?? {};\n\nfunction parsePayload(value) {\n  const content = value.choices?.[0]?.message?.content;\n  if (typeof content === 'string') {\n    try { return JSON.parse(content); } catch (error) { return undefined; }\n  }\n  return isPlainObject(content) ? content : undefined;\n}\nfunction isPlainObject(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }\nfunction finiteNumber(value, fallbackValue) { const number = typeof value === 'number' ? value : Number(value); return Number.isFinite(number) ? number : fallbackValue; }\nfunction clampNumber(value, fallbackValue, min, max) { return Math.min(max, Math.max(min, finiteNumber(value, fallbackValue))); }\nfunction safeString(value, fallbackValue, maxLength = 1200) { return typeof value === 'string' && value.trim() ? value.trim().slice(0, maxLength) : fallbackValue; }\nfunction safeNullableString(value, fallbackValue, maxLength = 240) {\n  if (value === null) return null;\n  return safeString(value, fallbackValue, maxLength);\n}\nfunction safeChoice(value, allowed, fallbackValue) { return allowed.includes(value) ? value : fallbackValue; }\nfunction safeSignals(value, fallbackValue) {\n  if (!Array.isArray(value)) return fallbackValue;\n  const signals = [];\n  for (const entry of value.slice(0, 10)) {\n    if (!isPlainObject(entry)) continue;\n    const signalType = safeChoice(entry.signal_type, ['missing_decision_maker', 'missing_champion', 'stale_touchpoint', 'post_event_follow_up_due', 'stale_quote', 'coverage_gap', 'high_risk_engagement', 'negative_sentiment', 'unowned_account', 'cross_sell_opportunity'], null);\n    const severity = safeChoice(entry.severity, ['low', 'medium', 'high'], null);\n    const title = safeString(entry.title, '', 140);\n    const reason = safeString(entry.reason, '', 600);\n    const suggestedAction = safeNullableString(entry.suggested_action, null, 240);\n    const dedupeKey = safeString(entry.dedupe_key, '', 120);\n    if (!signalType || !severity || !title || !reason || !dedupeKey) continue;\n    signals.push({ signal_type: signalType, severity, title, reason, suggested_action: suggestedAction, dedupe_key: dedupeKey });\n  }\n  return signals.length > 0 ? signals : fallbackValue;\n}\n\nconst parsed = parsePayload(response);\nconst output = {\n  account_id: fallback.account_id,\n  agent_run_id: fallback.agent_run_id,\n  output_summary: safeString(parsed?.output_summary, fallback.output_summary),\n  next_action: safeNullableString(parsed?.next_action, fallback.next_action, 240),\n  signals: safeSignals(parsed?.signals, fallback.signals),\n  confidence_score: clampNumber(parsed?.confidence_score, fallback.confidence_score, 0, 1),\n  model_used: safeString(parsed?.model_used, fallback.model_used, 120),\n};\n\n// Transport metadata comes from the HTTP envelope, never from message.content.\nfunction transportLabel(value) {\n  return typeof value === 'string' && value.trim() ? value.trim().slice(0,256) : null;\n}\nfunction applyTransportProvenance(output, prepared, response, parsed, workflowType) {\n  const usage = {};\n  const providerUsage = isPlainObject(response.usage) ? response.usage : null;\n  if (providerUsage) {\n    for (const [wire, column] of [['prompt_tokens','inputTokens'],['completion_tokens','outputTokens'],['total_tokens','totalTokens'],['cost','cost']]) {\n      const value = providerUsage[wire];\n      if (value !== undefined) {\n        if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) throw new Error('INVALID_PROVIDER_USAGE');\n        usage[column] = value;\n      }\n    }\n    if (transportLabel(providerUsage.currency)) usage.currency = transportLabel(providerUsage.currency);\n  }\n  const fallback = !parsed || Boolean(response.error);\n  const actualModel = transportLabel(response.model);\n  delete output.model_used;\n  if (actualModel !== null) output.model_used = actualModel;\n  if (Object.keys(usage).length) {\n    output.usage = { ...usage, source: 'openrouter' };\n    if (usage.totalTokens !== undefined) output.tokens_used = usage.totalTokens;\n  }\n  output.workflow_type = workflowType;\n  const attemptId = prepared.context?.agent_run?.attempt_id;\n  if (typeof attemptId === 'string' && attemptId) output.attempt_id = attemptId;\n  output.execution_metadata = {\n    source: fallback ? 'deterministic_fallback' : 'provider',\n    providerRequestId: transportLabel(response.id),\n    workerExecutionId: typeof $execution !== 'undefined' && $execution.id !== undefined ? String($execution.id).slice(0,256) : null,\n    workerVersion: 'clientops-ai-gpt61-r02',\n    requestedModel: transportLabel(prepared.openrouter_request?.model),\n    actualModel,\n    fallbackReason: fallback ? (response.error ? 'provider_error' : prepared.openrouter_configured ? 'provider_invalid_json' : 'provider_unconfigured') : null,\n  };\n}\n\napplyTransportProvenance(output, prepared, response, parsed, \"relationship_intelligence\");\nreturn [{ json: output }];"
       },
       "id": "resolve-relationship-intelligence-output",
       "name": "Resolve Output",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1100, 0]
+      "position": [
+        1100,
+        0
+      ]
     },
     {
       "parameters": {
@@ -125,7 +155,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-workflow-token", "value": "={{$env.N8N_WORKFLOW_TOKEN}}" }
+            {
+              "name": "x-workflow-token",
+              "value": "={{$env.N8N_WORKFLOW_TOKEN}}"
+            }
           ]
         },
         "sendBody": true,
@@ -137,22 +170,72 @@
       "name": "Write Back",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1320, 0]
+      "position": [
+        1320,
+        0
+      ]
     },
     {
-      "parameters": { "respondWith": "json", "responseBody": "={{$json}}", "options": {} },
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
       "id": "respond-relationship-intelligence-webhook",
       "name": "Respond To Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1540, 0]
+      "position": [
+        1540,
+        0
+      ]
     }
   ],
   "connections": {
-    "clientops-relationship-intelligence": { "main": [[{ "node": "Validate Trigger", "type": "main", "index": 0 }]] },
-    "Validate Trigger": { "main": [[{ "node": "Fetch Account Context", "type": "main", "index": 0 }]] },
-    "Fetch Account Context": { "main": [[{ "node": "Relationship Intelligence", "type": "main", "index": 0 }]] },
-    "Relationship Intelligence": { "main": [[{ "node": "Provider Configured?", "type": "main", "index": 0 }]] },
+    "clientops-relationship-intelligence": {
+      "main": [
+        [
+          {
+            "node": "Validate Trigger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Account Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Account Context": {
+      "main": [
+        [
+          {
+            "node": "Relationship Intelligence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Relationship Intelligence": {
+      "main": [
+        [
+          {
+            "node": "Provider Configured?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Provider Configured?": {
       "main": [
         [
@@ -171,9 +254,41 @@
         ]
       ]
     },
-    "OpenRouter Request": { "main": [[{ "node": "Resolve Output", "type": "main", "index": 0 }]] },
-    "Resolve Output": { "main": [[{ "node": "Write Back", "type": "main", "index": 0 }]] },
-    "Write Back": { "main": [[{ "node": "Respond To Webhook", "type": "main", "index": 0 }]] }
+    "OpenRouter Request": {
+      "main": [
+        [
+          {
+            "node": "Resolve Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Output": {
+      "main": [
+        [
+          {
+            "node": "Write Back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Back": {
+      "main": [
+        [
+          {
+            "node": "Respond To Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1" }
+  "settings": {
+    "executionOrder": "v1"
+  }
 }

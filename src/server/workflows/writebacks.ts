@@ -7,6 +7,13 @@ import type {
 } from "@/lib/workflows/types";
 import type { AgentPolicy, AgentWorkflowType } from "@/lib/agents";
 import { normalizeQualificationData } from "@/lib/workflows/qualification";
+import {
+  normalizeAIExecutionProvenance,
+  providerUsageSchema,
+  type AIExecutionProvenance,
+} from "@/lib/workflows/provenance";
+import type { AgentRun } from "@/lib/types";
+import { AdminError } from "@/lib/admin/errors";
 import { transaction } from "@/server/db/neon.server";
 import { normalizeAIUsage } from "@/server/workflows/ai-invocation.server";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
@@ -69,6 +76,42 @@ function assertAgentRunSubject(
   if (agentRun.subject_type !== expectedType || agentRun.subject_id !== expectedId) {
     throw new Error(`Agent run does not belong to this ${expectedType.replace(/_/g, " ")}`);
   }
+}
+
+function assertCallbackBinding(
+  run: AgentRun,
+  expectedWorkflow: AgentWorkflowType,
+  payload: { agent_run_id: string; workflow_type?: string; attempt_id?: string },
+) {
+  if (
+    run.id !== payload.agent_run_id ||
+    run.workflow_type !== expectedWorkflow ||
+    (payload.workflow_type !== undefined && payload.workflow_type !== expectedWorkflow)
+  )
+    throw new Error("Agent run does not belong to this workflow");
+  if (payload.attempt_id !== undefined && payload.attempt_id !== run.attempt_id)
+    throw new Error("Callback does not belong to this attempt");
+  if (run.status === "failed") throw new AdminError("CONFLICT", "Agent run is no longer active");
+}
+
+function writebackTelemetry(payload: {
+  execution_metadata?: AIExecutionProvenance;
+  usage?: import("@/lib/workflows/types").ProviderUsage;
+  tokens_used?: number;
+  model_used?: string;
+}) {
+  const provenance = normalizeAIExecutionProvenance(payload.execution_metadata);
+  const usage = payload.usage ? providerUsageSchema.parse(payload.usage) : undefined;
+  return {
+    execution_metadata: provenance,
+    tokens_used: usage?.totalTokens ?? payload.tokens_used ?? null,
+    ...(usage ? { usage_data: normalizeAIUsage(usage) } : {}),
+    model_used: payload.execution_metadata
+      ? provenance.actualModel
+      : payload.model_used === "deterministic-fallback"
+        ? null
+        : (payload.model_used ?? null),
+  };
 }
 
 /**
@@ -136,6 +179,7 @@ export async function writeQualificationResult(payload: QualificationWritebackPa
       throw new Error("Agent run not found");
     }
     assertAgentRunSubject(agentRun, "lead", payload.lead_id);
+    assertCallbackBinding(agentRun, "qualify_lead", payload);
 
     // Every other writeback short-circuits on an already-settled run. Without it a redelivered
     // callback replays the model's scoring over whatever a rep has since edited by hand.
@@ -165,9 +209,7 @@ export async function writeQualificationResult(payload: QualificationWritebackPa
         output_summary: payload.output_summary,
         confidence_score: payload.confidence_score,
         human_review_required: getHumanReviewRequired(qualificationData, payload.confidence_score),
-        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
-        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
-        model_used: payload.model_used ?? null,
+        ...writebackTelemetry(payload),
       },
       db,
     );
@@ -199,6 +241,7 @@ export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload)
       throw new Error("Agent run not found");
     }
     assertAgentRunSubject(agentRun, "lead", payload.lead_id);
+    assertCallbackBinding(agentRun, "draft_reply", payload);
 
     if (agentRun.status === "waiting_approval" || agentRun.status === "completed") {
       const approvalId = getExistingApprovalId(agentRun.output_data);
@@ -243,9 +286,7 @@ export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload)
         output_summary: payload.context_summary,
         confidence_score: payload.confidence_score,
         human_review_required: Boolean(approval),
-        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
-        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
-        model_used: payload.model_used ?? null,
+        ...writebackTelemetry(payload),
       },
       db,
     );
@@ -274,6 +315,7 @@ export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWrite
       throw new Error("Agent run not found");
     }
     assertAgentRunSubject(agentRun, "engagement", payload.engagement_id);
+    assertCallbackBinding(agentRun, "score_renewal_risk", payload);
 
     if (agentRun.status === "waiting_approval") {
       const approvalId = getExistingApprovalId(agentRun.output_data);
@@ -325,9 +367,7 @@ export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWrite
         output_summary: payload.output_summary,
         confidence_score: payload.confidence,
         human_review_required: parksForApproval,
-        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
-        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
-        model_used: payload.model_used ?? null,
+        ...writebackTelemetry(payload),
       },
       db,
     );
@@ -386,6 +426,7 @@ export async function writeQuoteDraftResult(payload: QuoteDraftWritebackPayload)
       throw new Error("Agent run not found");
     }
     assertAgentRunSubject(agentRun, "lead", payload.lead_id);
+    assertCallbackBinding(agentRun, "draft_quote", payload);
 
     if (agentRun.status === "waiting_approval" || agentRun.status === "completed") {
       const existingResult = getExistingQuoteDraftResult(agentRun.output_data);
@@ -437,9 +478,7 @@ export async function writeQuoteDraftResult(payload: QuoteDraftWritebackPayload)
         output_summary: payload.context_summary ?? "Draft quote created.",
         confidence_score: payload.confidence_score,
         human_review_required: Boolean(approval),
-        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
-        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
-        model_used: payload.model_used ?? null,
+        ...writebackTelemetry(payload),
       },
       db,
     );
@@ -480,6 +519,7 @@ export async function writeRelationshipIntelligenceResult(
       throw new Error("Agent run not found");
     }
     assertAgentRunSubject(agentRun, "account", payload.account_id);
+    assertCallbackBinding(agentRun, "relationship_intelligence", payload);
 
     if (agentRun.status === "completed") {
       return { applied: true as const };
@@ -512,9 +552,7 @@ export async function writeRelationshipIntelligenceResult(
         output_summary: payload.output_summary,
         confidence_score: payload.confidence_score,
         human_review_required: false,
-        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
-        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
-        model_used: payload.model_used ?? null,
+        ...writebackTelemetry(payload),
       },
       db,
     );

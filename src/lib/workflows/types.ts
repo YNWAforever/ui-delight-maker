@@ -14,6 +14,7 @@ import type {
   RelationshipSignalType,
 } from "@/lib/relationship/types";
 import type { RelationshipSignal } from "@/lib/types";
+import type { AIExecutionProvenance } from "./provenance";
 
 export type WorkflowTrigger =
   | "lead.qualify_requested"
@@ -39,6 +40,7 @@ export type WorkflowContextAgentRun = Pick<
   | "confidence_score"
   | "human_review_required"
   | "created_at"
+  | "attempt_id"
 > & {
   workflow_type: "qualify_lead" | "draft_reply" | "draft_quote";
   subject_type: "lead";
@@ -100,6 +102,9 @@ export type ProviderUsage = {
 };
 
 export type QualificationWritebackPayload = {
+  execution_metadata?: AIExecutionProvenance;
+  attempt_id?: string;
+  workflow_type?: "qualify_lead";
   lead_id: string;
   agent_run_id: string;
   qualification_data: unknown;
@@ -112,6 +117,9 @@ export type QualificationWritebackPayload = {
 };
 
 export type ReplyDraftWritebackPayload = {
+  execution_metadata?: AIExecutionProvenance;
+  attempt_id?: string;
+  workflow_type?: "draft_reply";
   lead_id: string;
   agent_run_id: string;
   draft_message: string;
@@ -124,6 +132,9 @@ export type ReplyDraftWritebackPayload = {
 };
 
 export type QuoteDraftWritebackPayload = {
+  execution_metadata?: AIExecutionProvenance;
+  attempt_id?: string;
+  workflow_type?: "draft_quote";
   lead_id: string;
   agent_run_id: string;
   quote: {
@@ -168,7 +179,7 @@ export type EngagementWorkflowContextResponse = {
   open_overdue_task_count: number;
   agent_run: Pick<
     AgentRun,
-    "id" | "agent_name" | "input_data" | "status" | "model_used" | "created_at"
+    "id" | "agent_name" | "input_data" | "status" | "model_used" | "created_at" | "attempt_id"
   > & { workflow_type: "score_renewal_risk"; subject_type: "engagement"; subject_id: string };
 };
 
@@ -179,6 +190,9 @@ export type EngagementWorkflowRequestPayload = {
 };
 
 export type ScoreRenewalRiskWritebackPayload = {
+  execution_metadata?: AIExecutionProvenance;
+  attempt_id?: string;
+  workflow_type?: "score_renewal_risk";
   engagement_id: string;
   agent_run_id: string;
   health_score: number;
@@ -212,6 +226,9 @@ export type AccountWorkflowRequestPayload = {
 };
 
 export type RelationshipIntelligenceWritebackPayload = {
+  execution_metadata?: AIExecutionProvenance;
+  attempt_id?: string;
+  workflow_type?: "relationship_intelligence";
   account_id: string;
   agent_run_id: string;
   output_summary: string;
