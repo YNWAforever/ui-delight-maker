@@ -72,12 +72,6 @@ describe("SQL visibility scope matches the policy evaluator", () => {
           overrides,
           now,
         } satisfies RequestAuthorization;
-        const scope = buildVisibilityScope(context, "account", "a");
-        const parameter = "$" + (scope.values.length + 1);
-        const result = await pool.query<{ id: string }>(
-          `select a.id from jsonb_to_recordset(${parameter}::jsonb) as a(id text, account_owner text) where ${scope.sql}`,
-          [...scope.values, JSON.stringify(records)],
-        );
         const expected = records
           .filter(
             (record) =>
@@ -94,11 +88,84 @@ describe("SQL visibility scope matches the policy evaluator", () => {
               }).allowed,
           )
           .map((record) => record.id);
-        expect(result.rows.map((row) => row.id)).toEqual(expected);
+        for (const overrideFormat of ["json", "arrays"] as const) {
+          const scope = buildVisibilityScope(context, "account", "a", { overrideFormat });
+          const parameter = "$" + (scope.values.length + 1);
+          const result = await pool.query<{ id: string }>(
+            `select a.id from jsonb_to_recordset(${parameter}::jsonb) as a(id text, account_owner text) where ${scope.sql}`,
+            [...scope.values, JSON.stringify(records)],
+          );
+          expect(
+            result.rows.map((row) => row.id),
+            overrideFormat,
+          ).toEqual(expected);
+        }
       },
     );
   }
 
+  it.runIf(hasDatabase)(
+    "queue override sets retain global deny precedence, expiry and inactive rejection",
+    async () => {
+      const base: PermissionOverride = {
+        profileId: "actor-1",
+        capability: "accounts.view",
+        effect: "allow",
+        resourceType: "account",
+      };
+      const cases: {
+        status: "active" | "deactivated";
+        overrides: PermissionOverride[];
+        ids: string[];
+      }[] = [
+        {
+          status: "active",
+          overrides: [base, { ...base, effect: "deny", resourceId: "own" }],
+          ids: ["report", "other", "unowned", "denied", "explicit-allow", "expired-allow"],
+        },
+        {
+          status: "active",
+          overrides: [
+            { ...base, effect: "deny" },
+            { ...base, resourceId: "own" },
+          ],
+          ids: [],
+        },
+        {
+          status: "active",
+          overrides: [base, { ...base, effect: "deny", expiresAt: "2026-09-26T00:00:00Z" }],
+          ids: ["own", "report", "other", "unowned", "denied", "explicit-allow", "expired-allow"],
+        },
+        { status: "deactivated", overrides: [base], ids: [] },
+      ];
+      for (const item of cases)
+        for (const overrideFormat of ["json", "arrays"] as const) {
+          const context = {
+            session: { profile: { id: "actor-1" } } as AppSession,
+            actor: {
+              profileId: "actor-1",
+              role: "manager",
+              status: item.status,
+              managedDepartmentIds: [],
+              managedTeamIds: [],
+              directReportIds: ["report-1"],
+            } as ActorAccessContext,
+            overrides: item.overrides,
+            now,
+          } satisfies RequestAuthorization;
+          const scope = buildVisibilityScope(context, "account", "a", { overrideFormat }),
+            parameter = "$" + (scope.values.length + 1);
+          const result = await pool.query<{ id: string }>(
+            `select a.id from jsonb_to_recordset(${parameter}::jsonb) as a(id text,account_owner text) where ${scope.sql}`,
+            [...scope.values, JSON.stringify(records)],
+          );
+          expect(
+            result.rows.map((r) => r.id),
+            overrideFormat,
+          ).toEqual(item.ids);
+        }
+    },
+  );
   it.runIf(hasDatabase)(
     "compiles all supported resource predicates against the migrated schema",
     async () => {

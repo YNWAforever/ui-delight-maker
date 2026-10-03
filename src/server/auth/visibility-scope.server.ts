@@ -128,7 +128,7 @@ export function buildVisibilityScope(
   context: RequestAuthorization,
   resourceType: string,
   alias: string,
-  options?: { ownerSql?: string; capability?: Capability },
+  options?: { ownerSql?: string; capability?: Capability; overrideFormat?: "json" | "arrays" },
 ): { sql: string; values: readonly unknown[] } {
   if (!(resourceType in VIEW_CAPABILITY)) return { sql: "FALSE", values: [] };
   if (!/^[a-z][a-z0-9_]*$/.test(alias)) throw new Error("Invalid visibility alias");
@@ -137,6 +137,36 @@ export function buildVisibilityScope(
   const capability = options?.capability ?? VIEW_CAPABILITY[type];
   const owner = options?.ownerSql ?? ownerExpression(type, alias);
   const overrides = activeRowOverrides(context, type, capability);
+  if (options?.overrideFormat === "arrays") {
+    const selected = (effect: "allow" | "deny") => overrides.filter((o) => o.effect === effect);
+    const deny = selected("deny"),
+      allow = selected("allow");
+    const global = (items: typeof overrides) => items.some((o) => o.resourceId == null);
+    const ids = (items: typeof overrides) =>
+      items.flatMap((o) => (o.resourceId == null ? [] : [o.resourceId]));
+    // Same precedence as JSON overrides: any matching deny wins, then explicit allow,
+    // then the role grant with the established owner scope. Only server-owned queues opt in.
+    return {
+      sql: `(
+        $1::boolean
+        and not ($4::boolean or ${alias}.id::text = any($5::text[]))
+        and (
+          $6::boolean or ${alias}.id::text = any($7::text[])
+          or ($2::boolean and ($3::boolean or (${owner} is not null and ${owner}::text = any($8::text[]))))
+        )
+      )`,
+      values: [
+        context.actor.status === "active",
+        ROLE_GRANTS[context.actor.role].has(capability),
+        context.actor.role !== "manager",
+        global(deny),
+        ids(deny),
+        global(allow),
+        ids(allow),
+        [context.actor.profileId, ...context.actor.directReportIds],
+      ],
+    };
+  }
   const matchesOverride = `((o.value->>'resourceId') is null or (o.value->>'resourceId') = ${alias}.id::text)`;
   const overrideExists = (effect: "allow" | "deny") =>
     `exists (select 1 from jsonb_array_elements($4::jsonb) as o(value) where o.value->>'effect' = '${effect}' and ${matchesOverride})`;
@@ -187,17 +217,32 @@ export function buildSubjectVisibility(
   outerAlias: string,
   kindColumn: "subject_type" | "object_type",
   idColumn: "subject_id" | "object_id",
+  mode: "exists" | "membership" = "exists",
 ): { sql: string; values: readonly unknown[] } {
   if (!/^[a-z][a-z0-9_]*$/.test(outerAlias)) throw new Error("Invalid subject alias");
   const values: unknown[] = [];
   const clauses: string[] = [];
   for (const item of SUBJECT_RESOURCES) {
     if (!hasPotentialVisibility(context, item.resource)) continue;
-    const scope = buildVisibilityScope(context, item.resource, item.alias);
+    const scope = buildVisibilityScope(
+      context,
+      item.resource,
+      item.alias,
+      mode === "membership" ? { overrideFormat: "arrays" } : undefined,
+    );
     const predicate = scope.sql.replace(
       /\$(\d+)/g,
       (_, index: string) => "$" + (Number(index) + values.length),
     );
+    // Queue counts/pages use an uncorrelated eligibility set. The same capability,
+    // ownership and override predicate governs both modes; existing consumers retain EXISTS.
+    if (mode === "membership") {
+      clauses.push(
+        `(${outerAlias}.${kindColumn} = '${item.subject}' and ${outerAlias}.${idColumn} in (select ${item.alias}.id from ${item.table} ${item.alias} where ${predicate}))`,
+      );
+      values.push(...scope.values);
+      continue;
+    }
     clauses.push(
       "(" +
         outerAlias +
