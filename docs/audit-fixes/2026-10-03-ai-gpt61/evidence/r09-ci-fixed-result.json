@@ -1,0 +1,29 @@
+{
+  "checkedAt": "2026-10-03T11:39:27.884Z",
+  "sourceSha": "2fcb2acc07d8ef40d510ccf302c69f36eec85084",
+  "db": "clientops_ai_gpt61_373644ba0b",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/lib/__tests__/clientops-relationship-schema.test.ts",
+    "src/server-functions/__tests__/agent-policy.integration.test.ts",
+    "src/server/workflows/__tests__/provenance.integration.test.ts",
+    "src/server/workflows/__tests__/retention-sweep-checkpoint.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r09-ci-fixed-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 71,
+  "failed": 0,
+  "skipped": 0,
+  "total": 71,
+  "files": 4,
+  "elapsedMs": 11720,
+  "reportSha256": "8df36a34f2ac1448749c0af2ea7cd7123cac35a224937ea6c784b756997211f6"
+}

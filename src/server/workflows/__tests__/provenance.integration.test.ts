@@ -260,11 +260,11 @@ describe("AI provenance migration and callback facts on real PostgreSQL", () => 
     },
   );
   it.runIf(hasDatabase)(
-    "preserves every existing outcome through migration 024 and replay",
+    "preserves every existing outcome through all registered migrations and replay",
     async () => {
       const replay = await runClientOpsMigrations(holder.pool!, migrations);
       expect(replay.applied).toEqual([]);
-      expect(replay.skipped).toHaveLength(24);
+      expect(replay.skipped).toEqual(CLIENTOPS_MIGRATION_PATHS);
       const result = await holder.pool!.query(
         "select outcome_code from agent_runs where agent_name='Synthetic legacy outcome' order by outcome_code",
       );

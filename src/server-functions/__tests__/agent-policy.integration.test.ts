@@ -205,9 +205,10 @@ describe("agent policy store, proven against a real database", () => {
   beforeEach(async () => {
     if (!hasDatabase) return;
     // Migration 009 makes policy versions append-only; migration 021 references them
-    // from agent runs. Reset the explicit dependent test tables together, without CASCADE.
+    // from agent runs;025 references runs from sweep items. Reset explicit dependent
+    // test tables together on the runner's disposable DB, without CASCADE.
     await db().query(
-      "truncate approval_message_handoffs, human_approvals, agent_tool_calls, agent_runs, agent_policy_versions",
+      "truncate retention_sweep_items, retention_sweeps, approval_message_handoffs, human_approvals, agent_tool_calls, agent_runs, agent_policy_versions",
     );
     holder.session = ADMIN_SESSION;
   });
