@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T14:51:17.181Z",
+  "sourceSha": "a55e8691e9e6745927a4f1e52804771fc46724d0",
+  "db": "clientops_ai_gpt61_77d090a707",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/read-models/__tests__/agent-queues.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r09-jit-fixed-arrays-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 9,
+  "failed": 4,
+  "skipped": 0,
+  "total": 13,
+  "files": 1,
+  "elapsedMs": 48116,
+  "reportSha256": "1985c72656d15159aa01d913b00f76a9c8939889fa8d38b3a49d9b941985c3dc"
+}

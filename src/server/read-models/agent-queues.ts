@@ -77,7 +77,7 @@ export async function loadAgentQueue(
     clauses.push(appendScope(buildVisibilityScope(context, "human_approval", "a")));
   else {
     const visibleSubjects = [
-      appendScope(buildSubjectVisibility(context, "r", "subject_type", "subject_id")),
+      appendScope(buildSubjectVisibility(context, "r", "subject_type", "subject_id", "membership")),
     ];
     // The common polymorphic builder covers lead/quote/client/task/approval. Add the three
     // other real run subjects here with the same established scope builder.
@@ -86,9 +86,11 @@ export async function loadAgentQueue(
       { type: "campaign", table: "campaigns", name: "cq" },
       { type: "engagement", table: "engagements", name: "eq" },
     ]) {
-      const scope = appendScope(buildVisibilityScope(context, type, name));
+      const scope = appendScope(
+        buildVisibilityScope(context, type, name, { overrideFormat: "arrays" }),
+      );
       visibleSubjects.push(
-        `(r.subject_type='${type}' and exists(select 1 from ${table} ${name} where ${name}.id=r.subject_id and ${scope}))`,
+        `(r.subject_type='${type}' and r.subject_id in (select ${name}.id from ${table} ${name} where ${scope}))`,
       );
     }
     visibleSubjects.push(

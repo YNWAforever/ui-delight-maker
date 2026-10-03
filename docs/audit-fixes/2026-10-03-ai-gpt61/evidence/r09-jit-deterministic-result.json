@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-10-03T15:04:06.995Z",
+  "sourceSha": "a55e8691e9e6745927a4f1e52804771fc46724d0",
+  "db": "clientops_ai_gpt61_3966f48e62",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/read-models/__tests__/agent-queues.integration.test.ts",
+    "src/server/auth/__tests__/visibility-scope.integration.test.ts",
+    "src/server/read-models/__tests__/agent-workspaces.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r09-jit-deterministic-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 62,
+  "failed": 0,
+  "skipped": 0,
+  "total": 62,
+  "files": 3,
+  "elapsedMs": 78055,
+  "reportSha256": "45970a6cbba6bc81551c4399e8d43a0dbc410ef6de72f0446a0087e740590d6d"
+}

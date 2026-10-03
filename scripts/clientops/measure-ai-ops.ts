@@ -13,7 +13,11 @@ assert.ok(process.versions.bun && typeof mock.module === "function", "Bun runtim
 
 /** Real read models / real PostgreSQL. Only the Neon transport is adapted to TCP locally. */
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, "").split("=")));
-assert.ok(Object.keys(args).every((k) => ["runs", "cold", "warm", "config", "out"].includes(k)));
+assert.ok(
+  Object.keys(args).every((k) =>
+    ["runs", "cold", "warm", "config", "out", "baseline-sha"].includes(k),
+  ),
+);
 const count = Number(args.runs),
   cold = Number(args.cold ?? 10),
   warm = Number(args.warm ?? 30);
@@ -66,6 +70,7 @@ const admin = new Pool({ connectionString: url.toString() });
 url.pathname = "/" + dbName;
 let pool = new Pool({ connectionString: url.toString(), max: 6 });
 types.setTypeParser(1700, Number);
+let samplePhase = "setup";
 let capturing = false,
   queries = 0,
   returned = 0;
@@ -87,7 +92,7 @@ async function query(
   if (capturing) {
     queries++;
     returned += result.rows.length;
-    statements.set(sql, { sql, values: [...values] });
+    statements.set(samplePhase + ":" + sql, { sql, values: [...values] });
   }
   return normalize(result.rows) as Record<string, unknown>[];
 }
@@ -148,7 +153,44 @@ type Queues = {
 const load = (path: string) => import(resolve(path));
 const auth = (await load("src/server/auth/authorization.server.ts")) as Authorization;
 const workspaces = (await load("src/server/read-models/agent-workspaces.ts")) as Workspaces;
-const queues = (await load("src/server/read-models/agent-queues.ts")) as Queues;
+const currentQueues = (await load("src/server/read-models/agent-queues.ts")) as Queues;
+const baselineSha = args["baseline-sha"];
+const baselineSources: Record<string, string> = {};
+let baselineQueues = currentQueues;
+if (baselineSha) {
+  assert.match(baselineSha, /^[a-f0-9]{40}$/, "Exact baseline commit required");
+  const dir = resolve(".clientops-perf/ai-code-baseline", baselineSha);
+  await mkdir(dir, { recursive: true });
+  const sourceAt = (path: string) => {
+    const result = spawnSync("git", ["show", baselineSha + ":" + path], { encoding: "utf8" });
+    assert.equal(result.status, 0, "Baseline source unavailable");
+    baselineSources[path] = createHash("sha256").update(result.stdout).digest("hex");
+    return result.stdout;
+  };
+  // The code comparison isolates queue/scope changes; reject drift in other timed modules.
+  for (const path of [
+    "src/server/read-models/agent-workspaces.ts",
+    "src/server/auth/authorization.server.ts",
+    "src/lib/agent-run-visibility.ts",
+  ]) {
+    const baseline = sourceAt(path).replaceAll("\r\n", "\n");
+    assert.equal(
+      (await readFile(path, "utf8")).replaceAll("\r\n", "\n"),
+      baseline,
+      "Other timed modules changed: use a full baseline checkout instead",
+    );
+  }
+  const scope = sourceAt("src/server/auth/visibility-scope.server.ts").replace(
+    'from "./authorization.server"',
+    'from "@/server/auth/authorization.server"',
+  );
+  const queue = sourceAt("src/server/read-models/agent-queues.ts")
+    .replace('from "./agent-workspaces"', 'from "@/server/read-models/agent-workspaces"')
+    .replace('from "@/server/auth/visibility-scope.server"', 'from "./scope-baseline"');
+  await writeFile(resolve(dir, "scope-baseline.ts"), scope);
+  await writeFile(resolve(dir, "queue-baseline.ts"), queue);
+  baselineQueues = (await load(resolve(dir, "queue-baseline.ts"))) as Queues;
+}
 const { CLIENTOPS_MIGRATION_PATHS } = (await load("src/lib/clientops-relationship-schema.ts")) as {
   CLIENTOPS_MIGRATION_PATHS: string[];
 };
@@ -192,7 +234,7 @@ try {
   await admin.query(`create database "${dbName}"`);
   await runClientOpsMigrations(
     pool,
-    migrations.filter((m) => !m.path.includes("025_")),
+    baselineSha ? migrations : migrations.filter((m) => !m.path.includes("025_")),
   );
   await pool.query(
     "insert into profiles(id,email,name,role,status) values('perf-manager','manager@fixture.invalid','Synthetic Manager','manager','active'),('perf-owner','owner@fixture.invalid','Synthetic Owner','sales','active')",
@@ -210,7 +252,9 @@ try {
   );
   await pool.query("analyze");
   for (const phase of ["before", "after"]) {
-    if (phase === "after") await runClientOpsMigrations(pool, migrations);
+    if (phase === "after" && !baselineSha) await runClientOpsMigrations(pool, migrations);
+    samplePhase = phase;
+    const queues = phase === "before" ? baselineQueues : currentQueues;
     for (const surface of ["ai-ops", "ai-review", "history"])
       for (const limit of [25, 50])
         for (const mode of ["cold-connection", "warm-pool"]) {
@@ -272,9 +316,9 @@ try {
         }
   }
   const plans = [];
-  for (const { sql, values } of statements.values()) {
+  for (const [key, { sql, values }] of statements) {
     const plan = await pool.query("explain (analyze,buffers,format json) " + sql, [...values]);
-    plans.push({ sql, plan: plan.rows[0]["QUERY PLAN"] });
+    plans.push({ phase: key.split(":", 1)[0], sql, plan: plan.rows[0]["QUERY PLAN"] });
   }
   const percentile = (v: number[], p: number) =>
     [...v].sort((a, b) => a - b)[Math.ceil(v.length * p) - 1];
@@ -316,6 +360,11 @@ try {
   const artifact = {
     measuredAt: new Date().toISOString(),
     head,
+    baselineSha: baselineSha ?? null,
+    baselineSourceSha256: baselineSources,
+    runnerSha256: createHash("sha256")
+      .update(await readFile("scripts/clientops/measure-ai-ops.ts"))
+      .digest("hex"),
     workingDiffSha256: createHash("sha256").update(diff).digest("hex"),
     runs: count,
     cold,
@@ -329,8 +378,12 @@ try {
       transport: "real pg TCP adapter; no DB result mocks",
       coldMeaning: "new connection pool; PostgreSQL caches remain warm",
       scope: "read-model runtime incl row authorization; excludes HTTP/session/browser/provider",
-      before: "R08 read models and migrations 001-024",
-      after: "same read models with additive migration 025; no index tuning",
+      before: baselineSha
+        ? "Exact baseline queue and scope modules; migrations 001-025"
+        : "R08 read models and migrations 001-024",
+      after: baselineSha
+        ? "Current queue and scope modules; same migrations 001-025 and fixtures"
+        : "same read models with additive migration 025; no index tuning",
       polling: "browser foreground/background acceptance not-tested",
     },
     groups,
