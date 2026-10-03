@@ -15,6 +15,8 @@ import {
   type SalesMetric,
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
+import { AgentDataScope, DemoOriginLabel } from "@/components/agents/data-scope";
+import { matchesAgentDataFilter, type AgentDataFilter } from "@/lib/agent-data-scope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { agentDetailSearchSchema } from "@/lib/admin-ux-search";
@@ -172,7 +174,8 @@ function AgentDetail() {
     ...historyQuery(agent.workflow_type, search.page),
     initialData: loaderData.history,
   });
-  const runs = history.items;
+  const [originFilter, setOriginFilter] = useState<AgentDataFilter>("all");
+  const runs = history.items.filter((run) => matchesAgentDataFilter(run.is_demo, originFilter));
   const navigate = useNavigate({ from: Route.fullPath });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [recovery, setRecovery] = useState<{
@@ -270,6 +273,7 @@ function AgentDetail() {
                 </div>
 
                 <TabsContent value="runs" className="mt-4 space-y-4">
+                  <AgentDataScope value={originFilter} onChange={setOriginFilter} />
                   <SectionHeader
                     title="Run history"
                     description={`Every run recorded for this agent, newest first, ${HISTORY_PAGE_SIZE} to a page.`}
@@ -309,6 +313,7 @@ function AgentDetail() {
                               <span className="min-w-0 flex-1">
                                 <span className="flex flex-wrap items-center gap-2">
                                   <span className="text-sm font-medium">{run.id}</span>
+                                  <DemoOriginLabel value={run.is_demo} />
                                   <StatusBadge domain="agentRuns" value={run.status} />
                                   {run.confidence_score != null && (
                                     <span className="text-xs text-muted-foreground">

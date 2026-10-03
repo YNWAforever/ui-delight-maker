@@ -21,6 +21,8 @@ import {
   type SalesMetric,
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
+import { AgentDataScope, DemoOriginLabel } from "@/components/agents/data-scope";
+import { matchesAgentDataFilter, type AgentDataFilter } from "@/lib/agent-data-scope";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClientNow } from "@/hooks/use-client-now";
 import { buildAgentAttentionItems } from "@/lib/agent-ops";
@@ -127,6 +129,7 @@ function AgentsMonitor() {
   });
   const directory = directoryQuery.data;
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [originFilter, setOriginFilter] = useState<AgentDataFilter>("all");
   const [refreshing, setRefreshing] = useState(false);
 
   const slugByWorkflowType = useMemo(
@@ -141,10 +144,12 @@ function AgentsMonitor() {
 
   const filteredRuns = useMemo(
     () =>
-      statusFilter === "all"
-        ? directory.recentRuns
-        : directory.recentRuns.filter((run) => run.status === statusFilter),
-    [directory.recentRuns, statusFilter],
+      directory.recentRuns.filter(
+        (run) =>
+          (statusFilter === "all" || run.status === statusFilter) &&
+          matchesAgentDataFilter(run.is_demo, originFilter),
+      ),
+    [directory.recentRuns, statusFilter, originFilter],
   );
 
   const operations = directory.operations;
@@ -226,7 +231,12 @@ function AgentsMonitor() {
       header: "Agent",
       priority: "primary",
       sticky: true,
-      cell: (run) => <AgentRunName run={run} />,
+      cell: (run) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <AgentRunName run={run} />
+          <DemoOriginLabel value={run.is_demo} />
+        </div>
+      ),
     },
     {
       id: "status",
@@ -290,6 +300,7 @@ function AgentsMonitor() {
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
         <AgentRunName run={run} />
+        <DemoOriginLabel value={run.is_demo} />
         <StatusBadge domain="agentRuns" value={run.status} />
       </div>
       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -476,9 +487,13 @@ function AgentsMonitor() {
                 onChange: setStatusFilter,
               },
             ]}
-            onClear={() => setStatusFilter("all")}
+            onClear={() => {
+              setStatusFilter("all");
+              setOriginFilter("all");
+            }}
             resultCount={filteredRuns.length}
           />
+          <AgentDataScope value={originFilter} onChange={setOriginFilter} />
           {directory.recentRuns.length === 0 ? (
             <EmptyWorkspaceState
               icon={Bot}
@@ -487,7 +502,10 @@ function AgentsMonitor() {
             />
           ) : filteredRuns.length === 0 ? (
             <FilteredEmptyState
-              onClear={() => setStatusFilter("all")}
+              onClear={() => {
+                setStatusFilter("all");
+                setOriginFilter("all");
+              }}
               filterSummary={`Status: ${getStatusLabel("agentRuns", statusFilter).label}`}
             />
           ) : (
