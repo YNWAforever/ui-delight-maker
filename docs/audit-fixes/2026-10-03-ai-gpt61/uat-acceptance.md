@@ -1,32 +1,35 @@
 # R11 exact-candidate UAT acceptance
 
-**Candidate journeys not-tested; external acceptance blocked.** Fresh read-only UAT inventory has seven active persisted identities with seven distinct cookie sets. This does not prove live sessions or journeys. The independent UAT site still serves `3d851c23dc0d1b5aa52cae8f8e51fc68e8ae9c63`, migrations001–022; this AI candidate requires001–025. Authenticated mutation tests against an unverified default PR preview are excluded. No candidate was provisioned/deployed/migrated to that independent target in this request.
+**Local candidate browser acceptance verified for the cases below; external acceptance remains blocked.** The continuation runs the actual built SSR and Neon driver against an owned disposable loopback PostgreSQL17 database (migrations001–025), with synthetic CRM rows and seven independent, live Neon Auth sessions. Each session identity, persisted role and distinct cookie set is verified. Only read-only requests to the independently verified UAT Auth service are allowed outbound; provider/customer transports are blocked. This is local candidate acceptance, not a deployed cloud/provider or production acceptance claim.
 
-Each role must use its own identity and session: super_admin, admin, manager, sales, client_success, accounting, read_only. No super_admin cookie file is copied. Keep configs/session cookies in controlled local storage; do not paste, commit or put secrets in command-line arguments. QA records actual allowed/denied decisions and row ownership against server capabilities/overrides, rather than guessing them from role names.
+The existing independent cloud UAT site last observed at `3d851c23dc0d1b5aa52cae8f8e51fc68e8ae9c63`, migrations001–022, does not qualify as this candidate. Production is not accessed or changed. Auth session cookies stay private; no super_admin session was copied to another role.
 
-| Case | Journey / required facts | Code evidence | Exact candidate acceptance |
-|---|---|---|---|
-| UC-01 | legacy/new workflow identity, specific run, unknown/restricted subject | R01/R07 SQL + loader/component | not-tested |
-| UC-02 | 59:59 /60:00 created_at; updated_at independent | R01 real PG/R08 expiry | not-tested |
-| UC-03 | explicit HKD1000 and unknown budget, manual follow-up | R03 schema/native/physical writeback | blocked: real provider + role journey |
-| UC-04 |2×100 total200; supplied1 rejects entire output/zero writes; issue remains separate | R03 physical transaction/native negative contracts | blocked: pricing/provider/commercial owner + role journey |
-| UC-05 | actual provider envelope/model/usage, missing remains unknown | R02 physical binding; R10 source guards | blocked: worker/provider receipts |
-| UC-06 | pending/escalated context, manual handoff/issue, cancel no write, terminal immutable | existing + R07 Review tests | not-tested |
-| UC-07 | local recovery receipt, external confirmation, late callback denied | single recovery/R08 physical; R02/R03 callbacks | blocked: true external outcome + candidate journey |
-| UC-08 | active/inactive-only policy CAS, view-only POST403, rollback appends/current humanApproval | R05 physical races/denials + UI | not-tested |
-| UC-09 | original/suggested notes, cancel/late edit/manual Save, own auxiliary run | R06 physical invocation + UI/mock provider | blocked: real provider + candidate journey |
-| UC-10 |100 mixed items, reason/eligibility, snapshot/permission recheck, original intent after reload | R08 physical100/resume/concurrency + UI | not-tested |
-| UC-11 |500 bounded sweep, failure/checkpoint/no duplicates, ambiguous/no resend, next-round pause | R09 actual PG + mock dispatcher | blocked: verified deployment duration/native n8n |
-| UC-12 | all7 roles, scoped counts/403,100k queues, native responsive/accessibility and bound callbacks | R07/R09 actual PG/runtime; jsdom interactions | blocked: exact target + native/browser/AT/provider |
+| Case | Verified locally | Remaining gate |
+|---|---|---|
+| UC-01 | actual legacy/new quote workflow names share one28-row queue (manager26); next page and reload; foreign direct run excluded for manager | unknown-subject native detail journey not-tested |
+| UC-02 | real PostgreSQL59:59/60:00 contracts retained; young rows excluded by native bulk | exact native boundary UI journey not-tested |
+| UC-03 | unchanged manual notes saved by own client_success session with provider unavailable | real provider budget/follow-up acceptance blocked |
+| UC-04 | physical whole-output D03 rejection/rollback and correct200 contracts retained | real pricing/provider/commercial-owner approval blocked |
+| UC-05 | physical attempt/callback binding and original20 key guards retained | true worker/provider/model/usage receipts blocked |
+| UC-06 | physical scoped approvals and immutable-state contracts retained | native Review/manual issue/handoff journey not-tested |
+| UC-07 | native local expire receipts, original operation replay has zero additional writes | true external outcome/late callback acceptance blocked |
+| UC-08 | own admin/super_admin actual status append and append-only rollback; native keyboard cancel/focus return; five other roles direct same-origin policy POST403; authorized stale-CAS control409; humanApproval retained | deployed candidate/worker policy acceptance blocked |
+| UC-09 | own Note Tidy invocation count1 for accessible roles; provider unavailable manual390px Save retains original and joined product label | actual suggestions/cancel/late-edit provider journeys blocked |
+| UC-10 | actual mixed100 preview95eligible/5blocked; response dropped, original key retained through reload/resume;100 durable results/95 receipts; original-key native replay adds0; non-run roles genuine403 | cloud candidate acceptance not-tested; provider outcomes excluded from batch |
+| UC-11 | physical500/deadline/checkpoint/crash/ambiguity/no-resend contracts retained | deployment maxDuration/native n8n continuation blocked |
+| UC-12 | seven actual roles/59 browser checks; scoped129 counts (manager125), accounting route denied; desktop1440/mobile390 screenshots and zero horizontal overflow; true403/409 | native200% browser zoom/manual assistive technology not-tested; real callbacks blocked |
 
-## Evidence checklist for each applicable role
+## Evidence and superseded checks
 
-1. Record actual app SHA, isolated Neon project/branch/schema and Auth identity; verify provider and outbound controls before any mutation.
-2. Record route arrival, allowed action, forbidden direct POST403, owned/foreign/missing-owner row behavior and manual fallback. Manager/team/specific overrides must be backed by actual fixture relationships. A loader/HTTP200 is insufficient.
-3. Capture timestamped desktop and390px mobile UI, full keyboard paths/focus return, native200% zoom, and manual assistive-technology review. Each category currently **not-tested** on this candidate. jsdom keyboard/polling tests are reported separately.
-4. For lost response/reload use the original immutable intent/key and durable actor-owned receipt; record per-row results and prove no duplicate writes. Do not substitute a new key for an unresolved provider outcome.
-5. Bind screenshots/API receipt/result to role ID (deidentified), app SHA, fixture version and server response; keep cookie/secret material out of evidence.
+- `evidence/r11-native-browser-post-role-result.json`: seven distinct Auth users, sessions and cookie sets; seven passing journeys/59 checks. Native `page.evaluate(fetch)` supplies the real same-origin browser headers and the actor's own cookies. The authorized stale-CAS control reaches the writer409 with zero writes; denied roles403 with zero policy versions.
+- `evidence/r11-native-http-status-red-result.json`: seven failing actual browser journeys before the fix. Domain authorization/CAS errors were serialized with HTTP200. The new global function middleware maps only trusted domain error instances to401/400/403/404/409 before serialization, preserving errors, success responses, redirects and CSRF.
+- Earlier APIRequestContext.POST403 rows in private probes were CSRF rejections because Origin was missing. They **do not prove role authorization** and are superseded. Earlier count/layout/session evidence remains separate. HTTP200 alone never establishes provider success.
+- `evidence/r11-native-mobile-red-result.json`: six accessible roles overflowed390px (404px scrollWidth). The Note Tidy controls now wrap; all six native mobile journeys pass.
+- `evidence/r11-native-policy-result.json`, `r11-native-manual-save-result.json`, `r11-native-bulk-final-result.json`: actual native writes to fake data only. Bulk's loss/resume phase predates the status adapter; the final receipt explicitly binds both phases and preserves the original operation/key. No fresh operation is substituted to claim replay success.
+- `evidence/r11-native-source-artifact-result.json` binds base SHA, tracked diff plus explicit changed/untracked source hashes and actual server/client artifact inventories. Final committed source/CI binding is recorded separately. Private screenshots carry individual SHA256 hashes; cookies/request bodies remain uncommitted.
+
+Native browser tests use installed Playwright Chromium. Bun's Chromium launch timed out without running journeys; the identical TypeScript runner succeeded with `node --experimental-strip-types scripts/clientops/verify-ai-local-ui.ts`. These are genuine browser/real DB/live Auth results, not auth or database-result mocks. They do not replace the full regression, fresh exact-head CI, provider, accessibility or release gates.
 
 ## Owner / next action
 
-QA + UAT operator: provision the exact reviewed candidate only on the confirmed independent target with migration/worker/provider controls and then validate seven genuinely separate sessions. Business/provider operator owns R10 approvals and receipts; data owner owns R04 dispositions. No exception has been signed. These blockers preserve NO-GO; old UAT or source CI does not close them.
+QA/accessibility owner completes native200% browser zoom, assistive technology and the remaining Review/detail/provider journeys. UAT/deployment operator provisions the reviewed cloud candidate with isolated schema/worker/outbound controls before cloud acceptance. Business/provider operator approves and executes the120 R10 cases; data owner signs R04 dispositions. Performance owner reviews all retained p95 regressions. Production remains **NO-GO**, unmerged and undeployed.

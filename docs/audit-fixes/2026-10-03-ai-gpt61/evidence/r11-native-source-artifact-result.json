@@ -1,0 +1,37 @@
+{
+  "checkedAt": "2026-10-03T17:00:30.650Z",
+  "baseSha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
+  "sourceFiles": [
+    {
+      "path": "package.json",
+      "sha256": "c220d5e3a2d6688e89bb92958ed310d814e01b446b450d538244e0874ddcde5f"
+    },
+    {
+      "path": "src/start.ts",
+      "sha256": "68bd0fcb06d84147414eb855d701e2303e6479572a862a68f2b6b2e680bffe57"
+    },
+    {
+      "path": "src/components/agents/auxiliary-workflow-panel.tsx",
+      "sha256": "a4cb784c75008b890b956973aabda4ea07dc91173f40c1ce6aa27dc0bb53527c"
+    },
+    {
+      "path": "src/lib/operations/server-function-error-status.ts",
+      "sha256": "f088dc9671a3cc7bb11cd503f6d42cb0b8bac621514594e6a7647a9f34ec2ea5"
+    },
+    {
+      "path": "src/lib/operations/__tests__/server-function-error-status.test.ts",
+      "sha256": "a4245ce4c25402ff9083712c0421566fbaaaccb36ca6191bacd4f21b7411dd1c"
+    },
+    {
+      "path": "scripts/clientops/verify-ai-local-ui.ts",
+      "sha256": "bcffa87eeffcb0ce9e937edd25154df8936226bbec2e91a939e1382296106149"
+    }
+  ],
+  "serverArtifactSha256": "014497601f7d4e55a8a66f35fd7e25170029c2b26b05cb0819b7b5fed9b20039",
+  "serverFiles": 235,
+  "clientArtifactSha256": "4cb139736769b47f0a1cba839dddcd199a058a91edb697dbec655a5b16c5422e",
+  "clientFiles": 190,
+  "serverEntrySha256": "261166a51770879a1abe649195f8e0b57cd1c6b8d63712bdcfe75ac8f9be6d28",
+  "sourceBinding": "Base SHA plus tracked diff and these explicit changed/untracked source file hashes; final commit/CI binding follows. Build artifacts unchanged during local native checks.",
+  "productionAccess": false
+}

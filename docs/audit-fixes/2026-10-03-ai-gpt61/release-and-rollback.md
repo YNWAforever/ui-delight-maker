@@ -11,8 +11,8 @@
 | Data origin/anomaly disposition | Data/approval owners | blocked; sign per-row retain/mark/isolate/relink from R04 source evidence |
 | Five native workers + Note Tidy direct path | Worker/provider operator | blocked; verify actual deployed hashes/ack timing/attempt binding/receipts/cost scope |
 | Sweep maxDuration / deadline / native resume | Deployment/worker operator | blocked; verify platform duration before setting runtime flags or enabling schedule |
-| Seven actual role journeys | QA/UAT operator | not-tested on exact AI candidate; old UAT source/schema does not qualify |
-| Native mobile/keyboard/200% zoom/AT | QA/accessibility owner | not-tested on exact candidate; jsdom is separate |
+| Seven actual role journeys | QA/UAT operator | local seven independent live identities/59 browser checks verified; reviewed cloud candidate remains unprovisioned |
+| Native mobile/keyboard/200% zoom/AT | QA/accessibility owner | local1440/390 and policy keyboard cancel/focus verified; native200% browser zoom/manual AT remain not-tested |
 | Performance provisional +10% p95 | Performance/business owner | blocked for disclosed regressions; raw960 samples retained; absolute SLO pending |
 | Isolated backup/restore / compatible rollback | Engineer/operator | local rehearsal receipt; production/PITR/window/capability remain blocked |
 | Production authority / change window / hold removal | User/release operator | absent; NO-GO, retain hold |
@@ -39,3 +39,9 @@ Release manifest records local app source/code tree, worker/file hashes, migrati
 ## Migration/reconciliation delta
 
 023 adds nullable allowlisted execution provenance;024 adds invalid_output while retaining all prior outcomes;025 adds sweep leases/items. Earlier registered migrations001–022 remain byte-unchanged. R04 tooling is read-only with no repair mode. Existing18 anomaly rows and unknown origin remain owner-pending; no historical backfill/source inference performed.
+
+## Local native verification continuation
+
+Use only the approved private local fixture/runtime receipt and seven separate sessions under `.clientops-perf`. Start the guarded actual SSR runtime after pure build and immediately run its Chromium gut check. The committed journey runner is `node --experimental-strip-types scripts/clientops/verify-ai-local-ui.ts`; supported optional arguments are `--runtime=`, `--config=`, `--policy-post=`, `--out=` (private file paths only). It rejects non-loopback app/DB, wrong owned fixture, mismatched source/artifact, actor identity/session mismatch and carrying Cookie/Authorization from the captured policy POST. Browser-native fetch uses the current actor’s cookies and genuine Origin. A privileged stale-CAS409 control must pass before denied403 is accepted as an authorization check; APIRequest403 without Origin may merely be CSRF.
+
+The status adapter rollback is a compatible revert of `src/start.ts` integration and its helper. Preserve CSRF, domain authorization/row scope, policy history, operation intent and durable receipts. The390px fix is one `flex-wrap` class. Neither adds migrations or provider dispatch. The native bulk proof resumes/replays the existing original operation/key; do not create a replacement operation for an uncertain outcome. Only fake local data was written.

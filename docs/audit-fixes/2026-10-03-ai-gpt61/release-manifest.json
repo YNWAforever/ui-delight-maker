@@ -433,9 +433,9 @@
     ],
     "distinctActiveProfiles": 7,
     "distinctCookieSets": 7,
-    "liveSessions": "not-tested",
-    "exactCandidateRoleJourneys": "not-tested",
-    "nativeDesktopMobileKeyboard200ZoomAT": "not-tested",
+    "liveSessions": "verified: seven own live independent Auth sessions in local candidate",
+    "exactCandidateRoleJourneys": "local actual SSR/isolatedPG:7 pass/59 checks; deployed cloud candidate not-tested",
+    "nativeDesktopMobileKeyboard200ZoomAT": "local1440/390/keyboard cancel+focus verified; native200% zoom/manual AT not-tested",
     "blockingNextAction": "QA/operator exact independent candidate provisioning/migrations and seven own sessions; never copy super_admin"
   },
   "performance": {
@@ -583,5 +583,33 @@
       "url": "https://github.com/YNWAforever/ui-delight-maker/pull/174"
     }
   ],
-  "rollback": "release-and-rollback.md"
+  "rollback": "release-and-rollback.md",
+  "nativeContinuation": {
+    "branch": "codex/clientops-ai-r11-native-uat",
+    "baseSha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
+    "committedHead": null,
+    "sourceBinding": "evidence/r11-native-source-artifact-result.json",
+    "nativeBrowser": "evidence/r11-native-browser-post-role-result.json",
+    "nativeRolesPassed": 7,
+    "nativeChecksPassed": 59,
+    "statusRed": "evidence/r11-native-http-status-red-result.json",
+    "mobileRed": "evidence/r11-native-mobile-red-result.json",
+    "bulk": "evidence/r11-native-bulk-final-result.json",
+    "policy": "evidence/r11-native-policy-result.json",
+    "manual": "evidence/r11-native-manual-save-result.json",
+    "targetTests": {
+      "passed": 56,
+      "failed": 0,
+      "skipped": 0,
+      "evidence": "evidence/r11-native-status-target-result.json"
+    },
+    "staticBuild": "local exit0; evidence/r11-http-static-result.json and r11-http-build-result.json",
+    "fullRegression": "running; not claimed passing",
+    "exactHeadCI": "not-tested",
+    "cloudCandidate": "not-provisioned",
+    "native200PercentZoom": "not-tested",
+    "manualAssistiveTechnology": "not-tested",
+    "productionAccess": false,
+    "releaseDecision": "NO-GO"
+  }
 }
