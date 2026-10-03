@@ -347,4 +347,3 @@ describe("checkpointed retention sweep in physical PostgreSQL / mock external di
     },
   );
 });
-
