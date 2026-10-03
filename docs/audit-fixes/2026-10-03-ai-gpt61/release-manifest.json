@@ -1,11 +1,11 @@
 {
-  "recordedAt": "2026-10-03T18:49:16.013Z",
+  "recordedAt": "2026-10-03T20:05:18.773Z",
   "kind": "reviewable candidate; not production release",
   "releaseDecision": "NO-GO",
   "app": {
-    "codeVerifiedCommit": "d2328ae0c4548ba8c2e9cf56a4b9f11f71f7e938",
+    "codeVerifiedCommit": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
     "sourceTrees": {
-      "src": "568080dcaecad44a3858af06eb8a676a3769566d",
+      "src": "c535e19c6128737c7dbf5d63d4b1b26b78a6f3e2",
       "neon": "a45443f775b7e65d42dc31259f33b48b73e1c527",
       "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
       "scripts": "ecca3b87db60afb06f23d74fb5c24aa09a48e639"
@@ -24,9 +24,9 @@
     "finalReviewPr": "https://github.com/YNWAforever/ui-delight-maker/pull/176",
     "finalHeadBinding": "Final documentation-only HEAD must retain these source trees/package/lock and pass fresh exact-head Actions; final HEAD/run IDs are recorded on PR176 without a self-referential manifest claim",
     "releaseFreezeSha": null,
-    "applicationBehaviorCommit": "622c5df5a3e1e323f9364902340d119480a95737",
+    "applicationBehaviorCommit": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
     "performanceFollowupPr": "https://github.com/YNWAforever/ui-delight-maker/pull/175",
-    "sourceBinding": "evidence/r11-native-delivery-binding-result.json"
+    "sourceBinding": "evidence/r11-native-accessibility-delivery-binding-result.json"
   },
   "inputs": {
     "originalZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
@@ -37,29 +37,45 @@
   },
   "verification": {
     "full": {
-      "checkedAt": "2026-10-03T18:17:58.307Z",
-      "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
-      "db": "clientops_ai_gpt61_cae3b05a6b",
-      "loopbackOnly": true,
-      "providerConfigurationAbsent": true,
-      "command": [
-        "bunx",
-        "vitest",
-        "run",
-        "--no-file-parallelism",
-        "--testTimeout=30000",
-        "--reporter=default",
-        "--reporter=json",
-        "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-complete-final-full-vitest.private.json"
-      ],
-      "exitCode": 0,
-      "passed": 2841,
+      "checkedAt": "2026-10-03T20:02:09.507Z",
+      "sourceSha": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
+      "success": true,
+      "databaseRun": 37149654891,
+      "databaseUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37149654891",
+      "checksRun": 37149654882,
+      "checksUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37149654882",
+      "scope": "GitHub isolated pgvector PostgreSQL17 services; no production connection",
+      "passed": 2856,
       "failed": 0,
       "skipped": 0,
-      "total": 2841,
-      "files": 355,
-      "elapsedMs": 1256716,
-      "reportSha256": "4a7b4ee4ab724c5cb8ee97d78d8792b9eb4f5e606456a3e305734600277f6e4d"
+      "files": 357,
+      "strictNoSkips": "exit0",
+      "migrationSeedReplay": "passed on isolated CI service",
+      "databaseJobs": [
+        {
+          "name": "contract",
+          "conclusion": "success"
+        },
+        {
+          "name": "Isolated migration and seed replay",
+          "conclusion": "success"
+        }
+      ],
+      "commands": {
+        "full": "bunx vitest run --no-file-parallelism --testTimeout=30000 --reporter=default --reporter=json --outputFile=<private report>",
+        "strict": "bun scripts/clientops/assert-vitest-no-skips.ts <private report>",
+        "checks": [
+          "bun run typecheck",
+          "bun run typecheck:runtime",
+          "bun run lint",
+          "bunx vite build",
+          "bun run performance:bundles",
+          "bun run test:browser-collector"
+        ]
+      },
+      "logSha256": "6672f1cd95a96aa1890648ee9033a814be8ff490292187e8e7bc297820d3933d",
+      "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-accessibility-code-ci.private.log",
+      "releaseDecision": "NO-GO"
     },
     "statics": [
       {
@@ -69,8 +85,8 @@
           "typecheck"
         ],
         "exitCode": 0,
-        "elapsedMs": 63719,
-        "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
+        "elapsedMs": 55682,
+        "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
         "dbAbsent": true,
         "providerAbsent": true
       },
@@ -81,8 +97,8 @@
           "typecheck:runtime"
         ],
         "exitCode": 0,
-        "elapsedMs": 5327,
-        "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
+        "elapsedMs": 4244,
+        "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
         "dbAbsent": true,
         "providerAbsent": true
       },
@@ -93,8 +109,8 @@
           "lint"
         ],
         "exitCode": 0,
-        "elapsedMs": 71500,
-        "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
+        "elapsedMs": 51501,
+        "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
         "dbAbsent": true,
         "providerAbsent": true
       },
@@ -105,8 +121,8 @@
           "--check"
         ],
         "exitCode": 0,
-        "elapsedMs": 2101,
-        "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
+        "elapsedMs": 507,
+        "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
         "dbAbsent": true,
         "providerAbsent": true
       }
@@ -119,8 +135,8 @@
           "build"
         ],
         "exitCode": 0,
-        "elapsedMs": 426631,
-        "sourceSha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
+        "elapsedMs": 108389,
+        "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
         "dbAbsent": true,
         "providerAbsent": true
       },
@@ -131,8 +147,8 @@
           "performance:bundles"
         ],
         "exitCode": 0,
-        "elapsedMs": 6293,
-        "sourceSha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
+        "elapsedMs": 607,
+        "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
         "dbAbsent": true,
         "providerAbsent": true
       },
@@ -143,8 +159,8 @@
           "test:browser-collector"
         ],
         "exitCode": 0,
-        "elapsedMs": 30648,
-        "sourceSha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
+        "elapsedMs": 14339,
+        "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
         "dbAbsent": true,
         "providerAbsent": true
       },
@@ -155,8 +171,8 @@
           "--check"
         ],
         "exitCode": 0,
-        "elapsedMs": 817,
-        "sourceSha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
+        "elapsedMs": 137,
+        "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
         "dbAbsent": true,
         "providerAbsent": true
       }
@@ -186,33 +202,108 @@
       "elapsedMs": 3730,
       "reportSha256": "ba8013d5dce1f81b6631c4aed3c4892dba1689462bb7defdbac198532aab6600"
     },
-    "noSkips": [
-      {
-        "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
-        "workingDelta": "none",
-        "command": [
-          "bun",
-          "scripts/clientops/assert-vitest-no-skips.ts",
-          ".clientops-perf/ai-gpt61-20261003/r11-native-complete-final-full-vitest.private.json"
-        ],
-        "exitCode": 0,
-        "summary": "Database contract gate passed: 2841 tests, 0 skipped",
-        "reportSha256": "4a7b4ee4ab724c5cb8ee97d78d8792b9eb4f5e606456a3e305734600277f6e4d"
-      },
-      {
-        "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
-        "workingDelta": "CLI redaction helper/import/test; application unchanged",
-        "command": [
-          "bun",
-          "scripts/clientops/assert-vitest-no-skips.ts",
-          ".clientops-perf/ai-gpt61-20261003/r11-native-diagnostic-green-vitest.private.json"
-        ],
-        "exitCode": 0,
-        "summary": "Database contract gate passed: 8 tests, 0 skipped",
-        "reportSha256": "3a2dafcd58dbbfb078291761e8b990faa4808a6ca254a42369dc7302d907edae"
-      }
-    ],
+    "noSkips": {
+      "target": "exit0/57 actual tests",
+      "full": "exact-code CI exit0/2856 tests; no DB test skip",
+      "previousEvidence": "evidence/r11-native-complete-no-skips-result.json"
+    },
     "codeCi": {
+      "checkedAt": "2026-10-03T20:02:09.507Z",
+      "sourceSha": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
+      "success": true,
+      "databaseRun": 37149654891,
+      "databaseUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37149654891",
+      "checksRun": 37149654882,
+      "checksUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37149654882",
+      "scope": "GitHub isolated pgvector PostgreSQL17 services; no production connection",
+      "passed": 2856,
+      "failed": 0,
+      "skipped": 0,
+      "files": 357,
+      "strictNoSkips": "exit0",
+      "migrationSeedReplay": "passed on isolated CI service",
+      "databaseJobs": [
+        {
+          "name": "contract",
+          "conclusion": "success"
+        },
+        {
+          "name": "Isolated migration and seed replay",
+          "conclusion": "success"
+        }
+      ],
+      "commands": {
+        "full": "bunx vitest run --no-file-parallelism --testTimeout=30000 --reporter=default --reporter=json --outputFile=<private report>",
+        "strict": "bun scripts/clientops/assert-vitest-no-skips.ts <private report>",
+        "checks": [
+          "bun run typecheck",
+          "bun run typecheck:runtime",
+          "bun run lint",
+          "bunx vite build",
+          "bun run performance:bundles",
+          "bun run test:browser-collector"
+        ]
+      },
+      "logSha256": "6672f1cd95a96aa1890648ee9033a814be8ff490292187e8e7bc297820d3933d",
+      "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-accessibility-code-ci.private.log",
+      "releaseDecision": "NO-GO"
+    },
+    "sourceKeyGuards": "all original20 retained; R10 targeted109 source passes; not external acceptance",
+    "review": "author only; no subagent/model switch",
+    "fullScope": "Fresh exact code CI 57dad0e415c898d980e07ec5ecaf3c63f07714a3: 2856/0fail/0skip across 357 files and isolated migration/seed replay; local targeted57/0skip. Previous local application2841 and separate CLI8 are historical, not a local full run of this route delta.",
+    "localCliDelta": {
+      "checkedAt": "2026-10-03T18:37:14.943Z",
+      "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
+      "db": "clientops_ai_gpt61_f2ed38fc59",
+      "loopbackOnly": true,
+      "providerConfigurationAbsent": true,
+      "command": [
+        "bunx",
+        "vitest",
+        "run",
+        "scripts/clientops/__tests__/redact-ui-diagnostics.test.ts",
+        "--no-file-parallelism",
+        "--testTimeout=30000",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-diagnostic-green-vitest.private.json"
+      ],
+      "exitCode": 0,
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "total": 8,
+      "files": 1,
+      "elapsedMs": 10120,
+      "reportSha256": "3a2dafcd58dbbfb078291761e8b990faa4808a6ca254a42369dc7302d907edae"
+    },
+    "buildScope": "Local base08ae0b3 plus exact working app diff/source hashes and actual artifacts bind to code57dad0e; source/build binding preserved, exact code CI also builds pure Vite/bundles/browser collector.",
+    "previousFullLocal": {
+      "checkedAt": "2026-10-03T18:17:58.307Z",
+      "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
+      "db": "clientops_ai_gpt61_cae3b05a6b",
+      "loopbackOnly": true,
+      "providerConfigurationAbsent": true,
+      "command": [
+        "bunx",
+        "vitest",
+        "run",
+        "--no-file-parallelism",
+        "--testTimeout=30000",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-complete-final-full-vitest.private.json"
+      ],
+      "exitCode": 0,
+      "passed": 2841,
+      "failed": 0,
+      "skipped": 0,
+      "total": 2841,
+      "files": 355,
+      "elapsedMs": 1256716,
+      "reportSha256": "4a7b4ee4ab724c5cb8ee97d78d8792b9eb4f5e606456a3e305734600277f6e4d"
+    },
+    "previousSourceCodeCI": {
       "checkedAt": "2026-10-03T18:49:03.492Z",
       "sourceSha": "d2328ae0c4548ba8c2e9cf56a4b9f11f71f7e938",
       "success": true,
@@ -253,36 +344,36 @@
       "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-code-ci.private.log",
       "releaseDecision": "NO-GO"
     },
-    "sourceKeyGuards": "all original20 retained; R10 targeted109 source passes; not external acceptance",
-    "review": "author only; no subagent/model switch",
-    "fullScope": "Full local application suite on27040f1:2841/0skip. Subsequent CLI-only delta:8/0skip separately. Combined final source is verified by fresh exact-code full CI; no local combined2849 execution claimed.",
-    "localCliDelta": {
-      "checkedAt": "2026-10-03T18:37:14.943Z",
-      "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
-      "db": "clientops_ai_gpt61_f2ed38fc59",
+    "target": {
+      "checkedAt": "2026-10-03T19:41:28.226Z",
+      "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
+      "db": "clientops_ai_gpt61_3489cd6b11",
       "loopbackOnly": true,
       "providerConfigurationAbsent": true,
       "command": [
         "bunx",
         "vitest",
         "run",
-        "scripts/clientops/__tests__/redact-ui-diagnostics.test.ts",
+        "src/routes/__tests__/-ai-review-denied-loader.test.tsx",
+        "src/routes/__tests__/-ai-review-decisions.test.tsx",
+        "src/routes/__tests__/-ai-review-subject-restricted-copy.test.tsx",
+        "src/server/read-models/__tests__/agent-queues.integration.test.ts",
+        "src/lib/operations/__tests__/server-function-error-status.test.ts",
         "--no-file-parallelism",
         "--testTimeout=30000",
         "--reporter=default",
         "--reporter=json",
-        "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-diagnostic-green-vitest.private.json"
+        "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-denied-final-vitest.private.json"
       ],
       "exitCode": 0,
-      "passed": 8,
+      "passed": 57,
       "failed": 0,
       "skipped": 0,
-      "total": 8,
-      "files": 1,
-      "elapsedMs": 10120,
-      "reportSha256": "3a2dafcd58dbbfb078291761e8b990faa4808a6ca254a42369dc7302d907edae"
-    },
-    "buildScope": "Local actual native artifact inventory verified against final application bytes; final combined code CI Checks also builds pure Vite/bundles/browser collector."
+      "total": 57,
+      "files": 5,
+      "elapsedMs": 106577,
+      "reportSha256": "cc73535ab0aab900fbeaa64951c83b432f4499d7e804a8a3d06cc75ca7d26d80"
+    }
   },
   "migrations": [
     {
@@ -469,9 +560,10 @@
   "uat": {
     "evidence": "uat-acceptance.md",
     "localCandidate": {
-      "executionSourceSha": "4c523591c6fc8d0647c5b5c40348c54884b35739",
-      "finalApplicationBytesMatch": true,
-      "sourceBinding": "evidence/r11-native-delivery-binding-result.json",
+      "executionBaseSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
+      "workingSourceDiffSha256": "9bb3b78b383e80a89b11550d63f856a06505f6e3c54e5a03877c7e37e51fae89",
+      "codeVerifiedCommit": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
+      "sourceBinding": "evidence/r11-native-accessibility-delivery-binding-result.json",
       "schemaMigrations": 25,
       "syntheticOnly": true,
       "actualSSR": true,
@@ -480,15 +572,18 @@
       "distinctLiveIdentities": 7,
       "distinctSessions": 7,
       "distinctCookieSets": 7,
-      "roleJourneysPassed": 7,
-      "checksPassed": 59,
-      "reviewChecksPassed": 14,
-      "desktop1440": true,
-      "mobile390": true,
-      "policyKeyboardCancelFocus": true,
-      "native200PercentZoom": "not-tested",
+      "native200PercentZoom": "verified; actual Chrome tabs zoom2, no emulation",
+      "nativeZoomChecksPassed": 27,
+      "nativeZoomReceipt": "evidence/r11-native-zoom-roles-result.json",
+      "nativeDetailBoundaryChecksPassed": 27,
+      "nativeDetailBoundaryReceipt": "evidence/r11-native-boundary-unknown-result.json",
       "manualAssistiveTechnology": "not-tested",
-      "receipt": "evidence/r11-native-browser-post-role-result.json"
+      "previousNativeBrowserReceipt": "evidence/r11-native-browser-post-role-result.json",
+      "previousNativeBrowserChecks": 59,
+      "previousReviewChecks": 14,
+      "previousPhaseSourceBinding": "evidence/r11-native-delivery-binding-result.json",
+      "providerCalls": 0,
+      "productionAccess": false
     },
     "cloudCandidate": {
       "observedAt": "2026-10-03T12:24:33.068Z",
@@ -521,7 +616,29 @@
       "status": "not exact AI candidate; cloud acceptance not-tested",
       "nextAction": "UAT/deployment operator provisions reviewed isolated candidate with worker/outbound controls"
     },
-    "providers": "blocked: approved cases/cost/true worker receipts absent"
+    "providers": "blocked: approved cases/cost/true worker receipts absent",
+    "previousLocalCandidate": {
+      "executionSourceSha": "4c523591c6fc8d0647c5b5c40348c54884b35739",
+      "finalApplicationBytesMatch": true,
+      "sourceBinding": "evidence/r11-native-delivery-binding-result.json",
+      "schemaMigrations": 25,
+      "syntheticOnly": true,
+      "actualSSR": true,
+      "actualNeonDriver": true,
+      "loopbackPostgreSQL17": true,
+      "distinctLiveIdentities": 7,
+      "distinctSessions": 7,
+      "distinctCookieSets": 7,
+      "roleJourneysPassed": 7,
+      "checksPassed": 59,
+      "reviewChecksPassed": 14,
+      "desktop1440": true,
+      "mobile390": true,
+      "policyKeyboardCancelFocus": true,
+      "native200PercentZoom": "not-tested",
+      "manualAssistiveTechnology": "not-tested",
+      "receipt": "evidence/r11-native-browser-post-role-result.json"
+    }
   },
   "performance": {
     "evidence": "performance-before-after.md",
@@ -563,8 +680,8 @@
     "productionPitr": "blocked"
   },
   "production": {
-    "evidence": "evidence/r11-native-final-hold-result.json",
-    "observedAt": "2026-10-03T17:35:06.939Z",
+    "evidence": "evidence/r11-native-accessibility-hold-result.json",
+    "observedAt": "2026-10-03T19:51:49.368Z",
     "sha": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
     "hold": "if [ \"$VERCEL_ENV\" = \"production\" ]; then exit 0; else exit 1; fi",
     "migrationLedger": "blocked: operator evidence",
@@ -683,7 +800,7 @@
     {
       "baseRefName": "codex/clientops-ai-r09-jit-followup",
       "headRefName": "codex/clientops-ai-r11-native-uat",
-      "headRefOid": "d2328ae0c4548ba8c2e9cf56a4b9f11f71f7e938",
+      "headRefOid": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
       "isDraft": true,
       "number": 176,
       "url": "https://github.com/YNWAforever/ui-delight-maker/pull/176"
@@ -693,8 +810,8 @@
   "nativeContinuation": {
     "branch": "codex/clientops-ai-r11-native-uat",
     "baseSha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
-    "committedHead": "d2328ae0c4548ba8c2e9cf56a4b9f11f71f7e938",
-    "sourceBinding": "evidence/r11-native-delivery-binding-result.json",
+    "committedHead": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
+    "sourceBinding": "evidence/r11-native-accessibility-delivery-binding-result.json",
     "nativeBrowser": "evidence/r11-native-browser-post-role-result.json",
     "nativeRolesPassed": 7,
     "nativeChecksPassed": 59,
@@ -704,14 +821,64 @@
     "policy": "evidence/r11-native-policy-result.json",
     "manual": "evidence/r11-native-manual-save-result.json",
     "targetTests": {
-      "passed": 56,
+      "passed": 57,
       "failed": 0,
       "skipped": 0,
-      "evidence": "evidence/r11-native-status-target-result.json"
+      "evidence": "evidence/r11-native-denied-final-result.json"
     },
-    "staticBuild": "local exit0; evidence/r11-http-static-result.json and r11-http-build-result.json",
-    "fullRegression": "local application2841/0skip exit0; separate CLI8/0skip exit0; exact-code combined CI verified",
+    "staticBuild": "exit0; evidence/r11-native-denied-fixed-static-result.json and evidence/r11-native-denied-build-result.json",
+    "fullRegression": "Fresh exact code CI 57dad0e415c898d980e07ec5ecaf3c63f07714a3: 2856/0fail/0skip across 357 files and isolated migration/seed replay; local targeted57/0skip. Previous local application2841 and separate CLI8 are historical, not a local full run of this route delta.",
     "exactHeadCI": {
+      "checkedAt": "2026-10-03T20:02:09.507Z",
+      "sourceSha": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
+      "success": true,
+      "databaseRun": 37149654891,
+      "databaseUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37149654891",
+      "checksRun": 37149654882,
+      "checksUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37149654882",
+      "scope": "GitHub isolated pgvector PostgreSQL17 services; no production connection",
+      "passed": 2856,
+      "failed": 0,
+      "skipped": 0,
+      "files": 357,
+      "strictNoSkips": "exit0",
+      "migrationSeedReplay": "passed on isolated CI service",
+      "databaseJobs": [
+        {
+          "name": "contract",
+          "conclusion": "success"
+        },
+        {
+          "name": "Isolated migration and seed replay",
+          "conclusion": "success"
+        }
+      ],
+      "commands": {
+        "full": "bunx vitest run --no-file-parallelism --testTimeout=30000 --reporter=default --reporter=json --outputFile=<private report>",
+        "strict": "bun scripts/clientops/assert-vitest-no-skips.ts <private report>",
+        "checks": [
+          "bun run typecheck",
+          "bun run typecheck:runtime",
+          "bun run lint",
+          "bunx vite build",
+          "bun run performance:bundles",
+          "bun run test:browser-collector"
+        ]
+      },
+      "logSha256": "6672f1cd95a96aa1890648ee9033a814be8ff490292187e8e7bc297820d3933d",
+      "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-accessibility-code-ci.private.log",
+      "releaseDecision": "NO-GO"
+    },
+    "cloudCandidate": "not-provisioned",
+    "native200PercentZoom": "verified; seven roles/27 checks",
+    "manualAssistiveTechnology": "not-tested",
+    "productionAccess": false,
+    "releaseDecision": "NO-GO",
+    "applicationBehaviorCommit": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
+    "review": "evidence/r11-native-review-result.json",
+    "reviewChecksPassed": 14,
+    "previousCommittedHead": "d2328ae0c4548ba8c2e9cf56a4b9f11f71f7e938",
+    "previousExactHeadCI": {
       "checkedAt": "2026-10-03T18:49:03.492Z",
       "sourceSha": "d2328ae0c4548ba8c2e9cf56a4b9f11f71f7e938",
       "success": true,
@@ -752,13 +919,8 @@
       "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-code-ci.private.log",
       "releaseDecision": "NO-GO"
     },
-    "cloudCandidate": "not-provisioned",
-    "native200PercentZoom": "not-tested",
-    "manualAssistiveTechnology": "not-tested",
-    "productionAccess": false,
-    "releaseDecision": "NO-GO",
-    "applicationBehaviorCommit": "622c5df5a3e1e323f9364902340d119480a95737",
-    "review": "evidence/r11-native-review-result.json",
-    "reviewChecksPassed": 14
+    "nativeZoom": "evidence/r11-native-zoom-roles-result.json",
+    "nativeDetailBoundary": "evidence/r11-native-boundary-unknown-result.json",
+    "nativeDetailBoundaryChecksPassed": 27
   }
 }

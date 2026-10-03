@@ -1,0 +1,23 @@
+{
+  "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
+  "serverEntrySha256": "261166a51770879a1abe649195f8e0b57cd1c6b8d63712bdcfe75ac8f9be6d28",
+  "events": [
+    {
+      "observedAt": "2026-10-03T19:16:29.483Z",
+      "chain": [
+        {
+          "name": "Error",
+          "message": "Minified React error #520; visit [URL] for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+        },
+        {
+          "name": "Error",
+          "message": "You do not have this capability"
+        }
+      ]
+    }
+  ],
+  "rawDiagnosticSha256": "c41e652cf586699b4ab1c728db3912c6375c6b42fc6dd8393c01e06160c0d2f8",
+  "stackAndBrowserRequestDataPublished": false,
+  "phase": "accounting native200% AI Review navigation before route fix",
+  "releaseDecision": "NO-GO"
+}

@@ -6,13 +6,13 @@
 
 | Gate | Owner | Current disposition / next action |
 |---|---|---|
-| Exact app/CI SHA + reviewed stack | Engineer/reviewer | coded2328ae full CI2849/0skip; final document HEAD Actions on draft176; review each dependency PR; no independent reviewer claimed |
+| Exact app/CI SHA + reviewed stack | Engineer/reviewer | code57dad0e full CI2856/0fail/0skip; final document HEAD Actions on draft176; review each dependency PR; no independent reviewer claimed |
 | Migration001–025 + populated replay | Engineer/operator | local physical tests + isolated CI replay; production schema/backup target still unverified |
 | Data origin/anomaly disposition | Data/approval owners | blocked; sign per-row retain/mark/isolate/relink from R04 source evidence |
 | Five native workers + Note Tidy direct path | Worker/provider operator | blocked; verify actual deployed hashes/ack timing/attempt binding/receipts/cost scope |
 | Sweep maxDuration / deadline / native resume | Deployment/worker operator | blocked; verify platform duration before setting runtime flags or enabling schedule |
 | Seven actual role journeys | QA/UAT operator | local seven independent live identities/59 browser checks plus14 Review checks verified; reviewed cloud candidate remains unprovisioned |
-| Native mobile/keyboard/200% zoom/AT | QA/accessibility owner | local1440/390 and policy keyboard cancel/focus verified; native200% browser zoom/manual AT remain not-tested |
+| Native mobile/keyboard/200% zoom/AT | QA/accessibility owner | local1440/390, policy keyboard cancel/focus and seven-role native200% browser zoom verified; manual AT remains not-tested |
 | Performance provisional +10% p95 | Performance/business owner | blocked for disclosed regressions; raw960 samples retained; absolute SLO pending |
 | Isolated backup/restore / compatible rollback | Engineer/operator | local rehearsal receipt; production/PITR/window/capability remain blocked |
 | Production authority / change window / hold removal | User/release operator | absent; NO-GO, retain hold |
@@ -50,4 +50,8 @@ The status adapter rollback is a compatible revert of `src/start.ts` integration
 
 The native CLI now masks credential-bearing failure lines (Cookie/Authorization/token/password/secret/API key) and full PostgreSQL DSNs before URL/email redaction and output bounding. Eight regressions use fake credentials, including an actual failed Playwright request; no real credential is published. Keep sessions/captured requests/raw logs/screenshots private. Sanitize receipts before commit, preserve original failures and execution SHAs, and bind later source equivalence separately. Do not rerun an uncertain operation with a fresh key.
 
-Final application local2841/0skip and separate CLI8/0skip are not reported as a combined local run; fresh code CI2849/0skip and final documentation HEAD CI remain separately bound. New code/tasks are reviewable in draft175→176, not merged/released. R04/R10/native accessibility/cloud worker/duration/performance/PITR/window gates remain NO-GO.
+Previous application local2841/0skip and separate CLI8/0skip are historical and not a new local full run; current route delta has target57/0skip and fresh code CI2856/0fail/0skip, with final documentation HEAD CI separately bound. New code/tasks are reviewable in draft175→176, not merged/released. R04/R10/manual AT/cloud worker/duration/performance/PITR/window gates remain NO-GO.
+
+## Native zoom/detail follow-up and compatible rollback
+
+Current source57dad0e keeps both AI Review capabilities and server403/CSRF. Only trusted FORBIDDEN/OUTSIDE_SCOPE becomes a data-free denied route; auth/unrelated errors retain the original boundary. A compatible source rollback must preserve server authorization and all durable rows; this UI-only delta requires no migration or historical repair. Native200% and unknown/detail/queue snapshot checks are now local verified. Manual AT/action/provider/cloud/PITR/owner gates remain separate. Source/receipt evidence is preserved; final document-only HEAD requires new exact-head CI on draft176. No merge/deploy/production mutation/provider/customer send.
