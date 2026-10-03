@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-03T16:31:39.928Z",
+  "sourceSha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
+  "db": "clientops_ai_gpt61_4169bc5d8e",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/lib/operations/__tests__/server-function-error-status.test.ts",
+    "src/server-functions/__tests__/agent-policy.integration.test.ts",
+    "src/server/commands/__tests__/agent-bulk-recovery.integration.test.ts",
+    "src/components/agents/__tests__/policy-panel.test.tsx",
+    "src/components/agents/__tests__/bulk-recovery-dialog.test.tsx",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-status-target-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 56,
+  "failed": 0,
+  "skipped": 0,
+  "total": 56,
+  "files": 5,
+  "elapsedMs": 66678,
+  "reportSha256": "f0601b9b7bba75d1eca7c885b3ecb9df78bf897f77b7b9c55c5a38ba6bc6849a"
+}

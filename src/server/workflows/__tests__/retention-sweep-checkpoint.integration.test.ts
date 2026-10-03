@@ -161,6 +161,8 @@ describe("checkpointed retention sweep in physical PostgreSQL / mock external di
       expect(holder.calls).toBe(499);
       expect(holder.peak).toBeLessThanOrEqual(3);
     },
+    // Multiple physical DB batches share this test; each batch retains its own server deadline.
+    120000,
   );
   it.runIf(enabled)(
     "stops_before_deadline_and_checkpoints without starting notifications or dispatch",

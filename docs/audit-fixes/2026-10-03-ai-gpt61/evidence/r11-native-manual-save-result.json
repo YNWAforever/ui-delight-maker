@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T16:57:15.451Z",
+  "sha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
+  "sourceDiff": "e8f3e1b56827c41de11a04caa622ef623be920223b4d4e07ecd6bf02e63eab76",
+  "role": "client_success",
+  "fixtureVersion": "ai-local-role-uat-v1",
+  "extensionVersion": "manual-save-extension-v1",
+  "checks": [
+    {
+      "name": "missing-provider AI control absent; manual original unchanged",
+      "passed": true
+    },
+    {
+      "name": "joined actual product/start/billing label",
+      "passed": true
+    },
+    {
+      "name": "native390 manual Save writes exactly one unchanged note under actual profile",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "notesRowsAdded": 1,
+  "providerCalls": 0,
+  "productionAccess": false
+}

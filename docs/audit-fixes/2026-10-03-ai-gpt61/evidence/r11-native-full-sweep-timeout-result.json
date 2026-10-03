@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-10-03T17:42:05.657Z",
+  "sourceSha": "4c523591c6fc8d0647c5b5c40348c54884b35739",
+  "db": "clientops_ai_gpt61_eaf78e9f0b",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-cleanup-final-full-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 2840,
+  "failed": 1,
+  "skipped": 0,
+  "total": 2841,
+  "files": 355,
+  "elapsedMs": 1557409,
+  "reportSha256": "81ff1366e418737dcf2b28669dc93a3e31ccd08cd7289510a84089a4e802bd48"
+}

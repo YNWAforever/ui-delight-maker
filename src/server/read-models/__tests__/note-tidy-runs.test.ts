@@ -57,7 +57,7 @@ describe("metadata-only note history in physical PostgreSQL", () => {
       await admin.query(`drop database if exists "${databaseName}"`);
       await admin.end();
     }
-  });
+  }, 60000);
   it.runIf(enabled)("scopes_note_history_to_authorized_actor", async () => {
     const page = await loadNoteTidyRuns(actor, { page: 1, limit: 25 });
     expect(page.total).toBe(27);

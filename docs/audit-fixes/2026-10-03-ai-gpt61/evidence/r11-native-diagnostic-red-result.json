@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T18:30:54.841Z",
+  "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
+  "db": "clientops_ai_gpt61_75635bd666",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "scripts/clientops/__tests__/redact-ui-diagnostics.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-diagnostic-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 2,
+  "failed": 6,
+  "skipped": 0,
+  "total": 8,
+  "files": 1,
+  "elapsedMs": 5892,
+  "reportSha256": "1a1a1254e1626facc100a5def391558b772ce0951fa83278bed9f1cb451c164e"
+}
