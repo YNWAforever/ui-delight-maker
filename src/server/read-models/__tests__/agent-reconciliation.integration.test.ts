@@ -17,6 +17,9 @@ describe("physical read-only agent reconciliation", () => {
   beforeAll(async () => {
     if (!enabled) return;
     const url = new URL(process.env.DATABASE_TEST_URL!);
+    // CI names the local service "localhost". Pin it to loopback before connecting;
+    // no hostname lookup or arbitrary network target is permitted by this fixture.
+    if (url.hostname === "localhost") url.hostname = "127.0.0.1";
     if (url.hostname !== "127.0.0.1") throw new Error("Disposable loopback PostgreSQL required");
     admin = new Pool({ connectionString: url.toString() });
     await admin.query(`create database "${databaseName}"`);
