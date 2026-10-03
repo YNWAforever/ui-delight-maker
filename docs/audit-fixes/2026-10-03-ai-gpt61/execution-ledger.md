@@ -4,20 +4,20 @@ Execution authority: the user's 2026-10-03 GPT-6.1 request and verified plan (SH
 
 ## Status
 
-| Task | Findings | Code | External acceptance | Owner / next action |
-| --- | --- | --- | --- | --- |
-| R00 | AI-01 | 已驗證完成 | 待驗收 | Release operator: current production migration / deployed worker evidence |
-| R01 | AI-02, AI-03 | 待開始 | 待驗收 | Engineer / QA: workflow identity and 60-minute contract |
-| R02 | AI-04 | 待開始 | 待驗收 | Engineer: provenance and nullable usage |
-| R03 | AI-05, AI-06 | 待開始 | 待驗收 | Engineer / commercial QA: strict outputs and quote atomicity |
-| R04 | AI-08, AI-02 | 待開始 | 受阻 | Data owner: approved read-only target and anomaly dispositions |
-| R05 | AI-07 | 待開始 | 待驗收 | Engineer / admin QA: append-only status policy |
-| R06 | AI-09 | 待開始 | 待驗收 | Engineer: actor-scoped Note Tidy operations |
-| R07 | AI-10 | 待開始 | 待驗收 | Engineer: scoped cursor queues |
-| R08 | AI-10, AI-08 | 待開始 | 待驗收 | Engineer / QA: local recovery bulk receipts |
-| R09 | AI-10 | 待開始 | 待驗收 | Engineer / ops: durable sweep and measured performance |
-| R10 | AI-01, AI-04, AI-05, AI-06, AI-09 | 待開始 | 受阻 | Provider / worker operator and business owner: sandbox authority, receipts and quality rubric |
-| R11 | AI-01–AI-10 | 待開始 | 受阻 | Release / data owner: final exact-SHA gates, acceptance and release decision |
+| Task | Findings                          | Code       | External acceptance | Owner / next action                                                                           |
+| ---- | --------------------------------- | ---------- | ------------------- | --------------------------------------------------------------------------------------------- |
+| R00  | AI-01                             | 已驗證完成 | 待驗收              | Release operator: current production migration / deployed worker evidence                     |
+| R01  | AI-02, AI-03                      | 已驗證完成 | 待驗收              | Engineer / QA: workflow identity and 60-minute contract                                       |
+| R02  | AI-04                             | 待開始     | 待驗收              | Engineer: provenance and nullable usage                                                       |
+| R03  | AI-05, AI-06                      | 待開始     | 待驗收              | Engineer / commercial QA: strict outputs and quote atomicity                                  |
+| R04  | AI-08, AI-02                      | 待開始     | 受阻                | Data owner: approved read-only target and anomaly dispositions                                |
+| R05  | AI-07                             | 待開始     | 待驗收              | Engineer / admin QA: append-only status policy                                                |
+| R06  | AI-09                             | 待開始     | 待驗收              | Engineer: actor-scoped Note Tidy operations                                                   |
+| R07  | AI-10                             | 待開始     | 待驗收              | Engineer: scoped cursor queues                                                                |
+| R08  | AI-10, AI-08                      | 待開始     | 待驗收              | Engineer / QA: local recovery bulk receipts                                                   |
+| R09  | AI-10                             | 待開始     | 待驗收              | Engineer / ops: durable sweep and measured performance                                        |
+| R10  | AI-01, AI-04, AI-05, AI-06, AI-09 | 待開始     | 受阻                | Provider / worker operator and business owner: sandbox authority, receipts and quality rubric |
+| R11  | AI-01–AI-10                       | 待開始     | 受阻                | Release / data owner: final exact-SHA gates, acceptance and release decision                  |
 
 Release decision: **NO-GO**. Production hold remains enabled. No production database mutation, customer message, paid provider call or cloud n8n activation was performed.
 
@@ -41,8 +41,30 @@ Release decision: **NO-GO**. Production hold remains enabled. No production data
 - Read actual CLAUDE.md, README.md, current release checklist and operations runbook. No applicable application AGENTS.md was present along the verified checkout path; supplied workspace AGENTS graph-first discovery and Neon-only user constraints apply.
 - Evidence: public [environment manifest](evidence/environment-manifest.json), [baseline delta](baseline-delta.md), [fresh baseline result](evidence/r00-full-result.json); immutable inputs in `C:\tmp\clientops-ai-gpt61-input-20261003`; private execution receipts under `.clientops-perf/ai-gpt61-20261003/` (not committed).
 - Rollback: this task changes documentation only; retain immutable originals and private receipts. No schema or historical data rollback is required.
-- Commit: this R00 commit (resolve with `git log --format='%H' -- docs/audit-fixes/2026-10-03-ai-gpt61/evidence/environment-manifest.json`). PR: pending publication of the review branch.
+- Commit: this R00 commit (resolve with `git log --format='%H' -- docs/audit-fixes/2026-10-03-ai-gpt61/evidence/environment-manifest.json`). Commit: `23261dcf9cb71f7f5fd575013842f525be1c4b67`; draft PR [#163](https://github.com/YNWAforever/ui-delight-maker/pull/163).
 
 ## Required delivery contract
 
 Every subsequent task records its base and tested source SHA, finding map, changed behavior, regression RED/GREEN result, command / exit / counts / skips, evidence paths, author review, rollback, and external owner / next action. Code verification, external acceptance and release decisions are separate. D03 rejects a supplied quote total that differs from the computed currency-minor-unit total, with zero quote / approval writes.
+
+## R01 — stable workflow identity and attention
+
+- Base: `23261dcf9cb71f7f5fd575013842f525be1c4b67`. AI-02 / AI-03. Branch: `codex/clientops-ai-r01-identity`, stacked on R00.
+- Aggregates, hourly series, history requests / SQL and query keys now use `workflow_type`. Current and legacy quote labels retain their original text and share one detail route. Explicit known legacy BFF aliases are supported; unknown inputs fail before querying. Unknown workflows are listed separately and run details expose recorded run / workflow identifiers, without guessing another agent.
+- Server stuck predicates use `created_at <= now()-60min`, including the exact threshold and ignoring later updated_at. Card / fleet attention failures use the same inclusive seven-day window as queue rows; the 24h failure KPI remains a distinct measure. Existing subject redaction, recovery checks and batched ownership resolution are preserved.
+- RED: four required / SQL regression files, exit 1, 66 pass / **9 intended behavior failures**, zero skips. Real PostgreSQL reproduced quote card count 1 instead of 2, stuck count 0 instead of 2, attention count 1 instead of 4.
+- GREEN: `bunx vitest run` with the eleven file paths in [result](evidence/r01-targeted-result.json), `--no-file-parallelism --testTimeout=30000`; exit 0, **122 pass / 0 fail / 0 skips**, eleven files, fresh disposable PG. Three SQL regressions executed real migrations and SQL inside rollback-only synthetic transactions. These tests substitute only the database transport / content projection authorizer and do not claim genuine seven-role UAT.
+- Gates: `bun run typecheck`, focused twelve-file ESLint, `git diff --check`, `bunx vite build`, `bun run performance:bundles`: all exit 0. Pure build used no database / seed / production auth. Generated route formatting was restored to the verified unchanged baseline. Evidence receipts are in `evidence/r01-*-result.json`; raw diagnostics remain ignored. All pre-commit receipts identify base HEAD plus the R01 working changes; an exact commit replay is recorded in the PR before publication.
+- UI evidence: jsdom detail loader sends workflow identity after a display-name change; catalogue status, subject restriction and AI Review decision tests pass. Genuine role / browser candidate acceptance: **not-tested**, consolidate in R11; existing saved sessions have not been revalidated here.
+- Author review: confirmed no historical name edits, schema changes, provider calls, authorization bypass or payload widening. Original key guards / source evidence unchanged.
+- Rollback: revert compatible read/UI changes only; retain historical run names and receipts. Do not reinstate name-based joins as an accepted release behavior.
+- External next action: QA uses an exact candidate with seven independent identities for route / permitted / denied UI checks. Code verification is complete; external acceptance remains pending. Commit: this `fix: align agent identity and stuck state` commit; PR pending creation.
+
+Ruling: stock task-start recognizes only headings named Task N; the immutable binding plan uses R00–R11. Exact task sections were extracted into this plan’s private workspace and the public ledger records equivalent BASE / brief / verification / completion evidence.
+
+### R01 — full CI follow-up
+
+- Commit `d8dd15a10effe5bba030413e8f77151d506b0570`, draft PR [#164](https://github.com/YNWAforever/ui-delight-maker/pull/164), initially passed the 122 focused tests and static/build gates. Fresh complete database CI run `37102314880` exposed two fixture/gate defects (2 failures / 2,587 passes); code verification was reopened for this repair.
+- The identity SQL regression now creates and drops its own guarded disposable loopback database. Existing suite fixtures cannot change its exact counts. A real 51-row ownership fixture checks both 25- and 50-row history pages: each issues exactly four queries, including one batched ownership resolution. The route contract uses workflow identity and counts the catalogue read separately (five total); no authorization query is removed or N+1 budget accepted.
+- Reproduction on unchanged R01 HEAD: two SQL files, exit 1, 37 pass / 1 fail / 0 skips. The contamination depended on full-suite file order and was proven by the CI report. Repair: the same two files plus database-isolation and 25/50-row regressions, exit 0, **40 pass / 0 fail / 0 skips**. Evidence: `evidence/r01-ci-red-result.json`, `evidence/r01-ci-fixed-result.json`; receipts identify base HEAD plus these working changes. Exact new-head full CI remains the next gate.
+- Rollback: revert these fixture/contract changes only. External seven-role acceptance remains pending; no production, provider or worker change was made.

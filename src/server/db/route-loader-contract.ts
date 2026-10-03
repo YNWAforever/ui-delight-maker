@@ -296,8 +296,7 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
     // output plus the resolved access map. The optional capabilities come back as booleans for
     // per-row redaction, not as a second query — no target is passed, so no ownership query
     // runs. The route resolves params.name to an AGENT_DEFINITIONS entry and passes its
-    // display_name, so a real definition is used here rather than a placeholder — the agent
-    // name is a plain text filter, and page/limit mirror the loader's own
+    // workflow_type, so a real definition is used here rather than a placeholder; page/limit mirror the loader's own
     // { page: search.page, limit: 25 }.
     //
     // 3 -> 4 on 2026-08-29: the loader now resolves params.name from
@@ -308,18 +307,19 @@ export const ROUTE_LOADER_CONTRACT: RouteLoaderContractEntry[] = [
       Promise.all([
         loadEffectiveAgentCatalogue(),
         loadAgentHistoryPage({
-          agent: AGENT_DEFINITIONS[0].display_name,
+          workflowType: AGENT_DEFINITIONS[0].workflow_type,
           page: 1,
           limit: 25,
           // The access map's contents cannot change the query count this entry measures; an
           // empty map redacts every row. `rows` now resolves real ownership per distinct
-          // subject on the page, which is a genuine extra query this budget does not yet
-          // account for — see the maxQueries comment below.
+          // subject on the page. This fixture contains one subject type for this workflow.
           access: {},
           rows: fixtureRows(),
         }),
       ]),
-    maxQueries: 4,
+    // One effective catalogue read, three history reads, one batched subject ownership read.
+    // The identity regression measures 25 and 50 real rows: history stays at four queries.
+    maxQueries: 5,
   },
   {
     // getAiReviewRead() (src/server-functions/agent-runs.ts) awaits

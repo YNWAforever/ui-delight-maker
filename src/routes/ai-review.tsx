@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useClientNow } from "@/hooks/use-client-now";
-import { agentSlugForDisplayName } from "@/lib/agents";
+import { agentSlugForWorkflowType } from "@/lib/agents";
 import { ROLE_GRANTS } from "@/lib/admin/policy";
 import type { Capability } from "@/lib/admin/types";
 import { approvalProposedAction, approvalTypeLabel } from "@/lib/approval-types";
@@ -176,9 +176,9 @@ function riskNoteOf(approval: Approval): string | null {
   return null;
 }
 
-function agentSlug(displayName: string | null | undefined): string | null {
-  if (!displayName) return null;
-  return agentSlugForDisplayName(displayName);
+function agentSlug(workflowType: string | null | undefined): string | null {
+  if (!workflowType) return null;
+  return agentSlugForWorkflowType(workflowType);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -818,7 +818,7 @@ function AiReviewPage() {
             <Card>
               <ul className="divide-y divide-border">
                 {data.humanReviewRuns.slice(0, FLAGGED_RUN_LIMIT).map((run) => {
-                  const slug = agentSlug(run.agent_name);
+                  const slug = agentSlug(run.workflow_type);
                   return (
                     <li key={run.id} className="flex flex-wrap items-center gap-3 p-4 text-sm">
                       <Bot className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />

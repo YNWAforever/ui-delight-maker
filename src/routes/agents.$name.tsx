@@ -59,10 +59,13 @@ const agentHistorySearchSchema = agentDetailSearchSchema.extend({
 
 const HISTORY_PAGE_SIZE = 25;
 
-const historyQuery = (agent: string, page: number) =>
+const historyQuery = (workflowType: string, page: number) =>
   routeQueryOptions({
-    queryKey: crmQueryKeys.agents.section(agent, "history", { page, limit: HISTORY_PAGE_SIZE }),
-    queryFn: () => getAgentHistoryPage({ data: { agent, page, limit: HISTORY_PAGE_SIZE } }),
+    queryKey: crmQueryKeys.agents.section(workflowType, "history", {
+      page,
+      limit: HISTORY_PAGE_SIZE,
+    }),
+    queryFn: () => getAgentHistoryPage({ data: { workflowType, page, limit: HISTORY_PAGE_SIZE } }),
   });
 
 const effectiveCatalogueQuery = () =>
@@ -109,7 +112,7 @@ export const Route = createFileRoute("/agents/$name")({
     const agent = catalogue.find((item) => item.name === params.name);
     if (!agent) throw notFound();
     const history = await context.queryClient.ensureQueryData(
-      historyQuery(agent.display_name, deps.page),
+      historyQuery(agent.workflow_type, deps.page),
     );
     return { agent, history };
   },
@@ -165,7 +168,7 @@ function AgentDetail() {
   const { agent } = loaderData;
   const search = Route.useSearch();
   const { data: history } = useQuery({
-    ...historyQuery(agent.display_name, search.page),
+    ...historyQuery(agent.workflow_type, search.page),
     initialData: loaderData.history,
   });
   const runs = history.items;
@@ -194,7 +197,7 @@ function AgentDetail() {
       });
       setRecovery(null);
       await queryClient.invalidateQueries({
-        queryKey: crmQueryKeys.agents.section(agent.display_name, "history", {
+        queryKey: crmQueryKeys.agents.section(agent.workflow_type, "history", {
           page: search.page,
           limit: HISTORY_PAGE_SIZE,
         }),

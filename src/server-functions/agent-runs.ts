@@ -19,6 +19,7 @@ import {
   serializeAgentToolCall,
 } from "@/lib/serializable";
 import { AGENT_SUBJECT_VIEW_CAPABILITIES } from "@/lib/agent-run-visibility";
+import { AGENT_DEFINITIONS, agentWorkflowTypeForDisplayName } from "@/lib/agents";
 
 export type {
   AgentDirectoryRead,
@@ -31,17 +32,26 @@ export type {
 const AGENT_HISTORY_LIMIT = 25;
 
 export function normalizeAgentHistoryInput(input: {
+  workflowType?: unknown;
   agent?: unknown;
   page?: unknown;
   limit?: unknown;
 }) {
   const agent = typeof input.agent === "string" ? input.agent.trim() : "";
-  if (!agent) throw new Error("Agent is required");
+  const workflowType =
+    typeof input.workflowType === "string"
+      ? input.workflowType.trim()
+      : agentWorkflowTypeForDisplayName(agent);
+  if (
+    !workflowType ||
+    !AGENT_DEFINITIONS.some((definition) => definition.workflow_type === workflowType)
+  )
+    throw new Error("Known workflow type is required");
 
   const requestedPage = Number(input.page);
   const requestedLimit = Number(input.limit);
   return {
-    agent,
+    workflowType,
     page: Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
     limit:
       Number.isInteger(requestedLimit) && requestedLimit > 0
@@ -67,7 +77,7 @@ export const getAgentDirectoryRead = createServerFn({ method: "GET" }).handler(a
 export const getAgentHistoryPage = createServerFn({ method: "GET" })
   .validator((data: unknown) =>
     normalizeAgentHistoryInput(
-      (data ?? {}) as { agent?: unknown; page?: unknown; limit?: unknown },
+      (data ?? {}) as { workflowType?: unknown; agent?: unknown; page?: unknown; limit?: unknown },
     ),
   )
   .handler(async ({ data }) => {

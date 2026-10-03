@@ -7,12 +7,8 @@
  * after. `__tests__/agents-catalogue.test.ts` asserts this list against the migration, so an
  * agent cannot exist in one place and not the other.
  *
- * `display_name` MUST equal the `agent_name` the dispatch path writes into `agent_runs` — that
- * is the column the Agents directory and every agent's run history join on. It drifted once,
- * and because nothing checked it the whole Agents section read zero: four cards showing "0
- * runs" and four permanently empty history pages, sitting next to a Recent Runs list naming
- * five agents that had just run. Dispatch now takes the name from `agentNameFor` rather than
- * repeating a literal, so the two cannot diverge again.
+ * `display_name` is presentation only. Historical `agent_name` values remain unchanged;
+ * directory aggregates, history and links use the recorded `workflow_type` identity.
  */
 /** Governed auxiliary workflows share run storage but have no agent page or n8n callback. */
 export const AUXILIARY_AI_WORKFLOW_TYPES = ["note_tidy"] as const;
@@ -28,7 +24,7 @@ export interface AgentDefinition {
   id: string;
   /** URL slug — the `$name` param of /agents/$name. */
   name: string;
-  /** Must equal the `agent_runs.agent_name` written by the dispatch path. */
+  /** Current presentation label; historical run labels may differ. */
   display_name: string;
   /** Identity. One of the agent_runs workflow_type check constraint values. */
   workflow_type: AgentWorkflowType;
@@ -158,6 +154,22 @@ export function agentNameFor(workflowType: AgentWorkflowType): string {
  */
 export function agentSlugForDisplayName(displayName: string): string | null {
   return AGENT_DEFINITIONS.find((agent) => agent.display_name === displayName)?.name ?? null;
+}
+
+/** Stable route identity; unknown and auxiliary workflows have no model-agent detail page. */
+export function agentSlugForWorkflowType(workflowType: string): string | null {
+  return AGENT_DEFINITIONS.find((agent) => agent.workflow_type === workflowType)?.name ?? null;
+}
+
+/** Explicit compatibility for old BFF callers, never a name-based database join or guess. */
+export function agentWorkflowTypeForDisplayName(displayName: string): AgentWorkflowType | null {
+  const current = AGENT_DEFINITIONS.find((agent) => agent.display_name === displayName);
+  if (current) return current.workflow_type;
+  const legacy: Readonly<Record<string, AgentWorkflowType>> = {
+    "Qualification Agent": "qualify_lead",
+    "Quotation Agent": "draft_quote",
+  };
+  return legacy[displayName] ?? null;
 }
 
 export type DispatchableAgent =
