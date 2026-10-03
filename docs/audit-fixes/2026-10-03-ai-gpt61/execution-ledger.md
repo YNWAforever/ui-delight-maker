@@ -61,3 +61,10 @@ Every subsequent task records its base and tested source SHA, finding map, chang
 - External next action: QA uses an exact candidate with seven independent identities for route / permitted / denied UI checks. Code verification is complete; external acceptance remains pending. Commit: this `fix: align agent identity and stuck state` commit; PR pending creation.
 
 Ruling: stock task-start recognizes only headings named Task N; the immutable binding plan uses R00–R11. Exact task sections were extracted into this plan’s private workspace and the public ledger records equivalent BASE / brief / verification / completion evidence.
+
+### R01 — full CI follow-up
+
+- Commit `d8dd15a10effe5bba030413e8f77151d506b0570`, draft PR [#164](https://github.com/YNWAforever/ui-delight-maker/pull/164), initially passed the 122 focused tests and static/build gates. Fresh complete database CI run `37102314880` exposed two fixture/gate defects (2 failures / 2,587 passes); code verification was reopened for this repair.
+- The identity SQL regression now creates and drops its own guarded disposable loopback database. Existing suite fixtures cannot change its exact counts. A real 51-row ownership fixture checks both 25- and 50-row history pages: each issues exactly four queries, including one batched ownership resolution. The route contract uses workflow identity and counts the catalogue read separately (five total); no authorization query is removed or N+1 budget accepted.
+- Reproduction on unchanged R01 HEAD: two SQL files, exit 1, 37 pass / 1 fail / 0 skips. The contamination depended on full-suite file order and was proven by the CI report. Repair: the same two files plus database-isolation and 25/50-row regressions, exit 0, **40 pass / 0 fail / 0 skips**. Evidence: `evidence/r01-ci-red-result.json`, `evidence/r01-ci-fixed-result.json`; receipts identify base HEAD plus these working changes. Exact new-head full CI remains the next gate.
+- Rollback: revert these fixture/contract changes only. External seven-role acceptance remains pending; no production, provider or worker change was made.
