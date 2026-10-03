@@ -49,13 +49,44 @@
     },
     {
       "parameters": {
-        "jsCode": "const context = $input.first().json;\nconst triggerPayload = $('Validate Trigger').first().json;\nconst lead = context.lead ?? {};\nconst agentRunId = context.agent_run?.id ?? context.agent_run_id ?? triggerPayload.agent_run_id;\nconst pricing = Array.isArray(context.pricing_templates) ? context.pricing_templates : [];\nconst text = [lead.company_name, lead.contact_name, lead.contact_email, lead.enquiry_text].filter(Boolean).join(' ').toLowerCase();\nconst matches = pricing.filter((template) => [template.service, template.category, template.description].filter(Boolean).join(' ').toLowerCase().split(/\\s+/).filter((token) => token.length > 3).some((token) => text.includes(token))).slice(0, 2);\nconst selected = (matches.length > 0 ? matches : pricing).slice(0, 2);\nconst urgencyScore = /urgent|asap|launch|deadline|this month|q[1-4]/i.test(text) ? 8 : 6;\nconst fitScore = selected.length > 0 ? 8 : 6;\nconst score = Math.min(95, Math.round((urgencyScore + fitScore) * 5));\nconst fallback = {\n  lead_id: lead.id ?? triggerPayload.lead_id,\n  agent_run_id: agentRunId,\n  qualification_data: {\n    urgency_score: urgencyScore,\n    fit_score: fitScore,\n    qualification_score: score,\n    service_interest: selected.map((template) => template.service),\n    budget_range: /\\bhkd\\b|\\$|budget|retainer|monthly/i.test(text) ? 'HKD 50k-200k' : 'unknown',\n    next_action: score >= 75 ? 'Schedule discovery call' : 'Request more info',\n    reason: 'Deterministic staging fallback based on enquiry text and active pricing templates.',\n    confidence: 0.64,\n    human_review_required: true\n  },\n  lead_score: score,\n  output_summary: `Fallback qualification scored ${lead.company_name ?? 'lead'} at ${score}.`,\n  confidence_score: 0.64,\n  model_used: 'deterministic-fallback'\n};\nconst model = $env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';\nconst openrouter_request = {\n  model,\n  messages: [\n    { role: 'system', content: 'Return only JSON matching the ClientOps qualification writeback contract. Do not include markdown.' },\n    { role: 'user', content: JSON.stringify({ context, required_fields: ['lead_id', 'agent_run_id', 'qualification_data', 'lead_score', 'output_summary', 'confidence_score', 'model_used'] }) }\n  ],\n  response_format: { type: 'json_object' }\n};\nreturn [{ json: { context, fallback, openrouter_request, openrouter_configured: Boolean($env.OPENROUTER_API_KEY) } }];"
+        "jsCode": "const context = $input.first().json;\nconst triggerPayload = $('Validate Trigger').first().json;\nconst lead = context.lead ?? {};\nconst agentRunId = context.agent_run?.id ?? context.agent_run_id ?? triggerPayload.agent_run_id;\nconst pricing = Array.isArray(context.pricing_templates) ? context.pricing_templates : [];\nconst text = [lead.company_name, lead.contact_name, lead.contact_email, lead.enquiry_text].filter(Boolean).join(' ').toLowerCase();\nconst matches = pricing.filter((template) => [template.service, template.category, template.description].filter(Boolean).join(' ').toLowerCase().split(/\\s+/).filter((token) => token.length > 3).some((token) => text.includes(token))).slice(0, 2);\nconst selected = (matches.length > 0 ? matches : pricing).slice(0, 2);\nconst urgencyScore = /urgent|asap|launch|deadline|this month|q[1-4]/i.test(text) ? 8 : 6;\nconst fitScore = selected.length > 0 ? 8 : 6;\nconst score = Math.min(95, Math.round((urgencyScore + fitScore) * 5));\nconst fallback = {\n  lead_id: lead.id ?? triggerPayload.lead_id,\n  agent_run_id: agentRunId,\n  qualification_data: {\n    urgency_score: urgencyScore,\n    fit_score: fitScore,\n    qualification_score: score,\n    service_interest: selected.map((template) => template.service),\n    budget_range: /\\bhkd\\b|\\$|budget|retainer|monthly/i.test(text) ? 'HKD 50k-200k' : 'unknown',\n    next_action: score >= 75 ? 'Schedule discovery call' : 'Request more info',\n    reason: 'Deterministic staging fallback based on enquiry text and active pricing templates.',\n    confidence: 0.64,\n    human_review_required: true\n  },\n  lead_score: score,\n  output_summary: `Fallback qualification scored ${lead.company_name ?? 'lead'} at ${score}.`,\n  confidence_score: 0.64,\n  model_used: 'deterministic-fallback'\n};\nconst model = $env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';\nconst openrouter_request = {\n  model,\n  messages: [\n    { role: 'system', content: 'Return only JSON matching the ClientOps qualification writeback contract. Do not include markdown.' },\n    { role: 'user', content: JSON.stringify({ context, required_fields: ['lead_id', 'agent_run_id', 'qualification_data', 'lead_score', 'output_summary', 'confidence_score', 'model_used'] }) }\n  ],\n  response_format: { type: 'json_object' }\n};\nreturn [{ json: { context, fallback, openrouter_request, openrouter_configured: Boolean(($env.OPENROUTER_API_KEY || '').trim()) } }];"
       },
       "id": "prepare-qualify-fallback-ai-request",
       "name": "Prepare Fallback / AI Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "clientops-qualify-lead-provider-configured",
+              "leftValue": "={{$json.openrouter_configured}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "clientops-qualify-lead-provider-branch",
+      "name": "Provider Configured?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [770, -140]
     },
     {
       "parameters": {
@@ -171,7 +202,25 @@
       "main": [
         [
           {
+            "node": "Provider Configured?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Provider Configured?": {
+      "main": [
+        [
+          {
             "node": "OpenRouter Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resolve Output",
             "type": "main",
             "index": 0
           }

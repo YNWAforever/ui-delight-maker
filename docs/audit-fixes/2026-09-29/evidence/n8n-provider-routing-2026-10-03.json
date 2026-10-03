@@ -1,0 +1,737 @@
+{
+  "checkedAt": "2026-10-03T03:37:08.791Z",
+  "baseMain": "fae64052e982f0f8ea5544e3c924228cb35055f1",
+  "implementationCommit": "ac880a8b1699e52afca005d94d06fce938cd8c38",
+  "unit": {
+    "red": {
+      "passed": 5,
+      "failed": 15,
+      "skipped": 0,
+      "receiptSha256": "48a9fc633c9359e2ae0b1ec4b0886b16d009d0b1ed4d91218ccccc771c508241"
+    },
+    "green": {
+      "passed": 46,
+      "files": 5,
+      "failed": 0,
+      "skipped": 0,
+      "receiptSha256": "1c2a81175c74e1d9f7ea35b92e2d2aab52b12f068c4a601e64082fa49da4d7c7"
+    }
+  },
+  "engine": {
+    "checkedAt": "2026-10-03T02:44:29.840Z",
+    "image": "docker.n8n.io/n8nio/n8n@sha256:87e0bab2c93192e8dd885ff7b0697c22a1bd97489568a8c67cc140fd7dbb342d",
+    "version": "2.41.6",
+    "network": "none",
+    "hostPorts": 0,
+    "realProviderCredentials": false,
+    "liveAppCallbacks": false,
+    "providerAcceptance": false,
+    "databaseAcceptance": false,
+    "productionMutation": false,
+    "engineCases": 25,
+    "beforeDefects": 5,
+    "afterPassed": 20,
+    "results": [
+      {
+        "phase": "before",
+        "workflow": "clientops-qualify-lead",
+        "keyMode": "missing",
+        "providerExecuted": true,
+        "defectReproduced": true,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 2844
+      },
+      {
+        "phase": "before",
+        "workflow": "clientops-draft-reply",
+        "keyMode": "missing",
+        "providerExecuted": true,
+        "defectReproduced": true,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 4796
+      },
+      {
+        "phase": "before",
+        "workflow": "clientops-draft-quote",
+        "keyMode": "missing",
+        "providerExecuted": true,
+        "defectReproduced": true,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 4268
+      },
+      {
+        "phase": "before",
+        "workflow": "clientops-score-renewal-risk",
+        "keyMode": "missing",
+        "providerExecuted": true,
+        "defectReproduced": true,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 5763
+      },
+      {
+        "phase": "before",
+        "workflow": "clientops-relationship-intelligence",
+        "keyMode": "missing",
+        "providerExecuted": true,
+        "defectReproduced": true,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 3557
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-qualify-lead",
+        "keyMode": "missing",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 2688
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-qualify-lead",
+        "keyMode": "empty",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 1375
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-qualify-lead",
+        "keyMode": "blank",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 2279
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-qualify-lead",
+        "keyMode": "configured",
+        "providerExecuted": true,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 3936
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-draft-reply",
+        "keyMode": "missing",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 1361
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-draft-reply",
+        "keyMode": "empty",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 2072
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-draft-reply",
+        "keyMode": "blank",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 3150
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-draft-reply",
+        "keyMode": "configured",
+        "providerExecuted": true,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 3673
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-draft-quote",
+        "keyMode": "missing",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 1937
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-draft-quote",
+        "keyMode": "empty",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 2270
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-draft-quote",
+        "keyMode": "blank",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 2104
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-draft-quote",
+        "keyMode": "configured",
+        "providerExecuted": true,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 4447
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-score-renewal-risk",
+        "keyMode": "missing",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 1528
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-score-renewal-risk",
+        "keyMode": "empty",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 1124
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-score-renewal-risk",
+        "keyMode": "blank",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 2112
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-score-renewal-risk",
+        "keyMode": "configured",
+        "providerExecuted": true,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 5879
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-relationship-intelligence",
+        "keyMode": "missing",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 1537
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-relationship-intelligence",
+        "keyMode": "empty",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 2190
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-relationship-intelligence",
+        "keyMode": "blank",
+        "providerExecuted": false,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 3365
+      },
+      {
+        "phase": "after",
+        "workflow": "clientops-relationship-intelligence",
+        "keyMode": "configured",
+        "providerExecuted": true,
+        "defectReproduced": false,
+        "resolverCompleted": true,
+        "subjectAndRunPreserved": true,
+        "usageAbsent": true,
+        "executionMs": 4106
+      }
+    ],
+    "receiptSha256": "4002544ce44963de2679df565fc804923d73bed5ee0ac0bf1493420985a6dcf2",
+    "harnessScope": "Synthetic input/context/pass-through terminal I/O; actual preparation/If/resolver/provider nodes; network disabled; no real app callback/provider credentials or provider acceptance"
+  },
+  "fullPostgres": {
+    "checkedAt": "2026-10-03T03:34:47.993Z",
+    "db": "clientops_n8n_fallback_dfc946cf",
+    "loopbackOnly": true,
+    "passed": 2578,
+    "failed": 0,
+    "skipped": 0,
+    "files": 333,
+    "elapsedMs": 419867,
+    "exitCode": 0,
+    "receiptSha256": "63a7992694fedc13764e41bde8d8c90a1ff7d85fbc92085e067f514d95c67c53",
+    "sourceSha": "294df0da81cbe9aeaaae00a05f845a360632ccac"
+  },
+  "staticChecks": [
+    {
+      "check": "types",
+      "exitCode": 0
+    },
+    {
+      "check": "runtime-types",
+      "exitCode": 0
+    },
+    {
+      "check": "lint",
+      "exitCode": 0
+    },
+    {
+      "check": "vite",
+      "exitCode": 0
+    },
+    {
+      "check": "bundles",
+      "exitCode": 0
+    }
+  ],
+  "candidateUi": {
+    "sourceSha": "ac880a8b1699e52afca005d94d06fce938cd8c38",
+    "url": "https://clientops-uat-20260930-phrntlr0k-ynwaforevers-projects.vercel.app",
+    "distinctOwnRoles": 7,
+    "distinctOwnUsers": 7,
+    "distinctOwnSessions": 7,
+    "distinctOwnCookieSets": 7,
+    "unchangedPublicTables": 54,
+    "unchangedSinceOriginalProbe": true,
+    "navigations": 21,
+    "dialogs": 7,
+    "mutationRequests": 0,
+    "externalRequests": 0,
+    "providerInvocations": 0,
+    "roles": [
+      {
+        "role": "super_admin",
+        "ownIdentityAndPersistedRole": true,
+        "surfaces": [
+          {
+            "path": "/agents",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/ai-review",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/renewals",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          }
+        ],
+        "dialog": {
+          "opened": true,
+          "notesEditable": true,
+          "aiButtonVisible": false,
+          "saveClicked": false,
+          "aiClicked": false
+        },
+        "pageErrors": 0
+      },
+      {
+        "role": "admin",
+        "ownIdentityAndPersistedRole": true,
+        "surfaces": [
+          {
+            "path": "/agents",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/ai-review",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/renewals",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          }
+        ],
+        "dialog": {
+          "opened": true,
+          "notesEditable": true,
+          "aiButtonVisible": false,
+          "saveClicked": false,
+          "aiClicked": false
+        },
+        "pageErrors": 0
+      },
+      {
+        "role": "manager",
+        "ownIdentityAndPersistedRole": true,
+        "surfaces": [
+          {
+            "path": "/agents",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/ai-review",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/renewals",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          }
+        ],
+        "dialog": {
+          "opened": true,
+          "notesEditable": true,
+          "aiButtonVisible": false,
+          "saveClicked": false,
+          "aiClicked": false
+        },
+        "pageErrors": 0
+      },
+      {
+        "role": "sales",
+        "ownIdentityAndPersistedRole": true,
+        "surfaces": [
+          {
+            "path": "/agents",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/ai-review",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/renewals",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          }
+        ],
+        "dialog": {
+          "opened": true,
+          "notesEditable": true,
+          "aiButtonVisible": false,
+          "saveClicked": false,
+          "aiClicked": false
+        },
+        "pageErrors": 0
+      },
+      {
+        "role": "client_success",
+        "ownIdentityAndPersistedRole": true,
+        "surfaces": [
+          {
+            "path": "/agents",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/ai-review",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/renewals",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          }
+        ],
+        "dialog": {
+          "opened": true,
+          "notesEditable": true,
+          "aiButtonVisible": false,
+          "saveClicked": false,
+          "aiClicked": false
+        },
+        "pageErrors": 0
+      },
+      {
+        "role": "accounting",
+        "ownIdentityAndPersistedRole": true,
+        "surfaces": [
+          {
+            "path": "/agents",
+            "loaded": true,
+            "httpStatus": 403,
+            "denied": true,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/ai-review",
+            "loaded": true,
+            "httpStatus": 403,
+            "denied": true,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/renewals",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          }
+        ],
+        "dialog": {
+          "opened": true,
+          "notesEditable": true,
+          "aiButtonVisible": false,
+          "saveClicked": false,
+          "aiClicked": false
+        },
+        "pageErrors": 0
+      },
+      {
+        "role": "read_only",
+        "ownIdentityAndPersistedRole": true,
+        "surfaces": [
+          {
+            "path": "/agents",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/ai-review",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          },
+          {
+            "path": "/renewals",
+            "loaded": true,
+            "httpStatus": 200,
+            "denied": false,
+            "hasUnrecordedUsage": false
+          }
+        ],
+        "dialog": {
+          "opened": true,
+          "notesEditable": true,
+          "aiButtonVisible": false,
+          "saveClicked": false,
+          "aiClicked": false
+        },
+        "pageErrors": 0
+      }
+    ],
+    "privateReceiptSha256": "fb9fd28c85afc0a5bf6f052f8a598e2b03bf9666368586a77a20b28bf9a6bb45"
+  },
+  "providerAcceptance": false,
+  "liveAppCallbackAcceptance": false,
+  "productionDeployed": false,
+  "cloudN8nApplied": false,
+  "newMigrations": 0,
+  "coStates": {
+    "total": 30,
+    "verifiedFixed": 19,
+    "blockedExternal": 11
+  },
+  "fixtureCleanup": {
+    "commitSha": "294df0da81cbe9aeaaae00a05f845a360632ccac",
+    "focusedPassed": 35,
+    "skipped": 0,
+    "timeoutUnchanged": true,
+    "assertionsUnchanged": true,
+    "firstFocused": {
+      "checkedAt": "2026-10-03T02:59:43.500Z",
+      "db": "clientops_n8n_fallback_fe094af9",
+      "loopbackOnly": true,
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "files": 2,
+      "elapsedMs": 63116,
+      "exitCode": 1,
+      "hookTimeoutMs": 10000,
+      "receiptSha256": "eb2d758543cf30ce3b42c536fd960919383a2d091fb4855ddef06525627f8bd3"
+    },
+    "intermediateUuidTextError": {
+      "exitCode": 1,
+      "receiptSha256": "9ec45214b96117b9921f0fe455bb94e10393204e0e551abe23bb619a4e7f5cfa"
+    },
+    "finalFocused": {
+      "checkedAt": "2026-10-03T03:05:01.974Z",
+      "db": "clientops_n8n_fallback_4ceea67d",
+      "loopbackOnly": true,
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "files": 2,
+      "elapsedMs": 11763,
+      "exitCode": 0,
+      "receiptSha256": "c0cbc4754b96cceae14ca7f67b3496d22f108adbdaa587cb1fa00ff16d9f74a4"
+    },
+    "firstFull": {
+      "abortedAfterFailure": true,
+      "configuredTestTimeoutMs": 30000,
+      "bulkPreviewFailedAtMs": 30025,
+      "logSha256": "f1fec102109c03cf606fff8364448f8f1734c9fecc2308b619e558a543caf327"
+    },
+    "candidateToFullSourceDiff": [
+      "src/server/db/__tests__/approval-recovery.integration.test.ts"
+    ]
+  },
+  "importSetupRecheck": {
+    "secondFull": {
+      "abortedAfterSetupFailure": true,
+      "casesNotExecuted": 11,
+      "observedSuiteElapsedMs": 65779,
+      "configuredSetupTimeoutMs": 60000,
+      "logSha256": "dc4a0fe10e3a37dcdcb5ecd47afbf298b61eca59708593c4d6a8b6b9d26a8792",
+      "causeEstablished": false
+    },
+    "focusedFreshDb": {
+      "checkedAt": "2026-10-03T03:26:24.238Z",
+      "db": "clientops_n8n_fallback_996f0009",
+      "loopbackOnly": true,
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "files": 1,
+      "elapsedMs": 9193,
+      "exitCode": 0,
+      "receiptSha256": "8e680ec698aadc5599ce5e9e75da3dfcd472ab64dbc6bd4f9481fb1c31effe6a"
+    },
+    "importCodeChanged": false,
+    "timeoutsChanged": false
+  },
+  "sourceHostedCi": {
+    "checkedAt": "2026-10-03T03:33:27.257Z",
+    "headSha": "294df0da81cbe9aeaaae00a05f845a360632ccac",
+    "event": "pull_request",
+    "workflows": [
+      {
+        "conclusion": "success",
+        "databaseId": 37093337989,
+        "event": "pull_request",
+        "headSha": "294df0da81cbe9aeaaae00a05f845a360632ccac",
+        "name": "Checks",
+        "status": "completed",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37093337989"
+      },
+      {
+        "conclusion": "success",
+        "databaseId": 37093337991,
+        "event": "pull_request",
+        "headSha": "294df0da81cbe9aeaaae00a05f845a360632ccac",
+        "name": "Database contract",
+        "status": "completed",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37093337991"
+      }
+    ],
+    "complete": true,
+    "success": true,
+    "postgres": {
+      "passed": 2578,
+      "files": 333,
+      "failed": 0,
+      "skipped": 0,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37093337991/job/111118138197",
+      "logSha256": "469f4a75209f383e4ccfb207faa5754c55061ce2ad9511294565d232d7ff8b1b"
+    },
+    "replay": {
+      "success": true,
+      "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37093337991/job/111118138293",
+      "logSha256": "783305db8f0fb9cf194efc375753090cfba79924989e331d76035d979a6e687f"
+    }
+  },
+  "staticCheckSources": {
+    "allFive": "ac880a8b1699e52afca005d94d06fce938cd8c38",
+    "fixtureCleanupTypesAndLint": "294df0da81cbe9aeaaae00a05f845a360632ccac",
+    "typesLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lintLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

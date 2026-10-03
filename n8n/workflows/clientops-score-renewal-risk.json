@@ -46,13 +46,44 @@
     },
     {
       "parameters": {
-        "jsCode": "const context = $input.first().json;\nconst triggerPayload = $('Validate Trigger').first().json;\nconst engagement = context.engagement ?? {};\nconst agentRunId = context.agent_run?.id ?? context.agent_run_id ?? triggerPayload.agent_run_id;\nconst touchpoints = Array.isArray(context.recent_touchpoints) ? context.recent_touchpoints : [];\nconst overdueTasks = context.open_overdue_task_count ?? 0;\nconst today = new Date().toISOString().slice(0, 10);\nconst lastTouch = touchpoints[0]?.occurred_at ?? engagement.last_touch_at ?? null;\nconst daysSinceTouch = lastTouch ? Math.floor((Date.parse(today) - Date.parse(lastTouch)) / 86400000) : null;\nconst negativeCount = touchpoints.filter((t) => t.sentiment === 'negative').length;\nlet score = 70;\nconst reasons = [];\nif (daysSinceTouch === null || daysSinceTouch > 30) { score -= 25; reasons.push(daysSinceTouch === null ? 'no touchpoint on record' : `${daysSinceTouch} days since last touch`); }\nif (negativeCount > 0) { score -= 20 * negativeCount; reasons.push(`${negativeCount} recent negative touchpoint(s)`); }\nif (overdueTasks > 0) { score -= 10 * Math.min(overdueTasks, 3); reasons.push(`${overdueTasks} overdue task(s)`); }\nscore = Math.max(0, Math.min(100, score));\nconst renewalRisk = score < 40 ? 'high' : score < 65 ? 'medium' : 'low';\nconst fallback = {\n  engagement_id: engagement.id ?? triggerPayload.engagement_id,\n  agent_run_id: agentRunId,\n  health_score: score,\n  renewal_risk: renewalRisk,\n  risk_reasoning: `Deterministic staging fallback: ${reasons.length > 0 ? reasons.join('; ') : 'no risk signals detected'}.`,\n  suggested_next_action: renewalRisk === 'high' ? 'Schedule an urgent check-in before renewal' : renewalRisk === 'medium' ? 'Schedule a check-in this month' : 'Maintain regular cadence',\n  output_summary: `Fallback renewal risk scored ${renewalRisk} (${score}/100).`,\n  confidence: 0.6,\n  model_used: 'deterministic-fallback'\n};\nconst model = $env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';\nconst openrouter_request = {\n  model,\n  messages: [\n    { role: 'system', content: 'Return only JSON matching the ClientOps renewal-risk writeback contract. Do not include markdown.' },\n    { role: 'user', content: JSON.stringify({ context, required_fields: ['engagement_id', 'agent_run_id', 'health_score', 'renewal_risk', 'risk_reasoning', 'suggested_next_action', 'confidence', 'output_summary'] }) }\n  ],\n  response_format: { type: 'json_object' }\n};\nreturn [{ json: { context, fallback, openrouter_request, openrouter_configured: Boolean($env.OPENROUTER_API_KEY) } }];"
+        "jsCode": "const context = $input.first().json;\nconst triggerPayload = $('Validate Trigger').first().json;\nconst engagement = context.engagement ?? {};\nconst agentRunId = context.agent_run?.id ?? context.agent_run_id ?? triggerPayload.agent_run_id;\nconst touchpoints = Array.isArray(context.recent_touchpoints) ? context.recent_touchpoints : [];\nconst overdueTasks = context.open_overdue_task_count ?? 0;\nconst today = new Date().toISOString().slice(0, 10);\nconst lastTouch = touchpoints[0]?.occurred_at ?? engagement.last_touch_at ?? null;\nconst daysSinceTouch = lastTouch ? Math.floor((Date.parse(today) - Date.parse(lastTouch)) / 86400000) : null;\nconst negativeCount = touchpoints.filter((t) => t.sentiment === 'negative').length;\nlet score = 70;\nconst reasons = [];\nif (daysSinceTouch === null || daysSinceTouch > 30) { score -= 25; reasons.push(daysSinceTouch === null ? 'no touchpoint on record' : `${daysSinceTouch} days since last touch`); }\nif (negativeCount > 0) { score -= 20 * negativeCount; reasons.push(`${negativeCount} recent negative touchpoint(s)`); }\nif (overdueTasks > 0) { score -= 10 * Math.min(overdueTasks, 3); reasons.push(`${overdueTasks} overdue task(s)`); }\nscore = Math.max(0, Math.min(100, score));\nconst renewalRisk = score < 40 ? 'high' : score < 65 ? 'medium' : 'low';\nconst fallback = {\n  engagement_id: engagement.id ?? triggerPayload.engagement_id,\n  agent_run_id: agentRunId,\n  health_score: score,\n  renewal_risk: renewalRisk,\n  risk_reasoning: `Deterministic staging fallback: ${reasons.length > 0 ? reasons.join('; ') : 'no risk signals detected'}.`,\n  suggested_next_action: renewalRisk === 'high' ? 'Schedule an urgent check-in before renewal' : renewalRisk === 'medium' ? 'Schedule a check-in this month' : 'Maintain regular cadence',\n  output_summary: `Fallback renewal risk scored ${renewalRisk} (${score}/100).`,\n  confidence: 0.6,\n  model_used: 'deterministic-fallback'\n};\nconst model = $env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4-6';\nconst openrouter_request = {\n  model,\n  messages: [\n    { role: 'system', content: 'Return only JSON matching the ClientOps renewal-risk writeback contract. Do not include markdown.' },\n    { role: 'user', content: JSON.stringify({ context, required_fields: ['engagement_id', 'agent_run_id', 'health_score', 'renewal_risk', 'risk_reasoning', 'suggested_next_action', 'confidence', 'output_summary'] }) }\n  ],\n  response_format: { type: 'json_object' }\n};\nreturn [{ json: { context, fallback, openrouter_request, openrouter_configured: Boolean(($env.OPENROUTER_API_KEY || '').trim()) } }];"
       },
       "id": "prepare-score-risk-fallback-ai-request",
       "name": "Prepare Fallback / AI Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "clientops-score-renewal-risk-provider-configured",
+              "leftValue": "={{$json.openrouter_configured}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "clientops-score-renewal-risk-provider-branch",
+      "name": "Provider Configured?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [770, -140]
     },
     {
       "parameters": {
@@ -121,7 +152,25 @@
     "clientops-score-renewal-risk": { "main": [[{ "node": "Validate Trigger", "type": "main", "index": 0 }]] },
     "Validate Trigger": { "main": [[{ "node": "Fetch Engagement Context", "type": "main", "index": 0 }]] },
     "Fetch Engagement Context": { "main": [[{ "node": "Prepare Fallback / AI Request", "type": "main", "index": 0 }]] },
-    "Prepare Fallback / AI Request": { "main": [[{ "node": "OpenRouter Request", "type": "main", "index": 0 }]] },
+    "Prepare Fallback / AI Request": { "main": [[{ "node": "Provider Configured?", "type": "main", "index": 0 }]] },
+    "Provider Configured?": {
+      "main": [
+        [
+          {
+            "node": "OpenRouter Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resolve Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "OpenRouter Request": { "main": [[{ "node": "Resolve Output", "type": "main", "index": 0 }]] },
     "Resolve Output": { "main": [[{ "node": "Writeback", "type": "main", "index": 0 }]] },
     "Writeback": { "main": [[{ "node": "Respond To Webhook", "type": "main", "index": 0 }]] }
