@@ -42,6 +42,7 @@ import { toSafeErrorMessage } from "@/lib/errors";
 import { formatDateTime, formatPercent, relativeTime } from "@/lib/format";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
+import { AdminError } from "@/lib/admin/errors";
 import { getStatusLabel } from "@/lib/status-labels";
 import { cn } from "@/lib/utils";
 import type { AgentDirectoryRunSummary, AiReviewRead } from "@/server-functions/agent-runs";
@@ -74,7 +75,20 @@ const approvalHistoryQuery = () =>
 export const Route = createFileRoute("/ai-review")({
   validateSearch: agentQueueSearchSchema,
   loaderDeps: ({ search }) => search,
-  loader: ({ context, deps }) => context.queryClient.ensureQueryData(aiReviewQuery(deps)),
+  loader: async ({ context, deps }) => {
+    try {
+      return await context.queryClient.ensureQueryData(aiReviewQuery(deps));
+    } catch (error) {
+      // A trusted server denial is a data-free view, avoiding an errored query during hydration.
+      // The BFF still enforces both capabilities and returns403; unrelated failures keep the boundary.
+      if (
+        error instanceof AdminError &&
+        (error.code === "FORBIDDEN" || error.code === "OUTSIDE_SCOPE")
+      )
+        return { accessDenied: true as const };
+      throw error;
+    }
+  },
   head: () => ({
     meta: [
       { title: "AI Review — Fimmick ClientOps" },
@@ -82,7 +96,7 @@ export const Route = createFileRoute("/ai-review")({
     ],
   }),
   errorComponent: AiReviewErrorState,
-  component: AiReviewPage,
+  component: AiReviewRoute,
 });
 
 /**
@@ -188,10 +202,23 @@ function agentSlug(workflowType: string | null | undefined): string | null {
 
 const DECIDE_DENIED_ID = "ai-review-decide-denied";
 
-function AiReviewPage() {
+function AiReviewRoute() {
+  const data = Route.useLoaderData();
+  if ("accessDenied" in data) {
+    return (
+      <AiReviewErrorState error={new AdminError("FORBIDDEN", "You do not have this capability")} />
+    );
+  }
+  return <AiReviewPage initialData={data} />;
+}
+
+function AiReviewPage({
+  initialData,
+}: {
+  initialData: Awaited<ReturnType<typeof getAiReviewRead>>;
+}) {
   const filters = agentQueueSearchSchema.parse(Route.useSearch?.() ?? {});
   const navigate = useNavigate({ from: Route.fullPath });
-  const initialData = Route.useLoaderData();
   const { profile } = Route.useRouteContext();
   const queryClient = useQueryClient();
   const clientNow = useClientNow();

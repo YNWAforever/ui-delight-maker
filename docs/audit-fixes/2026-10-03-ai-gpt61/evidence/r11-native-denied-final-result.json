@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-03T19:41:28.226Z",
+  "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
+  "db": "clientops_ai_gpt61_3489cd6b11",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/routes/__tests__/-ai-review-denied-loader.test.tsx",
+    "src/routes/__tests__/-ai-review-decisions.test.tsx",
+    "src/routes/__tests__/-ai-review-subject-restricted-copy.test.tsx",
+    "src/server/read-models/__tests__/agent-queues.integration.test.ts",
+    "src/lib/operations/__tests__/server-function-error-status.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-denied-final-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 57,
+  "failed": 0,
+  "skipped": 0,
+  "total": 57,
+  "files": 5,
+  "elapsedMs": 106577,
+  "reportSha256": "cc73535ab0aab900fbeaa64951c83b432f4499d7e804a8a3d06cc75ca7d26d80"
+}

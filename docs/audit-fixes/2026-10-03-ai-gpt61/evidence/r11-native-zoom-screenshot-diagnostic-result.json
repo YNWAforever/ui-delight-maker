@@ -1,0 +1,412 @@
+[
+  {
+    "role": "admin",
+    "before": {
+      "innerWidth": 712,
+      "innerHeight": 452,
+      "dpr": 2,
+      "scrollWidth": 712,
+      "scrollHeight": 1294,
+      "mainRect": {
+        "x": 0,
+        "y": 56,
+        "width": 712,
+        "height": 1238.5,
+        "top": 56,
+        "right": 712,
+        "bottom": 1294.5,
+        "left": 0
+      },
+      "headingRects": [
+        {
+          "text": "AI Review",
+          "rect": {
+            "x": 16,
+            "y": 96,
+            "width": 680,
+            "height": 32,
+            "top": 96,
+            "right": 696,
+            "bottom": 128,
+            "left": 16
+          }
+        },
+        {
+          "text": "Review queue",
+          "rect": {
+            "x": 16,
+            "y": 974.5,
+            "width": 400.0625,
+            "height": 24,
+            "top": 974.5,
+            "right": 416.0625,
+            "bottom": 998.5,
+            "left": 16
+          }
+        },
+        {
+          "text": "Proposed action",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "text": "Agent summary",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "text": "Source context",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "text": "Related record",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "text": "Reviewer notes",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "text": "Advanced",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "text": "Agent runs linked to this page",
+          "rect": {
+            "x": 16,
+            "y": 1154.5,
+            "width": 526,
+            "height": 24,
+            "top": 1154.5,
+            "right": 542,
+            "bottom": 1178.5,
+            "left": 16
+          }
+        }
+      ]
+    },
+    "after": {
+      "innerWidth": 712,
+      "innerHeight": 452,
+      "dpr": 2,
+      "scrollWidth": 712,
+      "scrollHeight": 1294,
+      "mainRect": {
+        "x": 0,
+        "y": 56,
+        "width": 712,
+        "height": 1238.5,
+        "top": 56,
+        "right": 712,
+        "bottom": 1294.5,
+        "left": 0
+      },
+      "headingRects": [
+        {
+          "text": "AI Review",
+          "rect": {
+            "x": 16,
+            "y": 96,
+            "width": 680,
+            "height": 32,
+            "top": 96,
+            "right": 696,
+            "bottom": 128,
+            "left": 16
+          }
+        },
+        {
+          "text": "Review queue",
+          "rect": {
+            "x": 16,
+            "y": 974.5,
+            "width": 400.0625,
+            "height": 24,
+            "top": 974.5,
+            "right": 416.0625,
+            "bottom": 998.5,
+            "left": 16
+          }
+        },
+        {
+          "text": "Proposed action",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "text": "Agent summary",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "text": "Source context",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "text": "Related record",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "text": "Reviewer notes",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "text": "Advanced",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          }
+        },
+        {
+          "text": "Agent runs linked to this page",
+          "rect": {
+            "x": 16,
+            "y": 1154.5,
+            "width": 526,
+            "height": 24,
+            "top": 1154.5,
+            "right": 542,
+            "bottom": 1178.5,
+            "left": 16
+          }
+        }
+      ]
+    },
+    "metrics": {
+      "layoutViewport": {
+        "pageX": 0,
+        "pageY": 0,
+        "clientWidth": 1424,
+        "clientHeight": 905
+      },
+      "visualViewport": {
+        "offsetX": 0,
+        "offsetY": 0,
+        "pageX": 0,
+        "pageY": 0,
+        "clientWidth": 1424,
+        "clientHeight": 905,
+        "scale": 1,
+        "zoom": 2
+      },
+      "contentSize": {
+        "x": 0,
+        "y": 0,
+        "width": 1424,
+        "height": 2589
+      },
+      "cssLayoutViewport": {
+        "pageX": 0,
+        "pageY": 0,
+        "clientWidth": 712,
+        "clientHeight": 452
+      },
+      "cssVisualViewport": {
+        "offsetX": 0,
+        "offsetY": 0,
+        "pageX": 0,
+        "pageY": 0,
+        "clientWidth": 712,
+        "clientHeight": 452.5,
+        "scale": 1,
+        "zoom": 2
+      },
+      "cssContentSize": {
+        "x": 0,
+        "y": 0,
+        "width": 712,
+        "height": 1294
+      }
+    },
+    "errors": [],
+    "actualZoom": 2
+  },
+  {
+    "role": "accounting",
+    "before": {
+      "innerWidth": 712,
+      "innerHeight": 452,
+      "dpr": 2,
+      "scrollWidth": 712,
+      "scrollHeight": 452,
+      "mainRect": {
+        "x": 0,
+        "y": 56,
+        "width": 712,
+        "height": 396.5,
+        "top": 56,
+        "right": 712,
+        "bottom": 452.5,
+        "left": 0
+      },
+      "headingRects": []
+    },
+    "after": {
+      "innerWidth": 712,
+      "innerHeight": 452,
+      "dpr": 2,
+      "scrollWidth": 712,
+      "scrollHeight": 452,
+      "mainRect": {
+        "x": 0,
+        "y": 56,
+        "width": 712,
+        "height": 396.5,
+        "top": 56,
+        "right": 712,
+        "bottom": 452.5,
+        "left": 0
+      },
+      "headingRects": []
+    },
+    "metrics": {
+      "layoutViewport": {
+        "pageX": 0,
+        "pageY": 0,
+        "clientWidth": 1424,
+        "clientHeight": 905
+      },
+      "visualViewport": {
+        "offsetX": 0,
+        "offsetY": 0,
+        "pageX": 0,
+        "pageY": 0,
+        "clientWidth": 1424,
+        "clientHeight": 905,
+        "scale": 1,
+        "zoom": 2
+      },
+      "contentSize": {
+        "x": 0,
+        "y": 0,
+        "width": 1424,
+        "height": 905
+      },
+      "cssLayoutViewport": {
+        "pageX": 0,
+        "pageY": 0,
+        "clientWidth": 712,
+        "clientHeight": 452
+      },
+      "cssVisualViewport": {
+        "offsetX": 0,
+        "offsetY": 0,
+        "pageX": 0,
+        "pageY": 0,
+        "clientWidth": 712,
+        "clientHeight": 452.5,
+        "scale": 1,
+        "zoom": 2
+      },
+      "cssContentSize": {
+        "x": 0,
+        "y": 0,
+        "width": 712,
+        "height": 452
+      }
+    },
+    "errors": [],
+    "actualZoom": 2
+  }
+]
