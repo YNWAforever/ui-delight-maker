@@ -57,17 +57,20 @@ import { getEffectiveAgentCatalogue } from "@/server-functions/agents-catalogue"
 
 const agentHistorySearchSchema = agentDetailSearchSchema.extend({
   page: z.coerce.number().int().min(1).default(1).catch(1),
+  runId: z.string().uuid().optional().catch(undefined),
 });
 
 const HISTORY_PAGE_SIZE = 25;
 
-const historyQuery = (workflowType: string, page: number) =>
+const historyQuery = (workflowType: string, page: number, runId?: string) =>
   routeQueryOptions({
     queryKey: crmQueryKeys.agents.section(workflowType, "history", {
       page,
       limit: HISTORY_PAGE_SIZE,
+      runId,
     }),
-    queryFn: () => getAgentHistoryPage({ data: { workflowType, page, limit: HISTORY_PAGE_SIZE } }),
+    queryFn: () =>
+      getAgentHistoryPage({ data: { workflowType, page, limit: HISTORY_PAGE_SIZE, runId } }),
   });
 
 const effectiveCatalogueQuery = () =>
@@ -93,13 +96,13 @@ const MEMORY_PREREQUISITES = [
 
 export const Route = createFileRoute("/agents/$name")({
   validateSearch: agentHistorySearchSchema,
-  loaderDeps: ({ search }) => ({ page: search.page }),
+  loaderDeps: ({ search }) => ({ page: search.page, runId: search.runId }),
   loader: async ({ context, params, deps }) => {
     const catalogue = await context.queryClient.ensureQueryData(effectiveCatalogueQuery());
     const agent = catalogue.find((item) => item.name === params.name);
     if (!agent) throw notFound();
     const history = await context.queryClient.ensureQueryData(
-      historyQuery(agent.workflow_type, deps.page),
+      historyQuery(agent.workflow_type, deps.page, deps.runId),
     );
     return { agent, history };
   },
@@ -156,7 +159,7 @@ function AgentDetail() {
   const { agent } = loaderData;
   const search = Route.useSearch();
   const { data: history } = useQuery({
-    ...historyQuery(agent.workflow_type, search.page),
+    ...historyQuery(agent.workflow_type, search.page, search.runId),
     initialData: loaderData.history,
   });
   const [originFilter, setOriginFilter] = useState<AgentDataFilter>("all");

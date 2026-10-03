@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { AgentDataScope, DemoOriginLabel } from "@/components/agents/data-scope";
-import { matchesAgentDataFilter, type AgentDataFilter } from "@/lib/agent-data-scope";
+import { agentQueueSearchSchema } from "@/lib/agent-queue-input";
+import { QueueToolbar, type QueueSearch } from "@/components/agents/queue-toolbar";
+import { DemoOriginLabel } from "@/components/agents/data-scope";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter, useNavigate } from "@tanstack/react-router";
 import { AlertTriangle, Bot, CheckCircle2, ClipboardCheck, RefreshCw, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,12 +58,10 @@ import { useApprovalReview } from "@/components/approvals/use-approval-review";
 type Approval = AiReviewRead["approvals"][number];
 type Decision = "approved" | "rejected" | "escalated";
 
-const aiReviewQueryKey = crmQueryKeys.aiReview.list({ view: "queue" });
-
-const aiReviewQuery = () =>
+const aiReviewQuery = (filters = agentQueueSearchSchema.parse({})) =>
   routeQueryOptions({
-    queryKey: aiReviewQueryKey,
-    queryFn: () => getAiReviewRead(),
+    queryKey: crmQueryKeys.aiReview.list({ view: "queue", ...filters }),
+    queryFn: () => getAiReviewRead({ data: { ...filters, queue: "approvals" } }),
   });
 
 /** A scoped aggregate, requested only for the empty queue. */
@@ -73,7 +72,9 @@ const approvalHistoryQuery = () =>
   });
 
 export const Route = createFileRoute("/ai-review")({
-  loader: ({ context }) => context.queryClient.ensureQueryData(aiReviewQuery()),
+  validateSearch: agentQueueSearchSchema,
+  loaderDeps: ({ search }) => search,
+  loader: ({ context, deps }) => context.queryClient.ensureQueryData(aiReviewQuery(deps)),
   head: () => ({
     meta: [
       { title: "AI Review — Fimmick ClientOps" },
@@ -188,24 +189,31 @@ function agentSlug(workflowType: string | null | undefined): string | null {
 const DECIDE_DENIED_ID = "ai-review-decide-denied";
 
 function AiReviewPage() {
+  const filters = agentQueueSearchSchema.parse(Route.useSearch?.() ?? {});
+  const navigate = useNavigate({ from: Route.fullPath });
   const initialData = Route.useLoaderData();
   const { profile } = Route.useRouteContext();
   const queryClient = useQueryClient();
   const clientNow = useClientNow();
-  const queueQuery = useQuery({ ...aiReviewQuery(), initialData });
+  const queueQuery = useQuery({
+    ...aiReviewQuery(filters),
+    initialData,
+    refetchInterval: 45_000,
+    refetchIntervalInBackground: false,
+  });
   const data = queueQuery.data;
-  const [originFilter, setOriginFilter] = useState<AgentDataFilter>("all");
-  const visibleFlaggedRuns = data.humanReviewRuns.filter((run) =>
-    matchesAgentDataFilter(run.is_demo, originFilter),
-  );
+  const changeFilters = (next: QueueSearch) => {
+    setSelectedId(null);
+    setNotes("");
+    void navigate({ search: next });
+  };
+  const visibleFlaggedRuns = data.humanReviewRuns;
 
   /**
-   * Approvals decided in this session, kept so the row stays where it was with its new status.
+   * Confirmed decisions decorate rows on the current server page until its next refresh.
    *
-   * The read is `where status = 'pending'`, so a decided approval disappears from the server's
-   * answer entirely. Without this the row a reviewer just acted on vanished mid-click, which
-   * reads as "did that work?" rather than as "done". The record is written here only after the
-   * server confirms, so nothing on screen is ever a status the database did not take.
+   * A refreshed open queue removes terminal rows. Session confirmations remain a separate
+   * count; they must never be appended to another page or resurrect withdrawn content.
    */
   const review = useApprovalReview({ kind: "ai-review" });
   const decided = review.confirmed;
@@ -225,7 +233,7 @@ function AiReviewPage() {
   );
 
   /**
-   * Server ordering is `created_at desc`, and re-sorting on the same key reproduces it — so a
+   * Server ordering is oldest first with id ties, and sorting on the same key reproduces it — so a
    * locally decided row keeps its position instead of jumping to an end of the list.
    */
   const queue = useMemo(() => {
@@ -256,18 +264,11 @@ function AiReviewPage() {
           : approval,
       );
     }
-    for (const [id, approval] of decided) {
-      if (!merged.has(id))
-        merged.set(id, {
-          ...approval,
-          context_data: approval.context_data ?? null,
-          subject_restricted: approval.subject_restricted === true,
-        });
-    }
-    return [...merged.values()]
-      .filter((approval) => matchesAgentDataFilter(approval.is_demo, originFilter))
-      .sort((left, right) => right.created_at.localeCompare(left.created_at));
-  }, [data.approvals, decided, originFilter]);
+    return [...merged.values()].sort(
+      (left, right) =>
+        left.created_at.localeCompare(right.created_at) || left.id.localeCompare(right.id),
+    );
+  }, [data.approvals, decided]);
 
   const pendingQueue = useMemo(
     () => queue.filter((approval) => approval.status === "pending"),
@@ -314,7 +315,8 @@ function AiReviewPage() {
   const refresh = async () => {
     setRefreshing(true);
     try {
-      await queryClient.invalidateQueries({ queryKey: aiReviewQueryKey, exact: true });
+      if (filters.cursor) changeFilters({ ...filters, cursor: undefined });
+      await queryClient.invalidateQueries({ queryKey: crmQueryKeys.aiReview.all() });
     } catch (error) {
       toast.error(toSafeErrorMessage(error, "stale"));
     } finally {
@@ -692,7 +694,7 @@ function AiReviewPage() {
       <WorkspaceHeader
         context="Acquire"
         title="AI Review"
-        description={`${totals.pending} AI-generated action${totals.pending === 1 ? "" : "s"} waiting on a human decision.`}
+        description="Accessible AI requests, filtered and ordered on the server."
         status={
           <StaleDataIndicator
             updatedAt={new Date(queueQuery.dataUpdatedAt).toISOString()}
@@ -716,33 +718,56 @@ function AiReviewPage() {
       />
 
       <div className="space-y-6 px-4 py-6 md:px-6">
-        <AgentDataScope value={originFilter} onChange={setOriginFilter} />
+        <QueueToolbar queue="approvals" value={filters} onChange={changeFilters} />
+        <p className="text-sm">
+          This page: {data.approvals.length} /{" "}
+          {data.pagination?.totalMatching ?? data.approvals.length} matching requests. Open requests
+          are ordered oldest first.
+        </p>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            disabled={!filters.cursor || queueQuery.isFetching}
+            onClick={() => changeFilters({ ...filters, cursor: undefined })}
+          >
+            First review page
+          </Button>
+          <Button
+            variant="outline"
+            disabled={!data.pagination?.nextCursor || queueQuery.isFetching}
+            onClick={() =>
+              changeFilters({ ...filters, cursor: data.pagination?.nextCursor ?? undefined })
+            }
+          >
+            Next review page
+          </Button>
+        </div>
         <MetricStrip
           metrics={[
             {
               id: "pending",
               label: "Waiting approval",
               value: totals.pending,
-              hint: "AI actions in this queue",
+              hint: "pending requests on this page",
               tone: totals.pending > 0 ? "warning" : "neutral",
             },
             {
               id: "flagged",
               label: "Flagged runs",
               value: totals.flaggedRuns,
-              hint: "agent outputs marked for review",
+              hint: "runs linked to this page",
             },
             {
               id: "confidence",
               label: "Avg confidence",
               value: formatPercent(totals.avgConfidence),
-              hint: "across flagged runs",
+              hint: "across this page's linked runs",
             },
             {
               id: "decided-here",
               label: "Decided in this session",
               value: totals.decidedHere,
-              hint: "still listed below",
+              hint: "confirmed in this session",
             },
           ]}
           columns={4}
@@ -751,8 +776,12 @@ function AiReviewPage() {
         {!hasQueue ? (
           <EmptyWorkspaceState
             icon={CheckCircle2}
-            title="No work needs attention"
-            description={emptyStateDescription(lastReviewedQuery.isPending, lastReviewedAt)}
+            title="No matching requests on this page"
+            description={
+              filters.cursor
+                ? "Queue states have changed. Refresh starts from the first page."
+                : emptyStateDescription(lastReviewedQuery.isPending, lastReviewedAt)
+            }
             action={
               <Button size="sm" variant="outline" asChild>
                 <Link to="/agents">Open AI Ops</Link>
@@ -820,12 +849,12 @@ function AiReviewPage() {
         {visibleFlaggedRuns.length > 0 && (
           <section className="space-y-3">
             <SectionHeader
-              title="Flagged agent runs"
-              description="Runs the agents marked for human review. Read-only — a run is decided through the approval it raised."
+              title="Agent runs linked to this page"
+              description="Read-only summaries for this review page. A run is decided through its approval."
             />
             <Card>
               <ul className="divide-y divide-border">
-                {visibleFlaggedRuns.slice(0, FLAGGED_RUN_LIMIT).map((run) => {
+                {visibleFlaggedRuns.map((run) => {
                   const slug = agentSlug(run.workflow_type);
                   return (
                     <li key={run.id} className="flex flex-wrap items-center gap-3 p-4 text-sm">
@@ -835,6 +864,7 @@ function AiReviewPage() {
                           <Link
                             to="/agents/$name"
                             params={{ name: slug }}
+                            search={{ runId: run.id, page: 1 }}
                             className="hover:underline"
                           >
                             {run.agent_name}
@@ -858,12 +888,6 @@ function AiReviewPage() {
                 })}
               </ul>
             </Card>
-            {visibleFlaggedRuns.length > FLAGGED_RUN_LIMIT && (
-              <p className="text-xs text-muted-foreground">
-                Showing {FLAGGED_RUN_LIMIT} of {visibleFlaggedRuns.length} flagged runs. The full
-                history for one agent is on its page in AI Ops.
-              </p>
-            )}
           </section>
         )}
       </div>
@@ -908,8 +932,6 @@ function AiReviewPage() {
     </>
   );
 }
-
-const FLAGGED_RUN_LIMIT = 8;
 
 const RECORD_NOUN: Record<LinkedRecord["kind"], string> = {
   quote: "Quote",

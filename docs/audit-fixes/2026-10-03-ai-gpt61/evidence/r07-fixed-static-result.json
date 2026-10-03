@@ -1,0 +1,47 @@
+[
+  {
+    "command": [
+      "bun",
+      "run",
+      "typecheck"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 47354,
+    "sourceSha": "ea944d42fd667c3f717775d53e2c8d0fc69c4424"
+  },
+  {
+    "command": [
+      "bunx",
+      "eslint",
+      "src/lib/query-keys.ts",
+      "src/routes/__tests__/-ai-review-decisions.test.tsx",
+      "src/routes/__tests__/-ai-review-subject-restricted-copy.test.tsx",
+      "src/routes/agents.$name.tsx",
+      "src/routes/agents.tsx",
+      "src/routes/ai-review.tsx",
+      "src/server-functions/__tests__/agent-runs-performance.test.ts",
+      "src/server-functions/agent-runs.ts",
+      "src/server/db/__tests__/authorization-surface.test.ts",
+      "src/server/read-models/agent-workspaces.ts",
+      "src/components/agents/__tests__/queue-navigation.test.tsx",
+      "src/components/agents/queue-toolbar.tsx",
+      "src/components/agents/run-queue-panel.tsx",
+      "src/lib/agent-queue-input.ts",
+      "src/server/read-models/__tests__/agent-queues.integration.test.ts",
+      "src/server/read-models/agent-queues.ts"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 9986,
+    "sourceSha": "ea944d42fd667c3f717775d53e2c8d0fc69c4424"
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 227,
+    "sourceSha": "ea944d42fd667c3f717775d53e2c8d0fc69c4424"
+  }
+]

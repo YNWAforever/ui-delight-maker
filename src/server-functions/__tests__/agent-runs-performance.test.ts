@@ -155,7 +155,8 @@ describe("agent operational read models", () => {
   it("requires approval and agent visibility for the single AI review read", async () => {
     const { getAiReviewRead } = await loadModule();
     mocks.query
-      .mockResolvedValueOnce([{ id: "approval-1", context_data: {} }])
+      .mockResolvedValueOnce([{ count: "1" }])
+      .mockResolvedValueOnce([{ id: "approval-1", agent_run_id: "run-1", context_data: {} }])
       .mockResolvedValueOnce([{ id: "run-1", confidence_score: 0.42 }]);
 
     const result = await getAiReviewRead({});
@@ -165,6 +166,8 @@ describe("agent operational read models", () => {
     // optional so the read model can redact each run's content per row without a second load.
     expect(mocks.requirePageAuthorization).toHaveBeenCalledWith(["approvals.view", "agents.view"], {
       optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+      context: expect.any(Object),
+      cacheRowOwners: true,
     });
     expect(mocks.requirePageAuthorization.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.query.mock.invocationCallOrder[0],
@@ -172,6 +175,30 @@ describe("agent operational read models", () => {
     expect(result).toMatchObject({
       approvals: [{ id: "approval-1" }],
       humanReviewRuns: [{ id: "run-1", confidence_score: 0.42 }],
+      pagination: { totalMatching: 1, limit: 25 },
     });
+    expect(mocks.query).toHaveBeenCalledTimes(3);
+  });
+  it("deep link counts and loads the exact workflow run rather than the latest page", async () => {
+    const { getAgentHistoryPage } = await loadModule();
+    const runId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    mocks.query
+      .mockResolvedValueOnce([{ total: 1 }])
+      .mockResolvedValueOnce([{ id: runId, input_data: {}, output_data: {} }])
+      .mockResolvedValueOnce([{ runs_24h: 2, avg_confidence: 0.8 }]);
+    const result = await getAgentHistoryPage({
+      data: { workflowType: "qualify_lead", runId, page: 1, limit: 25 },
+    });
+    expect(mocks.query).toHaveBeenNthCalledWith(1, expect.stringContaining("id=$2::uuid"), [
+      "qualify_lead",
+      runId,
+    ]);
+    expect(mocks.query).toHaveBeenNthCalledWith(2, expect.stringContaining("id=$4::uuid"), [
+      "qualify_lead",
+      25,
+      0,
+      runId,
+    ]);
+    expect(result.items[0].id).toBe(runId);
   });
 });

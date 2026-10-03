@@ -139,6 +139,7 @@ export type AgentDirectoryRead = {
 
 /** Already normalized by the route's validator — see normalizeAgentHistoryInput. */
 export type AgentHistoryPageInput = {
+  runId?: string;
   workflowType?: string;
   /** Deprecated callers must resolve through the explicit compatibility map. */
   agent?: string;
@@ -252,7 +253,7 @@ function weightedConfidence(rows: AgentAggregateRow[]) {
  * one row without touching its neighbours of the same subject type, which a capability-only
  * check can never express.
  */
-function redactDirectoryRun<T extends AgentRunSummary>(
+export function redactDirectoryRun<T extends AgentRunSummary>(
   run: T,
   decide: SubjectDecision,
 ): Omit<T, "subject_type" | "subject_id" | "output_summary"> & {
@@ -476,8 +477,9 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
   if (!workflowType || !AGENT_DEFINITIONS.some((agent) => agent.workflow_type === workflowType))
     throw new Error("Known workflow type is required");
   const countRows = await query<CountRow>(
-    "select count(*)::int as total from agent_runs where workflow_type = $1",
-    [workflowType],
+    "select count(*)::int as total from agent_runs where workflow_type = $1" +
+      (input.runId ? " and id=$2::uuid" : ""),
+    input.runId ? [workflowType, input.runId] : [workflowType],
   );
   const total = Number(countRows[0]?.total ?? 0);
   const lastPage = Math.max(1, Math.ceil(total / input.limit));
@@ -492,11 +494,13 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
           human_review_required, outcome_code, retry_of, recovery_reason, recovered_at,
           created_at, updated_at
         from agent_runs
-        where workflow_type = $1
+        where workflow_type = $1 ${input.runId ? "and id=$4::uuid" : ""}
         order by created_at desc, id desc
         limit $2 offset $3
       `,
-      [workflowType, input.limit, offset],
+      input.runId
+        ? [workflowType, input.limit, offset, input.runId]
+        : [workflowType, input.limit, offset],
     ),
     query<{ runs_24h: number | string; avg_confidence: number | string | null }>(
       `

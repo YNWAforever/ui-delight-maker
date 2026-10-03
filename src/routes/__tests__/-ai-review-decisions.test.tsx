@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { agentQueueSearchSchema } from "@/lib/agent-queue-input";
 import { crmQueryKeys } from "@/lib/query-keys";
 import type { SerializableHumanApproval } from "@/lib/serializable";
 
@@ -50,6 +51,7 @@ vi.mock("@tanstack/react-router", () => ({
     useLoaderData: vi.fn(),
     useRouteContext: vi.fn(),
   }),
+  useNavigate: () => vi.fn(),
   useRouter: () => ({ invalidate: routerInvalidateMock }),
   Link: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
 }));
@@ -106,7 +108,7 @@ const secondApproval = approval({
   requested_by: "Quote Draft Agent",
   context_data: { lead_id: "lead-2" },
   context_summary: "15% discount on renewal",
-  created_at: "2026-08-01T09:00:00.000Z",
+  created_at: "2026-08-03T09:00:00.000Z",
 });
 
 const quoteSend = approval({
@@ -388,7 +390,7 @@ describe("an empty queue", () => {
     getLastReviewedAtMock.mockResolvedValue("2026-08-01T08:15:00.000Z");
     renderQueue([], { runs: [] });
 
-    expect(screen.getByText("No work needs attention")).toBeTruthy();
+    expect(screen.getByText("No matching requests on this page")).toBeTruthy();
     await waitFor(() => expect(screen.getByText(/Last reviewed 01 Aug 2026, 16:15/)).toBeTruthy());
   });
 
@@ -416,6 +418,20 @@ describe("the raw agent payload", () => {
 });
 
 describe("shared confirmed AI Review contract", () => {
+  it("refresh removes a confirmed terminal row without adding it to a different server page", async () => {
+    const { queryClient } = renderQueue([approval()]);
+    await confirmDecision(/^Approve$/, /^Approve$/);
+    await waitFor(() => expect(tableRowText()[0]).toContain("Approved"));
+    await act(async () => {
+      queryClient.setQueryData(
+        crmQueryKeys.aiReview.list({ view: "queue", ...agentQueueSearchSchema.parse({}) }),
+        { approvals: [secondApproval], humanReviewRuns: [] },
+      );
+    });
+    await waitFor(() => expect(tableRowText()).toHaveLength(1));
+    expect(tableRowText()[0]).toContain("Discount");
+    expect(tableRowText()[0]).not.toContain("Message send");
+  });
   it("keeps status and existing notes unchanged before success at version7", async () => {
     const pending = deferred<SerializableHumanApproval>();
     decideApprovalMock.mockReturnValue(pending.promise);
@@ -426,7 +442,7 @@ describe("shared confirmed AI Review contract", () => {
     expect(tableRowText()[0]).toContain("Waiting approval");
     expect(
       queryClient.getQueryData<{ approvals: SerializableHumanApproval[] }>(
-        crmQueryKeys.aiReview.list({ view: "queue" }),
+        crmQueryKeys.aiReview.list({ view: "queue", ...agentQueueSearchSchema.parse({}) }),
       )?.approvals[0],
     ).toEqual(old);
     expect(decideApprovalMock.mock.calls[0][0].data.expectedVersion).toBe(7);
@@ -452,10 +468,13 @@ describe("shared confirmed AI Review contract", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(decideApprovalMock).not.toHaveBeenCalled();
     await act(async () => {
-      queryClient.setQueryData(crmQueryKeys.aiReview.list({ view: "queue" }), {
-        approvals: [approval({ context_summary: "Fresh approval version7" })],
-        humanReviewRuns: [run],
-      });
+      queryClient.setQueryData(
+        crmQueryKeys.aiReview.list({ view: "queue", ...agentQueueSearchSchema.parse({}) }),
+        {
+          approvals: [approval({ context_summary: "Fresh approval version7" })],
+          humanReviewRuns: [run],
+        },
+      );
     });
     await screen.findAllByText("Fresh approval version7");
     await confirmDecision(/^Approve$/, /^Approve$/);

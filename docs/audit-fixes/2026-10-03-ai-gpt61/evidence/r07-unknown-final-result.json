@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T10:01:35.878Z",
+  "sourceSha": "ea944d42fd667c3f717775d53e2c8d0fc69c4424",
+  "db": "clientops_ai_gpt61_4716f34611",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/read-models/__tests__/agent-queues.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r07-unknown-final-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 12,
+  "failed": 0,
+  "skipped": 0,
+  "total": 12,
+  "files": 1,
+  "elapsedMs": 2216,
+  "reportSha256": "c77ffd1b5465066b1d479bc41f89c6e469b5a2945cf5913240f88083ca771eb2"
+}
