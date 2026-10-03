@@ -1,0 +1,89 @@
+{
+  "checkedAt": "2026-10-03T20:57:54.112Z",
+  "sha": "a58b716f67edbd7d3760fbb7821ad5cdea50ae98",
+  "sourceDatabase": "clientops_ai_uat_843cdc77175546ddbad0417b36ac845a",
+  "targetDatabase": "clientops_ai_uat_fc3fea0f3e19444b9effedde45b32875",
+  "sourceAllTablesUnchanged": true,
+  "verifiedTableCount": 56,
+  "sourceTableSnapshotSha256": "2ea1f6386a0527176903dd1f182bd0eaa83aed60196fae67bcb765acf3f32072",
+  "agentConstraintsFullyValidatedAndUnchanged": true,
+  "deltas": [
+    {
+      "table": "human_approvals",
+      "baseline": 1,
+      "after": 8,
+      "delta": 7
+    },
+    {
+      "table": "approval_message_handoffs",
+      "baseline": 0,
+      "after": 3,
+      "delta": 3
+    },
+    {
+      "table": "agent_runs",
+      "baseline": 135,
+      "after": 138,
+      "delta": 3
+    },
+    {
+      "table": "quotes",
+      "baseline": 1,
+      "after": 4,
+      "delta": 3
+    },
+    {
+      "table": "quote_versions",
+      "baseline": 0,
+      "after": 2,
+      "delta": 2
+    },
+    {
+      "table": "command_receipts",
+      "baseline": 95,
+      "after": 106,
+      "delta": 11
+    },
+    {
+      "table": "activity_logs",
+      "baseline": 97,
+      "after": 106,
+      "delta": 9
+    }
+  ],
+  "cases": [
+    {
+      "role": "super_admin",
+      "messageDecision": "approved",
+      "handoff": "manual_send_recorded",
+      "quoteStatus": "sent",
+      "issued": true,
+      "actualDeliveryVerified": false
+    },
+    {
+      "role": "admin",
+      "messageDecision": "approved",
+      "handoff": "manual_send_recorded",
+      "quoteStatus": "sent",
+      "issued": true,
+      "actualDeliveryVerified": false
+    },
+    {
+      "role": "manager",
+      "messageDecision": "approved",
+      "handoff": "manual_send_recorded",
+      "quoteStatus": "approved",
+      "issued": false,
+      "actualDeliveryVerified": false
+    }
+  ],
+  "foreignApprovalStillPending": true,
+  "network": {
+    "requests": 227,
+    "authReads": 267,
+    "unexpectedOutbound": 0,
+    "providerCalls": 0
+  },
+  "productionAccess": false,
+  "actualDeliveryVerified": false
+}

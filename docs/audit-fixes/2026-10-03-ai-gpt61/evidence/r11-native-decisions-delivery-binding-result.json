@@ -1,0 +1,196 @@
+{
+  "recordedAt": "2026-10-03T20:59:40.559Z",
+  "executionSha": "a58b716f67edbd7d3760fbb7821ad5cdea50ae98",
+  "codeVerifiedCommit": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
+  "sourceTrees": {
+    "src": "c535e19c6128737c7dbf5d63d4b1b26b78a6f3e2",
+    "neon": "a45443f775b7e65d42dc31259f33b48b73e1c527",
+    "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
+    "scripts": "ecca3b87db60afb06f23d74fb5c24aa09a48e639"
+  },
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "b0532e35fd2633cd62dd88a418c37bad5aec815a3d0b980d0ad1977327a95f46",
+  "currentServerEntryHashMatches": true,
+  "applicationSourceUnchanged": true,
+  "migrationsAndWorkersAnd24hGuardUnchanged": true,
+  "receipts": [
+    {
+      "path": "evidence/r11-native-decisions-result.json",
+      "sha256": "7d59f05360f4cfa5f6fa1248707d5f6fa408cd8291191ae6c1e85db6879dc7ac"
+    },
+    {
+      "path": "evidence/r11-native-decisions-targeted-result.json",
+      "sha256": "b5fc36134b257e3f03ea037f8a386b89f139c586278dbb3e98159452415d6595"
+    },
+    {
+      "path": "evidence/r11-native-decisions-integrity-result.json",
+      "sha256": "4e9d76f662cd67c21827349f21364873e6e27f2ea5cba59002edcf3d4ab93d5a"
+    },
+    {
+      "path": "evidence/r11-native-decisions-screenshot-result.json",
+      "sha256": "b4aebbf65803b2f0dc10f2fbc5826def171c7c538e0410561340d91759143240"
+    },
+    {
+      "path": "evidence/r11-native-decisions-gutcheck-result.json",
+      "sha256": "e70daaba944a0a037558e2b603b800bc566159ce1c149a6792988aca13ea4e17"
+    },
+    {
+      "path": "evidence/r11-native-decisions-build-result.json",
+      "sha256": "6d7fb6d8d7c539afe86bb61f34bd4ae7a7d50c4ea0a71e885857a932ce1d8294"
+    }
+  ],
+  "publishedRunnerSources": [
+    {
+      "path": "evidence/r11-native-decisions-runner.source.txt",
+      "sha256": "87b26fff5bcfdd4606c0359bbbbe376cf850796796d521a6e95a6dab309c3af2"
+    },
+    {
+      "path": "evidence/r11-native-decisions-screenshot-runner.source.txt",
+      "sha256": "119b5bf901490f7429543c4a10fa8b54e6365e96cc77a8fd07c65a8cb06ba97b"
+    },
+    {
+      "path": "evidence/r11-native-decisions-integrity-runner.source.txt",
+      "sha256": "e76d3c13c517d10093e8b0074e0e748f98063094c3414a5d21b2d88db2cbe5a6"
+    },
+    {
+      "path": "evidence/r11-native-decisions-runtime.source.txt",
+      "sha256": "803faee5bf33bde63cc1d432ffba32049e6191841baf0f06c3a4d7ce10106f29"
+    }
+  ],
+  "screenshots": [
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-super_admin-manual1440.png",
+      "sha256": "9767a233697fceff5d5b7c670035f1566e30dcca50d175bc6a11ce3d2955e421",
+      "superseded": true
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-super_admin-quote390.png",
+      "sha256": "07c14867be2778896a04c4050c620fea4667ca4942873ab41b43e32e67430acc",
+      "superseded": false
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-admin-manual1440.png",
+      "sha256": "515105a3a55eb8063e9ce5d0c0cce443862c3597992ed1f50ecc58cdb9628b9c",
+      "superseded": true
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-admin-quote390.png",
+      "sha256": "23552dd5f75d4201b17b7b6aaa668931f9eeec925fcbc6c5ef2fd335c18b2258",
+      "superseded": false
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-manager-manual1440.png",
+      "sha256": "92c3cdf323132d499048a6062b9d6d5aecf806ce845bac4c80e5b380b153924b",
+      "superseded": true
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-manager-approved-unissued390.png",
+      "sha256": "a1391b184db53f70d31dd7d19dd1764460f07d202fe9c099ac2c6258f7e9121c",
+      "superseded": false
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-sales-readonly390.png",
+      "sha256": "9c8ff65a073df064321a3f03494ae4ff98498700151fc8bb41ee15c7fb5e2154",
+      "superseded": false
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-client_success-readonly390.png",
+      "sha256": "e6819938c9e77696bf0c2d4625ac518bfb1b2554fc931e6257faf2c3cfbcab0e",
+      "superseded": false
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-accounting-readonly390.png",
+      "sha256": "6bdc2ba52dda1159ffca75110f05c7f62f4fe373441a0ecd6369d473f87887a1",
+      "superseded": false
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-read_only-readonly390.png",
+      "sha256": "84fb8673f79cdc318eaf9dfa73cb380752a05dd473d980c19249b2ebf0ed3853",
+      "superseded": false
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-super_admin-manual-final1440.png",
+      "sha256": "5e72b6b029e6f606d599bc93010893efa45746380e3b1bf49dc6f9567fa9fb8d",
+      "superseded": false
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-admin-manual-final1440.png",
+      "sha256": "1318bf3902cbc182ee147b8ed47649268bbeaa042fa50413197b319a7db6683b",
+      "superseded": false
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-manager-manual-final1440.png",
+      "sha256": "7c2d5eb2e13c5eec4693f7a962cbcf91fdffe0267aa0c7eb71b7827a3d56172f",
+      "superseded": false
+    }
+  ],
+  "screenshotAcceptance": "Final CDP manual captures supersede cropped fullPage manual captures; mobile quote/terminal captures retained",
+  "commands": {
+    "gutcheck": "node .clientops-perf/ai-gpt61-20261003/r11-native-decisions-gutcheck.private.mjs",
+    "native": "node .clientops-perf/ai-gpt61-20261003/r11-native-decisions.private.mjs",
+    "screenshots": "node .clientops-perf/ai-gpt61-20261003/r11-native-decisions-screenshots.private.mjs",
+    "integrity": "node .clientops-perf/ai-gpt61-20261003/r11-native-decisions-integrity.private.mjs",
+    "targeted": [
+      "bunx",
+      "vitest",
+      "run",
+      "src/server/db/__tests__/approval-command.integration.test.ts",
+      "src/server/db/__tests__/quote-lifecycle-atomic.integration.test.ts",
+      "src/server/db/__tests__/quote-immutability.integration.test.ts",
+      "src/components/approvals/__tests__/use-approval-review.test.tsx",
+      "src/routes/__tests__/-approvals-irreversible.test.tsx",
+      "src/routes/__tests__/-quote-effective-actions.test.tsx",
+      "--no-file-parallelism",
+      "--testTimeout=30000",
+      "--reporter=default",
+      "--reporter=json",
+      "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-decisions-targeted-vitest.private.json"
+    ],
+    "buildGates": [
+      [
+        "bunx",
+        "vite",
+        "build"
+      ],
+      [
+        "bun",
+        "run",
+        "performance:bundles"
+      ],
+      [
+        "bun",
+        "run",
+        "test:browser-collector"
+      ],
+      [
+        "git",
+        "diff",
+        "--check"
+      ]
+    ]
+  },
+  "native": {
+    "exitCode": 0,
+    "passed": 79,
+    "failed": 0,
+    "skipped": 0,
+    "roles": 7,
+    "authMocks": 0,
+    "databaseResultMocks": 0,
+    "resumeUsed": false
+  },
+  "targeted": {
+    "exitCode": 0,
+    "passed": 103,
+    "failed": 0,
+    "skipped": 0,
+    "files": 6
+  },
+  "originalZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
+  "privateCredentialsPublished": false,
+  "productionAccess": false,
+  "actualDeliveryVerified": false,
+  "providerCalls": 0,
+  "releaseDecision": "NO-GO",
+  "finalHeadBinding": "This evidence-only commit retains these source trees; fresh exact-head Actions IDs/HEAD recorded on draft176 after push"
+}

@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-10-03T20:54:05.503Z",
+  "sha": "a58b716f67edbd7d3760fbb7821ad5cdea50ae98",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "status": 200,
+  "hasContent": true,
+  "inputCount": 2,
+  "overlayCount": 0,
+  "errors": [],
+  "screenshotSha256": "c52ac25514d08841c1007b0b2c3b4b535a1b7cbece3110e4bf123f44b254edb5",
+  "tool": "existing Playwright Chromium; agent-browser CLI unavailable",
+  "productionAccess": false
+}

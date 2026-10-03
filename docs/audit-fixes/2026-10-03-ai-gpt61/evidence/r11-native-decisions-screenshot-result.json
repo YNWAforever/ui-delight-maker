@@ -1,0 +1,76 @@
+{
+  "checkedAt": "2026-10-03T20:57:08.919Z",
+  "sha": "a58b716f67edbd7d3760fbb7821ad5cdea50ae98",
+  "serverEntrySha256": "b0532e35fd2633cd62dd88a418c37bad5aec815a3d0b980d0ad1977327a95f46",
+  "passed": true,
+  "captures": [
+    {
+      "role": "super_admin",
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-super_admin-manual-final1440.png",
+      "screenshotSha256": "5e72b6b029e6f606d599bc93010893efa45746380e3b1bf49dc6f9567fa9fb8d",
+      "pixelWidth": 1440,
+      "pixelHeight": 1000,
+      "bounds": {
+        "x": 928,
+        "y": 0,
+        "width": 512,
+        "height": 1000
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 1000,
+        "scrollWidth": 1440
+      },
+      "domUnchanged": true,
+      "capture": "CDP device viewport, captureBeyondViewport false; animations settled",
+      "supersedes": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-super_admin-manual1440.png"
+    },
+    {
+      "role": "admin",
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-admin-manual-final1440.png",
+      "screenshotSha256": "1318bf3902cbc182ee147b8ed47649268bbeaa042fa50413197b319a7db6683b",
+      "pixelWidth": 1440,
+      "pixelHeight": 1000,
+      "bounds": {
+        "x": 928,
+        "y": 0,
+        "width": 512,
+        "height": 1000
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 1000,
+        "scrollWidth": 1440
+      },
+      "domUnchanged": true,
+      "capture": "CDP device viewport, captureBeyondViewport false; animations settled",
+      "supersedes": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-admin-manual1440.png"
+    },
+    {
+      "role": "manager",
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-manager-manual-final1440.png",
+      "screenshotSha256": "7c2d5eb2e13c5eec4693f7a962cbcf91fdffe0267aa0c7eb71b7827a3d56172f",
+      "pixelWidth": 1440,
+      "pixelHeight": 1000,
+      "bounds": {
+        "x": 928,
+        "y": 0,
+        "width": 512,
+        "height": 1000
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 1000,
+        "scrollWidth": 1440
+      },
+      "domUnchanged": true,
+      "capture": "CDP device viewport, captureBeyondViewport false; animations settled",
+      "supersedes": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-manager-manual1440.png"
+    }
+  ],
+  "errors": [],
+  "productMutation": false,
+  "reason": "Playwright fullPage captures crop the sheet; CDP viewport capture preserves actual native DOM",
+  "providerCalls": 0,
+  "productionAccess": false
+}

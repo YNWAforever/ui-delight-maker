@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-10-03T20:05:18.773Z",
+  "recordedAt": "2026-10-03T21:02:40.229Z",
   "kind": "reviewable candidate; not production release",
   "releaseDecision": "NO-GO",
   "app": {
@@ -373,6 +373,13 @@
       "files": 5,
       "elapsedMs": 106577,
       "reportSha256": "cc73535ab0aab900fbeaa64951c83b432f4499d7e804a8a3d06cc75ca7d26d80"
+    },
+    "uc06Target": {
+      "passed": 103,
+      "failed": 0,
+      "skipped": 0,
+      "files": 6,
+      "receipt": "evidence/r11-native-decisions-targeted-result.json"
     }
   },
   "migrations": [
@@ -583,7 +590,42 @@
       "previousReviewChecks": 14,
       "previousPhaseSourceBinding": "evidence/r11-native-delivery-binding-result.json",
       "providerCalls": 0,
-      "productionAccess": false
+      "productionAccess": false,
+      "nativeApprovalActions": {
+        "executionSha": "a58b716f67edbd7d3760fbb7821ad5cdea50ae98",
+        "codeVerifiedCommit": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
+        "sourceBinding": "evidence/r11-native-decisions-delivery-binding-result.json",
+        "receipt": "evidence/r11-native-decisions-result.json",
+        "nativeChecksPassed": 79,
+        "nativeChecksFailed": 0,
+        "nativeChecksSkipped": 0,
+        "distinctLiveIdentities": 7,
+        "distinctSessions": 7,
+        "distinctCookieSets": 7,
+        "actualSSR": true,
+        "actualNeonDriver": true,
+        "actualLoopbackPostgres17": true,
+        "syntheticOnly": true,
+        "originalUatAll56TablesUnchanged": true,
+        "originalKeyReplayAdditionalWrites": 0,
+        "managerIssue": "disabled and same-origin403; quote approved/unissued",
+        "terminal": "new key/current expectedVersion409; zero writes",
+        "manualStatement": "synthetic operator statement only; UI explicitly not delivery receipt",
+        "issuedVersions": 2,
+        "targetTests": {
+          "passed": 103,
+          "failed": 0,
+          "skipped": 0,
+          "files": 6,
+          "receipt": "evidence/r11-native-decisions-targeted-result.json"
+        },
+        "screenshots": "evidence/r11-native-decisions-screenshot-result.json",
+        "integrity": "evidence/r11-native-decisions-integrity-result.json",
+        "actualDeliveryVerified": false,
+        "providerCalls": 0,
+        "productionAccess": false,
+        "externalAcceptance": "blocked; true provider/delivery/cloud candidate/manual AT/owner/release gates remain"
+      }
     },
     "cloudCandidate": {
       "observedAt": "2026-10-03T12:24:33.068Z",
@@ -921,6 +963,49 @@
     },
     "nativeZoom": "evidence/r11-native-zoom-roles-result.json",
     "nativeDetailBoundary": "evidence/r11-native-boundary-unknown-result.json",
-    "nativeDetailBoundaryChecksPassed": 27
+    "nativeDetailBoundaryChecksPassed": 27,
+    "nativeApprovalActions": {
+      "executionSha": "a58b716f67edbd7d3760fbb7821ad5cdea50ae98",
+      "codeVerifiedCommit": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
+      "sourceBinding": "evidence/r11-native-decisions-delivery-binding-result.json",
+      "receipt": "evidence/r11-native-decisions-result.json",
+      "nativeChecksPassed": 79,
+      "nativeChecksFailed": 0,
+      "nativeChecksSkipped": 0,
+      "distinctLiveIdentities": 7,
+      "distinctSessions": 7,
+      "distinctCookieSets": 7,
+      "actualSSR": true,
+      "actualNeonDriver": true,
+      "actualLoopbackPostgres17": true,
+      "syntheticOnly": true,
+      "originalUatAll56TablesUnchanged": true,
+      "originalKeyReplayAdditionalWrites": 0,
+      "managerIssue": "disabled and same-origin403; quote approved/unissued",
+      "terminal": "new key/current expectedVersion409; zero writes",
+      "manualStatement": "synthetic operator statement only; UI explicitly not delivery receipt",
+      "issuedVersions": 2,
+      "targetTests": {
+        "passed": 103,
+        "failed": 0,
+        "skipped": 0,
+        "files": 6,
+        "receipt": "evidence/r11-native-decisions-targeted-result.json"
+      },
+      "screenshots": "evidence/r11-native-decisions-screenshot-result.json",
+      "integrity": "evidence/r11-native-decisions-integrity-result.json",
+      "actualDeliveryVerified": false,
+      "providerCalls": 0,
+      "productionAccess": false,
+      "externalAcceptance": "blocked; true provider/delivery/cloud candidate/manual AT/owner/release gates remain"
+    },
+    "actionAcceptanceSourceSha": "a58b716f67edbd7d3760fbb7821ad5cdea50ae98",
+    "actionTargetTests": {
+      "passed": 103,
+      "failed": 0,
+      "skipped": 0,
+      "files": 6,
+      "receipt": "evidence/r11-native-decisions-targeted-result.json"
+    }
   }
 }

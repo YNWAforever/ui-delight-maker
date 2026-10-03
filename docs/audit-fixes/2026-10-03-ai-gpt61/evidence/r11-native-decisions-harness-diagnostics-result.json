@@ -1,0 +1,59 @@
+{
+  "checkedAt": "2026-10-03T20:59:39.544Z",
+  "executionSha": "a58b716f67edbd7d3760fbb7821ad5cdea50ae98",
+  "diagnostics": [
+    {
+      "kind": "fixture prepare SQL42703: wrong quote column, rolled back; no product test",
+      "path": ".clientops-perf/ai-gpt61-20261003/r11-native-decisions-prepare-initial.private.mjs",
+      "sha256": "07460e0d064a2b623e56e29a2af656fae0f9fce4176e551f84bf6686f7e0a624",
+      "productRed": false
+    },
+    {
+      "kind": "harness snapshot SQL42P01: wrong activity table; no native writes",
+      "path": ".clientops-perf/ai-gpt61-20261003/r11-native-decisions-initial.private.mjs",
+      "sha256": "1a4e6586248185120fd8d9b3b093bb1e1aea9c01e8b00c3bbaa3485ae6ec8ff3",
+      "productRed": false
+    },
+    {
+      "kind": "harness calls native Response.status as function; first decision saved, raw replay context retained",
+      "path": ".clientops-perf/ai-gpt61-20261003/r11-native-decisions-initial-result.private.json",
+      "sha256": "d7353aa78568c6542f2e4d28e8ef0978e8a4234488542219767eb0fa6f34309c",
+      "productRed": false
+    },
+    {
+      "kind": "harness queried dynamic handoff before it loaded; prior decision retained",
+      "path": ".clientops-perf/ai-gpt61-20261003/r11-native-decisions-second-result.private.json",
+      "sha256": "76533dad58b1d5773866b86acf2f88296887325a991bd3cd0f0e8d90794698d4",
+      "productRed": false
+    },
+    {
+      "kind": "harness fills dialog-background input instead of accessible dialog textbox; corrected diagnostic confirms native input works",
+      "path": ".clientops-perf/ai-gpt61-20261003/r11-native-decisions-third-result.private.json",
+      "sha256": "3f029a1a3d5cfc56ed488003051dbef95ca0748b89a580f8a203d345e6064623",
+      "productRed": false
+    },
+    {
+      "kind": "harness strict-mode duplicate responsive Issue buttons; corrected selector",
+      "path": ".clientops-perf/ai-gpt61-20261003/r11-native-decisions-before-issue-result.private.json",
+      "sha256": "f25ada89b8218dd33e2d7934e9378ec445215f2d69cff7fc5587d17d84197bc0",
+      "productRed": false
+    },
+    {
+      "kind": "harness incorrectly expects manager quotes.issue; corrected to existing native disabled/POST403, not broader grants",
+      "path": ".clientops-perf/ai-gpt61-20261003/r11-native-decisions-partial-approved-result.private.json",
+      "sha256": "c06b13b2d1c86625c8f5e51bad3a576abd8799598943545fff8dd8243a6cf7f3",
+      "productRed": false
+    }
+  ],
+  "preservedPrivateInputDiagnostic": {
+    "path": ".clientops-perf/ai-gpt61-20261003/r11-native-decisions-input-diagnostic-result.json",
+    "sha256": "178ad8ba5531577217e40db3f1f1611ef82fc2446f34e22c88295d2da8a1f9e2"
+  },
+  "finalCleanFixtureRun": {
+    "passed": true,
+    "checks": 79,
+    "roles": 7,
+    "resumeUsed": false
+  },
+  "originalAuditEvidenceUnchanged": true
+}
