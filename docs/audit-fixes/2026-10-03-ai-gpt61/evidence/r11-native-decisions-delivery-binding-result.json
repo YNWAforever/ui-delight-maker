@@ -42,19 +42,27 @@
   "publishedRunnerSources": [
     {
       "path": "evidence/r11-native-decisions-runner.source.txt",
-      "sha256": "87b26fff5bcfdd4606c0359bbbbe376cf850796796d521a6e95a6dab309c3af2"
+      "sha256": "b4ef93cf4df6f47195b9e71c579601e43b7c89bd96ecb58fb4f4ac13acf1b318",
+      "executedPrivateSourceSha256": "87b26fff5bcfdd4606c0359bbbbe376cf850796796d521a6e95a6dab309c3af2",
+      "hashScope": "canonical Git blob bytes; executed private source differs only CRLF to LF normalization"
     },
     {
       "path": "evidence/r11-native-decisions-screenshot-runner.source.txt",
-      "sha256": "119b5bf901490f7429543c4a10fa8b54e6365e96cc77a8fd07c65a8cb06ba97b"
+      "sha256": "cbf6683181b1e4f9e1b7b4fbcecfb147bca79720de81418122340bcbc2b4e1fa",
+      "executedPrivateSourceSha256": "119b5bf901490f7429543c4a10fa8b54e6365e96cc77a8fd07c65a8cb06ba97b",
+      "hashScope": "canonical Git blob bytes; executed private source differs only CRLF to LF normalization"
     },
     {
       "path": "evidence/r11-native-decisions-integrity-runner.source.txt",
-      "sha256": "e76d3c13c517d10093e8b0074e0e748f98063094c3414a5d21b2d88db2cbe5a6"
+      "sha256": "774f63824078468a365c7191ddeb5bcc1b7298826a9480c9c86d669639c01ee2",
+      "executedPrivateSourceSha256": "e76d3c13c517d10093e8b0074e0e748f98063094c3414a5d21b2d88db2cbe5a6",
+      "hashScope": "canonical Git blob bytes; executed private source differs only CRLF to LF normalization"
     },
     {
       "path": "evidence/r11-native-decisions-runtime.source.txt",
-      "sha256": "803faee5bf33bde63cc1d432ffba32049e6191841baf0f06c3a4d7ce10106f29"
+      "sha256": "ad3ffc17098e9cc6ee90f2175c3f942c41bd211314bd974272967ba09385870a",
+      "executedPrivateSourceSha256": "803faee5bf33bde63cc1d432ffba32049e6191841baf0f06c3a4d7ce10106f29",
+      "hashScope": "canonical Git blob bytes; executed private source differs only CRLF to LF normalization"
     }
   ],
   "screenshots": [
@@ -192,5 +200,6 @@
   "actualDeliveryVerified": false,
   "providerCalls": 0,
   "releaseDecision": "NO-GO",
-  "finalHeadBinding": "This evidence-only commit retains these source trees; fresh exact-head Actions IDs/HEAD recorded on draft176 after push"
+  "finalHeadBinding": "This evidence-only commit retains these source trees; fresh exact-head Actions IDs/HEAD recorded on draft176 after push",
+  "publishedRunnerNormalization": "Git canonical LF bytes hashed separately from actual executed private runner bytes; source equality after CRLF to LF checked"
 }
