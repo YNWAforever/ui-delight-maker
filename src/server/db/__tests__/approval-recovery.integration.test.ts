@@ -290,19 +290,22 @@ describe("approval claim and agent recovery on isolated PostgreSQL", () => {
   }, 60_000);
   afterAll(async () => {
     if (!holder.pool) return;
-    for (const f of fixtures) {
+    if (fixtures.length > 0) {
+      const approvalIds = fixtures.map((fixture) => fixture.approvalId);
+      const runIds = fixtures.map((fixture) => fixture.runId);
+      const leadIds = fixtures.map((fixture) => fixture.leadId);
       await db().query(
-        "delete from command_receipts where result->>'id'=any($1::text[]) or result->>'approvalId'=$2",
-        [[f.approvalId, f.runId], f.approvalId],
+        "delete from command_receipts where result->>'id'=any($1::text[]) or result->>'approvalId'=any($2::text[])",
+        [[...approvalIds, ...runIds], approvalIds],
       );
       await db().query(
-        "delete from activity_logs where (object_type='approval' and object_id=$1) or (object_type='agent_run' and object_id=$2)",
-        [f.approvalId, f.runId],
+        "delete from activity_logs where (object_type='approval' and object_id=any($1::uuid[])) or (object_type='agent_run' and object_id=any($2::uuid[]))",
+        [approvalIds, runIds],
       );
-      await db().query("delete from human_approvals where id=$1", [f.approvalId]);
-      await db().query("delete from agent_runs where retry_of=$1", [f.runId]);
-      await db().query("delete from agent_runs where id=$1", [f.runId]);
-      await db().query("delete from leads where id=$1", [f.leadId]);
+      await db().query("delete from human_approvals where id=any($1::uuid[])", [approvalIds]);
+      await db().query("delete from agent_runs where retry_of=any($1::uuid[])", [runIds]);
+      await db().query("delete from agent_runs where id=any($1::uuid[])", [runIds]);
+      await db().query("delete from leads where id=any($1::uuid[])", [leadIds]);
     }
     await db().query("delete from profiles where id=any($1::text[])", [profiles]);
     await holder.pool.end();
