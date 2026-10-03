@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T10:47:22.337Z",
+  "sourceSha": "b2fa7e53f96a0a9739f9465115c1717813be72ac",
+  "db": "clientops_ai_gpt61_1bdb70c0b4",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server-functions/__tests__/authorization-contract.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r08-ci-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 3,
+  "failed": 1,
+  "skipped": 0,
+  "total": 4,
+  "files": 1,
+  "elapsedMs": 1525,
+  "reportSha256": "df2c7f81881429c211d5653d0426a0cc82d3e43fd7a6993aada80f97a6a7ba68"
+}

@@ -7,6 +7,11 @@ const ids = z
   .refine((values) => new Set(values).size === values.length, "Bulk IDs must be distinct");
 
 export const BulkActionSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("agent.recover"),
+    action: z.enum(["cancel", "expire"]),
+    reason: z.string().trim().min(10).max(1000).optional(),
+  }),
   z.object({ type: z.literal("task.assign"), profileId: z.string().min(1) }),
   z.object({ type: z.literal("task.due"), dueDate: z.iso.date().nullable() }),
   z.object({ type: z.literal("task.priority"), priority: z.enum(["low", "medium", "high"]) }),

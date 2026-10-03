@@ -1,0 +1,43 @@
+[
+  {
+    "command": [
+      "bun",
+      "run",
+      "typecheck"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 23477,
+    "sourceSha": "914e0e554de66cb7169408b7760d15aef8492ddb"
+  },
+  {
+    "command": [
+      "bunx",
+      "eslint",
+      "src/components/agents/__tests__/queue-navigation.test.tsx",
+      "src/components/agents/run-queue-panel.tsx",
+      "src/lib/operations/bulk-contract.ts",
+      "src/routes/agents.tsx",
+      "src/server/commands/agent-recovery.server.ts",
+      "src/server/operations/bulk-actions.server.ts",
+      "src/server/operations/bulk.server.ts",
+      "src/components/agents/__tests__/bulk-recovery-dialog.test.tsx",
+      "src/components/agents/bulk-recovery-dialog.tsx",
+      "src/server-functions/agent-bulk-recovery.ts",
+      "src/server/commands/__tests__/agent-bulk-recovery.integration.test.ts",
+      "src/server/commands/agent-bulk-recovery.server.ts"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 2253,
+    "sourceSha": "914e0e554de66cb7169408b7760d15aef8492ddb"
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 56,
+    "sourceSha": "914e0e554de66cb7169408b7760d15aef8492ddb"
+  }
+]

@@ -1,4 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { BulkRecoveryDialog } from "./bulk-recovery-dialog";
 import { useQuery } from "@tanstack/react-query";
 import { getAgentQueue } from "@/server-functions/agent-runs";
 import { agentSlugForWorkflowType } from "@/lib/agents";
@@ -10,10 +12,49 @@ import { DemoOriginLabel } from "./data-scope";
 export function RunQueuePanel({
   filters,
   onChange,
+  actorId = "unknown",
 }: {
   filters: QueueSearch;
   onChange: (value: QueueSearch) => void;
+  actorId?: string;
 }) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [selecting, setSelecting] = useState(false);
+  const change = (next: QueueSearch) => {
+    setSelected([]);
+    setSelectionError(null);
+    onChange(next);
+  };
+  const selectAll = async () => {
+    if (selecting) return;
+    setSelecting(true);
+    setSelectionError(null);
+    try {
+      const ids: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await getAgentQueue({
+          data: { ...filters, queue: "runs", limit: 50, cursor },
+        });
+        if (
+          page.queue !== "runs" ||
+          page.totalMatching > 100 ||
+          ids.length + page.items.length > 100
+        )
+          throw Error("Too many matching runs");
+        ids.push(...page.items.map((r) => r.id));
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor);
+      setSelected([...new Set(ids)]);
+    } catch {
+      setSelectionError(
+        "Selection could not be confirmed within 100 items. Narrow the query or refresh; no IDs were truncated.",
+      );
+    } finally {
+      setSelecting(false);
+    }
+  };
   const query = useQuery({
     queryKey: crmQueryKeys.agentQueue({ ...filters, queue: "runs" }),
     queryFn: () => getAgentQueue({ data: { ...filters, queue: "runs" } }),
@@ -22,13 +63,13 @@ export function RunQueuePanel({
   });
   const data = query.data;
   const refresh = () => {
-    if (filters.cursor) onChange({ ...filters, cursor: undefined });
+    if (filters.cursor) change({ ...filters, cursor: undefined });
     else void query.refetch();
   };
   return (
     <section className="space-y-3" aria-label="Complete AI run queue">
       <h2 className="text-lg font-semibold">All accessible AI runs</h2>
-      <QueueToolbar queue="runs" value={filters} onChange={onChange} />
+      <QueueToolbar queue="runs" value={filters} onChange={change} />
       {query.isError && <p role="alert">Run queue did not load. Refresh or clear its filters.</p>}
       {data?.queue === "runs" ? (
         <>
@@ -48,6 +89,19 @@ export function RunQueuePanel({
               const slug = agentSlugForWorkflowType(run.workflow_type);
               return (
                 <li key={run.id} className="rounded border p-3 text-sm">
+                  <label className="mr-3">
+                    <input
+                      type="checkbox"
+                      aria-label={"Select run " + run.id}
+                      checked={selected.includes(run.id)}
+                      onChange={(e) =>
+                        setSelected((old) =>
+                          e.target.checked ? [...old, run.id] : old.filter((id) => id !== run.id),
+                        )
+                      }
+                    />{" "}
+                    Select
+                  </label>
                   {slug ? (
                     <Link
                       to="/agents/$name"
@@ -89,6 +143,39 @@ export function RunQueuePanel({
               );
             })}
           </ul>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() =>
+                setSelected([...new Set([...selected, ...data.items.map((r) => r.id)])])
+              }
+            >
+              Select this page
+            </Button>
+            <Button
+              variant="outline"
+              disabled={selecting || query.isFetching || data.totalMatching > 100}
+              onClick={() => void selectAll()}
+            >
+              Select all {data.totalMatching} matching runs
+            </Button>
+            <Button variant="outline" onClick={() => setSelected([])}>
+              Clear selection
+            </Button>
+          </div>
+          {data.totalMatching > 100 && (
+            <p>Narrow filters to at most 100 before selecting all matching runs.</p>
+          )}
+          {selectionError && <p role="alert">{selectionError}</p>}
+          <p className="text-xs text-muted-foreground">
+            Selected IDs may span pages and stay selected on same-page refresh. Clear selection
+            before starting another query.
+          </p>
+          <BulkRecoveryDialog
+            runIds={selected}
+            actorId={actorId}
+            onComplete={() => void query.refetch()}
+          />
           <div className="flex gap-2">
             <Button
               variant="outline"

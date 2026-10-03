@@ -1,0 +1,22 @@
+[
+  {
+    "command": [
+      "bunx",
+      "vite",
+      "build"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 63910,
+    "sourceSha": "914e0e554de66cb7169408b7760d15aef8492ddb"
+  },
+  {
+    "command": [
+      "bun",
+      "run",
+      "performance:bundles"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 219,
+    "sourceSha": "914e0e554de66cb7169408b7760d15aef8492ddb"
+  }
+]

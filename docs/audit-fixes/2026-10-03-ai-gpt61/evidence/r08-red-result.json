@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T10:07:39.537Z",
+  "sourceSha": "f110800c56fefc6c465a1110d3f107c2cb754e7b",
+  "db": "clientops_ai_gpt61_dd110708e4",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/commands/__tests__/agent-bulk-recovery.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r08-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 0,
+  "failed": 9,
+  "skipped": 0,
+  "total": 9,
+  "files": 1,
+  "elapsedMs": 2940,
+  "reportSha256": "673cd2222bf3e8f61d6c89a421798087aaa62efed6b7b68875b8b3a40a942d5a"
+}

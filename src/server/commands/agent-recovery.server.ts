@@ -14,14 +14,14 @@ import { claimCommandReceipt, completeCommandReceipt } from "./receipts.server";
 
 type RecoveryAction = "expire" | "cancel" | "retry";
 type ClaimInput = { id: string; expectedVersion?: number; idempotencyKey: string };
-type RecoveryInput = {
+export type RecoveryInput = {
   runId: string;
   action: RecoveryAction;
   reason: string;
   idempotencyKey: string;
 };
 
-async function subjectOwner(
+export async function subjectOwner(
   db: Queryable,
   subjectType: string,
   subjectId: string,
@@ -40,7 +40,7 @@ async function subjectOwner(
   return owner;
 }
 
-function requireScopedCapability(
+export function requireScopedCapability(
   context: RequestAuthorization,
   capability: "approvals.view" | "approvals.decide" | "agents.run",
   resourceType: string,
@@ -167,108 +167,117 @@ export async function recoverAgentRunCommand(
   context: RequestAuthorization,
   input: RecoveryInput,
 ): Promise<AgentRun> {
-  return transaction(async (db) => {
-    const reason = input.reason.trim();
-    if (reason.length < 10 || reason.length > 1000) {
-      throw new AdminError("VALIDATION_FAILED", "Recovery reason must be 10 to 1000 characters");
-    }
-    const receipt = await claimCommandReceipt<AgentRun>(db, {
-      scope: "agent.recovery",
-      actorId: context.actor.profileId,
-      idempotencyKey: input.idempotencyKey,
-      payload: { runId: input.runId, action: input.action, reason },
-    });
-    if (receipt.kind === "replay") return receipt.result;
-    const approvals = (
-      await db.query<HumanApproval>(
-        `select * from human_approvals
+  return transaction((db) => recoverAgentRunInTransaction(db, context, input));
+}
+
+/** Shared command body: caller owns the transaction, including business/command/bulk receipts. */
+export async function recoverAgentRunInTransaction(
+  db: Queryable,
+  context: RequestAuthorization,
+  input: RecoveryInput,
+  guard?: { verify: (run: AgentRun, db: Queryable) => Promise<void> },
+): Promise<AgentRun> {
+  const reason = input.reason.trim();
+  if (reason.length < 10 || reason.length > 1000) {
+    throw new AdminError("VALIDATION_FAILED", "Recovery reason must be 10 to 1000 characters");
+  }
+  const receipt = await claimCommandReceipt<AgentRun>(db, {
+    scope: "agent.recovery",
+    actorId: context.actor.profileId,
+    idempotencyKey: input.idempotencyKey,
+    payload: { runId: input.runId, action: input.action, reason },
+  });
+  if (receipt.kind === "replay") return receipt.result;
+  const approvals = (
+    await db.query<HumanApproval>(
+      `select * from human_approvals
          where agent_run_id=$1 and status in ('pending','escalated')
          order by created_at,id for update`,
-        [input.runId],
-      )
-    ).rows;
-    if (approvals.length > 1) {
-      throw new AdminError("CONFLICT", "Multiple open approvals need reconciliation");
-    }
-    const approval = approvals[0];
-    if (input.action === "retry" && approval) {
-      throw new AdminError(
-        "CONFLICT",
-        "Close the open approval before requesting a fresh agent attempt",
-      );
-    }
-    const run = (
-      await db.query<AgentRun>("select * from agent_runs where id=$1 for update", [input.runId])
-    ).rows[0];
-    if (!run || (run.status !== "running" && run.status !== "waiting_approval")) {
-      throw new AdminError("CONFLICT", "Agent run is no longer active");
-    }
-    if (approval && run.status !== "waiting_approval") {
-      throw new AdminError("CONFLICT", "Approval and agent run state disagree");
-    }
-    const age = Date.now() - new Date(run.created_at).getTime();
-    if (input.action !== "cancel" && age < AGENT_RUN_STUCK_MINUTES * 60_000) {
-      throw new AdminError("CONFLICT", "Agent run has not reached the recovery threshold");
-    }
-    const owner = await subjectOwner(db, run.subject_type, run.subject_id);
-    requireScopedCapability(context, "agents.run", run.subject_type, run.subject_id, owner);
-    if (approval) {
-      requireScopedCapability(
-        context,
-        "approvals.decide",
-        "human_approval",
-        approval.id,
-        approval.assigned_to ?? owner,
-      );
-    }
-    const outcomeCode =
-      input.action === "expire"
-        ? "expired"
-        : input.action === "cancel"
-          ? "cancelled"
-          : "retry_requested";
-    const updated = (
-      await db.query<AgentRun>(
-        `update agent_runs set status='failed',human_review_required=false,
+      [input.runId],
+    )
+  ).rows;
+  if (approvals.length > 1) {
+    throw new AdminError("CONFLICT", "Multiple open approvals need reconciliation");
+  }
+  const approval = approvals[0];
+  if (input.action === "retry" && approval) {
+    throw new AdminError(
+      "CONFLICT",
+      "Close the open approval before requesting a fresh agent attempt",
+    );
+  }
+  const run = (
+    await db.query<AgentRun>("select * from agent_runs where id=$1 for update", [input.runId])
+  ).rows[0];
+  if (run && guard) await guard.verify(run, db);
+  if (!run || (run.status !== "running" && run.status !== "waiting_approval")) {
+    throw new AdminError("CONFLICT", "Agent run is no longer active");
+  }
+  if (approval && run.status !== "waiting_approval") {
+    throw new AdminError("CONFLICT", "Approval and agent run state disagree");
+  }
+  const age = Date.now() - new Date(run.created_at).getTime();
+  if (input.action !== "cancel" && age < AGENT_RUN_STUCK_MINUTES * 60_000) {
+    throw new AdminError("CONFLICT", "Agent run has not reached the recovery threshold");
+  }
+  const owner = await subjectOwner(db, run.subject_type, run.subject_id);
+  requireScopedCapability(context, "agents.run", run.subject_type, run.subject_id, owner);
+  if (approval) {
+    requireScopedCapability(
+      context,
+      "approvals.decide",
+      "human_approval",
+      approval.id,
+      approval.assigned_to ?? owner,
+    );
+  }
+  const outcomeCode =
+    input.action === "expire"
+      ? "expired"
+      : input.action === "cancel"
+        ? "cancelled"
+        : "retry_requested";
+  const updated = (
+    await db.query<AgentRun>(
+      `update agent_runs set status='failed',human_review_required=false,
            outcome_code=$2,recovery_reason=$3,recovered_by=$4,recovered_at=now(),
            output_data=coalesce(output_data,'{}'::jsonb) ||
              jsonb_build_object('recovery_outcome',$2::text,'recovery_reason',$3::text)
          where id=$1 and status in ('running','waiting_approval')
          returning *`,
-        [run.id, outcomeCode, reason, context.actor.profileId],
-      )
-    ).rows[0];
-    if (!updated) throw new AdminError("CONFLICT", "Agent run changed during recovery");
-    if (approval) {
-      const closed = (
-        await db.query<HumanApproval>(
-          `update human_approvals set status='rejected',reviewer_notes=$2,
+      [run.id, outcomeCode, reason, context.actor.profileId],
+    )
+  ).rows[0];
+  if (!updated) throw new AdminError("CONFLICT", "Agent run changed during recovery");
+  if (approval) {
+    const closed = (
+      await db.query<HumanApproval>(
+        `update human_approvals set status='rejected',reviewer_notes=$2,
              recovery_outcome_code=$3,recovery_reason=$2,decided_at=now()
            where id=$1 and status in ('pending','escalated') returning *`,
-          [approval.id, reason, outcomeCode],
-        )
-      ).rows[0];
-      if (!closed) throw new AdminError("CONFLICT", "Approval changed during recovery");
-      if (closed.approval_type === "quote_send") {
-        await syncQuoteApprovalDecisionInTransaction(db, context, closed);
-      }
-      await db.query(
-        `insert into activity_logs (actor_type,actor_id,action,object_type,object_id)
-         values ('user',$1,$2,'approval',$3)`,
-        [context.actor.profileId, `${input.action} approval after agent recovery`, closed.id],
-      );
+        [approval.id, reason, outcomeCode],
+      )
+    ).rows[0];
+    if (!closed) throw new AdminError("CONFLICT", "Approval changed during recovery");
+    if (closed.approval_type === "quote_send") {
+      await syncQuoteApprovalDecisionInTransaction(db, context, closed);
     }
     await db.query(
-      `insert into activity_logs (actor_type,actor_id,action,object_type,object_id,diff_data)
-       values ('user',$1,$2,'agent_run',$3,$4::jsonb)`,
-      [
-        context.actor.profileId,
-        `${input.action} agent run`,
-        run.id,
-        JSON.stringify({ reason, prior_status: run.status }),
-      ],
+      `insert into activity_logs (actor_type,actor_id,action,object_type,object_id)
+         values ('user',$1,$2,'approval',$3)`,
+      [context.actor.profileId, `${input.action} approval after agent recovery`, closed.id],
     );
-    await completeCommandReceipt(db, receipt.id, updated);
-    return updated;
-  });
+  }
+  await db.query(
+    `insert into activity_logs (actor_type,actor_id,action,object_type,object_id,diff_data)
+       values ('user',$1,$2,'agent_run',$3,$4::jsonb)`,
+    [
+      context.actor.profileId,
+      `${input.action} agent run`,
+      run.id,
+      JSON.stringify({ reason, prior_status: run.status }),
+    ],
+  );
+  await completeCommandReceipt(db, receipt.id, updated);
+  return updated;
 }

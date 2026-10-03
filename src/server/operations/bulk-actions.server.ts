@@ -9,6 +9,7 @@ import { createAdminTeamsRepository } from "@/server/repositories/admin-teams";
 import { updateLead } from "@/server/repositories/leads";
 import { updateTask } from "@/server/repositories/tasks";
 import { BulkItemError, type BulkActionHandler } from "./bulk.server";
+import { agentRecoveryBulkHandler } from "@/server/commands/agent-bulk-recovery.server";
 
 type VersionedRow = {
   id: string;
@@ -141,6 +142,8 @@ async function previewTeam(
 
 export const productionBulkHandler: BulkActionHandler = {
   async preview(context, id, action) {
+    if (action.type === "agent.recover")
+      return agentRecoveryBulkHandler.preview(context, id, action);
     if (action.type === "team.add_member") return previewTeam(context, id, action);
     const row = await currentRow(action, id);
     if (!row) return { eligible: false, summary: null, version: null, status: "not_found" };
@@ -169,7 +172,9 @@ export const productionBulkHandler: BulkActionHandler = {
         : {}),
     };
   },
-  async apply(context, id, action, expectedVersion, db) {
+  async apply(context, id, action, expectedVersion, db, operationId) {
+    if (action.type === "agent.recover")
+      return agentRecoveryBulkHandler.apply(context, id, action, expectedVersion, db, operationId);
     if (action.type === "team.add_member") {
       if (expectedVersion !== 0) {
         throw new BulkItemError("stale", "STALE", "Membership preview changed", false);
