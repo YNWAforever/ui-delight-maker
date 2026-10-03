@@ -32,7 +32,22 @@ const {
   loadAgentPoliciesMock: vi.fn(),
 }));
 
-vi.mock("@/server/db/neon.server", () => ({ query: queryMock }));
+vi.mock("@/server/db/neon.server", () => ({
+  query: queryMock,
+  transaction: async (work: (db: unknown) => Promise<unknown>) =>
+    work({ query: async () => ({ rows: [] }) }),
+}));
+vi.mock("@/server/repositories/retention-sweeps", () => ({
+  claimRetentionSweep: async (input: { sweepId: string; today: string }) => ({
+    sweep: { id: input.sweepId, today: input.today, cursor: null, complete: false },
+    leaseId: "mock-lease",
+    busy: false,
+  }),
+  requireSweepLease: vi.fn(),
+  listRetentionCandidates: async () => ENGAGEMENTS,
+  checkpointRetentionSweep: vi.fn(),
+  retentionSweepTotals: async () => ({ scanned: 2 }),
+}));
 
 vi.mock("@/server/repositories/agent-policy", () => ({
   loadAgentPolicies: loadAgentPoliciesMock,
@@ -97,8 +112,8 @@ describe("retention sweep honours the catalogue", () => {
     // then falls through to the catalogue's own `status` for every workflow.
     loadAgentPoliciesMock.mockResolvedValue(new Map());
 
-    // First query lists the engagements; second lists fallback admins.
-    queryMock.mockResolvedValueOnce(ENGAGEMENTS).mockResolvedValueOnce([{ id: "admin-1" }]);
+    // Candidate paging is a repository seam; physical durability is covered separately.
+    queryMock.mockResolvedValue([{ id: "admin-1" }]);
     createNotificationMock.mockResolvedValue(true);
     findActiveRunMock.mockResolvedValue(null);
     getN8nDispatchConfigMock.mockReturnValue({
@@ -120,6 +135,7 @@ describe("retention sweep honours the catalogue", () => {
         workflow_type: "score_renewal_risk",
         trigger_type: "schedule",
       }),
+      expect.objectContaining({ query: expect.any(Function) }),
     );
     expect(result.rescoreDispatched).toBe(2);
   });
