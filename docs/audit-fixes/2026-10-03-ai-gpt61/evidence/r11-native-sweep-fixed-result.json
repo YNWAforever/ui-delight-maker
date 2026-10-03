@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T17:51:47.581Z",
+  "sourceSha": "4c523591c6fc8d0647c5b5c40348c54884b35739",
+  "db": "clientops_ai_gpt61_6ca899b5c2",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/workflows/__tests__/retention-sweep-checkpoint.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-sweep-fixed-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 9,
+  "failed": 0,
+  "skipped": 0,
+  "total": 9,
+  "files": 1,
+  "elapsedMs": 132084,
+  "reportSha256": "a0ec116dc9e24e48cf2eb1160901670a3abf3fc547495eb0893b9f9781a08edf"
+}
