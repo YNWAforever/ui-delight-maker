@@ -1,0 +1,101 @@
+{
+  "checkedAt": "2026-10-03T17:28:51.531Z",
+  "sha": "4c523591c6fc8d0647c5b5c40348c54884b35739",
+  "sourceDiff": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "261166a51770879a1abe649195f8e0b57cd1c6b8d63712bdcfe75ac8f9be6d28",
+  "fixtureVersion": "ai-local-role-uat-v1",
+  "checks": [
+    {
+      "name": "super_admin native Review controls reflect approvals.decide",
+      "passed": true,
+      "matching": 1
+    },
+    {
+      "name": "super_admin native Review reload/mobile390",
+      "passed": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/super_admin-review390.png",
+      "screenshotSha256": "2b202ba77ffb9221dda5b35d52ff0f1c2b01cfb6160564ab1e4d89163f300119"
+    },
+    {
+      "name": "admin native Review controls reflect approvals.decide",
+      "passed": true,
+      "matching": 1
+    },
+    {
+      "name": "native admin Review confirm/cancel leaves pending row/version/context unchanged",
+      "passed": true
+    },
+    {
+      "name": "admin native Review reload/mobile390",
+      "passed": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/admin-review390.png",
+      "screenshotSha256": "8bcfe2595f16e7b3330efee4d368da1a7f2ef30323d0e6abe331f36d2c8ac4a8"
+    },
+    {
+      "name": "manager native Review controls reflect approvals.decide",
+      "passed": true,
+      "matching": 1
+    },
+    {
+      "name": "manager native Review reload/mobile390",
+      "passed": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/manager-review390.png",
+      "screenshotSha256": "2b202ba77ffb9221dda5b35d52ff0f1c2b01cfb6160564ab1e4d89163f300119"
+    },
+    {
+      "name": "sales native Review controls reflect approvals.decide",
+      "passed": true,
+      "matching": 1
+    },
+    {
+      "name": "sales native Review reload/mobile390",
+      "passed": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/sales-review390.png",
+      "screenshotSha256": "2b202ba77ffb9221dda5b35d52ff0f1c2b01cfb6160564ab1e4d89163f300119"
+    },
+    {
+      "name": "client_success native Review controls reflect approvals.decide",
+      "passed": true,
+      "matching": 1
+    },
+    {
+      "name": "client_success native Review reload/mobile390",
+      "passed": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/client_success-review390.png",
+      "screenshotSha256": "2b202ba77ffb9221dda5b35d52ff0f1c2b01cfb6160564ab1e4d89163f300119"
+    },
+    {
+      "name": "accounting native Review denied by existing approvals.view plus agents.view requirement; no queue context leaked",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/accounting-review-denied390.png",
+      "screenshotSha256": "90936ae12e8ceb09f8333231fd9ee570b1d9831983982cd10eff03d14718857e"
+    },
+    {
+      "name": "read_only native Review controls reflect approvals.decide",
+      "passed": true,
+      "matching": 1
+    },
+    {
+      "name": "read_only native Review reload/mobile390",
+      "passed": true,
+      "width": 390,
+      "scrollWidth": 390,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/read_only-review390.png",
+      "screenshotSha256": "2b202ba77ffb9221dda5b35d52ff0f1c2b01cfb6160564ab1e4d89163f300119"
+    }
+  ],
+  "passed": true,
+  "approvalRowsChanged": 0,
+  "providerCalls": 0,
+  "productionAccess": false
+}

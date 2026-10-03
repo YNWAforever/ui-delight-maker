@@ -1,0 +1,41 @@
+{
+  "checkedAt": "2026-10-03T18:49:03.492Z",
+  "sourceSha": "d2328ae0c4548ba8c2e9cf56a4b9f11f71f7e938",
+  "success": true,
+  "databaseRun": 37145172622,
+  "databaseUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37145172622",
+  "checksRun": 37145172566,
+  "checksUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37145172566",
+  "scope": "GitHub isolated pgvector PostgreSQL17 services; no production connection",
+  "passed": 2849,
+  "failed": 0,
+  "skipped": 0,
+  "files": 356,
+  "strictNoSkips": "exit0",
+  "migrationSeedReplay": "passed on isolated CI service",
+  "databaseJobs": [
+    {
+      "name": "contract",
+      "conclusion": "success"
+    },
+    {
+      "name": "Isolated migration and seed replay",
+      "conclusion": "success"
+    }
+  ],
+  "commands": {
+    "full": "bunx vitest run --no-file-parallelism --testTimeout=30000 --reporter=default --reporter=json --outputFile=<private report>",
+    "strict": "bun scripts/clientops/assert-vitest-no-skips.ts <private report>",
+    "checks": [
+      "bun run typecheck",
+      "bun run typecheck:runtime",
+      "bun run lint",
+      "bunx vite build",
+      "bun run performance:bundles",
+      "bun run test:browser-collector"
+    ]
+  },
+  "logSha256": "8612fa08606459a2540ce6da80cb73d7d83f68b18e9a017d5600ec91f8e7a157",
+  "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-code-ci.private.log",
+  "releaseDecision": "NO-GO"
+}

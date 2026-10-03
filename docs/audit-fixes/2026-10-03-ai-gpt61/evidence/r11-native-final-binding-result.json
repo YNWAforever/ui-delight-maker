@@ -1,0 +1,58 @@
+{
+  "checkedAt": "2026-10-03T17:36:38.142Z",
+  "codeVerifiedCommit": "4c523591c6fc8d0647c5b5c40348c54884b35739",
+  "applicationBehaviorCommit": "622c5df5a3e1e323f9364902340d119480a95737",
+  "deltaFromBehaviorCommit": [
+    "src/server/read-models/__tests__/note-tidy-runs.test.ts"
+  ],
+  "builtApplicationSourceHashesMatch": true,
+  "sourceTrees": {
+    "src": "93e9b596c8051b059a2a8d3e037f06ea7b668ab4",
+    "neon": "a45443f775b7e65d42dc31259f33b48b73e1c527",
+    "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
+    "scripts": "65c705946d80190d19608130968c7d560d4cfe44"
+  },
+  "package": {
+    "sha256": "c220d5e3a2d6688e89bb92958ed310d814e01b446b450d538244e0874ddcde5f",
+    "gitBlob": "cd3363e5545afe56e44b0a114b4ba572f374c352"
+  },
+  "lock": {
+    "sha256": "5bce664aedbd85728dbc3335af74b87b40ba0a3d2a1a3b8cd5b73776b1746b85",
+    "gitBlob": "b624d731c6d674a6c0990f09d88abe214784366a"
+  },
+  "serverEntrySha256": "261166a51770879a1abe649195f8e0b57cd1c6b8d63712bdcfe75ac8f9be6d28",
+  "serverArtifactSha256": "014497601f7d4e55a8a66f35fd7e25170029c2b26b05cb0819b7b5fed9b20039",
+  "clientArtifactSha256": "4cb139736769b47f0a1cba839dddcd199a058a91edb697dbec655a5b16c5422e",
+  "nativeRoles": {
+    "passed": 7,
+    "checks": 59,
+    "distinctLiveIdentities": 7,
+    "distinctSessions": 7,
+    "distinctCookieSets": 7,
+    "sourceSha": "4c523591c6fc8d0647c5b5c40348c54884b35739"
+  },
+  "nativeReview": {
+    "checks": 14,
+    "sourceSha": "4c523591c6fc8d0647c5b5c40348c54884b35739"
+  },
+  "nativePolicyAndManual": "Original raw receipts preserve base/diff; explicit application-source hashes match committed behavior. They are not rewritten to claim later execution.",
+  "priorNavigationTimeout": {
+    "privatePath": ".clientops-perf/ai-gpt61-20261003/r11-native-committed-navigation-timeout-result.json",
+    "sha256": "aa7035018ffb97b287b17e8392b181cd3771ece1e6f94e3243365a3c3350180c",
+    "retest": "same unchanged59-check runner on final source,7pass; no navigation deadline changed"
+  },
+  "ci": {
+    "sourceSha": "4c523591c6fc8d0647c5b5c40348c54884b35739",
+    "databaseRun": 37139870531,
+    "checksRun": 37139870522,
+    "passed": 2841,
+    "failed": 0,
+    "skipped": 0,
+    "files": 355,
+    "strictNoSkips": "exit0",
+    "migrationSeedReplay": "passed on isolated CI service"
+  },
+  "fullLocal": "pending at binding time; separate result required",
+  "productionDataMutations": 0,
+  "releaseDecision": "NO-GO"
+}

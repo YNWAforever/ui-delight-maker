@@ -6,12 +6,12 @@
 
 | Gate | Owner | Current disposition / next action |
 |---|---|---|
-| Exact app/CI SHA + reviewed stack | Engineer/reviewer | final local/CI receipts; review each dependency PR; no independent reviewer claimed |
+| Exact app/CI SHA + reviewed stack | Engineer/reviewer | coded2328ae full CI2849/0skip; final document HEAD Actions on draft176; review each dependency PR; no independent reviewer claimed |
 | Migration001–025 + populated replay | Engineer/operator | local physical tests + isolated CI replay; production schema/backup target still unverified |
 | Data origin/anomaly disposition | Data/approval owners | blocked; sign per-row retain/mark/isolate/relink from R04 source evidence |
 | Five native workers + Note Tidy direct path | Worker/provider operator | blocked; verify actual deployed hashes/ack timing/attempt binding/receipts/cost scope |
 | Sweep maxDuration / deadline / native resume | Deployment/worker operator | blocked; verify platform duration before setting runtime flags or enabling schedule |
-| Seven actual role journeys | QA/UAT operator | local seven independent live identities/59 browser checks verified; reviewed cloud candidate remains unprovisioned |
+| Seven actual role journeys | QA/UAT operator | local seven independent live identities/59 browser checks plus14 Review checks verified; reviewed cloud candidate remains unprovisioned |
 | Native mobile/keyboard/200% zoom/AT | QA/accessibility owner | local1440/390 and policy keyboard cancel/focus verified; native200% browser zoom/manual AT remain not-tested |
 | Performance provisional +10% p95 | Performance/business owner | blocked for disclosed regressions; raw960 samples retained; absolute SLO pending |
 | Isolated backup/restore / compatible rollback | Engineer/operator | local rehearsal receipt; production/PITR/window/capability remain blocked |
@@ -45,3 +45,9 @@ Release manifest records local app source/code tree, worker/file hashes, migrati
 Use only the approved private local fixture/runtime receipt and seven separate sessions under `.clientops-perf`. Start the guarded actual SSR runtime after pure build and immediately run its Chromium gut check. The committed journey runner is `node --experimental-strip-types scripts/clientops/verify-ai-local-ui.ts`; supported optional arguments are `--runtime=`, `--config=`, `--policy-post=`, `--out=` (private file paths only). It rejects non-loopback app/DB, wrong owned fixture, mismatched source/artifact, actor identity/session mismatch and carrying Cookie/Authorization from the captured policy POST. Browser-native fetch uses the current actor’s cookies and genuine Origin. A privileged stale-CAS409 control must pass before denied403 is accepted as an authorization check; APIRequest403 without Origin may merely be CSRF.
 
 The status adapter rollback is a compatible revert of `src/start.ts` integration and its helper. Preserve CSRF, domain authorization/row scope, policy history, operation intent and durable receipts. The390px fix is one `flex-wrap` class. Neither adds migrations or provider dispatch. The native bulk proof resumes/replays the existing original operation/key; do not create a replacement operation for an uncertain outcome. Only fake local data was written.
+
+## Final diagnostic privacy / evidence preservation
+
+The native CLI now masks credential-bearing failure lines (Cookie/Authorization/token/password/secret/API key) and full PostgreSQL DSNs before URL/email redaction and output bounding. Eight regressions use fake credentials, including an actual failed Playwright request; no real credential is published. Keep sessions/captured requests/raw logs/screenshots private. Sanitize receipts before commit, preserve original failures and execution SHAs, and bind later source equivalence separately. Do not rerun an uncertain operation with a fresh key.
+
+Final application local2841/0skip and separate CLI8/0skip are not reported as a combined local run; fresh code CI2849/0skip and final documentation HEAD CI remain separately bound. New code/tasks are reviewable in draft175→176, not merged/released. R04/R10/native accessibility/cloud worker/duration/performance/PITR/window gates remain NO-GO.

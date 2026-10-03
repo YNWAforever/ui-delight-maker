@@ -1,7 +1,7 @@
 {
-  "checkedAt": "2026-10-03T16:51:47.510Z",
-  "sha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
-  "workingSourceDiffSha256": "e8f3e1b56827c41de11a04caa622ef623be920223b4d4e07ecd6bf02e63eab76",
+  "checkedAt": "2026-10-03T17:19:33.173Z",
+  "sha": "4c523591c6fc8d0647c5b5c40348c54884b35739",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "serverEntrySha256": "261166a51770879a1abe649195f8e0b57cd1c6b8d63712bdcfe75ac8f9be6d28",
   "fixtureVersion": "ai-local-role-uat-v1",
   "database": "clientops_ai_uat_843cdc77175546ddbad0417b36ac845a",
@@ -59,13 +59,13 @@
       "screenshots": [
         {
           "label": "desktop",
-          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/super_admin-desktop.png",
-          "sha256": "1546ade0aab7913c020c1cda8a5f4058bbc8247a55241baf791d6218857220ba"
+          "path": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\ai-gpt61-20261003/native-ui/super_admin-desktop.png",
+          "sha256": "cc5f934607feeca1be3c6b0f9bfe4453fba738223f6bd8863a5e2e329482798d"
         },
         {
           "label": "mobile390",
-          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/super_admin-mobile390.png",
-          "sha256": "b60700275cc9b2f88aab50a8e869126ae0b5e7d1f7760a3b7b83dc0eb337fedd"
+          "path": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\ai-gpt61-20261003/native-ui/super_admin-mobile390.png",
+          "sha256": "a47b79f70d4c09895a5e47428b0b501640245646bf57c0baba30be36ca75cff8"
         }
       ],
       "passed": true,
@@ -121,13 +121,13 @@
       "screenshots": [
         {
           "label": "desktop",
-          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/admin-desktop.png",
-          "sha256": "d068ec16ebebf728f729cef4a3cc3ef0b674bf10b86f361453f430a973267778"
+          "path": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\ai-gpt61-20261003/native-ui/admin-desktop.png",
+          "sha256": "893aa47cc8c3c18939d5223973621f12cad0a62022b6933da2611e4ed24ab6b6"
         },
         {
           "label": "mobile390",
-          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/admin-mobile390.png",
-          "sha256": "c3047a4471482537ccf516ed509da95424aa950d840ce7ce091af7251d067da9"
+          "path": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\ai-gpt61-20261003/native-ui/admin-mobile390.png",
+          "sha256": "a47b79f70d4c09895a5e47428b0b501640245646bf57c0baba30be36ca75cff8"
         }
       ],
       "passed": true,
@@ -187,13 +187,13 @@
       "screenshots": [
         {
           "label": "desktop",
-          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/manager-desktop.png",
-          "sha256": "7fec46f19517854c7655f32549c20b9f0b8b3dae4d2b5a609bd44776bd5f0d5a"
+          "path": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\ai-gpt61-20261003/native-ui/manager-desktop.png",
+          "sha256": "e218aff3963c55eb7e0ef25ed0acadf668a06fef661d8b8d5b7c1f87ce3e9ca7"
         },
         {
           "label": "mobile390",
-          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/manager-mobile390.png",
-          "sha256": "963bbd5fff9769d21af4a3b8b98eed42f644f053795e48350da67e2cc5ac48c6"
+          "path": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\ai-gpt61-20261003/native-ui/manager-mobile390.png",
+          "sha256": "8b0713a5a2b8a91fff4e49b74bf92eb5b1c1db2e0d1f9192777cee2537c8b27a"
         }
       ],
       "passed": true,
@@ -249,13 +249,13 @@
       "screenshots": [
         {
           "label": "desktop",
-          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/sales-desktop.png",
-          "sha256": "ff70855b8ac5bbc50dcb2549ccdc43817e8937b905a2eea07cafad15e808ddfd"
+          "path": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\ai-gpt61-20261003/native-ui/sales-desktop.png",
+          "sha256": "e64b651634f3c0353dbff08acef2e156a4360a6c4e7b6e38b2b8b8f180300080"
         },
         {
           "label": "mobile390",
-          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/sales-mobile390.png",
-          "sha256": "edb890c5da05cb37b6796d09155983a9a771d8ae971356370f54907dfde49c4f"
+          "path": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\ai-gpt61-20261003/native-ui/sales-mobile390.png",
+          "sha256": "0dbff5ea8fb32d0e04a853a216877fe688c4cd3bbdcb7a6eacb45c1d5f0efbaa"
         }
       ],
       "passed": true,
@@ -311,13 +311,13 @@
       "screenshots": [
         {
           "label": "desktop",
-          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/client_success-desktop.png",
-          "sha256": "84ecd065f235fffff3a5726fae3af9d6693ef0c0043e0cb0d682aba05e0d4b8d"
+          "path": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\ai-gpt61-20261003/native-ui/client_success-desktop.png",
+          "sha256": "59be13d5b93fed98eaf10eaf64e65436bbd1d61c5542f9875e93e1e59a389075"
         },
         {
           "label": "mobile390",
-          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/client_success-mobile390.png",
-          "sha256": "edb890c5da05cb37b6796d09155983a9a771d8ae971356370f54907dfde49c4f"
+          "path": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\ai-gpt61-20261003/native-ui/client_success-mobile390.png",
+          "sha256": "0dbff5ea8fb32d0e04a853a216877fe688c4cd3bbdcb7a6eacb45c1d5f0efbaa"
         }
       ],
       "passed": true,
@@ -348,7 +348,7 @@
       "screenshots": [
         {
           "label": "desktop-denied",
-          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/accounting-desktop-denied.png",
+          "path": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\ai-gpt61-20261003/native-ui/accounting-desktop-denied.png",
           "sha256": "0830e47f7eb218dc9282dfa73f8bab036b45b0892f2f742591bf2928893735ec"
         }
       ],
@@ -405,13 +405,13 @@
       "screenshots": [
         {
           "label": "desktop",
-          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/read_only-desktop.png",
-          "sha256": "ca8d1f402a04ec191c60abe0f82d3abd168374fe7b85d1bebf2e0493db8afe0f"
+          "path": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\ai-gpt61-20261003/native-ui/read_only-desktop.png",
+          "sha256": "7c064fb96f8eb71e036d25aaa3dbd9f563c19f65ad3006a3f75aa630ca5f55c8"
         },
         {
           "label": "mobile390",
-          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/read_only-mobile390.png",
-          "sha256": "edb890c5da05cb37b6796d09155983a9a771d8ae971356370f54907dfde49c4f"
+          "path": "C:\\tmp\\ui-delight-maker-git\\.worktrees\\clientops-merge-record\\.clientops-perf\\ai-gpt61-20261003/native-ui/read_only-mobile390.png",
+          "sha256": "0dbff5ea8fb32d0e04a853a216877fe688c4cd3bbdcb7a6eacb45c1d5f0efbaa"
         }
       ],
       "passed": true,

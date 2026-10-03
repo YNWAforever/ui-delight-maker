@@ -2,7 +2,7 @@
 
 **Local candidate browser acceptance verified for the cases below; external acceptance remains blocked.** The continuation runs the actual built SSR and Neon driver against an owned disposable loopback PostgreSQL17 database (migrations001–025), with synthetic CRM rows and seven independent, live Neon Auth sessions. Each session identity, persisted role and distinct cookie set is verified. Only read-only requests to the independently verified UAT Auth service are allowed outbound; provider/customer transports are blocked. This is local candidate acceptance, not a deployed cloud/provider or production acceptance claim.
 
-The existing independent cloud UAT site last observed at `3d851c23dc0d1b5aa52cae8f8e51fc68e8ae9c63`, migrations001–022, does not qualify as this candidate. Production is not accessed or changed. Auth session cookies stay private; no super_admin session was copied to another role.
+The existing independent cloud UAT site last observed at `3d851c23dc0d1b5aa52cae8f8e51fc68e8ae9c63`, migrations001–022, does not qualify as this candidate. Production DB is not accessed or changed; read-only project/public-build metadata is observed separately. Auth session cookies stay private; no super_admin session was copied to another role.
 
 | Case | Verified locally | Remaining gate |
 |---|---|---|
@@ -11,13 +11,13 @@ The existing independent cloud UAT site last observed at `3d851c23dc0d1b5aa52cae
 | UC-03 | unchanged manual notes saved by own client_success session with provider unavailable | real provider budget/follow-up acceptance blocked |
 | UC-04 | physical whole-output D03 rejection/rollback and correct200 contracts retained | real pricing/provider/commercial-owner approval blocked |
 | UC-05 | physical attempt/callback binding and original20 key guards retained | true worker/provider/model/usage receipts blocked |
-| UC-06 | physical scoped approvals and immutable-state contracts retained | native Review/manual issue/handoff journey not-tested |
+| UC-06 | physical scoped approvals/immutable-state contracts;14 native Review controls/reload/mobile/cancel checks; existing accounting dual-capability denial retained | manual approve/issue/send/handoff and true provider outcome not-tested/blocked |
 | UC-07 | native local expire receipts, original operation replay has zero additional writes | true external outcome/late callback acceptance blocked |
 | UC-08 | own admin/super_admin actual status append and append-only rollback; native keyboard cancel/focus return; five other roles direct same-origin policy POST403; authorized stale-CAS control409; humanApproval retained | deployed candidate/worker policy acceptance blocked |
 | UC-09 | own Note Tidy invocation count1 for accessible roles; provider unavailable manual390px Save retains original and joined product label | actual suggestions/cancel/late-edit provider journeys blocked |
 | UC-10 | actual mixed100 preview95eligible/5blocked; response dropped, original key retained through reload/resume;100 durable results/95 receipts; original-key native replay adds0; non-run roles genuine403 | cloud candidate acceptance not-tested; provider outcomes excluded from batch |
 | UC-11 | physical500/deadline/checkpoint/crash/ambiguity/no-resend contracts retained | deployment maxDuration/native n8n continuation blocked |
-| UC-12 | seven actual roles/59 browser checks; scoped129 counts (manager125), accounting route denied; desktop1440/mobile390 screenshots and zero horizontal overflow; true403/409 | native200% browser zoom/manual assistive technology not-tested; real callbacks blocked |
+| UC-12 | seven actual roles/59 browser checks plus14 Review checks; scoped129 counts (manager125), accounting route denied; desktop1440/mobile390 screenshots and zero horizontal overflow; true403/409 | native200% browser zoom/manual assistive technology not-tested; real callbacks blocked |
 
 ## Evidence and superseded checks
 
@@ -32,4 +32,10 @@ Native browser tests use installed Playwright Chromium. Bun's Chromium launch ti
 
 ## Owner / next action
 
-QA/accessibility owner completes native200% browser zoom, assistive technology and the remaining Review/detail/provider journeys. UAT/deployment operator provisions the reviewed cloud candidate with isolated schema/worker/outbound controls before cloud acceptance. Business/provider operator approves and executes the120 R10 cases; data owner signs R04 dispositions. Performance owner reviews all retained p95 regressions. Production remains **NO-GO**, unmerged and undeployed.
+QA/accessibility owner completes native200% browser zoom, assistive technology and the remaining detail/action/provider journeys. UAT/deployment operator provisions the reviewed cloud candidate with isolated schema/worker/outbound controls before cloud acceptance. Business/provider operator approves and executes the120 R10 cases; data owner signs R04 dispositions. Performance owner reviews all retained p95 regressions. Production remains **NO-GO**, unmerged and undeployed.
+
+## Final committed source / evidence binding
+
+Application behavior622c5df5 is unchanged in final code `d2328ae0c4548ba8c2e9cf56a4b9f11f71f7e938`; native executions preserve4c523591, while [delivery binding](evidence/r11-native-delivery-binding-result.json) verifies source/artifact equivalence. The only later executable delta is private CLI diagnostic masking, covered by8 genuine failure-diagnostic regressions. [Review receipt](evidence/r11-native-review-result.json) adds14 passing checks: super/admin/manager approvals.decide controls; sales/client_success/read_only disabled controls; admin confirm/cancel leaves pending data unchanged; accounting retains its existing approvals.view + agents.view denial without context leakage. No manual approval/issue/send is claimed.
+
+Final local application suite27040f1 passes2841/0skip; separate CLI target8/0skip. Exact combined code Actions passes2849/0skip and isolated migration/seed replay. Final documentation HEAD Actions are linked on draft#176. Native keyboard policy confirmation/cancel/focus is verified; native200% browser zoom/manual AT remain not-tested. Source CI/actual browser/live Auth are separate from R10 true AI acceptance; production remains NO-GO.

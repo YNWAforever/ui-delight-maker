@@ -1,0 +1,26 @@
+[
+  {
+    "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
+    "workingDelta": "none",
+    "command": [
+      "bun",
+      "scripts/clientops/assert-vitest-no-skips.ts",
+      ".clientops-perf/ai-gpt61-20261003/r11-native-complete-final-full-vitest.private.json"
+    ],
+    "exitCode": 0,
+    "summary": "Database contract gate passed: 2841 tests, 0 skipped",
+    "reportSha256": "4a7b4ee4ab724c5cb8ee97d78d8792b9eb4f5e606456a3e305734600277f6e4d"
+  },
+  {
+    "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
+    "workingDelta": "CLI redaction helper/import/test; application unchanged",
+    "command": [
+      "bun",
+      "scripts/clientops/assert-vitest-no-skips.ts",
+      ".clientops-perf/ai-gpt61-20261003/r11-native-diagnostic-green-vitest.private.json"
+    ],
+    "exitCode": 0,
+    "summary": "Database contract gate passed: 8 tests, 0 skipped",
+    "reportSha256": "3a2dafcd58dbbfb078291761e8b990faa4808a6ca254a42369dc7302d907edae"
+  }
+]
