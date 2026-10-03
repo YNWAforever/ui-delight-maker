@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-10-03T12:23:59.136Z",
+  "productionProjectId": "prj_28RsIf31nvcD0YS3UIQqdnvJlHki",
+  "productionHold": "if [ \"$VERCEL_ENV\" = \"production\" ]; then exit 0; else exit 1; fi",
+  "latestReady": {
+    "id": "dpl_2XjJ6dX9xPT4uT2LCtQt2GujiDEY",
+    "sha": "bed941b37d18d214d0e7658ebce2116a2fc33eb9"
+  },
+  "latestAttempt": {
+    "id": "dpl_3P8WRkb2T2niuoALbsvqW88VAB9W",
+    "state": "CANCELED",
+    "sha": "953ec0a36806d4362fad9e2b2d8cd17a49adbb26"
+  },
+  "publicProductionSha": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+  "productionMutation": false
+}

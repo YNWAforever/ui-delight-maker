@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BulkRecoveryDialog } from "./bulk-recovery-dialog";
 import { useQuery } from "@tanstack/react-query";
 import { getAgentQueue } from "@/server-functions/agent-runs";
@@ -21,13 +21,25 @@ export function RunQueuePanel({
   const [selected, setSelected] = useState<string[]>([]);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
-  const change = (next: QueueSearch) => {
+  const selectionEpoch = useRef(0);
+  // Pagination stays in the same selection scope; URL/filter changes start a new scope.
+  const selectionQuery = JSON.stringify({ ...filters, cursor: undefined });
+  useEffect(() => {
+    selectionEpoch.current++;
     setSelected([]);
     setSelectionError(null);
+    setSelecting(false);
+  }, [selectionQuery]);
+  const change = (next: QueueSearch) => {
+    selectionEpoch.current++;
+    setSelected([]);
+    setSelectionError(null);
+    setSelecting(false);
     onChange(next);
   };
   const selectAll = async () => {
     if (selecting) return;
+    const epoch = selectionEpoch.current;
     setSelecting(true);
     setSelectionError(null);
     try {
@@ -37,6 +49,7 @@ export function RunQueuePanel({
         const page = await getAgentQueue({
           data: { ...filters, queue: "runs", limit: 50, cursor },
         });
+        if (epoch !== selectionEpoch.current) return;
         if (
           page.queue !== "runs" ||
           page.totalMatching > 100 ||
@@ -48,11 +61,12 @@ export function RunQueuePanel({
       } while (cursor);
       setSelected([...new Set(ids)]);
     } catch {
-      setSelectionError(
-        "Selection could not be confirmed within 100 items. Narrow the query or refresh; no IDs were truncated.",
-      );
+      if (epoch === selectionEpoch.current)
+        setSelectionError(
+          "Selection could not be confirmed within 100 items. Narrow the query or refresh; no IDs were truncated.",
+        );
     } finally {
-      setSelecting(false);
+      if (epoch === selectionEpoch.current) setSelecting(false);
     }
   };
   const query = useQuery({

@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T11:52:58.933Z",
+  "sourceSha": "b9d2925330eac98aca07baa05a34c728c12c766f",
+  "db": "clientops_ai_gpt61_ee96583ace",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/components/agents/__tests__/queue-navigation.test.tsx",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-selection-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 8,
+  "failed": 1,
+  "skipped": 0,
+  "total": 9,
+  "files": 1,
+  "elapsedMs": 31055,
+  "reportSha256": "1f91c3b6fa0d19f2a516bd6a1641029da381e0b4e97bce7e0672ed82998ad865"
+}

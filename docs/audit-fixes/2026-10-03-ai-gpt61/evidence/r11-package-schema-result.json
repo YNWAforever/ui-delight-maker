@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-10-03T12:23:51.839Z",
+  "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+  "db": "clientops_ai_gpt61_a4ed6c5aad",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bun",
+    "run",
+    "test:database-contract",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-package-schema-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 1,
+  "failed": 0,
+  "skipped": 0,
+  "total": 1,
+  "files": 1,
+  "elapsedMs": 3730,
+  "reportSha256": "ba8013d5dce1f81b6631c4aed3c4892dba1689462bb7defdbac198532aab6600"
+}
