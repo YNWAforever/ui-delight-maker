@@ -16,6 +16,7 @@ import {
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
 import { AgentDataScope, DemoOriginLabel } from "@/components/agents/data-scope";
+import { PolicyPanel } from "@/components/agents/policy-panel";
 import { matchesAgentDataFilter, type AgentDataFilter } from "@/lib/agent-data-scope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -44,10 +45,8 @@ import { getEffectiveAgentCatalogue } from "@/server-functions/agents-catalogue"
  * laid over the code catalogue — because those two fields are exactly what the dispatch path
  * and the writeback obey; every other field (model, capabilities, description, workflow type)
  * still comes straight from the code catalogue, since nothing overrides them. The Governance
- * tab does not write policy; the Runs tab now supports an audited local recovery command. BD-3
- * records what has to exist before catalogue settings can become editable, and the
- * Governance tab states it on the page rather than leaving a reader to assume the controls
- * were merely misbehaving.
+ * tab offers versioned status changes with a reason, confirmation and server capability/CAS
+ * checks. Human approval remains read-only. Worker readiness requires separate evidence.
  *
  * The Memory tab is gone (M-1). It was a URL-addressable destination whose entire body was
  * one sentence saying memory is not persisted — Instruction §16's "coming soon presented as
@@ -85,21 +84,6 @@ const effectiveCatalogueQuery = () =>
  * ends up labelled "Draft".
  */
 const HUMAN_APPROVAL_LABEL = { required: "Required", auto: "Auto-execute" } as const;
-
-/**
- * What BD-3 and BD-4 say has to exist before any of this page becomes editable.
- *
- * Written out on the page rather than left in a design document, because the reader who
- * needs it is the one looking at a control that is missing and wondering whether it broke.
- */
-const GOVERNANCE_PREREQUISITES = [
-  "A versioned policy store, so a change to an agent has an author, a time and a previous value.",
-  "Server-side enforcement in the dispatch path, so a paused agent actually stops running.",
-  "Capability checks on policy writes, so reading this page is not the same permission as changing it.",
-  "An audit log covering every change, alongside the one Admin already keeps for users.",
-  "Rollback to a previous version, so a bad change is recoverable without a deploy.",
-  "Runtime telemetry, so the effect of a change is observable rather than assumed.",
-];
 
 const MEMORY_PREREQUISITES = [
   "Persistence for long-term and episodic memory, which no migration provides today.",
@@ -167,6 +151,7 @@ function AgentDetailErrorState({ error }: { error: unknown }) {
 }
 
 function AgentDetail() {
+  const router = useRouter();
   const loaderData = Route.useLoaderData();
   const { agent } = loaderData;
   const search = Route.useSearch();
@@ -543,7 +528,7 @@ function AgentDetail() {
                 <TabsContent value="governance" className="mt-4 space-y-5">
                   <SectionHeader
                     title="Catalogue definition"
-                    description="Catalogue state and Workflow type govern dispatch: an inactive agent is refused before any run is created. Human approval governs the writeback, deciding whether a finished run parks for a human; Model and Capabilities are descriptive only. These are the values the dispatch path enforces today - changing them requires the agents.configure capability."
+                    description="Stored status governs new dispatches: an inactive agent is refused before any run is created. Human approval, Model and Capabilities are read-only here. Status changes require agents.configure and a new policy version."
                   />
 
                   <dl className="divide-y divide-border rounded-md border border-border">
@@ -564,16 +549,12 @@ function AgentDetail() {
                     </GovernanceRow>
                   </dl>
 
-                  <div className="rounded-md border border-border bg-muted/30 p-4">
-                    <h3 className="text-sm font-medium text-foreground">
-                      Required before settings become editable
-                    </h3>
-                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                      {GOVERNANCE_PREREQUISITES.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  <PolicyPanel
+                    workflowType={agent.workflow_type}
+                    onChanged={() =>
+                      router.invalidate({ filter: (match) => match.routeId === "/agents/$name" })
+                    }
+                  />
 
                   <div className="rounded-md border border-border bg-muted/30 p-4">
                     <h3 className="text-sm font-medium text-foreground">Long-term memory</h3>

@@ -136,7 +136,7 @@ const READ_ONLY_SENTENCE =
  * enforced values and states the capability a write would need instead.
  */
 const ENFORCED_VALUES_SENTENCE =
-  "These are the values the dispatch path enforces today - changing them requires the agents.configure capability.";
+  "Status changes require agents.configure and a new policy version.";
 
 const REGISTER_SENTENCE_BY_FILE: Record<(typeof ROUTE_FILES)[number], string> = {
   "agents.tsx": READ_ONLY_SENTENCE,
@@ -329,9 +329,10 @@ describe("/agents/$name reports the catalogue's status, not the reader's clicks"
     expect(captures.tabValues).toEqual(["runs", "governance"]);
   });
 
-  it("says what has to exist before the settings come back", () => {
+  it("states the versioned status gate and retains the unavailable memory explanation", () => {
     renderDetail();
-    expect(screen.getByText(/Required before settings become editable/)).toBeTruthy();
+    expect(screen.queryByText(/Required before settings become editable/)).toBeNull();
+    expect(screen.getByRole("region", { name: "Policy governance" })).toBeTruthy();
     expect(screen.getByText(new RegExp(ENFORCED_VALUES_SENTENCE))).toBeTruthy();
     // The Memory tab's one sentence survives as prose here rather than as a destination.
     expect(screen.getByText(/Long-term memory/)).toBeTruthy();

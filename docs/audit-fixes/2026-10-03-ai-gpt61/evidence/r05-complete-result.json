@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-10-03T08:56:47.154Z",
+  "sourceSha": "7bb476f69ac9dfc8b0835cc8d36c5d0ec80e54c5",
+  "db": "clientops_ai_gpt61_2e2a1a07ec",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/repositories/__tests__/agent-policy.test.ts",
+    "src/server-functions/__tests__/agent-policy.integration.test.ts",
+    "src/components/agents/__tests__/policy-panel.test.tsx",
+    "src/routes/__tests__/-agents-ai-ops-integrity.test.tsx",
+    "src/routes/__tests__/-settings-catalogue-writes.test.tsx",
+    "src/routes/__tests__/-admin-url-state.test.tsx",
+    "src/routes/__tests__/-agents-name-loader-honors-policy-override.test.tsx",
+    "src/server/read-models/__tests__/agent-catalogue.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r05-complete-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 76,
+  "failed": 0,
+  "skipped": 0,
+  "total": 76,
+  "files": 8,
+  "elapsedMs": 68319,
+  "reportSha256": "f44b1a8631b58e8945e58f6b47a9c0aa538ecf673e69ef66dfc193af59d3473e"
+}

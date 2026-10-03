@@ -1,0 +1,42 @@
+[
+  {
+    "command": [
+      "bun",
+      "run",
+      "typecheck"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 28859,
+    "sourceSha": "7bb476f69ac9dfc8b0835cc8d36c5d0ec80e54c5"
+  },
+  {
+    "command": [
+      "bunx",
+      "eslint",
+      "src/routeTree.gen.ts",
+      "src/routes/__tests__/-agents-ai-ops-integrity.test.tsx",
+      "src/routes/__tests__/-settings-catalogue-writes.test.tsx",
+      "src/routes/agents.$name.tsx",
+      "src/routes/settings.tsx",
+      "src/server-functions/__tests__/agent-policy.integration.test.ts",
+      "src/server-functions/agent-policy.ts",
+      "src/server/repositories/agent-policy.ts",
+      "src/components/agents/__tests__/policy-panel.test.tsx",
+      "src/components/agents/policy-panel.tsx",
+      "src/lib/agent-policy-input.ts"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 4928,
+    "sourceSha": "7bb476f69ac9dfc8b0835cc8d36c5d0ec80e54c5"
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 74,
+    "sourceSha": "7bb476f69ac9dfc8b0835cc8d36c5d0ec80e54c5"
+  }
+]

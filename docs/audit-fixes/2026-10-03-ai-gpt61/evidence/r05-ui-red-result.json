@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T08:41:08.222Z",
+  "sourceSha": "7bb476f69ac9dfc8b0835cc8d36c5d0ec80e54c5",
+  "db": "clientops_ai_gpt61_2bb91b50b2",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/components/agents/__tests__/policy-panel.test.tsx",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r05-ui-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 0,
+  "failed": 0,
+  "skipped": 0,
+  "total": 0,
+  "files": 1,
+  "elapsedMs": 8850,
+  "reportSha256": "e1a200fcc21e6554907784caef2df336b7c3bdea7faa4a23b1600cbd33fa42fe"
+}
