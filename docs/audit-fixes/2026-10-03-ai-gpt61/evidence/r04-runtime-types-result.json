@@ -1,0 +1,11 @@
+{
+  "sourceState": "base plus R04 working changes",
+  "command": [
+    "bun",
+    "run",
+    "typecheck:runtime"
+  ],
+  "exitCode": 0,
+  "sourceSha": "b1befc05b57362b1589d1d71a1507064ec0642eb",
+  "elapsedMs": 3896
+}

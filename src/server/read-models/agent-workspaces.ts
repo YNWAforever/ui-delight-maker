@@ -6,6 +6,7 @@ import {
 } from "@/lib/agents";
 import { decideAgentSubjects } from "@/lib/agent-run-visibility";
 import { normalizeAIExecutionProvenance } from "@/lib/workflows/provenance";
+import { explicitDemoProvenance } from "@/lib/agent-data-scope";
 import type { Capability } from "@/lib/admin/types";
 import type { AgentRun, HumanApproval } from "@/lib/types";
 import { query } from "@/server/db/neon.server";
@@ -69,7 +70,7 @@ export type AgentRunSummary = Pick<
   | "human_review_required"
   | "created_at"
   | "updated_at"
->;
+> & { is_demo?: boolean | null };
 
 export type AgentAttentionReason = "failed" | "waiting_approval" | "stuck";
 
@@ -85,6 +86,7 @@ export type AgentAttentionReason = "failed" | "waiting_approval" | "stuck";
  * which record the agent ran against, and when.
  */
 export type AgentDirectoryRunSummary = Omit<AgentRunSummary, "subject_type" | "subject_id"> & {
+  is_demo?: boolean | null;
   subject_type: string | null;
   subject_id: string | null;
   subject_restricted: boolean;
@@ -206,6 +208,7 @@ export type AgentHistoryItem = Omit<
   AgentHistoryRow,
   "input_data" | "subject_id" | "subject_type"
 > & {
+  is_demo?: boolean | null;
   input_data: JsonValue;
   subject_id: string | null;
   subject_type: string | null;
@@ -329,7 +332,9 @@ export async function loadAgentDirectoryRead(
         select
           id, agent_name, workflow_type, trigger_type, subject_type, subject_id,
           output_summary, status, duration_ms, tokens_used, confidence_score,
-          human_review_required, created_at, updated_at
+          human_review_required, created_at, updated_at,
+          case when input_data -> 'demo' = 'true'::jsonb then true
+               when input_data -> 'demo' = 'false'::jsonb then false else null end as is_demo
         from agent_runs
         order by created_at desc
         limit $1
@@ -342,6 +347,8 @@ export async function loadAgentDirectoryRead(
           id, agent_name, workflow_type, trigger_type, subject_type, subject_id,
           output_summary, status, duration_ms, tokens_used, confidence_score,
           human_review_required, created_at, updated_at,
+          case when input_data -> 'demo' = 'true'::jsonb then true
+               when input_data -> 'demo' = 'false'::jsonb then false else null end as is_demo,
           case
             when status = 'failed' then 'failed'
             when status = 'waiting_approval' then 'waiting_approval'
@@ -533,6 +540,7 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
       const { input_data, output_summary, subject_id, subject_type, ...rest } = run;
       return {
         ...rest,
+        is_demo: explicitDemoProvenance(input_data),
         execution_metadata: normalizeAIExecutionProvenance(run.execution_metadata),
         subject_id: allowed ? subject_id : null,
         subject_type: allowed ? subject_type : null,
@@ -572,7 +580,10 @@ type ApprovalRow = HumanApproval & { subject_type: string | null; subject_id: st
  * view capability for the record this approval concerns, so its content is withheld rather
  * than absent.
  */
-export type AiReviewApproval = SerializableHumanApproval & { subject_restricted: boolean };
+export type AiReviewApproval = SerializableHumanApproval & {
+  subject_restricted: boolean;
+  is_demo?: boolean | null;
+};
 
 export async function loadAiReviewRead(
   access: Partial<Record<Capability, boolean>>,
@@ -583,7 +594,9 @@ export async function loadAiReviewRead(
       select
         a.id, a.agent_run_id, a.approval_type, a.requested_by, a.assigned_to, a.status, a.row_version,
         a.context_data, a.context_summary, a.reviewer_notes, a.decided_at, a.created_at,
-        r.subject_type, r.subject_id
+        r.subject_type, r.subject_id,
+        case when r.input_data -> 'demo' = 'true'::jsonb then true
+             when r.input_data -> 'demo' = 'false'::jsonb then false else null end as is_demo
       from human_approvals a
       left join agent_runs r on r.id = a.agent_run_id
       where a.status = 'pending'
@@ -594,7 +607,9 @@ export async function loadAiReviewRead(
       select
         id, agent_name, workflow_type, trigger_type, subject_type, subject_id,
         output_summary, status, duration_ms, tokens_used, confidence_score,
-        human_review_required, created_at, updated_at
+        human_review_required, created_at, updated_at,
+        case when input_data -> 'demo' = 'true'::jsonb then true
+             when input_data -> 'demo' = 'false'::jsonb then false else null end as is_demo
       from agent_runs
       where human_review_required = true
       order by created_at desc

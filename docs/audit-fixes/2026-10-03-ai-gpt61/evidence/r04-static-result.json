@@ -1,0 +1,43 @@
+[
+  {
+    "command": [
+      "bun",
+      "run",
+      "typecheck"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 59775,
+    "sourceSha": "b1befc05b57362b1589d1d71a1507064ec0642eb"
+  },
+  {
+    "command": [
+      "bunx",
+      "eslint",
+      "src/routes/agents.$name.tsx",
+      "src/routes/agents.tsx",
+      "src/routes/ai-review.tsx",
+      "src/server/read-models/agent-workspaces.ts",
+      "scripts/clientops/audit-agent-reconciliation.ts",
+      "src/components/agents/__tests__/data-scope.test.tsx",
+      "src/components/agents/data-scope.tsx",
+      "src/lib/__tests__/agent-data-scope.test.ts",
+      "src/lib/agent-data-scope.ts",
+      "src/server/read-models/__tests__/agent-reconciliation.integration.test.ts",
+      "src/server/read-models/__tests__/agent-reconciliation.test.ts",
+      "src/server/read-models/agent-reconciliation.ts"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 29549,
+    "sourceSha": "b1befc05b57362b1589d1d71a1507064ec0642eb"
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 162,
+    "sourceSha": "b1befc05b57362b1589d1d71a1507064ec0642eb"
+  }
+]

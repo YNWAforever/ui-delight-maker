@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { AgentDataScope, DemoOriginLabel } from "@/components/agents/data-scope";
+import { matchesAgentDataFilter, type AgentDataFilter } from "@/lib/agent-data-scope";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { AlertTriangle, Bot, CheckCircle2, ClipboardCheck, RefreshCw, XCircle } from "lucide-react";
@@ -192,6 +194,10 @@ function AiReviewPage() {
   const clientNow = useClientNow();
   const queueQuery = useQuery({ ...aiReviewQuery(), initialData });
   const data = queueQuery.data;
+  const [originFilter, setOriginFilter] = useState<AgentDataFilter>("all");
+  const visibleFlaggedRuns = data.humanReviewRuns.filter((run) =>
+    matchesAgentDataFilter(run.is_demo, originFilter),
+  );
 
   /**
    * Approvals decided in this session, kept so the row stays where it was with its new status.
@@ -258,10 +264,10 @@ function AiReviewPage() {
           subject_restricted: approval.subject_restricted === true,
         });
     }
-    return [...merged.values()].sort((left, right) =>
-      right.created_at.localeCompare(left.created_at),
-    );
-  }, [data.approvals, decided]);
+    return [...merged.values()]
+      .filter((approval) => matchesAgentDataFilter(approval.is_demo, originFilter))
+      .sort((left, right) => right.created_at.localeCompare(left.created_at));
+  }, [data.approvals, decided, originFilter]);
 
   const pendingQueue = useMemo(
     () => queue.filter((approval) => approval.status === "pending"),
@@ -710,6 +716,7 @@ function AiReviewPage() {
       />
 
       <div className="space-y-6 px-4 py-6 md:px-6">
+        <AgentDataScope value={originFilter} onChange={setOriginFilter} />
         <MetricStrip
           metrics={[
             {
@@ -784,6 +791,7 @@ function AiReviewPage() {
                         {approvalTypeLabel(selected.approval_type)}
                       </span>
                       <StatusBadge domain="approvals" value={selected.status} />
+                      <DemoOriginLabel value={selected.is_demo} />
                       <span className="ml-auto text-xs text-muted-foreground">
                         {formatDateTime(selected.created_at)}
                       </span>
@@ -809,7 +817,7 @@ function AiReviewPage() {
           </div>
         )}
 
-        {data.humanReviewRuns.length > 0 && (
+        {visibleFlaggedRuns.length > 0 && (
           <section className="space-y-3">
             <SectionHeader
               title="Flagged agent runs"
@@ -817,7 +825,7 @@ function AiReviewPage() {
             />
             <Card>
               <ul className="divide-y divide-border">
-                {data.humanReviewRuns.slice(0, FLAGGED_RUN_LIMIT).map((run) => {
+                {visibleFlaggedRuns.slice(0, FLAGGED_RUN_LIMIT).map((run) => {
                   const slug = agentSlug(run.workflow_type);
                   return (
                     <li key={run.id} className="flex flex-wrap items-center gap-3 p-4 text-sm">
@@ -844,14 +852,15 @@ function AiReviewPage() {
                         {formatPercent(run.confidence_score)}
                       </span>
                       <StatusBadge domain="agentRuns" value={run.status} />
+                      <DemoOriginLabel value={run.is_demo} />
                     </li>
                   );
                 })}
               </ul>
             </Card>
-            {data.humanReviewRuns.length > FLAGGED_RUN_LIMIT && (
+            {visibleFlaggedRuns.length > FLAGGED_RUN_LIMIT && (
               <p className="text-xs text-muted-foreground">
-                Showing {FLAGGED_RUN_LIMIT} of {data.humanReviewRuns.length} flagged runs. The full
+                Showing {FLAGGED_RUN_LIMIT} of {visibleFlaggedRuns.length} flagged runs. The full
                 history for one agent is on its page in AI Ops.
               </p>
             )}
