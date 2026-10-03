@@ -1,8 +1,8 @@
 import { queryOne } from "@/server/db/neon.server";
 import { updateAgentRunResult } from "@/server/repositories/agent-runs";
 import type { AIInvocationContext, AIUsage } from "@/server/workflows/ai-invocation.server";
+import { readGovernedAgentPolicy } from "@/server/repositories/agent-policy";
 
-type PolicyRow = { id: string; status: "active" | "inactive" };
 type InvocationRow = {
   id: string;
   status: string;
@@ -12,10 +12,8 @@ type InvocationRow = {
 };
 
 export async function readNoteTidyPolicy() {
-  const row = await queryOne<PolicyRow>(
-    "select id,status from agent_policy_versions where workflow_type='note_tidy' order by created_at desc,version_seq desc limit 1",
-  );
-  return { status: row?.status ?? "active", versionId: row?.id ?? null };
+  const policy = await readGovernedAgentPolicy("note_tidy");
+  return { status: policy.status, versionId: policy.versionId };
 }
 
 export async function beginNoteTidyRun(input: Parameters<AIInvocationContext["beginRun"]>[0]) {

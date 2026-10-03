@@ -5,7 +5,7 @@ import {
   rollbackAgentPolicyFn,
   setAgentPolicyFn,
 } from "@/server-functions/agent-policy";
-import type { AgentWorkflowType } from "@/lib/agents";
+import type { GovernedWorkflowType } from "@/lib/agents";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -33,7 +33,7 @@ export function PolicyPanel({
   workflowType,
   onChanged,
 }: {
-  workflowType: AgentWorkflowType;
+  workflowType: GovernedWorkflowType;
   onChanged?: () => Promise<unknown>;
 }) {
   const client = useQueryClient();

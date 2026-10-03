@@ -21,6 +21,7 @@ const noteInput = z.object({
 export const tidyTouchpointNote = createServerFn({ method: "POST" })
   .validator((data: unknown) => noteInput.parse(data))
   .handler(async ({ data }) => {
+    data = noteInput.parse(data);
     const session = await requireNeonAuthSession();
     const ctx: AIInvocationContext = {
       actorId: session.profile.id,
@@ -67,7 +68,7 @@ export const tidyTouchpointNote = createServerFn({ method: "POST" })
         if (!tidied) throw new Error("OpenRouter returned no content");
         return {
           output: tidied,
-          model: body.model ?? model,
+          model: typeof body.model === "string" ? body.model : null,
           usage: body.usage
             ? {
                 inputTokens: body.usage.prompt_tokens,
@@ -89,7 +90,7 @@ export const tidyTouchpointNote = createServerFn({ method: "POST" })
       idempotencyKey: data.idempotencyKey ?? randomUUID(),
     });
     if ((result.outcome === "completed" || result.outcome === "duplicate") && result.output) {
-      return { tidied: result.output };
+      return { tidied: result.output, runId: result.runId };
     }
     if (result.outcome === "denied") throw new Error("Note tidy policy is inactive");
     if (result.outcome === "duplicate") throw new Error("Note tidy is already running");

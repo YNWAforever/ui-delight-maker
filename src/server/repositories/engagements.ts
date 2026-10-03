@@ -14,7 +14,7 @@ const engagementScoreColumns: Array<
 
 export async function listEngagementsByClient(clientId: string) {
   return query<Engagement>(
-    "select * from engagements where client_id = $1 order by start_date desc",
+    "select e.*, p.name as product_name from engagements e left join products p on p.id=e.product_id where e.client_id = $1 order by e.start_date desc",
     [clientId],
   );
 }

@@ -20,6 +20,9 @@ export type AgentWorkflowType =
   | "score_renewal_risk"
   | "relationship_intelligence";
 
+export type GovernedWorkflowType = AgentWorkflowType | "note_tidy";
+export const NOTE_TIDY_DEFAULT_POLICY: AgentPolicy = { status: "active", humanApproval: false };
+
 export interface AgentDefinition {
   id: string;
   /** URL slug — the `$name` param of /agents/$name. */

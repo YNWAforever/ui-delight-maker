@@ -6,6 +6,7 @@ export const governedWorkflowSchema = z.enum([
   "draft_quote",
   "score_renewal_risk",
   "relationship_intelligence",
+  "note_tidy",
 ]);
 const common = {
   workflowType: governedWorkflowSchema,

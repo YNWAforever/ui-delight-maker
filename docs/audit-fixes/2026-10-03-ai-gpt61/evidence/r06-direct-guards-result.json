@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T09:14:59.878Z",
+  "sourceSha": "fa61f068c7cb7e606211ee0c7ef9147228dc83c9",
+  "db": "clientops_ai_gpt61_8149cfd1c8",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server-functions/__tests__/ai-note-tidy-guards.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r06-direct-guards-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 5,
+  "failed": 0,
+  "skipped": 0,
+  "total": 5,
+  "files": 1,
+  "elapsedMs": 3341,
+  "reportSha256": "5b6b87ddb6cfb2f0ca42e55f801d2df9b3207eddedeca9c76237d1355b79aab1"
+}
