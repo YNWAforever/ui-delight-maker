@@ -4,19 +4,29 @@ import {
   qualificationWritebackSchema,
   readWritebackPayload,
 } from "@/server/workflows/writeback-payloads.server";
-import { writeQualificationResult } from "@/server/workflows/writebacks";
+import {
+  writeQualificationResult,
+  handleAIWriteback,
+  recordInvalidWriteback,
+} from "@/server/workflows/writebacks";
 
 export const Route = createFileRoute("/api/workflows/qualify-lead")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         assertWorkflowToken(request);
-        const payload = await readWritebackPayload(request, qualificationWritebackSchema);
-        if (payload instanceof Response) return payload;
+        return handleAIWriteback(async () => {
+          const payload = await readWritebackPayload(
+            request,
+            qualificationWritebackSchema,
+            (body, error) => recordInvalidWriteback(body, "qualify_lead", error),
+          );
+          if (payload instanceof Response) return payload;
 
-        await writeQualificationResult(payload);
+          await writeQualificationResult(payload);
 
-        return Response.json({ ok: true });
+          return Response.json({ ok: true });
+        });
       },
     },
   },

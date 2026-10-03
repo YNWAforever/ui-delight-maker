@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-03T08:04:56.846Z",
+  "sourceSha": "d5fd29577e55cbc6f912ece1b2a5ada7d2cc68c6",
+  "db": "clientops_ai_gpt61_5f9f7ba773",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/workflows/__tests__/provenance.integration.test.ts",
+    "src/server/workflows/__tests__/ai-invocation.integration.test.ts",
+    "src/server/db/__tests__/clientops-schema.integration.test.ts",
+    "src/lib/workflows/__tests__/output-contracts.test.ts",
+    "src/lib/workflows/__tests__/output-worker-parity.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r03-ci-fixed-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 91,
+  "failed": 0,
+  "skipped": 0,
+  "total": 91,
+  "files": 5,
+  "elapsedMs": 12344,
+  "reportSha256": "912da37feba3a21ce7ed09920af5ee1928bb72c47698bd437980f05964967bef"
+}

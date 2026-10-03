@@ -55,6 +55,7 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/021_ai_invocation_telemetry.sql",
       "neon/migrations/022_neon_domain_storage.sql",
       "neon/migrations/023_ai_execution_provenance.sql",
+      "neon/migrations/024_ai_invalid_output.sql",
     ]);
   });
 

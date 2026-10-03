@@ -1,0 +1,54 @@
+[
+  {
+    "command": [
+      "bun",
+      "run",
+      "typecheck"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 56042,
+    "sourceSha": "6a2ab0272f0db037168380eccf5c4e1c3753970e"
+  },
+  {
+    "command": [
+      "bunx",
+      "eslint",
+      "src/lib/__tests__/clientops-relationship-schema.test.ts",
+      "src/lib/clientops-relationship-schema.ts",
+      "src/lib/types.ts",
+      "src/lib/workflows/__tests__/provenance.test.ts",
+      "src/lib/workflows/fallbacks.ts",
+      "src/lib/workflows/qualification.ts",
+      "src/routes/api/workflows/draft-quote.ts",
+      "src/routes/api/workflows/draft-reply.ts",
+      "src/routes/api/workflows/qualify-lead.ts",
+      "src/routes/api/workflows/relationship-intelligence.ts",
+      "src/routes/api/workflows/score-renewal-risk.ts",
+      "src/server/repositories/activity-logs.ts",
+      "src/server/workflows/__tests__/agent-run-duration.integration.test.ts",
+      "src/server/workflows/__tests__/provenance.integration.test.ts",
+      "src/server/workflows/__tests__/writebacks-human-approval.test.ts",
+      "src/server/workflows/__tests__/writebacks.test.ts",
+      "src/server/workflows/writeback-payloads.server.ts",
+      "src/server/workflows/writebacks.ts",
+      "scripts/clientops/sync-ai-worker-contracts.ts",
+      "src/lib/workflows/__tests__/commercial-fixtures.ts",
+      "src/lib/workflows/__tests__/output-contracts.test.ts",
+      "src/lib/workflows/__tests__/output-worker-parity.test.ts",
+      "src/lib/workflows/output-contracts.ts"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 25107,
+    "sourceSha": "6a2ab0272f0db037168380eccf5c4e1c3753970e"
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 189,
+    "sourceSha": "6a2ab0272f0db037168380eccf5c4e1c3753970e"
+  }
+]

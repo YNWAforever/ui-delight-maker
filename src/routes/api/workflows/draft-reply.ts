@@ -4,19 +4,29 @@ import {
   readWritebackPayload,
   replyDraftWritebackSchema,
 } from "@/server/workflows/writeback-payloads.server";
-import { writeReplyDraftResult } from "@/server/workflows/writebacks";
+import {
+  writeReplyDraftResult,
+  handleAIWriteback,
+  recordInvalidWriteback,
+} from "@/server/workflows/writebacks";
 
 export const Route = createFileRoute("/api/workflows/draft-reply")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         assertWorkflowToken(request);
-        const payload = await readWritebackPayload(request, replyDraftWritebackSchema);
-        if (payload instanceof Response) return payload;
+        return handleAIWriteback(async () => {
+          const payload = await readWritebackPayload(
+            request,
+            replyDraftWritebackSchema,
+            (body, error) => recordInvalidWriteback(body, "draft_reply", error),
+          );
+          if (payload instanceof Response) return payload;
 
-        const approvalId = await writeReplyDraftResult(payload);
+          const approvalId = await writeReplyDraftResult(payload);
 
-        return Response.json({ ok: true, approval_id: approvalId });
+          return Response.json({ ok: true, approval_id: approvalId });
+        });
       },
     },
   },

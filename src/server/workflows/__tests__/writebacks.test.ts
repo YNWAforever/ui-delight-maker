@@ -1,8 +1,9 @@
+import { validQualification } from "@/lib/workflows/__tests__/commercial-fixtures";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const fakeDb = {
-    query: vi.fn(),
+    query: vi.fn().mockResolvedValue({ rows: [{ currency: "HKD" }] }),
   };
 
   return {
@@ -86,7 +87,7 @@ describe("workflow writebacks", () => {
       payload: {
         lead_id: "binding-subject",
         agent_run_id: "binding-run",
-        qualification_data: {},
+        qualification_data: { ...validQualification },
         lead_score: 80,
         output_summary: "Synthetic",
         confidence_score: 0.8,
@@ -195,7 +196,7 @@ describe("workflow writebacks", () => {
   );
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.fakeDb.query.mockReset();
+    mocks.fakeDb.query.mockReset().mockResolvedValue({ rows: [{ currency: "HKD" }] });
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
       workflow_type: "relationship_intelligence",
       id: "run-default",
@@ -585,7 +586,7 @@ describe("workflow writebacks", () => {
   // The workflow relays whatever the model returned, so what lands in the column has to be
   // coerced here rather than trusted — the lead Insights tab reads `.service_interest.map(...)`
   // off it directly.
-  it("stores a renderable qualification even when the model returned an unrelated object", async () => {
+  it("rejects unrelated qualification output without inventing a successful score", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
       workflow_type: "qualify_lead",
       id: "run-1",
@@ -595,29 +596,24 @@ describe("workflow writebacks", () => {
       subject_id: "lead-1",
     });
 
-    await writeQualificationResult({
-      lead_id: "lead-1",
-      agent_run_id: "run-1",
-      qualification_data: { notes: "looks good" },
-      lead_score: 60,
-      output_summary: "Model went off-script",
-      confidence_score: 0.9,
-    });
-
-    const [, updates] = mocks.updateLeadMock.mock.calls[0]!;
-    expect(updates.qualification_data).toMatchObject({
-      service_interest: [],
-      budget_range: "unknown",
-      next_action: "Request more info",
-      human_review_required: true,
-    });
-    expect(Number.isFinite(updates.qualification_data.confidence)).toBe(true);
-
-    // The agent run records the same normalized object, not the raw payload, so the two cannot
-    // disagree about what the agent decided.
+    await expect(
+      writeQualificationResult({
+        lead_id: "lead-1",
+        agent_run_id: "run-1",
+        qualification_data: { notes: "looks good" },
+        lead_score: 60,
+        output_summary: "Model went off-script",
+        confidence_score: 0.9,
+      }),
+    ).rejects.toThrow("INVALID_AI_OUTPUT");
+    expect(mocks.updateLeadMock).not.toHaveBeenCalled();
     expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
       "run-1",
-      expect.objectContaining({ output_data: updates.qualification_data }),
+      expect.objectContaining({
+        status: "failed",
+        outcome_code: "invalid_output",
+        output_data: { invalid_output_code: "INVALID_AI_OUTPUT" },
+      }),
       mocks.fakeDb,
     );
   });
@@ -636,7 +632,7 @@ describe("workflow writebacks", () => {
       writeQualificationResult({
         lead_id: "lead-1",
         agent_run_id: "run-1",
-        qualification_data: { fit: "high" },
+        qualification_data: { ...validQualification, fit: "high" },
         lead_score: 82,
         output_summary: "Strong fit",
         confidence_score: 0.9,
@@ -733,7 +729,7 @@ describe("workflow writebacks", () => {
     await writeQualificationResult({
       lead_id: "lead-1",
       agent_run_id: "run-1",
-      qualification_data: { fit: "low" },
+      qualification_data: { ...validQualification, fit: "low" },
       lead_score: 10,
       output_summary: "Replayed",
       confidence_score: 0.2,
@@ -759,7 +755,7 @@ describe("workflow writebacks", () => {
     await writeQualificationResult({
       lead_id: "lead-1",
       agent_run_id: "run-1",
-      qualification_data: { human_review_required: false },
+      qualification_data: { ...validQualification, human_review_required: false },
       lead_score: 40,
       output_summary: "Model says no review needed",
       confidence_score: 0.2,
@@ -785,7 +781,7 @@ describe("workflow writebacks", () => {
     await writeQualificationResult({
       lead_id: "lead-1",
       agent_run_id: "run-1",
-      qualification_data: { human_review_required: true },
+      qualification_data: { ...validQualification, human_review_required: true },
       lead_score: 95,
       output_summary: "Confident but wants a look",
       confidence_score: 0.99,
@@ -816,7 +812,7 @@ describe("workflow writebacks", () => {
       await writeQualificationResult({
         lead_id: "lead-p1",
         agent_run_id: "run-p1",
-        qualification_data: { confidence: 0.9 },
+        qualification_data: { ...validQualification, confidence: 0.9 },
         lead_score: 80,
         output_summary: "Qualified",
         confidence_score: 0.9,

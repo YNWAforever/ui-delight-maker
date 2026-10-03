@@ -5,7 +5,11 @@ import {
   relationshipIntelligenceWritebackSchema,
 } from "@/server/workflows/writeback-payloads.server";
 import { assertWorkflowToken } from "@/server/workflows/assert-workflow-token.server";
-import { writeRelationshipIntelligenceResult } from "@/server/workflows/writebacks";
+import {
+  writeRelationshipIntelligenceResult,
+  handleAIWriteback,
+  recordInvalidWriteback,
+} from "@/server/workflows/writebacks";
 
 export function parseRelationshipIntelligenceWritebackPayload(
   payload: unknown,
@@ -19,20 +23,23 @@ export const Route = createFileRoute("/api/workflows/relationship-intelligence")
     handlers: {
       POST: async ({ request }) => {
         assertWorkflowToken(request);
-        const payload = await readWritebackPayload(
-          request,
-          relationshipIntelligenceWritebackSchema,
-        );
-        if (payload instanceof Response) {
-          return Response.json(
-            { ok: false, error: "Malformed relationship intelligence payload" },
-            { status: payload.status },
+        return handleAIWriteback(async () => {
+          const payload = await readWritebackPayload(
+            request,
+            relationshipIntelligenceWritebackSchema,
+            (body, error) => recordInvalidWriteback(body, "relationship_intelligence", error),
           );
-        }
+          if (payload instanceof Response) {
+            return Response.json(
+              { ok: false, error: "Malformed relationship intelligence payload" },
+              { status: payload.status },
+            );
+          }
 
-        await writeRelationshipIntelligenceResult(payload);
+          await writeRelationshipIntelligenceResult(payload);
 
-        return Response.json({ ok: true });
+          return Response.json({ ok: true });
+        });
       },
     },
   },

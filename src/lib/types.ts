@@ -185,7 +185,7 @@ export interface QualificationData {
   fit_score: number; // 0–10
   qualification_score: number; // 0–100
   service_interest: string[];
-  budget_range: string; // "HKD 50k–200k" or "unknown"
+  budget_range: string; // Explicit evidenced currency/amount, or "unknown"; never an invented range.
   next_action: QualificationNextAction;
   reason: string; // max 120 chars
   confidence: number; // 0.0–1.0

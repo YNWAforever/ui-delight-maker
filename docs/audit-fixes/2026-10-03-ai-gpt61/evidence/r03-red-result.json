@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-10-03T06:58:10.332Z",
+  "sourceSha": "7c9700ee0512b48c68c50db5cc3a4648bf72663a",
+  "db": "clientops_ai_gpt61_0630a46c3e",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/lib/workflows/__tests__/output-contracts.test.ts",
+    "src/server/workflows/__tests__/provenance.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r03-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 27,
+  "failed": 22,
+  "skipped": 0,
+  "total": 49,
+  "files": 2,
+  "elapsedMs": 3347,
+  "reportSha256": "ac1864d90be9812279bf9f44b1fad658fdc80f25b3966c402383d1d9d5d9459d"
+}

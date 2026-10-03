@@ -1,3 +1,4 @@
+import { validQualification } from "@/lib/workflows/__tests__/commercial-fixtures";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { Pool, types, type PoolClient } from "pg";
@@ -35,13 +36,34 @@ import {
   writeQuoteDraftResult,
   writeScoreRenewalRiskResult,
   writeRelationshipIntelligenceResult,
+  recordInvalidWriteback,
 } from "../writebacks";
+import {
+  readWritebackPayload,
+  qualificationWritebackSchema,
+  quoteDraftWritebackSchema,
+  replyDraftWritebackSchema,
+  scoreRenewalRiskWritebackSchema,
+  relationshipIntelligenceWritebackSchema,
+} from "../writeback-payloads.server";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 const databaseName = "clientops_provenance_" + randomUUID().replaceAll("-", "");
 let admin: Pool | null = null,
   migrations: ClientOpsMigration[] = [];
 const legacyRun = randomUUID();
+const legacyOutcomes = [
+  "expired",
+  "cancelled",
+  "retry_requested",
+  "superseded",
+  "awaiting_manual_send",
+  "manual_send_recorded",
+  "completed",
+  "timeout",
+  "dispatch_ambiguous",
+  "provider_error",
+];
 const metadata = {
   source: "provider" as const,
   providerRequestId: "synthetic-provider-receipt",
@@ -103,7 +125,7 @@ async function fixture(workflow: (typeof workflows)[number]) {
     model_used: "fake-content-model",
   };
   const confidence = { confidence_score: 0.8 };
-  let writer: (payload: never) => Promise<unknown>, payload: object;
+  let writer: (payload: never) => Promise<unknown>, payload: Record<string, unknown>;
   switch (workflow) {
     case "qualify_lead":
       writer = writeQualificationResult;
@@ -111,7 +133,7 @@ async function fixture(workflow: (typeof workflows)[number]) {
         ...common,
         ...confidence,
         lead_id: subjectId,
-        qualification_data: {},
+        qualification_data: { ...validQualification },
         lead_score: 80,
         output_summary: "Synthetic",
       };
@@ -199,6 +221,15 @@ describe("AI provenance migration and callback facts on real PostgreSQL", () => 
       [legacyRun, randomUUID()],
     );
     await runClientOpsMigrations(holder.pool, migrations.slice(0, 23));
+    await holder.pool.query(
+      `insert into agent_runs(agent_name,workflow_type,subject_type,subject_id,status,outcome_code)
+      select 'Synthetic legacy outcome','note_tidy','note',gen_random_uuid(),'failed',code from unnest($1::text[]) code`,
+      [legacyOutcomes],
+    );
+    await runClientOpsMigrations(holder.pool, migrations);
+    await holder.pool.query(
+      "insert into pricing_templates(service,unit_price,currency,active) values('Synthetic permitted pricing',100,'HKD',true)",
+    );
   }, 60000);
   afterAll(async () => {
     await holder.pool?.end();
@@ -229,6 +260,23 @@ describe("AI provenance migration and callback facts on real PostgreSQL", () => 
     },
   );
   it.runIf(hasDatabase)(
+    "preserves every existing outcome through migration 024 and replay",
+    async () => {
+      const replay = await runClientOpsMigrations(holder.pool!, migrations);
+      expect(replay.applied).toEqual([]);
+      expect(replay.skipped).toHaveLength(24);
+      const result = await holder.pool!.query(
+        "select outcome_code from agent_runs where agent_name='Synthetic legacy outcome' order by outcome_code",
+      );
+      expect(result.rows.map((row) => row.outcome_code)).toEqual([...legacyOutcomes].sort());
+      await expect(
+        holder.pool!.query("update agent_runs set outcome_code='unrecognized' where id=$1", [
+          legacyRun,
+        ]),
+      ).rejects.toMatchObject({ code: "23514" });
+    },
+  );
+  it.runIf(hasDatabase)(
     "rejects secret / raw response keys at the database constraint",
     async () => {
       await expect(
@@ -237,6 +285,168 @@ describe("AI provenance migration and callback facts on real PostgreSQL", () => 
           JSON.stringify({ source: "provider", apiKey: "synthetic-forbidden-field" }),
         ]),
       ).rejects.toMatchObject({ code: "23514" });
+    },
+  );
+  it.runIf(hasDatabase)(
+    "rejects_inconsistent_quote_atomically and retains only safe failure telemetry",
+    async () => {
+      const { runId, subjectId, payload } = await fixture("draft_quote");
+      (payload.quote as Record<string, unknown>).total_value = 1;
+      payload.create_send_approval = true;
+      await expect(writeQuoteDraftResult(payload as never)).rejects.toThrow("QUOTE_TOTAL_MISMATCH");
+      expect(
+        (
+          await holder.pool!.query("select count(*)::int n from quotes where lead_id=$1", [
+            subjectId,
+          ])
+        ).rows[0].n,
+      ).toBe(0);
+      expect(
+        (
+          await holder.pool!.query(
+            "select count(*)::int n from human_approvals where agent_run_id=$1",
+            [runId],
+          )
+        ).rows[0].n,
+      ).toBe(0);
+      const run = (await holder.pool!.query("select * from agent_runs where id=$1", [runId]))
+        .rows[0];
+      expect(run.status).toBe("failed");
+      expect(run.outcome_code).toBe("invalid_output");
+      expect(run.output_data).toEqual({ invalid_output_code: "QUOTE_TOTAL_MISMATCH" });
+      expect(run.tokens_used).toBe(125);
+      expect(run.execution_metadata).toEqual(metadata);
+      await expect(writeQuoteDraftResult(payload as never)).rejects.toThrow();
+      expect(
+        (
+          await holder.pool!.query("select count(*)::int n from activity_logs where actor_id=$1", [
+            runId,
+          ])
+        ).rows[0].n,
+      ).toBe(1);
+    },
+  );
+  it.runIf(hasDatabase)(
+    "accepts_authoritative_total_200 with one quote and approval under concurrent replay",
+    async () => {
+      const { runId, subjectId, payload } = await fixture("draft_quote");
+      payload.create_send_approval = true;
+      const results = await Promise.all([
+        writeQuoteDraftResult(payload as never),
+        writeQuoteDraftResult(payload as never),
+      ]);
+      expect(results[0]).toEqual(results[1]);
+      const quotes = (
+        await holder.pool!.query("select total_value from quotes where lead_id=$1", [subjectId])
+      ).rows;
+      expect(quotes).toEqual([{ total_value: 200 }]);
+      expect(
+        (
+          await holder.pool!.query(
+            "select count(*)::int n from human_approvals where agent_run_id=$1",
+            [runId],
+          )
+        ).rows[0].n,
+      ).toBe(1);
+    },
+  );
+  it.runIf(hasDatabase).each(workflows)(
+    "%s records one bound schema failure receipt with real telemetry",
+    async (workflow) => {
+      const { runId, subjectId, payload } = await fixture(workflow);
+      payload[workflow === "score_renewal_risk" ? "confidence" : "confidence_score"] = null;
+      const schema = {
+        qualify_lead: qualificationWritebackSchema,
+        draft_reply: replyDraftWritebackSchema,
+        draft_quote: quoteDraftWritebackSchema,
+        score_renewal_risk: scoreRenewalRiskWritebackSchema,
+        relationship_intelligence: relationshipIntelligenceWritebackSchema,
+      }[workflow];
+      for (let replay = 0; replay < 2; replay++) {
+        const request = new Request("https://synthetic.test/callback", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        const response = await readWritebackPayload(request, schema as never, (body, error) =>
+          recordInvalidWriteback(body, workflow, error),
+        );
+        expect(response).toBeInstanceOf(Response);
+        expect((response as Response).status).toBe(400);
+      }
+      const run = (await holder.pool!.query("select * from agent_runs where id=$1", [runId]))
+        .rows[0];
+      expect(run.status).toBe("failed");
+      expect(run.outcome_code).toBe("invalid_output");
+      expect(run.output_data).toEqual({ invalid_output_code: "INVALID_AI_OUTPUT" });
+      expect(run.execution_metadata).toEqual(metadata);
+      expect(run.tokens_used).toBe(125);
+      expect(
+        (
+          await holder.pool!.query(
+            "select count(*)::int n from human_approvals where agent_run_id=$1",
+            [runId],
+          )
+        ).rows[0].n,
+      ).toBe(0);
+      expect(
+        (
+          await holder.pool!.query("select count(*)::int n from activity_logs where actor_id=$1", [
+            runId,
+          ])
+        ).rows[0].n,
+      ).toBe(1);
+      if (workflow === "draft_quote")
+        expect(
+          (
+            await holder.pool!.query("select count(*)::int n from quotes where lead_id=$1", [
+              subjectId,
+            ])
+          ).rows[0].n,
+        ).toBe(0);
+    },
+  );
+  it.runIf(hasDatabase)(
+    "rolls back the quote when approval creation fails, then retries exactly once",
+    async () => {
+      const { runId, subjectId, payload } = await fixture("draft_quote");
+      payload.create_send_approval = true;
+      await holder.pool!.query(
+        `create function synthetic_quote_failure() returns trigger language plpgsql as $$ begin if new.agent_run_id='${runId}' then raise exception 'synthetic approval failure'; end if; return new; end $$; create trigger synthetic_quote_failure before insert on human_approvals for each row execute function synthetic_quote_failure()`,
+      );
+      try {
+        await expect(writeQuoteDraftResult(payload as never)).rejects.toThrow(
+          "synthetic approval failure",
+        );
+        expect(
+          (
+            await holder.pool!.query("select count(*)::int n from quotes where lead_id=$1", [
+              subjectId,
+            ])
+          ).rows[0].n,
+        ).toBe(0);
+        expect(
+          (
+            await holder.pool!.query(
+              "select status,execution_metadata from agent_runs where id=$1",
+              [runId],
+            )
+          ).rows[0],
+        ).toEqual({ status: "running", execution_metadata: null });
+      } finally {
+        await holder.pool!.query(
+          "drop trigger synthetic_quote_failure on human_approvals; drop function synthetic_quote_failure()",
+        );
+      }
+      const first = await writeQuoteDraftResult(payload as never),
+        replay = await writeQuoteDraftResult(payload as never);
+      expect(replay).toEqual(first);
+      expect(
+        (
+          await holder.pool!.query("select count(*)::int n from quotes where lead_id=$1", [
+            subjectId,
+          ])
+        ).rows[0].n,
+      ).toBe(1);
     },
   );
   it.runIf(hasDatabase).each(workflows)(
