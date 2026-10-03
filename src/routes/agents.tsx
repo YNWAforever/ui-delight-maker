@@ -103,6 +103,7 @@ function AgentsRoute() {
 }
 
 function AgentsMonitor() {
+  const actorId = Route.useRouteContext?.().profile?.id ?? "unknown";
   const queueFilters = agentQueueSearchSchema.parse(Route.useSearch() ?? {});
   const navigate = useNavigate({ from: Route.fullPath });
   const auxiliaryRun = Route.useSearch()?.auxiliaryRun;
@@ -353,6 +354,8 @@ function AgentsMonitor() {
         )}
 
         <RunQueuePanel
+          key={actorId}
+          actorId={actorId}
           filters={queueFilters}
           onChange={(next) => void navigate({ search: (current) => ({ ...current, ...next }) })}
         />

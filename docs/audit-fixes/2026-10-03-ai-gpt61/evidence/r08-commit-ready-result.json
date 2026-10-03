@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-10-03T10:29:24.932Z",
+  "sourceSha": "914e0e554de66cb7169408b7760d15aef8492ddb",
+  "db": "clientops_ai_gpt61_5638b0a139",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/commands/__tests__/agent-bulk-recovery.integration.test.ts",
+    "src/components/agents/__tests__/bulk-recovery-dialog.test.tsx",
+    "src/server/db/__tests__/approval-recovery.integration.test.ts",
+    "src/server/db/__tests__/bulk-resume.integration.test.ts",
+    "src/components/agents/__tests__/queue-navigation.test.tsx",
+    "src/routes/__tests__/-agents-ai-ops-integrity.test.tsx",
+    "src/server/db/__tests__/authorization-surface.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r08-commit-ready-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 81,
+  "failed": 0,
+  "skipped": 0,
+  "total": 81,
+  "files": 7,
+  "elapsedMs": 26308,
+  "reportSha256": "9eb06f4a3276c73abd903bf0e227c528069d9cff2f3ade67040fdd1c0a07757a"
+}

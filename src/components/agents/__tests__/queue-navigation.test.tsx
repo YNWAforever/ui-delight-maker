@@ -9,6 +9,12 @@ import { getAgentQueue } from "@/server-functions/agent-runs";
 import { QueueToolbar } from "../queue-toolbar";
 import { RunQueuePanel } from "../run-queue-panel";
 vi.mock("@/server-functions/agent-runs", () => ({ getAgentQueue: vi.fn() }));
+vi.mock("@/server-functions/agent-bulk-recovery", () => ({
+  previewAgentRecoveryFn: vi.fn(),
+  executeAgentRecoveryFn: vi.fn(),
+  getAgentRecoveryOperationFn: vi.fn(),
+  resumeAgentRecoveryFn: vi.fn(),
+}));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, search }: { children: ReactNode; search: unknown }) => (
     <a href={"?" + new URLSearchParams(search as Record<string, string>)}>{children}</a>
@@ -49,6 +55,21 @@ function mount(filters = agentQueueSearchSchema.parse({})) {
   return { client, change };
 }
 describe("server queue navigation", () => {
+  it("select all matching is disabled above 100 while page selection remains explicit", async () => {
+    vi.mocked(getAgentQueue).mockResolvedValue(result as never);
+    mount();
+    await screen.findByText(/This page: 1 \/ 101/);
+    expect(screen.getByRole("button", { name: "Select all 101 matching runs" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Select this page" }));
+    expect(screen.getByRole("checkbox", { name: "Select run " + runId })).toHaveProperty(
+      "checked",
+      true,
+    );
+    expect(screen.getByRole("button", { name: "Preview 1 selected" })).toBeTruthy();
+  });
   it("URL reload and back values preserve filters and cursor in the server request", async () => {
     vi.mocked(getAgentQueue).mockResolvedValue(result as never);
     const filters = agentQueueSearchSchema.parse(
