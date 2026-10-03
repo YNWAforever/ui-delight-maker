@@ -320,7 +320,7 @@ describe("settings product catalogue", () => {
 });
 
 describe("settings agent catalogue", () => {
-  it("renders the catalogue read-only, with the reason BD-3 gives", async () => {
+  it("states the status-only permission and confirmation contract without fake switches", async () => {
     renderPage();
     await waitFor(() => expect(getEffectiveAgentCatalogueMock).toHaveBeenCalled());
 
@@ -330,8 +330,7 @@ describe("settings agent catalogue", () => {
           .getAllByRole("note")
           .some((node) =>
             (node.textContent ?? "").includes(
-              "These are the values the dispatch path enforces today. Changing them requires the " +
-                "agents.configure capability and is not yet available from this page.",
+              "Changing active/inactive status requires agents.configure, a reason and confirmation.",
             ),
           ),
       ).toBe(true),
