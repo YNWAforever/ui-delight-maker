@@ -52,6 +52,18 @@ const databaseName = "clientops_provenance_" + randomUUID().replaceAll("-", "");
 let admin: Pool | null = null,
   migrations: ClientOpsMigration[] = [];
 const legacyRun = randomUUID();
+const legacyOutcomes = [
+  "expired",
+  "cancelled",
+  "retry_requested",
+  "superseded",
+  "awaiting_manual_send",
+  "manual_send_recorded",
+  "completed",
+  "timeout",
+  "dispatch_ambiguous",
+  "provider_error",
+];
 const metadata = {
   source: "provider" as const,
   providerRequestId: "synthetic-provider-receipt",
@@ -209,6 +221,11 @@ describe("AI provenance migration and callback facts on real PostgreSQL", () => 
       [legacyRun, randomUUID()],
     );
     await runClientOpsMigrations(holder.pool, migrations.slice(0, 23));
+    await holder.pool.query(
+      `insert into agent_runs(agent_name,workflow_type,subject_type,subject_id,status,outcome_code)
+      select 'Synthetic legacy outcome','note_tidy','note',gen_random_uuid(),'failed',code from unnest($1::text[]) code`,
+      [legacyOutcomes],
+    );
     await runClientOpsMigrations(holder.pool, migrations);
     await holder.pool.query(
       "insert into pricing_templates(service,unit_price,currency,active) values('Synthetic permitted pricing',100,'HKD',true)",
@@ -240,6 +257,23 @@ describe("AI provenance migration and callback facts on real PostgreSQL", () => 
         source: "unknown",
         actualModel: null,
       });
+    },
+  );
+  it.runIf(hasDatabase)(
+    "preserves every existing outcome through migration 024 and replay",
+    async () => {
+      const replay = await runClientOpsMigrations(holder.pool!, migrations);
+      expect(replay.applied).toEqual([]);
+      expect(replay.skipped).toHaveLength(24);
+      const result = await holder.pool!.query(
+        "select outcome_code from agent_runs where agent_name='Synthetic legacy outcome' order by outcome_code",
+      );
+      expect(result.rows.map((row) => row.outcome_code)).toEqual([...legacyOutcomes].sort());
+      await expect(
+        holder.pool!.query("update agent_runs set outcome_code='unrecognized' where id=$1", [
+          legacyRun,
+        ]),
+      ).rejects.toMatchObject({ code: "23514" });
     },
   );
   it.runIf(hasDatabase)(
