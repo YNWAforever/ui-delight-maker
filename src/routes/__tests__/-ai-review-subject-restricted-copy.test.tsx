@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ComponentType, ReactNode } from "react";
+import { agentQueueSearchSchema } from "@/lib/agent-queue-input";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,6 +32,7 @@ vi.mock("@tanstack/react-router", () => ({
     useLoaderData: vi.fn(),
     useRouteContext: vi.fn(),
   }),
+  useNavigate: () => vi.fn(),
   useRouter: () => ({ invalidate: routerInvalidateMock }),
   Link: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
 }));
@@ -177,20 +179,23 @@ it("a newly restricted authorized read removes previously visible confirmed cont
   await waitFor(() => expect(screen.getByText(/cannot be undone/)).toBeTruthy());
   const { crmQueryKeys } = await import("@/lib/query-keys");
   await act(async () => {
-    client.setQueryData(crmQueryKeys.aiReview.list({ view: "queue" }), {
-      approvals: [
-        {
-          ...row,
-          status: "approved",
-          row_version: 8,
-          subject_restricted: true,
-          context_summary: null,
-          context_data: null,
-          reviewer_notes: null,
-        },
-      ],
-      humanReviewRuns: [],
-    });
+    client.setQueryData(
+      crmQueryKeys.aiReview.list({ view: "queue", ...agentQueueSearchSchema.parse({}) }),
+      {
+        approvals: [
+          {
+            ...row,
+            status: "approved",
+            row_version: 8,
+            subject_restricted: true,
+            context_summary: null,
+            context_data: null,
+            reviewer_notes: null,
+          },
+        ],
+        humanReviewRuns: [],
+      },
+    );
   });
   await waitFor(() =>
     expect(screen.queryAllByText("synthetic-prior-visible-content")).toHaveLength(0),
