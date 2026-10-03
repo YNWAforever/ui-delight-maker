@@ -111,6 +111,37 @@ async function execute(
 }
 describe("durable agent bulk maintenance on physical PostgreSQL", () => {
   it.runIf(enabled)(
+    "persisted read-only actor cannot commit even with an existing owned preview",
+    async () => {
+      const f = await fixture();
+      const p = await preview([f.runId]);
+      await holder.pool!.query("update profiles set role='read_only' where id=$1", [manager]);
+      try {
+        const readOnly = await loadRequestAuthorization({
+          ...context().session,
+          profile: { ...context().session.profile, role: "read_only" },
+        });
+        await expect(execute(p, randomUUID(), readOnly)).rejects.toMatchObject({
+          code: "FORBIDDEN",
+        });
+        expect(
+          (await holder.pool!.query("select status from agent_runs where id=$1", [f.runId])).rows[0]
+            .status,
+        ).toBe("running");
+        expect(
+          (
+            await holder.pool!.query(
+              "select count(*)::int n from command_receipts where idempotency_key=$1",
+              [p.previewId + ":" + f.runId],
+            )
+          ).rows[0].n,
+        ).toBe(0);
+      } finally {
+        await holder.pool!.query("update profiles set role='manager' where id=$1", [manager]);
+      }
+    },
+  );
+  it.runIf(enabled)(
     "two persisted authorized actors racing separate previews produce one side effect",
     async () => {
       const f = await fixture();

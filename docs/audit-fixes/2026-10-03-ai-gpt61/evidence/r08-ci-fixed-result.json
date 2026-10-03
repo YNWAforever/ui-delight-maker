@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-10-03T10:48:50.685Z",
+  "sourceSha": "b2fa7e53f96a0a9739f9465115c1717813be72ac",
+  "db": "clientops_ai_gpt61_45a328f01b",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server-functions/__tests__/authorization-contract.test.ts",
+    "src/server/commands/__tests__/agent-bulk-recovery.integration.test.ts",
+    "src/server/db/__tests__/authorization-surface.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r08-ci-fixed-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 18,
+  "failed": 0,
+  "skipped": 0,
+  "total": 18,
+  "files": 3,
+  "elapsedMs": 10508,
+  "reportSha256": "792e4313ae3ea80faed523de028261ccf9b51c1f16ff44d19c06ed511e940615"
+}
