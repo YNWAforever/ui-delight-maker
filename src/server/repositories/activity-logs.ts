@@ -12,6 +12,7 @@ export type ActivityObjectType =
   | "contact"
   | "campaign"
   | "campaign_member"
+  | "agent_run"
   | "relationship_signal";
 
 export type CreateActivityLogInput = {

@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  */
 const mocks = vi.hoisted(() => {
   const fakeDb = {
-    query: vi.fn(),
+    query: vi.fn().mockResolvedValue({ rows: [{ currency: "HKD" }] }),
   };
 
   return {
@@ -109,7 +109,7 @@ const QUOTE = {
 describe("human_approval decides whether a writeback parks a run", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.fakeDb.query.mockReset();
+    mocks.fakeDb.query.mockReset().mockResolvedValue({ rows: [{ currency: "HKD" }] });
     mocks.createApprovalMock.mockResolvedValue({ id: "approval-x" });
     mocks.createQuoteMock.mockResolvedValue({ id: "quote-x" });
   });

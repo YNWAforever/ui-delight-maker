@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-10-03T07:33:49.853Z",
+  "sourceSha": "6a2ab0272f0db037168380eccf5c4e1c3753970e",
+  "workingChanges": true,
+  "originalHarnessSha256": "8586bafb44899c39e07dfe28c9d5ed239c0b3a885d8f97c3784fee876ac13e1d",
+  "command": [
+    "bun",
+    ".clientops-perf/ai-gpt61-20261003/r03-vm/reproduce-n8n-contracts.cjs",
+    "."
+  ],
+  "exitCode": 1,
+  "environment": "Native JS VM with synthetic fixtures; no external calls",
+  "originalEvidenceUnchanged": true,
+  "interpretation": "Historical probe expects successful quote fields even for invalid input. New resolver returns explicit invalid_output markers; use independent strict-contract regressions rather than rewriting or treating this harness as a release gate."
+}

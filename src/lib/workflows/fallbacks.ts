@@ -1,4 +1,11 @@
 import { buildRelationshipSignals } from "@/lib/relationship/signals";
+import {
+  AIOutputContractError,
+  CURRENCY_MINOR_UNITS,
+  computeQuoteTotal,
+  extractExplicitBudget,
+  validateQuoteDraft,
+} from "./output-contracts";
 import type {
   AccountLite,
   CampaignMemberLite,
@@ -32,9 +39,6 @@ type WorkflowFallbackInput = {
 type QuoteFallbackInput = WorkflowFallbackInput & {
   now: Date;
 };
-
-const DEFAULT_PRICE = 18000;
-const DEFAULT_CURRENCY = "HKD";
 
 function textForLead(lead: WorkflowFallbackContext["lead"]) {
   return [lead.company_name, lead.contact_name, lead.contact_email, lead.enquiry_text]
@@ -92,7 +96,10 @@ export function buildQualificationFallback({
       fit_score: fitScore,
       qualification_score: score,
       service_interest: selected.map((template) => template.service),
-      budget_range: /\bhkd\b|\$|budget|retainer|monthly/i.test(text) ? "HKD 50k-200k" : "unknown",
+      budget_range: (() => {
+        const budget = extractExplicitBudget(context.lead.enquiry_text ?? "");
+        return budget ? `${budget.currency} ${budget.amount}` : "unknown";
+      })(),
       next_action: score >= 75 ? "Schedule discovery call" : "Request more info",
       reason: "Deterministic staging fallback based on enquiry text and active pricing templates.",
       confidence: 0.64,
@@ -144,36 +151,43 @@ export function buildQuoteDraftFallback({
     0,
     matches.length > 0 ? 2 : 1,
   );
+  if (
+    !selected.length ||
+    selected.some(
+      (template) =>
+        template.unit_price === null ||
+        !Number.isFinite(Number(template.unit_price)) ||
+        Number(template.unit_price) < 0 ||
+        template.currency !== selected[0].currency,
+    ) ||
+    CURRENCY_MINOR_UNITS[selected[0].currency] === undefined
+  )
+    throw new AIOutputContractError("QUOTE_PRICING_UNAVAILABLE");
   const lineItems = selected.map((template, index) => ({
     id: `line-${index + 1}`,
     service: template.service,
     description: template.description ?? `${template.service} support package`,
     qty: 1,
-    unit_price: Number(template.unit_price ?? DEFAULT_PRICE),
+    unit_price: Number(template.unit_price),
   }));
-  const finalLineItems =
-    lineItems.length > 0
-      ? lineItems
-      : [
-          {
-            id: "line-1",
-            service: "ClientOps Discovery Sprint",
-            description: "Discovery and recommendation sprint for the lead follow-up opportunity.",
-            qty: 1,
-            unit_price: DEFAULT_PRICE,
-          },
-        ];
+  const finalLineItems = lineItems;
 
   return {
     lead_id: context.lead.id,
     agent_run_id: agentRunId,
-    quote: {
-      number: quoteNumber(agentRunId),
-      currency: selected[0]?.currency ?? DEFAULT_CURRENCY,
-      total_value: finalLineItems.reduce((sum, item) => sum + item.qty * item.unit_price, 0),
-      valid_until: addDays(now, 14),
-      line_items: finalLineItems,
-    },
+    quote: validateQuoteDraft(
+      {
+        number: quoteNumber(agentRunId),
+        currency: selected[0].currency,
+        total_value: computeQuoteTotal(finalLineItems, CURRENCY_MINOR_UNITS[selected[0].currency]),
+        valid_until: addDays(now, 14),
+        line_items: finalLineItems,
+      },
+      {
+        allowedCurrencies: selected.map((template) => template.currency),
+        minorUnitsByCurrency: CURRENCY_MINOR_UNITS,
+      },
+    ),
     create_send_approval: true,
     context_summary: `Fallback quote drafted for ${context.lead.company_name}.`,
     confidence_score: 0.6,

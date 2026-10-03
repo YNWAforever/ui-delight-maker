@@ -1,7 +1,8 @@
 import type { QualificationData, QualificationNextAction } from "@/lib/types";
 
 /**
- * Coerces whatever the qualification agent returned into the shape the rest of the app declares.
+ * Makes legacy stored qualification data renderable. New writebacks pass strict output
+ * contracts before reaching this helper; malformed provider output is rejected atomically.
  *
  * `qualification_data` is free-form model output relayed by n8n. The workflow's Resolve Output
  * node takes `parsed.qualification_data` whole whenever it is a plain object — `safeJsonValue`
@@ -10,10 +11,7 @@ import type { QualificationData, QualificationNextAction } from "@/lib/types";
  * far as every layer was concerned, and the lead Insights tab, which reads
  * `qualification_data.service_interest.map(...)`, threw and took the whole page down.
  *
- * This normalizes rather than rejects. The agent path is meant to survive a model returning
- * something odd — that is what the deterministic fallback in the workflow is for — so refusing
- * the callback would trade a broken tab for a stuck agent run. Coercing makes the stored value
- * satisfy the type it claims, which is what every reader already assumes.
+ * This legacy read compatibility does not validate or authorize new model output.
  */
 
 const NEXT_ACTIONS: readonly QualificationNextAction[] = [

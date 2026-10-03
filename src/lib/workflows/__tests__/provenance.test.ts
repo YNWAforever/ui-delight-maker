@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { qualificationWritebackSchema } from "@/server/workflows/writeback-payloads.server";
+import { validQualification } from "./commercial-fixtures";
 
 const metadata = {
   source: "provider",
@@ -14,7 +15,7 @@ const payload = {
   lead_id: "synthetic-lead",
   agent_run_id: "synthetic-run",
   lead_score: 80,
-  qualification_data: {},
+  qualification_data: validQualification,
   output_summary: "Synthetic",
   confidence_score: 0.8,
 };
