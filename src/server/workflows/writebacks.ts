@@ -13,6 +13,7 @@ import {
   type AIExecutionProvenance,
 } from "@/lib/workflows/provenance";
 import type { AgentRun } from "@/lib/types";
+import { AdminError } from "@/lib/admin/errors";
 import { transaction } from "@/server/db/neon.server";
 import { normalizeAIUsage } from "@/server/workflows/ai-invocation.server";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
@@ -90,7 +91,7 @@ function assertCallbackBinding(
     throw new Error("Agent run does not belong to this workflow");
   if (payload.attempt_id !== undefined && payload.attempt_id !== run.attempt_id)
     throw new Error("Callback does not belong to this attempt");
-  if (run.status === "failed") throw new Error("Agent run is no longer active");
+  if (run.status === "failed") throw new AdminError("CONFLICT", "Agent run is no longer active");
 }
 
 function writebackTelemetry(payload: {
