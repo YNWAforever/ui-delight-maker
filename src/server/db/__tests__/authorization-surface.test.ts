@@ -227,7 +227,8 @@ import { describe, expect, it } from "vitest";
 // R05: +3 lexical matches. agent-policy adds the required read gate and its import
 // (+2 requirePageAuthorization), plus agents.configure on rollback (+1).
 // The original configure write gate remains and physical denied-write tests cover both.
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 240;
+// R06: auxiliary-agent-runs adds one agents.view gate and its import (+2).
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 242;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

@@ -89,6 +89,7 @@ import { setAgentPolicyFn } from "@/server-functions/agent-policy";
 import * as policyFunctions from "@/server-functions/agent-policy";
 import { triggerLeadAgent } from "@/server-functions/leads";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
+import { readNoteTidyPolicy } from "@/server/repositories/ai-invocations";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 
@@ -340,6 +341,18 @@ describe("agent policy store, proven against a real database", () => {
     });
     expect(await policyVersionCount()).toBe(1);
   });
+  it.runIf(hasDatabase)(
+    "note_tidy uses the same versioned status writer and dispatch policy reader",
+    async () => {
+      await setAgentPolicy(request({ workflowType: "note_tidy", humanApproval: true }));
+      const { rows } = await db().query(
+        "select id,status,human_approval from agent_policy_versions where workflow_type='note_tidy'",
+      );
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ status: "inactive", human_approval: false });
+      expect(await readNoteTidyPolicy()).toEqual({ status: "inactive", versionId: rows[0].id });
+    },
+  );
   it.runIf(hasDatabase)(
     "view-only roles can read but direct status and rollback writes are denied",
     async () => {

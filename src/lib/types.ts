@@ -843,6 +843,8 @@ export interface ClientContact {
 }
 
 export interface Engagement {
+  /** Optional display metadata from a product join; not an engagement column. */
+  product_name?: string | null;
   id: string;
   client_id: string;
   product_id: string;

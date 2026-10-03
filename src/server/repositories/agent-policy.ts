@@ -1,5 +1,11 @@
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
-import { AGENT_DEFINITIONS, type AgentPolicy, type AgentWorkflowType } from "@/lib/agents";
+import {
+  AGENT_DEFINITIONS,
+  NOTE_TIDY_DEFAULT_POLICY,
+  type AgentPolicy,
+  type AgentWorkflowType,
+  type GovernedWorkflowType,
+} from "@/lib/agents";
 import { AdminError } from "@/lib/admin/errors";
 import {
   agentPolicyCursorSchema,
@@ -70,6 +76,7 @@ export async function loadAgentPolicies(): Promise<Map<AgentWorkflowType, AgentP
   }
 
   for (const row of rows) {
+    if (row.workflow_type === "note_tidy") continue; // Governed separately, not an n8n agent.
     // A row for a workflow the catalogue no longer has is ignored, not fatal.
     if (!known.has(row.workflow_type)) {
       console.warn("Ignoring agent policy for unknown workflow", row.workflow_type);
@@ -92,7 +99,7 @@ export async function loadAgentPolicies(): Promise<Map<AgentWorkflowType, AgentP
  */
 export async function setAgentPolicy(
   input: {
-    workflowType: AgentWorkflowType;
+    workflowType: GovernedWorkflowType;
     status: "active" | "inactive";
     humanApproval: boolean;
     reason?: string | null;
@@ -100,7 +107,9 @@ export async function setAgentPolicy(
   },
   db?: Queryable,
 ): Promise<AgentPolicyVersionRow | null> {
-  const known = AGENT_DEFINITIONS.some((a) => a.workflow_type === input.workflowType);
+  const known =
+    input.workflowType === "note_tidy" ||
+    AGENT_DEFINITIONS.some((a) => a.workflow_type === input.workflowType);
   if (!known) throw new Error(`No agent definition for workflow type "${input.workflowType}"`);
 
   return queryOne<AgentPolicyVersionRow>(
@@ -115,7 +124,8 @@ export async function setAgentPolicy(
   );
 }
 
-function defaultPolicy(workflowType: AgentWorkflowType): AgentPolicy {
+function defaultPolicy(workflowType: GovernedWorkflowType): AgentPolicy {
+  if (workflowType === "note_tidy") return { ...NOTE_TIDY_DEFAULT_POLICY };
   const definition = AGENT_DEFINITIONS.find((agent) => agent.workflow_type === workflowType);
   if (!definition) throw new AdminError("VALIDATION_FAILED", "Unknown governed workflow");
   return { status: definition.status, humanApproval: definition.human_approval };
@@ -124,6 +134,19 @@ function defaultPolicy(workflowType: AgentWorkflowType): AgentPolicy {
 const versionColumns = `id,workflow_type,status,human_approval,changed_by,reason,
   to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_at,
   version_seq::text`;
+
+export async function readGovernedAgentPolicy(workflowType: GovernedWorkflowType) {
+  const row = await queryOne<AgentPolicyVersionRow>(
+    `select ${versionColumns} from agent_policy_versions where workflow_type=$1 order by agent_policy_versions.created_at desc,agent_policy_versions.version_seq desc limit 1`,
+    [workflowType],
+  );
+  return {
+    ...(row
+      ? { status: row.status, humanApproval: row.human_approval }
+      : defaultPolicy(workflowType)),
+    versionId: row?.id ?? null,
+  };
+}
 
 /** One workflow lock covers the empty-table race as well as existing-version CAS. */
 async function appendStatusVersion(

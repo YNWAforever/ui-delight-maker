@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet, useRouter } from "@tanstack/react-router";
 import { Bot, RefreshCw } from "lucide-react";
@@ -22,6 +23,7 @@ import {
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
 import { AgentDataScope, DemoOriginLabel } from "@/components/agents/data-scope";
+import { AuxiliaryWorkflowPanel } from "@/components/agents/auxiliary-workflow-panel";
 import { matchesAgentDataFilter, type AgentDataFilter } from "@/lib/agent-data-scope";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClientNow } from "@/hooks/use-client-now";
@@ -74,6 +76,7 @@ const RUN_STATUS_FILTER_VALUES: AgentRunStatus[] = [
 ];
 
 export const Route = createFileRoute("/agents")({
+  validateSearch: z.object({ auxiliaryRun: z.string().uuid().optional().catch(undefined) }),
   loader: ({ context }) => context.queryClient.ensureQueryData(agentDirectoryQuery()),
   head: () => ({
     meta: [
@@ -117,6 +120,7 @@ function AgentsRoute() {
 }
 
 function AgentsMonitor() {
+  const auxiliaryRun = Route.useSearch()?.auxiliaryRun;
   const initialData = Route.useLoaderData() as AgentDirectoryRead;
   const queryClient = useQueryClient();
   const clientNow = useClientNow();
@@ -344,11 +348,12 @@ function AgentsMonitor() {
 
       <div className="space-y-6 px-4 py-6 md:px-6">
         <MetricStrip metrics={primaryMetrics} supporting={supportingMetrics} columns={4} />
+        <AuxiliaryWorkflowPanel key={auxiliaryRun ?? "note-history"} runId={auxiliaryRun} />
 
         <section className="space-y-3">
           <SectionHeader
             title="Agent workforce"
-            description="Catalogue state is the definition the dispatch path reads. Configuration is read-only until runtime policy enforcement is enabled."
+            description="Stored status governs dispatch. Open an agent’s Governance tab for versioned status controls; human approval and model remain read-only. Worker/provider readiness needs separate verification."
           />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {directory.agents.map((agent) => {

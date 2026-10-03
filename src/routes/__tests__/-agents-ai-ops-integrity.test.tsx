@@ -127,8 +127,7 @@ import type { AgentRunSummary } from "@/server/read-models/agent-workspaces";
 import { Route as AgentsRoute } from "../agents";
 import { Route as AgentDetailRoute } from "../agents.$name";
 
-const READ_ONLY_SENTENCE =
-  "Configuration is read-only until runtime policy enforcement is enabled.";
+const READ_ONLY_SENTENCE = "Open an agent’s Governance tab for versioned status controls";
 
 /**
  * `agents.$name.tsx` no longer carries `READ_ONLY_SENTENCE` above: enforcement shipped, so
