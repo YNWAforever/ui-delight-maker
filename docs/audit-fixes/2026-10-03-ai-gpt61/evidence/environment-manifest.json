@@ -1,0 +1,66 @@
+{
+  "checkedAt": "2026-10-03T05:52:29.459Z",
+  "sourceZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
+  "planSha256": "37e03bf6cff9564ce68c35c7cd838ae5c6348c37575158d1743cad48bef6ce38",
+  "auditSha": "953ec0a36806d4362fad9e2b2d8cd17a49adbb26",
+  "baseSha": "953ec0a36806d4362fad9e2b2d8cd17a49adbb26",
+  "branch": "codex/clientops-ai-gpt61-remediation",
+  "dirtyWorkAtStart": false,
+  "productionSha": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+  "productionHold": true,
+  "productionMigrationLedger": null,
+  "productionMigrationStatus": "blocked: operator evidence",
+  "workerVersions": {
+    "cloudN8n": null,
+    "cloudStatus": "not-tested: no activation or deployed workflow receipts"
+  },
+  "isolatedPostgres": {
+    "label": "clientops_ai_gpt61_bbbb7f890a",
+    "host": "127.0.0.1",
+    "port": 64409,
+    "image": "pgvector/pgvector:pg17",
+    "disposable": true
+  },
+  "isolatedUat": {
+    "projectId": "polished-forest-15724329",
+    "branchId": "br-solitary-butterfly-b3883kwo",
+    "databaseLabel": "clientops_uat",
+    "appUrl": "https://clientops-uat-20260930.vercel.app",
+    "sourceSha": "3d851c23dc0d1b5aa52cae8f8e51fc68e8ae9c63",
+    "migrations": [
+      "neon/migrations/001_clientops_runtime.sql",
+      "neon/migrations/002_retention_client_360.sql",
+      "neon/migrations/003_client_relationship_360.sql",
+      "neon/migrations/004_clientops_schema_hardening.sql",
+      "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
+      "neon/migrations/006_unified_crm_workspace_foundation.sql",
+      "neon/migrations/007_admin_team_user_management.sql",
+      "neon/migrations/008_read_path_indexes.sql",
+      "neon/migrations/009_agent_policy_versions.sql",
+      "neon/migrations/010_command_versions_and_receipts.sql",
+      "neon/migrations/011_quote_version_integrity.sql",
+      "neon/migrations/012_quote_open_approval_constraint.sql",
+      "neon/migrations/013_xero_entry_transitions.sql",
+      "neon/migrations/014_locked_job_sheet_portions.sql",
+      "neon/migrations/015_agent_recovery_metadata.sql",
+      "neon/migrations/016_work_queue_pagination_indexes.sql",
+      "neon/migrations/017_bulk_operations.sql",
+      "neon/migrations/018_bulk_row_versions.sql",
+      "neon/migrations/019_import_sessions_and_identity_keys.sql",
+      "neon/migrations/020_job_sheet_handoff_fields.sql",
+      "neon/migrations/021_ai_invocation_telemetry.sql",
+      "neon/migrations/022_neon_domain_storage.sql"
+    ],
+    "distinctProfiles": 7,
+    "distinctCookieSets": 7,
+    "liveSessionAcceptance": false
+  },
+  "externalCallsAllowed": {
+    "production": "read-only deployment metadata and public build only",
+    "uat": "existing independent UAT validation authorization",
+    "providerPaid": false,
+    "cloudN8nActivation": false,
+    "customerMessages": false
+  },
+  "releaseDecision": "NO-GO"
+}
