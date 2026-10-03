@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClientNow } from "@/hooks/use-client-now";
 import { buildAgentAttentionItems } from "@/lib/agent-ops";
-import { AGENT_RUN_STUCK_MINUTES } from "@/lib/agents";
+import { AGENT_RUN_STUCK_MINUTES, agentSlugForWorkflowType } from "@/lib/agents";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatCount, formatDateTime, formatPercent } from "@/lib/format";
 import { crmQueryKeys } from "@/lib/query-keys";
@@ -129,14 +129,14 @@ function AgentsMonitor() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [refreshing, setRefreshing] = useState(false);
 
-  const slugByDisplayName = useMemo(
-    () => new Map(directory.agents.map((agent) => [agent.display_name, agent.name])),
+  const slugByWorkflowType = useMemo(
+    () => new Map(directory.agents.map((agent) => [agent.workflow_type, agent.name])),
     [directory.agents],
   );
 
   const attentionItems = useMemo(
-    () => buildAgentAttentionItems(directory.attentionRuns, slugByDisplayName, clientNow),
-    [directory.attentionRuns, slugByDisplayName, clientNow],
+    () => buildAgentAttentionItems(directory.attentionRuns, slugByWorkflowType, clientNow),
+    [directory.attentionRuns, slugByWorkflowType, clientNow],
   );
 
   const filteredRuns = useMemo(
@@ -226,7 +226,7 @@ function AgentsMonitor() {
       header: "Agent",
       priority: "primary",
       sticky: true,
-      cell: (run) => <span className="font-medium text-foreground">{run.agent_name}</span>,
+      cell: (run) => <AgentRunName run={run} />,
     },
     {
       id: "status",
@@ -274,17 +274,22 @@ function AgentsMonitor() {
   ];
 
   const renderRunDetails = (run: AgentDirectoryRunSummary) => (
-    <p className="text-sm text-muted-foreground">
-      {run.subject_restricted
-        ? "Summary restricted."
-        : (run.output_summary ?? "No output summary recorded.")}
-    </p>
+    <div className="space-y-2 text-sm text-muted-foreground">
+      <p>
+        Run <code>{run.id}</code> · Workflow <code>{run.workflow_type}</code>
+      </p>
+      <p>
+        {run.subject_restricted
+          ? "Summary restricted."
+          : (run.output_summary ?? "No output summary recorded.")}
+      </p>
+    </div>
   );
 
   const renderRunCard = (run: AgentDirectoryRunSummary) => (
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{run.agent_name}</span>
+        <AgentRunName run={run} />
         <StatusBadge domain="agentRuns" value={run.status} />
       </div>
       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -337,7 +342,7 @@ function AgentsMonitor() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {directory.agents.map((agent) => {
               const rate = agent.success_rate;
-              const attention = agent.stuck_runs + agent.failed_24h + agent.waiting_approval;
+              const attention = agent.stuck_runs + agent.failed_7d + agent.waiting_approval;
               const maxCount = Math.max(...agent.sparkline, 1);
 
               return (
@@ -425,14 +430,36 @@ function AgentsMonitor() {
         <section className="space-y-3">
           <SectionHeader
             title="Needs a human"
-            description="Ordered stuck, then failed, then waiting approval. Read from the recent runs below; the strip above counts every run on record."
+            description="Running for at least 60 minutes, failures in the last seven days, then waiting approvals. The count covers the whole queue; this list shows the first eight."
           />
           <AttentionQueue
             items={attentionItems}
             emptyTitle="Nothing needs a human"
-            emptyDescription="No stuck, failed or waiting runs in the recent history."
+            emptyDescription="No runs match the attention rules."
           />
         </section>
+
+        {(directory.unknownWorkflows ?? []).length > 0 && (
+          <section className="space-y-3" aria-label="Unknown workflows">
+            <SectionHeader
+              title="Unknown workflows"
+              description="Recorded workflow identities without a current agent definition. Preserve the original run ID and label when investigating."
+            />
+            <ul className="space-y-2 text-sm">
+              {directory.unknownWorkflows.map((workflow) => (
+                <li key={workflow.workflow_type} className="rounded-md border p-3">
+                  <code>{workflow.workflow_type}</code> · {formatCount(workflow.runs_24h)} runs in
+                  24h
+                  {workflow.last_run_at && (
+                    <span className="ml-2 text-muted-foreground">
+                      Last run {formatDateTime(workflow.last_run_at)}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section className="space-y-3">
           <SectionHeader
@@ -476,5 +503,20 @@ function AgentsMonitor() {
         </section>
       </div>
     </>
+  );
+}
+
+function AgentRunName({ run }: { run: AgentDirectoryRunSummary }) {
+  const slug = agentSlugForWorkflowType(run.workflow_type);
+  return slug ? (
+    <Link
+      className="font-medium text-foreground hover:underline"
+      to="/agents/$name"
+      params={{ name: slug }}
+    >
+      {run.agent_name}
+    </Link>
+  ) : (
+    <span className="font-medium text-foreground">{run.agent_name}</span>
   );
 }

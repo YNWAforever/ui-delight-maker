@@ -77,13 +77,28 @@ beforeEach(() => {
 });
 
 describe("agent operational read models", () => {
+  it("explicitly maps legacy callers and refuses unknown workflows before any read", async () => {
+    const { normalizeAgentHistoryInput, getAgentHistoryPage } = await loadModule();
+    expect(normalizeAgentHistoryInput({ agent: "Quotation Agent" })).toEqual({
+      workflowType: "draft_quote",
+      page: 1,
+      limit: 25,
+    });
+    expect(() =>
+      normalizeAgentHistoryInput({ workflowType: "unknown_workflow", agent: "Quote Draft Agent" }),
+    ).toThrow("Known workflow type is required");
+    expect(() => getAgentHistoryPage({ data: { agent: "Invented Agent" } })).toThrow(
+      "Known workflow type is required",
+    );
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
   it("normalizes agent history pagination to a maximum of 25 rows", async () => {
     const { normalizeAgentHistoryInput } = await loadModule();
 
     expect(
       normalizeAgentHistoryInput({ agent: "  Qualification Agent  ", page: -4, limit: 99 }),
     ).toEqual({
-      agent: "Qualification Agent",
+      workflowType: "qualify_lead",
       page: 1,
       limit: 25,
     });
@@ -108,10 +123,10 @@ describe("agent operational read models", () => {
     });
     expect(mocks.loadRequestAuthorization).toHaveBeenCalledTimes(1);
     expect(mocks.query).toHaveBeenNthCalledWith(1, expect.stringContaining("count(*)"), [
-      "Qualification Agent",
+      "qualify_lead",
     ]);
     expect(mocks.query).toHaveBeenNthCalledWith(2, expect.stringContaining("limit $2 offset $3"), [
-      "Qualification Agent",
+      "qualify_lead",
       25,
       25,
     ]);
@@ -130,7 +145,7 @@ describe("agent operational read models", () => {
     });
 
     expect(mocks.query).toHaveBeenNthCalledWith(2, expect.stringContaining("limit $2 offset $3"), [
-      "Qualification Agent",
+      "qualify_lead",
       25,
       50,
     ]);

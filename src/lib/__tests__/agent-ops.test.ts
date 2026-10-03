@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { agentSuccessRate, buildAgentAttentionItems, isStuckRun } from "@/lib/agent-ops";
 import { AGENT_RUN_STUCK_MINUTES } from "@/lib/agents";
+import * as agents from "@/lib/agents";
 import type { AgentDirectoryRunSummary } from "@/server/read-models/agent-workspaces";
 
 /**
@@ -57,6 +58,86 @@ const NOW = Date.parse("2026-08-27T12:00:00.000Z");
 const SLUGS = new Map([["Lead Qualification Agent", "qualify-lead"]]);
 
 describe("the attention queue", () => {
+  it("uses_created_at_at_exact_60_minutes", () => {
+    for (const [seconds, expected] of [
+      [899, false],
+      [900, false],
+      [3599, false],
+      [3600, true],
+      [3601, true],
+    ] as const) {
+      expect(
+        isStuckRun(
+          run({
+            id: String(seconds),
+            status: "running",
+            created_at: new Date(NOW - seconds * 1000).toISOString(),
+            updated_at: new Date(NOW).toISOString(),
+          }),
+          NOW,
+        ),
+      ).toBe(expected);
+    }
+  });
+
+  it("groups_legacy_names_by_workflow for attention links", () => {
+    const items = buildAgentAttentionItems(
+      [
+        run({
+          id: "legacy",
+          workflow_type: "draft_quote",
+          agent_name: "Quotation Agent",
+          status: "failed",
+        }),
+        run({
+          id: "current",
+          workflow_type: "draft_quote",
+          agent_name: "Quote Draft Agent",
+          status: "failed",
+        }),
+      ],
+      new Map(),
+      NOW,
+    );
+    expect(items.map((item) => item.href)).toEqual(["/agents/draft-quote", "/agents/draft-quote"]);
+    expect(items.map((item) => item.title)).toEqual(["Quotation Agent", "Quote Draft Agent"]);
+  });
+
+  it("keeps_unknown_workflows_unmapped even with a known display name", () => {
+    expect(agents).toHaveProperty("agentSlugForWorkflowType");
+    const slug = (
+      agents as unknown as { agentSlugForWorkflowType: (value: string) => string | null }
+    ).agentSlugForWorkflowType;
+    expect(slug("draft_quote")).toBe("draft-quote");
+    expect(slug("unknown_workflow")).toBeNull();
+    expect(slug("note_tidy")).toBeNull();
+    expect(
+      buildAgentAttentionItems(
+        [run({ id: "unknown", workflow_type: "unknown_workflow", status: "failed" })],
+        SLUGS,
+        NOW,
+      )[0].href,
+    ).toBe("/agents");
+  });
+
+  it("matches_attention_count_to_rows across the inclusive seven-day failure window", () => {
+    const items = buildAgentAttentionItems(
+      [25 * 3600, 6 * 86400, 7 * 86400, 7 * 86400 + 1].map((seconds) =>
+        run({
+          id: String(seconds),
+          status: "failed",
+          created_at: new Date(NOW - seconds * 1000).toISOString(),
+        }),
+      ),
+      SLUGS,
+      NOW,
+    );
+    expect(items.map((item) => item.id)).toEqual([
+      String(7 * 86400),
+      String(6 * 86400),
+      String(25 * 3600),
+    ]);
+  });
   it("orders stuck, then failed, then waiting approval", () => {
     const items = buildAgentAttentionItems(
       [
@@ -117,7 +198,12 @@ describe("the attention queue", () => {
       [
         run({ id: "approval", status: "waiting_approval" }),
         run({ id: "failed", status: "failed" }),
-        run({ id: "orphan", status: "failed", agent_name: "Retired Agent" }),
+        run({
+          id: "orphan",
+          status: "failed",
+          agent_name: "Retired Agent",
+          workflow_type: "retired_unknown",
+        }),
       ],
       SLUGS,
       NOW,

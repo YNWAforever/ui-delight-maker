@@ -1,0 +1,35 @@
+[
+  {
+    "command": ["bun", "run", "typecheck"],
+    "exitCode": 0,
+    "elapsedMs": 24396,
+    "sourceSha": "23261dcf9cb71f7f5fd575013842f525be1c4b67"
+  },
+  {
+    "command": [
+      "bunx",
+      "eslint",
+      "src/lib/agents.ts",
+      "src/lib/agent-ops.ts",
+      "src/lib/__tests__/agent-ops.test.ts",
+      "src/server/read-models/agent-workspaces.ts",
+      "src/server/read-models/__tests__/agent-workspaces.test.ts",
+      "src/server/read-models/__tests__/agent-identity.integration.test.ts",
+      "src/server-functions/agent-runs.ts",
+      "src/server-functions/__tests__/agent-runs-performance.test.ts",
+      "src/routes/agents.tsx",
+      "src/routes/agents.$name.tsx",
+      "src/routes/ai-review.tsx",
+      "src/routes/__tests__/-agents-ai-ops-integrity.test.tsx"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 18347,
+    "sourceSha": "23261dcf9cb71f7f5fd575013842f525be1c4b67"
+  },
+  {
+    "command": ["git", "diff", "--check"],
+    "exitCode": 0,
+    "elapsedMs": 76,
+    "sourceSha": "23261dcf9cb71f7f5fd575013842f525be1c4b67"
+  }
+]

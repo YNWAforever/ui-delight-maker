@@ -1,5 +1,5 @@
 import type { AttentionItem } from "@/components/sales";
-import { AGENT_RUN_STUCK_MINUTES } from "@/lib/agents";
+import { AGENT_RUN_STUCK_MINUTES, agentSlugForWorkflowType } from "@/lib/agents";
 import { formatDateTime, relativeTime } from "@/lib/format";
 import type {
   AgentDirectoryRunSummary,
@@ -73,7 +73,13 @@ function attentionBucket(
   now: number | null,
 ): AttentionBucket | null {
   if (run.status === "waiting_approval") return "approval";
-  if (run.status === "failed") return "failure";
+  if (run.status === "failed") {
+    // Server already bounds this window when the client clock has not resolved.
+    const createdAt = Date.parse(run.created_at);
+    return now === null || (Number.isFinite(createdAt) && createdAt >= now - 7 * 86_400_000)
+      ? "failure"
+      : null;
+  }
   // Before the client clock resolves there is no honest way to age a running run, so it is
   // simply not in the queue yet. The KPI strip still shows the server-side stuck count.
   if (now !== null && isStuckRun(run, now)) return "stuck";
@@ -82,7 +88,7 @@ function attentionBucket(
 
 export function buildAgentAttentionItems(
   runs: AgentDirectoryRunSummary[],
-  slugByDisplayName: ReadonlyMap<string, string>,
+  _legacySlugMap: ReadonlyMap<string, string>,
   now: number | null,
   limit: number = ATTENTION_QUEUE_LIMIT,
 ): AttentionItem[] {
@@ -102,7 +108,7 @@ export function buildAgentAttentionItems(
   );
 
   return ordered.slice(0, limit).map(({ bucket, run }) => {
-    const slug = slugByDisplayName.get(run.agent_name);
+    const slug = agentSlugForWorkflowType(run.workflow_type);
     return {
       id: run.id,
       severity: bucket,
@@ -122,8 +128,8 @@ export function buildAgentAttentionItems(
             : "A human decision is required before this run can proceed.",
       age: now === null ? formatDateTime(run.created_at) : relativeTime(run.created_at, now),
       // An approval is decided in AI Review; a stuck or failed run is read in the agent's
-      // own history. An `agent_name` the catalogue no longer holds has no detail route, so
-      // it goes to the directory rather than to a link that would 404.
+      // own history. Unknown workflows stay traceable in the directory; labels never guess
+      // another workflow's route.
       href: bucket === "approval" ? "/ai-review" : slug ? `/agents/${slug}` : "/agents",
     };
   });

@@ -62,5 +62,32 @@
     "cloudN8nActivation": false,
     "customerMessages": false
   },
-  "releaseDecision": "NO-GO"
+  "releaseDecision": "NO-GO",
+  "auditSourceSha": "953ec0a36806d4362fad9e2b2d8cd17a49adbb26",
+  "implementationBaseSha": "953ec0a36806d4362fad9e2b2d8cd17a49adbb26",
+  "testDatabaseLabel": "clientops_ai_gpt61_bbbb7f890a",
+  "migrations": [
+    "neon/migrations/001_clientops_runtime.sql",
+    "neon/migrations/002_retention_client_360.sql",
+    "neon/migrations/003_client_relationship_360.sql",
+    "neon/migrations/004_clientops_schema_hardening.sql",
+    "neon/migrations/005_quote_to_cash_accounting_handoff.sql",
+    "neon/migrations/006_unified_crm_workspace_foundation.sql",
+    "neon/migrations/007_admin_team_user_management.sql",
+    "neon/migrations/008_read_path_indexes.sql",
+    "neon/migrations/009_agent_policy_versions.sql",
+    "neon/migrations/010_command_versions_and_receipts.sql",
+    "neon/migrations/011_quote_version_integrity.sql",
+    "neon/migrations/012_quote_open_approval_constraint.sql",
+    "neon/migrations/013_xero_entry_transitions.sql",
+    "neon/migrations/014_locked_job_sheet_portions.sql",
+    "neon/migrations/015_agent_recovery_metadata.sql",
+    "neon/migrations/016_work_queue_pagination_indexes.sql",
+    "neon/migrations/017_bulk_operations.sql",
+    "neon/migrations/018_bulk_row_versions.sql",
+    "neon/migrations/019_import_sessions_and_identity_keys.sql",
+    "neon/migrations/020_job_sheet_handoff_fields.sql",
+    "neon/migrations/021_ai_invocation_telemetry.sql",
+    "neon/migrations/022_neon_domain_storage.sql"
+  ]
 }

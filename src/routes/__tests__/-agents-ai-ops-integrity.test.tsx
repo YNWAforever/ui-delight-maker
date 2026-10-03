@@ -272,6 +272,22 @@ const AGENT_FIXTURE = {
 } as const;
 
 describe("/agents/$name reports the catalogue's status, not the reader's clicks", () => {
+  it("loads history with workflow identity rather than a mutable display name", async () => {
+    const { getAgentHistoryPage } = await import("@/server-functions/agent-runs");
+    const ensureQueryData = vi.fn(async (options: { queryFn: () => Promise<unknown> }) => {
+      if (ensureQueryData.mock.calls.length === 1)
+        return [{ ...AGENT_FIXTURE, display_name: "Renamed Agent" }];
+      return options.queryFn();
+    });
+    await (AgentDetailRoute.options.loader as (context: unknown) => Promise<unknown>)({
+      context: { queryClient: { ensureQueryData } },
+      params: { name: "qualify-lead" },
+      deps: { page: 1 },
+    });
+    expect(getAgentHistoryPage).toHaveBeenCalledWith({
+      data: { workflowType: "qualify_lead", page: 1, limit: 25 },
+    });
+  });
   beforeEach(() => {
     captures.statusBadges = [];
     captures.tabValues = [];

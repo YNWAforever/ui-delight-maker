@@ -1,4 +1,9 @@
-import { AGENT_DEFINITIONS } from "@/lib/agents";
+import {
+  AGENT_DEFINITIONS,
+  AGENT_RUN_STUCK_MINUTES,
+  AUXILIARY_AI_WORKFLOW_TYPES,
+  agentWorkflowTypeForDisplayName,
+} from "@/lib/agents";
 import { decideAgentSubjects } from "@/lib/agent-run-visibility";
 import type { Capability } from "@/lib/admin/types";
 import type { AgentRun, HumanApproval } from "@/lib/types";
@@ -20,13 +25,14 @@ type SubjectDecision = (subjectType: string, subjectId: string) => boolean;
 const DIRECTORY_RUN_LIMIT = 50;
 const ATTENTION_RUN_LIMIT = 25;
 const SPARKLINE_HOURS = 14;
-export const STUCK_RUN_MINUTES = 15;
+export const STUCK_RUN_MINUTES = AGENT_RUN_STUCK_MINUTES;
 
 type AgentAggregateRow = {
-  agent_name: string;
+  workflow_type: string;
   runs_24h: number | string;
   completed_24h: number | string;
   failed_24h: number | string;
+  failed_7d: number | string;
   waiting_approval: number | string;
   running: number | string;
   stuck_runs: number | string;
@@ -37,7 +43,7 @@ type AgentAggregateRow = {
 };
 
 type AgentHourlyRow = {
-  agent_name: string;
+  workflow_type: string;
   hours_ago: number | string;
   run_count: number | string;
 };
@@ -110,6 +116,7 @@ export type AgentDirectoryRead = {
       runs_24h: number;
       completed_24h: number;
       failed_24h: number;
+      failed_7d: number;
       success_rate: number | null;
       waiting_approval: number;
       running: number;
@@ -122,11 +129,14 @@ export type AgentDirectoryRead = {
   >;
   attentionRuns: AgentAttentionRun[];
   recentRuns: AgentDirectoryRunSummary[];
+  unknownWorkflows: Array<{ workflow_type: string; runs_24h: number; last_run_at: string | null }>;
 };
 
 /** Already normalized by the route's validator — see normalizeAgentHistoryInput. */
 export type AgentHistoryPageInput = {
-  agent: string;
+  workflowType?: string;
+  /** Deprecated callers must resolve through the explicit compatibility map. */
+  agent?: string;
   page: number;
   limit: number;
   /**
@@ -262,7 +272,7 @@ export async function loadAgentDirectoryRead(
       query<AgentAggregateRow>(
         `
         select
-          agent_name,
+          workflow_type,
           count(*) filter (
             where created_at >= now() - interval '24 hours'
           )::int as runs_24h,
@@ -274,11 +284,14 @@ export async function loadAgentDirectoryRead(
             where status = 'failed'
               and created_at >= now() - interval '24 hours'
           )::int as failed_24h,
+          count(*) filter (
+            where status = 'failed' and created_at >= now() - interval '7 days'
+          )::int as failed_7d,
           count(*) filter (where status = 'waiting_approval')::int as waiting_approval,
           count(*) filter (where status = 'running')::int as running,
           count(*) filter (
             where status = 'running'
-              and updated_at < now() - ($1::integer * interval '1 minute')
+              and created_at <= now() - ($1::integer * interval '1 minute')
           )::int as stuck_runs,
           avg(confidence_score) filter (
             where created_at >= now() - interval '24 hours'
@@ -293,18 +306,18 @@ export async function loadAgentDirectoryRead(
           ), 0)::bigint as tokens_24h,
           max(created_at) as last_run_at
         from agent_runs
-        group by agent_name
+        group by workflow_type
       `,
         [STUCK_RUN_MINUTES],
       ),
       query<AgentHourlyRow>(`
       select
-        agent_name,
+        workflow_type,
         floor(extract(epoch from (now() - created_at)) / 3600)::int as hours_ago,
         count(*)::int as run_count
       from agent_runs
       where created_at >= now() - interval '14 hours'
-      group by agent_name, hours_ago
+      group by workflow_type, hours_ago
     `),
       query<AgentRunSummary>(
         `
@@ -331,14 +344,14 @@ export async function loadAgentDirectoryRead(
           end as attention_reason,
           greatest(
             0,
-            floor(extract(epoch from (now() - updated_at)) / 60)
+            floor(extract(epoch from (now() - created_at)) / 60)
           )::int as age_minutes
         from agent_runs
         where (status = 'failed' and created_at >= now() - interval '7 days')
           or status = 'waiting_approval'
           or (
             status = 'running'
-            and updated_at < now() - ($1::integer * interval '1 minute')
+            and created_at <= now() - ($1::integer * interval '1 minute')
           )
         order by
           case
@@ -346,8 +359,7 @@ export async function loadAgentDirectoryRead(
             when status = 'failed' then 1
             else 2
           end,
-          case when status = 'waiting_approval' then updated_at end asc,
-          updated_at desc
+          created_at asc, id asc
         limit $2
       `,
         [STUCK_RUN_MINUTES, ATTENTION_RUN_LIMIT],
@@ -356,14 +368,14 @@ export async function loadAgentDirectoryRead(
     ],
   );
 
-  const aggregates = new Map(aggregateRows.map((row) => [row.agent_name, row]));
+  const aggregates = new Map(aggregateRows.map((row) => [row.workflow_type, row]));
   const sparklines = new Map<string, number[]>();
   for (const row of hourlyRows) {
     const hoursAgo = Number(row.hours_ago);
     if (hoursAgo < 0 || hoursAgo >= SPARKLINE_HOURS) continue;
-    const sparkline = sparklines.get(row.agent_name) ?? Array(SPARKLINE_HOURS).fill(0);
+    const sparkline = sparklines.get(row.workflow_type) ?? Array(SPARKLINE_HOURS).fill(0);
     sparkline[SPARKLINE_HOURS - 1 - hoursAgo] = Number(row.run_count);
-    sparklines.set(row.agent_name, sparkline);
+    sparklines.set(row.workflow_type, sparkline);
   }
 
   const operations = aggregateRows.reduce(
@@ -400,11 +412,14 @@ export async function loadAgentDirectoryRead(
     operations: {
       ...operations,
       success_rate: successRate(operations.completed_24h, operations.failed_24h),
-      needs_attention: operations.failed_24h + operations.waiting_approval + operations.stuck_runs,
+      needs_attention:
+        aggregateRows.reduce((sum, row) => sum + numeric(row.failed_7d), 0) +
+        operations.waiting_approval +
+        operations.stuck_runs,
       avg_confidence: weightedConfidence(aggregateRows),
     },
     agents: catalogue.map((agent) => {
-      const aggregate = aggregates.get(agent.display_name);
+      const aggregate = aggregates.get(agent.workflow_type);
       const completed24h = numeric(aggregate?.completed_24h);
       const failed24h = numeric(aggregate?.failed_24h);
       return {
@@ -412,6 +427,7 @@ export async function loadAgentDirectoryRead(
         runs_24h: numeric(aggregate?.runs_24h),
         completed_24h: completed24h,
         failed_24h: failed24h,
+        failed_7d: numeric(aggregate?.failed_7d),
         success_rate: successRate(completed24h, failed24h),
         waiting_approval: numeric(aggregate?.waiting_approval),
         running: numeric(aggregate?.running),
@@ -420,7 +436,7 @@ export async function loadAgentDirectoryRead(
         avg_confidence:
           aggregate?.avg_confidence == null ? null : numeric(aggregate.avg_confidence),
         last_run_at: aggregate?.last_run_at ?? null,
-        sparkline: sparklines.get(agent.display_name) ?? Array(SPARKLINE_HOURS).fill(0),
+        sparkline: sparklines.get(agent.workflow_type) ?? Array(SPARKLINE_HOURS).fill(0),
       };
     }),
     // Redaction is row-level: `decide` above resolved real ownership for every distinct
@@ -428,13 +444,28 @@ export async function loadAgentDirectoryRead(
     // without touching another run about a different lead of the same type.
     attentionRuns: attentionRunRows.map((run) => redactDirectoryRun(run, decide)),
     recentRuns: recentRunRows.map((run) => redactDirectoryRun(run, decide)),
+    unknownWorkflows: aggregateRows
+      .filter(
+        (row) =>
+          !AGENT_DEFINITIONS.some((agent) => agent.workflow_type === row.workflow_type) &&
+          !(AUXILIARY_AI_WORKFLOW_TYPES as readonly string[]).includes(row.workflow_type),
+      )
+      .map((row) => ({
+        workflow_type: row.workflow_type,
+        runs_24h: numeric(row.runs_24h),
+        last_run_at: row.last_run_at ?? null,
+      })),
   } satisfies AgentDirectoryRead;
 }
 
 export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
+  const workflowType =
+    input.workflowType ?? (input.agent ? agentWorkflowTypeForDisplayName(input.agent) : null);
+  if (!workflowType || !AGENT_DEFINITIONS.some((agent) => agent.workflow_type === workflowType))
+    throw new Error("Known workflow type is required");
   const countRows = await query<CountRow>(
-    "select count(*)::int as total from agent_runs where agent_name = $1",
-    [input.agent],
+    "select count(*)::int as total from agent_runs where workflow_type = $1",
+    [workflowType],
   );
   const total = Number(countRows[0]?.total ?? 0);
   const lastPage = Math.max(1, Math.ceil(total / input.limit));
@@ -449,11 +480,11 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
           human_review_required, outcome_code, retry_of, recovery_reason, recovered_at,
           created_at, updated_at
         from agent_runs
-        where agent_name = $1
-        order by created_at desc
+        where workflow_type = $1
+        order by created_at desc, id desc
         limit $2 offset $3
       `,
-      [input.agent, input.limit, offset],
+      [workflowType, input.limit, offset],
     ),
     query<{ runs_24h: number | string; avg_confidence: number | string | null }>(
       `
@@ -461,9 +492,9 @@ export async function loadAgentHistoryPage(input: AgentHistoryPageInput) {
           count(*) filter (where created_at >= now() - interval '24 hours')::int as runs_24h,
           avg(confidence_score) filter (where confidence_score is not null) as avg_confidence
         from agent_runs
-        where agent_name = $1
+        where workflow_type = $1
       `,
-      [input.agent],
+      [workflowType],
     ),
   ]);
   const summary = summaryRows[0];
