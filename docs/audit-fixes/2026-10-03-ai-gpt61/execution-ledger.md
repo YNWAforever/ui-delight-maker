@@ -175,3 +175,8 @@ Ruling: stock task-start recognizes only headings named Task N; the immutable bi
 - UI regression: URL serialization/server request, keyboard Next, exact run link, filter/selection clearing, disappearing-page refresh, loading/error/unknown/redaction tested in jsdom. This does not count as actual browser back/reload, genuine roles, mobile, zoom or assistive technology acceptance; those remain R11 not-tested.
 - Gates: app/runtime TypeScript, focused lint, diff check, pure `bunx vite build`, bundle check exit 0; evidence `r07-fixed-static-result.json` / `r07-build-result.json`. Generated route ordering restored. Author review only; no subagent.
 - Rollback: revert compatible queue/BFF/UI changes; preserve receipts/policy history. No migration/provider/prod mutation. QA owns exact candidate role/browser acceptance; R04 owner dispositions, R10 providers and R11 release gates stay blocked. Release **NO-GO**, no merge/deploy.
+
+### R07 — exact commit and fresh CI fixture repair
+
+- Commit `f110800c56fefc6c465a1110d3f107c2cb754e7b`, draft [#170](https://github.com/YNWAforever/ui-delight-maker/pull/170). Fresh complete CI `37115117206`: **2,787 pass / 1 fail / 0 skips**, 350 files. Migration/seed, types/lint, browser collector and preview passed. Failure was the historical unknown fixture defaulting to PostgreSQL microsecond now, sometimes after the JavaScript millisecond asOf cutoff. The production exclusion was correct.
+- Fixture now explicitly uses the historical tied timestamp; no server predicate/cutoff/authorization/schema gate changes. Physical queue + BFF + UI suite: **24 pass / 0 fail / 0 skips**, exit 0 (`evidence/r07-ci-fixed-result.json`). New-head complete CI remains required. R08 work preserved/restored separately. No merge/release.

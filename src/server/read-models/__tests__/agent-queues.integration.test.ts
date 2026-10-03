@@ -373,7 +373,7 @@ describe("complete scoped AI queue in physical PostgreSQL", () => {
       );
       try {
         await holder.pool!.query(
-          "insert into agent_runs(id,agent_name,workflow_type,subject_type,subject_id,created_by,status) values($1,'Legacy name','legacy_unknown','lead',$2,$3,'failed')",
+          "insert into agent_runs(id,agent_name,workflow_type,subject_type,subject_id,created_by,status,created_at) values($1,'Legacy name','legacy_unknown','lead',$2,$3,'failed','2023-01-01T00:00:00.123456Z')",
           [id, lead, owner],
         );
         const page = await read({ queue: "runs", workflowType: "unknown", limit: 25 });
