@@ -35,8 +35,8 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 - [x] Phase 1 — audit (`audit.md`)
 - [x] Phase 2 — direction (`direction.md`), checkpoint approved
 - [x] Phase 3 — polish (log below)
-- [ ] Phase 4 — verification
-- [ ] Final report (`report.md` + draft PR)
+- [x] Phase 4 — verification (gate table in `report.md`)
+- [x] Final report (`report.md`); draft PR — see below
 
 ## Phase 3 plan (order: P0 → P1 → foundations → moves → P2)
 
@@ -110,12 +110,21 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `e14d1c4` | fix(ui): theme tokens for notification and role-dialog colours | UX-27 | new theme-colour-tokens guard (fails on the old files, passes now); bell + role dialog suites 14/14 |
 | `5276e1f` | fix(ui): grouped page counts and a 12 px text floor | UX-35 | list-pagination +1 (5,036); tsc clean |
 | `e806d97` | fix(tasks): commit the search after a pause, not on every keystroke | UX-17 | tasks write-safety 12/12 (+1 debounce); tsc clean |
+| `dfe0a0c` | docs(ui-polish): close Phase 3 and record what was deferred and why | — | — |
+| `bc4c42b` | fix(tasks): keep the search draft when its own trimmed commit returns | UX-17 | +1 regression test (fails on the old effect) |
+| `e5ed9cb` | fix(approvals): keep the open record beside the queue without jumping | UX-11, UX-40 | approvals 28/28 (focus with preventScroll, sticky panel) |
+| `faf4194` | fix(copy): name "/" the start page, not the Revenue Desk | UX-15, UX-03 | route-error-boundary, renewals |
+| `9c99f1f` | fix(leads): cap the prefilled follow-up title at the schema's limit | UX-10 | follow-up-task-dialog +1 |
+| `79a675e` | fix(ui): keep the freshness marker identical through hydration | UX-23 | new SSR+hydrate test (fails on the old version) |
+| `469bc26` | build(deps): add @axe-core/playwright for accessibility scans | D-4 | — |
+| `8db9428` | fix(ui): readable text on the solid red in dark mode | UX-02, UX-04 | tone-contrast +10 (every solid fill, both themes); axe 0 violations after |
+| next | docs(ui-polish): final report and Phase 4 results | — | full gate at `8db9428`: 375 files, 3,016 tests, 0 skipped |
 
 ## Resume notes (keep current)
 
-- Last commit: UX-10 (see log). The log's `next` row is always the latest commit; replace it
+- Last commit: Phase 4 docs (see log).
   with the hash at the start of the next commit.
-- Next: Phase 4 — full `bun run test` on a disposable pgvector/pgvector:pg17 container, lint, tsc, vite build, git diff --check; axe (D-4) and component tests; after screenshots (public pages live, logged-in surfaces as static renders of the real components with the built CSS, since D-2 rules out a UAT deploy); code review of the diff; then report.md and the draft PR.
+- Next: push the branch, open the draft PR with report.md as its description, bind it, and check whether a Vercel preview of the branch exists for public-page after shots.
 - Tooling note: the Bash tool collapses a doubled backslash to one, even inside a quoted heredoc, so regexes or paths written through it lose escapes. Build them with String.fromCharCode(92), use pathToFileURL for paths, or write files with the Write/Edit tools; re-read regex lines after writing. Token tests read CSS blocks up to the first closing brace, so keep braces out of comments inside them.
 - Watch in Phase 4: `src/components/admin/__tests__/admin-modal-keyboard.test.tsx` (role modal Tab containment) failed once when 24 suites ran in parallel and passed alone.
 - Cleanup PR candidates (UX-32, not this PR): `getClientPortfolioMetrics`, `getTaskBoardMetrics` (`src/lib/sales-workspace.ts`), `formatAcceptedValueSummary` (`src/lib/job-sheet-editor.ts`) and `getPipelineSummary` (`src/lib/pipeline.ts`) lost their last route callers in the UX-09 commit.
