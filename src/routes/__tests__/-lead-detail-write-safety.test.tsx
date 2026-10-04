@@ -56,10 +56,17 @@ vi.mock("sonner", () => ({
 vi.mock("@/components/sales", () => ({
   ActivityTimeline: () => null,
   ErrorState: () => null,
-  SectionHeader: () => null,
+  SectionHeader: ({ action }: { action?: React.ReactNode }) => action ?? null,
   WorkspaceHeader: () => null,
 }));
 vi.mock("@/components/status-badge", () => ({ StatusBadge: () => null }));
+vi.mock("@/components/tasks/follow-up-task-dialog", () => ({
+  FollowUpTaskDialog: ({ defaultTitle, link }: { defaultTitle: string; link: object }) => (
+    <button type="button" data-link={JSON.stringify(link)}>
+      Add follow-up task: {defaultTitle}
+    </button>
+  ),
+}));
 /**
  * The status control is a Radix Select, which cannot be driven from jsdom without pointer
  * polyfills. It is swapped for the native element it stands in for so the rollback rule
@@ -398,6 +405,22 @@ describe("Lead detail — controls follow the session's capabilities", () => {
       expect(screen.queryByRole("link", { name: /New quote/ })).toBeNull();
       expect(screen.queryByText("Agent actions")).toBeNull();
       expect(screen.queryAllByRole("button")).toHaveLength(0);
+    } finally {
+      useRouteContextMock.mockReturnValue({
+        capabilities: ["leads.view", "leads.update", "quotes.create", "agents.run"],
+      });
+    }
+  });
+
+  it("offers a follow-up task, linked to the lead, only with tasks.create", () => {
+    useRouteContextMock.mockReturnValue({ capabilities: ["leads.view", "tasks.create"] });
+    try {
+      renderLead();
+      const button = screen.getByRole("button", { name: /^Add follow-up task: Follow up with / });
+      expect(JSON.parse(button.getAttribute("data-link") ?? "{}")).toEqual({
+        lead_id: workspaceRead.lead.id,
+      });
+      expect(screen.queryByText(/not stored yet/)).toBeNull();
     } finally {
       useRouteContextMock.mockReturnValue({
         capabilities: ["leads.view", "leads.update", "quotes.create", "agents.run"],

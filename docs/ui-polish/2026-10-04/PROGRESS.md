@@ -49,7 +49,7 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | 5 | Per-row control names from the record, not its id | UX-05 | done (rowLabel on 17 lists; access-request decision controls without ids) |
 | 6 | Names instead of identifiers (leads, sidebar role, renewals, access requests) | UX-06 | done for lead subtitle/header, sidebar role, Today status, audit action/target type, access capability/team; renewal owner, requester and audit actor names need SP-2 |
 | 7 | Lead actions and invitable roles gated by capability | UX-07 | done |
-| 8 | Follow-up task from a lead | UX-10 | |
+| 8 | Follow-up task from a lead | UX-10 | done (shared `FollowUpTaskDialog`, gated by `tasks.create`; notes apology removed) |
 | 9 | Honest summary strip instead of page-scoped stat cards | UX-09, UX-29 | |
 | 10 | Money that fits (quote line items, job sheet) | UX-13, UX-14 | |
 | 11 | Approvals split view; admin audit layout and labels | UX-11, UX-12 | |
@@ -69,13 +69,14 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `50f0bfe` | feat(shell): show navigation progress and move focus to the new page | UX-08, UX-40 | navigation-feedback 5, router 2, root boundary |
 | `6af9f35` | fix(a11y): name row controls by the record, not its id | UX-05 | 7 suites 80/80 (data-table-shell, responsive-record-list, access-request-queue, approvals, job sheets, leads, quotes); tsc clean |
 | `49115d6` | fix(ui): show names and labels instead of ids and keys | UX-06 | access-request-queue +1, humanize-key 2, 9 suites 83/83; tsc clean |
-| next | fix(leads): offer lead actions and invite roles only to those who can use them | UX-07 | lead detail 15/15 (+1 read-only), invite dialog 12/12 (+1); tsc clean |
+| `21828b0` | fix(leads): offer lead actions and invite roles only to those who can use them | UX-07 | lead detail 15/15 (+1 read-only), invite dialog 12/12 (+1); tsc clean |
+| next | feat(leads): add a follow-up task from the lead page | UX-10 | new follow-up-task-dialog 3, lead detail 16/16 (+1 gating); tsc clean |
 
 ## Resume notes (keep current)
 
-- Last commit: UX-06 (see log). The log's `next` row is always the latest commit; replace it
+- Last commit: UX-10 (see log). The log's `next` row is always the latest commit; replace it
   with the hash at the start of the next commit.
-- Next: item 8 (UX-10 "Add follow-up task" on `leads.$id.tsx` using `createTask` with `lead_id`; remove the "Lead notes are not stored yet" apology). Then items 9–14.
+- Next: item 9 (UX-09/UX-29 honest summary strip instead of page-scoped stat cards). Then items 10–14.
 - Working method: one concern per commit; run the focused suites that query changed names
   (`grep -rln "<old name>" src --include=*.test.tsx`), `bunx prettier --write <files>`,
   `bunx eslint <files>`, `bunx tsc --noEmit > log; echo $?` (do not trust exit codes through a
