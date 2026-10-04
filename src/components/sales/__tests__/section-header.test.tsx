@@ -32,4 +32,12 @@ describe("SectionHeader", () => {
 
     expect(screen.getByRole("button", { name: "Add contact" })).toBeDefined();
   });
+
+  it("uses the 15 px section-title size at every width", () => {
+    render(<SectionHeader title="Renewals due" />);
+
+    const heading = screen.getByRole("heading", { level: 2 });
+    expect(heading.className).toContain("text-[15px]");
+    expect(heading.className).not.toMatch(/lg:text-/);
+  });
 });

@@ -66,7 +66,7 @@ export function WorkspaceHeader({
   return (
     <header
       className={cn(
-        "border-b border-border bg-background/80 px-4 py-5 backdrop-blur md:px-6",
+        "border-b border-border bg-background/80 px-4 py-4 backdrop-blur md:px-6",
         className,
       )}
     >
@@ -83,14 +83,14 @@ export function WorkspaceHeader({
       {/* Stacks below md so actions wrap under the title instead of overflowing. */}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {context}
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground lg:text-3xl">
+          {/* Sentence case, not an upper-cased eyebrow repeating the sidebar group (UX-29). */}
+          <p className="text-xs font-medium text-muted-foreground">{context}</p>
+          {/* One page-title size at every width: 24/32, weight 600 (direction, type scale). */}
+          <h1 className="mt-0.5 text-2xl font-semibold tracking-[-0.01em] text-balance text-foreground">
             {title}
           </h1>
           {description && (
-            <p className="mt-1 max-w-3xl break-words text-sm text-muted-foreground">
+            <p className="mt-1 max-w-3xl break-words text-sm text-pretty text-muted-foreground">
               {description}
             </p>
           )}
