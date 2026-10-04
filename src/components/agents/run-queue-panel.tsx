@@ -29,7 +29,7 @@ export function RunQueuePanel({
     setSelected([]);
     setSelectionError(null);
     setSelecting(false);
-  }, [selectionQuery]);
+  }, [selectionQuery, actorId]);
   const change = (next: QueueSearch) => {
     selectionEpoch.current++;
     setSelected([]);
@@ -38,7 +38,7 @@ export function RunQueuePanel({
     onChange(next);
   };
   const selectAll = async () => {
-    if (selecting) return;
+    if (!canRun || selecting) return;
     const epoch = selectionEpoch.current;
     setSelecting(true);
     setSelectionError(null);
@@ -52,6 +52,7 @@ export function RunQueuePanel({
         if (epoch !== selectionEpoch.current) return;
         if (
           page.queue !== "runs" ||
+          page.canRun !== true ||
           page.totalMatching > 100 ||
           ids.length + page.items.length > 100
         )
@@ -76,6 +77,16 @@ export function RunQueuePanel({
     refetchIntervalInBackground: false,
   });
   const data = query.data;
+  const maintenancePermission = data?.queue === "runs" ? data.canRun === true : undefined;
+  const canRun = maintenancePermission === true;
+  useEffect(() => {
+    // A server denial invalidates pending selection requests. Loading another page does not.
+    if (maintenancePermission !== false) return;
+    selectionEpoch.current++;
+    setSelected([]);
+    setSelectionError(null);
+    setSelecting(false);
+  }, [maintenancePermission]);
   const refresh = () => {
     if (filters.cursor) change({ ...filters, cursor: undefined });
     else void query.refetch();
@@ -103,19 +114,21 @@ export function RunQueuePanel({
               const slug = agentSlugForWorkflowType(run.workflow_type);
               return (
                 <li key={run.id} className="rounded border p-3 text-sm">
-                  <label className="mr-3">
-                    <input
-                      type="checkbox"
-                      aria-label={"Select run " + run.id}
-                      checked={selected.includes(run.id)}
-                      onChange={(e) =>
-                        setSelected((old) =>
-                          e.target.checked ? [...old, run.id] : old.filter((id) => id !== run.id),
-                        )
-                      }
-                    />{" "}
-                    Select
-                  </label>
+                  {canRun && (
+                    <label className="mr-3">
+                      <input
+                        type="checkbox"
+                        aria-label={"Select run " + run.id}
+                        checked={selected.includes(run.id)}
+                        onChange={(e) =>
+                          setSelected((old) =>
+                            e.target.checked ? [...old, run.id] : old.filter((id) => id !== run.id),
+                          )
+                        }
+                      />{" "}
+                      Select
+                    </label>
+                  )}
                   {slug ? (
                     <Link
                       to="/agents/$name"
@@ -157,39 +170,43 @@ export function RunQueuePanel({
               );
             })}
           </ul>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={() =>
-                setSelected([...new Set([...selected, ...data.items.map((r) => r.id)])])
-              }
-            >
-              Select this page
-            </Button>
-            <Button
-              variant="outline"
-              disabled={selecting || query.isFetching || data.totalMatching > 100}
-              onClick={() => void selectAll()}
-            >
-              Select all {data.totalMatching} matching runs
-            </Button>
-            <Button variant="outline" onClick={() => setSelected([])}>
-              Clear selection
-            </Button>
-          </div>
-          {data.totalMatching > 100 && (
-            <p>Narrow filters to at most 100 before selecting all matching runs.</p>
+          {canRun && (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setSelected([...new Set([...selected, ...data.items.map((r) => r.id)])])
+                  }
+                >
+                  Select this page
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={selecting || query.isFetching || data.totalMatching > 100}
+                  onClick={() => void selectAll()}
+                >
+                  Select all {data.totalMatching} matching runs
+                </Button>
+                <Button variant="outline" onClick={() => setSelected([])}>
+                  Clear selection
+                </Button>
+              </div>
+              {data.totalMatching > 100 && (
+                <p>Narrow filters to at most 100 before selecting all matching runs.</p>
+              )}
+              {selectionError && <p role="alert">{selectionError}</p>}
+              <p className="text-xs text-muted-foreground">
+                Selected IDs may span pages and stay selected on same-page refresh. Clear selection
+                before starting another query.
+              </p>
+              <BulkRecoveryDialog
+                runIds={selected}
+                actorId={actorId}
+                onComplete={() => void query.refetch()}
+              />
+            </>
           )}
-          {selectionError && <p role="alert">{selectionError}</p>}
-          <p className="text-xs text-muted-foreground">
-            Selected IDs may span pages and stay selected on same-page refresh. Clear selection
-            before starting another query.
-          </p>
-          <BulkRecoveryDialog
-            runIds={selected}
-            actorId={actorId}
-            onComplete={() => void query.refetch()}
-          />
           <div className="flex gap-2">
             <Button
               variant="outline"

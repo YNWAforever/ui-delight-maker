@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { agentQueueSearchSchema } from "@/lib/agent-queue-input";
 import { getAgentQueue } from "@/server-functions/agent-runs";
+import { crmQueryKeys } from "@/lib/query-keys";
 import { QueueToolbar } from "../queue-toolbar";
 import { RunQueuePanel } from "../run-queue-panel";
 vi.mock("@/server-functions/agent-runs", () => ({ getAgentQueue: vi.fn() }));
@@ -29,6 +30,7 @@ afterEach(() => {
 const runId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const result = {
   queue: "runs",
+  canRun: true,
   items: [
     {
       id: runId,
@@ -240,5 +242,94 @@ describe("server queue navigation", () => {
     expect(screen.queryByText(/private database failure/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Refresh run queue" }));
     await waitFor(() => expect(getAgentQueue).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe("server-authorized run maintenance controls", () => {
+  it.each([false, undefined])(
+    "hides recovery selection when server canRun is %s without hiding reads",
+    async (canRun) => {
+      vi.mocked(getAgentQueue).mockResolvedValue({ ...result, canRun } as never);
+      const { client } = mount();
+      await screen.findByText(/This page: 1 \/ 101/);
+      expect(screen.queryByRole("checkbox", { name: "Select run " + runId })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Select this page" })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Select all/ })).toBeNull();
+      expect(screen.queryByRole("region", { name: "Local bulk maintenance" })).toBeNull();
+      expect(screen.getByRole("link", { name: "Renamed Draft" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Next run page" })).toHaveProperty(
+        "disabled",
+        false,
+      );
+      expect(screen.getByRole("button", { name: "Refresh run queue" })).toBeTruthy();
+      client.clear();
+    },
+  );
+  it("clears prior selection when server revokes maintenance even if subsequently restored", async () => {
+    const value = { ...result, totalMatching: 1, nextCursor: null };
+    vi.mocked(getAgentQueue).mockResolvedValue(value as never);
+    const { client } = mount();
+    await screen.findByRole("button", { name: "Select this page" });
+    fireEvent.click(screen.getByRole("button", { name: "Select this page" }));
+    expect(screen.getByRole("checkbox", { name: "Select run " + runId })).toHaveProperty(
+      "checked",
+      true,
+    );
+    const key = crmQueryKeys.agentQueue({ ...agentQueueSearchSchema.parse({}), queue: "runs" });
+    await act(async () => {
+      client.setQueryData(key, { ...value, canRun: false });
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Select this page" })).toBeNull(),
+    );
+
+    expect(screen.queryByRole("button", { name: "Preview 1 selected" })).toBeNull();
+    await act(async () => {
+      client.setQueryData(key, value);
+    });
+    await screen.findByRole("button", { name: "Select this page" });
+
+    expect(screen.getByRole("checkbox", { name: "Select run " + runId })).toHaveProperty(
+      "checked",
+      false,
+    );
+    expect(screen.queryByRole("button", { name: "Preview 1 selected" })).toBeNull();
+    client.clear();
+  });
+  it("does not resurrect an in-flight all-selection after maintenance was revoked and restored", async () => {
+    const value = { ...result, totalMatching: 1, nextCursor: null };
+    vi.mocked(getAgentQueue).mockResolvedValue(value as never);
+    const { client } = mount();
+    await screen.findByRole("button", { name: "Select all 1 matching runs" });
+    let finish!: (value: unknown) => void;
+    vi.mocked(getAgentQueue).mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          finish = r;
+        }) as never,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Select all 1 matching runs" }));
+    const key = crmQueryKeys.agentQueue({ ...agentQueueSearchSchema.parse({}), queue: "runs" });
+    await act(async () => {
+      client.setQueryData(key, { ...value, canRun: false });
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Select this page" })).toBeNull(),
+    );
+
+    await act(async () => {
+      client.setQueryData(key, value);
+    });
+    await screen.findByRole("button", { name: "Select this page" });
+
+    await act(async () => {
+      finish(value);
+    });
+    expect(screen.getByRole("checkbox", { name: "Select run " + runId })).toHaveProperty(
+      "checked",
+      false,
+    );
+    expect(screen.queryByRole("button", { name: "Preview 1 selected" })).toBeNull();
+    client.clear();
   });
 });

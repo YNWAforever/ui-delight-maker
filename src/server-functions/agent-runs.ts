@@ -135,11 +135,18 @@ export const getAgentQueue = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const input = parseOperationInput(agentQueueSchema, data);
     const context = await loadRequestAuthorization();
-    const { rows } = await requirePageAuthorization(
+    const { access, rows } = await requirePageAuthorization(
       input.queue === "approvals" ? ["agents.view", "approvals.view"] : ["agents.view"],
-      { optional: AGENT_SUBJECT_VIEW_CAPABILITIES, context, cacheRowOwners: true },
+      {
+        optional: [...AGENT_SUBJECT_VIEW_CAPABILITIES, "agents.run"],
+        context,
+        cacheRowOwners: true,
+      },
     );
-    return loadAgentQueue(input, context, rows);
+    const page = await loadAgentQueue(input, context, rows);
+    // Display eligibility comes from the same server capability evaluation as the read.
+    // Write commands still reauthorize every item against current scope and state.
+    return page.queue === "runs" ? { ...page, canRun: access["agents.run"] === true } : page;
   });
 
 export const recoverAgentRunFn = createServerFn({ method: "POST" })

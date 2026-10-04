@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-10-04T02:37:35.527Z",
+  "sha": "b7ac01ec9b20ac6dd3df8590ec83652995372575",
+  "serverEntrySha256": "ef5517e09172ae38bd35ba87a873d3fa82da3d52c42b2c976de625cd24d7ad2e",
+  "role": "read_only",
+  "actualOwnSession": true,
+  "observedSelectionEnabled": true,
+  "observedPreviewEnabled": true,
+  "expectedRecoveryControls": "absent without server agents.run",
+  "nativeSameOriginBffStatus": 403,
+  "effectFactsUnchanged": true,
+  "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/cancel-readonly-ui-red.png",
+  "screenshotSha256": "178d5e8b955dc3f85b6d85056d93aa857aae895a641749883645c7c5a6fe8137",
+  "providerCalls": 0,
+  "productionAccess": false,
+  "productUiDefect": true,
+  "authorizationBypassObserved": false
+}

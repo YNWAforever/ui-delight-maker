@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-04T02:46:23.973Z",
+  "sourceSha": "b7ac01ec9b20ac6dd3df8590ec83652995372575",
+  "db": "clientops_ai_gpt61_4b8add053b",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/commands/__tests__/agent-bulk-recovery.integration.test.ts",
+    "src/components/agents/__tests__/bulk-recovery-dialog.test.tsx",
+    "src/components/agents/__tests__/queue-navigation.test.tsx",
+    "src/server-functions/__tests__/agent-runs-performance.test.ts",
+    "src/server/db/__tests__/approval-recovery.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-cancel-final-target-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 66,
+  "failed": 0,
+  "skipped": 0,
+  "total": 66,
+  "files": 5,
+  "elapsedMs": 43476,
+  "reportSha256": "737fabf9719936a377272a8c4321f42a322a162fbbc7c125b49664e22a8b4252"
+}

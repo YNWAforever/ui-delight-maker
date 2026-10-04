@@ -202,3 +202,22 @@ describe("agent operational read models", () => {
     expect(result.items[0].id).toBe(runId);
   });
 });
+
+describe("queue maintenance permission metadata", () => {
+  it.each([true, false, undefined])(
+    "returns server agents.run=%s independently of role labels",
+    async (granted) => {
+      mocks.requirePageAuthorization.mockImplementation(async (_required, { optional }) => ({
+        access: Object.fromEntries(
+          optional.map((c: string) => [c, c === "agents.run" ? granted : true]),
+        ),
+        rows: stubRowAuthorizer,
+      }));
+      const { getAgentQueue } = await loadModule();
+      const result = await getAgentQueue({ data: { queue: "runs" } });
+      expect(result).toMatchObject({ queue: "runs", canRun: granted === true });
+      expect(mocks.loadRequestAuthorization).toHaveBeenCalledTimes(1);
+      expect(mocks.query).toHaveBeenCalledTimes(2);
+    },
+  );
+});
