@@ -94,4 +94,14 @@ describe("FollowUpTaskDialog", () => {
     expect(onCreated).not.toHaveBeenCalled();
     expect(toastSuccessMock).not.toHaveBeenCalled();
   });
+
+  it("never prefills a title longer than the server accepts", async () => {
+    // Self-review of fe30e41: maxLength limits typing, not a prefilled value, and the schema
+    // refuses titles over 255 characters.
+    render(<FollowUpTaskDialog link={{ lead_id: "lead-1" }} defaultTitle={"貓".repeat(300)} />);
+    await userEvent.click(screen.getByRole("button", { name: "Add follow-up task" }));
+
+    const title = screen.getByRole("textbox", { name: "What needs to happen" }) as HTMLInputElement;
+    expect(title.value).toHaveLength(255);
+  });
 });

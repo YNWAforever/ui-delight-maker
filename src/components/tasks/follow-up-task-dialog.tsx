@@ -30,6 +30,8 @@ type Priority = "low" | "medium" | "high";
 
 const PRIORITIES: readonly Priority[] = ["low", "medium", "high"];
 const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
+/** TaskCreateSchema's title limit. */
+const TITLE_MAX_LENGTH = 255;
 
 export type FollowUpTaskDialogProps = {
   /** The record the follow-up belongs to, passed to `createTask` unchanged. */
@@ -50,7 +52,7 @@ export type FollowUpTaskDialogProps = {
  */
 export function FollowUpTaskDialog({ link, defaultTitle, onCreated }: FollowUpTaskDialogProps) {
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState(defaultTitle);
+  const [title, setTitle] = useState(() => defaultTitle.slice(0, TITLE_MAX_LENGTH));
   const [due, setDue] = useState("");
   const [priority, setPriority] = useState<Priority>("medium");
   const [titleError, setTitleError] = useState<string | null>(null);
@@ -64,8 +66,9 @@ export function FollowUpTaskDialog({ link, defaultTitle, onCreated }: FollowUpTa
   const changeOpen = (next: boolean) => {
     if (saving) return;
     if (next) {
-      // Computed on open rather than during render, so server and client markup agree.
-      setTitle(defaultTitle);
+      // Computed on open rather than during render, so server and client markup agree. Capped
+      // at the schema's 255 because maxLength only limits typing, not a prefilled value.
+      setTitle(defaultTitle.slice(0, TITLE_MAX_LENGTH));
       setDue(getBusinessDateKey(new Date(Date.now() + TWO_DAYS_MS)));
       setPriority("medium");
       setTitleError(null);
@@ -121,7 +124,7 @@ export function FollowUpTaskDialog({ link, defaultTitle, onCreated }: FollowUpTa
               id={titleId}
               name="title"
               autoComplete="off"
-              maxLength={255}
+              maxLength={TITLE_MAX_LENGTH}
               value={title}
               aria-invalid={titleError ? true : undefined}
               aria-describedby={titleError ? titleErrorId : undefined}
