@@ -3,6 +3,7 @@ import { Outlet, useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { AppSidebar } from "@/components/app-sidebar";
 import { GlobalSearch } from "@/components/global-search";
+import { NavigationProgress, RouteAnnouncer } from "@/components/navigation-feedback";
 import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -29,6 +30,8 @@ export function AuthenticatedAppShell({
   const router = useRouter();
   return (
     <SidebarProvider>
+      <NavigationProgress />
+      <RouteAnnouncer />
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar
           profile={profile}
