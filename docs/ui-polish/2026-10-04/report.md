@@ -29,10 +29,24 @@ server still decides.
 - **Screenshots are not committed.** Decision D-1: the repository is public and the "before"
   set shows UAT data, so `before/` and `after/` stay local (`.git/info/exclude`). This report
   describes them by file name.
-- **Public "after" pages.** `/login` and `/login/forgot-password` change only through tokens
-  (typeface, focus outline, radius). Production serves `main`, not this branch, and nothing
-  here can run the app (no database or auth configuration), so they were not re-shot unless a
-  Vercel preview of this branch appears (see the PR).
+- **Public "after" pages, on the branch's Vercel preview.** The preview is behind Vercel
+  Authentication; the owner signed in to Vercel in the browser pane (no share link was created).
+  `/api/build` on the preview returned `29ac91734578c64469354f9ceff5b39418ccbec5`, this branch's
+  HEAD. Read-only: pages were loaded and one Tab was pressed; nothing was typed or submitted.
+  - Screenshots (JPEG, local only): `after/public-login-375.jpg`,
+    `after/public-login-forgot-password-375.jpg`, `after/public-login-1280.jpg` (the pane scaled
+    this one to 800 px wide) and `after/public-login-keyboard-focus-1280.jpg`. Pairs:
+    `before/public-login-375.png`, `before/public-login-forgot-password-375.png`,
+    `before/public-login-1280.png`.
+  - The 768 and 1440 px shots and the 1280 forgot-password shot timed out in the pane (the app
+    window was not drawing). For those sizes the same facts were measured in the page instead:
+    no horizontal overflow at 768 or 1440 on either page, the body set in Plus Jakarta Sans with
+    the font loaded, and field borders using the new `--input` token.
+  - Visible change: the system font (Segoe UI on Windows) becomes Plus Jakarta Sans, field
+    borders go from barely visible to clearly drawn, controls use the 6 px radius, and the first
+    Tab shows "Skip to main content" with the 2 px focus outline. The sign-in copy ("Sign In",
+    "Login", `m@example.com`) is Neon Auth's and unchanged (UX-34, deferred). The round icon at
+    the right edge of the preview shots is Vercel's preview toolbar, not the app.
 
 ## Changes by journey
 
@@ -162,6 +176,7 @@ All at HEAD `8db9428` (the code head; later commits are docs only).
 | Coverage | | Not run — needs a coverage package that was not approved |
 | `bun run build` | | Not run — forbidden by the brief (it runs migrations and seed) |
 | Logged-in "after" on UAT | | **Environment-gated, not run** — no deploy from this branch (D-2) |
+| Public "after" on the Vercel preview | `/api/build` = `29ac917`; `/login`, `/login/forgot-password` | **Done** — 375 and 1280 captured; 768 and 1440 measured (no overflow, typeface loaded) because the pane could not draw screenshots at those sizes |
 
 One file was excluded from the test run: `src/lib/__tests__/route-catalogue-import.test.ts` is
 an untracked file that predates this work, is not part of the branch, and fails on its own.
