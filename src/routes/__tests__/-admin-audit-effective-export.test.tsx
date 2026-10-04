@@ -69,7 +69,8 @@ describe("Admin audit export uses the effective server capability", () => {
   it("removes export for a super admin with an effective deny", () => {
     render(<Page />);
     expect(screen.queryByRole("button", { name: "Export this page (CSV)" })).toBeNull();
-    expect(screen.getAllByText("profile.updated").length).toBeGreaterThan(0);
+    // The raw key is the cell title; the text is the humanised action (UX-06).
+    expect(screen.getAllByTitle("profile.updated")[0].textContent).toBe("Profile updated");
   });
   it("fails closed when the effective snapshot is absent", () => {
     state.capabilities = undefined;
