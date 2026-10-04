@@ -45,6 +45,7 @@ import {
 import { crmQueryKeys } from "@/lib/query-keys";
 import { getStatusLabel } from "@/lib/status-labels";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
+import { QuoteLineItemsView } from "@/components/quotes/quote-line-items";
 import { calculateTotal, newLineItem, toQuoteCommercialLineItems } from "@/lib/quote-utils";
 import {
   acceptQuoteAndCreateJobSheet,
@@ -860,6 +861,15 @@ function QuoteDetail() {
                           </table>
                         </div>
                       )}
+                      {editItems.length > 0 ? (
+                        // The table scrolls sideways below md, taking its total off screen (UX-13).
+                        <p className="flex items-baseline justify-between gap-3 text-sm font-semibold md:hidden">
+                          <span>Total</span>
+                          <span className="whitespace-nowrap text-base tabular-nums">
+                            {formatCurrencyAmount(totalValue, quote.currency)}
+                          </span>
+                        </p>
+                      ) : null}
 
                       <Sheet open={catalogueOpen} onOpenChange={setCatalogueOpen}>
                         <SheetTrigger asChild>
@@ -909,47 +919,11 @@ function QuoteDetail() {
                       )}
                     </div>
                   ) : (
-                    <div className="max-w-full overflow-x-auto">
-                      <table className="min-w-[560px] w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
-                            <th className="py-2 text-left font-medium">Service</th>
-                            <th className="py-2 text-right font-medium">Qty</th>
-                            <th className="py-2 text-right font-medium">Unit</th>
-                            <th className="py-2 text-right font-medium">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                          {quote.line_items.map((li: (typeof quote.line_items)[number]) => (
-                            <tr key={li.id}>
-                              <td className="py-3">
-                                <div className="font-medium">{li.service}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {li.description}
-                                </div>
-                              </td>
-                              <td className="py-3 text-right tabular-nums">{li.qty}</td>
-                              <td className="py-3 text-right tabular-nums">
-                                {formatCurrencyAmount(li.unit_price, quote.currency)}
-                              </td>
-                              <td className="py-3 text-right font-medium tabular-nums">
-                                {formatCurrencyAmount(li.qty * li.unit_price, quote.currency)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="border-t border-border">
-                            <td colSpan={3} className="py-3 text-right text-sm font-semibold">
-                              Total
-                            </td>
-                            <td className="py-3 text-right text-base font-semibold tabular-nums">
-                              {formatCurrencyAmount(quote.total_value, quote.currency)}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
+                    <QuoteLineItemsView
+                      items={quote.line_items}
+                      currency={quote.currency}
+                      total={quote.total_value}
+                    />
                   )}
                 </TabsContent>
                 <TabsContent value="versions" className="mt-4 space-y-4">
