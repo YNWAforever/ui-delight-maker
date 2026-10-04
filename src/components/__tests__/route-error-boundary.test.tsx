@@ -69,7 +69,9 @@ describe("RouteErrorBoundary", () => {
 
     expect(await screen.findByText("You do not have access to Leads")).toBeTruthy();
     expect(screen.getByText("Sidebar")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Go to Revenue Desk" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("link", { name: "Go to your start page" }).getAttribute("href")).toBe(
+      "/",
+    );
     expect(screen.getByRole("link", { name: "Request access" }).getAttribute("href")).toBe(
       "/account",
     );

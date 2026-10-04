@@ -37,7 +37,8 @@ export function RouteErrorBoundary({ error, reset }: ErrorComponentProps) {
           action={
             <div className="flex flex-wrap justify-center gap-2">
               <Button asChild size="sm">
-                <Link to="/">Go to Revenue Desk</Link>
+                {/* "/" is the Revenue Desk or, without lead access, "Today" (UX-15). */}
+                <Link to="/">Go to your start page</Link>
               </Button>
               <Button asChild size="sm" variant="outline">
                 <Link to="/account">Request access</Link>

@@ -509,7 +509,7 @@ function RenewalsPage() {
                       <Link to="/clients">Go to Clients</Link>
                     </Button>
                     <Button size="sm" variant="outline" asChild>
-                      <Link to="/">Go to Revenue Desk</Link>
+                      <Link to="/">Go to your start page</Link>
                     </Button>
                   </div>
                 }
