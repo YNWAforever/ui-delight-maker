@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { PipelineToolbar } from "@/components/pipeline/pipeline-toolbar";
 import { StageMoveDialog } from "@/components/pipeline/stage-move-dialog";
 import { WonConversionDialog } from "@/components/pipeline/won-conversion-dialog";
+import { TodayJobSheetList } from "@/components/job-sheets/today-job-sheet-list";
 import {
   EmptyWorkspaceState,
   MetricStrip,
@@ -20,7 +21,6 @@ import { getBusinessDateKey } from "@/lib/business-date";
 import { describeTriggerFailure, toSafeErrorMessage } from "@/lib/errors";
 import { filterPipelineLeads } from "@/lib/pipeline";
 import { getStatusLabel } from "@/lib/status-labels";
-import { getJobSheetStatusLabel } from "@/lib/job-sheet-editor";
 import { buildRevenueActions } from "@/lib/sales-workspace";
 import {
   pipelineFiltersFromSearch,
@@ -58,9 +58,12 @@ export const Route = createFileRoute("/")({
         queryFn: () => getDashboardRead(),
       }),
     ),
-  head: () => ({
+  head: ({ loaderData }) => ({
     meta: [
-      { title: "Revenue Desk - Fimmick ClientOps" },
+      // Sessions without lead access land on "Today", so the tab says so too (UX-15).
+      {
+        title: `${loaderData?.access.leads === false ? "Today" : "Revenue Desk"} - Fimmick ClientOps`,
+      },
       {
         name: "description",
         content:
@@ -76,66 +79,55 @@ function DashboardLanding() {
   if (access.leads) return <PipelineCommandCenter />;
 
   const hasQueue = access.jobSheets || access.tasks || access.approvals || access.quotes;
+  // Same page chrome as every other workspace: the header spans the page and the content
+  // sits in the padded column below it (UX-15).
   return (
-    <div className="space-y-6 px-4 py-6 md:px-6">
+    <>
       <WorkspaceHeader
         context="Operations"
         title="Today"
-        description="Open an available queue to continue your work"
+        description="Open an available queue to continue your work."
       />
-      <div className="flex flex-wrap gap-2">
-        {access.jobSheets && (
-          <Button asChild variant="outline">
-            <Link to="/job-sheets">All job sheets</Link>
-          </Button>
-        )}
-        {access.tasks && (
-          <Button asChild variant="outline">
-            <Link to="/tasks">Tasks</Link>
-          </Button>
-        )}
-        {access.approvals && (
-          <Button asChild variant="outline">
-            <Link to="/approvals">Approvals</Link>
-          </Button>
-        )}
-        {access.quotes && (
-          <Button asChild variant="outline">
-            <Link to="/quotes">Quotes</Link>
-          </Button>
-        )}
-      </div>
-      {!hasQueue && (
-        <EmptyWorkspaceState
-          title="No available work queues"
-          description="Ask a workspace administrator to review your access."
-        />
-      )}
-      {access.jobSheets &&
-        (jobSheets.length === 0 ? (
+      <div className="space-y-6 px-4 py-6 md:px-6">
+        <div className="flex flex-wrap gap-2">
+          {access.jobSheets && (
+            <Button asChild variant="outline" size="sm">
+              <Link to="/job-sheets">All job sheets</Link>
+            </Button>
+          )}
+          {access.tasks && (
+            <Button asChild variant="outline" size="sm">
+              <Link to="/tasks">Tasks</Link>
+            </Button>
+          )}
+          {access.approvals && (
+            <Button asChild variant="outline" size="sm">
+              <Link to="/approvals">Approvals</Link>
+            </Button>
+          )}
+          {access.quotes && (
+            <Button asChild variant="outline" size="sm">
+              <Link to="/quotes">Quotes</Link>
+            </Button>
+          )}
+        </div>
+        {!hasQueue && (
           <EmptyWorkspaceState
-            title="No visible job sheets"
-            description="There are no job sheets in this view."
+            title="No available work queues"
+            description="Ask a workspace administrator to review your access."
           />
-        ) : (
-          <ul className="space-y-2">
-            {jobSheets.map((sheet) => (
-              <li key={sheet.id}>
-                <Link
-                  to="/job-sheets/$id"
-                  params={{ id: sheet.id }}
-                  className="flex items-center justify-between rounded-md border border-border p-4 hover:bg-muted/50"
-                >
-                  <span className="font-medium">{sheet.number}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {getJobSheetStatusLabel(sheet.status)}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ))}
-    </div>
+        )}
+        {access.jobSheets &&
+          (jobSheets.length === 0 ? (
+            <EmptyWorkspaceState
+              title="No job sheets waiting"
+              description="Accepted quotes appear here when they are handed to accounting."
+            />
+          ) : (
+            <TodayJobSheetList jobSheets={jobSheets} />
+          ))}
+      </div>
+    </>
   );
 }
 

@@ -153,7 +153,15 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent>
-        {renderGroup("Today", todayItems)}
+        {renderGroup(
+          "Today",
+          // The landing is the Revenue Desk only for sessions that can read leads; everyone
+          // else lands on a page titled "Today", so the link says that (UX-15). An unknown
+          // capability set keeps the default.
+          capabilities.length > 0 && !capabilities.includes("leads.view")
+            ? todayItems.map((item) => ({ ...item, title: "Today" }))
+            : todayItems,
+        )}
         {favorites.length > 0
           ? renderGroup(
               "Favorites",

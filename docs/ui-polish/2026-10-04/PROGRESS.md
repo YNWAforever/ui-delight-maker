@@ -53,7 +53,7 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | 9 | Honest summary strip instead of page-scoped stat cards | UX-09, UX-29 | done: page-scoped strips removed (Leads, Clients, Companies, Campaigns, Tasks, Job Sheets), Revenue Desk on server totals, `MetricStrip` one compact bordered row (no icon chips, sentence-case labels, 2-up below `xl`, tone-fg text) |
 | 10 | Money that fits (quote line items, job sheet) | UX-13, UX-14 | done (`QuoteLineItemsView` list below md / table from md; numeric columns never wrap; job sheet handoff panel stacks below 2xl) |
 | 11 | Approvals split view; admin audit layout and labels | UX-11, UX-12 | done (Approvals: two-column queue, split from xl, focus to record; Admin: tabs below 2xl, actor picker, IDs wrap; actor/requester names still need SP-2) |
-| 12 | Accounting Today | UX-15 | |
+| 12 | Accounting Today | UX-15 | done (job sheet list with client, accepted total, status badge, arrival date; standard header chrome; sidebar link and tab title read "Today" without leads.view) |
 | 13 | Foundations: font, type, radius, elevation, input/accent/sidebar tokens, focus outline | UX-21, UX-22, UX-25, UX-39 | |
 | 14 | P2 polish: field errors, copy, freshness, lifecycle panel, hydration, file inputs, tablet, pickers, 360 view | UX-16…UX-38 | |
 
@@ -78,13 +78,14 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `83f9ad3` | fix(approvals): fit the desk at laptop width and take focus to the record | UX-11, UX-40 | approvals 27/27 (+2: two-column queue, focus to record region); tsc clean |
 | `a4dd150` | test(admin): expect the humanised audit action in the export test | UX-06 | fixes a test broken by `49115d6` and missed by the focused run then |
 | `86214f4` | test(campaigns): match the header count's full stop literally | UX-09 | campaigns 1 file |
-| next | feat(admin): give admin pages the width and find audit actors by name | UX-12 | admin-shell +1, audit route +2 (picker with users.view, ID fallback without), audit table; tsc clean |
+| `008a4f7` | feat(admin): give admin pages the width and find audit actors by name | UX-12 | admin-shell +1, audit route +2 (picker with users.view, ID fallback without), audit table; tsc clean |
+| next | feat(today): give accounting's landing page something to triage by | UX-15 | new today-job-sheet-list 2, app-sidebar 8/8 (Today vs Revenue Desk), dashboard landing + revenue desk; tsc clean |
 
 ## Resume notes (keep current)
 
 - Last commit: UX-10 (see log). The log's `next` row is always the latest commit; replace it
   with the hash at the start of the next commit.
-- Next: item 12 (UX-15 accounting Today: client, accepted total, target invoice date, StatusBadge; sidebar label follows the page). Then items 13–14.
+- Next: item 13 (foundations: D-6 font after the Neon Auth import with CJK fallbacks, type scale, radius 8 px, elevation, --input, calm --accent, sidebar active bar, D-3 global :focus-visible outline). Then item 14.
 - Tooling note: `node -` heredoc scripts on this machine drop a backslash from `\x` escapes inside template literals (evalTypeScript); build regexes with String.fromCharCode(92) or edit with the Edit tool, and re-read regex lines after writing.
 - Watch in Phase 4: `src/components/admin/__tests__/admin-modal-keyboard.test.tsx` (role modal Tab containment) failed once when 24 suites ran in parallel and passed alone.
 - Cleanup PR candidates (UX-32, not this PR): `getClientPortfolioMetrics`, `getTaskBoardMetrics` (`src/lib/sales-workspace.ts`), `formatAcceptedValueSummary` (`src/lib/job-sheet-editor.ts`) and `getPipelineSummary` (`src/lib/pipeline.ts`) lost their last route callers in the UX-09 commit.
@@ -97,6 +98,8 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
   session at a time — four parallel sessions caused HTTP 500s.
 
 ## Verification notes
+
+- 2026-10-05 UI-only run (`bunx vitest run src/components src/routes src/lib src/hooks`, no database): 1,678/1,683. Four failures were 5 s timeouts under 197 parallel files (touchpoint-logger-ai, campaigns create, clients create, leads bulk preview) and pass in isolation (43/43); the fifth is the untracked pre-existing `route-catalogue-import.test.ts`. Authoritative run is Phase 4's `bun run test` against a disposable database.
 
 - Focused tests: `bunx vitest run <files>` (component tests need `// @vitest-environment jsdom`).
 - Full suite needs a disposable database: local Docker image `pgvector/pgvector:pg17` (matches CI),

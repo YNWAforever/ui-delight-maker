@@ -141,9 +141,12 @@ describe("AppSidebar", () => {
     }
     // A group with nothing left in it is not rendered as an empty heading.
     expect(screen.queryByText("Acquire")).toBeNull();
-    for (const shown of ["Revenue Desk", "Quotes", "Approvals", "Job Sheets", "Renewals"]) {
+    for (const shown of ["Today", "Quotes", "Approvals", "Job Sheets", "Renewals"]) {
       expect(screen.getByRole("link", { name: shown })).toBeTruthy();
     }
+    // Without leads the landing page is titled "Today", and its link says so (UX-15).
+    expect(screen.queryByRole("link", { name: "Revenue Desk" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Today" }).getAttribute("href")).toBe("/");
   });
 
   it("hides nothing when the capability set could not be loaded", () => {
@@ -188,5 +191,24 @@ describe("AppSidebar", () => {
     expect(screen.getByRole("link", { name: "Admin workspace" }).getAttribute("href")).toBe(
       "/admin/people",
     );
+  });
+
+  it.each([
+    ["a session that can read leads", ["leads.view"]],
+    ["a session whose capabilities are unknown", []],
+  ])("calls the landing page Revenue Desk for %s", (_name, capabilities) => {
+    render(
+      <SidebarProvider>
+        <AppSidebar
+          profile={null}
+          onSignOut={vi.fn()}
+          favorites={[]}
+          capabilities={capabilities as never}
+        />
+      </SidebarProvider>,
+    );
+
+    expect(screen.getByRole("link", { name: "Revenue Desk" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Today" })).toBeNull();
   });
 });
