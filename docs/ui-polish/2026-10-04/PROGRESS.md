@@ -88,7 +88,9 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `ba9a3e5` | fix(copy): plain words instead of internal vocabulary and apologies | UX-18 | relative-time +1, new pipeline-toolbar 2, approvals 27/27 (reviewer label), 24 related files 223/223; tsc clean |
 | `0729a20` | docs(audit): withdraw UX-24, a harness false positive | UX-24 | — |
 | `260f479` | test(quotes): give the URL-state test's query mock a fetch time | UX-19 | fixes a test broken by `859cc72`, missed by its focused run |
-| next | fix(ui): status badges in sentence case | UX-30 | status-badge +1, status-labels, admin-status-labels; 19 badge/label/freshness suites 265/265; tsc clean |
+| `00df917` | fix(ui): status badges in sentence case | UX-30 | status-badge +1, status-labels, admin-status-labels; 19 badge/label/freshness suites 265/265; tsc clean |
+| `5b517f5` | test(reports): expect the sentence-case fallback for an unmapped stage | UX-30 | caught by the full UI run |
+| next | fix(forms): show validation at the field it concerns | UX-16 | access-request-queue 6/6 (rewritten validation test), tasks 4 files 18/18 (+1 title at the field); tsc clean |
 
 ## Resume notes (keep current)
 
@@ -107,6 +109,8 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
   session at a time — four parallel sessions caused HTTP 500s.
 
 ## Verification notes
+
+- 2026-10-05 second full UI run (after UX-30): 1,692/1,704. Real failures were two stale expectations of the old lowercase fallback (`reports.test.ts`, fixed in `5b517f5`; `admin-status-labels.test.ts`, fixed in `00df917`) and the UX-19 mock gap (fixed in `260f479`). The rest were 5 s timeouts under load that pass in isolation (token-gate, job-sheet accept, leads bulk, admin modal keyboard, invite dialog, permission override, queue navigation, admin nested routes) plus the untracked `route-catalogue-import.test.ts`. From here every batch ends with a full UI run.
 
 - 2026-10-05 UI-only run (`bunx vitest run src/components src/routes src/lib src/hooks`, no database): 1,678/1,683. Four failures were 5 s timeouts under 197 parallel files (touchpoint-logger-ai, campaigns create, clients create, leads bulk preview) and pass in isolation (43/43); the fifth is the untracked pre-existing `route-catalogue-import.test.ts`. Authoritative run is Phase 4's `bun run test` against a disposable database.
 

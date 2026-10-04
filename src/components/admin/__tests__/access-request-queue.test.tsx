@@ -137,14 +137,30 @@ describe("AccessRequestQueue", () => {
     expect(screen.getByText(/You raised this request/)).toBeTruthy();
   });
 
-  it("requires a decision reason before rejection", async () => {
+  it("requires a decision reason before rejection, at the field and without scolding first", async () => {
     const onDecide = vi.fn();
     const actor = userEvent.setup();
 
     render(<AccessRequestQueue requests={[teamRequest]} actorRole="admin" onDecide={onDecide} />);
 
+    // UX-16: opening the decision used to show "Decision reason is required" before typing,
+    // and the 8-character minimum was never stated.
     await actor.click(screen.getByRole("button", { name: "Reject request" }));
-    expect(screen.getByRole("alert").textContent).toContain("Decision reason is required");
+    const reason = screen.getByRole("textbox", { name: "Decision reason" });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(reason.getAttribute("aria-invalid")).toBeNull();
+    expect(screen.getByText("At least 8 characters. Recorded in the audit log.")).toBeTruthy();
+
+    await actor.click(screen.getByRole("button", { name: "Confirm rejection" }));
+    expect(reason.getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(reason);
+    const describedBy = reason.getAttribute("aria-describedby") ?? "";
+    const messages = describedBy.split(" ").map((id) => document.getElementById(id)?.textContent);
+    expect(messages).toContain("Enter a reason for this decision.");
+
+    await actor.type(reason, "short");
+    await actor.click(screen.getByRole("button", { name: "Confirm rejection" }));
+    expect(screen.getByText("Use at least 8 characters for the reason.")).toBeTruthy();
     expect(onDecide).not.toHaveBeenCalled();
   });
 });

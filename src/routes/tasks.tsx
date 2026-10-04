@@ -888,14 +888,18 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
    * and two clicks created two tasks.
    */
   const [saving, setSaving] = useState(false);
+  // Shown under the field and linked to it, not as a toast that vanishes (UX-16).
+  const [titleError, setTitleError] = useState<string | null>(null);
 
   const submit = async () => {
     if (saving) return;
     if (!title.trim()) {
-      toast.error("Title required");
+      setTitleError("Enter a title for the task.");
+      document.getElementById("new-task-title")?.focus();
       return;
     }
 
+    setTitleError(null);
     setSaving(true);
     try {
       await onCreate({
@@ -947,8 +951,18 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
               autoComplete="off"
               className="mt-1"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              aria-invalid={titleError ? true : undefined}
+              aria-describedby={titleError ? "new-task-title-error" : undefined}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (titleError) setTitleError(null);
+              }}
             />
+            {titleError ? (
+              <p id="new-task-title-error" className="mt-1 text-xs font-medium text-tone-danger-fg">
+                {titleError}
+              </p>
+            ) : null}
           </div>
           <div>
             <Label htmlFor="new-task-description" className="text-xs">

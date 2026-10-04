@@ -259,6 +259,25 @@ describe("task view switcher", () => {
 });
 
 describe("task creation safety", () => {
+  it("says a title is needed at the field, not in a toast", async () => {
+    // UX-16: "Title required" was a toast, attached to nothing.
+    renderBoard();
+    fireEvent.click(screen.getByRole("button", { name: /New task/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    const title = screen.getByLabelText("Title");
+    expect(title.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(title.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      "Enter a title for the task.",
+    );
+    expect(document.activeElement).toBe(title);
+    expect(toastErrorMock).not.toHaveBeenCalled();
+    expect(createTaskMock).not.toHaveBeenCalled();
+
+    fireEvent.change(title, { target: { value: "Renewal check-in" } });
+    expect(title.getAttribute("aria-invalid")).toBeNull();
+  });
+
   it("locks the submit while the create is in flight so two clicks make one task", async () => {
     const request = deferred<unknown>();
     createTaskMock.mockReturnValue(request.promise);
