@@ -79,14 +79,15 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `a4dd150` | test(admin): expect the humanised audit action in the export test | UX-06 | fixes a test broken by `49115d6` and missed by the focused run then |
 | `86214f4` | test(campaigns): match the header count's full stop literally | UX-09 | campaigns 1 file |
 | `008a4f7` | feat(admin): give admin pages the width and find audit actors by name | UX-12 | admin-shell +1, audit route +2 (picker with users.view, ID fallback without), audit table; tsc clean |
-| next | feat(today): give accounting's landing page something to triage by | UX-15 | new today-job-sheet-list 2, app-sidebar 8/8 (Today vs Revenue Desk), dashboard landing + revenue desk; tsc clean |
+| `5c58123` | feat(today): give accounting's landing page something to triage by | UX-15 | new today-job-sheet-list 2, app-sidebar 8/8 (Today vs Revenue Desk), dashboard landing + revenue desk; tsc clean |
+| next | fix(ui): render the product typeface, with Traditional Chinese fallbacks | UX-39, UX-25 (D-6) | new typeface 3, tone-contrast 10; built CSS served over HTTP in Chromium: body stack starts with Plus Jakarta Sans, latin woff2 loaded, `document.fonts.check` true |
 
 ## Resume notes (keep current)
 
 - Last commit: UX-10 (see log). The log's `next` row is always the latest commit; replace it
   with the hash at the start of the next commit.
 - Next: item 13 (foundations: D-6 font after the Neon Auth import with CJK fallbacks, type scale, radius 8 px, elevation, --input, calm --accent, sidebar active bar, D-3 global :focus-visible outline). Then item 14.
-- Tooling note: `node -` heredoc scripts on this machine drop a backslash from `\x` escapes inside template literals (evalTypeScript); build regexes with String.fromCharCode(92) or edit with the Edit tool, and re-read regex lines after writing.
+- Tooling note: the Bash tool collapses a doubled backslash to one, even inside a quoted heredoc, so regexes or paths written through it lose escapes. Build them with String.fromCharCode(92), use pathToFileURL for paths, or write files with the Write/Edit tools; re-read regex lines after writing. Token tests read CSS blocks up to the first closing brace, so keep braces out of comments inside them.
 - Watch in Phase 4: `src/components/admin/__tests__/admin-modal-keyboard.test.tsx` (role modal Tab containment) failed once when 24 suites ran in parallel and passed alone.
 - Cleanup PR candidates (UX-32, not this PR): `getClientPortfolioMetrics`, `getTaskBoardMetrics` (`src/lib/sales-workspace.ts`), `formatAcceptedValueSummary` (`src/lib/job-sheet-editor.ts`) and `getPipelineSummary` (`src/lib/pipeline.ts`) lost their last route callers in the UX-09 commit.
 - Working method: one concern per commit; run the focused suites that query changed names

@@ -10,7 +10,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  /* Keep in step with --font-sans in :root below, which is what body actually reads. */
+  --font-sans:
+    "Plus Jakarta Sans", "PingFang HK", "Noto Sans HK", "Microsoft JhengHei", ui-sans-serif,
+    system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -77,6 +80,18 @@
 }
 
 :root {
+  /*
+   * The product face, then Traditional Chinese faces so Han characters in company and contact
+   * names render with Hong Kong glyph forms on macOS, Android and Windows (UX-25).
+   *
+   * Declared here, unlayered, on purpose: `@theme inline` above only inlines the stack into
+   * utilities and emits no variable, so the body's `font-family: var(--font-sans)` was reading
+   * the Neon Auth bundle's system stack and Plus Jakarta Sans never rendered (UX-39, D-6).
+   * (No braces in comments here: the token tests read this block up to its first closing one.)
+   */
+  --font-sans:
+    "Plus Jakarta Sans", "PingFang HK", "Noto Sans HK", "Microsoft JhengHei", ui-sans-serif,
+    system-ui, sans-serif;
   --radius: 0.625rem;
   --background: oklch(0.985 0.004 250);
   --foreground: oklch(0.13 0.035 260);
