@@ -106,4 +106,21 @@ describe("AttentionQueue", () => {
     expect(screen.getByText("Every quote over HKD 50,000 has been signed off.")).toBeTruthy();
     expect(screen.queryByRole("list")).toBeNull();
   });
+
+  it("keeps the distinguishing end of a long CJK name within reach", () => {
+    // UX-25: a one-line ellipsis left only the shared "香港…有限公司" prefix visible.
+    const name = "香港拯救貓狗協會有限公司 Hong Kong Society for Rescue of Cats and Dogs Limited";
+    render(
+      <AttentionQueue
+        items={[item({ id: "long", title: name })]}
+        emptyTitle="Nothing waiting"
+        emptyDescription="Every exception is cleared."
+      />,
+    );
+
+    const link = screen.getByRole("link", { name });
+    expect(link.getAttribute("title")).toBe(name);
+    expect(link.className).toContain("line-clamp-2");
+    expect(link.className).not.toContain("truncate");
+  });
 });

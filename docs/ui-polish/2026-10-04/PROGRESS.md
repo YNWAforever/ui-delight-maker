@@ -91,7 +91,8 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `00df917` | fix(ui): status badges in sentence case | UX-30 | status-badge +1, status-labels, admin-status-labels; 19 badge/label/freshness suites 265/265; tsc clean |
 | `5b517f5` | test(reports): expect the sentence-case fallback for an unmapped stage | UX-30 | caught by the full UI run |
 | `a88c670` | fix(forms): show validation at the field it concerns | UX-16 | access-request-queue 6/6 (rewritten validation test), tasks 4 files 18/18 (+1 title at the field); tsc clean |
-| next | fix(approvals): collapse the decided history on phones and tablets | UX-28 | approvals 28/28 (+1 disclosure); tsc clean |
+| `2c545d3` | fix(approvals): collapse the decided history on phones and tablets | UX-28 | approvals 28/28 (+1 disclosure); tsc clean |
+| next | fix(ui): two lines for long record names instead of a one-line ellipsis | UX-25 | attention-queue +1 (CJK name), renewals; tsc clean |
 
 ## Resume notes (keep current)
 

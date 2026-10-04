@@ -327,7 +327,10 @@ function RenewalsPage() {
       priority: "primary",
       cell: (row) => (
         <div className="min-w-0">
-          <span className="block truncate font-medium">{row.client_company_name}</span>
+          {/* Two lines with the full name on hover: one line hid the end of long CJK names (UX-25). */}
+          <span className="line-clamp-2 font-medium break-words" title={row.client_company_name}>
+            {row.client_company_name}
+          </span>
           <span className="block truncate text-xs text-muted-foreground">{row.product_name}</span>
         </div>
       ),
@@ -537,7 +540,10 @@ function RenewalsPage() {
                   <span className="mt-0.5 block text-xs text-muted-foreground">
                     {WINDOW_LABELS[windowOf(row)]}
                   </span>
-                  <span className="mt-2 block truncate text-sm font-medium">
+                  <span
+                    className="mt-2 line-clamp-2 text-sm font-medium break-words"
+                    title={row.client_company_name}
+                  >
                     {row.client_company_name}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">
