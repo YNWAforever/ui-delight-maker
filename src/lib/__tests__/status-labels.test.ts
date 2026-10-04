@@ -8,6 +8,7 @@ import {
   getDerivedStatusLabel,
   getLifecycleLabel,
   getStatusLabel,
+  humanizeKey,
   isAtRisk,
   isOverdue,
   isStuck,
@@ -40,7 +41,8 @@ describe("getStatusLabel", () => {
 
   it("gives an unknown value its own text back, in neutral tone", () => {
     const result = getStatusLabel("leads", "awaiting_legal_review");
-    expect(result.label).toBe("awaiting legal review");
+    // Sentence case: badges no longer title-case with CSS, so the fallback does it (UX-30).
+    expect(result.label).toBe("Awaiting legal review");
     expect(result.tone).toBe("neutral");
     expect(result.icon).toBeUndefined();
   });
@@ -59,7 +61,7 @@ describe("getStatusLabel", () => {
   it("does not resolve inherited object properties", () => {
     // A bare `map[key]` read answers "constructor" and "toString" from the prototype chain.
     for (const key of ["constructor", "toString", "hasOwnProperty", "__proto__"]) {
-      expect(getStatusLabel(null, key).label).toBe(key.replace(/_/g, " "));
+      expect(getStatusLabel(null, key).label).toBe(humanizeKey(key));
       expect(getStatusLabel(null, key).tone).toBe("neutral");
     }
   });

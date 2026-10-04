@@ -13,16 +13,13 @@ import { cn } from "@/lib/utils";
  * status broke across lines inside its own pill — "Active client" rendered as "Active" over
  * "client" — whenever the row it sits in got tight.
  *
- * `capitalize` is retained deliberately, and it is the reason this rewrite is invisible on
- * screen. The labels in `status-labels.ts` are sentence case ("Pending approval"); the old
- * badge rendered lowercase text ("pending approval") and leaned on this class to title-case
- * it. Keeping the class means every existing badge paints exactly the pixels it painted
- * before, while the DOM text — what a screen reader actually announces — becomes the
- * canonical wording instead of an unpunctuated fragment. Dropping the class is a visual
- * change across every route and belongs in one deliberate sweep, not in this step.
+ * No `capitalize`. The labels in `status-labels.ts` are sentence case ("Waiting approval")
+ * and now paint as written; the class title-cased them on screen ("Waiting Approval") while a
+ * screen reader announced the sentence-case text (UX-30). Unmapped keys fall back to a
+ * sentence-case rendering of the key, so nothing relied on the class any more.
  */
 const BADGE_BASE =
-  "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap capitalize";
+  "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap";
 
 export type StatusBadgeProps = {
   /** The stored value. Null, undefined and blank all render "Unknown" rather than throwing. */

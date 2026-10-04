@@ -350,8 +350,9 @@ function lookup(
 }
 
 /** The old badge's fallback, preserved verbatim: underscores become spaces, nothing else. */
+/** An unmapped key in sentence case ("on_hold" → "On hold"): badges no longer capitalise. */
 function humanizeStatusKey(key: string): string {
-  return key.replace(/_/g, " ");
+  return humanizeKey(key);
 }
 
 /**

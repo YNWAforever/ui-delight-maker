@@ -86,7 +86,9 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `7824663` | feat(ui): one page-title and one section-title size | UX-29 (type scale) | workspace-header +1, section-header +1 (11/11); tsc clean |
 | `859cc72` | fix(quotes): say how fresh the page is, not when the quote was edited | UX-19 | quote effective actions 7/7 (+1 freshness; useQuery mock now carries dataUpdatedAt like the real hook) |
 | `ba9a3e5` | fix(copy): plain words instead of internal vocabulary and apologies | UX-18 | relative-time +1, new pipeline-toolbar 2, approvals 27/27 (reviewer label), 24 related files 223/223; tsc clean |
-| next | docs(audit): withdraw UX-24, a harness false positive | UX-24 | — |
+| `0729a20` | docs(audit): withdraw UX-24, a harness false positive | UX-24 | — |
+| `260f479` | test(quotes): give the URL-state test's query mock a fetch time | UX-19 | fixes a test broken by `859cc72`, missed by its focused run |
+| next | fix(ui): status badges in sentence case | UX-30 | status-badge +1, status-labels, admin-status-labels; 19 badge/label/freshness suites 265/265; tsc clean |
 
 ## Resume notes (keep current)
 

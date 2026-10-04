@@ -6,6 +6,7 @@ import {
   STATUS_TONE_CLASS,
   getStatusLabel,
   getUserRoleLabel,
+  humanizeKey,
 } from "../status-labels";
 
 /**
@@ -105,7 +106,7 @@ describe("getUserRoleLabel", () => {
 
   it("does not resolve inherited object properties", () => {
     for (const key of ["constructor", "toString", "__proto__"]) {
-      expect(getUserRoleLabel(key)).toBe(key.replace(/_/g, " "));
+      expect(getUserRoleLabel(key)).toBe(humanizeKey(key));
     }
   });
 
