@@ -236,7 +236,7 @@ describe("/campaigns filters and counts", () => {
      */
     renderCampaigns();
 
-    expect(screen.getByText(/^137 campaigns match the current filters./)).toBeTruthy();
+    expect(screen.getByText(/^137 campaigns match the current filters\./)).toBeTruthy();
     expect(document.querySelector("[data-metric-cell]")).toBeNull();
   });
 
