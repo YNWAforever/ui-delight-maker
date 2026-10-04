@@ -668,8 +668,10 @@ function QuoteDetail() {
         description={`${clientName} · ${formatCurrencyAmount(quote.total_value, quote.currency)}`}
         backHref={{ to: "/quotes", label: "All quotes" }}
         status={
+          // When this page last fetched the quote, like every other freshness marker. The
+          // quote's own edit time made almost every quote read "Out of date" (UX-19).
           <StaleDataIndicator
-            updatedAt={quote.updated_at ?? quote.created_at}
+            updatedAt={new Date(detailQuery.dataUpdatedAt).toISOString()}
             isRefetching={detailQuery.isFetching}
           />
         }

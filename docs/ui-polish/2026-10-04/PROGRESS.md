@@ -54,7 +54,7 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | 10 | Money that fits (quote line items, job sheet) | UX-13, UX-14 | done (`QuoteLineItemsView` list below md / table from md; numeric columns never wrap; job sheet handoff panel stacks below 2xl) |
 | 11 | Approvals split view; admin audit layout and labels | UX-11, UX-12 | done (Approvals: two-column queue, split from xl, focus to record; Admin: tabs below 2xl, actor picker, IDs wrap; actor/requester names still need SP-2) |
 | 12 | Accounting Today | UX-15 | done (job sheet list with client, accepted total, status badge, arrival date; standard header chrome; sidebar link and tab title read "Today" without leads.view) |
-| 13 | Foundations: font, type, radius, elevation, input/accent/sidebar tokens, focus outline | UX-21, UX-22, UX-25, UX-39 | |
+| 13 | Foundations: font, type, radius, elevation, input/accent/sidebar tokens, focus outline | UX-21, UX-22, UX-25, UX-39 | done except elevation: the card shadow is in `src/components/ui/card.tsx` (not hand-editable); flattening it needs a shadcn re-sync or call-site classes, deferred |
 | 14 | P2 polish: field errors, copy, freshness, lifecycle panel, hydration, file inputs, tablet, pickers, 360 view | UX-16…UX-38 | |
 
 ## Commit log
@@ -83,13 +83,14 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `7730610` | fix(ui): render the product typeface, with Traditional Chinese fallbacks | UX-39, UX-25 (D-6) | new typeface 3, tone-contrast 10; built CSS served over HTTP in Chromium: body stack starts with Plus Jakarta Sans, latin woff2 loaded, `document.fonts.check` true |
 | `1b431d0` | fix(ui): visible field borders, a quiet hover surface and an 8 px radius | UX-21, UX-22 | tone-contrast 15 (+5: input ≥3:1 on card and page in both themes, text on --accent ≥4.5:1, low-chroma light accent) |
 | `a98d4eb` | feat(a11y): show keyboard focus everywhere and mark the current page | UX-22, UX-21 (D-3) | new focus-indicator 2 (rules present and unlayered); real Button/Input/SidebarMenuButton rendered with the built CSS and focused by keyboard in Chromium, light and dark: 2 px outline at 2 px offset, active item shows the 3 px bar |
-| next | feat(ui): one page-title and one section-title size | UX-29 (type scale) | workspace-header +1, section-header +1 (11/11); tsc clean |
+| `7824663` | feat(ui): one page-title and one section-title size | UX-29 (type scale) | workspace-header +1, section-header +1 (11/11); tsc clean |
+| next | fix(quotes): say how fresh the page is, not when the quote was edited | UX-19 | quote effective actions 7/7 (+1 freshness; useQuery mock now carries dataUpdatedAt like the real hook) |
 
 ## Resume notes (keep current)
 
 - Last commit: UX-10 (see log). The log's `next` row is always the latest commit; replace it
   with the hash at the start of the next commit.
-- Next: item 13 (foundations: D-6 font after the Neon Auth import with CJK fallbacks, type scale, radius 8 px, elevation, --input, calm --accent, sidebar active bar, D-3 global :focus-visible outline). Then item 14.
+- Next: item 14 (P2 polish, highest value first: copy pass incl. "0s from now", sign-out error, "(inline)" label, apologies; quote freshness; badge `capitalize`; field-level errors; CJK two-line clamp). Then Phase 4.
 - Tooling note: the Bash tool collapses a doubled backslash to one, even inside a quoted heredoc, so regexes or paths written through it lose escapes. Build them with String.fromCharCode(92), use pathToFileURL for paths, or write files with the Write/Edit tools; re-read regex lines after writing. Token tests read CSS blocks up to the first closing brace, so keep braces out of comments inside them.
 - Watch in Phase 4: `src/components/admin/__tests__/admin-modal-keyboard.test.tsx` (role modal Tab containment) failed once when 24 suites ran in parallel and passed alone.
 - Cleanup PR candidates (UX-32, not this PR): `getClientPortfolioMetrics`, `getTaskBoardMetrics` (`src/lib/sales-workspace.ts`), `formatAcceptedValueSummary` (`src/lib/job-sheet-editor.ts`) and `getPipelineSummary` (`src/lib/pipeline.ts`) lost their last route callers in the UX-09 commit.
