@@ -1,0 +1,24 @@
+{
+  "checkedAt": "2026-10-04T09:49:44.751Z",
+  "originalDatabase": "clientops_ai_uat_843cdc77175546ddbad0417b36ac845a",
+  "cloneDatabase": "clientops_ai_uat_d58136985a00460ab95fd5b6f89bb685",
+  "loopbackOnly": true,
+  "originalAll56TablesUnchanged": true,
+  "all55CloneDataTablesUnchanged": true,
+  "historical135RunRowsUnchanged": true,
+  "all8PolicyVersionsUnchanged": true,
+  "allowedDeltas": [
+    {
+      "table": "clientops_schema_migrations",
+      "additionalRows": 1
+    }
+  ],
+  "syntheticFixtureWrites": 0,
+  "policyWrites": 0,
+  "effectiveCancels": 0,
+  "newCommandReceipts": 0,
+  "newActivityAudits": 0,
+  "productionAccess": false,
+  "actualProviderCalls": 0,
+  "passed": true
+}
