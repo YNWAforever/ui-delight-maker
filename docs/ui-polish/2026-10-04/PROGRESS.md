@@ -51,7 +51,7 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | 7 | Lead actions and invitable roles gated by capability | UX-07 | done |
 | 8 | Follow-up task from a lead | UX-10 | done (shared `FollowUpTaskDialog`, gated by `tasks.create`; notes apology removed) |
 | 9 | Honest summary strip instead of page-scoped stat cards | UX-09, UX-29 | done: page-scoped strips removed (Leads, Clients, Companies, Campaigns, Tasks, Job Sheets), Revenue Desk on server totals, `MetricStrip` one compact bordered row (no icon chips, sentence-case labels, 2-up below `xl`, tone-fg text) |
-| 10 | Money that fits (quote line items, job sheet) | UX-13, UX-14 | |
+| 10 | Money that fits (quote line items, job sheet) | UX-13, UX-14 | done (`QuoteLineItemsView` list below md / table from md; numeric columns never wrap; job sheet handoff panel stacks below 2xl) |
 | 11 | Approvals split view; admin audit layout and labels | UX-11, UX-12 | |
 | 12 | Accounting Today | UX-15 | |
 | 13 | Foundations: font, type, radius, elevation, input/accent/sidebar tokens, focus outline | UX-21, UX-22, UX-25, UX-39 | |
@@ -72,13 +72,15 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `21828b0` | fix(leads): offer lead actions and invite roles only to those who can use them | UX-07 | lead detail 15/15 (+1 read-only), invite dialog 12/12 (+1); tsc clean |
 | `fe30e41` | feat(leads): add a follow-up task from the lead page | UX-10 | new follow-up-task-dialog 3, lead detail 16/16 (+1 gating); tsc clean |
 | `b429b08` | fix(ui): stop counting only the loaded page in workspace summaries | UX-09 | 13 route suites 102/102; revenue desk +1 (whole-workspace metrics), campaigns count test updated; tsc clean |
-| next | feat(ui): make the workspace summary one compact row | UX-09, UX-29 | metric-strip 13 (+3), sales+admin 24 files 174 (1 timing flake in admin-modal-keyboard under parallel load, passes alone); `vite build` emits the odd-cell span; static render checked at 375/1280 light+dark |
+| `a1636fd` | feat(ui): make the workspace summary one compact row | UX-09, UX-29 | metric-strip 13 (+3), sales+admin 24 files 174 (1 timing flake in admin-modal-keyboard under parallel load, passes alone); `vite build` emits the odd-cell span; static render checked at 375/1280 light+dark |
+| `63f3f05` | fix(quotes): keep line-item money visible on phones and tablets | UX-13 | new quote-line-items 3; quote detail, quotes row actions; tsc clean |
+| next | fix(job-sheets): stop amounts and billing headers wrapping | UX-14 | data-table-shell +1 (numeric never wraps), job-sheets + quotes 7 files 63/63; tsc clean |
 
 ## Resume notes (keep current)
 
 - Last commit: UX-10 (see log). The log's `next` row is always the latest commit; replace it
   with the hash at the start of the next commit.
-- Next: item 10 (UX-13 quote line items as cards below `md` with the total always visible; UX-14 job sheet money cells `whitespace-nowrap` + tabular figures, shorter headers). Then items 11–14.
+- Next: item 11 (UX-11 Approvals record as a sheet below 1440 and fewer tab stops before the decision; UX-12 admin audit layout and labels). Then items 12–14.
 - Watch in Phase 4: `src/components/admin/__tests__/admin-modal-keyboard.test.tsx` (role modal Tab containment) failed once when 24 suites ran in parallel and passed alone.
 - Cleanup PR candidates (UX-32, not this PR): `getClientPortfolioMetrics`, `getTaskBoardMetrics` (`src/lib/sales-workspace.ts`), `formatAcceptedValueSummary` (`src/lib/job-sheet-editor.ts`) and `getPipelineSummary` (`src/lib/pipeline.ts`) lost their last route callers in the UX-09 commit.
 - Working method: one concern per commit; run the focused suites that query changed names

@@ -39,7 +39,10 @@ export type ColumnDef<T> = {
   cell: (row: T) => ReactNode;
   /** `tertiary` is hidden below lg, `secondary` below md, `primary` is always shown. */
   priority: ColumnPriority;
-  /** Right-align. No `tabular-nums` is added: `table` already sets it globally. */
+  /**
+   * Right-align and never wrap: "HKD 66.84" split over two lines cannot be scanned down a
+   * column (UX-14). No `tabular-nums` is added: `table` already sets it globally.
+   */
   numeric?: boolean;
   /** Identity column only. Pins the cell while a scrollable table moves sideways. */
   sticky?: boolean;
@@ -234,7 +237,7 @@ export function DataTableShell<T>({
                 className={cn(
                   "px-3 py-2.5 text-xs",
                   COLUMN_PRIORITY_CLASS[column.priority],
-                  column.numeric && "text-right",
+                  column.numeric && "text-right whitespace-nowrap",
                   column.sticky && stickyClass,
                 )}
               >
@@ -314,7 +317,7 @@ export function DataTableShell<T>({
                     className={cn(
                       "px-3 py-2.5",
                       COLUMN_PRIORITY_CLASS[column.priority],
-                      column.numeric && "text-right",
+                      column.numeric && "text-right whitespace-nowrap",
                       column.sticky && stickyClass,
                     )}
                   >

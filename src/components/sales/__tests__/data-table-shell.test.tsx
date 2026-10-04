@@ -270,4 +270,15 @@ describe("DataTableShell", () => {
     expect(screen.queryByText("Duplicate")).toBeNull();
     expect(triggers[0].getAttribute("aria-expanded")).toBe("false");
   });
+
+  it("never wraps a numeric column, header or cell", () => {
+    // UX-14: job sheet amounts read "HKD" on one line and "66.84" on the next.
+    render(<DataTableShell columns={columns} rows={quotes} rowKey={rowKey} />);
+
+    expect(screen.getByRole("columnheader", { name: "Amount" }).className).toContain(
+      "whitespace-nowrap",
+    );
+    expect(screen.getByRole("cell", { name: "12,400" }).className).toContain("whitespace-nowrap");
+    expect(screen.getByRole("cell", { name: "Dana" }).className).not.toContain("whitespace-nowrap");
+  });
 });

@@ -102,19 +102,19 @@ export function BillingPortionsTable({
       <div className="rounded-md border border-border bg-muted/20 p-3 text-sm">
         <div className="flex items-center justify-between gap-3">
           <span className="text-muted-foreground">Accepted total</span>
-          <span className="tabular-nums">
+          <span className="whitespace-nowrap tabular-nums">
             {formatCurrencyAmount(reconciliation.totalAmount, currency)}
           </span>
         </div>
         <div className="mt-2 flex items-center justify-between gap-3">
           <span className="text-muted-foreground">Planned billing</span>
-          <span className="tabular-nums">
+          <span className="whitespace-nowrap tabular-nums">
             {formatCurrencyAmount(reconciliation.portionTotal, currency)}
           </span>
         </div>
         <p
           className={`mt-2 text-sm ${
-            reconciliation.reconciled ? "text-success" : "text-destructive"
+            reconciliation.reconciled ? "text-tone-success-fg" : "text-tone-danger-fg"
           }`}
         >
           Reconciliation delta: {formatCurrencyAmount(reconciliation.delta, currency)}
