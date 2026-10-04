@@ -9,15 +9,23 @@ import {
 } from "@/server-functions/agent-bulk-recovery";
 type Intent = { previewId: string; idempotencyKey: string; reason: string };
 type Preview = Awaited<ReturnType<typeof previewAgentRecoveryFn>>;
-export function BulkRecoveryDialog({
-  runIds,
-  actorId,
-  onComplete,
-}: {
+type BulkRecoveryDialogProps = {
   runIds: string[];
   actorId: string;
   onComplete: () => void;
-}) {
+};
+export function BulkRecoveryDialog(props: BulkRecoveryDialogProps) {
+  // Authenticated route context can change without remounting its queue.
+  return <ActorBulkRecoveryDialog key={props.actorId} {...props} />;
+}
+function ActorBulkRecoveryDialog({ runIds, actorId, onComplete }: BulkRecoveryDialogProps) {
+  const active = useRef(true);
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
   const key = "clientops-agent-recovery:" + actorId;
   const [action, setAction] = useState<"cancel" | "expire">("expire");
   const [reason, setReason] = useState("");
@@ -65,6 +73,9 @@ export function BulkRecoveryDialog({
     }
   };
   const record = (r: AgentRecoveryReceipt) => {
+    // Late receipts must not invalidate another actor's UI or erase the saved original intent.
+    // Its owner can read the durable server receipt when they return.
+    if (!active.current) return;
     setReceipt(r);
     setUncertain(false);
     if (r.status === "completed") {

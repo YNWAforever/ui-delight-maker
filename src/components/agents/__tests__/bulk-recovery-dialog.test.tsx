@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BulkRecoveryDialog } from "../bulk-recovery-dialog";
 import {
@@ -168,5 +168,113 @@ describe("reviewed durable local bulk UI", () => {
     await screen.findByText("Selection changed. Preview the current selection again.");
     expect(screen.queryByRole("group", { name: "Confirm local recovery" })).toBeNull();
     expect(executeAgentRecoveryFn).not.toHaveBeenCalled();
+  });
+});
+
+// Actor props come from the authenticated route context, which can refresh without a page remount.
+// These are component lifecycle contracts; transport doubles do not certify authentication.
+describe("bulk maintenance actor lifetime", () => {
+  it("drops another actor's reviewed preview and reason on a context change", async () => {
+    const props = { runIds: [runId], onComplete: vi.fn() };
+    const view = render(<BulkRecoveryDialog {...props} actorId="manager-a" />);
+    fireEvent.click(screen.getByRole("button", { name: "Preview 1 selected" }));
+    await screen.findByRole("group", { name: "Confirm local recovery" });
+    fireEvent.change(screen.getByRole("textbox", { name: "Recovery reason" }), {
+      target: { value: "Actor A private reviewed reason" },
+    });
+    view.rerender(<BulkRecoveryDialog {...props} actorId="manager-b" />);
+    expect(screen.queryByRole("group", { name: "Confirm local recovery" })).toBeNull();
+    expect(screen.queryByDisplayValue("Actor A private reviewed reason")).toBeNull();
+    expect(executeAgentRecoveryFn).not.toHaveBeenCalled();
+  });
+
+  it("keeps uncertain intents under their original actor and restores only that actor's intent", async () => {
+    vi.mocked(executeAgentRecoveryFn).mockRejectedValueOnce(new Error("response lost"));
+    const props = { runIds: [runId], onComplete: vi.fn() };
+    const view = render(<BulkRecoveryDialog {...props} actorId="manager-a" />);
+    fireEvent.click(screen.getByRole("button", { name: "Preview 1 selected" }));
+    await screen.findByRole("group", { name: "Confirm local recovery" });
+    fireEvent.change(screen.getByRole("textbox", { name: "Recovery reason" }), {
+      target: { value: "Actor A durable reviewed reason" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm 1 local expire" }));
+    await screen.findByRole("alert");
+    const original = vi.mocked(executeAgentRecoveryFn).mock.calls[0][0];
+    expect(original).toBeDefined();
+    view.rerender(<BulkRecoveryDialog {...props} actorId="manager-b" />);
+    expect(screen.queryByText(/Actor A durable reviewed reason/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Resume original intent" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Read saved operation" }));
+    await screen.findByText("No saved operation in this browser session.");
+    expect(getAgentRecoveryOperationFn).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem("clientops-agent-recovery:manager-b")).toBeNull();
+    expect(JSON.parse(sessionStorage.getItem("clientops-agent-recovery:manager-a")!)).toEqual(
+      original!.data,
+    );
+    view.rerender(<BulkRecoveryDialog {...props} actorId="manager-a" />);
+    fireEvent.click(screen.getByRole("button", { name: "Read saved operation" }));
+    await screen.findByText(/Original reason: Actor A durable reviewed reason/);
+    fireEvent.click(screen.getByRole("button", { name: "Resume original intent" }));
+    await waitFor(() => expect(executeAgentRecoveryFn).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(executeAgentRecoveryFn).mock.calls[1][0]).toEqual(original);
+    expect(previewAgentRecoveryFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores a pending previous actor preview even when selected IDs are unchanged", async () => {
+    let finish!: (value: typeof preview) => void;
+    vi.mocked(previewAgentRecoveryFn).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const props = { runIds: [runId], onComplete: vi.fn() };
+    const view = render(<BulkRecoveryDialog {...props} actorId="manager-a" />);
+    fireEvent.click(screen.getByRole("button", { name: "Preview 1 selected" }));
+    view.rerender(<BulkRecoveryDialog {...props} actorId="manager-b" />);
+    await act(async () => {
+      finish(preview);
+    });
+    await waitFor(() => expect(screen.queryByText("Checking local records…")).toBeNull());
+    expect(screen.queryByRole("group", { name: "Confirm local recovery" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Preview 1 selected" })).toHaveProperty(
+      "disabled",
+      false,
+    );
+    expect(executeAgentRecoveryFn).not.toHaveBeenCalled();
+  });
+
+  it("does not expose a late previous actor receipt or clear that actor's saved intent", async () => {
+    let finish!: (value: typeof receipt) => void;
+    vi.mocked(executeAgentRecoveryFn).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }) as never,
+    );
+    const done = vi.fn(),
+      props = { runIds: [runId], onComplete: done };
+    const view = render(<BulkRecoveryDialog {...props} actorId="manager-a" />);
+    fireEvent.click(screen.getByRole("button", { name: "Preview 1 selected" }));
+    await screen.findByRole("group", { name: "Confirm local recovery" });
+    fireEvent.change(screen.getByRole("textbox", { name: "Recovery reason" }), {
+      target: { value: "Actor A pending reviewed reason" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm 1 local expire" }));
+    const original = sessionStorage.getItem("clientops-agent-recovery:manager-a");
+    expect(original).not.toBeNull();
+    view.rerender(<BulkRecoveryDialog {...props} actorId="manager-b" />);
+    await act(async () => {
+      finish({ ...receipt, status: "completed", completedCount: 2 });
+    });
+    expect(done).not.toHaveBeenCalled();
+    expect(screen.queryByText(/completed: 2 \/ 2 processed/)).toBeNull();
+    expect(screen.queryByText(/receipt-id/)).toBeNull();
+    expect(sessionStorage.getItem("clientops-agent-recovery:manager-a")).toBe(original);
+    expect(sessionStorage.getItem("clientops-agent-recovery:manager-b")).toBeNull();
+    expect(screen.getByRole("button", { name: "Preview 1 selected" })).toHaveProperty(
+      "disabled",
+      false,
+    );
   });
 });
