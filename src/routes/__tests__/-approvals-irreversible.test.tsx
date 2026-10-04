@@ -263,6 +263,7 @@ describe("The Approval Desk at laptop width", () => {
 
   it("takes focus to the open record when a request is chosen", async () => {
     // UX-40: a keyboard user tabbed past every row's controls (131 stops) to reach a decision.
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
     renderInbox([approval()]);
 
     const table = screen.getByRole("table", { name: "Approvals waiting on a human decision" });
@@ -275,7 +276,16 @@ describe("The Approval Desk at laptop width", () => {
         screen.getByRole("heading", { level: 2, name: "Discount" }),
       ),
     );
-    expect(screen.getByRole("region", { name: "Discount" })).toBeTruthy();
+    // The record stays in view beside the queue, so taking focus must not scroll the page
+    // back to its top (self-review of 83f9ad3).
+    expect(screen.getByRole("region", { name: "Discount" }).className).toContain("xl:sticky");
+    const headingFocus = focusSpy.mock.calls.find(
+      (_call, index) =>
+        focusSpy.mock.contexts[index] ===
+        screen.getByRole("heading", { level: 2, name: "Discount" }),
+    );
+    expect(headingFocus?.[0]).toEqual({ preventScroll: true });
+    focusSpy.mockRestore();
   });
 });
 

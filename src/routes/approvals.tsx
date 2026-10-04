@@ -474,7 +474,9 @@ function ApprovalsInbox() {
    */
   const selectAndFocusRecord = (id: string) => {
     selectApproval(id);
-    requestAnimationFrame(() => recordHeadingRef.current?.focus());
+    // No scroll: the record panel is sticky beside the queue, so it is already in view, and
+    // scrolling to its heading threw a mouse user from row 30 back to the top of the page.
+    requestAnimationFrame(() => recordHeadingRef.current?.focus({ preventScroll: true }));
   };
 
   const copyApprovedDraft = async () => {
@@ -1168,7 +1170,9 @@ function ApprovalsInbox() {
               <section
                 aria-labelledby={selected ? recordHeadingId : undefined}
                 aria-label={selected ? undefined : "Selected approval"}
-                className="hidden xl:col-span-3 xl:block"
+                // Sticky under the 56 px app header, scrolling on its own when taller than the
+                // screen, so the open record stays beside whichever queue row was chosen.
+                className="hidden xl:sticky xl:top-[4.5rem] xl:col-span-3 xl:block xl:max-h-[calc(100dvh-5.5rem)] xl:self-start xl:overflow-y-auto"
               >
                 {selected ? (
                   <Card>
