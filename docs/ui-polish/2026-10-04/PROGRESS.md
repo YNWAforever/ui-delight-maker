@@ -85,7 +85,8 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `a98d4eb` | feat(a11y): show keyboard focus everywhere and mark the current page | UX-22, UX-21 (D-3) | new focus-indicator 2 (rules present and unlayered); real Button/Input/SidebarMenuButton rendered with the built CSS and focused by keyboard in Chromium, light and dark: 2 px outline at 2 px offset, active item shows the 3 px bar |
 | `7824663` | feat(ui): one page-title and one section-title size | UX-29 (type scale) | workspace-header +1, section-header +1 (11/11); tsc clean |
 | `859cc72` | fix(quotes): say how fresh the page is, not when the quote was edited | UX-19 | quote effective actions 7/7 (+1 freshness; useQuery mock now carries dataUpdatedAt like the real hook) |
-| next | fix(copy): plain words instead of internal vocabulary and apologies | UX-18 | relative-time +1, new pipeline-toolbar 2, approvals 27/27 (reviewer label), 24 related files 223/223; tsc clean |
+| `ba9a3e5` | fix(copy): plain words instead of internal vocabulary and apologies | UX-18 | relative-time +1, new pipeline-toolbar 2, approvals 27/27 (reviewer label), 24 related files 223/223; tsc clean |
+| next | docs(audit): withdraw UX-24, a harness false positive | UX-24 | — |
 
 ## Resume notes (keep current)
 

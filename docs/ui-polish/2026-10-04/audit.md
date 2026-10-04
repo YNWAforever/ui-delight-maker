@@ -155,6 +155,12 @@ From the sequential capture (`before/_observations-widths.jsonl`, `before/_obser
 | Shared CSS reduces animation for `prefers-reduced-motion` | `better-ui-review.md` | Verified (`src/styles.css:170-179`). |
 | Recharts are `aria-hidden` with a figcaption and table alternative | `report-charts.tsx` comment | Verified (`report-charts.tsx:32-58`, `reports.tsx:415`). |
 
+## Corrections after Phase 1
+
+| ID | Correction (2026-10-05) |
+|---|---|
+| UX-24 | **Withdrawn — not reproduced.** The CSV file input in `src/components/imports/import-session-panel.tsx` sits inside a `<label>` whose text, "CSV file (up to 5 MiB and 5,000 rows)", is its accessible name, and the format limits are part of that name. The audit harness counted a control as unlabelled unless it had `aria-label`, `aria-labelledby`, `title`, `placeholder`, text content or a `label[for]`, so it missed wrapping labels. No other finding relied on that check. |
+
 ## Server-side proposals referenced above
 
 - **SP-1** Pending-invitation read (`listUserInvitations` scoped by `users.invite`) so admins can see, copy, resend or revoke outstanding invitations.
