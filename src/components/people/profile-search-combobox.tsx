@@ -22,6 +22,7 @@ export function ProfileSearchCombobox({
   onChange,
   onSelected,
   resourceId,
+  emptyLabel,
 }: {
   purpose: ProfilePurpose;
   label: string;
@@ -29,6 +30,8 @@ export function ProfileSearchCombobox({
   onChange: (value: string) => void;
   onSelected?: (person: AssignableProfile) => void;
   resourceId?: string;
+  /** What "nobody selected" means here, e.g. "Anyone" for a filter. Defaults per purpose. */
+  emptyLabel?: string;
 }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -120,11 +123,13 @@ export function ProfileSearchCombobox({
         Selected:{" "}
         {selectedId
           ? (selected.data?.displayName ?? "Name unavailable")
-          : purpose === "task_filter"
-            ? (FILTER_PRESETS.find((preset) => preset.value === value)?.label ?? "All owners")
-            : purpose === "job_sheet_owner_filter"
-              ? "All owners"
-              : "Unassigned"}
+          : emptyLabel
+            ? emptyLabel
+            : purpose === "task_filter"
+              ? (FILTER_PRESETS.find((preset) => preset.value === value)?.label ?? "All owners")
+              : purpose === "job_sheet_owner_filter"
+                ? "All owners"
+                : "Unassigned"}
       </p>
       <label htmlFor={"people-search-" + purpose + "-" + label} className="text-sm font-medium">
         {label} search

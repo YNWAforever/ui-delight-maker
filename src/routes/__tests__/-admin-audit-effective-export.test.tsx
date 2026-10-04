@@ -96,3 +96,24 @@ describe("Admin audit export uses the effective server capability", () => {
     );
   });
 });
+
+describe("Admin audit filters", () => {
+  it("finds the actor by name when the session can read the directory", () => {
+    // UX-12: the filter asked for an "Actor profile id".
+    state.capabilities = ["audit.view", "users.view"];
+    render(<Page />);
+
+    expect(screen.getByRole("combobox", { name: "Actor search" })).toBeTruthy();
+    expect(screen.getByText("Selected: Anyone")).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "Audit actor" })).toBeNull();
+  });
+
+  it("falls back to the ID field rather than offer a search the server would refuse", () => {
+    state.capabilities = ["audit.view"];
+    render(<Page />);
+
+    expect(screen.queryByRole("combobox", { name: "Actor search" })).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Audit actor" })).toBeTruthy();
+    expect(screen.getByText("Actor ID")).toBeTruthy();
+  });
+});

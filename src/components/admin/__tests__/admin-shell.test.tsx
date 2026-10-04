@@ -63,4 +63,20 @@ describe("AdminShell", () => {
     expect(screen.getByRole("link", { name: "People" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Teams" })).not.toBeTruthy();
   });
+
+  it("is a row of tabs above the page until 2xl, and a rail only from 2xl", () => {
+    // UX-12: a second 224 px rail beside the app sidebar left admin pages ~800 px at 1280.
+    const { container } = render(
+      <AdminShell navigation={navigation}>
+        <div />
+      </AdminShell>,
+    );
+    const shell = container.firstElementChild as HTMLElement;
+
+    expect(shell.className).toContain("flex-col");
+    expect(shell.className).toContain("2xl:flex-row");
+    expect(shell.className).not.toMatch(/(^|\s)(md|lg|xl):flex-row/);
+    // The descriptive copy is rail-only; the tab row keeps just the name.
+    expect(screen.getByText("People, teams, access, and audit.").className).toContain("hidden");
+  });
 });

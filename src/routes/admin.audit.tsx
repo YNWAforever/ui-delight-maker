@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { AdminAuditTable } from "@/components/admin/admin-audit-table";
+import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
 import {
   ErrorState,
   PermissionDeniedState,
@@ -11,6 +12,7 @@ import {
   WorkspaceHeader,
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
+import { hasCapability } from "@/lib/admin/capabilities";
 import { AdminError } from "@/lib/admin/errors";
 import { adminAuditSearchSchema, type AdminAuditSearch } from "@/lib/admin/schemas";
 import { csvFileName, toCsv, type CsvColumn } from "@/lib/csv";
@@ -145,6 +147,9 @@ function AdminAuditRoute() {
   const [to, setTo] = useState(toLocalInput(search.to));
 
   const access = { exportAudit: capabilities.includes("audit.export") };
+  // The person search reads the admin directory, which needs users.view; without it the
+  // filter falls back to the ID field rather than offering a search that would be refused.
+  const canSearchPeople = hasCapability(capabilities, "users.view");
 
   function submitFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -260,15 +265,28 @@ function AdminAuditRoute() {
         className="grid gap-3 border-b border-border px-4 py-4 sm:grid-cols-2 lg:grid-cols-4 md:px-6"
         onSubmit={submitFilters}
       >
-        <label className="block">
-          <span className={labelClass}>Actor profile id</span>
-          <input
-            aria-label="Audit actor"
-            value={actor}
-            onChange={(event) => setActor(event.target.value)}
-            className={fieldClass}
-          />
-        </label>
+        {canSearchPeople ? (
+          // Find the actor by name instead of pasting a profile ID (UX-12).
+          <div className="space-y-1.5 text-sm">
+            <ProfileSearchCombobox
+              purpose="admin_directory"
+              label="Actor"
+              value={actor}
+              onChange={setActor}
+              emptyLabel="Anyone"
+            />
+          </div>
+        ) : (
+          <label className="block">
+            <span className={labelClass}>Actor ID</span>
+            <input
+              aria-label="Audit actor"
+              value={actor}
+              onChange={(event) => setActor(event.target.value)}
+              className={fieldClass}
+            />
+          </label>
+        )}
         <label className="block">
           <span className={labelClass}>Target type</span>
           <input
@@ -280,7 +298,7 @@ function AdminAuditRoute() {
           />
         </label>
         <label className="block">
-          <span className={labelClass}>Target id</span>
+          <span className={labelClass}>Target ID</span>
           <input
             aria-label="Audit target"
             value={target}
