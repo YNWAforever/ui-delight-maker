@@ -99,9 +99,9 @@ function ClientsErrorState({ error }: { error: unknown }) {
 
 /** Health bands. Colour is the second channel — `healthLabel` carries the same meaning in words. */
 function healthClass(score: number) {
-  if (score >= 75) return "bg-success/15 text-success border-success/30";
-  if (score >= 55) return "bg-warning/15 text-warning-foreground border-warning/30";
-  return "bg-destructive/10 text-destructive border-destructive/30";
+  if (score >= 75) return "bg-success/15 text-tone-success-fg border-success/30";
+  if (score >= 55) return "bg-warning/15 text-tone-warning-fg border-warning/30";
+  return "bg-destructive/10 text-tone-danger-fg border-destructive/30";
 }
 
 function healthBandLabel(score: number) {

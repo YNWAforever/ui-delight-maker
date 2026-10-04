@@ -37,6 +37,12 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  /* Text on a status tint or on the page. `--*-foreground` stays for text on the solid tone. */
+  --color-tone-info-fg: var(--tone-info-fg);
+  --color-tone-success-fg: var(--tone-success-fg);
+  --color-tone-warning-fg: var(--tone-warning-fg);
+  --color-tone-danger-fg: var(--tone-danger-fg);
+  --color-tone-neutral-fg: var(--tone-neutral-fg);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -80,6 +86,12 @@
   --warning-foreground: oklch(0.2 0.04 60);
   --info: oklch(0.55 0.13 240);
   --info-foreground: oklch(1 0 0);
+  /* On-tint text, ≥ 5.9:1 on a 12 % tint over the card and ≥ 6.9:1 on the page. */
+  --tone-info-fg: oklch(0.45 0.12 245);
+  --tone-success-fg: oklch(0.43 0.11 155);
+  --tone-warning-fg: oklch(0.44 0.1 60);
+  --tone-danger-fg: oklch(0.48 0.19 27);
+  --tone-neutral-fg: oklch(0.45 0.03 257);
   --border: oklch(0.91 0.014 255);
   --input: oklch(0.91 0.014 255);
   --ring: oklch(0.21 0.04 266);
@@ -121,6 +133,12 @@
   --warning-foreground: oklch(0.2 0.04 60);
   --info: oklch(0.7 0.14 230);
   --info-foreground: oklch(0.15 0.02 260);
+  /* `--warning-foreground` is dark text for the solid amber chip; on a tint it measured 1.33:1. */
+  --tone-info-fg: oklch(0.84 0.09 230);
+  --tone-success-fg: oklch(0.84 0.12 155);
+  --tone-warning-fg: oklch(0.87 0.12 80);
+  --tone-danger-fg: oklch(0.82 0.12 25);
+  --tone-neutral-fg: oklch(0.78 0.02 258);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.7 0.18 266);

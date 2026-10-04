@@ -677,7 +677,7 @@ function QuoteBuilder() {
                       onChange={(e) => setDiscount(Number(e.target.value) || 0)}
                     />
                     {discount > 10 && (
-                      <p className="mt-1 text-xs text-warning-foreground">
+                      <p className="mt-1 text-xs text-tone-warning-fg">
                         Over the 10% guideline — expect the approver to ask why.
                       </p>
                     )}
@@ -890,7 +890,7 @@ function QuoteBuilder() {
                 <span className="tabular-nums">{formatHKD(subtotal)}</span>
               </div>
               {discount > 0 && (
-                <div className="flex items-center justify-between text-warning-foreground">
+                <div className="flex items-center justify-between text-tone-warning-fg">
                   <span>Discount ({discount}%)</span>
                   <span className="tabular-nums">−{formatHKD(subtotal - total)}</span>
                 </div>
@@ -901,7 +901,7 @@ function QuoteBuilder() {
                 <span className="tabular-nums">{formatHKD(total)}</span>
               </div>
               {total > 400000 && (
-                <p className="text-xs text-warning-foreground">
+                <p className="text-xs text-tone-warning-fg">
                   Above the HKD 400K guideline for director sign-off.
                 </p>
               )}

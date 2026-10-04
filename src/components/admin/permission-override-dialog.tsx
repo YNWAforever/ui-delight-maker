@@ -175,7 +175,7 @@ export function PermissionOverrideDialog({
         {!canCreateOverride ? (
           <p
             role="alert"
-            className="m-5 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-3 text-sm text-destructive"
+            className="m-5 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-3 text-sm text-tone-danger-fg"
           >
             Only Super Admin can create permission overrides.
           </p>
@@ -291,7 +291,7 @@ export function PermissionOverrideDialog({
               </div>
               <p
                 className={
-                  "mt-3 text-xs " + (unscoped ? "text-warning-foreground" : "text-muted-foreground")
+                  "mt-3 text-xs " + (unscoped ? "text-tone-warning-fg" : "text-muted-foreground")
                 }
               >
                 {unscoped

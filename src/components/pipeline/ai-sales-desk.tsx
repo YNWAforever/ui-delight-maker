@@ -53,7 +53,7 @@ export function AiSalesDesk({
       </CardHeader>
       <CardContent className="space-y-3">
         {pendingApprovals.length > 0 && (
-          <div className="rounded-md border border-info/30 bg-info/10 p-3 text-xs text-info">
+          <div className="rounded-md border border-info/30 bg-info/10 p-3 text-xs text-tone-info-fg">
             {pendingApprovals.length} approval request
             {pendingApprovals.length > 1 ? "s" : ""} ready for review.
           </div>

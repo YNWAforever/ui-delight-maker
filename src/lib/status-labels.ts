@@ -81,13 +81,17 @@ export type StatusPresentation = {
  * `sent`, `bg-success/15` for `done` but `bg-success/20` for `won` — differences no reader
  * can decode and no rule generated. Each tone gets one appearance so that two badges of
  * the same tone are actually the same badge.
+ *
+ * Text uses the `tone-*-fg` tokens, which were measured at ≥ 5.9:1 on a 12 % tint in both
+ * themes. The previous tone colours on these tints measured 3.77–4.16:1 in light mode and the
+ * warning pair 1.33:1 in dark mode, below WCAG AA for 12 px text.
  */
 export const STATUS_TONE_CLASS: Record<StatusTone, string> = {
-  neutral: "bg-muted text-muted-foreground border-border",
-  info: "bg-info/10 text-info border-info/20",
-  success: "bg-success/15 text-success border-success/30",
-  warning: "bg-warning/15 text-warning-foreground border-warning/30",
-  destructive: "bg-destructive/15 text-destructive border-destructive/30",
+  neutral: "bg-muted text-tone-neutral-fg border-border",
+  info: "bg-info/12 text-tone-info-fg border-info/25",
+  success: "bg-success/12 text-tone-success-fg border-success/25",
+  warning: "bg-warning/12 text-tone-warning-fg border-warning/30",
+  destructive: "bg-destructive/12 text-tone-danger-fg border-destructive/25",
 };
 
 /** Shown when a status value is null, undefined or blank. Never a guess at the real one. */

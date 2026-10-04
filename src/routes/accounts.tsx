@@ -446,7 +446,7 @@ function AccountsIndex() {
           <span className="inline-flex items-center gap-2">
             <span className="tabular-nums">{health}</span>
             {isAtRisk(health) && (
-              <span className="text-xs text-warning-foreground">
+              <span className="text-xs text-tone-warning-fg">
                 {getDerivedStatusLabel("at_risk").label}
               </span>
             )}

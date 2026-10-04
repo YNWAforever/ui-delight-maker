@@ -250,7 +250,7 @@ function LeadDetail() {
         backHref={{ to: "/leads", label: "All leads" }}
         status={
           workspaceQuery.isError ? (
-            <span className="text-xs text-warning-foreground">
+            <span className="text-xs text-tone-warning-fg">
               Live updates paused. Showing the last data that loaded.
             </span>
           ) : undefined
@@ -424,7 +424,7 @@ function LeadDetail() {
                         <p className="text-sm font-medium">{insights.next_action}</p>
                       </div>
                       {insights.human_review_required && (
-                        <p className="rounded-md bg-warning/15 px-2 py-1 text-xs text-warning-foreground">
+                        <p className="rounded-md bg-warning/15 px-2 py-1 text-xs text-tone-warning-fg">
                           Human review required — confidence below threshold
                         </p>
                       )}

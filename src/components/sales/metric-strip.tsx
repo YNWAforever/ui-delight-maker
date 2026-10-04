@@ -101,7 +101,7 @@ const TONE_CLASS: Record<MetricTone, string> = {
   neutral: "",
   info: "text-info",
   success: "text-success",
-  warning: "text-warning-foreground",
+  warning: "text-tone-warning-fg",
   destructive: "text-destructive",
 };
 

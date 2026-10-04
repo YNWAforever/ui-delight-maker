@@ -528,7 +528,7 @@ export function StaleDataIndicator({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 text-xs",
-        isStale ? "text-warning-foreground" : "text-muted-foreground",
+        isStale ? "text-tone-warning-fg" : "text-muted-foreground",
         className,
       )}
     >

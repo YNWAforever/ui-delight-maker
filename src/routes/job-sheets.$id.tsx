@@ -908,7 +908,7 @@ function JobSheetDetailPage() {
                         so where the user made the choice.
                       */}
                       {cancelledWithAmount && (
-                        <p className="mt-3 text-xs text-warning-foreground">
+                        <p className="mt-3 text-xs text-tone-warning-fg">
                           Cancelled portions still count toward planned billing. Set this amount to
                           0 for the plan to reconcile.
                         </p>
@@ -1169,7 +1169,7 @@ function JobSheetDetailPage() {
                         </div>
                       </div>
                       {needsReview && (
-                        <p className="mt-3 text-xs text-warning-foreground">
+                        <p className="mt-3 text-xs text-tone-warning-fg">
                           Legacy entry needs invoice evidence review. No Xero confirmation is
                           inferred.
                         </p>

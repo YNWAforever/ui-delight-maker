@@ -224,7 +224,7 @@ export function UserLifecycleDialog({
                   className={
                     "min-h-9 rounded-md border px-3 py-2 text-sm font-medium " +
                     (action === "deactivate"
-                      ? "border-destructive bg-destructive/10 text-destructive"
+                      ? "border-destructive bg-destructive/10 text-tone-danger-fg"
                       : "border-border hover:bg-accent")
                   }
                 >
@@ -262,7 +262,7 @@ export function UserLifecycleDialog({
             ) : (
               <div
                 role="alert"
-                className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-4 text-sm text-destructive"
+                className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-4 text-sm text-tone-danger-fg"
               >
                 The ownership inventory could not be loaded, so deactivation is blocked. Close this
                 dialog and try again.
@@ -285,7 +285,7 @@ export function UserLifecycleDialog({
           {error ? (
             <div
               role="alert"
-              className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+              className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-tone-danger-fg"
             >
               {error}
             </div>

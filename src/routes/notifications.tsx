@@ -93,9 +93,9 @@ const TYPE_ICON: Record<NotificationType, typeof ShieldAlert> = {
 };
 
 const TYPE_TONE: Record<NotificationType, string> = {
-  approval_pending: "text-warning-foreground bg-warning/10",
-  renewal_window: "text-info bg-info/10",
-  risk_change: "text-destructive bg-destructive/10",
+  approval_pending: "text-tone-warning-fg bg-warning/10",
+  renewal_window: "text-tone-info-fg bg-info/10",
+  risk_change: "text-tone-danger-fg bg-destructive/10",
   stale_touchpoint: "text-muted-foreground bg-muted",
 };
 

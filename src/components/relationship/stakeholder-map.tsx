@@ -62,12 +62,12 @@ export function StakeholderMap({ contacts, action, renderContactAction }: Stakeh
           {gaps.map((gap) => (
             <li
               key={gap.role}
-              className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning-foreground"
+              className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-tone-warning-fg"
             >
               <UserRoundX className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="font-medium">{gap.title}</p>
-                <p className="text-warning-foreground/90">{gap.action}</p>
+                <p className="text-tone-warning-fg/90">{gap.action}</p>
               </div>
             </li>
           ))}
