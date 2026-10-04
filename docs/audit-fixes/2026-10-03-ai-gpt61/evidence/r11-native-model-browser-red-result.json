@@ -1,0 +1,117 @@
+{
+  "checkedAt": "2026-10-04T01:07:48.898Z",
+  "sha": "e3b016176f3021b45ddba1e847557a24946a982d",
+  "sourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "d52243101928d3edc962ee0129abd088892c556fe6a57a8c8a4a113aa94df457",
+  "database": "clientops_ai_uat_bcca66eef5f4451e9236c06e7d7f34ed",
+  "fixtureVersion": "ai-local-note-tidy-fixture-v1",
+  "checks": [
+    {
+      "name": "client_success actual own live session/role",
+      "passed": true
+    },
+    {
+      "name": "empty manual note cannot start optional tidy",
+      "passed": true
+    },
+    {
+      "name": "native compare keeps original and saves nothing",
+      "passed": true,
+      "runs": 1
+    },
+    {
+      "name": "uc09-compare390 native viewport/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc09-compare390.png",
+      "screenshotSha256": "8d7346b3414a00308aa2702b80c5aa1f9600e05a08c24b77999cd74f8dede18f",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "native cancel retains original/focus; zero automatic saves",
+      "passed": true
+    },
+    {
+      "name": "manual Save after cancel writes exactly one unchanged original",
+      "passed": true
+    },
+    {
+      "name": "native accept changes draft only, zero automatic saves",
+      "passed": true
+    },
+    {
+      "name": "manual Save after explicit accept writes exactly one reviewed suggestion",
+      "passed": true
+    },
+    {
+      "name": "late provider fixture success never overwrites edited draft",
+      "passed": true
+    },
+    {
+      "name": "late edited manual Save writes exactly the current note",
+      "passed": true
+    },
+    {
+      "name": "closing resets UI; old success cannot unlock or preview a newer pending request",
+      "passed": true
+    },
+    {
+      "name": "closed previous failure never inserts an error into reopened manual draft",
+      "passed": true
+    },
+    {
+      "name": "uc09-reopened-no-stale-error390 native viewport/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc09-reopened-no-stale-error390.png",
+      "screenshotSha256": "93376dc0572be288e05149b5a40fd863426646cd394526056bf198dd7c5654c4",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "native manual Save remains available during AI; late success changes neither saved row nor fresh draft",
+      "passed": true
+    },
+    {
+      "name": "lost response retries identical native body/key; one durable invocation, one fixture execution",
+      "passed": true
+    },
+    {
+      "name": "completed native request replay returns previous result with zero writes/fixture calls",
+      "passed": true
+    },
+    {
+      "name": "changed input under same key returns serialized Error before provider and preserves existing invocation",
+      "passed": true,
+      "httpStatus": 200,
+      "serializedError": true
+    }
+  ],
+  "identities": [
+    {
+      "role": "client_success",
+      "userSha256": "abf1d43bcd802e6970d36f832ce785a036d7e947feef56054b54b10e3642298d",
+      "sessionSha256": "10e01fb86f8c1587480705e7e1fe7d3080c3cbd187eed7c93bf114c7cdbae624",
+      "cookiesSha256": "bca7209b5e11bbb178f06b0025df86f99b984ccac6012329330cac1f639457e3",
+      "live": true,
+      "persistedRoleMatches": true
+    }
+  ],
+  "pageErrors": [],
+  "expectedFailures": [
+    {
+      "case": "changed input under same key",
+      "httpStatus": 200,
+      "serializedError": true
+    }
+  ],
+  "stage": "tidy error",
+  "passed": false,
+  "error": {
+    "name": "AssertionError",
+    "message": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'anthropic/claude-sonnet-4-6'\n- null\n"
+  },
+  "providerTransportFixture": true,
+  "actualProviderCalls": 0,
+  "productionAccess": false,
+  "realAIQualityVerified": false
+}

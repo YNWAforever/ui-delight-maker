@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-04T01:15:01.949Z",
+  "sourceSha": "e3b016176f3021b45ddba1e847557a24946a982d",
+  "db": "clientops_ai_gpt61_992894d9cc",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/workflows/__tests__/provenance.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-model-migration-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 22,
+  "failed": 1,
+  "skipped": 0,
+  "total": 23,
+  "files": 1,
+  "elapsedMs": 8305,
+  "reportSha256": "cc0af2eb7af8af6361c2bac7cef5e9e9367093e7d1bb6a2a3c893a999457f701"
+}

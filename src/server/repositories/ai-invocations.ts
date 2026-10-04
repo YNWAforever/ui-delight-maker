@@ -20,9 +20,9 @@ export async function beginNoteTidyRun(input: Parameters<AIInvocationContext["be
   const inserted = await queryOne<InvocationRow>(
     `insert into agent_runs
       (agent_name,workflow_type,trigger_type,subject_type,subject_id,
-       input_data,status,created_by,idempotency_key,policy_version_id)
+       input_data,status,created_by,idempotency_key,policy_version_id,model_used)
      values ('Note Tidy','note_tidy','manual','note',$1,
-       $2::jsonb,'running',$3,$4,$5)
+       $2::jsonb,'running',$3,$4,$5,null)
      on conflict do nothing returning id,status,input_data,output_data`,
     [
       input.subjectId,

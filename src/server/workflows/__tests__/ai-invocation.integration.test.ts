@@ -38,6 +38,7 @@ import {
   finishNoteTidyRun,
   readNoteTidyPolicy,
 } from "@/server/repositories/ai-invocations";
+import { createAgentRun, updateAgentRunResult } from "@/server/repositories/agent-runs";
 import { writeQualificationResult } from "@/server/workflows/writebacks";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
@@ -211,6 +212,70 @@ describe("governed AI persistence and stale callbacks", () => {
         await holder.pool!.query("delete from agent_runs where id=any($1)", [[oldId, newId]]);
         await holder.pool!.query("delete from leads where id=$1", [leadId]);
       }
+    },
+  );
+  it.runIf(hasDatabase).each(["completed", "failed"] as const)(
+    "keeps an unreported Note Tidy model unknown for %s",
+    async (status) => {
+      const run = await beginNoteTidyRun({
+        actorId: actor,
+        workflowType: "note_tidy",
+        subjectType: "note",
+        subjectId: randomUUID(),
+        idempotencyKey: randomUUID(),
+        inputLength: 7,
+        inputFingerprint: "e".repeat(64),
+        policyVersionId: null,
+      });
+      const pending = (
+        await holder.pool!.query("select model_used from agent_runs where id=$1", [run.runId])
+      ).rows[0];
+      expect(pending.model_used).toBeNull();
+      await finishNoteTidyRun(run.runId, {
+        status,
+        outcomeCode: status === "completed" ? "completed" : "provider_error",
+        output: status === "completed" ? "Reviewed proposal." : null,
+        usage: null,
+        model: null,
+      });
+      const stored = (
+        await holder.pool!.query(
+          "select status,model_used,tokens_used,usage_data from agent_runs where id=$1",
+          [run.runId],
+        )
+      ).rows[0];
+      expect(stored).toEqual({ status, model_used: null, tokens_used: null, usage_data: null });
+    },
+  );
+  it.runIf(hasDatabase)(
+    "does not infer a native worker model before its provider receipt",
+    async () => {
+      const { run, created } = await createAgentRun({
+        agent_name: "Synthetic provider metadata",
+        workflow_type: "qualify_lead",
+        subject_id: randomUUID(),
+        subject_type: "lead",
+        input_data: {},
+        created_by: actor,
+      });
+      expect(created).toBe(true);
+      expect(
+        (await holder.pool!.query("select model_used from agent_runs where id=$1", [run.id]))
+          .rows[0].model_used,
+      ).toBeNull();
+      await updateAgentRunResult(run.id, {
+        status: "failed",
+        model_used: null,
+        tokens_used: null,
+        outcome_code: "provider_error",
+      });
+      expect(
+        (
+          await holder.pool!.query("select model_used,tokens_used from agent_runs where id=$1", [
+            run.id,
+          ])
+        ).rows[0],
+      ).toEqual({ model_used: null, tokens_used: null });
     },
   );
 });

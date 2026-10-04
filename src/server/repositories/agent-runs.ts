@@ -114,8 +114,8 @@ export async function createAgentRun(
     const inserted = (
       await db.query<AgentRun>(
         `insert into agent_runs
-           (agent_name,workflow_type,trigger_type,subject_type,subject_id,input_data,status,created_by,retry_of)
-         values ($1,$2,$3,$4,$5,$6::jsonb,'running',$7,$8)
+           (agent_name,workflow_type,trigger_type,subject_type,subject_id,input_data,status,created_by,retry_of,model_used)
+         values ($1,$2,$3,$4,$5,$6::jsonb,'running',$7,$8,null)
          on conflict (subject_type,subject_id,workflow_type)
            where status in ('running','waiting_approval')
            do nothing

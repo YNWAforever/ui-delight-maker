@@ -51,6 +51,7 @@ const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 const databaseName = "clientops_provenance_" + randomUUID().replaceAll("-", "");
 let admin: Pool | null = null,
   migrations: ClientOpsMigration[] = [];
+let preModelMigrationRows: unknown[] = [];
 const legacyRun = randomUUID();
 const legacyOutcomes = [
   "expired",
@@ -226,6 +227,13 @@ describe("AI provenance migration and callback facts on real PostgreSQL", () => 
       select 'Synthetic legacy outcome','note_tidy','note',gen_random_uuid(),'failed',code from unnest($1::text[]) code`,
       [legacyOutcomes],
     );
+    await runClientOpsMigrations(holder.pool, migrations.slice(0, 25));
+    preModelMigrationRows = (
+      await holder.pool.query(
+        "select row_to_json(t) value from agent_runs t where id=$1 or agent_name='Synthetic legacy outcome' order by id",
+        [legacyRun],
+      )
+    ).rows;
     await runClientOpsMigrations(holder.pool, migrations);
     await holder.pool.query(
       "insert into pricing_templates(service,unit_price,currency,active) values('Synthetic permitted pricing',100,'HKD',true)",
@@ -533,6 +541,27 @@ describe("AI provenance migration and callback facts on real PostgreSQL", () => 
           "drop trigger synthetic_provenance_failure on activity_logs; drop function synthetic_provenance_failure()",
         );
       }
+    },
+  );
+  it.runIf(hasDatabase)(
+    "preserves every prior row while making unreported models nullable without a default",
+    async () => {
+      const column = (
+        await holder.pool!.query(
+          "select is_nullable,column_default from information_schema.columns where table_schema='public' and table_name='agent_runs' and column_name='model_used'",
+        )
+      ).rows[0];
+      expect(column).toEqual({ is_nullable: "YES", column_default: null });
+      const rows = (
+        await holder.pool!.query(
+          "select row_to_json(t) value from agent_runs t where id=$1 or agent_name='Synthetic legacy outcome' order by id",
+          [legacyRun],
+        )
+      ).rows;
+      expect(rows).toEqual(preModelMigrationRows);
+      const replay = await runClientOpsMigrations(holder.pool!, migrations);
+      expect(replay.applied).toEqual([]);
+      expect(replay.skipped).toEqual(CLIENTOPS_MIGRATION_PATHS);
     },
   );
 });

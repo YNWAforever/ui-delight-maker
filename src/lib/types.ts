@@ -434,7 +434,7 @@ export interface AgentRun {
   } | null;
   idempotency_key?: string | null;
   policy_version_id?: string | null;
-  model_used: string;
+  model_used: string | null;
   confidence_score: number | null;
   human_review_required: boolean;
   outcome_code?: string | null;
