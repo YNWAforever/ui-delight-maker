@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-10-04T07:31:12.837Z",
+  "sourceSha": "1f345757b03f51137867e964215ca1c1c0c5ad83",
+  "db": "clientops_ai_gpt61_3165e0b0ac",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/components/agents/__tests__/queue-refresh-access.test.tsx",
+    "src/components/agents/__tests__/queue-navigation.test.tsx",
+    "src/components/agents/__tests__/bulk-recovery-dialog.test.tsx",
+    "src/server-functions/__tests__/agent-runs-performance.test.ts",
+    "src/server/commands/__tests__/agent-bulk-recovery.integration.test.ts",
+    "src/server/db/__tests__/approval-recovery.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-queue-denial-final-target-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 84,
+  "failed": 0,
+  "skipped": 0,
+  "total": 84,
+  "files": 6,
+  "elapsedMs": 30817,
+  "reportSha256": "588b2301c43a0ba21289a596555bdfcd75468de05eb6454e83348e03ab090337"
+}

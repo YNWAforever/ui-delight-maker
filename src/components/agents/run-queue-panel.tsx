@@ -24,7 +24,8 @@ export function RunQueuePanel({
     refetchInterval: 45000,
     refetchIntervalInBackground: false,
   });
-  const data = query.data;
+  // A failed refresh cannot authorize displaying the previous actor's cached rows.
+  const data = query.isError ? undefined : query.data;
   const queueActorId = data?.queue === "runs" ? data.actorId : undefined;
   const [selected, setSelected] = useState<string[]>([]);
   const [selectionError, setSelectionError] = useState<string | null>(null);
@@ -99,12 +100,12 @@ export function RunQueuePanel({
   const canRun = maintenancePermission === true;
   useEffect(() => {
     // A server denial invalidates pending selection requests. Loading another page does not.
-    if (maintenancePermission !== false) return;
+    if (maintenancePermission !== false && !query.isError) return;
     selectionEpoch.current++;
     setSelected([]);
     setSelectionError(null);
     setSelecting(false);
-  }, [maintenancePermission]);
+  }, [maintenancePermission, query.isError]);
   const refresh = () => {
     if (filters.cursor) change({ ...filters, cursor: undefined });
     else void query.refetch();
