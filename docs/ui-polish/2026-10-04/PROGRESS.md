@@ -34,7 +34,7 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 
 - [x] Phase 1 — audit (`audit.md`)
 - [x] Phase 2 — direction (`direction.md`), checkpoint approved
-- [ ] Phase 3 — polish (log below)
+- [x] Phase 3 — polish (log below)
 - [ ] Phase 4 — verification
 - [ ] Final report (`report.md` + draft PR)
 
@@ -55,7 +55,21 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | 11 | Approvals split view; admin audit layout and labels | UX-11, UX-12 | done (Approvals: two-column queue, split from xl, focus to record; Admin: tabs below 2xl, actor picker, IDs wrap; actor/requester names still need SP-2) |
 | 12 | Accounting Today | UX-15 | done (job sheet list with client, accepted total, status badge, arrival date; standard header chrome; sidebar link and tab title read "Today" without leads.view) |
 | 13 | Foundations: font, type, radius, elevation, input/accent/sidebar tokens, focus outline | UX-21, UX-22, UX-25, UX-39 | done except elevation: the card shadow is in `src/components/ui/card.tsx` (not hand-editable); flattening it needs a shadcn re-sync or call-site classes, deferred |
-| 14 | P2 polish: field errors, copy, freshness, lifecycle panel, hydration, file inputs, tablet, pickers, 360 view | UX-16…UX-38 | |
+| 14 | P2 polish: field errors, copy, freshness, lifecycle panel, hydration, file inputs, tablet, pickers, 360 view | UX-16…UX-38 | done: UX-16 (access decisions, New task), UX-17 (Tasks debounce; Leads/Clients/Campaigns need SP-3), UX-18, UX-19, UX-25 clamp, UX-27 colours, UX-28, UX-30, UX-35; UX-24 withdrawn (harness false positive). Deferred with reasons — see below |
+
+### Deferred from Phase 3 (reasons for the report)
+
+| ID | Why not in this PR |
+|---|---|
+| UX-20 | Quote lifecycle panel: the existing tests encode "show each action disabled with its reason" as a deliberate server-capability design; hiding them is a product decision, so it is proposed, not changed. |
+| UX-23 | Hydration error #418 on `/notifications` and `/admin/people`: production builds give only the minified message and no dev build can run here (no database or auth); not reproduced, so not guessed at. Environment-gated. |
+| UX-27 | Hand-rolled native controls in the admin dialogs and filters: replacing them with shadcn primitives is a medium rewrite of three admin surfaces; only the raw colours were fixed. |
+| UX-36 | Tablet sidebar: the collapse state lives in `src/components/ui/sidebar.tsx` (not hand-editable) and its cookie; a CSS override would fight its JS state. The trigger already collapses it and the choice persists. |
+| UX-37 | Person picker redesign touches ten callers; medium, separate change. |
+| UX-38 | Account and client 360 box-in-box layout and empty-value conventions; medium, separate change. |
+| UX-01 revoke, UX-06/UX-12 names, UX-17 search, UX-26 headers | Need SP-1, SP-2, SP-3, SP-4 respectively. |
+| Elevation | Card shadow lives in `src/components/ui/card.tsx`. |
+| UX-31, UX-32, UX-33, UX-34 | P3, not trivial: child-route params, dead-code removal (separate cleanup PR by direction), query-key hygiene, Neon Auth login copy. |
 
 ## Commit log
 
@@ -95,13 +109,13 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `ac43b4e` | fix(ui): two lines for long record names instead of a one-line ellipsis | UX-25 | attention-queue +1 (CJK name), renewals; tsc clean |
 | `e14d1c4` | fix(ui): theme tokens for notification and role-dialog colours | UX-27 | new theme-colour-tokens guard (fails on the old files, passes now); bell + role dialog suites 14/14 |
 | `5276e1f` | fix(ui): grouped page counts and a 12 px text floor | UX-35 | list-pagination +1 (5,036); tsc clean |
-| next | fix(tasks): commit the search after a pause, not on every keystroke | UX-17 | tasks write-safety 12/12 (+1 debounce); tsc clean |
+| `e806d97` | fix(tasks): commit the search after a pause, not on every keystroke | UX-17 | tasks write-safety 12/12 (+1 debounce); tsc clean |
 
 ## Resume notes (keep current)
 
 - Last commit: UX-10 (see log). The log's `next` row is always the latest commit; replace it
   with the hash at the start of the next commit.
-- Next: item 14 (P2 polish, highest value first: copy pass incl. "0s from now", sign-out error, "(inline)" label, apologies; quote freshness; badge `capitalize`; field-level errors; CJK two-line clamp). Then Phase 4.
+- Next: Phase 4 — full `bun run test` on a disposable pgvector/pgvector:pg17 container, lint, tsc, vite build, git diff --check; axe (D-4) and component tests; after screenshots (public pages live, logged-in surfaces as static renders of the real components with the built CSS, since D-2 rules out a UAT deploy); code review of the diff; then report.md and the draft PR.
 - Tooling note: the Bash tool collapses a doubled backslash to one, even inside a quoted heredoc, so regexes or paths written through it lose escapes. Build them with String.fromCharCode(92), use pathToFileURL for paths, or write files with the Write/Edit tools; re-read regex lines after writing. Token tests read CSS blocks up to the first closing brace, so keep braces out of comments inside them.
 - Watch in Phase 4: `src/components/admin/__tests__/admin-modal-keyboard.test.tsx` (role modal Tab containment) failed once when 24 suites ran in parallel and passed alone.
 - Cleanup PR candidates (UX-32, not this PR): `getClientPortfolioMetrics`, `getTaskBoardMetrics` (`src/lib/sales-workspace.ts`), `formatAcceptedValueSummary` (`src/lib/job-sheet-editor.ts`) and `getPipelineSummary` (`src/lib/pipeline.ts`) lost their last route callers in the UX-09 commit.
