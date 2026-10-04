@@ -1,0 +1,65 @@
+{
+  "phase": "red",
+  "sha": "9770e65198044a9eba9ea6be9793fb232652bc2d",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "f6882ffdfa1ba33613759ff9ff4c81bf01c82a5659079ad5cd694eb6e707b4a1",
+  "database": "clientops_ai_uat_0ec16f06903c4d11a94d3f69837891fc",
+  "fixtureVersion": "ai-local-review-denial-v1",
+  "checks": [
+    {
+      "name": "actual admin reads synthetic linked approval and enters local reviewer notes without writes",
+      "passed": true
+    }
+  ],
+  "identities": [
+    {
+      "role": "admin",
+      "userSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "sessionSha256": "7b93f6916940fc215b90c1623bd5ab426eb96fa3b4f00f49597af14dd8731c93",
+      "savedStateSha256": "562c417be5922885bddde5029ac5651b790dc9641da16a04cb8f1a31bf705a6a",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "accounting",
+      "userSha256": "5bc88a9c60cb5e3d014a51eee07126e6adc00ec54681efaa531b50ba90c67fbb",
+      "sessionSha256": "53c77aaaff970a04349d056fab770c2a0b9438e873af00ff0dd5b8f27aba5ebb",
+      "savedStateSha256": "a5e6b243ea4ed9eae118b8d7068007130542d695aeb27870f191b656755ecb12",
+      "live": true,
+      "persistedRoleMatches": true
+    }
+  ],
+  "pageErrors": [],
+  "actualSSR": true,
+  "actualNeonDriver": true,
+  "actualLoopbackPostgres17": true,
+  "providerConfigurationAbsent": true,
+  "actualProviderCalls": 0,
+  "productionAccess": false,
+  "interactiveLogoutRelogin": "not-tested",
+  "wholeAppHandoff": "not-tested; this run exercises the queue only",
+  "transport": "distinct actual role cookie fixtures, native same-document queue refresh; no Auth or BFF response doubles",
+  "nativeReadServerFunctionPath": "/_serverFn/e4ac82b1caeb3e7911fa68533afbaa5527280d58745a536366d8069b8d0e24a1",
+  "observation": {
+    "serverStatus": 403,
+    "sameDocument": true,
+    "cachedApprovalVisible": true,
+    "cachedReviewerNotesVisible": true,
+    "cachedDecisionControlsVisible": true,
+    "errorVisible": false
+  },
+  "denialScreenshot": {
+    "path": ".clientops-perf/ai-gpt61-20261003/r11-native-review-denial-red-accounting403.private.png",
+    "sha256": "8ea361b64705f76d0e41ed43a1b7f83f0589a1f978abd668cc31bd34e9eafd6e"
+  },
+  "diagnosticScreenshot": {
+    "path": ".clientops-perf/ai-gpt61-20261003/r11-native-review-denial-red-diagnostic-accounting-refresh-denial.private.png",
+    "sha256": "8ea361b64705f76d0e41ed43a1b7f83f0589a1f978abd668cc31bd34e9eafd6e"
+  },
+  "passed": false,
+  "error": {
+    "name": "AssertionError",
+    "message": "A genuine Review403 must hide previous cached approval content\n\ntrue !== false\n"
+  },
+  "stage": "accounting-refresh-denial"
+}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { agentQueueSearchSchema } from "@/lib/agent-queue-input";
 import { QueueToolbar, type QueueSearch } from "@/components/agents/queue-toolbar";
 import { DemoOriginLabel } from "@/components/agents/data-scope";
@@ -334,6 +334,16 @@ function AiReviewPage({
   };
 
   const [panelOpen, setPanelOpen] = useState(false);
+
+  // A failed refetch can retain query data. Withdraw its view and local draft state,
+  // while keeping the review hook's original command attempts and receipts.
+  useEffect(() => {
+    if (!queueQuery.isError) return;
+    setSelectedId(null);
+    setNotes("");
+    setConfirm(null);
+    setPanelOpen(false);
+  }, [queueQuery.isError]);
   const openApprovalPanel = (id: string) => {
     selectApproval(id);
     setPanelOpen(true);
@@ -713,6 +723,19 @@ function AiReviewPage({
       </div>
     );
   };
+
+  if (queueQuery.isError) {
+    return (
+      <div className="px-4 py-6 md:px-6">
+        <ErrorState
+          kind="server"
+          description="Try loading the queue again. If your access has changed, contact an admin."
+          title="The AI review queue did not load"
+          onRetry={() => void refresh()}
+        />
+      </div>
+    );
+  }
 
   const hasQueue = queue.length > 0;
 
