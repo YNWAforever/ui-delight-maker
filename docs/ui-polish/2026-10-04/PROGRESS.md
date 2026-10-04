@@ -74,7 +74,8 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `b429b08` | fix(ui): stop counting only the loaded page in workspace summaries | UX-09 | 13 route suites 102/102; revenue desk +1 (whole-workspace metrics), campaigns count test updated; tsc clean |
 | `a1636fd` | feat(ui): make the workspace summary one compact row | UX-09, UX-29 | metric-strip 13 (+3), sales+admin 24 files 174 (1 timing flake in admin-modal-keyboard under parallel load, passes alone); `vite build` emits the odd-cell span; static render checked at 375/1280 light+dark |
 | `63f3f05` | fix(quotes): keep line-item money visible on phones and tablets | UX-13 | new quote-line-items 3; quote detail, quotes row actions; tsc clean |
-| next | fix(job-sheets): stop amounts and billing headers wrapping | UX-14 | data-table-shell +1 (numeric never wraps), job-sheets + quotes 7 files 63/63; tsc clean |
+| `622758a` | fix(job-sheets): stop amounts and billing headers wrapping | UX-14 | data-table-shell +1 (numeric never wraps), job-sheets + quotes 7 files 63/63; tsc clean |
+| next | fix(approvals): fit the desk at laptop width and take focus to the record | UX-11, UX-40 | approvals 27/27 (+2: two-column queue, focus to record region); tsc clean |
 
 ## Resume notes (keep current)
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -218,6 +218,8 @@ function ApprovalsErrorState({ error }: { error: unknown }) {
 
 function ApprovalsInbox() {
   const clientNow = useClientNow();
+  const recordHeadingId = useId();
+  const recordHeadingRef = useRef<HTMLHeadingElement>(null);
   const loadedApprovals = Route.useLoaderData() as ApprovalPage;
   const queryClient = useQueryClient();
   const { type: typeFilter } = Route.useSearch();
@@ -450,7 +452,7 @@ function ApprovalsInbox() {
    * ResponsiveRecordList keeps both surfaces in the DOM and hides one with a media query, so
    * a single handler that opened the panel would spring a focus trap and a scroll lock on a
    * desktop reader who only clicked a table row. The table selects; the card, which is the
-   * only surface visible below `lg`, also opens the panel.
+   * only surface visible below `xl`, also opens the panel.
    */
   const selectApproval = (id: string) => {
     setSelectedId(id);
@@ -460,6 +462,15 @@ function ApprovalsInbox() {
   const openApprovalPanel = (id: string) => {
     selectApproval(id);
     setDetailOpen(true);
+  };
+  /**
+   * The table is only displayed from `xl`, where the record sits beside it, so choosing a row
+   * takes focus to the record: a keyboard user used to tab past every row's checkbox and
+   * button — 131 stops on UAT — to reach the first decision (UX-40, UX-11).
+   */
+  const selectAndFocusRecord = (id: string) => {
+    selectApproval(id);
+    requestAnimationFrame(() => recordHeadingRef.current?.focus());
   };
 
   const copyApprovedDraft = async () => {
@@ -600,57 +611,55 @@ function ApprovalsInbox() {
     })),
   ];
 
+  /**
+   * Two columns, because the queue shares the screen with the open record. At 1280 the four
+   * columns it had wrapped the request to six lines and pushed "Raised" under the record
+   * panel (UX-11); the waiting time now sits under the request it belongs to.
+   */
   const queueColumns: ColumnDef<Approval>[] = [
     {
       id: "request",
       header: "Request",
       priority: "primary",
-      cell: (approval) => (
-        <button
-          type="button"
-          onClick={() => selectApproval(approval.id)}
-          aria-current={selected?.id === approval.id ? "true" : undefined}
-          className="block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <span className="font-medium text-foreground">
-            {approvalTypeLabel(approval.approval_type)}
-          </span>
-          <span className="mt-0.5 block line-clamp-2 text-xs text-muted-foreground">
-            {approval.context_summary ?? "No summary provided"}
-          </span>
-        </button>
-      ),
+      cell: (approval) => {
+        const sla = clientNow === null ? null : slaChip(approval.created_at, clientNow);
+        return (
+          <button
+            type="button"
+            onClick={() => selectAndFocusRecord(approval.id)}
+            aria-current={selected?.id === approval.id ? "true" : undefined}
+            className="block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="font-medium text-foreground">
+              {approvalTypeLabel(approval.approval_type)}
+            </span>
+            <span className="mt-0.5 block line-clamp-2 text-xs text-muted-foreground">
+              {approval.context_summary ?? "No summary provided"}
+            </span>
+            <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              {sla && (
+                <span
+                  className={cn(
+                    "whitespace-nowrap rounded-md px-1.5 py-0.5 font-medium",
+                    sla.className,
+                  )}
+                >
+                  {sla.text}
+                </span>
+              )}
+              <span className="whitespace-nowrap">
+                Raised {formatDateTime(approval.created_at)}
+              </span>
+            </span>
+          </button>
+        );
+      },
     },
     {
       id: "status",
       header: "Status",
       priority: "primary",
       cell: (approval) => <StatusBadge domain="approvals" value={approval.status} />,
-    },
-    {
-      id: "waiting",
-      header: "Waiting",
-      priority: "secondary",
-      cell: (approval) => {
-        const sla = clientNow === null ? null : slaChip(approval.created_at, clientNow);
-        return sla ? (
-          <span className={cn("rounded-md px-1.5 py-0.5 text-xs font-medium", sla.className)}>
-            {sla.text}
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground">
-            {formatDateTime(approval.created_at)}
-          </span>
-        );
-      },
-    },
-    {
-      id: "raised",
-      header: "Raised",
-      priority: "tertiary",
-      cell: (approval) => (
-        <span className="text-xs text-muted-foreground">{formatDateTime(approval.created_at)}</span>
-      ),
     },
   ];
 
@@ -666,7 +675,12 @@ function ApprovalsInbox() {
           <span className="font-medium">{approvalTypeLabel(approval.approval_type)}</span>
           <StatusBadge domain="approvals" value={approval.status} />
           {sla && (
-            <span className={cn("rounded-md px-1.5 py-0.5 text-xs font-medium", sla.className)}>
+            <span
+              className={cn(
+                "whitespace-nowrap rounded-md px-1.5 py-0.5 text-xs font-medium",
+                sla.className,
+              )}
+            >
               {sla.text}
             </span>
           )}
@@ -1055,8 +1069,12 @@ function ApprovalsInbox() {
               onCommit={() => void bulkOperation.commit()}
             />
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-              <div className="space-y-6 lg:col-span-2">
+            {/*
+              Queue and record side by side only from xl. Below that the queue is a card list and
+              a request opens in RecordSummaryPanel (the Sheet below).
+            */}
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+              <div className="space-y-6 xl:col-span-2">
                 <div className="space-y-3">
                   <SectionHeader
                     title="Waiting approval"
@@ -1082,7 +1100,7 @@ function ApprovalsInbox() {
                       rowKey={(approval) => approval.id}
                       rowLabel={approvalRowLabel}
                       renderCard={renderQueueCard}
-                      breakpoint="lg"
+                      breakpoint="xl"
                       caption="Approvals waiting on a human decision"
                       selectedRowKey={selected?.id}
                       selection={
@@ -1135,7 +1153,7 @@ function ApprovalsInbox() {
                       rowKey={(approval) => approval.id}
                       rowLabel={approvalRowLabel}
                       renderCard={renderQueueCard}
-                      breakpoint="lg"
+                      breakpoint="xl"
                       caption="Approvals with changes requested"
                       selectedRowKey={selected?.id}
                     />
@@ -1143,8 +1161,11 @@ function ApprovalsInbox() {
                 )}
               </div>
 
-              {/* Below lg the same record opens in RecordSummaryPanel — see the Sheet below. */}
-              <div className="hidden lg:col-span-3 lg:block">
+              <section
+                aria-labelledby={selected ? recordHeadingId : undefined}
+                aria-label={selected ? undefined : "Selected approval"}
+                className="hidden xl:col-span-3 xl:block"
+              >
                 {selected ? (
                   <Card>
                     <CardContent className="space-y-4 p-5">
@@ -1152,9 +1173,14 @@ function ApprovalsInbox() {
                         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10 text-primary">
                           <Bot className="h-4 w-4" />
                         </div>
-                        <span className="text-sm font-semibold">
+                        <h2
+                          id={recordHeadingId}
+                          ref={recordHeadingRef}
+                          tabIndex={-1}
+                          className="scroll-mt-4 rounded-sm text-sm font-semibold"
+                        >
                           {approvalTypeLabel(selected.approval_type)}
-                        </span>
+                        </h2>
                         <StatusBadge domain="approvals" value={selected.status} />
                         <span className="ml-auto text-xs text-muted-foreground">
                           {formatDateTime(selected.created_at)}
@@ -1183,7 +1209,7 @@ function ApprovalsInbox() {
                     description="Choose a request on the left to review its payload and decision actions."
                   />
                 )}
-              </div>
+              </section>
             </div>
 
             <section className="space-y-3">

@@ -245,6 +245,40 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("The Approval Desk at laptop width", () => {
+  it("lists each request in two columns, with its waiting time under the request", () => {
+    // UX-11: four columns in two fifths of a 1280 screen wrapped the request to six lines.
+    renderInbox([approval()]);
+
+    const table = screen.getByRole("table", { name: "Approvals waiting on a human decision" });
+    const headers = within(table)
+      .getAllByRole("columnheader")
+      .map((header) => header.textContent?.trim())
+      .filter(Boolean);
+    expect(headers).toEqual(["Request", "Status"]);
+    expect(
+      within(table).getByRole("button", { name: /Discount of 15% on renewal/ }).textContent,
+    ).toMatch(/Raised /);
+  });
+
+  it("takes focus to the open record when a request is chosen", async () => {
+    // UX-40: a keyboard user tabbed past every row's controls (131 stops) to reach a decision.
+    renderInbox([approval()]);
+
+    const table = screen.getByRole("table", { name: "Approvals waiting on a human decision" });
+    await userEvent.click(
+      within(table).getByRole("button", { name: /Discount of 15% on renewal/ }),
+    );
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { level: 2, name: "Discount" }),
+      ),
+    );
+    expect(screen.getByRole("region", { name: "Discount" })).toBeTruthy();
+  });
+});
+
 describe("Every approval decision is confirmed, and the confirmation names the consequence", () => {
   it("approving a plain request asks first and says the agent cannot be called back", async () => {
     renderInbox([approval()]);
