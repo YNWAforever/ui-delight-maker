@@ -41,14 +41,14 @@ afterEach(() => {
   cleanup();
   for (const c of clients.splice(0)) c.clear();
 });
-async function mount() {
+async function mount(onChanged?: () => Promise<unknown>) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   clients.push(client);
   render(
     <QueryClientProvider client={client}>
-      <PolicyPanel workflowType="qualify_lead" />
+      <PolicyPanel workflowType="qualify_lead" onChanged={onChanged} />
     </QueryClientProvider>,
   );
   await screen.findByLabelText("Policy status");
@@ -219,5 +219,100 @@ describe("policy read refresh and authoritative actor lifetime", () => {
       "SYNTHETIC private admin draft reason",
     );
     expect(api.set).not.toHaveBeenCalled();
+  });
+
+  it("a late successful mutation does not show its predecessor's completion on the newly authorized actor", async () => {
+    const client = await mount();
+    let resolve!: (value: { versionId: string; status: string; humanApproval: boolean }) => void;
+    api.set.mockReturnValue(
+      new Promise((r) => {
+        resolve = r;
+      }),
+    );
+    draft();
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm policy change" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Confirm policy change" })).toHaveProperty(
+        "disabled",
+        true,
+      ),
+    );
+    api.history.mockResolvedValue(page("actual-manager", false));
+    await refresh(client);
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(screen.getByLabelText("Reason")).toHaveProperty("value", "");
+    await act(async () => {
+      resolve({ versionId: current, status: "inactive", humanApproval: true });
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Reload policy" })).toHaveProperty(
+        "disabled",
+        false,
+      ),
+    );
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByLabelText("Reason")).toHaveProperty("value", "");
+    expect(screen.getByLabelText("Policy status")).toHaveProperty("disabled", true);
+  });
+  it("a late rejected mutation does not put the previous actor's error on the new actor", async () => {
+    const client = await mount();
+    let reject!: (error: Error) => void;
+    api.set.mockReturnValue(
+      new Promise((_r, j) => {
+        reject = j;
+      }),
+    );
+    draft();
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm policy change" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Confirm policy change" })).toHaveProperty(
+        "disabled",
+        true,
+      ),
+    );
+    api.history.mockResolvedValue(page("actual-manager", false));
+    await refresh(client);
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await act(async () => {
+      reject(new AdminError("CONFLICT", "Previous actor's stale write"));
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Reload policy" })).toHaveProperty(
+        "disabled",
+        false,
+      ),
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByLabelText("Reason")).toHaveProperty("value", "");
+  });
+  it("a delayed post-save refresh failure does not become a new actor's policy error", async () => {
+    let reject!: (error: Error) => void;
+    const onChanged = vi.fn(
+      () =>
+        new Promise((_r, j) => {
+          reject = j;
+        }),
+    );
+    api.set.mockResolvedValue({ versionId: current, status: "inactive", humanApproval: true });
+    const client = await mount(onChanged);
+    draft();
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm policy change" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    api.history.mockResolvedValue(page("actual-manager", false));
+    await refresh(client);
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+    await act(async () => {
+      reject(new Error("Previous owner's parent refresh failed"));
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Reload policy" })).toHaveProperty(
+        "disabled",
+        false,
+      ),
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByLabelText("Reason")).toHaveProperty("value", "");
   });
 });

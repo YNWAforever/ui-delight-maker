@@ -115,6 +115,8 @@ export function PolicyPanel({
   };
   const apply = async () => {
     if (!data || !canChange || !intent || busy || !reasonValid) return;
+    const mutationOwner = actorKey;
+    const ownsPresentation = () => retainedOwner.current === mutationOwner;
     setBusy(true);
     setProblem(null);
     try {
@@ -126,18 +128,22 @@ export function PolicyPanel({
       if (intent.versionId)
         await rollbackAgentPolicyFn({ data: { ...common, versionId: intent.versionId } });
       else await setAgentPolicyFn({ data: { ...common, status: intent.status } });
-      setSuccess("Policy version saved. New dispatches use the stored status.");
-      setReason("");
-      setIntent(null);
+      if (ownsPresentation()) {
+        setSuccess("Policy version saved. New dispatches use the stored status.");
+        setReason("");
+        setIntent(null);
+      }
       try {
         await client.invalidateQueries({ queryKey: crmQueryKeys.agents.all() });
         await onChanged?.();
       } catch {
+        if (!ownsPresentation()) return;
         setProblem(
           "Policy was saved; refreshing its presentation failed. Reload the policy before another change.",
         );
       }
     } catch (error) {
+      if (!ownsPresentation()) return;
       const code = error && typeof error === "object" && "code" in error ? error.code : null;
       setProblem(
         code === "CONFLICT"
