@@ -1,0 +1,82 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { Pool } from "pg";
+import assert from "node:assert/strict";
+import { CLIENTOPS_MIGRATION_PATHS } from "../../src/lib/clientops-relationship-schema.ts";
+import { runClientOpsMigrations } from "../../src/server/db/clientops-migrations.ts";
+const f = ".clientops-perf/ai-gpt61-20261003",
+  fx = JSON.parse(readFileSync(f + "/r11-native-bulk-actor-uat.private.json", "utf8")),
+  url = new URL(fx.connectionString);
+assert.equal(fx.isolationConfirmed, true);
+assert.equal(fx.testOnlyProviderFixture, false);
+assert.equal(url.hostname, "127.0.0.1");
+assert.equal(url.port, "64409");
+assert.equal(url.pathname, "/" + fx.db);
+assert.match(fx.db, /^clientops_ai_uat_[a-f0-9]{32}$/);
+const c = JSON.parse(
+  execFileSync("docker", ["inspect", "clientops-approval-review-pg-20261001"], {
+    encoding: "utf8",
+  }),
+)[0];
+assert.equal(c.Config.Image, "pgvector/pgvector:pg17");
+assert.equal(c.State.Running, true);
+assert.equal(c.NetworkSettings.Ports["5432/tcp"][0].HostIp, "127.0.0.1");
+assert.equal(c.NetworkSettings.Ports["5432/tcp"][0].HostPort, "64409");
+const pool = new Pool({ connectionString: fx.connectionString }),
+  snapshot = async () => {
+    const rows = (await pool.query("select row_to_json(t)::text value from agent_runs t")).rows
+      .map((x) => x.value)
+      .sort();
+    return {
+      count: rows.length,
+      hash: createHash("sha256").update(JSON.stringify(rows)).digest("hex"),
+    };
+  };
+try {
+  const before = await snapshot(),
+    columns = (
+      await pool.query(
+        "select is_nullable,column_default from information_schema.columns where table_schema='public' and table_name='agent_runs' and column_name='model_used'",
+      )
+    ).rows[0];
+  assert.equal(columns.is_nullable, "NO");
+  const migrations = await Promise.all(
+    CLIENTOPS_MIGRATION_PATHS.map(async (path) => ({ path, sql: await readFile(path, "utf8") })),
+  );
+  const applied = await runClientOpsMigrations(pool, migrations);
+  assert.deepEqual(applied.applied, ["neon/migrations/026_ai_unknown_model.sql"]);
+  assert.equal(applied.skipped.length, 25);
+  const after = await snapshot();
+  assert.deepEqual(after, before);
+  const final = (
+    await pool.query(
+      "select is_nullable,column_default from information_schema.columns where table_schema='public' and table_name='agent_runs' and column_name='model_used'",
+    )
+  ).rows[0];
+  assert.deepEqual(final, { is_nullable: "YES", column_default: null });
+  const replay = await runClientOpsMigrations(pool, migrations);
+  assert.deepEqual(replay.applied, []);
+  assert.deepEqual(replay.skipped, CLIENTOPS_MIGRATION_PATHS);
+  const result = {
+    sha: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+    database: fx.db,
+    loopbackOnly: true,
+    seedExecuted: false,
+    applied: applied.applied,
+    skipped: applied.skipped.length,
+    registered: CLIENTOPS_MIGRATION_PATHS.length,
+    replayApplied: 0,
+    before,
+    after,
+    allHistoricalRunRowsUnchanged: true,
+    columnBefore: columns,
+    columnAfter: final,
+    productionAccess: false,
+  };
+  writeFileSync(f + "/r11-native-bulk-actor-migration-result.json", JSON.stringify(result, null, 2));
+  console.log(JSON.stringify(result));
+} finally {
+  await pool.end();
+}
