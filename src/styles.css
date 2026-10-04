@@ -159,7 +159,9 @@
   --accent: oklch(0.3 0.05 268);
   --accent-foreground: oklch(0.97 0.005 250);
   --destructive: oklch(0.65 0.2 25);
-  --destructive-foreground: oklch(0.97 0.005 250);
+  /* Dark text on the solid red, like the other dark-theme solid tones: the near-white text
+     measured 3.25:1 (axe, Phase 4) and is now above 5:1. */
+  --destructive-foreground: oklch(0.15 0.02 260);
   --success: oklch(0.7 0.15 155);
   --success-foreground: oklch(0.15 0.02 260);
   --warning: oklch(0.8 0.15 75);

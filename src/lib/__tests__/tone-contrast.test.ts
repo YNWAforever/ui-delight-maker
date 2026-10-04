@@ -102,6 +102,24 @@ describe.each([
   });
 });
 
+describe.each([
+  ["light", ":root"],
+  ["dark", ".dark"],
+])("%s theme solid chips and buttons", (_theme, selector) => {
+  const body = block(selector);
+
+  // Solid fills carry their own foreground: severity chips, job-sheet badges, primary and
+  // destructive buttons. axe measured the dark destructive pair at 3.25:1 (Phase 4).
+  it.each(["primary", "destructive", "success", "warning", "info"])(
+    "%s-foreground is at least 4.5:1 on its fill",
+    (tone) => {
+      const fill = toSrgb(token(body, tone));
+      const text = toSrgb(token(body, `${tone}-foreground`));
+      expect(contrast(text, fill)).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+});
+
 it("uses a quiet, low-chroma hover surface in the light theme", () => {
   // UX-22: --accent was a saturated blue, so every ghost and outline button flashed blue.
   const [lightness, chroma] = token(block(":root"), "accent");
