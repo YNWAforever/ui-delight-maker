@@ -432,7 +432,7 @@ describe("Assigning a reviewer", () => {
     // assignee is visible and clearing it is possible.
     renderInbox([approval(), approval({ id: "ap-2" })]);
 
-    fireEvent.click(screen.getAllByRole("checkbox", { name: /Select row ap-1/ })[0]);
+    fireEvent.click(screen.getAllByRole("checkbox", { name: /Discount of 15% on renewal/ })[0]);
 
     expect(screen.queryByRole("button", { name: /Assign reviewer/ })).toBeNull();
     expect(
@@ -485,17 +485,18 @@ describe("Server-evaluated approval action boundaries", () => {
       approval(),
       approval({
         id: "ap-denied",
+        context_summary: "Denied row",
         can_decide: false,
         can_assign: false,
         can_claim: false,
         can_request_changes: false,
       }),
     ]);
-    const denied = screen.getAllByRole("checkbox", { name: /Select row ap-denied/ });
+    const denied = screen.getAllByRole("checkbox", { name: /Denied row/ });
     expect(denied.every((element) => (element as HTMLButtonElement).disabled)).toBe(true);
     fireEvent.click(denied[0]);
     expect(screen.queryByText("1 selected")).toBeNull();
-    fireEvent.click(screen.getAllByRole("checkbox", { name: /Select row ap-1/ })[0]);
+    fireEvent.click(screen.getAllByRole("checkbox", { name: /Discount of 15% on renewal/ })[0]);
     expect(screen.getByText("1 selected")).toBeTruthy();
   });
 

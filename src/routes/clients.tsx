@@ -451,6 +451,7 @@ function ClientsIndex() {
               columns={columns}
               rows={filtered}
               rowKey={(c) => c.id}
+              rowLabel={(c) => c.company_name}
               rowHref={(c) => `/clients/${c.id}`}
               renderCard={(c) => (
                 <div className="space-y-1">

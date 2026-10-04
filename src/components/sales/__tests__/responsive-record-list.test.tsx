@@ -51,6 +51,7 @@ describe("ResponsiveRecordList", () => {
         columns={columns}
         rows={accounts}
         rowKey={rowKey}
+        rowLabel={(row) => row.name}
         rowHref={rowHref}
         renderCard={(row) => <span>{row.name}</span>}
       />,
@@ -75,6 +76,7 @@ describe("ResponsiveRecordList", () => {
         columns={columns}
         rows={accounts}
         rowKey={rowKey}
+        rowLabel={(row) => row.name}
         renderCard={(row) => <span>{row.name}</span>}
       />,
     );
@@ -90,6 +92,7 @@ describe("ResponsiveRecordList", () => {
         columns={columns}
         rows={accounts}
         rowKey={rowKey}
+        rowLabel={(row) => row.name}
         breakpoint="lg"
         renderCard={(row) => <span>{row.name}</span>}
       />,
@@ -105,6 +108,7 @@ describe("ResponsiveRecordList", () => {
         columns={columns}
         rows={accounts}
         rowKey={rowKey}
+        rowLabel={(row) => row.name}
         rowActions={() => <button type="button">Archive</button>}
         renderCard={(row) => <span>{row.name}</span>}
       />,
@@ -112,36 +116,37 @@ describe("ResponsiveRecordList", () => {
 
     // One trigger in the table row, one on the card. A narrow viewport that cannot run a
     // record's actions is a read-only downgrade, not a responsive layout.
-    expect(screen.getAllByRole("button", { name: "Actions for row a-1" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Actions for ACME" })).toHaveLength(2);
   });
 
-  it("keeps the row key out of the card's visible label but inside its accessible name", async () => {
-    // The key is an opaque database id. It has to be in the accessible name, because two
-    // cards' toggles are otherwise indistinguishable to a screen reader — but showing it
-    // on screen turns a button into "Show details for a-1". The table's toggle carries the
-    // identical accessible name, so the two surfaces announce the same thing.
+  it("keeps the row name out of the card's visible label but inside its accessible name", async () => {
+    // The row's name has to be in the accessible name, because two cards' toggles are
+    // otherwise indistinguishable to a screen reader, but not repeated on screen beside the
+    // card that already shows it. It is the name, never the key: ids are not announced
+    // (audit UX-05). The table's toggle carries the identical accessible name.
     const { container } = render(
       <ResponsiveRecordList
         columns={columns}
         rows={accounts}
         rowKey={rowKey}
+        rowLabel={(row) => row.name}
         expandable={{ renderDetails: (row) => <p>Contacts at {row.name}</p> }}
         renderCard={(row) => <span>{row.name}</span>}
       />,
     );
 
-    // Both surfaces carry a toggle for a-1, so the query has to say which one it means.
+    // Both surfaces carry a toggle for ACME, so the query has to say which one it means.
     const cards = within(container.querySelector("ul") as HTMLElement);
     const table = within(container.querySelector("table") as HTMLElement);
 
-    const cardToggle = cards.getByRole("button", { name: /for a-1$/ });
-    expect(cardToggle.textContent).toBe("Show details for a-1");
+    const cardToggle = cards.getByRole("button", { name: /for ACME$/ });
+    expect(cardToggle.textContent).toBe("Show details for ACME");
     expect(visibleTextOf(cardToggle)).toBe("Show details");
 
     // The table's toggle has no visible text at all — a 32px chevron in a cell — so its
     // whole name is sr-only. The card is a wide row that needs a readable label, which is
     // why only it splits the string. Both still announce the same thing.
-    expect(visibleTextOf(table.getByRole("button", { name: /for a-1$/ }))).toBe("");
+    expect(visibleTextOf(table.getByRole("button", { name: /for ACME$/ }))).toBe("");
 
     expect(cardToggle.getAttribute("aria-expanded")).toBe("false");
     expect(cards.queryByText("Contacts at ACME")).toBeNull();
@@ -149,8 +154,8 @@ describe("ResponsiveRecordList", () => {
     await userEvent.click(cardToggle);
 
     expect(cards.getByText("Contacts at ACME")).toBeDefined();
-    expect(cards.getByRole("button", { name: /for a-1$/ }).textContent).toBe(
-      "Hide details for a-1",
+    expect(cards.getByRole("button", { name: /for ACME$/ }).textContent).toBe(
+      "Hide details for ACME",
     );
     expect(cardToggle.getAttribute("aria-expanded")).toBe("true");
   });
@@ -161,6 +166,7 @@ describe("ResponsiveRecordList", () => {
         columns={columns}
         rows={accounts}
         rowKey={rowKey}
+        rowLabel={(row) => row.name}
         renderCard={(row) => <span>{row.name}</span>}
       />,
     );
@@ -172,13 +178,14 @@ describe("ResponsiveRecordList", () => {
         columns={columns}
         rows={accounts}
         rowKey={rowKey}
+        rowLabel={(row) => row.name}
         selection={{ selected: new Set<string>(), onChange: vi.fn() }}
         renderCard={(row) => <span>{row.name}</span>}
       />,
     );
 
     // Table: two rows plus select-all. Cards: two rows, with no select-all to attach one to.
-    expect(screen.getAllByRole("checkbox", { name: "Select row a-1" })).toHaveLength(2);
+    expect(screen.getAllByRole("checkbox", { name: "Select ACME" })).toHaveLength(2);
     expect(screen.getAllByRole("checkbox", { name: "Select all rows" })).toHaveLength(1);
   });
 });
@@ -190,13 +197,14 @@ it("keeps denied rows unselectable and hides empty action menus on both surfaces
       columns={columns}
       rows={accounts}
       rowKey={rowKey}
+      rowLabel={(row) => row.name}
       selection={{ selected: new Set(), onChange, isRowSelectable: (row) => row.id === "a-1" }}
       rowActions={(row) => (row.id === "a-1" ? <button>Move</button> : null)}
       renderCard={(row) => <span>{row.name}</span>}
     />,
   );
-  expect(screen.queryAllByRole("button", { name: "Actions for row a-2" })).toHaveLength(0);
-  const denied = screen.getAllByRole("checkbox", { name: "Select row a-2" });
+  expect(screen.queryAllByRole("button", { name: "Actions for Northwind" })).toHaveLength(0);
+  const denied = screen.getAllByRole("checkbox", { name: "Select Northwind" });
   expect(denied).toHaveLength(2);
   for (const checkbox of denied) {
     expect(checkbox.hasAttribute("disabled")).toBe(true);

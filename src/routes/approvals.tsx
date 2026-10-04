@@ -115,6 +115,14 @@ const approvalSearchSchema = z.object({
   type: z.enum(APPROVAL_TYPE_FILTER_VALUES).default("all").catch("all"),
 });
 
+/** How a row's checkbox and menu are announced: the request and its summary, never its id. */
+const approvalRowLabel = (approval: Approval) => {
+  const type = approvalTypeLabel(approval.approval_type);
+  const summary = approval.context_summary?.trim();
+  if (!summary) return type;
+  return `${type}: ${summary.length > 60 ? `${summary.slice(0, 57)}…` : summary}`;
+};
+
 const approvalPageKey = (group: "pending" | "history", type: ApprovalTypeFilter) =>
   crmQueryKeys.approvals.list({ group, type });
 /** Kept off `approvals.list` so decisions invalidating the queue do not refetch the roster. */
@@ -1072,6 +1080,7 @@ function ApprovalsInbox() {
                       columns={queueColumns}
                       rows={pending}
                       rowKey={(approval) => approval.id}
+                      rowLabel={approvalRowLabel}
                       renderCard={renderQueueCard}
                       breakpoint="lg"
                       caption="Approvals waiting on a human decision"
@@ -1124,6 +1133,7 @@ function ApprovalsInbox() {
                       columns={queueColumns}
                       rows={escalated}
                       rowKey={(approval) => approval.id}
+                      rowLabel={approvalRowLabel}
                       renderCard={renderQueueCard}
                       breakpoint="lg"
                       caption="Approvals with changes requested"

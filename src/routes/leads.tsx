@@ -426,6 +426,7 @@ function LeadsPage() {
               columns={columns}
               rows={filtered}
               rowKey={(lead) => lead.id}
+              rowLabel={(lead) => lead.company_name}
               rowHref={(lead) => `/leads/${lead.id}`}
               selection={
                 writableIds.size > 0 || selected.size > 0

@@ -155,7 +155,10 @@ export function AccessRequestQueue({
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     {isCapabilityRequest ? "Capability request" : "Team membership request"}
                   </p>
-                  <h3 className="mt-1 break-words text-sm font-medium text-foreground">
+                  <h3
+                    id={`access-request-${request.id}-target`}
+                    className="mt-1 break-words text-sm font-medium text-foreground"
+                  >
                     {requestTarget(request)}
                   </h3>
                   <dl className="mt-2 grid gap-x-5 gap-y-1 text-sm sm:grid-cols-2">
@@ -194,6 +197,7 @@ export function AccessRequestQueue({
                     type="button"
                     size="sm"
                     disabled={busy}
+                    aria-describedby={`access-request-${request.id}-target`}
                     onClick={() => beginDecision(request, "approved")}
                   >
                     {isCapabilityRequest ? "Approve capability access" : "Approve team access"}
@@ -203,9 +207,10 @@ export function AccessRequestQueue({
                     size="sm"
                     variant="outline"
                     disabled={busy}
+                    aria-describedby={`access-request-${request.id}-target`}
                     onClick={() => beginDecision(request, "rejected")}
                   >
-                    Reject {request.id}
+                    Reject request
                   </Button>
                 </div>
               )}
@@ -220,11 +225,8 @@ export function AccessRequestQueue({
                       : "Rejecting closes the request. The requester can raise a new one."}
                   </p>
                   <label className="block">
-                    <span className="text-sm font-medium text-foreground">
-                      Decision reason for {request.id}
-                    </span>
+                    <span className="text-sm font-medium text-foreground">Decision reason</span>
                     <textarea
-                      aria-label={"Decision reason for " + request.id}
                       value={reasons[request.id] ?? ""}
                       onChange={(event) => {
                         setReasons((current) => ({ ...current, [request.id]: event.target.value }));
@@ -239,7 +241,6 @@ export function AccessRequestQueue({
                       <label className="flex items-center gap-2 text-sm text-foreground">
                         <input
                           type="checkbox"
-                          aria-label={"Temporary access for " + request.id}
                           checked={temporary[request.id] ?? false}
                           onChange={(event) =>
                             setTemporary((current) => ({
@@ -252,12 +253,9 @@ export function AccessRequestQueue({
                       </label>
                       {temporary[request.id] ? (
                         <label className="block">
-                          <span className="text-sm font-medium text-foreground">
-                            Access expiry for {request.id}
-                          </span>
+                          <span className="text-sm font-medium text-foreground">Access expiry</span>
                           <input
                             type="datetime-local"
-                            aria-label={"Access expiry for " + request.id}
                             value={expiries[request.id] ?? ""}
                             onChange={(event) =>
                               setExpiries((current) => ({
@@ -281,11 +279,14 @@ export function AccessRequestQueue({
                     size="sm"
                     className="w-fit"
                     disabled={busy}
+                    aria-describedby={`access-request-${request.id}-target`}
                     onClick={() => void submit(request)}
                   >
                     {busy
                       ? "Recording…"
-                      : `${decision === "approved" ? "Approve" : "Reject"} ${request.id}`}
+                      : decision === "approved"
+                        ? "Confirm approval"
+                        : "Confirm rejection"}
                   </Button>
                 </div>
               ) : null}

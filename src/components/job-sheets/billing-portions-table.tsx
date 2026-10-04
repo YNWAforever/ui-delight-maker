@@ -131,6 +131,7 @@ export function BillingPortionsTable({
           columns={columns}
           rows={portions}
           rowKey={(portion) => portion.id}
+          rowLabel={(portion) => portion.name}
           caption="Billing portions for this job sheet"
           allowHorizontalScroll
         />

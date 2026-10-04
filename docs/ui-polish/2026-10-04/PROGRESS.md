@@ -46,7 +46,7 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | 2 | Status tone text tokens readable in both themes | UX-02, UX-04 | done |
 | 3 | Permission denials stay inside the app shell; sidebar filtered by capability | UX-03 | done (boundary + sidebar filter) |
 | 4 | Navigation progress + focus on route change | UX-08, UX-40 | done (Approvals tab-stop count addressed with UX-11) |
-| 5 | Per-row control names from the record, not its id | UX-05 | |
+| 5 | Per-row control names from the record, not its id | UX-05 | done (rowLabel on 17 lists; access-request decision controls without ids) |
 | 6 | Names instead of identifiers (leads, sidebar role, renewals, access requests) | UX-06 | |
 | 7 | Lead actions and invitable roles gated by capability | UX-07 | |
 | 8 | Follow-up task from a lead | UX-10 | |
@@ -66,7 +66,8 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `9d59899` | fix(ui): make status text readable in both themes | UX-02, UX-04 | new tone-contrast.test.ts (10), status-labels 33; `vite build` emits `text-tone-*-fg` |
 | `36ec096` | fix(shell): keep permission denials inside the app shell | UX-03 | route-error-boundary.test.tsx (2), workspace-access.test.ts (8), errors 9, router 2 |
 | `491d3f6` | feat(nav): offer only the workspaces the session can open | UX-03 | app-sidebar +2 (16/16 with root boundary); tsc clean |
-| next | feat(shell): show navigation progress and move focus to the new page | UX-08, UX-40 | navigation-feedback 5, router 2, root boundary |
+| `50f0bfe` | feat(shell): show navigation progress and move focus to the new page | UX-08, UX-40 | navigation-feedback 5, router 2, root boundary |
+| next | fix(a11y): name row controls by the record, not its id | UX-05 | 7 suites 80/80 (data-table-shell, responsive-record-list, access-request-queue, approvals, job sheets, leads, quotes); tsc clean |
 
 ## Verification notes
 

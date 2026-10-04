@@ -516,6 +516,7 @@ function QuotesIndex() {
             columns={columns}
             rows={rows}
             rowKey={(quote) => quote.id}
+            rowLabel={(quote) => quoteTitle(quote)}
             rowHref={(quote) => `/quotes/${quote.id}`}
             rowActions={(quote) => (
               <DropdownMenuItem

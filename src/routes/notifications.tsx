@@ -455,6 +455,7 @@ function NotificationsPage() {
                 columns={columns}
                 rows={filtered}
                 rowKey={(notification) => notification.id}
+                rowLabel={(notification) => notification.title}
                 renderCard={renderCard}
                 caption="Your notifications"
               />

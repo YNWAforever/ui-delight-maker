@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AccessRequest } from "@/server/repositories/admin-access";
 import { AccessRequestQueue } from "../access-request-queue";
@@ -48,14 +48,16 @@ describe("AccessRequestQueue", () => {
     // The server refuses a manager *any* decision on a capability request, approve or
     // reject, so neither control is offered and the rule is stated instead of the symptom.
     expect(screen.queryByRole("button", { name: "Approve capability access" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Reject request-capability" })).toBeNull();
+    const capabilityCard = screen
+      .getByRole("heading", { name: "accounts.update" })
+      .closest("article") as HTMLElement;
+    expect(within(capabilityCard).queryByRole("button", { name: "Reject request" })).toBeNull();
+    // Decision controls carry no record ids in their names (audit UX-05).
+    expect(screen.queryByRole("button", { name: /request-team|request-capability/ })).toBeNull();
     expect(screen.getByText(/Managers decide team access requests/)).toBeTruthy();
     await actor.click(screen.getByRole("button", { name: "Approve team access" }));
-    await actor.type(
-      screen.getByLabelText("Decision reason for request-team"),
-      "Coverage approved",
-    );
-    await actor.click(screen.getByRole("button", { name: "Approve request-team" }));
+    await actor.type(screen.getByLabelText("Decision reason"), "Coverage approved");
+    await actor.click(screen.getByRole("button", { name: "Confirm approval" }));
 
     expect(onDecide).toHaveBeenCalledWith({
       id: "request-team",
@@ -125,7 +127,7 @@ describe("AccessRequestQueue", () => {
 
     render(<AccessRequestQueue requests={[teamRequest]} actorRole="admin" onDecide={onDecide} />);
 
-    await actor.click(screen.getByRole("button", { name: "Reject request-team" }));
+    await actor.click(screen.getByRole("button", { name: "Reject request" }));
     expect(screen.getByRole("alert").textContent).toContain("Decision reason is required");
     expect(onDecide).not.toHaveBeenCalled();
   });

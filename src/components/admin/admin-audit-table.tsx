@@ -145,6 +145,7 @@ export function AdminAuditTable({
               columns={columns}
               rows={data.items}
               rowKey={(entry) => entry.id}
+              rowLabel={(entry) => `${entry.action} at ${formatDateTime(entry.created_at)}`}
               caption="Administrative audit entries"
               expandable={{
                 renderDetails: (entry) => (

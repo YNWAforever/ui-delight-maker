@@ -83,6 +83,12 @@ const makeLead = (
   updated_at: "2026-07-01T00:00:00.000Z",
 });
 const LEADS = [makeLead("lead-1", "Northstar"), makeLead("lead-2", "Bluepeak")];
+/** Row controls are named by company (audit UX-05), never by id. */
+const LEAD_NAME: Record<string, string> = {
+  "lead-1": "Northstar",
+  "lead-2": "Bluepeak",
+  "lead-3": "Unassigned lead",
+};
 const preview = {
   operationId: "operation-1",
   token: "preview-1",
@@ -173,7 +179,7 @@ function renderLeads() {
   };
 }
 const rowCheckbox = (id: string) =>
-  screen.getAllByRole("checkbox", { name: "Select row " + id, hidden: true })[0];
+  screen.getAllByRole("checkbox", { name: "Select " + LEAD_NAME[id], hidden: true })[0];
 const selectEveryLead = () =>
   fireEvent.click(screen.getByRole("checkbox", { name: "Select all rows" }));
 async function prepareQualified() {

@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { rowControlName } from "@/lib/row-label";
 import { cn } from "@/lib/utils";
 
 /**
@@ -49,8 +50,14 @@ export type ColumnDef<T> = {
 export type DataTableShellProps<T> = {
   columns: ColumnDef<T>[];
   rows: T[];
-  /** Stable identity per row. Also seeds the accessible names of the per-row controls. */
+  /** Stable identity per row. Used for React keys and selection, never shown or announced. */
   rowKey: (row: T) => string;
+  /**
+   * How a person names the row — company, quote number, person. Becomes the accessible name of
+   * the row's checkbox, expander and action menu ("Select Harbour Beauty Lab"). Without it the
+   * row's position is used; the key, usually a UUID, never is.
+   */
+  rowLabel?: (row: T) => string;
   /** Makes the identity cell a real link. See the anchor note in the body. */
   rowHref?: (row: T) => string;
   /** `DropdownMenuItem`s for the row's overflow menu, not raw buttons. */
@@ -109,6 +116,7 @@ export function DataTableShell<T>({
   columns,
   rows,
   rowKey,
+  rowLabel,
   rowHref,
   rowActions,
   selection,
@@ -258,8 +266,9 @@ export function DataTableShell<T>({
       </TableHeader>
 
       <TableBody>
-        {rows.map((row) => {
+        {rows.map((row, index) => {
           const key = rowKey(row);
+          const name = rowControlName(rowLabel?.(row), index);
           const actions = rowActions?.(row);
           const isExpanded = expandedKeys.has(key);
           const detailsId = `${instanceId}-${key}-details`;
@@ -273,7 +282,7 @@ export function DataTableShell<T>({
                       checked={selection.selected.has(key)}
                       disabled={selection.isRowSelectable?.(row) === false}
                       onCheckedChange={(next) => toggleRow(key, next === true)}
-                      aria-label={`Select row ${key}`}
+                      aria-label={`Select ${name}`}
                     />
                   </TableCell>
                 )}
@@ -293,7 +302,7 @@ export function DataTableShell<T>({
                       />
                       {/* A rotated chevron is the only visual cue, so state is also spelt out. */}
                       <span className="sr-only">
-                        {isExpanded ? `Hide details for ${key}` : `Show details for ${key}`}
+                        {isExpanded ? `Hide details for ${name}` : `Show details for ${name}`}
                       </span>
                     </button>
                   </TableCell>
@@ -326,7 +335,7 @@ export function DataTableShell<T>({
                 {rowActions && (
                   <TableCell className="px-3 py-2.5 text-right">
                     {actions && (
-                      <RowActionsMenu label={`Actions for row ${key}`}>{actions}</RowActionsMenu>
+                      <RowActionsMenu label={`Actions for ${name}`}>{actions}</RowActionsMenu>
                     )}
                   </TableCell>
                 )}

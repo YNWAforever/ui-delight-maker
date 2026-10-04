@@ -730,6 +730,7 @@ function TasksBoard() {
                 columns={listColumns}
                 rows={filtered}
                 rowKey={(task) => task.id}
+                rowLabel={(task) => taskTitle(task)}
                 selection={
                   canUpdate || bulkSelected.size > 0
                     ? {

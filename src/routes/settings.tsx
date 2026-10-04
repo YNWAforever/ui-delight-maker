@@ -654,6 +654,7 @@ function ProductsTab({
           columns={columns}
           rows={products}
           rowKey={(product) => product.id}
+          rowLabel={(product) => product.name}
           renderCard={renderCard}
           caption="Product catalogue"
         />

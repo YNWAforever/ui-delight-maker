@@ -518,6 +518,7 @@ function RenewalsPage() {
               columns={columns}
               rows={rows}
               rowKey={(row) => row.id}
+              rowLabel={(row) => `${row.client_company_name} — ${row.product_name}`}
               selectedRowKey={selectedId ?? undefined}
               renderCard={(row) => (
                 // Date and risk lead the card: on a phone the only two things that decide

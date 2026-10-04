@@ -619,6 +619,7 @@ function AccountsIndex() {
               columns={columns}
               rows={accounts}
               rowKey={(account) => account.id}
+              rowLabel={(account) => account.name}
               rowHref={(account) => `/accounts/${account.id}`}
               selectedRowKey={selectedAccountId ?? undefined}
               rowActions={(account) => (

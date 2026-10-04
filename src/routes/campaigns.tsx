@@ -401,6 +401,7 @@ function CampaignsIndex() {
               columns={columns}
               rows={visible}
               rowKey={(campaign) => campaign.id}
+              rowLabel={(campaign) => campaign.name}
               rowHref={(campaign) => `/campaigns/${campaign.id}`}
               renderCard={(campaign) => (
                 <div className="space-y-1">

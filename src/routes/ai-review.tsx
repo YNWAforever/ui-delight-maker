@@ -849,6 +849,7 @@ function AiReviewPage({
                 columns={queueColumns}
                 rows={queue}
                 rowKey={(approval) => approval.id}
+                rowLabel={(approval) => approvalTypeLabel(approval.approval_type)}
                 renderCard={renderQueueCard}
                 breakpoint="lg"
                 caption="AI-generated actions waiting on a human decision"

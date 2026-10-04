@@ -581,6 +581,7 @@ function CampaignDetailRoute() {
                     columns={attendeeColumns}
                     rows={members}
                     rowKey={(member) => member.id}
+                    rowLabel={(member) => attendeeName(member)}
                     breakpoint="lg"
                     renderCard={(member) => (
                       <div className="space-y-1">

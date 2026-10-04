@@ -522,6 +522,7 @@ function JobSheetsIndex() {
                 columns={columns}
                 rows={rows}
                 rowKey={(row) => row.id}
+                rowLabel={(row) => [row.number, row.company_name].filter(Boolean).join(" · ")}
                 rowHref={(row) => `/job-sheets/${row.id}`}
                 selection={{
                   selected: bulkSelected,

@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronDown } from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";
+import { rowControlName } from "@/lib/row-label";
 import { cn } from "@/lib/utils";
 
 import { DataTableShell, RowActionsMenu, type DataTableShellProps } from "./data-table-shell";
@@ -34,8 +35,17 @@ export function ResponsiveRecordList<T>({
   className,
   ...shell
 }: ResponsiveRecordListProps<T>) {
-  const { rows, rowKey, rowHref, rowActions, selection, selectedRowKey, expandable, caption } =
-    shell;
+  const {
+    rows,
+    rowKey,
+    rowLabel,
+    rowHref,
+    rowActions,
+    selection,
+    selectedRowKey,
+    expandable,
+    caption,
+  } = shell;
 
   const instanceId = useId();
   const [expandedKeys, setExpandedKeys] = useState<ReadonlySet<string>>(() => new Set<string>());
@@ -82,8 +92,9 @@ export function ResponsiveRecordList<T>({
       </div>
 
       <ul className={cn("space-y-3", cardsClass)} aria-label={caption}>
-        {rows.map((row) => {
+        {rows.map((row, index) => {
           const key = rowKey(row);
+          const name = rowControlName(rowLabel?.(row), index);
           const actions = rowActions?.(row);
           const isExpanded = expandedKeys.has(key);
           const detailsId = `${instanceId}-${key}-card-details`;
@@ -103,7 +114,7 @@ export function ResponsiveRecordList<T>({
                     checked={selection.selected.has(key)}
                     disabled={selection.isRowSelectable?.(row) === false}
                     onCheckedChange={(next) => toggleRow(row, next === true)}
-                    aria-label={`Select row ${key}`}
+                    aria-label={`Select ${name}`}
                     className="mt-0.5"
                   />
                 )}
@@ -125,7 +136,7 @@ export function ResponsiveRecordList<T>({
                 </div>
 
                 {actions && (
-                  <RowActionsMenu label={`Actions for row ${key}`}>{actions}</RowActionsMenu>
+                  <RowActionsMenu label={`Actions for ${name}`}>{actions}</RowActionsMenu>
                 )}
               </div>
 
@@ -142,13 +153,12 @@ export function ResponsiveRecordList<T>({
                       className={cn("h-3.5 w-3.5 transition-transform", isExpanded && "rotate-180")}
                       aria-hidden="true"
                     />
-                    {/* The row key is an opaque id: it belongs in the accessible name, which
-                        has to distinguish one card's toggle from the next, but not on screen.
-                        Split this way the button reads "Show details" and announces "Show
-                        details for a-1" — the same name the table's toggle carries, so both
-                        surfaces sound identical to a screen reader. */}
+                    {/* The row's name belongs in the accessible name, which has to tell one
+                        card's toggle from the next, but not on screen. Split this way the
+                        button reads "Show details" and announces "Show details for Harbour
+                        Beauty Lab" — the same name the table's toggle carries. */}
                     {isExpanded ? "Hide details" : "Show details"}
-                    <span className="sr-only"> for {key}</span>
+                    <span className="sr-only"> for {name}</span>
                   </button>
                   {isExpanded && (
                     <div id={detailsId} className="pt-2 text-sm">

@@ -357,6 +357,7 @@ export function PeopleDirectory({
           columns={columns}
           rows={rows}
           rowKey={(user) => user.id}
+          rowLabel={(user) => user.name || user.email || ""}
           renderCard={renderCard}
           breakpoint="container"
           caption="People in this workspace"
