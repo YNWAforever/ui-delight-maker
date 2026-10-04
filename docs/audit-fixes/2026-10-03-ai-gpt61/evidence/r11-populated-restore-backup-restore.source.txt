@@ -1,0 +1,70 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {createHash,randomUUID} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {Pool} from 'pg';
+import {CLIENTOPS_MIGRATION_PATHS} from '../../src/lib/clientops-relationship-schema.ts';
+import {runClientOpsMigrations} from '../../src/server/db/clientops-migrations.ts';
+const folder='.clientops-perf/ai-gpt61-20261003',prefix='r11-populated-restore',container='clientops-approval-review-pg-20261001';
+const source=JSON.parse(readFileSync(folder+'/r11-native-bulk-actor-uat.private.json','utf8'));
+const previous=JSON.parse(readFileSync(folder+'/r11-native-bulk-actor-integrity-result.json','utf8'));
+assert.equal(source.isolationConfirmed,true);assert.equal(source.version,'ai-local-bulk-actor-uat-v1');assert.equal(source.db,previous.targetDatabase);
+assert.equal(previous.originalAll56TablesUnchanged,true);assert.equal(previous.registeredMigrations,26);
+const url=new URL(source.connectionString);assert.equal(url.hostname,'127.0.0.1');assert.equal(url.port,'64409');assert.equal(url.pathname,'/'+source.db);assert.match(source.db,/^clientops_ai_uat_[a-f0-9]{32}$/);
+const c=JSON.parse(execFileSync('docker',['inspect',container],{encoding:'utf8'}))[0];
+assert.equal(c.State.Running,true);assert.equal(c.Config.Image,'pgvector/pgvector:pg17');assert.equal(c.NetworkSettings.Ports['5432/tcp'][0].HostIp,'127.0.0.1');assert.equal(c.NetworkSettings.Ports['5432/tcp'][0].HostPort,'64409');
+const sha=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),builtBinding=JSON.parse(readFileSync('docs/audit-fixes/2026-10-03-ai-gpt61/evidence/r11-native-bulk-actor-delivery-binding-result.json','utf8'));
+assert.equal(execFileSync('git',['rev-parse',sha+':src'],{encoding:'utf8'}).trim(),builtBinding.sourceTrees.src);
+assert.equal(execFileSync('git',['diff','--','src','neon','n8n','scripts','package.json','bun.lock'],{encoding:'utf8'}),'');
+const user=decodeURIComponent(url.username),restoreName='clientops_ai_restore_'+randomUUID().replaceAll('-','');
+assert.match(restoreName,/^clientops_ai_restore_[a-f0-9]{32}$/);
+const original=new Pool({connectionString:url.toString()});const adminUrl=new URL(url);adminUrl.pathname='/postgres';const admin=new Pool({connectionString:adminUrl.toString()});let restored;
+const hash=x=>createHash('sha256').update(typeof x==='string'||Buffer.isBuffer(x)?x:JSON.stringify(x)).digest('hex');
+async function inventory(pool){
+ const tables=(await pool.query("select tablename from pg_tables where schemaname='public' order by tablename")).rows.map(x=>x.tablename),values=[];
+ for(const table of tables){assert.match(table,/^[a-z][a-z0-9_]*$/);const rows=(await pool.query('select to_jsonb(t)::text value from public."'+table+'" t')).rows.map(x=>x.value).sort();values.push({table,rows:rows.length,sha256:hash(rows)});}return values;
+}
+async function schema(pool){
+ const q=sql=>pool.query(sql).then(r=>r.rows);
+ return {
+ columns:await q("select table_name,column_name,data_type,udt_name,is_nullable,column_default from information_schema.columns where table_schema='public' order by table_name,ordinal_position"),
+ constraints:await q("select cl.relname as table_name,co.conname,co.convalidated,pg_get_constraintdef(co.oid) definition from pg_constraint co join pg_class cl on cl.oid=co.conrelid join pg_namespace n on n.oid=cl.relnamespace where n.nspname='public' order by cl.relname,co.conname"),
+ triggers:await q("select cl.relname as table_name,t.tgname,pg_get_triggerdef(t.oid) definition from pg_trigger t join pg_class cl on cl.oid=t.tgrelid join pg_namespace n on n.oid=cl.relnamespace where n.nspname='public' and not t.tgisinternal order by cl.relname,t.tgname"),
+ indexes:await q("select tablename,indexname,indexdef from pg_indexes where schemaname='public' order by tablename,indexname"),
+ functions:await q("select p.proname,pg_get_function_identity_arguments(p.oid) arguments,pg_get_functiondef(p.oid) definition from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind in ('f','p') and not exists(select 1 from pg_depend d where d.objid=p.oid and d.deptype='e') order by p.proname,arguments"),
+ extensions:await q("select extname,extversion from pg_extension order by extname")
+ };
+}
+try{
+ assert.equal(Number((await original.query('select count(*) from pg_stat_activity where datname=current_database() and pid<>pg_backend_pid()')).rows[0].count),0,'Source clone must be quiescent');
+ const before=await inventory(original),schemaBefore=await schema(original);
+ assert.equal(before.length,56);assert.ok(before.find(t=>t.table==='agent_runs').rows>=153);assert.equal(before.find(t=>t.table==='command_receipts').rows,previous.deltas.find(t=>t.table==='command_receipts').after);
+ const model=schemaBefore.columns.find(x=>x.table_name==='agent_runs'&&x.column_name==='model_used');assert.equal(model.is_nullable,'YES');assert.equal(model.column_default,null);
+ const ledger=await original.query('select count(*) from clientops_schema_migrations');assert.equal(Number(ledger.rows[0].count),26);
+ const paths={dump:folder+'/'+prefix+'-backup.private.dump',sourceInventory:folder+'/'+prefix+'-source-inventory.private.json',config:folder+'/'+prefix+'-uat.private.json'};
+ writeFileSync(paths.sourceInventory,JSON.stringify({sha,database:source.db,tables:before,schema:schemaBefore},null,2));
+ writeFileSync(folder+'/'+prefix+'-checkpoint.private.json',JSON.stringify({sha,sourceDatabase:source.db,restoredDatabase:restoreName,phase:'before-dump',productionAccess:false},null,2));
+ const d=Bun.spawn(['docker','exec',container,'pg_dump','-U',user,'-d',source.db,'--format=custom','--no-owner','--no-acl'],{stdout:Bun.file(paths.dump),stderr:Bun.file(folder+'/'+prefix+'-dump.stderr.private.log')});
+ assert.equal(await d.exited,0,'Synthetic pg_dump failed');
+ await admin.query('create database "'+restoreName+'"');
+ const r=Bun.spawn(['docker','exec','-i',container,'pg_restore','-U',user,'-d',restoreName,'--exit-on-error','--no-owner','--no-acl'],{stdin:Bun.file(paths.dump),stdout:Bun.file(folder+'/'+prefix+'-restore.stdout.private.log'),stderr:Bun.file(folder+'/'+prefix+'-restore.stderr.private.log')});
+ assert.equal(await r.exited,0,'Synthetic pg_restore failed');
+ url.pathname='/'+restoreName;restored=new Pool({connectionString:url.toString()});
+ assert.deepEqual(await inventory(restored),before);assert.deepEqual(await schema(restored),schemaBefore);
+ const immutable=[];
+ for(const statement of [
+ ['agent_policy_versions','update agent_policy_versions set status=status where id=(select id from agent_policy_versions limit 1)'],
+ ['agent_policy_versions','delete from agent_policy_versions where id=(select id from agent_policy_versions limit 1)']
+ ]){
+  let sqlstate=null;try{await restored.query(statement[1]);}catch(e){sqlstate=e.code;}
+  assert.equal(sqlstate,'P0001','Restored append-only guard must reject a real UPDATE');
+  immutable.push({table:statement[0],operation:statement[1].startsWith('delete')?'DELETE':'UPDATE',sqlstate,denied:true});
+ }
+ assert.deepEqual(await inventory(restored),before);
+ const replay=await runClientOpsMigrations(restored,CLIENTOPS_MIGRATION_PATHS.map(path=>({path,sql:readFileSync(path,'utf8')})));
+ assert.deepEqual(replay.applied,[]);assert.deepEqual(replay.skipped,CLIENTOPS_MIGRATION_PATHS);
+ assert.deepEqual(await inventory(restored),before);assert.deepEqual(await inventory(original),before);assert.deepEqual(await schema(original),schemaBefore);
+ writeFileSync(paths.config,JSON.stringify({...source,db:restoreName,connectionString:url.toString(),version:'ai-local-populated-restore-v1',sourceRecord:{kind:'owned synthetic logical backup and restore',sourceDatabase:source.db,backupSha256:hash(readFileSync(paths.dump)),productionAccess:false}},null,2));
+ const receipt={checkedAt:new Date().toISOString(),sourceSha:sha,applicationCodeSha:builtBinding.codeVerifiedCommit,scope:'populated synthetic local schema026 backup/restore; not production/PITR',sourceDatabase:source.db,restoredDatabase:restoreName,loopbackOnly:true,image:c.Config.Image,commands:['pg_dump --format=custom --no-owner --no-acl','pg_restore --exit-on-error --no-owner --no-acl'],dumpExit:0,restoreExit:0,backupSha256:hash(readFileSync(paths.dump)),backupBytes:readFileSync(paths.dump).length,tableCount:before.length,rows:before.reduce((n,t)=>n+t.rows,0),allTableHashesEqual:true,allSourceTablesUnchanged:true,schemaDefinitionHashesEqual:true,schemaSha256:hash(schemaBefore),schemaObjects:{columns:schemaBefore.columns.length,constraints:schemaBefore.constraints.length,triggers:schemaBefore.triggers.length,indexes:schemaBefore.indexes.length,functions:schemaBefore.functions.length,extensions:schemaBefore.extensions.length},modelColumn:{nullable:true,default:null},appendOnlyGuards:immutable,migrationReplay:{applied:[],skipped:replay.skipped.length},inventory:before,seedExecuted:false,restoredDatabaseRetained:true,productionAccess:false,productionPitr:'blocked: operator capability/backup/window evidence missing',rollback:'preserve001-026/unknownNULL/policies/history/durable intents and receipts; compatible source only'};
+ writeFileSync(folder+'/'+prefix+'-result.json',JSON.stringify(receipt,null,2));console.log(JSON.stringify({...receipt,inventory:undefined}));
+}finally{await original.end();await restored?.end();await admin.end();}

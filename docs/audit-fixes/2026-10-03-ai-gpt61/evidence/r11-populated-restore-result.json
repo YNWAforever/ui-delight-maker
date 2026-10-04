@@ -1,0 +1,341 @@
+{
+  "checkedAt": "2026-10-04T05:38:23.984Z",
+  "sourceSha": "b7554ef3fd658c65130dd2b9f8ec7597dd09cf49",
+  "applicationCodeSha": "6d5c43646fb46433afa647ec3f698eff341bd332",
+  "scope": "populated synthetic local schema026 backup/restore; not production/PITR",
+  "sourceDatabase": "clientops_ai_uat_996bbea11e0e4d628b03e364eac75859",
+  "restoredDatabase": "clientops_ai_restore_bd38179e3bb64cfabecfa1065b00561f",
+  "loopbackOnly": true,
+  "image": "pgvector/pgvector:pg17",
+  "commands": [
+    "pg_dump --format=custom --no-owner --no-acl",
+    "pg_restore --exit-on-error --no-owner --no-acl"
+  ],
+  "dumpExit": 0,
+  "restoreExit": 0,
+  "backupSha256": "6be7388ab4357e1a23738c888381a5cb9271517bdc6e428b4a7e56b7ee662a46",
+  "backupBytes": 309077,
+  "tableCount": 56,
+  "rows": 669,
+  "allTableHashesEqual": true,
+  "allSourceTablesUnchanged": true,
+  "schemaDefinitionHashesEqual": true,
+  "schemaSha256": "20685e1a4d09285eae1be682dac421943c2fc26077ff9f675d6c56130ccda32e",
+  "schemaObjects": {
+    "columns": 729,
+    "constraints": 350,
+    "triggers": 32,
+    "indexes": 194,
+    "functions": 11,
+    "extensions": 3
+  },
+  "modelColumn": {
+    "nullable": true,
+    "default": null
+  },
+  "appendOnlyGuards": [
+    {
+      "table": "agent_policy_versions",
+      "operation": "UPDATE",
+      "sqlstate": "P0001",
+      "denied": true
+    },
+    {
+      "table": "agent_policy_versions",
+      "operation": "DELETE",
+      "sqlstate": "P0001",
+      "denied": true
+    }
+  ],
+  "migrationReplay": {
+    "applied": [],
+    "skipped": 26
+  },
+  "inventory": [
+    {
+      "table": "access_requests",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "account_contacts",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "accounts",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "activity_logs",
+      "rows": 104,
+      "sha256": "80181c02837324bde510246be9650f6404b04dbbae355ef83c2dad8b2340e63c"
+    },
+    {
+      "table": "admin_audit_logs",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "agent_policy_versions",
+      "rows": 8,
+      "sha256": "78a940634b3ade91be4d2ce52f3dcbfe1f3582df26dec0122b77e29f15a3ce58"
+    },
+    {
+      "table": "agent_runs",
+      "rows": 153,
+      "sha256": "46fc48ff4293be35b3c8d3c78ddca6b5e3fe5ee369feb163eaf80410583f276e"
+    },
+    {
+      "table": "agent_tool_calls",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "approval_message_handoffs",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "automation_playbooks",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "automation_runs",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "bulk_operation_items",
+      "rows": 119,
+      "sha256": "e00503e06757cdea51edbb4160c7c8edc1ab3cdcc9816f021d21f67437cbe55d"
+    },
+    {
+      "table": "bulk_operations",
+      "rows": 17,
+      "sha256": "ab3f0e602eb230c1f0ac19e50e54925a79d6ed29a3eb32d4ef2ce3b71d02678e"
+    },
+    {
+      "table": "campaign_members",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "campaigns",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "channel_identities",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "client_contacts",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "clientops_schema_migrations",
+      "rows": 26,
+      "sha256": "eaafb3ffbd7653af6a1075020f4494666af0cf7b058e489ae0c44615e46bbfce"
+    },
+    {
+      "table": "clients",
+      "rows": 1,
+      "sha256": "e2fbfc75025189fbbd2c36a29b2bc173a73cb0d0d087dff132ad15b031cf998b"
+    },
+    {
+      "table": "command_receipts",
+      "rows": 102,
+      "sha256": "9d22f26e94658e173e241c302a038d255564d70717350f7b6dff0c5f8e6b828d"
+    },
+    {
+      "table": "customer_success_profiles",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "deals",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "departments",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "engagement_events",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "engagements",
+      "rows": 1,
+      "sha256": "92a9827bee933b29efe6fc8f52367be9588840deabc1037a2a556bf24e55a3bb"
+    },
+    {
+      "table": "human_approvals",
+      "rows": 3,
+      "sha256": "61b4c0d72af9e0b19328c23552c31b2a088f7fd6fb55d2ef999a58b13c15138f"
+    },
+    {
+      "table": "import_identity_keys",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "import_session_rows",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "import_sessions",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "job_sheet_activity",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "job_sheet_portions",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "job_sheets",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "leads",
+      "rows": 121,
+      "sha256": "1bcab2aa0b5a6abe5536a5d4a1bac1d973dc641b26e3ee062209a529c8589a6a"
+    },
+    {
+      "table": "notifications",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "pdf_templates",
+      "rows": 2,
+      "sha256": "81db86e4eff1ffe009e93ea411e8c9c45e1ff298b941fea570bac0faf89d73b6"
+    },
+    {
+      "table": "permission_overrides",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "pricing_templates",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "products",
+      "rows": 1,
+      "sha256": "741773750d827f4935f207a6898dfbbb2874724b1cfe310a58fea32c148b42f4"
+    },
+    {
+      "table": "profiles",
+      "rows": 8,
+      "sha256": "7e5fbd0c4dceafbda797ab2176c98e9d62ddb47e57ead046de46cce9f5aaa0e5"
+    },
+    {
+      "table": "projects",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "quote_line_items",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "quote_templates",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "quote_versions",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "quotes",
+      "rows": 1,
+      "sha256": "588fb7ba06b1f37218ecdf0df58435b25385f5d6ab5dd04e225f566ed2353a41"
+    },
+    {
+      "table": "relationship_signals",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "retention_sweep_items",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "retention_sweeps",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "success_touchpoints",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "tasks",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "team_memberships",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "teams",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "touchpoints",
+      "rows": 2,
+      "sha256": "506c48afaabaae20e9e01e3f5cd7365a0f6dc6b96413dde01ccb4d3d639323ae"
+    },
+    {
+      "table": "user_invitations",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "work_delegations",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "workspace_favorites",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "table": "workspace_views",
+      "rows": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  ],
+  "seedExecuted": false,
+  "restoredDatabaseRetained": true,
+  "productionAccess": false,
+  "productionPitr": "blocked: operator capability/backup/window evidence missing",
+  "rollback": "preserve001-026/unknownNULL/policies/history/durable intents and receipts; compatible source only"
+}

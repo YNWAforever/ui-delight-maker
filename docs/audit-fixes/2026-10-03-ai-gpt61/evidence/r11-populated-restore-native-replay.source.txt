@@ -1,0 +1,58 @@
+import {chromium} from 'playwright';
+import {Pool} from 'pg';
+import {readFileSync,writeFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+const f='.clientops-perf/ai-gpt61-20261003',prefix='r11-populated-restore';
+const fx=JSON.parse(readFileSync(f+'/'+prefix+'-uat.private.json','utf8')),rt=JSON.parse(readFileSync(f+'/'+prefix+'-runtime-result.json','utf8')),backup=JSON.parse(readFileSync(f+'/'+prefix+'-result.json','utf8'));
+const binding=JSON.parse(readFileSync('docs/audit-fixes/2026-10-03-ai-gpt61/evidence/r11-native-bulk-actor-delivery-binding-result.json','utf8'));
+assert.equal(fx.isolationConfirmed,true);assert.equal(fx.version,'ai-local-populated-restore-v1');assert.equal(rt.database,fx.db);assert.equal(rt.sha,backup.sourceSha);
+assert.equal(rt.workingSourceDiffSha256,'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');assert.equal(rt.serverEntrySha256,binding.serverEntrySha256);
+assert.equal(rt.providerConfigurationAbsent,true);assert.equal(new URL(rt.baseUrl).hostname,'localhost');const u=new URL(fx.connectionString);assert.equal(u.hostname,'127.0.0.1');assert.equal(u.port,'64409');assert.equal(u.pathname,'/'+rt.database);assert.match(fx.db,/^clientops_ai_restore_[a-f0-9]{32}$/);
+const pool=new Pool({connectionString:u.toString()}),browser=await chromium.launch({headless:true}),checks=[],identities=[],pages={},errors=[],replays=[];
+const hash=x=>createHash('sha256').update(typeof x==='string'?x:JSON.stringify(x)).digest('hex');let stage='start';
+function save(success=false,error=null){writeFileSync(f+'/'+prefix+'-native-result.json',JSON.stringify({checkedAt:new Date().toISOString(),sourceSha:rt.sha,applicationCodeSha:binding.codeVerifiedCommit,serverEntrySha256:rt.serverEntrySha256,database:fx.db,fixtureVersion:fx.version,backupSha256:backup.backupSha256,success,stage,checks,identities,replays,pageErrors:errors,error,actualSSR:true,actualNeonDriver:true,actualLoopbackPostgres17:true,actualProviderCalls:0,productionAccess:false,realProviderAcceptance:false,spaAccountHandoff:'not-tested'},null,2));}
+function check(name,details={}){checks.push({name,passed:true,...details});save();console.log(JSON.stringify({check:name,passed:true}));}
+async function inventory(){const values=[];for(const b of backup.inventory){assert.match(b.table,/^[a-z][a-z0-9_]*$/);const rows=(await pool.query('select to_jsonb(t)::text value from public."'+b.table+'" t')).rows.map(x=>x.value).sort();values.push({table:b.table,rows:rows.length,sha256:hash(rows)});}return values;}
+async function replay(page,c,body=c.body){
+ const original=new URL(c.url);assert.equal(original.hostname,'localhost');assert.ok(original.pathname.startsWith('/_serverFn/'));
+ const keys=Object.keys(c.headers);assert.ok(keys.every(k=>k==='content-type'||k.startsWith('x-tsr-')));
+ return page.evaluate(async({url,headers,body})=>{const r=await fetch(url,{method:'POST',headers,body});return{status:r.status,text:await r.text()};},{url:rt.baseUrl+original.pathname+original.search,headers:c.headers,body});
+}
+try{
+ assert.deepEqual(await inventory(),backup.inventory);check('all56 restored table hashes match the logical backup before native reads');
+ for(const role of ['super_admin','admin','manager','sales','client_success','accounting','read_only']){
+  stage='identity-'+role;const state=JSON.parse(readFileSync('.clientops-perf/uat/sessions/'+role+'.json','utf8'));state.cookies=state.cookies.map(c=>({...c,domain:'localhost'}));state.origins=[];
+  const ctx=await browser.newContext({storageState:state,viewport:{width:1440,height:1000}}),page=await ctx.newPage();pages[role]=page;page.on('pageerror',e=>errors.push({role,name:e.name}));
+  const response=await ctx.request.get(rt.baseUrl+'/api/auth/get-session');assert.equal(response.status(),200);
+  const s=await response.json(),user=s.user??s.data?.user,session=s.session??s.data?.session,a=fx.accounts.find(x=>x.role===role);assert.equal(user.id,a.authUserId);assert.ok(new Date(session.expiresAt).getTime()>Date.now());
+  const persisted=(await pool.query('select role,status from profiles where id=$1',[a.profileId])).rows[0];assert.equal(persisted.role,role);assert.equal(persisted.status,'active');
+  identities.push({role,userSha256:hash(user.id),sessionSha256:hash(session.id),cookiesSha256:hash(state.cookies),live:true,persistedRoleMatches:true});
+  check(role+' distinct existing live Auth session maps to the restored role');
+  assert.equal((await page.goto(rt.baseUrl+'/agents',{waitUntil:'networkidle',timeout:90000})).status(),200);
+  if(role==='accounting'){await page.getByText('AI Ops did not load',{exact:true}).waitFor();assert.equal(await page.getByRole('region',{name:'Complete AI run queue',exact:true}).count(),0);}
+  else{await page.getByRole('region',{name:'Complete AI run queue',exact:true}).waitFor();if(role==='read_only')assert.equal(await page.getByRole('button',{name:/Preview .* selected/}).count(),0);}
+  check(role+' actual restored candidate route renders its allowed or data-free denied state');
+ }
+ for(const key of ['userSha256','sessionSha256','cookiesSha256'])assert.equal(new Set(identities.map(i=>i[key])).size,7);check('seven separate actual identities/sessions/cookie sets; no copied super_admin state');
+ const captures=JSON.parse(readFileSync(f+'/r11-native-bulk-actor-requests.private.json','utf8'));
+ const operations=(await pool.query('select id,actor_profile_id,commit_key,state from bulk_operations where commit_key is not null order by created_at,id')).rows;
+ const matched=operations.map(o=>({o,c:captures.find(c=>c.body?.includes(o.id)&&c.body?.includes(o.commit_key))})).filter(x=>x.c);
+ assert.equal(matched.length,11);assert.ok(matched.every(x=>x.o.state==='completed'));const before=await inventory();let foreignControls=0,conflicts=0;
+ for(const {o,c} of matched){
+  const role=fx.accounts.find(a=>a.profileId===o.actor_profile_id).role;stage='original-replay-'+role;
+  const result=await replay(pages[role],c);assert.equal(result.status,200);assert.ok(result.text.includes(o.id)&&result.text.includes('completed'));
+  const current=await inventory();assert.deepEqual(current,before);
+  replays.push({role,operationIdSha256:hash(o.id),originalBodySha256:hash(c.body),originalKeySha256:hash(o.commit_key),status:200,additionalWrites:0});
+  check('restored '+role+' original operation/key replays its durable completed receipt with zero writes');
+  const otherRole=role==='manager'?'admin':'manager';const denied=await replay(pages[otherRole],c);assert.equal(denied.status,403);assert.deepEqual(await inventory(),before);foreignControls++;
+  check('another live actor cannot execute the restored '+role+' intent: native403 and zero writes');
+  const parsed=JSON.parse(c.body);let changed=0;
+  function changeReason(value){if(!value||typeof value!=='object')return;for(const [key,item]of Object.entries(value)){if(typeof item==='string'&&item.startsWith('SYNTHETIC ')){value[key]=item+' altered after synthetic restore';changed++;}else changeReason(item);}}
+  changeReason(parsed);assert.equal(changed,1);const conflict=await replay(pages[role],c,JSON.stringify(parsed));assert.equal(conflict.status,409);assert.deepEqual(await inventory(),before);conflicts++;
+  check('restored original key with changed reason conflicts409 and leaves all56 tables unchanged');
+ }
+ const sample=matched[0];for(const role of ['read_only','accounting']){stage='denied-'+role;const result=await replay(pages[role],sample.c);assert.equal(result.status,403);assert.deepEqual(await inventory(),before);check(role+' same-origin replay denied403 with no restored-data writes');}
+ assert.equal(errors.length,0);assert.deepEqual(await inventory(),backup.inventory);check('all56 restored tables remain hash-identical after11 owner replays/11 foreign denies/11 conflicts/2 role denies; zero uncaught errors');
+ assert.equal(foreignControls,11);assert.equal(conflicts,11);save(true);console.log(JSON.stringify({success:true,checks:checks.length,roles:identities.length,originalIntentReplays:replays.length,foreignDenials:foreignControls,changedReasonConflicts:conflicts,additionalWrites:0,failed:0,skipped:0}));
+}catch(e){save(false,{name:e.name,code:e.code??null});console.log(JSON.stringify({success:false,stage,checks:checks.length,errorName:e.name,errorCode:e.code??null}));process.exitCode=1;}finally{await browser.close();await pool.end();}

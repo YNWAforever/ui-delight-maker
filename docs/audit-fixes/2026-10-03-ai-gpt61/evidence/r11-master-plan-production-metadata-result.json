@@ -1,0 +1,24 @@
+{
+  "checkedAt": "2026-10-04T05:55:05Z",
+  "scope": "Vercel project/deployment metadata read only; no production database access",
+  "projectId": "prj_28RsIf31nvcD0YS3UIQqdnvJlHki",
+  "latestReady": {
+    "id": "dpl_2XjJ6dX9xPT4uT2LCtQt2GujiDEY",
+    "sha": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+    "state": "READY",
+    "target": "production"
+  },
+  "latestAttempt": {
+    "id": "dpl_3P8WRkb2T2niuoALbsvqW88VAB9W",
+    "sha": "953ec0a36806d4362fad9e2b2d8cd17a49adbb26",
+    "state": "CANCELED",
+    "target": "production"
+  },
+  "productionHoldCurrent": "not-reported by connected metadata; previous observation stays historical",
+  "productionSchemaLedger": "blocked: operator evidence",
+  "nativeWorkerVersions": "blocked: operator evidence",
+  "productionMutations": 0,
+  "providerCalls": 0,
+  "cloudActivation": false,
+  "releaseDecision": "NO-GO"
+}

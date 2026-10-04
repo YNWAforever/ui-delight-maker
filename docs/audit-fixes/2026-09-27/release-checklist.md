@@ -151,3 +151,9 @@ The AI candidate now has registered migrations001–026, including026 nullable/n
 ## 2026-10-04 bulk actor lifetime follow-up
 
 Source6d5c436 and [current AI ledger](../2026-10-03-ai-gpt61/execution-ledger.md) retain UI reason/preview/intent/late receipts within each actor lifetime. Original durable operation/key is preserved for its owner; do not transfer or regenerate it on account context change. Local target70/0skip, native41/seven distinct sessions and source CI2882/0skip verify their separate scopes; actual SPA account-handoff/manual AT/provider/cloud gates remain not-tested/blocked. Keep001–026/unknownNULL/append-only policies/all receipt/history facts in compatible rollback. If necessary disable affected bulk entrypoint and deploy a reviewed correction retaining actor isolation. **NO-GO**, no merge/production release/migration/customer/provider send. Prior checkpoints keep their original dates and scope.
+
+## 2026-10-04 AI master-plan restore follow-up
+
+Current local schema026/populated backup and restore are verified at unchanged application6d5c436/executionb7554ef:56tables/669synthetic rows,18unknownNULL/102command receipts/17bulk operations/119items and2sequences preserved; policy UPDATE/DELETE denied;26migration replay0/no seed.52native seven-role checks/0fail/0skip prove original-key durable replay/foreign403/changed-reason409 with zero added writes. See [master plan check](../2026-10-03-ai-gpt61/master-plan-check.md) and [binding](../2026-10-03-ai-gpt61/evidence/r11-populated-restore-delivery-binding-result.json). Old schema25rehearsal remains historical.
+
+Production/PITR/cloud worker/true provider/owner dispositions/performance/manual AT/SPA login/release authority/independent review remain blocked/not-tested. Retain all prior hard gates and001–026/unknownNULL/history/durable receipts. **NO-GO**; no merge/production deployment/migration/data mutation or customer/provider send.

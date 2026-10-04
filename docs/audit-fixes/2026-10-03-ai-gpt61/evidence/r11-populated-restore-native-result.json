@@ -1,0 +1,378 @@
+{
+  "checkedAt": "2026-10-04T05:45:05.352Z",
+  "sourceSha": "b7554ef3fd658c65130dd2b9f8ec7597dd09cf49",
+  "applicationCodeSha": "6d5c43646fb46433afa647ec3f698eff341bd332",
+  "serverEntrySha256": "191fd1fae147951144d5436e99d3aad3a694c8c3b756383934ca22f7f2492cdc",
+  "database": "clientops_ai_restore_bd38179e3bb64cfabecfa1065b00561f",
+  "fixtureVersion": "ai-local-populated-restore-v1",
+  "backupSha256": "6be7388ab4357e1a23738c888381a5cb9271517bdc6e428b4a7e56b7ee662a46",
+  "success": true,
+  "stage": "denied-accounting",
+  "checks": [
+    {
+      "name": "all56 restored table hashes match the logical backup before native reads",
+      "passed": true
+    },
+    {
+      "name": "super_admin distinct existing live Auth session maps to the restored role",
+      "passed": true
+    },
+    {
+      "name": "super_admin actual restored candidate route renders its allowed or data-free denied state",
+      "passed": true
+    },
+    {
+      "name": "admin distinct existing live Auth session maps to the restored role",
+      "passed": true
+    },
+    {
+      "name": "admin actual restored candidate route renders its allowed or data-free denied state",
+      "passed": true
+    },
+    {
+      "name": "manager distinct existing live Auth session maps to the restored role",
+      "passed": true
+    },
+    {
+      "name": "manager actual restored candidate route renders its allowed or data-free denied state",
+      "passed": true
+    },
+    {
+      "name": "sales distinct existing live Auth session maps to the restored role",
+      "passed": true
+    },
+    {
+      "name": "sales actual restored candidate route renders its allowed or data-free denied state",
+      "passed": true
+    },
+    {
+      "name": "client_success distinct existing live Auth session maps to the restored role",
+      "passed": true
+    },
+    {
+      "name": "client_success actual restored candidate route renders its allowed or data-free denied state",
+      "passed": true
+    },
+    {
+      "name": "accounting distinct existing live Auth session maps to the restored role",
+      "passed": true
+    },
+    {
+      "name": "accounting actual restored candidate route renders its allowed or data-free denied state",
+      "passed": true
+    },
+    {
+      "name": "read_only distinct existing live Auth session maps to the restored role",
+      "passed": true
+    },
+    {
+      "name": "read_only actual restored candidate route renders its allowed or data-free denied state",
+      "passed": true
+    },
+    {
+      "name": "seven separate actual identities/sessions/cookie sets; no copied super_admin state",
+      "passed": true
+    },
+    {
+      "name": "restored super_admin original operation/key replays its durable completed receipt with zero writes",
+      "passed": true
+    },
+    {
+      "name": "another live actor cannot execute the restored super_admin intent: native403 and zero writes",
+      "passed": true
+    },
+    {
+      "name": "restored original key with changed reason conflicts409 and leaves all56 tables unchanged",
+      "passed": true
+    },
+    {
+      "name": "restored admin original operation/key replays its durable completed receipt with zero writes",
+      "passed": true
+    },
+    {
+      "name": "another live actor cannot execute the restored admin intent: native403 and zero writes",
+      "passed": true
+    },
+    {
+      "name": "restored original key with changed reason conflicts409 and leaves all56 tables unchanged",
+      "passed": true
+    },
+    {
+      "name": "restored manager original operation/key replays its durable completed receipt with zero writes",
+      "passed": true
+    },
+    {
+      "name": "another live actor cannot execute the restored manager intent: native403 and zero writes",
+      "passed": true
+    },
+    {
+      "name": "restored original key with changed reason conflicts409 and leaves all56 tables unchanged",
+      "passed": true
+    },
+    {
+      "name": "restored sales original operation/key replays its durable completed receipt with zero writes",
+      "passed": true
+    },
+    {
+      "name": "another live actor cannot execute the restored sales intent: native403 and zero writes",
+      "passed": true
+    },
+    {
+      "name": "restored original key with changed reason conflicts409 and leaves all56 tables unchanged",
+      "passed": true
+    },
+    {
+      "name": "restored client_success original operation/key replays its durable completed receipt with zero writes",
+      "passed": true
+    },
+    {
+      "name": "another live actor cannot execute the restored client_success intent: native403 and zero writes",
+      "passed": true
+    },
+    {
+      "name": "restored original key with changed reason conflicts409 and leaves all56 tables unchanged",
+      "passed": true
+    },
+    {
+      "name": "restored admin original operation/key replays its durable completed receipt with zero writes",
+      "passed": true
+    },
+    {
+      "name": "another live actor cannot execute the restored admin intent: native403 and zero writes",
+      "passed": true
+    },
+    {
+      "name": "restored original key with changed reason conflicts409 and leaves all56 tables unchanged",
+      "passed": true
+    },
+    {
+      "name": "restored admin original operation/key replays its durable completed receipt with zero writes",
+      "passed": true
+    },
+    {
+      "name": "another live actor cannot execute the restored admin intent: native403 and zero writes",
+      "passed": true
+    },
+    {
+      "name": "restored original key with changed reason conflicts409 and leaves all56 tables unchanged",
+      "passed": true
+    },
+    {
+      "name": "restored admin original operation/key replays its durable completed receipt with zero writes",
+      "passed": true
+    },
+    {
+      "name": "another live actor cannot execute the restored admin intent: native403 and zero writes",
+      "passed": true
+    },
+    {
+      "name": "restored original key with changed reason conflicts409 and leaves all56 tables unchanged",
+      "passed": true
+    },
+    {
+      "name": "restored manager original operation/key replays its durable completed receipt with zero writes",
+      "passed": true
+    },
+    {
+      "name": "another live actor cannot execute the restored manager intent: native403 and zero writes",
+      "passed": true
+    },
+    {
+      "name": "restored original key with changed reason conflicts409 and leaves all56 tables unchanged",
+      "passed": true
+    },
+    {
+      "name": "restored admin original operation/key replays its durable completed receipt with zero writes",
+      "passed": true
+    },
+    {
+      "name": "another live actor cannot execute the restored admin intent: native403 and zero writes",
+      "passed": true
+    },
+    {
+      "name": "restored original key with changed reason conflicts409 and leaves all56 tables unchanged",
+      "passed": true
+    },
+    {
+      "name": "restored super_admin original operation/key replays its durable completed receipt with zero writes",
+      "passed": true
+    },
+    {
+      "name": "another live actor cannot execute the restored super_admin intent: native403 and zero writes",
+      "passed": true
+    },
+    {
+      "name": "restored original key with changed reason conflicts409 and leaves all56 tables unchanged",
+      "passed": true
+    },
+    {
+      "name": "read_only same-origin replay denied403 with no restored-data writes",
+      "passed": true
+    },
+    {
+      "name": "accounting same-origin replay denied403 with no restored-data writes",
+      "passed": true
+    },
+    {
+      "name": "all56 restored tables remain hash-identical after11 owner replays/11 foreign denies/11 conflicts/2 role denies; zero uncaught errors",
+      "passed": true
+    }
+  ],
+  "identities": [
+    {
+      "role": "super_admin",
+      "userSha256": "2e826afbc440c3626a35f510b27c62dfe97a4cf4087ce7bce5171444e4f6a10f",
+      "sessionSha256": "558ceadf8fe6bcab2569f8754836c3af25695a25f8ac52c28583415111a781c2",
+      "cookiesSha256": "3ad24046b0be0904279be342f85fba3f905111f359565753bfaf28483b50fafc",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "admin",
+      "userSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "sessionSha256": "7b93f6916940fc215b90c1623bd5ab426eb96fa3b4f00f49597af14dd8731c93",
+      "cookiesSha256": "3a089499864dc4975a3eabc2cb538b4152f903ab24bdab97f98858af36810abd",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "manager",
+      "userSha256": "88a8c8cdaf3230e0b257c07071d13cad63a259b16f13ca290a1cb01f9ae8799b",
+      "sessionSha256": "0961759d930d6cdcce225e241e95b1a27ae60d2136750044a7eb24eb8f6f1cc9",
+      "cookiesSha256": "a4c3f9f5f63b5d347b9fdd228ac67fb9d9fa3ff2c769c1af2a7fd686b9906372",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "sales",
+      "userSha256": "2e9ac9f96d4a9c1a8a5f8c5c7fb7868a71018f7fbff18d8ba1933d585c2c404a",
+      "sessionSha256": "667b589e00957902c7aee72d00d7db6d92be65f34cf70563600fa807829b3171",
+      "cookiesSha256": "7da674b235ef93337cebb63275241cb13fef4188b51326c34bb3e979e1eec866",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "client_success",
+      "userSha256": "abf1d43bcd802e6970d36f832ce785a036d7e947feef56054b54b10e3642298d",
+      "sessionSha256": "10e01fb86f8c1587480705e7e1fe7d3080c3cbd187eed7c93bf114c7cdbae624",
+      "cookiesSha256": "bca7209b5e11bbb178f06b0025df86f99b984ccac6012329330cac1f639457e3",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "accounting",
+      "userSha256": "5bc88a9c60cb5e3d014a51eee07126e6adc00ec54681efaa531b50ba90c67fbb",
+      "sessionSha256": "53c77aaaff970a04349d056fab770c2a0b9438e873af00ff0dd5b8f27aba5ebb",
+      "cookiesSha256": "c19430236b29ec7eb321b34b92131fd5c13b6457fba6c0bd284cc94ea3c54b95",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "read_only",
+      "userSha256": "b6b6e8a481e03b614e6890a0668fe1fed886b0da3fddc389af96210ceec975ae",
+      "sessionSha256": "9d5a6df8b5bd04a23ab5177b09b9152e959fb8cd048ad5425a12a2fbce85c241",
+      "cookiesSha256": "0e11e7fe692dccd4d04bde9f7e07fe06b4c24a3fe2c03f16aa900212c392f3ac",
+      "live": true,
+      "persistedRoleMatches": true
+    }
+  ],
+  "replays": [
+    {
+      "role": "super_admin",
+      "operationIdSha256": "90cd2722bde8acbbbb381dc0e0b53d0e2706f7e508e7796dabdbe5579e377010",
+      "originalBodySha256": "896059c60c32921492a6bf13e9628f16dc78ae185e7ca9c740e454fc7b089e4e",
+      "originalKeySha256": "72e452eddbf9a7c48c893ebd45ffef8b507297ba835ae03faf7e0d244f42ba65",
+      "status": 200,
+      "additionalWrites": 0
+    },
+    {
+      "role": "admin",
+      "operationIdSha256": "55f2681e7ab66bfaa982a80349037e3067c445eda24da33cdd7b78325425a213",
+      "originalBodySha256": "d7e0dcd8c4a3553a73db3c7554d22032bbd4f4b613224a00b2334da09a84cae0",
+      "originalKeySha256": "583876d4c57effe64c5eb8290f67d584b02da1c13b76c3ad114982d3a95ec3a7",
+      "status": 200,
+      "additionalWrites": 0
+    },
+    {
+      "role": "manager",
+      "operationIdSha256": "d614044357ca056a6f1e905a64cffd100666d95e5343a732fa4bb909dd892c0e",
+      "originalBodySha256": "b0d30a95f6866bbb0f095b7b758c69fc52388dd9d8c0ad6a5ebd84233ba0850a",
+      "originalKeySha256": "faafc7ccc6c231a822a9b808be7c0a09cb7b0e807aceb71e15bd430e132bc4b3",
+      "status": 200,
+      "additionalWrites": 0
+    },
+    {
+      "role": "sales",
+      "operationIdSha256": "31be8144cdd04e0eb38ba79b611467bcc13e03321baeb9be8ccdb4da32b50fc8",
+      "originalBodySha256": "7a5de8292f2cd89ee40d24a374fe1d9d16718909da2ee1e1c1afb76b56d37149",
+      "originalKeySha256": "b097cf55a6d7662cd127fc5401d99656599c03d8dcec9f1c0ba4502b7bb4486a",
+      "status": 200,
+      "additionalWrites": 0
+    },
+    {
+      "role": "client_success",
+      "operationIdSha256": "a9efb70a319066a0276ffe1a3953ad9ab47554fba687026814264497f4515664",
+      "originalBodySha256": "8184c5f985fa7ad9a4935540149670fa3d38c5c0dc6456462b7765a00090f250",
+      "originalKeySha256": "21d5003e0f2dcfb842c4d1cbdba66c946d3edfe95af6e2cf4edcc3cd67015833",
+      "status": 200,
+      "additionalWrites": 0
+    },
+    {
+      "role": "admin",
+      "operationIdSha256": "203f67ce716b0ea8a5dbf5bd71c61f45d0123d7186145fedf98e1a77c70c6711",
+      "originalBodySha256": "76ac5a32075d3c5cc4795f1846370291fed129f1dd0a20df13f382a81645a623",
+      "originalKeySha256": "61e18c3fde842af524c2d69ae591aa430ace65f1178ccc9344ac84a7b0a2401e",
+      "status": 200,
+      "additionalWrites": 0
+    },
+    {
+      "role": "admin",
+      "operationIdSha256": "40295dc9ab218048117e3d60e3a36b1761f3185344a41327837efdf9f1d91ae5",
+      "originalBodySha256": "0aad8484b8f735e40c77406a5203c3c58f65ce9b61b1392567d3675ec4954352",
+      "originalKeySha256": "eca82a60a362124fea6ef9cb4eefb0e500f711b10756c2bdabf100fe2e17832e",
+      "status": 200,
+      "additionalWrites": 0
+    },
+    {
+      "role": "admin",
+      "operationIdSha256": "cae70cdcec32546e1d0fed5504357e047bd1174452de66629b746130a9109ccf",
+      "originalBodySha256": "501f5a726808294511802540491126f773e362057f68f6bbc4ca0488356237b0",
+      "originalKeySha256": "55fb6ee766bfaf00618442d78c1725440779d42c0d1c87239e6312e8b261911e",
+      "status": 200,
+      "additionalWrites": 0
+    },
+    {
+      "role": "manager",
+      "operationIdSha256": "ec3feb0e69670b794f355c3872d1659ce8233628b27a487a40e0d0816a530620",
+      "originalBodySha256": "30f3c710a661947cb9bccdecfb0316c99df5f4adcaa3cfdf2f16b380538290d2",
+      "originalKeySha256": "530cf5b3389b71c353093a5742192ccc1343fe14fe8039811a07af8b3de188cc",
+      "status": 200,
+      "additionalWrites": 0
+    },
+    {
+      "role": "admin",
+      "operationIdSha256": "497c5419952ae9009c6dd52125178af9bf6d4d0b3266aa09edde160e0bd43ad6",
+      "originalBodySha256": "fdeb3a588e6c36aa9cafedf20cde863f81851eee86975773c3635909c1845130",
+      "originalKeySha256": "a05dc19d3ed06c2a5069b3c5b326758232ceb8c0ae527258c39f7a28fc2aa8a4",
+      "status": 200,
+      "additionalWrites": 0
+    },
+    {
+      "role": "super_admin",
+      "operationIdSha256": "55dc73f4cdabf901197d6fd0084ac285ee76a343170597b513283b174761b86c",
+      "originalBodySha256": "08d430c02574db838aff7496590f713fa4cb700e2251bbc99274a9b424686a90",
+      "originalKeySha256": "b750d4d477758ff63b8784739c958fd2010eea0b7b741642e0a1dd5a8688e2cc",
+      "status": 200,
+      "additionalWrites": 0
+    }
+  ],
+  "pageErrors": [],
+  "error": null,
+  "actualSSR": true,
+  "actualNeonDriver": true,
+  "actualLoopbackPostgres17": true,
+  "actualProviderCalls": 0,
+  "productionAccess": false,
+  "realProviderAcceptance": false,
+  "spaAccountHandoff": "not-tested"
+}

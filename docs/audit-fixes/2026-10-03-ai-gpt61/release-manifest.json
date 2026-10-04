@@ -961,13 +961,29 @@
     "status": "blocked: verify actual runtime and native worker before flags/schedule"
   },
   "restore": {
-    "evidence": "evidence/r11-restore-result.json",
+    "evidence": "evidence/r11-populated-restore-result.json",
+    "native": "evidence/r11-populated-restore-native-result.json",
+    "integrity": "evidence/r11-populated-restore-integrity-result.json",
+    "binding": "evidence/r11-populated-restore-delivery-binding-result.json",
+    "executionSha": "b7554ef3fd658c65130dd2b9f8ec7597dd09cf49",
+    "applicationCodeSha": "6d5c43646fb46433afa647ec3f698eff341bd332",
     "syntheticOnly": true,
     "tables": 56,
-    "rows": 57,
+    "rows": 669,
     "hashesEqual": true,
-    "immutableDenied": true,
-    "migrationReplay": 25,
+    "schemaDefinitionHashesEqual": true,
+    "sequenceStateHashesEqual": true,
+    "unknownModelRowsPreserved": 18,
+    "immutablePolicyUpdateDeleteDenied": true,
+    "migrationReplay": {
+      "applied": 0,
+      "skipped": 26
+    },
+    "nativeChecks": 52,
+    "distinctActualRoles": 7,
+    "originalKeyReplays": 11,
+    "additionalWrites": 0,
+    "restoredDatabaseRetained": true,
     "productionPitr": "blocked"
   },
   "production": {
@@ -981,7 +997,27 @@
     "productionMutations": 0,
     "customerMessages": 0,
     "paidProviderCalls": 0,
-    "cloudWorkerActivation": false
+    "cloudWorkerActivation": false,
+    "metadataRefresh": {
+      "evidence": "evidence/r11-master-plan-production-metadata-result.json",
+      "observedAt": "2026-10-04T05:55:05Z",
+      "latestReady": {
+        "id": "dpl_2XjJ6dX9xPT4uT2LCtQt2GujiDEY",
+        "sha": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+        "state": "READY",
+        "target": "production"
+      },
+      "latestAttempt": {
+        "id": "dpl_3P8WRkb2T2niuoALbsvqW88VAB9W",
+        "sha": "953ec0a36806d4362fad9e2b2d8cd17a49adbb26",
+        "state": "CANCELED",
+        "target": "production"
+      },
+      "productionHoldCurrent": "not-reported by connected metadata; previous observation stays historical",
+      "productionSchemaLedger": "blocked: operator evidence",
+      "nativeWorkerVersions": "blocked: operator evidence",
+      "productionMutations": 0
+    }
   },
   "stackAsObservedBeforeEvidenceOnlyCommit": [
     {
@@ -1374,5 +1410,22 @@
       "externalAcceptance": "blocked; true provider/cloud worker/manual AT/owner/release gates remain"
     }
   },
-  "unknownModelMigrationRollback": "retain compatible nullable/no-default schema and unknown facts; do not set NOT NULL/backfill/guess/delete"
+  "unknownModelMigrationRollback": "retain compatible nullable/no-default schema and unknown facts; do not set NOT NULL/backfill/guess/delete",
+  "restoreHistorical": {
+    "evidence": "evidence/r11-restore-result.json",
+    "syntheticOnly": true,
+    "tables": 56,
+    "rows": 57,
+    "hashesEqual": true,
+    "immutableDenied": true,
+    "migrationReplay": 25,
+    "productionPitr": "blocked"
+  },
+  "masterPlanCheck": {
+    "evidence": "master-plan-check.md",
+    "planSha256": "37e03bf6cff9564ce68c35c7cd838ae5c6348c37575158d1743cad48bef6ce38",
+    "checkedAgainstHead": "b7554ef3fd658c65130dd2b9f8ec7597dd09cf49",
+    "codeTasks": "R00-R09 verified; R10 acceptance package verified; R11 local evidence verified",
+    "releaseDecision": "NO-GO"
+  }
 }
