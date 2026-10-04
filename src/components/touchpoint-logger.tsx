@@ -165,7 +165,7 @@ export function TouchpointLogger({
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Log touchpoint</DialogTitle>
         </DialogHeader>

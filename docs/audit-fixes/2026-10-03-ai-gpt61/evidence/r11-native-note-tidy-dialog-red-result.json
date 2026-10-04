@@ -1,0 +1,15 @@
+{
+  "sha": "24bd88d9b01c70e74b9fe7ea21c92897b10b19d8",
+  "database": "clientops_ai_uat_cdd72e121ef847db881eafe8b0b59583",
+  "bounds": {
+    "top": -60,
+    "bottom": 904,
+    "height": 964,
+    "viewport": 844,
+    "overflowY": "visible"
+  },
+  "passed": false,
+  "providerTransportFixture": true,
+  "actualProviderCalls": 0,
+  "productionAccess": false
+}

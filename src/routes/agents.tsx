@@ -30,6 +30,7 @@ import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { useIsExactPath } from "@/lib/routing-utils";
 import { cn } from "@/lib/utils";
+import { AdminError } from "@/lib/admin/errors";
 import { getAgentDirectoryRead, type AgentDirectoryRead } from "@/server-functions/agent-runs";
 
 /**
@@ -60,7 +61,19 @@ export const Route = createFileRoute("/agents")({
   validateSearch: agentQueueSearchSchema.merge(
     z.object({ auxiliaryRun: z.string().uuid().optional().catch(undefined) }),
   ),
-  loader: ({ context }) => context.queryClient.ensureQueryData(agentDirectoryQuery()),
+  loader: async ({ context }) => {
+    try {
+      return await context.queryClient.ensureQueryData(agentDirectoryQuery());
+    } catch (error) {
+      // Expected capability denials are data-free views, not errored hydrated queries.
+      if (
+        error instanceof AdminError &&
+        (error.code === "FORBIDDEN" || error.code === "OUTSIDE_SCOPE")
+      )
+        return { accessDenied: true as const };
+      throw error;
+    }
+  },
   head: () => ({
     meta: [
       { title: "AI Ops — Fimmick ClientOps" },
@@ -98,7 +111,12 @@ function AgentsErrorState({ error }: { error: unknown }) {
 
 function AgentsRoute() {
   const isIndexRoute = useIsExactPath("/agents");
+  const data = Route.useLoaderData();
   if (!isIndexRoute) return <Outlet />;
+  if ("accessDenied" in data)
+    return (
+      <AgentsErrorState error={new AdminError("FORBIDDEN", "You do not have this capability")} />
+    );
   return <AgentsMonitor />;
 }
 

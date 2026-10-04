@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-04T01:33:13.453Z",
+  "sourceSha": "24bd88d9b01c70e74b9fe7ea21c92897b10b19d8",
+  "db": "clientops_ai_gpt61_504944022b",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/routes/__tests__/-agents-denied-loader.test.tsx",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-agents-denied-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 4,
+  "failed": 3,
+  "skipped": 0,
+  "total": 7,
+  "files": 1,
+  "elapsedMs": 31128,
+  "reportSha256": "572ea7aacb4ac8b99d5f987cf7eff57878787fab975f466b2adc06a9887bd11e"
+}
