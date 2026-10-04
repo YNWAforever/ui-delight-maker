@@ -1,0 +1,166 @@
+{
+  "recordedAt": "2026-10-04T09:15:41.003Z",
+  "codeVerifiedCommit": "353015de8aad02825b68d802ceb0d7dc1643bda7",
+  "executionHead": "353015de8aad02825b68d802ceb0d7dc1643bda7",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceTrees": {
+    "src": "044abb1fc51bd73fad0741bc6d820a0ffc4db494",
+    "neon": "3cf78f7d35c15b02c8099a728b9a78b74116b82f",
+    "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
+    "scripts": "ecca3b87db60afb06f23d74fb5c24aa09a48e639"
+  },
+  "unchangedFromBaseline": [
+    "neon",
+    "n8n",
+    "scripts",
+    "package.json",
+    "bun.lock"
+  ],
+  "serverEntrySha256": "97133b32c43a9e444f29c9966a6e988aaad42ebba6b7adf5439270a27355e9e1",
+  "artifactInventory": {
+    "files": 401,
+    "bytes": 5510554,
+    "sha256": "d0a9bf8e6dfe4e5a3144dc0df3fc62e901743f323b81c8966e23774a6ada600f",
+    "privatePath": ".clientops-perf/ai-gpt61-20261003/r11-native-review-denial-artifact-inventory.private.json"
+  },
+  "runners": [
+    {
+      "path": "evidence/r11-native-review-denial-runner.source.txt",
+      "sha256": "ae7d83ace37ec6251d2fb7fbb79e9180a20eb462e1aaf7fff387bad24661308a",
+      "executedPrivateSourceSha256": "ae7d83ace37ec6251d2fb7fbb79e9180a20eb462e1aaf7fff387bad24661308a",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-red-runner.source.txt",
+      "sha256": "ae7d83ace37ec6251d2fb7fbb79e9180a20eb462e1aaf7fff387bad24661308a",
+      "executedPrivateSourceSha256": "ae7d83ace37ec6251d2fb7fbb79e9180a20eb462e1aaf7fff387bad24661308a",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-runtime.source.txt",
+      "sha256": "d466e995587f1aa6330ba018885eb4a87db1d0164d3ef15d62071762abe8e87a",
+      "executedPrivateSourceSha256": "81241a436871b0479751153e81e04bdf83b8c3f99a28df9f9a8f673030c8c779",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-prepare.source.txt",
+      "sha256": "4f80be899262f5a91e4fe411c7610f691afb15cc9cf6d2422dc0afb0f0cecfc8",
+      "executedPrivateSourceSha256": "2f20d5f04d1290e54204d3c6250d5ec9eedd249816a7ff0442b92732510baf9b",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-fixtures.source.txt",
+      "sha256": "cb51042d24d69c33e40ad69b7e8665c94513e8ff4cb9eb994494aa344e219017",
+      "executedPrivateSourceSha256": "4c8b0ef9b2e784c320a6737726ef4cb003043b9aa49c91fe749c619894862a87",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-migration.source.txt",
+      "sha256": "6ccf8ce6fbd8a68bceb1c24ee8dd555889e513fb62d68ec77b98c0162c7594c5",
+      "executedPrivateSourceSha256": "0a93e8ad0cf8a891755e277e4478c88d77e9e03f55e4707a1e960fdd6e39d276",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-integrity.source.txt",
+      "sha256": "fdb6d63ccfdc7f8505d7057a3b5d9f1342da1da6199dfb623f28ea3e42893edb",
+      "executedPrivateSourceSha256": "fdb6d63ccfdc7f8505d7057a3b5d9f1342da1da6199dfb623f28ea3e42893edb",
+      "normalization": "UTF8/LF; no semantic change"
+    }
+  ],
+  "receipts": [
+    {
+      "path": "evidence/r11-native-review-denial-green-result.json",
+      "sha256": "98af9dafeaeab8876a5be428cb51a21f384e2efbeafb86d023d7c017101b1f01"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-integrity-result.json",
+      "sha256": "082a840adf83fe436ef9303ae18babad7f03f86889a744cdf853f0aba463e5eb"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-runtime-result.json",
+      "sha256": "60e5dc18c797a2b80a96947fd2934da694129d27dcd074c4d6e5b59fa6dd7cbb"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-migration-result.json",
+      "sha256": "b979041ada1ff43542d9f692d81bc1eef5694d6091518eaa5ac1e762fda2131a"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-seed-result.json",
+      "sha256": "1a4046ad9ee5e11077614d7de858aca33c0342c791c687bf5793558f05e05ec3"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-code-ci-result.json",
+      "sha256": "147f194d9c9e7839a968e021d5d1c206b53d930c04848181d337a818dac62512"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-network-result.json",
+      "sha256": "459911cc0e08bac13561ec718698464292d51d0055d810f39275f8d9693a795a"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-red-result.json",
+      "sha256": "2bc02ceccc0a50126bb50704dab178798f8e23119c978d3082055d0f7e784a2c"
+    },
+    {
+      "path": "evidence/r11-native-review-denial-red-integrity-result.json",
+      "sha256": "196e98f19abe74c579af4c08a60a9414a4af3d8eacc7f05c8f4c4889451a57c2"
+    },
+    {
+      "path": "evidence/r11-review-denial-red-corrected-result.json",
+      "sha256": "206589a86aa11b6e81df2afdc9d10a73d6618d6a68b79e3fdc02fc44e38515f1"
+    },
+    {
+      "path": "evidence/r11-review-denial-corrected-target-result.json",
+      "sha256": "bb1b758537f3d8b4a07e4b53fb9b5eb077a5e6bc8d9cb136b5e16620dc011e5e"
+    },
+    {
+      "path": "evidence/r11-review-denial-corrected-static-result.json",
+      "sha256": "7754c5a7f91ec0fbf85eeaeb1947e25890290d71d1a056e8a1a5efe953c20ea9"
+    },
+    {
+      "path": "evidence/r11-review-denial-corrected-build-result.json",
+      "sha256": "76ea57952f16f68cd56b0c2c17e901457c1e07cc010448f63679b3a436af8578"
+    }
+  ],
+  "screenshots": [
+    {
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/r11-native-review-denial-green-accounting403.private.png",
+      "sha256": "38dbee83758091f4750cc84a2140a6f69657d85e5d71851cc297014e45957b3a"
+    },
+    {
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/r11-native-review-denial-green-restored-admin.private.png",
+      "sha256": "7d676066b03f0714aab2ca938949d05fe025f6b06da7ba13e1c571b57885a1e4"
+    }
+  ],
+  "commands": {
+    "prepare": "node .clientops-perf/ai-gpt61-20261003/r11-native-review-denial-prepare.private.mjs",
+    "migration": "bun .clientops-perf/ai-gpt61-20261003/r11-native-review-denial-migrate.private.ts",
+    "fixtures": "node .clientops-perf/ai-gpt61-20261003/r11-native-review-denial-fixtures.private.mjs",
+    "runtime": "node .clientops-perf/ai-gpt61-20261003/r11-native-review-denial-runtime.private.mjs",
+    "native": "node .clientops-perf/ai-gpt61-20261003/r11-native-review-denial.private.mjs green",
+    "integrity": "node .clientops-perf/ai-gpt61-20261003/r11-native-review-denial-integrity.private.mjs",
+    "nativeExit": 0,
+    "migrationExit": 0,
+    "integrityExit": 0,
+    "targetExit": 0,
+    "nativeChecks": 9,
+    "roles": 7,
+    "targetTests": 71,
+    "targetSkipped": 0,
+    "fullCI": 2904,
+    "fullCISkipped": 0
+  },
+  "scope": "five fresh independent390px contexts plus same-SPA admin/accounting403 and admin retry; not seven same-document actor changes; AI Review route only, genuine accounting403/read retry; no approval decisions/bulk writes/Auth mutation",
+  "wholeAppHandoff": "not-tested",
+  "interactiveLogoutRelogin": "not-tested",
+  "manualAT": "not-tested",
+  "trueProviderAcceptance": "blocked",
+  "schema": 26,
+  "originalZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
+  "planSha256": "37e03bf6cff9564ce68c35c7cd838ae5c6348c37575158d1743cad48bef6ce38",
+  "authorReviewOnly": true,
+  "productionAccess": false,
+  "actualProviderCalls": 0,
+  "ownedRuntimePid": 35744,
+  "ownedRuntimeStopped": true,
+  "releaseDecision": "NO-GO"
+}

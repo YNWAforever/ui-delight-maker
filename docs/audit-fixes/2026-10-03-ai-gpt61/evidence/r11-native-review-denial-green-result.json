@@ -1,0 +1,142 @@
+{
+  "phase": "green",
+  "sha": "353015de8aad02825b68d802ceb0d7dc1643bda7",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "97133b32c43a9e444f29c9966a6e988aaad42ebba6b7adf5439270a27355e9e1",
+  "database": "clientops_ai_uat_e6c55cf30dec47f282fc9eaba5201f90",
+  "fixtureVersion": "ai-local-review-denial-v1",
+  "checks": [
+    {
+      "name": "actual admin reads synthetic linked approval and enters local reviewer notes without writes",
+      "passed": true
+    },
+    {
+      "name": "genuine accounting403 hides prior approval content, notes and decisions with all56tables unchanged",
+      "passed": true
+    },
+    {
+      "name": "actual owner successful retry restores authorized read without stale notes or decision dialog",
+      "passed": true
+    },
+    {
+      "name": "super_admin own-filtered native review read at390px, no foreign fixture or decision writes",
+      "passed": true
+    },
+    {
+      "name": "manager own-filtered native review read at390px, no foreign fixture or decision writes",
+      "passed": true
+    },
+    {
+      "name": "sales own-filtered native review read at390px, no foreign fixture or decision writes",
+      "passed": true
+    },
+    {
+      "name": "client_success own-filtered native review read at390px, no foreign fixture or decision writes",
+      "passed": true
+    },
+    {
+      "name": "read_only own-filtered native review read at390px, no foreign fixture or decision writes",
+      "passed": true
+    },
+    {
+      "name": "seven different actual users/sessions/saved states with zero table changes and no uncaught page errors",
+      "passed": true
+    }
+  ],
+  "identities": [
+    {
+      "role": "admin",
+      "userSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "sessionSha256": "7b93f6916940fc215b90c1623bd5ab426eb96fa3b4f00f49597af14dd8731c93",
+      "savedStateSha256": "562c417be5922885bddde5029ac5651b790dc9641da16a04cb8f1a31bf705a6a",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "accounting",
+      "userSha256": "5bc88a9c60cb5e3d014a51eee07126e6adc00ec54681efaa531b50ba90c67fbb",
+      "sessionSha256": "53c77aaaff970a04349d056fab770c2a0b9438e873af00ff0dd5b8f27aba5ebb",
+      "savedStateSha256": "a5e6b243ea4ed9eae118b8d7068007130542d695aeb27870f191b656755ecb12",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "admin",
+      "userSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "sessionSha256": "7b93f6916940fc215b90c1623bd5ab426eb96fa3b4f00f49597af14dd8731c93",
+      "savedStateSha256": "562c417be5922885bddde5029ac5651b790dc9641da16a04cb8f1a31bf705a6a",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "super_admin",
+      "userSha256": "2e826afbc440c3626a35f510b27c62dfe97a4cf4087ce7bce5171444e4f6a10f",
+      "sessionSha256": "558ceadf8fe6bcab2569f8754836c3af25695a25f8ac52c28583415111a781c2",
+      "savedStateSha256": "b5367ecc7351f50283afdc692a4dfed1b19fedf8bdad7734792d49395fbda754",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "manager",
+      "userSha256": "88a8c8cdaf3230e0b257c07071d13cad63a259b16f13ca290a1cb01f9ae8799b",
+      "sessionSha256": "0961759d930d6cdcce225e241e95b1a27ae60d2136750044a7eb24eb8f6f1cc9",
+      "savedStateSha256": "037688af678684217f5f146801ab0d11f75c9cafc75f5f56819401def1b3f125",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "sales",
+      "userSha256": "2e9ac9f96d4a9c1a8a5f8c5c7fb7868a71018f7fbff18d8ba1933d585c2c404a",
+      "sessionSha256": "667b589e00957902c7aee72d00d7db6d92be65f34cf70563600fa807829b3171",
+      "savedStateSha256": "20b5e9d9a66977b453e6a19de5ff68e7b68c0bfb5e64e1238482dbf4d1698223",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "client_success",
+      "userSha256": "abf1d43bcd802e6970d36f832ce785a036d7e947feef56054b54b10e3642298d",
+      "sessionSha256": "10e01fb86f8c1587480705e7e1fe7d3080c3cbd187eed7c93bf114c7cdbae624",
+      "savedStateSha256": "8744264c46988ecdf6d94d1b8a254692e9f9fd8462f2c3a58c800805adcaa5c5",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "read_only",
+      "userSha256": "b6b6e8a481e03b614e6890a0668fe1fed886b0da3fddc389af96210ceec975ae",
+      "sessionSha256": "9d5a6df8b5bd04a23ab5177b09b9152e959fb8cd048ad5425a12a2fbce85c241",
+      "savedStateSha256": "c8bb0f964da8ab9c1e198fb8ef94b6954cf29a4161778828fff5a4584b33b2d1",
+      "live": true,
+      "persistedRoleMatches": true
+    }
+  ],
+  "pageErrors": [],
+  "actualSSR": true,
+  "actualNeonDriver": true,
+  "actualLoopbackPostgres17": true,
+  "providerConfigurationAbsent": true,
+  "actualProviderCalls": 0,
+  "productionAccess": false,
+  "interactiveLogoutRelogin": "not-tested",
+  "wholeAppHandoff": "not-tested; this run exercises the queue only",
+  "transport": "distinct actual role cookie fixtures, native same-document queue refresh; no Auth or BFF response doubles",
+  "nativeReadServerFunctionPath": "/_serverFn/e4ac82b1caeb3e7911fa68533afbaa5527280d58745a536366d8069b8d0e24a1",
+  "observation": {
+    "serverStatus": 403,
+    "sameDocument": true,
+    "cachedApprovalVisible": false,
+    "cachedReviewerNotesVisible": false,
+    "cachedDecisionControlsVisible": false,
+    "errorVisible": true
+  },
+  "denialScreenshot": {
+    "path": ".clientops-perf/ai-gpt61-20261003/r11-native-review-denial-green-accounting403.private.png",
+    "sha256": "38dbee83758091f4750cc84a2140a6f69657d85e5d71851cc297014e45957b3a"
+  },
+  "finalScreenshot": {
+    "path": ".clientops-perf/ai-gpt61-20261003/r11-native-review-denial-green-restored-admin.private.png",
+    "sha256": "7d676066b03f0714aab2ca938949d05fe025f6b06da7ba13e1c571b57885a1e4"
+  },
+  "sevenRoleScope": "five fresh independent390px contexts plus same-SPA admin/accounting403 and admin retry; not seven same-document actor changes",
+  "passed": true,
+  "stage": "seven-independent-role-reads"
+}
