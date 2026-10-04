@@ -1,0 +1,16 @@
+{
+  "startedAt": "2026-10-04T01:38:05.387Z",
+  "pid": 54352,
+  "sha": "edb27a493af2cfea51f27630a7a0ff6caa6e51bb",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "ef5517e09172ae38bd35ba87a873d3fa82da3d52c42b2c976de625cd24d7ad2e",
+  "baseUrl": "http://localhost:59712",
+  "database": "clientops_ai_uat_de2860537c8a47548752b89816a0f3ec",
+  "fixtureVersion": "ai-local-note-tidy-fixture-v1",
+  "transport": "actual built SSR and Neon driver over loopback WebSocket/TCP",
+  "auth": "seven existing independent live Neon Auth sessions",
+  "realProviderCredentialsAbsent": true,
+  "providerTransport": "local intercepted fixture; sentinel is not a credential; zero actual provider calls",
+  "outboundGuard": "only read-only independent Auth get-session forwarded; fixture provider endpoint never forwarded",
+  "productionAccess": false
+}

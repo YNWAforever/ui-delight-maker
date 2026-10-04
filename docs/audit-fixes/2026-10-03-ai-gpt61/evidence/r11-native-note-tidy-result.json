@@ -1,0 +1,323 @@
+{
+  "checkedAt": "2026-10-04T01:40:24.975Z",
+  "sha": "edb27a493af2cfea51f27630a7a0ff6caa6e51bb",
+  "sourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "ef5517e09172ae38bd35ba87a873d3fa82da3d52c42b2c976de625cd24d7ad2e",
+  "database": "clientops_ai_uat_de2860537c8a47548752b89816a0f3ec",
+  "fixtureVersion": "ai-local-note-tidy-fixture-v1",
+  "checks": [
+    {
+      "name": "client_success actual own live session/role",
+      "passed": true
+    },
+    {
+      "name": "empty manual note cannot start optional tidy",
+      "passed": true
+    },
+    {
+      "name": "native compare keeps original and saves nothing",
+      "passed": true,
+      "runs": 1
+    },
+    {
+      "name": "390px bounded comparison dialog scrolls natively; keyboard reaches choices/Save/Close within viewport",
+      "passed": true
+    },
+    {
+      "name": "uc09-compare390 native viewport/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc09-compare390.png",
+      "screenshotSha256": "c074086271ae2d8979c6900abb20b26597703bd8845b2737590ce266ac04f640",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "native cancel retains original/focus; zero automatic saves",
+      "passed": true
+    },
+    {
+      "name": "manual Save after cancel writes exactly one unchanged original",
+      "passed": true
+    },
+    {
+      "name": "native accept changes draft only, zero automatic saves",
+      "passed": true
+    },
+    {
+      "name": "manual Save after explicit accept writes exactly one reviewed suggestion",
+      "passed": true
+    },
+    {
+      "name": "late provider fixture success never overwrites edited draft",
+      "passed": true
+    },
+    {
+      "name": "late edited manual Save writes exactly the current note",
+      "passed": true
+    },
+    {
+      "name": "closing resets UI; old success cannot unlock or preview a newer pending request",
+      "passed": true
+    },
+    {
+      "name": "closed previous failure never inserts an error into reopened manual draft",
+      "passed": true
+    },
+    {
+      "name": "uc09-reopened-no-stale-error390 native viewport/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc09-reopened-no-stale-error390.png",
+      "screenshotSha256": "93376dc0572be288e05149b5a40fd863426646cd394526056bf198dd7c5654c4",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "native manual Save remains available during AI; late success changes neither saved row nor fresh draft",
+      "passed": true
+    },
+    {
+      "name": "lost response retries identical native body/key; one durable invocation, one fixture execution",
+      "passed": true
+    },
+    {
+      "name": "completed native request replay returns previous result with zero writes/fixture calls",
+      "passed": true
+    },
+    {
+      "name": "changed input under same key returns serialized Error before provider and preserves existing invocation",
+      "passed": true,
+      "httpStatus": 200,
+      "serializedError": true
+    },
+    {
+      "name": "error fixture failure preserves manual note and unknown model/usage",
+      "passed": true
+    },
+    {
+      "name": "error explicit retry preserves failed receipt without re-executing fixture",
+      "passed": true
+    },
+    {
+      "name": "invalid_json fixture failure preserves manual note and unknown model/usage",
+      "passed": true
+    },
+    {
+      "name": "invalid_json explicit retry preserves failed receipt without re-executing fixture",
+      "passed": true
+    },
+    {
+      "name": "empty fixture failure preserves manual note and unknown model/usage",
+      "passed": true
+    },
+    {
+      "name": "empty explicit retry preserves failed receipt without re-executing fixture",
+      "passed": true
+    },
+    {
+      "name": "actual pending 60s deadline leaves manual Save enabled",
+      "passed": true
+    },
+    {
+      "name": "actual SSR deadline records timeout and abort; UI does not claim provider cancellation",
+      "passed": true,
+      "elapsedMs": 60461,
+      "abortElapsedMs": 60015
+    },
+    {
+      "name": "fixture ignoring abort resolves late; durable timeout receipt cannot be overwritten",
+      "passed": true
+    },
+    {
+      "name": "uc09-real-deadline390 native viewport/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc09-real-deadline390.png",
+      "screenshotSha256": "991fd383a4e9f7caee5df7236f60b3f822407b488405d19fe01568c231d95d1c",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "manual Save after measured deadline writes unchanged original",
+      "passed": true
+    },
+    {
+      "name": "own native auxiliary history exposes metadata only, no input/output note body",
+      "passed": true
+    },
+    {
+      "name": "uc09-own-history390 native viewport/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc09-own-history390.png",
+      "screenshotSha256": "e2d93f4e066f57ed38d4aceb4292f3b17f15568b17b0b49463743311fc567751",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "super_admin actual own live session/role",
+      "passed": true
+    },
+    {
+      "name": "super_admin own actual history cannot read another actor invocation or note body",
+      "passed": true
+    },
+    {
+      "name": "super_admin own same-origin permitted tidy persists one own hash-only invocation, no touchpoint save",
+      "passed": true
+    },
+    {
+      "name": "admin actual own live session/role",
+      "passed": true
+    },
+    {
+      "name": "admin own actual history cannot read another actor invocation or note body",
+      "passed": true
+    },
+    {
+      "name": "admin own same-origin permitted tidy persists one own hash-only invocation, no touchpoint save",
+      "passed": true
+    },
+    {
+      "name": "manager actual own live session/role",
+      "passed": true
+    },
+    {
+      "name": "manager own actual history cannot read another actor invocation or note body",
+      "passed": true
+    },
+    {
+      "name": "manager own same-origin permitted tidy persists one own hash-only invocation, no touchpoint save",
+      "passed": true
+    },
+    {
+      "name": "sales actual own live session/role",
+      "passed": true
+    },
+    {
+      "name": "sales own actual history cannot read another actor invocation or note body",
+      "passed": true
+    },
+    {
+      "name": "sales own same-origin tidy POST403 before any invocation/fixture execution",
+      "passed": true
+    },
+    {
+      "name": "accounting actual own live session/role",
+      "passed": true
+    },
+    {
+      "name": "accounting expected denied native view renders data-free without hydration error; BFF still403",
+      "passed": true
+    },
+    {
+      "name": "accounting own actual history cannot read another actor invocation or note body",
+      "passed": true
+    },
+    {
+      "name": "accounting own same-origin tidy POST403 before any invocation/fixture execution",
+      "passed": true
+    },
+    {
+      "name": "read_only actual own live session/role",
+      "passed": true
+    },
+    {
+      "name": "read_only own actual history cannot read another actor invocation or note body",
+      "passed": true
+    },
+    {
+      "name": "read_only own same-origin tidy POST403 before any invocation/fixture execution",
+      "passed": true
+    },
+    {
+      "name": "all seven identities/sessions/cookies distinct and zero uncaught browser errors",
+      "passed": true
+    }
+  ],
+  "identities": [
+    {
+      "role": "client_success",
+      "userSha256": "abf1d43bcd802e6970d36f832ce785a036d7e947feef56054b54b10e3642298d",
+      "sessionSha256": "10e01fb86f8c1587480705e7e1fe7d3080c3cbd187eed7c93bf114c7cdbae624",
+      "cookiesSha256": "bca7209b5e11bbb178f06b0025df86f99b984ccac6012329330cac1f639457e3",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "super_admin",
+      "userSha256": "2e826afbc440c3626a35f510b27c62dfe97a4cf4087ce7bce5171444e4f6a10f",
+      "sessionSha256": "558ceadf8fe6bcab2569f8754836c3af25695a25f8ac52c28583415111a781c2",
+      "cookiesSha256": "3ad24046b0be0904279be342f85fba3f905111f359565753bfaf28483b50fafc",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "admin",
+      "userSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "sessionSha256": "7b93f6916940fc215b90c1623bd5ab426eb96fa3b4f00f49597af14dd8731c93",
+      "cookiesSha256": "3a089499864dc4975a3eabc2cb538b4152f903ab24bdab97f98858af36810abd",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "manager",
+      "userSha256": "88a8c8cdaf3230e0b257c07071d13cad63a259b16f13ca290a1cb01f9ae8799b",
+      "sessionSha256": "0961759d930d6cdcce225e241e95b1a27ae60d2136750044a7eb24eb8f6f1cc9",
+      "cookiesSha256": "a4c3f9f5f63b5d347b9fdd228ac67fb9d9fa3ff2c769c1af2a7fd686b9906372",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "sales",
+      "userSha256": "2e9ac9f96d4a9c1a8a5f8c5c7fb7868a71018f7fbff18d8ba1933d585c2c404a",
+      "sessionSha256": "667b589e00957902c7aee72d00d7db6d92be65f34cf70563600fa807829b3171",
+      "cookiesSha256": "7da674b235ef93337cebb63275241cb13fef4188b51326c34bb3e979e1eec866",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "accounting",
+      "userSha256": "5bc88a9c60cb5e3d014a51eee07126e6adc00ec54681efaa531b50ba90c67fbb",
+      "sessionSha256": "53c77aaaff970a04349d056fab770c2a0b9438e873af00ff0dd5b8f27aba5ebb",
+      "cookiesSha256": "c19430236b29ec7eb321b34b92131fd5c13b6457fba6c0bd284cc94ea3c54b95",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "read_only",
+      "userSha256": "b6b6e8a481e03b614e6890a0668fe1fed886b0da3fddc389af96210ceec975ae",
+      "sessionSha256": "9d5a6df8b5bd04a23ab5177b09b9152e959fb8cd048ad5425a12a2fbce85c241",
+      "cookiesSha256": "0e11e7fe692dccd4d04bde9f7e07fe06b4c24a3fe2c03f16aa900212c392f3ac",
+      "live": true,
+      "persistedRoleMatches": true
+    }
+  ],
+  "pageErrors": [],
+  "expectedFailures": [
+    {
+      "case": "changed input under same key",
+      "httpStatus": 200,
+      "serializedError": true
+    },
+    {
+      "case": "error",
+      "uiErrorObserved": true,
+      "providerTransportFixture": true
+    },
+    {
+      "case": "invalid_json",
+      "uiErrorObserved": true,
+      "providerTransportFixture": true
+    },
+    {
+      "case": "empty",
+      "uiErrorObserved": true,
+      "providerTransportFixture": true
+    }
+  ],
+  "stage": "read_only scope",
+  "passed": true,
+  "error": null,
+  "providerTransportFixture": true,
+  "actualProviderCalls": 0,
+  "productionAccess": false,
+  "realAIQualityVerified": false
+}

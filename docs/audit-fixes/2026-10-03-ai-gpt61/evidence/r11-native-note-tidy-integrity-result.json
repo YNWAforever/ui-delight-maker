@@ -1,0 +1,65 @@
+{
+  "checkedAt": "2026-10-04T01:43:16.548Z",
+  "sha": "edb27a493af2cfea51f27630a7a0ff6caa6e51bb",
+  "sourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceDatabase": "clientops_ai_uat_843cdc77175546ddbad0417b36ac845a",
+  "targetDatabase": "clientops_ai_uat_de2860537c8a47548752b89816a0f3ec",
+  "originalAll56TablesUnchanged": true,
+  "tableSnapshotSha256": "2ea1f6386a0527176903dd1f182bd0eaa83aed60196fae67bcb765acf3f32072",
+  "businessAgentConstraintsFullyValidatedAndUnchanged": true,
+  "onlySchemaDelta": "026 model telemetry nullable/no default; no historical row rewrite",
+  "deltas": [
+    {
+      "table": "activity_logs",
+      "before": 97,
+      "after": 107,
+      "delta": 10
+    },
+    {
+      "table": "agent_runs",
+      "before": 135,
+      "after": 149,
+      "delta": 14
+    },
+    {
+      "table": "clientops_schema_migrations",
+      "before": 25,
+      "after": 26,
+      "delta": 1
+    },
+    {
+      "table": "touchpoints",
+      "before": 2,
+      "after": 12,
+      "delta": 10
+    }
+  ],
+  "registeredMigrations": 26,
+  "historical135RunRowsUnchanged": true,
+  "newInvocations": 14,
+  "newTouchpoints": 10,
+  "inputMetadataOnly": true,
+  "missingUsageTokensRemainNull": true,
+  "failedActualModelRemainsNull": true,
+  "network": {
+    "requests": 135,
+    "authReads": 190,
+    "unexpectedOutbound": 0,
+    "interceptedLocalFixtureExecutions": 14,
+    "actualProviderCalls": 0
+  },
+  "measuredDeadline": {
+    "tag": "deadline",
+    "inputSha256": "ffdd4cffeb8c6d4269e291bca6d88bca75d907cbc00de5ffdd36b0d59eaa13b6",
+    "startedAt": "2026-10-04T01:39:10.376Z",
+    "transportFixture": true,
+    "actualProviderCall": false,
+    "settled": true,
+    "abortedAt": "2026-10-04T01:40:10.390Z",
+    "abortElapsedMs": 60015,
+    "settledAt": "2026-10-04T01:40:10.637Z",
+    "elapsedMs": 60262
+  },
+  "productionAccess": false,
+  "realAIQualityAcceptance": false
+}
