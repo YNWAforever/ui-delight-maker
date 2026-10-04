@@ -18,6 +18,7 @@ const {
   toastErrorMock,
   toastSuccessMock,
   toastMessageMock,
+  metricStripMock,
 } = vi.hoisted(() => ({
   moveLeadStageMock: vi.fn(),
   triggerLeadAgentMock: vi.fn(),
@@ -29,6 +30,7 @@ const {
   toastErrorMock: vi.fn(),
   toastSuccessMock: vi.fn(),
   toastMessageMock: vi.fn(),
+  metricStripMock: vi.fn((_props: unknown) => null),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -47,7 +49,7 @@ vi.mock("sonner", () => ({
 }));
 vi.mock("@/components/sales", () => ({
   EmptyWorkspaceState: () => null,
-  MetricStrip: () => null,
+  MetricStrip: metricStripMock,
   SectionHeader: () => null,
   WorkspaceHeader: () => null,
 }));
@@ -198,6 +200,37 @@ beforeEach(() => {
 });
 
 afterEach(cleanup);
+
+describe("Revenue Desk — the summary counts the whole workspace", () => {
+  it("shows server totals only, linking to the workspaces this session can open", async () => {
+    // UX-09: "Overdue", "Due today" and "Hot leads" counted the 40 leads loaded on the board,
+    // so "0 overdue" sat above a queue of overdue follow-ups.
+    vi.mocked(Route.useLoaderData).mockReturnValue({
+      ...loaderData,
+      access: { leads: true, jobSheets: false, tasks: true, approvals: false, quotes: true },
+      pipelineTotals: {
+        activeQuoteTotals: [],
+        openLeads: 5270,
+        openTasks: 581,
+        pendingApprovals: 3,
+      },
+    } as never);
+    await renderDesk();
+
+    const { metrics, supporting } = metricStripMock.mock.calls.at(-1)?.[0] as {
+      metrics: { id: string; value: string; href?: string; tone?: string }[];
+      supporting?: unknown[];
+    };
+    expect(metrics.map(({ id, value, href }) => ({ id, value, href }))).toEqual([
+      { id: "open-leads", value: "5,270", href: "/leads" },
+      { id: "open-tasks", value: "581", href: "/tasks" },
+      { id: "pending-approvals", value: "3", href: undefined },
+      { id: "quote-value", value: expect.any(String), href: undefined },
+    ]);
+    expect(metrics[2].tone).toBe("warning");
+    expect(supporting).toBeUndefined();
+  });
+});
 
 describe("Revenue Desk — agent triggers tell the truth", () => {
   const agents = [

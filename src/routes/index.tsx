@@ -1,7 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, Clock, Flame, Plus, ShieldCheck, Target } from "lucide-react";
+import { ArrowUpRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { PipelineToolbar } from "@/components/pipeline/pipeline-toolbar";
@@ -18,7 +18,7 @@ import { formatCount } from "@/lib/format";
 import { formatCurrencyTotals } from "@/lib/money";
 import { getBusinessDateKey } from "@/lib/business-date";
 import { describeTriggerFailure, toSafeErrorMessage } from "@/lib/errors";
-import { filterPipelineLeads, getPipelineSummary } from "@/lib/pipeline";
+import { filterPipelineLeads } from "@/lib/pipeline";
 import { getStatusLabel } from "@/lib/status-labels";
 import { getJobSheetStatusLabel } from "@/lib/job-sheet-editor";
 import { buildRevenueActions } from "@/lib/sales-workspace";
@@ -140,8 +140,17 @@ function DashboardLanding() {
 }
 
 function PipelineCommandCenter() {
-  const { leads, quotes, tasks, approvals, agentRuns, activityLogs, products, pipelineTotals } =
-    Route.useLoaderData();
+  const {
+    leads,
+    quotes,
+    tasks,
+    approvals,
+    agentRuns,
+    activityLogs,
+    products,
+    pipelineTotals,
+    access,
+  } = Route.useLoaderData();
   const router = useRouter();
   const queryClient = useQueryClient();
   const search = Route.useSearch();
@@ -193,7 +202,6 @@ function PipelineCommandCenter() {
 
   const selectedLead =
     filteredLeads.find((lead) => lead.id === search.lead) ?? filteredLeads[0] ?? null;
-  const summary = getPipelineSummary({ leads: filteredLeads, tasks, approvals, today });
   const revenueActions = buildRevenueActions({
     leads,
     tasks,
@@ -383,45 +391,37 @@ function PipelineCommandCenter() {
       />
 
       <div className="space-y-6 px-4 py-6 md:px-6">
+        {/*
+          Whole-workspace figures only (UX-09). The board-scoped "Overdue", "Due today" and
+          "Hot leads" counted the 40 leads loaded here, so "0 overdue" sat above a queue of
+          overdue follow-ups; the queue below is where those items are ranked.
+        */}
         <MetricStrip
           metrics={[
             {
-              label: "Overdue",
-              value: summary.overdue,
-              icon: Flame,
-              tone: summary.overdue > 0 ? "destructive" : "neutral",
-              hint: "follow-ups past due on this board",
+              id: "open-leads",
+              label: "Open leads",
+              value: formatCount(pipelineTotals.openLeads),
+              href: "/leads",
             },
             {
-              label: "Due today",
-              value: summary.dueToday,
-              icon: Clock,
-              hint: "needs action today on this board",
+              id: "open-tasks",
+              label: "Open tasks",
+              value: formatCount(pipelineTotals.openTasks),
+              href: access.tasks ? "/tasks" : undefined,
             },
-            {
-              label: "Hot leads",
-              value: summary.highScore,
-              icon: Target,
-              hint: "score 75+ on this board",
-            },
-            {
-              // The server aggregate, not a sum of the loaded page: `pipelineTotals` counts
-              // every pending/sent/viewed quote, so this tile is a workspace figure and the
-              // three beside it are explicitly board-scoped.
-              label: "Quote value by currency",
-              value: formatCurrencyTotals(pipelineTotals.activeQuoteTotals),
-              icon: ShieldCheck,
-              hint: "pending approval + approved + sent + viewed, all quotes",
-            },
-          ]}
-          supporting={[
-            { id: "open-leads", label: "Open leads", value: formatCount(pipelineTotals.openLeads) },
-            { id: "open-tasks", label: "Open tasks", value: formatCount(pipelineTotals.openTasks) },
             {
               id: "pending-approvals",
               label: "Waiting approval",
               value: formatCount(pipelineTotals.pendingApprovals),
               tone: pipelineTotals.pendingApprovals > 0 ? "warning" : "neutral",
+              href: access.approvals ? "/approvals" : undefined,
+            },
+            {
+              id: "quote-value",
+              label: "Quote value by currency",
+              value: formatCurrencyTotals(pipelineTotals.activeQuoteTotals),
+              hint: "pending approval, approved, sent and viewed",
             },
           ]}
         />

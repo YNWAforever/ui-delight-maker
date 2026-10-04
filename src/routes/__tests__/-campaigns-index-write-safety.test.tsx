@@ -231,12 +231,13 @@ describe("/campaigns filters and counts", () => {
     /**
      * IF-D2-19. All three tiles counted `campaignPage.items`, so the tile labelled
      * "Campaigns" read 50 no matter how many existed, while `campaignPage.total` sat
-     * unused two lines away. The page-scoped tiles now say "on this page".
+     * unused two lines away. UX-09 then removed the page-scoped tiles altogether: the
+     * header carries the server total and nothing counts only the loaded page.
      */
     renderCampaigns();
 
-    expect(screen.getByText("137")).toBeTruthy();
-    expect(screen.getAllByText("on this page").length).toBeGreaterThan(0);
+    expect(screen.getByText(/^137 campaigns match the current filters./)).toBeTruthy();
+    expect(document.querySelector("[data-metric-cell]")).toBeNull();
   });
 
   it("shows the status the URL is actually filtered by", () => {

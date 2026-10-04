@@ -10,7 +10,6 @@ import {
   ErrorState,
   FilterToolbar,
   FilteredEmptyState,
-  MetricStrip,
   ResponsiveRecordList,
   SectionHeader,
   StatusBadge,
@@ -298,34 +297,6 @@ function CampaignsIndex() {
       />
 
       <div className="space-y-6 px-4 py-6 md:px-6">
-        <MetricStrip
-          metrics={[
-            {
-              id: "total",
-              label: "Campaigns",
-              value: formatCount(campaignPage.total),
-              hint: hasServerFilters ? "match these filters" : "in this workspace",
-            },
-            {
-              id: "active",
-              label: "Active",
-              value: campaigns.filter((campaign) => campaign.status === "active").length,
-              // IF-D2-19: these two are counted from the loaded page, so they say so
-              // instead of standing in for a workspace total the read never returned.
-              hint: "on this page",
-              href: "/campaigns?status=active",
-            },
-            {
-              id: "completed",
-              label: "Completed",
-              value: campaigns.filter((campaign) => campaign.status === "completed").length,
-              hint: "on this page",
-              href: "/campaigns?status=completed",
-            },
-          ]}
-          columns={3}
-        />
-
         <section className="space-y-3">
           <SectionHeader
             title="Campaigns"

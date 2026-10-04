@@ -10,7 +10,6 @@ import {
   ErrorState,
   FilterToolbar,
   FilteredEmptyState,
-  MetricStrip,
   ResponsiveRecordList,
   SectionHeader,
   StaleDataIndicator,
@@ -48,7 +47,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatCount, formatDate } from "@/lib/format";
 import { getBusinessDateKey } from "@/lib/business-date";
-import { getTaskBoardMetrics } from "@/lib/sales-workspace";
 import { invalidateLinkedCompanyWorkspaceMutation } from "@/lib/company-workspace/invalidation";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
@@ -310,8 +308,6 @@ function TasksBoard() {
     }
   };
 
-  const metrics = getTaskBoardMetrics(rows, today);
-
   const markPending = (id: string) => {
     pendingTaskIdsRef.current.add(id);
     setPendingTaskIds(new Set(pendingTaskIdsRef.current));
@@ -496,33 +492,6 @@ function TasksBoard() {
       />
 
       <div className="space-y-6 px-4 py-6 md:px-6">
-        <MetricStrip
-          metrics={[
-            { id: "open", label: "Open", value: metrics.open, hint: "in loaded pages" },
-            {
-              id: "overdue",
-              label: OVERDUE_LABEL,
-              value: metrics.overdue,
-              hint: "in loaded pages",
-              tone: metrics.overdue > 0 ? "destructive" : "neutral",
-            },
-            {
-              id: "due-today",
-              label: "Due today",
-              value: metrics.dueToday,
-              hint: "in loaded pages",
-              tone: metrics.dueToday > 0 ? "warning" : "neutral",
-            },
-            {
-              id: "high",
-              label: "High priority",
-              value: metrics.highPriority,
-              hint: "in loaded pages",
-            },
-          ]}
-          columns={4}
-        />
-
         {/*
           `tasksQuery.isError` was referenced nowhere. Because `initialData` is set, `data`
           is always defined, so a failed background refetch was completely invisible: the

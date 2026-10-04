@@ -19,7 +19,6 @@ import {
   EmptyWorkspaceState,
   FilterToolbar,
   FilteredEmptyState,
-  MetricStrip,
   ResponsiveRecordList,
   SectionHeader,
   WorkspaceHeader,
@@ -300,27 +299,6 @@ function LeadsPage() {
       />
 
       <div className="space-y-6 px-4 py-6 md:px-6">
-        <MetricStrip
-          metrics={[
-            {
-              label: "Hot leads",
-              value: rows.filter((lead) => lead.lead_score >= 75).length,
-              hint: "score 75+ on this page",
-            },
-            {
-              label: "Unassigned",
-              value: rows.filter((lead) => !lead.assigned_to).length,
-              hint: "needs owner, on this page",
-            },
-            {
-              label: "Qualified",
-              value: rows.filter((lead) => lead.status === "qualified").length,
-              hint: "ready to convert, on this page",
-            },
-          ]}
-          columns={3}
-        />
-
         <section className="space-y-3">
           <SectionHeader
             title="Leads"

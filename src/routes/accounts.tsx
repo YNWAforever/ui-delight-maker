@@ -14,7 +14,6 @@ import {
   FilterToolbar,
   FilteredEmptyState,
   LifecycleBadge,
-  MetricStrip,
   ResponsiveRecordList,
   SectionHeader,
   WorkspaceHeader,
@@ -404,16 +403,6 @@ function AccountsIndex() {
   const countsFor = (accountId: string) =>
     accountCounts?.[accountId] ?? { openSignalCount: 0, linkedClientCount: 0 };
 
-  const pageSignals = accounts.reduce(
-    (total, account) => total + countsFor(account.id).openSignalCount,
-    0,
-  );
-  const pageClients = accounts.reduce(
-    (total, account) => total + countsFor(account.id).linkedClientCount,
-    0,
-  );
-  const pageAtRisk = accounts.filter((account) => account.lifecycle_stage === "at_risk").length;
-
   const columns: ColumnDef<Account>[] = [
     {
       id: "name",
@@ -512,38 +501,6 @@ function AccountsIndex() {
       />
 
       <div className="space-y-6 px-4 py-6 md:px-6">
-        <MetricStrip
-          metrics={[
-            {
-              id: "accounts",
-              label: "Accounts",
-              value: pagination.total,
-              hint: hasActiveFilters ? "matching these filters" : "in this workspace",
-            },
-            {
-              id: "signals",
-              label: "Open signals",
-              value: pageSignals,
-              hint: "on this page",
-              tone: pageSignals > 0 ? "warning" : "neutral",
-            },
-            {
-              id: "at-risk",
-              label: "At risk",
-              value: pageAtRisk,
-              hint: "on this page",
-              tone: pageAtRisk > 0 ? "destructive" : "neutral",
-            },
-            {
-              id: "clients",
-              label: "Linked clients",
-              value: pageClients,
-              hint: "on this page",
-            },
-          ]}
-          columns={4}
-        />
-
         <section className="space-y-3">
           <SectionHeader
             title="Companies"
