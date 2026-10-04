@@ -44,7 +44,7 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 |---|---|---|---|
 | 1 | Activation links in the invitation result | UX-01 | done (revoke deferred: needs its own confirm UI) |
 | 2 | Status tone text tokens readable in both themes | UX-02, UX-04 | done |
-| 3 | Permission denials stay inside the app shell; sidebar filtered by capability | UX-03 | (a) in-shell boundary done; (b) sidebar filter next |
+| 3 | Permission denials stay inside the app shell; sidebar filtered by capability | UX-03 | done (boundary + sidebar filter) |
 | 4 | Navigation progress + focus on route change | UX-08, UX-40 | |
 | 5 | Per-row control names from the record, not its id | UX-05 | |
 | 6 | Names instead of identifiers (leads, sidebar role, renewals, access requests) | UX-06 | |
@@ -64,7 +64,8 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `69c2319` | docs: audit, direction, progress | — | — |
 | `e999e30` | fix(admin): show activation links after inviting users | UX-01 | invitation-delivery 13, invite dialog +2 (23/23 with admin intent) |
 | `9d59899` | fix(ui): make status text readable in both themes | UX-02, UX-04 | new tone-contrast.test.ts (10), status-labels 33; `vite build` emits `text-tone-*-fg` |
-| next | fix(shell): keep permission denials inside the app shell | UX-03 | route-error-boundary.test.tsx (2), workspace-access.test.ts (8), errors 9, router 2 |
+| `36ec096` | fix(shell): keep permission denials inside the app shell | UX-03 | route-error-boundary.test.tsx (2), workspace-access.test.ts (8), errors 9, router 2 |
+| next | feat(nav): offer only the workspaces the session can open | UX-03 | app-sidebar +2 (16/16 with root boundary); tsc clean |
 
 ## Verification notes
 

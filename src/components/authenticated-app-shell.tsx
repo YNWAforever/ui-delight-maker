@@ -7,7 +7,7 @@ import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import type { AdminNavigationItem } from "@/lib/admin/types";
+import type { AdminNavigationItem, Capability } from "@/lib/admin/types";
 import type { Profile, WorkspaceFavorite } from "@/lib/types";
 import { signOut } from "@/server-functions/auth";
 
@@ -16,6 +16,7 @@ type AuthenticatedAppShellProps = {
   profile: Profile | null;
   favorites: Array<Pick<WorkspaceFavorite, "id" | "label" | "href">>;
   adminNavigation: readonly AdminNavigationItem[];
+  capabilities?: readonly Capability[];
 };
 
 export function AuthenticatedAppShell({
@@ -23,6 +24,7 @@ export function AuthenticatedAppShell({
   profile,
   favorites,
   adminNavigation,
+  capabilities = [],
 }: AuthenticatedAppShellProps) {
   const router = useRouter();
   return (
@@ -32,6 +34,7 @@ export function AuthenticatedAppShell({
           profile={profile}
           favorites={favorites}
           adminNavigation={adminNavigation}
+          capabilities={capabilities}
           onSignOut={async () => {
             try {
               await signOut();

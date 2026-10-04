@@ -113,6 +113,49 @@ describe("AppSidebar", () => {
     expect(screen.queryByRole("link", { name: "Agents" })).not.toBeTruthy();
   });
 
+  it("offers only the workspaces the session can open", () => {
+    // Accounting's shape on UAT: no leads, campaigns or agents. Following those links used
+    // to replace the app with "You do not have this capability" (audit UX-03).
+    render(
+      <SidebarProvider>
+        <AppSidebar
+          profile={null}
+          onSignOut={vi.fn()}
+          favorites={[]}
+          capabilities={[
+            "quotes.view",
+            "approvals.view",
+            "job_sheets.view",
+            "accounts.view",
+            "engagements.view",
+            "products.view",
+            "tasks.view",
+            "reports.view",
+          ]}
+        />
+      </SidebarProvider>,
+    );
+
+    for (const hidden of ["Leads", "Campaigns", "AI Review", "AI Ops", "Settings"]) {
+      expect(screen.queryByRole("link", { name: hidden })).toBeNull();
+    }
+    // A group with nothing left in it is not rendered as an empty heading.
+    expect(screen.queryByText("Acquire")).toBeNull();
+    for (const shown of ["Revenue Desk", "Quotes", "Approvals", "Job Sheets", "Renewals"]) {
+      expect(screen.getByRole("link", { name: shown })).toBeTruthy();
+    }
+  });
+
+  it("hides nothing when the capability set could not be loaded", () => {
+    render(
+      <SidebarProvider>
+        <AppSidebar profile={null} onSignOut={vi.fn()} favorites={[]} capabilities={[]} />
+      </SidebarProvider>,
+    );
+    expect(screen.getByRole("link", { name: "Leads" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "AI Ops" })).toBeTruthy();
+  });
+
   it("hides Admin navigation without capability and collapses it to one entry", () => {
     const { rerender } = render(
       <SidebarProvider>
