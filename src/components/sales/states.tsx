@@ -520,9 +520,13 @@ export function StaleDataIndicator({
   className,
 }: StaleDataIndicatorProps) {
   const now = useClientNow();
+  // Server and first client render must match. A client query that refetches on mount reports
+  // isFetching on its very first render, which the server never sees, so "Refreshing…" there
+  // replaced "Updated …" and broke hydration (UX-23). It is shown from mount onwards.
+  const refreshing = now !== null && isRefetching;
   const timestamp = new Date(updatedAt).getTime();
   const isStale =
-    now !== null && !Number.isNaN(timestamp) && now - timestamp > staleAfterMs && !isRefetching;
+    now !== null && !Number.isNaN(timestamp) && now - timestamp > staleAfterMs && !refreshing;
 
   return (
     <span
@@ -533,10 +537,10 @@ export function StaleDataIndicator({
       )}
     >
       <RefreshCw
-        className={cn("h-3 w-3 shrink-0", isRefetching && "animate-spin")}
+        className={cn("h-3 w-3 shrink-0", refreshing && "animate-spin")}
         aria-hidden="true"
       />
-      {isRefetching ? (
+      {refreshing ? (
         <span>Refreshing…</span>
       ) : (
         <span>
@@ -544,14 +548,16 @@ export function StaleDataIndicator({
               see the colour — or who is holding a printout — needs to be told. */}
           {isStale && <span className="font-medium">Out of date · </span>}
           Updated{" "}
-          <time dateTime={updatedAt}>
+          {/* Pages pass their query's fetch time, which the server and the browser each
+              record for themselves, so this one element may legitimately differ at hydration. */}
+          <time dateTime={updatedAt} suppressHydrationWarning>
             {now === null ? formatDate(updatedAt) : relativeTime(updatedAt, now)}
           </time>
         </span>
       )}
       {/* Announced only when the refetch flag flips, so the 30s clock tick stays silent. */}
       <span role="status" className="sr-only">
-        {isRefetching ? "Refreshing" : ""}
+        {refreshing ? "Refreshing" : ""}
       </span>
     </span>
   );
