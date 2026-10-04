@@ -48,7 +48,7 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | 4 | Navigation progress + focus on route change | UX-08, UX-40 | done (Approvals tab-stop count addressed with UX-11) |
 | 5 | Per-row control names from the record, not its id | UX-05 | done (rowLabel on 17 lists; access-request decision controls without ids) |
 | 6 | Names instead of identifiers (leads, sidebar role, renewals, access requests) | UX-06 | done for lead subtitle/header, sidebar role, Today status, audit action/target type, access capability/team; renewal owner, requester and audit actor names need SP-2 |
-| 7 | Lead actions and invitable roles gated by capability | UX-07 | |
+| 7 | Lead actions and invitable roles gated by capability | UX-07 | done |
 | 8 | Follow-up task from a lead | UX-10 | |
 | 9 | Honest summary strip instead of page-scoped stat cards | UX-09, UX-29 | |
 | 10 | Money that fits (quote line items, job sheet) | UX-13, UX-14 | |
@@ -68,13 +68,14 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `491d3f6` | feat(nav): offer only the workspaces the session can open | UX-03 | app-sidebar +2 (16/16 with root boundary); tsc clean |
 | `50f0bfe` | feat(shell): show navigation progress and move focus to the new page | UX-08, UX-40 | navigation-feedback 5, router 2, root boundary |
 | `6af9f35` | fix(a11y): name row controls by the record, not its id | UX-05 | 7 suites 80/80 (data-table-shell, responsive-record-list, access-request-queue, approvals, job sheets, leads, quotes); tsc clean |
-| next | fix(ui): show names and labels instead of ids and keys | UX-06 | access-request-queue +1, humanize-key 2, 9 suites 83/83; tsc clean |
+| `49115d6` | fix(ui): show names and labels instead of ids and keys | UX-06 | access-request-queue +1, humanize-key 2, 9 suites 83/83; tsc clean |
+| next | fix(leads): offer lead actions and invite roles only to those who can use them | UX-07 | lead detail 15/15 (+1 read-only), invite dialog 12/12 (+1); tsc clean |
 
 ## Resume notes (keep current)
 
 - Last commit: UX-06 (see log). The log's `next` row is always the latest commit; replace it
   with the hash at the start of the next commit.
-- Next: item 7 (UX-07 gate lead actions in `leads.$id.tsx` with shell capabilities: status Select, New quote, agent triggers; invite role options filtered by actor role in `invite-users-dialog.tsx`). Then items 8–14.
+- Next: item 8 (UX-10 "Add follow-up task" on `leads.$id.tsx` using `createTask` with `lead_id`; remove the "Lead notes are not stored yet" apology). Then items 9–14.
 - Working method: one concern per commit; run the focused suites that query changed names
   (`grep -rln "<old name>" src --include=*.test.tsx`), `bunx prettier --write <files>`,
   `bunx eslint <files>`, `bunx tsc --noEmit > log; echo $?` (do not trust exit codes through a

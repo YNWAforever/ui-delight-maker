@@ -158,6 +158,26 @@ describe("InviteUsersDialog", () => {
     expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "ada@example.com" }));
   });
 
+  it("offers only the roles the inviter may grant", () => {
+    // The server refuses a manager anything but operational roles and anyone but a Super Admin
+    // a Super Admin; listing them anyway offered choices that could only fail (UX-07).
+    const optionsFor = (actorRole: "manager" | "admin" | "super_admin") => {
+      const { unmount } = render(
+        <InviteUsersDialog open onOpenChange={vi.fn()} onSubmit={vi.fn()} actorRole={actorRole} />,
+      );
+      const values = Array.from(
+        (screen.getByRole("combobox", { name: "Invitation role" }) as HTMLSelectElement).options,
+      ).map((option) => option.value);
+      unmount();
+      return values;
+    };
+
+    expect(optionsFor("manager")).toEqual(["sales", "client_success", "accounting", "read_only"]);
+    expect(optionsFor("admin")).not.toContain("super_admin");
+    expect(optionsFor("admin")).toContain("admin");
+    expect(optionsFor("super_admin")).toContain("super_admin");
+  });
+
   it("keeps the dialog open while an invitation is submitting", async () => {
     let finish!: () => void;
     const onSubmit = vi.fn().mockReturnValue(

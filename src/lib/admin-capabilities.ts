@@ -82,3 +82,29 @@ export function adminControlAccess(role: UserRole | null | undefined): AdminCont
     exportAudit: allows("audit.export"),
   };
 }
+
+const ALL_INVITABLE_ROLES: readonly UserRole[] = [
+  "sales",
+  "client_success",
+  "accounting",
+  "read_only",
+  "manager",
+  "admin",
+  "super_admin",
+];
+
+/**
+ * The roles an actor may give someone they invite.
+ *
+ * Mirrors `assertCanAssignRole` in `server-functions/admin-invitations.ts`, which still decides:
+ * only a Super Admin invites a Super Admin, and a Manager invites operational roles only. The
+ * dialog used to list all seven to everyone, so Admin and Super Admin were options that could
+ * only fail (audit UX-07). Without a known actor role the full list is kept.
+ */
+export function invitableRoles(actorRole: UserRole | null | undefined): readonly UserRole[] {
+  if (actorRole === "admin") return ALL_INVITABLE_ROLES.filter((role) => role !== "super_admin");
+  if (actorRole === "manager") {
+    return ["sales", "client_success", "accounting", "read_only"];
+  }
+  return ALL_INVITABLE_ROLES;
+}

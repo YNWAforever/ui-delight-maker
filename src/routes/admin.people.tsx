@@ -439,6 +439,7 @@ function AdminPeopleIndex() {
         triggerRef={inviteTriggerRef}
         departments={departments}
         teams={teams}
+        actorRole={profile?.role}
         onSubmit={async (invitations) => {
           const result = await inviteUsers({ data: { invitations } });
           // The route no longer toasts "Invitation batch processed" unconditionally. The

@@ -18,6 +18,7 @@ import {
   type ActivationLink,
 } from "@/lib/invitation-delivery";
 import { getUserRoleLabel } from "@/lib/status-labels";
+import { invitableRoles } from "@/lib/admin-capabilities";
 import { ActivationLinkList } from "./activation-link-list";
 
 type InviteInput = {
@@ -35,6 +36,8 @@ type InviteUsersDialogProps = {
   triggerRef?: RefObject<HTMLButtonElement | null>;
   departments?: readonly { id: string; name: string }[];
   teams?: readonly { id: string; name: string }[];
+  /** The inviter, so only roles they may grant are offered. The server decides again. */
+  actorRole?: UserRole | null;
 };
 
 function parseEmails(value: string) {
@@ -55,10 +58,12 @@ export function InviteUsersDialog({
   triggerRef,
   departments = [],
   teams = [],
+  actorRole,
 }: InviteUsersDialogProps) {
+  const roleOptions = invitableRoles(actorRole);
   const emailRef = useRef<HTMLTextAreaElement>(null);
   const [emailText, setEmailText] = useState("");
-  const [role, setRole] = useState<UserRole>("sales");
+  const [role, setRole] = useState<UserRole>(() => roleOptions[0] ?? "sales");
   const [departmentId, setDepartmentId] = useState("");
   const [managerProfileId, setManagerProfileId] = useState("");
   const [teamIds, setTeamIds] = useState<string[]>([]);
@@ -204,13 +209,11 @@ export function InviteUsersDialog({
                   onChange={(event) => setRole(event.target.value as UserRole)}
                   className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <option value="sales">Sales</option>
-                  <option value="client_success">Client Success</option>
-                  <option value="accounting">Accounting</option>
-                  <option value="read_only">Read Only</option>
-                  <option value="manager">Manager</option>
-                  <option value="admin">Admin</option>
-                  <option value="super_admin">Super Admin</option>
+                  {roleOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {getUserRoleLabel(option)}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="text-sm font-medium text-foreground">

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { hasCapability } from "@/lib/admin/capabilities";
 import { leadDetailSearchSchema } from "@/lib/admin-ux-search";
 import { describeTriggerFailure, toSafeErrorMessage } from "@/lib/errors";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
@@ -155,6 +156,12 @@ function LeadDetail() {
     : null;
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const { capabilities = [] } = Route.useRouteContext();
+  // Advisory, like every client-side check: the server decides each write again. An empty
+  // set (the shell could not compute it) fails closed, so nothing is offered that may fail.
+  const canUpdateLead = hasCapability(capabilities, "leads.update");
+  const canCreateQuote = hasCapability(capabilities, "quotes.create");
+  const canRunAgents = hasCapability(capabilities, "agents.run");
 
   const [status, setStatus] = useState<LeadStatus>(lead.status);
   useEffect(() => setStatus(lead.status), [lead.status]);
@@ -271,11 +278,13 @@ function LeadDetail() {
           </Button>,
         ]}
         primaryAction={
-          <Button size="sm" asChild>
-            <Link to="/quotes/new" search={{ leadId: lead.id }}>
-              <FileText aria-hidden="true" className="mr-2 h-4 w-4" /> New quote
-            </Link>
-          </Button>
+          canCreateQuote ? (
+            <Button size="sm" asChild>
+              <Link to="/quotes/new" search={{ leadId: lead.id }}>
+                <FileText aria-hidden="true" className="mr-2 h-4 w-4" /> New quote
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -453,22 +462,28 @@ function LeadDetail() {
             <CardContent className="space-y-3 text-sm">
               <div>
                 <p className="text-xs text-muted-foreground">Status</p>
-                <Select
-                  value={status}
-                  disabled={statusSaving}
-                  onValueChange={(v) => void handleStatusChange(v as LeadStatus)}
-                >
-                  <SelectTrigger className="mt-1 h-9" aria-label="Lead status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {getStatusLabel("leads", s).label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {canUpdateLead ? (
+                  <Select
+                    value={status}
+                    disabled={statusSaving}
+                    onValueChange={(v) => void handleStatusChange(v as LeadStatus)}
+                  >
+                    <SelectTrigger className="mt-1 h-9" aria-label="Lead status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {getStatusLabel("leads", s).label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="mt-1">
+                    <StatusBadge domain="leads" value={status} />
+                  </div>
+                )}
                 {statusSaving && (
                   <p className="mt-1 text-xs text-muted-foreground">Saving status…</p>
                 )}
@@ -508,37 +523,39 @@ function LeadDetail() {
             next to "Generate Quote" (an agent) was two near-identical labels for two very
             different things.
           */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Agent actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start"
-                disabled={agentPending !== null}
-                onClick={() => void handleQualifyLead()}
-              >
-                <Sparkles aria-hidden="true" className="mr-2 h-4 w-4" />
-                {agentPending === "qualify" ? "Queuing…" : "Qualify this lead"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start"
-                disabled={agentPending !== null}
-                onClick={() => void handleGenerateQuote()}
-              >
-                <Bot aria-hidden="true" className="mr-2 h-4 w-4" />
-                {agentPending === "quote" ? "Queuing…" : "Draft a quote with the agent"}
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Both hand the lead to an n8n workflow. You will be told if the workflow is not
-                connected.
-              </p>
-            </CardContent>
-          </Card>
+          {canRunAgents ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Agent actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  disabled={agentPending !== null}
+                  onClick={() => void handleQualifyLead()}
+                >
+                  <Sparkles aria-hidden="true" className="mr-2 h-4 w-4" />
+                  {agentPending === "qualify" ? "Queuing…" : "Qualify this lead"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  disabled={agentPending !== null}
+                  onClick={() => void handleGenerateQuote()}
+                >
+                  <Bot aria-hidden="true" className="mr-2 h-4 w-4" />
+                  {agentPending === "quote" ? "Queuing…" : "Draft a quote with the agent"}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Both run an automated assistant on this lead. If the assistant is not set up, you
+                  will be told and nothing changes.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       </div>
     </>
