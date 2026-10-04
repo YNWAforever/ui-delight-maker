@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-10-03T20:47:06.592Z",
+  "sourceSha": "a58b716f67edbd7d3760fbb7821ad5cdea50ae98",
+  "db": "clientops_ai_gpt61_219f4d6b26",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/db/__tests__/approval-command.integration.test.ts",
+    "src/server/db/__tests__/quote-lifecycle-atomic.integration.test.ts",
+    "src/server/db/__tests__/quote-immutability.integration.test.ts",
+    "src/components/approvals/__tests__/use-approval-review.test.tsx",
+    "src/routes/__tests__/-approvals-irreversible.test.tsx",
+    "src/routes/__tests__/-quote-effective-actions.test.tsx",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-decisions-targeted-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 103,
+  "failed": 0,
+  "skipped": 0,
+  "total": 103,
+  "files": 6,
+  "elapsedMs": 47467,
+  "reportSha256": "235766fd44d9d77a546ddf7c0f5fc596ae3324b0482bd4899e7463ffe2250aec"
+}

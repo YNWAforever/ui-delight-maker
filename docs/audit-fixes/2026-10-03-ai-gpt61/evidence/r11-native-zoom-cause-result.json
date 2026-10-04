@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-10-03T19:16:30.134Z",
+  "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
+  "errors": [
+    {
+      "stage": "/ai-review navigation",
+      "name": "Error",
+      "message": "Minified React error #520; visit [URL] for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+    }
+  ]
+}

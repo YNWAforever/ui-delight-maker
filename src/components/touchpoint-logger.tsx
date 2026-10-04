@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import {
@@ -42,7 +43,7 @@ const SENTIMENTS: TouchpointNewSentiment[] = ["positive", "neutral", "negative"]
 
 interface TouchpointLoggerProps {
   clientId: string;
-  engagements: Engagement[];
+  engagements: (Engagement & { product_name?: string | null })[];
   contacts: ClientContact[];
   defaultEngagementId?: string | null;
   trigger: React.ReactNode;
@@ -63,6 +64,14 @@ export function TouchpointLogger({
   const [engagementId, setEngagementId] = useState<string>(defaultEngagementId ?? "none");
   const [contactId, setContactId] = useState<string>("none");
   const [notes, setNotes] = useState("");
+  const notesRef = useRef("");
+  const tidyEpoch = useRef(0);
+  const [proposal, setProposal] = useState<{
+    original: string;
+    tidied: string;
+    runId?: string | null;
+  } | null>(null);
+  const [aiProblem, setAiProblem] = useState<string | null>(null);
   const tidyRequestRef = useRef<{ notes: string; key: string } | null>(null);
   const [aiAvailable, setAiAvailable] = useState(false);
   const [tidying, setTidying] = useState(false);
@@ -76,20 +85,30 @@ export function TouchpointLogger({
   }, []);
 
   const tidy = async () => {
-    if (!notes.trim()) return;
+    if (!notes.trim() || tidying || saving) return;
+    const original = notes,
+      epoch = ++tidyEpoch.current;
     const key =
       tidyRequestRef.current?.notes === notes
         ? tidyRequestRef.current.key
         : globalThis.crypto.randomUUID();
     tidyRequestRef.current = { notes, key };
     setTidying(true);
+    setAiProblem(null);
+    setProposal(null);
     try {
       const result = await tidyTouchpointNote({ data: { notes, idempotencyKey: key } });
-      setNotes(result.tidied);
+      if (epoch === tidyEpoch.current && notesRef.current === original)
+        setProposal({ original, tidied: result.tidied, runId: result.runId });
     } catch {
-      toast.error("Couldn't tidy notes right now.");
+      if (epoch === tidyEpoch.current && notesRef.current === original) {
+        setAiProblem(
+          "AI tidy did not complete. Your manual note is unchanged and can still be saved. A timeout does not confirm provider cancellation.",
+        );
+        toast.error("Couldn't tidy notes right now.");
+      }
     } finally {
-      setTidying(false);
+      if (epoch === tidyEpoch.current) setTidying(false);
     }
   };
 
@@ -115,6 +134,11 @@ export function TouchpointLogger({
       });
       toast.success("Touchpoint logged");
       setNotes("");
+      notesRef.current = "";
+      tidyEpoch.current++;
+      setTidying(false);
+      setAiProblem(null);
+      setProposal(null);
       tidyRequestRef.current = null;
       setOpen(false);
       await onLogged?.();
@@ -131,11 +155,17 @@ export function TouchpointLogger({
       open={open}
       onOpenChange={(next) => {
         if (saving) return;
+        if (!next) {
+          tidyEpoch.current++;
+          setTidying(false);
+          setAiProblem(null);
+          setProposal(null);
+        }
         setOpen(next);
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Log touchpoint</DialogTitle>
         </DialogHeader>
@@ -189,7 +219,8 @@ export function TouchpointLogger({
                 <SelectItem value="none">Whole client relationship</SelectItem>
                 {engagements.map((e) => (
                   <SelectItem key={e.id} value={e.id}>
-                    {e.id}
+                    {e.product_name ?? "Engagement"} · {e.start_date} ·{" "}
+                    {e.billing_period.replaceAll("_", " ")}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -224,7 +255,7 @@ export function TouchpointLogger({
                   variant="ghost"
                   size="sm"
                   onClick={tidy}
-                  disabled={tidying || !notes.trim()}
+                  disabled={tidying || saving || !notes.trim()}
                 >
                   {tidying ? "Tidying…" : "Tidy with AI"}
                 </Button>
@@ -235,9 +266,67 @@ export function TouchpointLogger({
               name="notes"
               className="mt-1"
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => {
+                setNotes(e.target.value);
+                notesRef.current = e.target.value;
+                setProposal(null);
+              }}
               rows={4}
             />
+            {aiProblem && (
+              <p role="alert" className="mt-2 text-sm">
+                {aiProblem}
+              </p>
+            )}
+            {proposal && (
+              <section
+                className="mt-3 space-y-2 rounded border p-3"
+                aria-label="Review tidied note"
+              >
+                <h3 className="font-medium">Review AI suggestion</h3>
+                <p className="text-xs text-muted-foreground">
+                  Verify all facts before choosing the suggestion. Nothing has been saved.
+                </p>
+                <h4 className="text-sm font-medium">Original</h4>
+                <p className="whitespace-pre-wrap text-sm">{proposal.original}</p>
+                <h4 className="text-sm font-medium">Suggested</h4>
+                <p className="whitespace-pre-wrap text-sm">{proposal.tidied}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setProposal(null);
+                      document.getElementById("touchpoint-notes")?.focus();
+                    }}
+                  >
+                    Keep original note
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setNotes(proposal.tidied);
+                      notesRef.current = proposal.tidied;
+                      setProposal(null);
+                      document.getElementById("touchpoint-notes")?.focus();
+                    }}
+                  >
+                    Use tidied note
+                  </Button>
+                </div>
+                {proposal.runId && (
+                  <Link to="/agents" search={{ auxiliaryRun: proposal.runId }}>
+                    Review Note Tidy invocation
+                  </Link>
+                )}
+              </section>
+            )}
+            {engagementId !== "none" && (
+              <details className="mt-2 text-xs text-muted-foreground">
+                <summary>Engagement details</summary>
+                <p>Engagement ID: {engagementId}</p>
+              </details>
+            )}
           </div>
         </div>
         <DialogFooter>

@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
+import { z } from "zod";
+import { agentQueueSearchSchema } from "@/lib/agent-queue-input";
+import { RunQueuePanel } from "@/components/agents/run-queue-panel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link, Outlet, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouter, useNavigate } from "@tanstack/react-router";
 import { Bot, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -8,19 +11,15 @@ import {
   AttentionQueue,
   EmptyWorkspaceState,
   ErrorState,
-  FilterToolbar,
-  FilteredEmptyState,
   MetricStrip,
-  ResponsiveRecordList,
   SectionHeader,
   StaleDataIndicator,
   StatusBadge,
   WorkspaceHeader,
-  type ColumnDef,
-  type FilterOption,
   type SalesMetric,
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
+import { AuxiliaryWorkflowPanel } from "@/components/agents/auxiliary-workflow-panel";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClientNow } from "@/hooks/use-client-now";
 import { buildAgentAttentionItems } from "@/lib/agent-ops";
@@ -30,14 +29,9 @@ import { formatCount, formatDateTime, formatPercent } from "@/lib/format";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { useIsExactPath } from "@/lib/routing-utils";
-import { getStatusLabel } from "@/lib/status-labels";
-import type { AgentRunStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import {
-  getAgentDirectoryRead,
-  type AgentDirectoryRead,
-  type AgentDirectoryRunSummary,
-} from "@/server-functions/agent-runs";
+import { AdminError } from "@/lib/admin/errors";
+import { getAgentDirectoryRead, type AgentDirectoryRead } from "@/server-functions/agent-runs";
 
 /**
  * AI Ops.
@@ -63,16 +57,23 @@ const agentDirectoryQuery = () =>
     queryFn: () => getAgentDirectoryRead(),
   });
 
-/** The four values `agent_runs_status_check` allows, in operator-attention order. */
-const RUN_STATUS_FILTER_VALUES: AgentRunStatus[] = [
-  "running",
-  "waiting_approval",
-  "failed",
-  "completed",
-];
-
 export const Route = createFileRoute("/agents")({
-  loader: ({ context }) => context.queryClient.ensureQueryData(agentDirectoryQuery()),
+  validateSearch: agentQueueSearchSchema.merge(
+    z.object({ auxiliaryRun: z.string().uuid().optional().catch(undefined) }),
+  ),
+  loader: async ({ context }) => {
+    try {
+      return await context.queryClient.ensureQueryData(agentDirectoryQuery());
+    } catch (error) {
+      // Expected capability denials are data-free views, not errored hydrated queries.
+      if (
+        error instanceof AdminError &&
+        (error.code === "FORBIDDEN" || error.code === "OUTSIDE_SCOPE")
+      )
+        return { accessDenied: true as const };
+      throw error;
+    }
+  },
   head: () => ({
     meta: [
       { title: "AI Ops — Fimmick ClientOps" },
@@ -110,11 +111,20 @@ function AgentsErrorState({ error }: { error: unknown }) {
 
 function AgentsRoute() {
   const isIndexRoute = useIsExactPath("/agents");
+  const data = Route.useLoaderData();
   if (!isIndexRoute) return <Outlet />;
+  if ("accessDenied" in data)
+    return (
+      <AgentsErrorState error={new AdminError("FORBIDDEN", "You do not have this capability")} />
+    );
   return <AgentsMonitor />;
 }
 
 function AgentsMonitor() {
+  const actorId = Route.useRouteContext?.().profile?.id ?? "unknown";
+  const queueFilters = agentQueueSearchSchema.parse(Route.useSearch() ?? {});
+  const navigate = useNavigate({ from: Route.fullPath });
+  const auxiliaryRun = Route.useSearch()?.auxiliaryRun;
   const initialData = Route.useLoaderData() as AgentDirectoryRead;
   const queryClient = useQueryClient();
   const clientNow = useClientNow();
@@ -126,25 +136,16 @@ function AgentsMonitor() {
     refetchInterval: 45_000,
   });
   const directory = directoryQuery.data;
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [refreshing, setRefreshing] = useState(false);
 
-  const slugByDisplayName = useMemo(
-    () => new Map(directory.agents.map((agent) => [agent.display_name, agent.name])),
+  const slugByWorkflowType = useMemo(
+    () => new Map(directory.agents.map((agent) => [agent.workflow_type, agent.name])),
     [directory.agents],
   );
 
   const attentionItems = useMemo(
-    () => buildAgentAttentionItems(directory.attentionRuns, slugByDisplayName, clientNow),
-    [directory.attentionRuns, slugByDisplayName, clientNow],
-  );
-
-  const filteredRuns = useMemo(
-    () =>
-      statusFilter === "all"
-        ? directory.recentRuns
-        : directory.recentRuns.filter((run) => run.status === statusFilter),
-    [directory.recentRuns, statusFilter],
+    () => buildAgentAttentionItems(directory.attentionRuns, slugByWorkflowType, clientNow),
+    [directory.attentionRuns, slugByWorkflowType, clientNow],
   );
 
   const operations = directory.operations;
@@ -212,93 +213,6 @@ function AgentsMonitor() {
     },
   ];
 
-  const statusOptions: FilterOption[] = [
-    { value: "all", label: "All run statuses" },
-    ...RUN_STATUS_FILTER_VALUES.map((value) => ({
-      value,
-      label: getStatusLabel("agentRuns", value).label,
-    })),
-  ];
-
-  const runColumns: ColumnDef<AgentDirectoryRunSummary>[] = [
-    {
-      id: "agent",
-      header: "Agent",
-      priority: "primary",
-      sticky: true,
-      cell: (run) => <span className="font-medium text-foreground">{run.agent_name}</span>,
-    },
-    {
-      id: "status",
-      header: "Status",
-      priority: "primary",
-      cell: (run) => <StatusBadge domain="agentRuns" value={run.status} />,
-    },
-    {
-      id: "when",
-      header: "When",
-      priority: "primary",
-      cell: (run) => (
-        <span className="text-xs text-muted-foreground">{formatDateTime(run.created_at)}</span>
-      ),
-    },
-    {
-      id: "trigger",
-      header: "Trigger",
-      priority: "secondary",
-      cell: (run) => (
-        <span className="text-xs capitalize text-muted-foreground">{run.trigger_type ?? "—"}</span>
-      ),
-    },
-    {
-      id: "duration",
-      header: "Duration",
-      priority: "secondary",
-      numeric: true,
-      cell: (run) => (run.duration_ms == null ? "—" : `${(run.duration_ms / 1000).toFixed(1)}s`),
-    },
-    {
-      id: "tokens",
-      header: "Tokens",
-      priority: "tertiary",
-      numeric: true,
-      cell: (run) => (run.tokens_used == null ? "—" : formatCount(run.tokens_used)),
-    },
-    {
-      id: "confidence",
-      header: "Confidence",
-      priority: "tertiary",
-      numeric: true,
-      cell: (run) => (run.confidence_score == null ? "—" : formatPercent(run.confidence_score)),
-    },
-  ];
-
-  const renderRunDetails = (run: AgentDirectoryRunSummary) => (
-    <p className="text-sm text-muted-foreground">
-      {run.subject_restricted
-        ? "Summary restricted."
-        : (run.output_summary ?? "No output summary recorded.")}
-    </p>
-  );
-
-  const renderRunCard = (run: AgentDirectoryRunSummary) => (
-    <div className="min-w-0">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{run.agent_name}</span>
-        <StatusBadge domain="agentRuns" value={run.status} />
-      </div>
-      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-        {run.subject_restricted
-          ? "Summary restricted."
-          : (run.output_summary ?? "No output summary recorded.")}
-      </p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        {formatDateTime(run.created_at)}
-        {run.tokens_used == null ? "" : ` · ${formatCount(run.tokens_used)} tokens`}
-      </p>
-    </div>
-  );
-
   return (
     <>
       <WorkspaceHeader
@@ -328,16 +242,17 @@ function AgentsMonitor() {
 
       <div className="space-y-6 px-4 py-6 md:px-6">
         <MetricStrip metrics={primaryMetrics} supporting={supportingMetrics} columns={4} />
+        <AuxiliaryWorkflowPanel key={auxiliaryRun ?? "note-history"} runId={auxiliaryRun} />
 
         <section className="space-y-3">
           <SectionHeader
             title="Agent workforce"
-            description="Catalogue state is the definition the dispatch path reads. Configuration is read-only until runtime policy enforcement is enabled."
+            description="Stored status governs dispatch. Open an agent’s Governance tab for versioned status controls; human approval and model remain read-only. Worker/provider readiness needs separate verification."
           />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {directory.agents.map((agent) => {
               const rate = agent.success_rate;
-              const attention = agent.stuck_runs + agent.failed_24h + agent.waiting_approval;
+              const attention = agent.stuck_runs + agent.failed_7d + agent.waiting_approval;
               const maxCount = Math.max(...agent.sparkline, 1);
 
               return (
@@ -425,55 +340,43 @@ function AgentsMonitor() {
         <section className="space-y-3">
           <SectionHeader
             title="Needs a human"
-            description="Ordered stuck, then failed, then waiting approval. Read from the recent runs below; the strip above counts every run on record."
+            description="Running for at least 60 minutes, failures in the last seven days, then waiting approvals. The count covers the whole queue; this list shows the first eight."
           />
           <AttentionQueue
             items={attentionItems}
             emptyTitle="Nothing needs a human"
-            emptyDescription="No stuck, failed or waiting runs in the recent history."
+            emptyDescription="No runs match the attention rules."
           />
         </section>
 
-        <section className="space-y-3">
-          <SectionHeader
-            title="Recent runs"
-            description="The most recent runs across every agent. The filter narrows this list — open an agent to page through its full history."
-          />
-          <FilterToolbar
-            filters={[
-              {
-                id: "run-status",
-                label: "Run status",
-                options: statusOptions,
-                value: statusFilter,
-                onChange: setStatusFilter,
-              },
-            ]}
-            onClear={() => setStatusFilter("all")}
-            resultCount={filteredRuns.length}
-          />
-          {directory.recentRuns.length === 0 ? (
-            <EmptyWorkspaceState
-              icon={Bot}
-              title="No agent runs recorded"
-              description="Runs appear here as soon as an agent is dispatched from a lead, quote or account."
+        {(directory.unknownWorkflows ?? []).length > 0 && (
+          <section className="space-y-3" aria-label="Unknown workflows">
+            <SectionHeader
+              title="Unknown workflows"
+              description="Recorded workflow identities without a current agent definition. Preserve the original run ID and label when investigating."
             />
-          ) : filteredRuns.length === 0 ? (
-            <FilteredEmptyState
-              onClear={() => setStatusFilter("all")}
-              filterSummary={`Status: ${getStatusLabel("agentRuns", statusFilter).label}`}
-            />
-          ) : (
-            <ResponsiveRecordList
-              columns={runColumns}
-              rows={filteredRuns}
-              rowKey={(run) => run.id}
-              renderCard={renderRunCard}
-              expandable={{ renderDetails: renderRunDetails }}
-              caption="Recent agent runs"
-            />
-          )}
-        </section>
+            <ul className="space-y-2 text-sm">
+              {directory.unknownWorkflows.map((workflow) => (
+                <li key={workflow.workflow_type} className="rounded-md border p-3">
+                  <code>{workflow.workflow_type}</code> · {formatCount(workflow.runs_24h)} runs in
+                  24h
+                  {workflow.last_run_at && (
+                    <span className="ml-2 text-muted-foreground">
+                      Last run {formatDateTime(workflow.last_run_at)}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <RunQueuePanel
+          key={actorId}
+          actorId={actorId}
+          filters={queueFilters}
+          onChange={(next) => void navigate({ search: (current) => ({ ...current, ...next }) })}
+        />
       </div>
     </>
   );

@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-10-04T09:05:41.342Z",
+  "sourceSha": "9770e65198044a9eba9ea6be9793fb232652bc2d",
+  "db": "clientops_ai_gpt61_84a1fccf59",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/routes/__tests__/-ai-review-refresh-access.test.tsx",
+    "src/routes/__tests__/-ai-review-decisions.test.tsx",
+    "src/routes/__tests__/-ai-review-denied-loader.test.tsx",
+    "src/routes/__tests__/-ai-review-subject-restricted-copy.test.tsx",
+    "src/server/read-models/__tests__/agent-queues.integration.test.ts",
+    "src/server/db/__tests__/approval-recovery.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-review-denial-corrected-target-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 71,
+  "failed": 0,
+  "skipped": 0,
+  "total": 71,
+  "files": 6,
+  "elapsedMs": 137743,
+  "reportSha256": "7b6ec16cf467d80e34d0d645a7a8c28c4a0ad7d0c0139138d1329c9eed1ae072"
+}

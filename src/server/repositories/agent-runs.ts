@@ -2,6 +2,10 @@ import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.s
 import { AdminError } from "@/lib/admin/errors";
 import type { AgentRun, AgentToolCall } from "@/lib/types";
 import type { AIUsage } from "@/server/workflows/ai-invocation.server";
+import {
+  normalizeAIExecutionProvenance,
+  type AIExecutionProvenance,
+} from "@/lib/workflows/provenance";
 
 export type WorkflowType =
   | "qualify_lead"
@@ -79,18 +83,21 @@ export async function getAgentRunForUpdate(id: string, db: Queryable) {
   return queryOne<AgentRun>("select * from agent_runs where id = $1 for update", [id], db);
 }
 
-export async function createAgentRun(input: {
-  agent_name: string;
-  workflow_type: WorkflowType;
-  subject_id: string;
-  subject_type?: SubjectType;
-  trigger_type?: "manual" | "webhook" | "schedule" | "orchestrator";
-  input_data: unknown;
-  created_by: string | null;
-}) {
+export async function createAgentRun(
+  input: {
+    agent_name: string;
+    workflow_type: WorkflowType;
+    subject_id: string;
+    subject_type?: SubjectType;
+    trigger_type?: "manual" | "webhook" | "schedule" | "orchestrator";
+    input_data: unknown;
+    created_by: string | null;
+  },
+  existingDb?: Queryable,
+) {
   const subjectType = input.subject_type ?? "lead";
   const triggerType = input.trigger_type ?? "manual";
-  const run = await transaction(async (db) => {
+  const work = async (db: Queryable) => {
     // A retry request is only a local recovery marker. The existing dispatch caller
     // creates this new attempt after checking its webhook and policy.
     const retry = (
@@ -107,8 +114,8 @@ export async function createAgentRun(input: {
     const inserted = (
       await db.query<AgentRun>(
         `insert into agent_runs
-           (agent_name,workflow_type,trigger_type,subject_type,subject_id,input_data,status,created_by,retry_of)
-         values ($1,$2,$3,$4,$5,$6::jsonb,'running',$7,$8)
+           (agent_name,workflow_type,trigger_type,subject_type,subject_id,input_data,status,created_by,retry_of,model_used)
+         values ($1,$2,$3,$4,$5,$6::jsonb,'running',$7,$8,null)
          on conflict (subject_type,subject_id,workflow_type)
            where status in ('running','waiting_approval')
            do nothing
@@ -132,7 +139,8 @@ export async function createAgentRun(input: {
       );
     }
     return inserted;
-  });
+  };
+  const run = await (existingDb ? work(existingDb) : transaction(work));
 
   if (run) {
     return { run, created: true as const };
@@ -156,6 +164,7 @@ export async function updateAgentRunResult(
     usage_data?: AIUsage | null;
     outcome_code?: string | null;
     model_used?: string | null;
+    execution_metadata?: AIExecutionProvenance | null;
   },
   db?: Queryable,
 ) {
@@ -179,7 +188,8 @@ export async function updateAgentRunResult(
         tokens_used = $7,
         model_used = coalesce($8, model_used),
         usage_data = coalesce($9::jsonb, usage_data),
-        outcome_code = coalesce($10, outcome_code)
+        outcome_code = coalesce($10, outcome_code),
+        execution_metadata = coalesce($11::jsonb, execution_metadata)
       where id = $1 and status in ('running','waiting_approval')
       returning *
     `,
@@ -194,6 +204,9 @@ export async function updateAgentRunResult(
       input.model_used ?? null,
       input.usage_data ? JSON.stringify(input.usage_data) : null,
       input.outcome_code ?? null,
+      input.execution_metadata
+        ? JSON.stringify(normalizeAIExecutionProvenance(input.execution_metadata))
+        : null,
     ],
     db,
   );

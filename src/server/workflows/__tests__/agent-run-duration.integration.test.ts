@@ -60,6 +60,7 @@ import { CLIENTOPS_MIGRATION_PATHS } from "@/lib/clientops-relationship-schema";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
 import { updateAgentRunResult } from "@/server/repositories/agent-runs";
 import { writeQualificationResult } from "@/server/workflows/writebacks";
+import { validQualification } from "@/lib/workflows/__tests__/commercial-fixtures";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 
@@ -205,7 +206,7 @@ describe("agent run duration, proven against a real database", () => {
         const payload = {
           lead_id: leadId,
           agent_run_id: runId,
-          qualification_data: { fit: "high" },
+          qualification_data: validQualification,
           lead_score: 80,
           output_summary: "Qualified",
           confidence_score: 0.9,

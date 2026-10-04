@@ -1,0 +1,123 @@
+{
+  "checkedAt": "2026-10-03T19:53:49.033Z",
+  "baseSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
+  "workingSourceDiffSha256": "9bb3b78b383e80a89b11550d63f856a06505f6e3c54e5a03877c7e37e51fae89",
+  "sourceFiles": [
+    {
+      "path": "src/routes/ai-review.tsx",
+      "sha256": "66c95ab7663bc44a51d60857c1a91dfce843c2157ebda8c6d898d852a3a8fbbe",
+      "sha256CanonicalLF": "66c95ab7663bc44a51d60857c1a91dfce843c2157ebda8c6d898d852a3a8fbbe"
+    },
+    {
+      "path": "src/routes/__tests__/-ai-review-denied-loader.test.tsx",
+      "sha256": "8f39d82dea25869e006464d8e79232f3bd15e5eb19d144d3a13612a8411b6510",
+      "sha256CanonicalLF": "5096f26565f9f42818ef3beba9dca8d1695f8dc26458cc5db6ff39cf78ae4a29"
+    }
+  ],
+  "serverEntrySha256": "b0532e35fd2633cd62dd88a418c37bad5aec815a3d0b980d0ad1977327a95f46",
+  "artifactCount": 403,
+  "artifactInventorySha256": "5fa09ff7f86eb1be7770747d946df9c15f63f53c1d25ee2dd2bb9a056cda7c66",
+  "runtime": {
+    "startedAt": "2026-10-03T19:41:14.912Z",
+    "pid": 6880,
+    "sha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
+    "workingSourceDiffSha256": "9bb3b78b383e80a89b11550d63f856a06505f6e3c54e5a03877c7e37e51fae89",
+    "serverEntrySha256": "b0532e35fd2633cd62dd88a418c37bad5aec815a3d0b980d0ad1977327a95f46",
+    "baseUrl": "http://localhost:52941",
+    "database": "clientops_ai_uat_843cdc77175546ddbad0417b36ac845a",
+    "fixtureVersion": "ai-local-role-uat-v1",
+    "transport": "actual built SSR and Neon driver over loopback WebSocket/TCP",
+    "auth": "seven existing independent live Neon Auth sessions",
+    "providerConfigurationAbsent": true,
+    "outboundGuard": "only read-only independent Auth get-session allowed",
+    "productionAccess": false
+  },
+  "gutcheck": {
+    "checkedAt": "2026-10-03T19:41:38.302Z",
+    "sha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
+    "workingSourceDiffSha256": "9bb3b78b383e80a89b11550d63f856a06505f6e3c54e5a03877c7e37e51fae89",
+    "status": 200,
+    "hasContent": true,
+    "inputCount": 2,
+    "overlayCount": 0,
+    "errors": [],
+    "screenshotSha256": "c52ac25514d08841c1007b0b2c3b4b535a1b7cbece3110e4bf123f44b254edb5",
+    "tool": "existing Playwright Chromium; agent-browser CLI unavailable",
+    "productionAccess": false
+  },
+  "evidence": [
+    {
+      "path": "evidence/r11-native-zoom-roles-initial-failure-result.json",
+      "sha256": "666536113304a7026cb518b71f9c49d73770cd8fd780a93c13ee0462bc36d674"
+    },
+    {
+      "path": "evidence/r11-native-zoom-roles-baseline-result.json",
+      "sha256": "32af2b45bf3ec70a931c3543d3bce6cac911307f085a2bc5e14c796cfdf4f6dc"
+    },
+    {
+      "path": "evidence/r11-native-zoom-cause-result.json",
+      "sha256": "26e74c519cf493c132b2c7f7111c492806663cc2e404e4521230b9ee3c8553b5"
+    },
+    {
+      "path": "evidence/r11-native-zoom-roles-result.json",
+      "sha256": "7ec441c8fc613b61b28c20b84a9d2ea3dcac03927b2f8f670103899bd53c9acb"
+    },
+    {
+      "path": "evidence/r11-native-boundary-fixture-failure-result.json",
+      "sha256": "5b424c6ab63a28bb7e57bc596c39247cb298158c095fe19ab998fcc8881db20c"
+    },
+    {
+      "path": "evidence/r11-native-boundary-unknown-result.json",
+      "sha256": "b0a5159d3186e5858dfd7ce191d2e861a96dd911c126658ef9723c1876e8dde4"
+    },
+    {
+      "path": "evidence/r11-native-denied-baseline-result.json",
+      "sha256": "7d8697ba7cf84ad02e188f9df5ca2c9d18c6b3d2be47f6608d0767446dfb8654"
+    },
+    {
+      "path": "evidence/r11-native-denied-final-result.json",
+      "sha256": "05a06e31cac413907e400169fb3be1d3d9ecc005843aeddaf46240bf10fb8d0a"
+    },
+    {
+      "path": "evidence/r11-native-denied-fixed-static-result.json",
+      "sha256": "5deb5dfd6883713695f3d1b28401e5c19ef10fd98bf7e20dd76882892bc17a51"
+    },
+    {
+      "path": "evidence/r11-native-denied-build-result.json",
+      "sha256": "689ffdb2f7025b8584e0a9386255914a4d41d38ab3eba5a4ed7015a8d9a41bc3"
+    },
+    {
+      "path": "evidence/r11-native-zoom-screenshot-diagnostic-result.json",
+      "sha256": "6ab2f1603623d1e06b8c0066d26132f9e8adac5c5c849deeee5f5aa44e8a9936"
+    }
+  ],
+  "targetCommandExit": 0,
+  "strictNoSkipsExit": 0,
+  "generatedRouteOrderingOnly": true,
+  "productionAccess": false,
+  "providerCalls": 0,
+  "codeCommitBinding": "Requires subsequent committed source canonical hashes and new exact-head CI; execution base/working hashes preserved",
+  "manualAssistiveTechnology": "not-tested",
+  "releaseDecision": "NO-GO",
+  "nativeZoomExtension": {
+    "manifestSha256": "d257dae8c39f985b0bac65d013bbd4cb0be9bf5c506af150e7549a4636c98026",
+    "backgroundSha256": "71894d6105708a945776e5d4e480177ab9ff754e61c5d401d0364b114b04f0a4",
+    "permissions": [
+      "tabs"
+    ],
+    "hostPermissions": [],
+    "contentScripts": [],
+    "background": "chrome.runtime.onInstalled.addListener(() => {});",
+    "networkRequests": 0
+  },
+  "runnerSources": [
+    {
+      "path": "evidence/r11-native-zoom-runner.source.txt",
+      "sha256": "c3dfa163e77b3140a0dac57f5b578c00df06150a2d6c4bd6c980196532457771"
+    },
+    {
+      "path": "evidence/r11-native-boundary-runner.source.txt",
+      "sha256": "b5d8077c6fd18472a742b48b4bb4a1a76e0727800571dc2f81a87f7843a3075b"
+    }
+  ]
+}

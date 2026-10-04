@@ -224,7 +224,12 @@ import { describe, expect, it } from "vitest";
 // T16: +3 counted calls. The explicit Job Sheet header mutation has its own
 // resource-scoped write gate. The detail read adds optional update/accept controls
 // and a linked-account visibility check for the company label; required gates remain.
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 237;
+// R05: +3 lexical matches. agent-policy adds the required read gate and its import
+// (+2 requirePageAuthorization), plus agents.configure on rollback (+1).
+// The original configure write gate remains and physical denied-write tests cover both.
+// R06: auxiliary-agent-runs adds one agents.view gate and its import (+2).
+// R07: the new bounded queue BFF adds one required page authorization gate.
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 243;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

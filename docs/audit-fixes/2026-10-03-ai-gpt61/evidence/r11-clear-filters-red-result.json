@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-10-04T07:48:41.136Z",
+  "sourceSha": "98189d3c62b67fa73af87c8a918cefcabab0056e",
+  "db": "clientops_ai_gpt61_c6211da333",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/components/agents/__tests__/queue-clear-filters.test.tsx",
+    "src/components/agents/__tests__/queue-navigation.test.tsx",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-clear-filters-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 22,
+  "failed": 2,
+  "skipped": 0,
+  "total": 24,
+  "files": 2,
+  "elapsedMs": 57564,
+  "reportSha256": "a7e18989254c9f80827985915d77584428c437adcdfb3c1a97b45579ed36e8c6"
+}

@@ -1,0 +1,15 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {Pool} from 'pg';
+import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+const f='.clientops-perf/ai-gpt61-20261003',fx=JSON.parse(readFileSync(f+'/r11-native-review-denial-uat.private.json','utf8')),base=JSON.parse(readFileSync(f+'/r11-native-review-denial-base.private.json','utf8')),original=JSON.parse(readFileSync(f+'/r11-native-review-denial-source-before.private.json','utf8')),migration=JSON.parse(readFileSync(f+'/r11-native-review-denial-migration-result.json','utf8'));
+for(const config of[fx,base]){assert.equal(config.isolationConfirmed,true);const u=new URL(config.connectionString);assert.equal(u.hostname,'127.0.0.1');assert.equal(u.port,'51529');assert.equal(u.pathname,'/'+config.db);assert.match(config.db,/^clientops_ai_uat_[a-f0-9]{32}$/);}
+const source=new Pool({connectionString:base.connectionString}),clone=new Pool({connectionString:fx.connectionString}),hash=x=>createHash('sha256').update(JSON.stringify(x)).digest('hex');
+const tables=async p=>{const result=[];for(const{tablename:t}of(await p.query("select tablename from pg_tables where schemaname='public' order by tablename")).rows){assert.match(t,/^[a-z_0-9]+$/);const rows=(await p.query('select row_to_json(t)::text value from "'+t+'" t')).rows.map(x=>x.value).sort();result.push({table:t,count:rows.length,sha256:hash(rows)});}return result;};
+try{
+ const after=await tables(source);assert.deepEqual(after,original.tables);const final=await tables(clone),ids=fx.cancelCases.map(c=>c.run),old=(await clone.query('select row_to_json(t)::text value from agent_runs t where id <> all($1::uuid[])',[ids])).rows.map(x=>x.value).sort();assert.equal(old.length,135);assert.equal(hash(old),migration.before.hash);
+ const expected={leads:18,agent_runs:18,human_approvals:fx.cancelCases.filter(c=>c.approval).length,clientops_schema_migrations:1},deltas=[];
+ for(const t of final){const before=original.tables.find(x=>x.table===t.table);assert.ok(before);if(t.count!==before.count||t.sha256!==before.sha256){const delta=t.count-before.count;assert.equal(delta,expected[t.table],'Unexpected table change: '+t.table);deltas.push({table:t.table,additionalRows:delta});}else assert.equal(expected[t.table]??0,0);}
+ assert.equal(deltas.length,4);assert.equal((await clone.query('select count(*) n from agent_runs where id=any($1::uuid[]) and recovered_at is not null',[ids])).rows[0].n,'0');
+ const r={checkedAt:new Date().toISOString(),originalDatabase:base.db,cloneDatabase:fx.db,loopbackOnly:true,originalAll56TablesUnchanged:true,historical135RunRowsUnchanged:true,syntheticFixtureRuns:18,allowedDeltas:deltas,previewsOnly:0,effectiveCancels:0,newCommandReceipts:0,newActivityAudits:0,allOtherCloneTablesUnchanged:true,productionAccess:false,actualProviderCalls:0,passed:true};writeFileSync(f+'/r11-native-review-denial-integrity-result.json',JSON.stringify(r,null,2));console.log(JSON.stringify(r));
+}finally{await source.end();await clone.end();}

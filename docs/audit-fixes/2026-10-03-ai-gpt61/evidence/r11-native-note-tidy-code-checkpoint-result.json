@@ -1,0 +1,20 @@
+{
+  "baseSha": "71b068cbde4577e0a8e5851a2423e86d3ee9ad87",
+  "sourceFiles": [
+    {
+      "path": "src/components/touchpoint-logger.tsx",
+      "sha256": "62376d0e30ce76c748cf5c9bc6520d9110c57078ee873506351fc65fcda656d6"
+    },
+    {
+      "path": "src/components/__tests__/touchpoint-logger-ai.test.tsx",
+      "sha256": "383f8513ea83d8c261eff296646b7021338f42a8e76b2fe1fec450b12bb92d01"
+    }
+  ],
+  "serverEntrySha256": "d52243101928d3edc962ee0129abd088892c556fe6a57a8c8a4a113aa94df457",
+  "changes": "Ignore closed/edited/saved draft failures and stale finally; reset UI busy/error on close and successful manual Save. No provider cancellation claim.",
+  "releaseDecision": "NO-GO",
+  "nativeFinalAcceptance": "pending new clone",
+  "fullSuite": "pending fresh exact-head CI",
+  "authorReviewOnly": true,
+  "productionAccess": false
+}

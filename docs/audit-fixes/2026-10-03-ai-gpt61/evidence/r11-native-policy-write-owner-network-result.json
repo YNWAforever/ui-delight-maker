@@ -1,0 +1,12 @@
+{
+  "sourceSha": "1326cefb939e16e8ba57a156de9eca13299e264e",
+  "requests": 34,
+  "authorizedIndependentAuthReads": 38,
+  "unexpectedServerOutbound": 0,
+  "providerCalls": 0,
+  "http5xx": 0,
+  "POSTs": 1,
+  "POSTScope": "one actual isolated synthetic status/CAS append under original admin; no subsequent writes during seven-role reads",
+  "productionAccess": false,
+  "rawPrivateReceiptSha256": "857c70cdbc8e7b1c6d180399b9802fa0639f4cc5536793371e65293d0bb6b46c"
+}

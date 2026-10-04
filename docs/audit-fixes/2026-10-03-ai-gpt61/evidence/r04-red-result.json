@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T07:54:08.527Z",
+  "sourceSha": "d5fd29577e55cbc6f912ece1b2a5ada7d2cc68c6",
+  "db": "clientops_ai_gpt61_ceb0e5a910",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/read-models/__tests__/agent-reconciliation.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r04-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 0,
+  "failed": 0,
+  "skipped": 0,
+  "total": 0,
+  "files": 1,
+  "elapsedMs": 4536,
+  "reportSha256": "10ec025e4f6bfb25cebcd97c7287c0d7392c8022f9e1302cb8966458f92a6415"
+}

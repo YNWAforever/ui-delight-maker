@@ -77,13 +77,28 @@ beforeEach(() => {
 });
 
 describe("agent operational read models", () => {
+  it("explicitly maps legacy callers and refuses unknown workflows before any read", async () => {
+    const { normalizeAgentHistoryInput, getAgentHistoryPage } = await loadModule();
+    expect(normalizeAgentHistoryInput({ agent: "Quotation Agent" })).toEqual({
+      workflowType: "draft_quote",
+      page: 1,
+      limit: 25,
+    });
+    expect(() =>
+      normalizeAgentHistoryInput({ workflowType: "unknown_workflow", agent: "Quote Draft Agent" }),
+    ).toThrow("Known workflow type is required");
+    expect(() => getAgentHistoryPage({ data: { agent: "Invented Agent" } })).toThrow(
+      "Known workflow type is required",
+    );
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
   it("normalizes agent history pagination to a maximum of 25 rows", async () => {
     const { normalizeAgentHistoryInput } = await loadModule();
 
     expect(
       normalizeAgentHistoryInput({ agent: "  Qualification Agent  ", page: -4, limit: 99 }),
     ).toEqual({
-      agent: "Qualification Agent",
+      workflowType: "qualify_lead",
       page: 1,
       limit: 25,
     });
@@ -108,10 +123,10 @@ describe("agent operational read models", () => {
     });
     expect(mocks.loadRequestAuthorization).toHaveBeenCalledTimes(1);
     expect(mocks.query).toHaveBeenNthCalledWith(1, expect.stringContaining("count(*)"), [
-      "Qualification Agent",
+      "qualify_lead",
     ]);
     expect(mocks.query).toHaveBeenNthCalledWith(2, expect.stringContaining("limit $2 offset $3"), [
-      "Qualification Agent",
+      "qualify_lead",
       25,
       25,
     ]);
@@ -130,7 +145,7 @@ describe("agent operational read models", () => {
     });
 
     expect(mocks.query).toHaveBeenNthCalledWith(2, expect.stringContaining("limit $2 offset $3"), [
-      "Qualification Agent",
+      "qualify_lead",
       25,
       50,
     ]);
@@ -140,7 +155,8 @@ describe("agent operational read models", () => {
   it("requires approval and agent visibility for the single AI review read", async () => {
     const { getAiReviewRead } = await loadModule();
     mocks.query
-      .mockResolvedValueOnce([{ id: "approval-1", context_data: {} }])
+      .mockResolvedValueOnce([{ count: "1" }])
+      .mockResolvedValueOnce([{ id: "approval-1", agent_run_id: "run-1", context_data: {} }])
       .mockResolvedValueOnce([{ id: "run-1", confidence_score: 0.42 }]);
 
     const result = await getAiReviewRead({});
@@ -150,6 +166,8 @@ describe("agent operational read models", () => {
     // optional so the read model can redact each run's content per row without a second load.
     expect(mocks.requirePageAuthorization).toHaveBeenCalledWith(["approvals.view", "agents.view"], {
       optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+      context: expect.any(Object),
+      cacheRowOwners: true,
     });
     expect(mocks.requirePageAuthorization.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.query.mock.invocationCallOrder[0],
@@ -157,6 +175,57 @@ describe("agent operational read models", () => {
     expect(result).toMatchObject({
       approvals: [{ id: "approval-1" }],
       humanReviewRuns: [{ id: "run-1", confidence_score: 0.42 }],
+      pagination: { totalMatching: 1, limit: 25 },
     });
+    expect(mocks.query).toHaveBeenCalledTimes(3);
   });
+  it("deep link counts and loads the exact workflow run rather than the latest page", async () => {
+    const { getAgentHistoryPage } = await loadModule();
+    const runId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    mocks.query
+      .mockResolvedValueOnce([{ total: 1 }])
+      .mockResolvedValueOnce([{ id: runId, input_data: {}, output_data: {} }])
+      .mockResolvedValueOnce([{ runs_24h: 2, avg_confidence: 0.8 }]);
+    const result = await getAgentHistoryPage({
+      data: { workflowType: "qualify_lead", runId, page: 1, limit: 25 },
+    });
+    expect(mocks.query).toHaveBeenNthCalledWith(1, expect.stringContaining("id=$2::uuid"), [
+      "qualify_lead",
+      runId,
+    ]);
+    expect(mocks.query).toHaveBeenNthCalledWith(2, expect.stringContaining("id=$4::uuid"), [
+      "qualify_lead",
+      25,
+      0,
+      runId,
+    ]);
+    expect(result.items[0].id).toBe(runId);
+  });
+});
+
+describe("queue maintenance permission metadata", () => {
+  it.each([true, false, undefined])(
+    "returns server agents.run=%s independently of role labels",
+    async (granted) => {
+      mocks.requirePageAuthorization.mockImplementation(async (_required, { optional }) => ({
+        access: Object.fromEntries(
+          optional.map((c: string) => [c, c === "agents.run" ? granted : true]),
+        ),
+        rows: stubRowAuthorizer,
+      }));
+      const context = await mocks.loadRequestAuthorization();
+      context.actor.profileId = "actual-queue-actor-" + String(granted);
+      mocks.loadRequestAuthorization.mockResolvedValue(context);
+      mocks.loadRequestAuthorization.mockClear();
+      const { getAgentQueue } = await loadModule();
+      const result = await getAgentQueue({ data: { queue: "runs" } });
+      expect(result).toMatchObject({
+        queue: "runs",
+        canRun: granted === true,
+        actorId: context.actor.profileId,
+      });
+      expect(mocks.loadRequestAuthorization).toHaveBeenCalledTimes(1);
+      expect(mocks.query).toHaveBeenCalledTimes(2);
+    },
+  );
 });

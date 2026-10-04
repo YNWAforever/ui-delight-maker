@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-10-04T04:47:22.731Z",
+  "sourceSha": "beddcb6362667182a431f7760083cced823750fd",
+  "db": "clientops_ai_gpt61_f1d5f43cfc",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/components/agents/__tests__/bulk-recovery-dialog.test.tsx",
+    "src/components/agents/__tests__/queue-navigation.test.tsx",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-bulk-actor-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 21,
+  "failed": 4,
+  "skipped": 0,
+  "total": 25,
+  "files": 2,
+  "elapsedMs": 41224,
+  "reportSha256": "68ed4936e2d45ae7afa6744b00b7d17bfd304ef5c38dc1e13dc85fd8b14c6fb6"
+}

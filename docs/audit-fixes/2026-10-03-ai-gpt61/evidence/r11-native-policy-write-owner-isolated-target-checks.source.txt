@@ -1,0 +1,24 @@
+import {readFileSync,writeFileSync,existsSync} from 'node:fs';
+import {randomBytes,createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+const folder='.clientops-perf/ai-gpt61-20261003';
+const phase=process.argv[2];assert.ok(/^[a-z0-9-]+$/.test(phase),'Invalid phase');
+const config=JSON.parse(readFileSync('.clientops-perf/ai-gpt61-20261003/r11-native-review-denial-base.private.json','utf8'));
+assert.equal(config.isolationConfirmed,true);const url=new URL(config.connectionString);assert.ok(url.hostname==='127.0.0.1'&&url.port==='51529'&&/^\/clientops_ai_uat_[a-f0-9]{32}$/.test(url.pathname),'Not the approved local disposable PostgreSQL configuration');
+const inspected=Bun.spawnSync(['docker','inspect','clientops-approval-review-pg-20261001']);assert.equal(inspected.exitCode,0,'Local PostgreSQL inspection failed');const container=JSON.parse(inspected.stdout.toString())[0];assert.equal(container.State.Running,true);assert.equal(container.Config.Image,'pgvector/pgvector:pg17');assert.equal(container.NetworkSettings.Ports['5432/tcp'][0].HostIp,'127.0.0.1');assert.equal(container.NetworkSettings.Ports['5432/tcp'][0].HostPort,'51529');
+const env={...process.env,NEON_AUTH_URL:'https://neon-auth.invalid',APP_BASE_URL:'http://localhost:5173',CLIENTOPS_SCRIPT_LOCAL_PG:'1'};
+for(const file of ['.env','.env.local'])if(existsSync(file))for(const line of readFileSync(file,'utf8').split(/\r?\n/)){const key=/^([A-Z][A-Z_0-9]*)=/.exec(line)?.[1];if(key&&/^SUPABASE|^N8N|^OPENROUTER|^CLIENTOPS_SEED|BOOTSTRAP/.test(key))env[key]='';}
+for(const key of Object.keys(env))if(/^SUPABASE|^N8N|^OPENROUTER|^CLIENTOPS_SEED|BOOTSTRAP/.test(key))env[key]='';
+const username=decodeURIComponent(url.username);assert.ok(/^[a-zA-Z0-9_]+$/.test(username));
+const files=process.argv.slice(3);assert.ok(files.every(f=>/^(src|scripts)\/.*\.test\.tsx?$/.test(f)&&existsSync(f)),'Invalid test file');
+const db='clientops_ai_gpt61_'+randomBytes(5).toString('hex');
+const created=Bun.spawnSync(['docker','exec','clientops-approval-review-pg-20261001','psql','-U',username,'-d','postgres','-v','ON_ERROR_STOP=1','-c','CREATE DATABASE "'+db+'";']);assert.equal(created.exitCode,0,'Disposable local DB creation failed');url.pathname='/'+db;env.DATABASE_URL=url.toString();env.DATABASE_TEST_URL=url.toString();
+if(phase.startsWith('r04-ci-')){url.hostname='localhost';env.DATABASE_URL=url.toString();env.DATABASE_TEST_URL=url.toString();}
+const sourceSha=Bun.spawnSync(['git','rev-parse','HEAD']).stdout.toString().trim();
+const command=['bunx','vitest','run',...files,'--no-file-parallelism','--testTimeout=30000','--reporter=default','--reporter=json','--outputFile='+folder+'/'+phase+'-vitest.private.json'];
+for(const stream of ['stdout','stderr'])writeFileSync(folder+'/'+phase+'.'+stream+'.private.log','');
+const started=Date.now(),child=Bun.spawn(command,{env,stdout:Bun.file(folder+'/'+phase+'.stdout.private.log'),stderr:Bun.file(folder+'/'+phase+'.stderr.private.log')});
+writeFileSync(folder+'/'+phase+'.private.json',JSON.stringify({connectionString:url.toString(),db,pid:child.pid,startedAt:new Date().toISOString(),sourceSha,command}));
+const exitCode=await child.exited;const report=JSON.parse(readFileSync(folder+'/'+phase+'-vitest.private.json','utf8'));
+const result={checkedAt:new Date().toISOString(),sourceSha,db,loopbackOnly:true,providerConfigurationAbsent:true,command,exitCode,passed:report.numPassedTests,failed:report.numFailedTests,skipped:report.numPendingTests,total:report.numTotalTests,files:report.testResults.length,elapsedMs:Date.now()-started,reportSha256:createHash('sha256').update(readFileSync(folder+'/'+phase+'-vitest.private.json')).digest('hex')};writeFileSync(folder+'/'+phase+'-result.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result));
+assert.equal(exitCode,0,'Isolated suite failed; raw diagnostics stay private');assert.equal(report.success,true);assert.equal(result.failed,0);assert.equal(result.skipped,0);assert.equal(result.passed,result.total);

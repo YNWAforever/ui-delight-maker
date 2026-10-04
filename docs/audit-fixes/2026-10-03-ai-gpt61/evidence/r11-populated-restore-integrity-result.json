@@ -1,0 +1,29 @@
+{
+  "checkedAt": "2026-10-04T05:47:02.414Z",
+  "sourceSha": "b7554ef3fd658c65130dd2b9f8ec7597dd09cf49",
+  "applicationCodeSha": "6d5c43646fb46433afa647ec3f698eff341bd332",
+  "success": true,
+  "originalAndRestoredAll56TableHashesUnchanged": true,
+  "rows": 669,
+  "commandReceipts": 102,
+  "bulkOperations": 17,
+  "bulkItems": 119,
+  "unknownModelRowsPreserved": 18,
+  "sequenceCount": 2,
+  "sequenceStateHashesEqual": true,
+  "sequenceStateSha256": "0cb2b5db54e6fad6de741e8fc5a18b1678905146b00356b7dedc358e69c0aa41",
+  "nativeChecks": 52,
+  "roles": 7,
+  "originalIntentReplays": 11,
+  "additionalWrites": 0,
+  "network": {
+    "requests": 129,
+    "authReads": 129,
+    "unexpectedOutbound": 0,
+    "actualProviderCalls": 0
+  },
+  "productionAccess": false,
+  "productionPitr": "blocked",
+  "backupDumpRetained": true,
+  "restoredDatabaseRetained": true
+}

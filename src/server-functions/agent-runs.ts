@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
 import { parseOperationInput } from "@/lib/operations/errors";
 import { AgentRecoverySchema } from "@/lib/operations/input-schemas";
@@ -9,7 +10,6 @@ import { requirePageAuthorization } from "@/server/auth/authorization.server";
 import {
   loadAgentDirectoryRead,
   loadAgentHistoryPage,
-  loadAiReviewRead,
 } from "@/server/read-models/agent-workspaces";
 import { listActivityLogs } from "@/server/repositories/activity-logs";
 import { getAgentRunWithCalls, listAgentRuns } from "@/server/repositories/agent-runs";
@@ -19,6 +19,9 @@ import {
   serializeAgentToolCall,
 } from "@/lib/serializable";
 import { AGENT_SUBJECT_VIEW_CAPABILITIES } from "@/lib/agent-run-visibility";
+import { AGENT_DEFINITIONS, agentWorkflowTypeForDisplayName } from "@/lib/agents";
+import { agentQueueSchema } from "@/lib/agent-queue-input";
+import { loadAgentQueue, loadAiReviewQueueRead } from "@/server/read-models/agent-queues";
 
 export type {
   AgentDirectoryRead,
@@ -31,17 +34,30 @@ export type {
 const AGENT_HISTORY_LIMIT = 25;
 
 export function normalizeAgentHistoryInput(input: {
+  workflowType?: unknown;
   agent?: unknown;
   page?: unknown;
   limit?: unknown;
+  runId?: unknown;
 }) {
   const agent = typeof input.agent === "string" ? input.agent.trim() : "";
-  if (!agent) throw new Error("Agent is required");
+  const workflowType =
+    typeof input.workflowType === "string"
+      ? input.workflowType.trim()
+      : agentWorkflowTypeForDisplayName(agent);
+  if (
+    !workflowType ||
+    !AGENT_DEFINITIONS.some((definition) => definition.workflow_type === workflowType)
+  )
+    throw new Error("Known workflow type is required");
 
   const requestedPage = Number(input.page);
   const requestedLimit = Number(input.limit);
   return {
-    agent,
+    workflowType,
+    ...(input.runId === undefined
+      ? {}
+      : { runId: parseOperationInput(z.string().uuid(), input.runId) }),
     page: Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
     limit:
       Number.isInteger(requestedLimit) && requestedLimit > 0
@@ -67,7 +83,13 @@ export const getAgentDirectoryRead = createServerFn({ method: "GET" }).handler(a
 export const getAgentHistoryPage = createServerFn({ method: "GET" })
   .validator((data: unknown) =>
     normalizeAgentHistoryInput(
-      (data ?? {}) as { agent?: unknown; page?: unknown; limit?: unknown },
+      (data ?? {}) as {
+        workflowType?: unknown;
+        agent?: unknown;
+        page?: unknown;
+        limit?: unknown;
+        runId?: unknown;
+      },
     ),
   )
   .handler(async ({ data }) => {
@@ -85,18 +107,49 @@ export const getAgentHistoryPage = createServerFn({ method: "GET" })
     return loadAgentHistoryPage({ ...data, access, rows, recoveryContext: context });
   });
 
-export const getAiReviewRead = createServerFn({ method: "GET" }).handler(async () => {
-  // Same shape as getAgentDirectoryRead and getAgentHistoryPage above: one authorization
-  // context load answers "can this actor see approvals and agent runs at all", "which subjects
-  // can they see the content of at the capability level", and, via `rows`, which specific
-  // approvals and runs they may see once ownership is resolved. approvals.view and agents.view
-  // both stay required and throw on denial exactly as the two-capability check pair they
-  // replace; the subject capabilities still come back as booleans with no target passed.
-  const { access, rows } = await requirePageAuthorization(["approvals.view", "agents.view"], {
-    optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+export const getAiReviewRead = createServerFn({ method: "GET" })
+  .validator((data: unknown) =>
+    parseOperationInput(agentQueueSchema, {
+      ...((data ?? {}) as Record<string, unknown>),
+      queue: "approvals",
+    }),
+  )
+  .handler(async ({ data }) => {
+    // Same shape as getAgentDirectoryRead and getAgentHistoryPage above: one authorization
+    // context load answers "can this actor see approvals and agent runs at all", "which subjects
+    // can they see the content of at the capability level", and, via `rows`, which specific
+    // approvals and runs they may see once ownership is resolved. approvals.view and agents.view
+    // both stay required and throw on denial exactly as the two-capability check pair they
+    // replace; the subject capabilities still come back as booleans with no target passed.
+    const context = await loadRequestAuthorization();
+    const { rows } = await requirePageAuthorization(["approvals.view", "agents.view"], {
+      optional: AGENT_SUBJECT_VIEW_CAPABILITIES,
+      context,
+      cacheRowOwners: true,
+    });
+    return loadAiReviewQueueRead(data, context, rows);
   });
-  return loadAiReviewRead(access, rows);
-});
+
+export const getAgentQueue = createServerFn({ method: "GET" })
+  .validator((data: unknown) => parseOperationInput(agentQueueSchema, data))
+  .handler(async ({ data }) => {
+    const input = parseOperationInput(agentQueueSchema, data);
+    const context = await loadRequestAuthorization();
+    const { access, rows } = await requirePageAuthorization(
+      input.queue === "approvals" ? ["agents.view", "approvals.view"] : ["agents.view"],
+      {
+        optional: [...AGENT_SUBJECT_VIEW_CAPABILITIES, "agents.run"],
+        context,
+        cacheRowOwners: true,
+      },
+    );
+    const page = await loadAgentQueue(input, context, rows);
+    // Display eligibility comes from the same server capability evaluation as the read.
+    // Write commands still reauthorize every item against current scope and state.
+    return page.queue === "runs"
+      ? { ...page, canRun: access["agents.run"] === true, actorId: context.actor.profileId }
+      : page;
+  });
 
 export const recoverAgentRunFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => parseOperationInput(AgentRecoverySchema, data))

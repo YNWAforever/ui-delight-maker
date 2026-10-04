@@ -1,0 +1,9 @@
+{
+  "sourceSha": "374f79276cf6233ae1002f82a00cd8f1536596b4",
+  "runId": 37121607318,
+  "scope": "GitHub isolated PG17 service",
+  "summary": [
+    "Database contract gate passed: 2825 tests, 0 skipped"
+  ],
+  "logSha256": "bf1002e410cb014d2a115c5525e22afed429698a6145ae427aaa4f05a2a0ae30"
+}

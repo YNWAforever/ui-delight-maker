@@ -1,0 +1,13 @@
+{
+  "sha": "71b068cbde4577e0a8e5851a2423e86d3ee9ad87",
+  "checks": [
+    "actual own live CS Auth session",
+    "new manual draft retained"
+  ],
+  "lateFailureAlerts": 1,
+  "expectedLateFailureAlerts": 0,
+  "passed": false,
+  "providerTransportFixture": true,
+  "actualProviderCalls": 0,
+  "productionAccess": false
+}

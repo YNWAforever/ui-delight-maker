@@ -185,7 +185,7 @@ export interface QualificationData {
   fit_score: number; // 0–10
   qualification_score: number; // 0–100
   service_interest: string[];
-  budget_range: string; // "HKD 50k–200k" or "unknown"
+  budget_range: string; // Explicit evidenced currency/amount, or "unknown"; never an invented range.
   next_action: QualificationNextAction;
   reason: string; // max 120 chars
   confidence: number; // 0.0–1.0
@@ -405,6 +405,7 @@ export interface Task {
 }
 
 export interface AgentRun {
+  execution_metadata?: import("@/lib/workflows/provenance").AIExecutionProvenance | null;
   id: string;
   agent_name: string;
   /**
@@ -433,7 +434,7 @@ export interface AgentRun {
   } | null;
   idempotency_key?: string | null;
   policy_version_id?: string | null;
-  model_used: string;
+  model_used: string | null;
   confidence_score: number | null;
   human_review_required: boolean;
   outcome_code?: string | null;
@@ -842,6 +843,8 @@ export interface ClientContact {
 }
 
 export interface Engagement {
+  /** Optional display metadata from a product join; not an engagement column. */
+  product_name?: string | null;
   id: string;
   client_id: string;
   product_id: string;

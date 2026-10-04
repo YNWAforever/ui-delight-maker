@@ -1,0 +1,533 @@
+{
+  "checkedAt": "2026-10-03T20:55:00.223Z",
+  "sha": "a58b716f67edbd7d3760fbb7821ad5cdea50ae98",
+  "sourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "b0532e35fd2633cd62dd88a418c37bad5aec815a3d0b980d0ad1977327a95f46",
+  "fixtureVersion": "ai-local-native-decisions-v1",
+  "database": "clientops_ai_uat_fc3fea0f3e19444b9effedde45b32875",
+  "checks": [
+    {
+      "name": "super_admin actual independent live session and active persisted role",
+      "passed": true
+    },
+    {
+      "name": "super_admin native message approval preview/cancel has zero writes",
+      "passed": true
+    },
+    {
+      "name": "super_admin native message approval only creates one awaiting manual handoff; no delivery",
+      "passed": true,
+      "handoffs": 1,
+      "outcome": "awaiting_manual_send"
+    },
+    {
+      "name": "super_admin original message decision key replay writes nothing",
+      "passed": true,
+      "httpStatus": 200,
+      "additionalWrites": 0,
+      "originalNativeRequest": true
+    },
+    {
+      "name": "super_admin native manual reference minimum blocks empty/short statement",
+      "passed": true
+    },
+    {
+      "name": "super_admin native clipboard copies approved synthetic draft only",
+      "passed": true
+    },
+    {
+      "name": "super_admin native manual statement saved for own actor and labelled not delivery",
+      "passed": true,
+      "status": "manual_send_recorded",
+      "actualSend": false
+    },
+    {
+      "name": "super_admin original manual statement key replay writes nothing",
+      "passed": true,
+      "httpStatus": 200,
+      "additionalWrites": 0,
+      "originalNativeRequest": true
+    },
+    {
+      "name": "super_admin manual statement survives native reload and hides repeat action",
+      "passed": true
+    },
+    {
+      "name": "super_admin changed terminal decision is rejected409 and preserves all facts",
+      "passed": true,
+      "httpStatus": 409,
+      "additionalWrites": 0
+    },
+    {
+      "name": "uc06-super_admin-manual1440 screenshot/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-super_admin-manual1440.png",
+      "screenshotSha256": "9767a233697fceff5d5b7c670035f1566e30dcca50d175bc6a11ce3d2955e421",
+      "width": 1440,
+      "scrollWidth": 1440
+    },
+    {
+      "name": "super_admin native quote approval preview/cancel has zero writes",
+      "passed": true
+    },
+    {
+      "name": "super_admin native quote approval records commercials but creates no issued version",
+      "passed": true
+    },
+    {
+      "name": "super_admin original quote approval key replay creates no version",
+      "passed": true,
+      "httpStatus": 200,
+      "additionalWrites": 0,
+      "originalNativeRequest": true
+    },
+    {
+      "name": "super_admin native explicit issue creates exactly one immutable commercial version",
+      "passed": true,
+      "versions": 1,
+      "serverTotal": 200,
+      "actualDeliveryVerified": false
+    },
+    {
+      "name": "super_admin original issue key replay returns existing version without writes",
+      "passed": true,
+      "httpStatus": 200,
+      "additionalWrites": 0,
+      "originalNativeRequest": true
+    },
+    {
+      "name": "super_admin native issued quote reload disables duplicate lifecycle action",
+      "passed": true
+    },
+    {
+      "name": "uc06-super_admin-quote390 screenshot/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-super_admin-quote390.png",
+      "screenshotSha256": "07c14867be2778896a04c4050c620fea4667ca4942873ab41b43e32e67430acc",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "admin actual independent live session and active persisted role",
+      "passed": true
+    },
+    {
+      "name": "admin native message approval preview/cancel has zero writes",
+      "passed": true
+    },
+    {
+      "name": "admin native message approval only creates one awaiting manual handoff; no delivery",
+      "passed": true,
+      "handoffs": 1,
+      "outcome": "awaiting_manual_send"
+    },
+    {
+      "name": "admin original message decision key replay writes nothing",
+      "passed": true,
+      "httpStatus": 200,
+      "additionalWrites": 0,
+      "originalNativeRequest": true
+    },
+    {
+      "name": "admin native manual reference minimum blocks empty/short statement",
+      "passed": true
+    },
+    {
+      "name": "admin native clipboard copies approved synthetic draft only",
+      "passed": true
+    },
+    {
+      "name": "admin native manual statement saved for own actor and labelled not delivery",
+      "passed": true,
+      "status": "manual_send_recorded",
+      "actualSend": false
+    },
+    {
+      "name": "admin original manual statement key replay writes nothing",
+      "passed": true,
+      "httpStatus": 200,
+      "additionalWrites": 0,
+      "originalNativeRequest": true
+    },
+    {
+      "name": "admin manual statement survives native reload and hides repeat action",
+      "passed": true
+    },
+    {
+      "name": "admin changed terminal decision is rejected409 and preserves all facts",
+      "passed": true,
+      "httpStatus": 409,
+      "additionalWrites": 0
+    },
+    {
+      "name": "uc06-admin-manual1440 screenshot/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-admin-manual1440.png",
+      "screenshotSha256": "515105a3a55eb8063e9ce5d0c0cce443862c3597992ed1f50ecc58cdb9628b9c",
+      "width": 1440,
+      "scrollWidth": 1440
+    },
+    {
+      "name": "admin native quote approval preview/cancel has zero writes",
+      "passed": true
+    },
+    {
+      "name": "admin native quote approval records commercials but creates no issued version",
+      "passed": true
+    },
+    {
+      "name": "admin original quote approval key replay creates no version",
+      "passed": true,
+      "httpStatus": 200,
+      "additionalWrites": 0,
+      "originalNativeRequest": true
+    },
+    {
+      "name": "admin native explicit issue creates exactly one immutable commercial version",
+      "passed": true,
+      "versions": 1,
+      "serverTotal": 200,
+      "actualDeliveryVerified": false
+    },
+    {
+      "name": "admin original issue key replay returns existing version without writes",
+      "passed": true,
+      "httpStatus": 200,
+      "additionalWrites": 0,
+      "originalNativeRequest": true
+    },
+    {
+      "name": "admin native issued quote reload disables duplicate lifecycle action",
+      "passed": true
+    },
+    {
+      "name": "uc06-admin-quote390 screenshot/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-admin-quote390.png",
+      "screenshotSha256": "23552dd5f75d4201b17b7b6aaa668931f9eeec925fcbc6c5ef2fd335c18b2258",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "manager actual independent live session and active persisted role",
+      "passed": true
+    },
+    {
+      "name": "manager native message approval preview/cancel has zero writes",
+      "passed": true
+    },
+    {
+      "name": "manager native message approval only creates one awaiting manual handoff; no delivery",
+      "passed": true,
+      "handoffs": 1,
+      "outcome": "awaiting_manual_send"
+    },
+    {
+      "name": "manager original message decision key replay writes nothing",
+      "passed": true,
+      "httpStatus": 200,
+      "additionalWrites": 0,
+      "originalNativeRequest": true
+    },
+    {
+      "name": "manager native manual reference minimum blocks empty/short statement",
+      "passed": true
+    },
+    {
+      "name": "manager native clipboard copies approved synthetic draft only",
+      "passed": true
+    },
+    {
+      "name": "manager native manual statement saved for own actor and labelled not delivery",
+      "passed": true,
+      "status": "manual_send_recorded",
+      "actualSend": false
+    },
+    {
+      "name": "manager original manual statement key replay writes nothing",
+      "passed": true,
+      "httpStatus": 200,
+      "additionalWrites": 0,
+      "originalNativeRequest": true
+    },
+    {
+      "name": "manager manual statement survives native reload and hides repeat action",
+      "passed": true
+    },
+    {
+      "name": "manager changed terminal decision is rejected409 and preserves all facts",
+      "passed": true,
+      "httpStatus": 409,
+      "additionalWrites": 0
+    },
+    {
+      "name": "uc06-manager-manual1440 screenshot/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-manager-manual1440.png",
+      "screenshotSha256": "92c3cdf323132d499048a6062b9d6d5aecf806ce845bac4c80e5b380b153924b",
+      "width": 1440,
+      "scrollWidth": 1440
+    },
+    {
+      "name": "manager native quote approval preview/cancel has zero writes",
+      "passed": true
+    },
+    {
+      "name": "manager native quote approval records commercials but creates no issued version",
+      "passed": true
+    },
+    {
+      "name": "manager original quote approval key replay creates no version",
+      "passed": true,
+      "httpStatus": 200,
+      "additionalWrites": 0,
+      "originalNativeRequest": true
+    },
+    {
+      "name": "manager native quote can be approved but Issue is disabled by existing capability",
+      "passed": true
+    },
+    {
+      "name": "manager own same-origin issue POST403 preserves approved unissued quote",
+      "passed": true,
+      "httpStatus": 403,
+      "versions": 0,
+      "additionalWrites": 0
+    },
+    {
+      "name": "manager own same-origin foreign approval is outside row scope403",
+      "passed": true,
+      "httpStatus": 403,
+      "additionalWrites": 0
+    },
+    {
+      "name": "uc06-manager-approved-unissued390 screenshot/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-manager-approved-unissued390.png",
+      "screenshotSha256": "a1391b184db53f70d31dd7d19dd1764460f07d202fe9c099ac2c6258f7e9121c",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "sales actual independent live session and active persisted role",
+      "passed": true
+    },
+    {
+      "name": "sales native terminal view offers no manual record repeat",
+      "passed": true
+    },
+    {
+      "name": "sales own same-origin message approval POST403 with zero writes",
+      "passed": true,
+      "httpStatus": 403,
+      "additionalWrites": 0,
+      "authVerified": true,
+      "originSuppliedByBrowser": true
+    },
+    {
+      "name": "sales own same-origin manual statement POST403 with zero writes",
+      "passed": true,
+      "httpStatus": 403,
+      "additionalWrites": 0,
+      "authVerified": true,
+      "originSuppliedByBrowser": true
+    },
+    {
+      "name": "uc06-sales-readonly390 screenshot/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-sales-readonly390.png",
+      "screenshotSha256": "9c8ff65a073df064321a3f03494ae4ff98498700151fc8bb41ee15c7fb5e2154",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "sales native disabled Issue plus own same-origin issue POST403",
+      "passed": true,
+      "httpStatus": 403,
+      "additionalWrites": 0
+    },
+    {
+      "name": "client_success actual independent live session and active persisted role",
+      "passed": true
+    },
+    {
+      "name": "client_success native terminal view offers no manual record repeat",
+      "passed": true
+    },
+    {
+      "name": "client_success own same-origin message approval POST403 with zero writes",
+      "passed": true,
+      "httpStatus": 403,
+      "additionalWrites": 0,
+      "authVerified": true,
+      "originSuppliedByBrowser": true
+    },
+    {
+      "name": "client_success own same-origin manual statement POST403 with zero writes",
+      "passed": true,
+      "httpStatus": 403,
+      "additionalWrites": 0,
+      "authVerified": true,
+      "originSuppliedByBrowser": true
+    },
+    {
+      "name": "uc06-client_success-readonly390 screenshot/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-client_success-readonly390.png",
+      "screenshotSha256": "e6819938c9e77696bf0c2d4625ac518bfb1b2554fc931e6257faf2c3cfbcab0e",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "client_success native disabled Issue plus own same-origin issue POST403",
+      "passed": true,
+      "httpStatus": 403,
+      "additionalWrites": 0
+    },
+    {
+      "name": "accounting actual independent live session and active persisted role",
+      "passed": true
+    },
+    {
+      "name": "accounting native terminal view offers no manual record repeat",
+      "passed": true
+    },
+    {
+      "name": "accounting own same-origin message approval POST403 with zero writes",
+      "passed": true,
+      "httpStatus": 403,
+      "additionalWrites": 0,
+      "authVerified": true,
+      "originSuppliedByBrowser": true
+    },
+    {
+      "name": "accounting own same-origin manual statement POST403 with zero writes",
+      "passed": true,
+      "httpStatus": 403,
+      "additionalWrites": 0,
+      "authVerified": true,
+      "originSuppliedByBrowser": true
+    },
+    {
+      "name": "uc06-accounting-readonly390 screenshot/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-accounting-readonly390.png",
+      "screenshotSha256": "6bdc2ba52dda1159ffca75110f05c7f62f4fe373441a0ecd6369d473f87887a1",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "accounting native disabled Issue plus own same-origin issue POST403",
+      "passed": true,
+      "httpStatus": 403,
+      "additionalWrites": 0
+    },
+    {
+      "name": "read_only actual independent live session and active persisted role",
+      "passed": true
+    },
+    {
+      "name": "read_only native terminal view offers no manual record repeat",
+      "passed": true
+    },
+    {
+      "name": "read_only own same-origin message approval POST403 with zero writes",
+      "passed": true,
+      "httpStatus": 403,
+      "additionalWrites": 0,
+      "authVerified": true,
+      "originSuppliedByBrowser": true
+    },
+    {
+      "name": "read_only own same-origin manual statement POST403 with zero writes",
+      "passed": true,
+      "httpStatus": 403,
+      "additionalWrites": 0,
+      "authVerified": true,
+      "originSuppliedByBrowser": true
+    },
+    {
+      "name": "uc06-read_only-readonly390 screenshot/no horizontal overflow",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/uc06-read_only-readonly390.png",
+      "screenshotSha256": "84fb8673f79cdc318eaf9dfa73cb380752a05dd473d980c19249b2ebf0ed3853",
+      "width": 390,
+      "scrollWidth": 390
+    },
+    {
+      "name": "read_only native disabled Issue plus own same-origin issue POST403",
+      "passed": true,
+      "httpStatus": 403,
+      "additionalWrites": 0
+    },
+    {
+      "name": "all seven live identities/sessions/cookie sets distinct; no uncaught browser errors",
+      "passed": true
+    }
+  ],
+  "identities": [
+    {
+      "role": "super_admin",
+      "userSha256": "2e826afbc440c3626a35f510b27c62dfe97a4cf4087ce7bce5171444e4f6a10f",
+      "sessionSha256": "558ceadf8fe6bcab2569f8754836c3af25695a25f8ac52c28583415111a781c2",
+      "cookiesSha256": "3ad24046b0be0904279be342f85fba3f905111f359565753bfaf28483b50fafc",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "admin",
+      "userSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "sessionSha256": "7b93f6916940fc215b90c1623bd5ab426eb96fa3b4f00f49597af14dd8731c93",
+      "cookiesSha256": "3a089499864dc4975a3eabc2cb538b4152f903ab24bdab97f98858af36810abd",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "manager",
+      "userSha256": "88a8c8cdaf3230e0b257c07071d13cad63a259b16f13ca290a1cb01f9ae8799b",
+      "sessionSha256": "0961759d930d6cdcce225e241e95b1a27ae60d2136750044a7eb24eb8f6f1cc9",
+      "cookiesSha256": "a4c3f9f5f63b5d347b9fdd228ac67fb9d9fa3ff2c769c1af2a7fd686b9906372",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "sales",
+      "userSha256": "2e9ac9f96d4a9c1a8a5f8c5c7fb7868a71018f7fbff18d8ba1933d585c2c404a",
+      "sessionSha256": "667b589e00957902c7aee72d00d7db6d92be65f34cf70563600fa807829b3171",
+      "cookiesSha256": "7da674b235ef93337cebb63275241cb13fef4188b51326c34bb3e979e1eec866",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "client_success",
+      "userSha256": "abf1d43bcd802e6970d36f832ce785a036d7e947feef56054b54b10e3642298d",
+      "sessionSha256": "10e01fb86f8c1587480705e7e1fe7d3080c3cbd187eed7c93bf114c7cdbae624",
+      "cookiesSha256": "bca7209b5e11bbb178f06b0025df86f99b984ccac6012329330cac1f639457e3",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "accounting",
+      "userSha256": "5bc88a9c60cb5e3d014a51eee07126e6adc00ec54681efaa531b50ba90c67fbb",
+      "sessionSha256": "53c77aaaff970a04349d056fab770c2a0b9438e873af00ff0dd5b8f27aba5ebb",
+      "cookiesSha256": "c19430236b29ec7eb321b34b92131fd5c13b6457fba6c0bd284cc94ea3c54b95",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "read_only",
+      "userSha256": "b6b6e8a481e03b614e6890a0668fe1fed886b0da3fddc389af96210ceec975ae",
+      "sessionSha256": "9d5a6df8b5bd04a23ab5177b09b9152e959fb8cd048ad5425a12a2fbce85c241",
+      "cookiesSha256": "0e11e7fe692dccd4d04bde9f7e07fe06b4c24a3fe2c03f16aa900212c392f3ac",
+      "live": true,
+      "persistedRoleMatches": true
+    }
+  ],
+  "passed": true,
+  "error": null,
+  "stage": "read_only denied writes",
+  "pageErrors": [],
+  "providerCalls": 0,
+  "productionAccess": false,
+  "actualDeliveryVerified": false
+}

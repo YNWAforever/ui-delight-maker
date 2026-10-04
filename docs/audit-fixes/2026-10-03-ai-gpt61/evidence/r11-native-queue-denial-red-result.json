@@ -1,0 +1,60 @@
+{
+  "phase": "red",
+  "sha": "1f345757b03f51137867e964215ca1c1c0c5ad83",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "44d30e28ac635dd3bbc80aadbe036e308f41cf6a02ba0f873ec7de1e38ab6c47",
+  "database": "clientops_ai_uat_21d3cec9e7934f4496e24009e932d1e1",
+  "fixtureVersion": "ai-local-queue-denial-v1",
+  "checks": [
+    {
+      "name": "real admin owns selected synthetic run and genuine server preview",
+      "passed": true
+    }
+  ],
+  "identities": [
+    {
+      "role": "admin",
+      "userSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "sessionSha256": "7b93f6916940fc215b90c1623bd5ab426eb96fa3b4f00f49597af14dd8731c93",
+      "savedStateSha256": "562c417be5922885bddde5029ac5651b790dc9641da16a04cb8f1a31bf705a6a",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "accounting",
+      "userSha256": "5bc88a9c60cb5e3d014a51eee07126e6adc00ec54681efaa531b50ba90c67fbb",
+      "sessionSha256": "53c77aaaff970a04349d056fab770c2a0b9438e873af00ff0dd5b8f27aba5ebb",
+      "savedStateSha256": "a5e6b243ea4ed9eae118b8d7068007130542d695aeb27870f191b656755ecb12",
+      "live": true,
+      "persistedRoleMatches": true
+    }
+  ],
+  "pageErrors": [],
+  "actualSSR": true,
+  "actualNeonDriver": true,
+  "actualLoopbackPostgres17": true,
+  "providerConfigurationAbsent": true,
+  "actualProviderCalls": 0,
+  "productionAccess": false,
+  "interactiveLogoutRelogin": "not-tested",
+  "wholeAppHandoff": "not-tested; this run exercises the queue only",
+  "transport": "distinct actual role cookie fixtures, native same-document queue refresh; no Auth or BFF response doubles",
+  "observation": {
+    "serverStatus": 403,
+    "sameDocument": true,
+    "cachedRunLinkVisible": true,
+    "selectionVisible": true,
+    "previousPreviewVisible": true,
+    "maintenanceVisible": true
+  },
+  "denialScreenshot": {
+    "screenshot": ".clientops-perf/ai-gpt61-20261003/r11-native-queue-denial-red-accounting-denial.private.png",
+    "sha256": "7af802e81182465c5705e4dc7d4f83442daaaa11f0bbabd397e39d712a022747"
+  },
+  "passed": false,
+  "error": {
+    "name": "AssertionError",
+    "message": "A genuine queue403 must hide cached previous actor rows\n\ntrue !== false\n"
+  },
+  "stage": "accounting-denial"
+}

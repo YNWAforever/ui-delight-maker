@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-10-03T07:16:32.374Z",
+  "sourceSha": "7c9700ee0512b48c68c50db5cc3a4648bf72663a",
+  "db": "clientops_ai_gpt61_371ef5e597",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/routes/__tests__/-agents-name-subject-restricted-copy.test.tsx",
+    "src/server/db/__tests__/approval-recovery.integration.test.ts",
+    "src/server/workflows/__tests__/writebacks.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r02-ci-fixed-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 70,
+  "failed": 0,
+  "skipped": 0,
+  "total": 70,
+  "files": 3,
+  "elapsedMs": 8944,
+  "reportSha256": "905f929afe97118272b470113dc9070727b926dc3f17a5d86a96da0ccadb43fb"
+}

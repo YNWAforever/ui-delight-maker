@@ -1,0 +1,99 @@
+{
+  "checkedAt": "2026-10-03T19:43:16.888Z",
+  "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
+  "workingSourceDiffSha256": "9bb3b78b383e80a89b11550d63f856a06505f6e3c54e5a03877c7e37e51fae89",
+  "serverEntrySha256": "b0532e35fd2633cd62dd88a418c37bad5aec815a3d0b980d0ad1977327a95f46",
+  "checks": [
+    {
+      "name": "synthetic pre-existing drift only; strict new-write guard rejects unknown23514 before and during native acceptance",
+      "passed": true
+    },
+    {
+      "role": "super_admin",
+      "name": "unknown historical workflow retains own run ID/workflow in native filter/deep link",
+      "passed": true
+    },
+    {
+      "role": "admin",
+      "name": "unknown historical workflow retains own run ID/workflow in native filter/deep link",
+      "passed": true
+    },
+    {
+      "role": "manager",
+      "name": "unknown historical workflow retains own run ID/workflow in native filter/deep link",
+      "passed": true
+    },
+    {
+      "role": "manager",
+      "name": "missing subject native run detail redacts content and has no recovery controls",
+      "passed": true
+    },
+    {
+      "role": "manager",
+      "name": "both historical and current quote labels reach the exact native run detail; reload retains run ID",
+      "passed": true
+    },
+    {
+      "role": "manager",
+      "name": "native detail390 screenshot retained",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/manager-native-detail390.png",
+      "screenshotSha256": "e251aaabaec10d3c69b08ba6d4a2fc4815a5d7fffce4488c5877f4ebd1188f2e"
+    },
+    {
+      "role": "sales",
+      "name": "unknown historical workflow retains own run ID/workflow in native filter/deep link",
+      "passed": true
+    },
+    {
+      "role": "client_success",
+      "name": "unknown historical workflow retains own run ID/workflow in native filter/deep link",
+      "passed": true
+    },
+    {
+      "role": "accounting",
+      "name": "direct unknown queue remains denied without context leakage",
+      "passed": true
+    },
+    {
+      "role": "read_only",
+      "name": "unknown historical workflow retains own run ID/workflow in native filter/deep link",
+      "passed": true
+    }
+  ],
+  "failures": [
+    {
+      "role": "super_admin",
+      "error": "The expression evaluated to a falsy value:\n\n  assert.ok(text.includes('Summary restricted.')&&text.includes('Restricted. This run is about a record you do not have permission to view.'))\n"
+    },
+    {
+      "role": "admin",
+      "error": "The expression evaluated to a falsy value:\n\n  assert.ok(text.includes('Summary restricted.')&&text.includes('Restricted. This run is about a record you do not have permission to view.'))\n"
+    },
+    {
+      "role": "sales",
+      "error": "The expression evaluated to a falsy value:\n\n  assert.ok(text.includes('Summary restricted.')&&text.includes('Restricted. This run is about a record you do not have permission to view.'))\n"
+    },
+    {
+      "role": "client_success",
+      "error": "The expression evaluated to a falsy value:\n\n  assert.ok(text.includes('Summary restricted.')&&text.includes('Restricted. This run is about a record you do not have permission to view.'))\n"
+    },
+    {
+      "role": "read_only",
+      "error": "The expression evaluated to a falsy value:\n\n  assert.ok(text.includes('Summary restricted.')&&text.includes('Restricted. This run is about a record you do not have permission to view.'))\n"
+    },
+    {
+      "phase": "setup-or-boundary",
+      "error": "duplicate key value violates unique constraint \"agent_runs_active_idx\""
+    }
+  ],
+  "passed": false,
+  "syntheticLegacyFixture": true,
+  "currentNewWriteGuardAlwaysEnforcedDuringUI": true,
+  "originalValidatedConstraintsRestored": true,
+  "syntheticRowsRemoved": 29,
+  "originalRunCountPreserved": 135,
+  "approvalRowsChanged": 0,
+  "providerCalls": 0,
+  "productionAccess": false
+}

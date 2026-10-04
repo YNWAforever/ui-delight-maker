@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-10-03T08:32:05.736Z",
+  "sourceSha": "ab81f224a93496271a699846100b5bdec05fa615",
+  "db": "clientops_ai_gpt61_cdbbc59c35",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/read-models/__tests__/agent-reconciliation.integration.test.ts",
+    "src/server/read-models/__tests__/agent-reconciliation.test.ts",
+    "src/components/agents/__tests__/data-scope.test.tsx",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r04-ci-fixed-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 13,
+  "failed": 0,
+  "skipped": 0,
+  "total": 13,
+  "files": 3,
+  "elapsedMs": 7030,
+  "reportSha256": "3aac913d3cbe4c2c14924be50c7fe011d76513cc5ca269401c5dacec360dc08b"
+}

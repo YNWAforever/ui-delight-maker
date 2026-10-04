@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-04T01:10:47.035Z",
+  "sourceSha": "e3b016176f3021b45ddba1e847557a24946a982d",
+  "db": "clientops_ai_gpt61_a113ea4993",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/workflows/__tests__/ai-invocation.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-note-tidy-model-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 4,
+  "failed": 3,
+  "skipped": 0,
+  "total": 7,
+  "files": 1,
+  "elapsedMs": 5401,
+  "reportSha256": "626614bf58f2cfb7fe4d40e707a5d323d82bef3d9004e3d47c69a9627e26083a"
+}

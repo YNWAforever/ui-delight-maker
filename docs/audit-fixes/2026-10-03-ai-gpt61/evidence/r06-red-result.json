@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-10-03T09:04:11.854Z",
+  "sourceSha": "657dfd8c9ec451d2500b0a4348b6f5edda53917e",
+  "db": "clientops_ai_gpt61_de1d91a8b1",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/lib/__tests__/auxiliary-policy-input.test.ts",
+    "src/components/__tests__/touchpoint-logger-ai.test.tsx",
+    "src/server/read-models/__tests__/note-tidy-runs.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r06-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 2,
+  "failed": 4,
+  "skipped": 0,
+  "total": 6,
+  "files": 3,
+  "elapsedMs": 7788,
+  "reportSha256": "17159b009f269184d02bfd26f55c61e822c95b0ea3f047f9e2b938c4bd57fc78"
+}

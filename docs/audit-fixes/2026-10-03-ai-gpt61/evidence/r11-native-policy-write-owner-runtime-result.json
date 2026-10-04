@@ -1,0 +1,15 @@
+{
+  "startedAt": "2026-10-04T11:19:23.705Z",
+  "pid": 47692,
+  "sha": "1326cefb939e16e8ba57a156de9eca13299e264e",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "d26114d3817032e5da7c95bf4831222a49f586e09aaab3f934022a5ec6e8799b",
+  "baseUrl": "http://localhost:60534",
+  "database": "clientops_ai_uat_4e7682ace38546328fc4b5cdff292705",
+  "fixtureVersion": "ai-local-policy-write-owner-v1",
+  "transport": "actual built SSR and Neon driver over loopback WebSocket/TCP",
+  "auth": "seven existing independent live Neon Auth sessions",
+  "providerConfigurationAbsent": true,
+  "outboundGuard": "only read-only independent Auth get-session allowed",
+  "productionAccess": false
+}

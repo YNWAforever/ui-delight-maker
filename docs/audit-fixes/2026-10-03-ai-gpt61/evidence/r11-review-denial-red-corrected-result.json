@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-10-04T08:51:10.161Z",
+  "sourceSha": "9770e65198044a9eba9ea6be9793fb232652bc2d",
+  "db": "clientops_ai_gpt61_1447e79867",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/routes/__tests__/-ai-review-refresh-access.test.tsx",
+    "src/routes/__tests__/-ai-review-decisions.test.tsx",
+    "src/routes/__tests__/-ai-review-denied-loader.test.tsx",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-review-denial-red-corrected-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 27,
+  "failed": 4,
+  "skipped": 0,
+  "total": 31,
+  "files": 3,
+  "elapsedMs": 13984,
+  "reportSha256": "972fd1665dad003dfdaaeb2e441bfa9615bf55228912e4dd4557321155c5eadd"
+}

@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-10-03T17:13:07.169Z",
+  "sourceSha": "622c5df5a3e1e323f9364902340d119480a95737",
+  "db": "clientops_ai_gpt61_ccb0652b14",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/read-models/__tests__/note-tidy-runs.test.ts",
+    "src/lib/operations/__tests__/server-function-error-status.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-native-cleanup-fixed-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 17,
+  "failed": 0,
+  "skipped": 0,
+  "total": 17,
+  "files": 2,
+  "elapsedMs": 8634,
+  "reportSha256": "4cabdd2de36f6462e927fcd5a645e67ccc6c5d6a43f9fb0acf6d3bdacba0c3b9"
+}

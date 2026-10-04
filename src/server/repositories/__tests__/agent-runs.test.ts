@@ -11,6 +11,23 @@ vi.mock("@/server/db/neon.server", () => ({
 const { updateAgentRunResult } = await import("../agent-runs");
 
 describe("updateAgentRunResult", () => {
+  it("persists execution metadata as an allowlisted additive field", async () => {
+    const execution_metadata = {
+      source: "provider",
+      providerRequestId: "synthetic-receipt",
+      workerExecutionId: null,
+      workerVersion: null,
+      requestedModel: null,
+      actualModel: "transport-model",
+      fallbackReason: null,
+    };
+    await updateAgentRunResult("run-1", { status: "completed", execution_metadata } as Parameters<
+      typeof updateAgentRunResult
+    >[1]);
+    const [sql, values] = mockQueryOne.mock.calls[0];
+    expect(String(sql)).toContain("execution_metadata =");
+    expect(values.at(-1)).toBe(JSON.stringify(execution_metadata));
+  });
   beforeEach(() => {
     mockQueryOne.mockReset();
     mockQueryOne.mockResolvedValue({ id: "run-1" });
@@ -61,6 +78,7 @@ describe("updateAgentRunResult", () => {
       false,
       1234,
       "anthropic/claude-sonnet-4-6",
+      null,
       null,
       null,
     ]);

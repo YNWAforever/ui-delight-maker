@@ -230,7 +230,7 @@ describe("/agents/$name renders the redaction copy subject_restricted implies", 
     ]);
     fireEvent.click(screen.getByRole("button", { expanded: false }));
     expect(screen.getByText("Input data")).toBeTruthy();
-    expect(screen.getByText("Cost: unrecorded")).toBeTruthy();
+    expect(screen.getByText("Cost").nextElementSibling?.textContent).toBe("Unknown");
     expect(screen.queryByText(/\$0\.00/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Cancel local run" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Mark expired" })).toBeNull();

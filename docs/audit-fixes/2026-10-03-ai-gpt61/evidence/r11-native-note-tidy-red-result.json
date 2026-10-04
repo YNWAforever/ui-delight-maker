@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-04T00:50:02.170Z",
+  "sourceSha": "71b068cbde4577e0a8e5851a2423e86d3ee9ad87",
+  "db": "clientops_ai_gpt61_ed2dcf0bb8",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/components/__tests__/touchpoint-logger-ai.test.tsx",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-note-tidy-stale-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 4,
+  "failed": 4,
+  "skipped": 0,
+  "total": 8,
+  "files": 1,
+  "elapsedMs": 25392,
+  "reportSha256": "3678228d3ab50be150b82117d173e5114920f830bfd68c194eb507cd1ce36dd3"
+}

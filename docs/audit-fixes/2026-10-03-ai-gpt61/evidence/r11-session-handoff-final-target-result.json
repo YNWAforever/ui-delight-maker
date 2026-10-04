@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-04T06:36:24.094Z",
+  "sourceSha": "81bc66960db046529715e9d4fc4cf3be0102a6bc",
+  "db": "clientops_ai_gpt61_1b7694532d",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/commands/__tests__/agent-bulk-recovery.integration.test.ts",
+    "src/components/agents/__tests__/bulk-recovery-dialog.test.tsx",
+    "src/components/agents/__tests__/queue-navigation.test.tsx",
+    "src/server-functions/__tests__/agent-runs-performance.test.ts",
+    "src/server/db/__tests__/approval-recovery.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-session-handoff-final-target-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 77,
+  "failed": 0,
+  "skipped": 0,
+  "total": 77,
+  "files": 5,
+  "elapsedMs": 36559,
+  "reportSha256": "c08d8f66195b2b48b73380acb17f264dc861229e4e7645b8869e2404cf1e125b"
+}

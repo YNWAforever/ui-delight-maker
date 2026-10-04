@@ -1,0 +1,242 @@
+{
+  "checkedAt": "2026-10-03T08:14:12.302Z",
+  "projectId": "polished-forest-15724329",
+  "branchId": "br-solitary-butterfly-b3883kwo",
+  "database": "clientops_uat",
+  "readOnly": true,
+  "mutations": 0,
+  "sourceSha": "b1befc05b57362b1589d1d71a1507064ec0642eb",
+  "sourceState": "base plus R04 working changes",
+  "scope": "isolated UAT metadata; not production reconciliation or candidate UI acceptance",
+  "appSourceSha": "3d851c23dc0d1b5aa52cae8f8e51fc68e8ae9c63",
+  "command": "Neon run_sql_transaction: REPEATABLE READ READ ONLY; reviewed reconciliation SELECT",
+  "exitCode": 0,
+  "rowCount": 354,
+  "counts": {
+    "demo": 7,
+    "escalated": 1,
+    "valid": 336,
+    "terminal_mismatch": 11
+  },
+  "sourceMetadataSha256": "73e2aada72e193bd23af9f95fcb9b445f89e2a00fe858cd7845342bb3badfd69",
+  "items": [
+    {
+      "runId": "2e63c33c-3ccc-4990-aeb2-9fc7bc4ddd40",
+      "workflowType": "draft_quote",
+      "legacyName": "Quotation Agent",
+      "isDemo": true,
+      "subjectExists": true,
+      "approvalStatus": "pending",
+      "anomalyCodes": [
+        "demo"
+      ],
+      "suggestedOwner": "demo-sales-user"
+    },
+    {
+      "runId": "35448455-f410-43f7-a2b4-cc0ad87c5e77",
+      "workflowType": "draft_reply",
+      "legacyName": "Reply Draft Agent",
+      "isDemo": true,
+      "subjectExists": true,
+      "approvalStatus": "pending",
+      "anomalyCodes": [
+        "demo"
+      ],
+      "suggestedOwner": "demo-sales-user"
+    },
+    {
+      "runId": "44ff9b65-55b4-45a5-8bc3-81b78e3e8482",
+      "workflowType": "qualify_lead",
+      "legacyName": "Lead Qualification Agent",
+      "isDemo": true,
+      "subjectExists": true,
+      "approvalStatus": null,
+      "anomalyCodes": [
+        "demo"
+      ],
+      "suggestedOwner": "demo-sales-user"
+    },
+    {
+      "runId": "7ad8e409-02c4-46a9-ba55-884efe42f277",
+      "workflowType": "score_renewal_risk",
+      "legacyName": "Renewal Risk Agent",
+      "isDemo": true,
+      "subjectExists": true,
+      "approvalStatus": null,
+      "anomalyCodes": [
+        "demo"
+      ],
+      "suggestedOwner": "demo-sales-user"
+    },
+    {
+      "runId": "94edaebc-7f98-49d5-b4f2-1ffaf24633b1",
+      "workflowType": "qualify_lead",
+      "legacyName": "Lead Qualification Agent",
+      "isDemo": true,
+      "subjectExists": true,
+      "approvalStatus": null,
+      "anomalyCodes": [
+        "demo"
+      ],
+      "suggestedOwner": "demo-sales-user"
+    },
+    {
+      "runId": "aeb7489e-0b55-474f-b27f-ace1498ba1b0",
+      "workflowType": "draft_reply",
+      "legacyName": "Reply Draft Agent",
+      "isDemo": true,
+      "subjectExists": true,
+      "approvalStatus": "rejected",
+      "anomalyCodes": [
+        "demo"
+      ],
+      "suggestedOwner": "demo-sales-user"
+    },
+    {
+      "runId": "e6a9d9a2-02cc-46a6-9036-f1a4018d4245",
+      "workflowType": "score_renewal_risk",
+      "legacyName": "Renewal Risk Agent",
+      "isDemo": true,
+      "subjectExists": true,
+      "approvalStatus": "escalated",
+      "anomalyCodes": [
+        "demo",
+        "escalated"
+      ],
+      "suggestedOwner": "demo-sales-user"
+    },
+    {
+      "runId": "795e6796-dc7b-4c2d-9565-4116671baea7",
+      "workflowType": "qualify_lead",
+      "legacyName": "Qualification Agent",
+      "isDemo": null,
+      "subjectExists": true,
+      "approvalStatus": "pending",
+      "anomalyCodes": [
+        "terminal_mismatch"
+      ],
+      "suggestedOwner": "demo-manager-user"
+    },
+    {
+      "runId": "590c8fb6-29c2-40ce-a654-f2c620e5a5f6",
+      "workflowType": "qualify_lead",
+      "legacyName": "Qualification Agent",
+      "isDemo": null,
+      "subjectExists": true,
+      "approvalStatus": "pending",
+      "anomalyCodes": [
+        "terminal_mismatch"
+      ],
+      "suggestedOwner": "demo-manager-user"
+    },
+    {
+      "runId": "b50aa9f1-cdf8-43f3-9237-d30572e06bc8",
+      "workflowType": "qualify_lead",
+      "legacyName": "Qualification Agent",
+      "isDemo": null,
+      "subjectExists": true,
+      "approvalStatus": "pending",
+      "anomalyCodes": [
+        "terminal_mismatch"
+      ],
+      "suggestedOwner": "demo-manager-user"
+    },
+    {
+      "runId": "be6a02ed-5465-4b2b-80b7-38aa9a2af19f",
+      "workflowType": "qualify_lead",
+      "legacyName": "Qualification Agent",
+      "isDemo": null,
+      "subjectExists": true,
+      "approvalStatus": "pending",
+      "anomalyCodes": [
+        "terminal_mismatch"
+      ],
+      "suggestedOwner": "demo-manager-user"
+    },
+    {
+      "runId": "6be7989c-4323-493f-a34d-0d1650552046",
+      "workflowType": "qualify_lead",
+      "legacyName": "Qualification Agent",
+      "isDemo": null,
+      "subjectExists": true,
+      "approvalStatus": "pending",
+      "anomalyCodes": [
+        "terminal_mismatch"
+      ],
+      "suggestedOwner": "demo-manager-user"
+    },
+    {
+      "runId": "037ced65-cd75-41e1-b2af-b5059b77f0c2",
+      "workflowType": "qualify_lead",
+      "legacyName": "Qualification Agent",
+      "isDemo": null,
+      "subjectExists": true,
+      "approvalStatus": "pending",
+      "anomalyCodes": [
+        "terminal_mismatch"
+      ],
+      "suggestedOwner": "demo-manager-user"
+    },
+    {
+      "runId": "e9c26d5b-81eb-4408-8346-822d44bd20ca",
+      "workflowType": "qualify_lead",
+      "legacyName": "Qualification Agent",
+      "isDemo": null,
+      "subjectExists": true,
+      "approvalStatus": "pending",
+      "anomalyCodes": [
+        "terminal_mismatch"
+      ],
+      "suggestedOwner": "demo-manager-user"
+    },
+    {
+      "runId": "753aa6fe-e119-4438-959e-118d31ef8a04",
+      "workflowType": "qualify_lead",
+      "legacyName": "Qualification Agent",
+      "isDemo": null,
+      "subjectExists": true,
+      "approvalStatus": "pending",
+      "anomalyCodes": [
+        "terminal_mismatch"
+      ],
+      "suggestedOwner": "demo-manager-user"
+    },
+    {
+      "runId": "7e17695b-f858-43d5-a29d-f15adcb5d5d6",
+      "workflowType": "qualify_lead",
+      "legacyName": "Qualification Agent",
+      "isDemo": null,
+      "subjectExists": true,
+      "approvalStatus": "pending",
+      "anomalyCodes": [
+        "terminal_mismatch"
+      ],
+      "suggestedOwner": "demo-manager-user"
+    },
+    {
+      "runId": "b1a36e2d-9223-4026-8744-3c7b6c969621",
+      "workflowType": "qualify_lead",
+      "legacyName": "Qualification Agent",
+      "isDemo": null,
+      "subjectExists": true,
+      "approvalStatus": "pending",
+      "anomalyCodes": [
+        "terminal_mismatch"
+      ],
+      "suggestedOwner": "demo-manager-user"
+    },
+    {
+      "runId": "ad258d5a-3933-489a-95d7-6b2643b8b43d",
+      "workflowType": "qualify_lead",
+      "legacyName": "Qualification Agent",
+      "isDemo": null,
+      "subjectExists": true,
+      "approvalStatus": "pending",
+      "anomalyCodes": [
+        "terminal_mismatch"
+      ],
+      "suggestedOwner": "demo-manager-user"
+    }
+  ],
+  "ownerDisposition": "blocked; no historical writes"
+}

@@ -1,0 +1,30 @@
+{
+  "sha": "1326cefb939e16e8ba57a156de9eca13299e264e",
+  "database": "clientops_ai_uat_4e7682ace38546328fc4b5cdff292705",
+  "loopbackOnly": true,
+  "seedExecuted": false,
+  "applied": [
+    "neon/migrations/026_ai_unknown_model.sql"
+  ],
+  "skipped": 25,
+  "registered": 26,
+  "replayApplied": 0,
+  "before": {
+    "count": 135,
+    "hash": "e099893be89470181b84a0c44cda2e9d4188fbc99cafadb57328dcb13d0f9673"
+  },
+  "after": {
+    "count": 135,
+    "hash": "e099893be89470181b84a0c44cda2e9d4188fbc99cafadb57328dcb13d0f9673"
+  },
+  "allHistoricalRunRowsUnchanged": true,
+  "columnBefore": {
+    "is_nullable": "NO",
+    "column_default": "'anthropic/claude-sonnet-4-6'::text"
+  },
+  "columnAfter": {
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  "productionAccess": false
+}

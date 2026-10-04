@@ -75,7 +75,10 @@ vi.mock("@tanstack/react-start", () => ({
 }));
 
 vi.mock("@/lib/auth/neon-auth.server", () => ({
-  requireNeonAuthSession: async () => holder.session,
+  requireNeonAuthSession: async () => {
+    if (!holder.session) throw new Error("Authentication required");
+    return holder.session;
+  },
   getNeonAuthSession: async () => holder.session,
 }));
 
@@ -83,13 +86,16 @@ import { CLIENTOPS_MIGRATION_PATHS } from "@/lib/clientops-relationship-schema";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
 import { AGENT_DEFINITIONS } from "@/lib/agents";
 import { setAgentPolicyFn } from "@/server-functions/agent-policy";
+import * as policyFunctions from "@/server-functions/agent-policy";
 import { triggerLeadAgent } from "@/server-functions/leads";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
+import { readNoteTidyPolicy } from "@/server/repositories/ai-invocations";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 
 const ADMIN = "policy-admin";
 const MANAGER = "policy-manager";
+const READER = "policy-reader";
 const LEAD_ID = "00000000-0000-4000-8000-0000000c0001";
 
 const ADMIN_SESSION = {
@@ -107,6 +113,7 @@ const setAgentPolicy = setAgentPolicyFn as unknown as Handler<
     status: "active" | "inactive";
     humanApproval: boolean;
     reason?: string;
+    expectedVersionId?: string | null;
   },
   unknown
 >;
@@ -153,6 +160,24 @@ async function insertPolicyVersion(input: {
 }
 
 describe("agent policy store, proven against a real database", () => {
+  const request = (changes: Record<string, unknown> = {}) => ({
+    data: {
+      workflowType: "qualify_lead",
+      status: "inactive" as const,
+      humanApproval: false,
+      reason: "Operator verification pause",
+      expectedVersionId: null,
+      ...changes,
+    },
+  });
+  const currentId = async () =>
+    (
+      await db().query(
+        "select id from agent_policy_versions where workflow_type='qualify_lead' order by created_at desc, version_seq desc limit 1",
+      )
+    ).rows[0]?.id as string;
+  const callNew = (name: string, data: unknown) =>
+    (policyFunctions as unknown as Record<string, Handler<unknown, unknown>>)[name]({ data });
   beforeAll(async () => {
     if (!hasDatabase) return;
     holder.pool = new Pool({ connectionString: process.env.DATABASE_TEST_URL });
@@ -163,9 +188,10 @@ describe("agent policy store, proven against a real database", () => {
     await holder.pool.query(
       `insert into profiles (id, email, name, role, status) values
          ($1,'policy-admin@fixture.test','Policy Admin','admin','active'),
-         ($2,'policy-manager@fixture.test','Policy Manager','manager','active')
+         ($2,'policy-manager@fixture.test','Policy Manager','manager','active'),
+         ($3,'policy-reader@fixture.test','Policy Reader','read_only','active')
        on conflict (id) do update set role = excluded.role, status = excluded.status`,
-      [ADMIN, MANAGER],
+      [ADMIN, MANAGER, READER],
     );
     process.env.N8N_QUALIFY_LEAD_WEBHOOK_URL = "https://n8n.example/webhook";
     process.env.N8N_WORKFLOW_TOKEN = "test-token";
@@ -179,9 +205,10 @@ describe("agent policy store, proven against a real database", () => {
   beforeEach(async () => {
     if (!hasDatabase) return;
     // Migration 009 makes policy versions append-only; migration 021 references them
-    // from agent runs. Reset the explicit dependent test tables together, without CASCADE.
+    // from agent runs;025 references runs from sweep items. Reset explicit dependent
+    // test tables together on the runner's disposable DB, without CASCADE.
     await db().query(
-      "truncate approval_message_handoffs, human_approvals, agent_tool_calls, agent_runs, agent_policy_versions",
+      "truncate retention_sweep_items, retention_sweeps, approval_message_handoffs, human_approvals, agent_tool_calls, agent_runs, agent_policy_versions",
     );
     holder.session = ADMIN_SESSION;
   });
@@ -209,6 +236,7 @@ describe("agent policy store, proven against a real database", () => {
           status: "inactive",
           humanApproval: false,
           reason: "paused for maintenance",
+          expectedVersionId: null,
         },
       });
 
@@ -307,4 +335,214 @@ describe("agent policy store, proven against a real database", () => {
       humanApproval: true,
     });
   });
+  it.runIf(hasDatabase)("rejects_stale_policy_version", async () => {
+    await setAgentPolicy(request());
+    await expect(setAgentPolicy(request({ status: "active" }))).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+    expect(await policyVersionCount()).toBe(1);
+  });
+  it.runIf(hasDatabase)(
+    "note_tidy uses the same versioned status writer and dispatch policy reader",
+    async () => {
+      await setAgentPolicy(request({ workflowType: "note_tidy", humanApproval: true }));
+      const { rows } = await db().query(
+        "select id,status,human_approval from agent_policy_versions where workflow_type='note_tidy'",
+      );
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ status: "inactive", human_approval: false });
+      expect(await readNoteTidyPolicy()).toEqual({ status: "inactive", versionId: rows[0].id });
+    },
+  );
+  it.runIf(hasDatabase)(
+    "view-only roles can read but direct status and rollback writes are denied",
+    async () => {
+      for (const session of [
+        MANAGER_SESSION,
+        {
+          profile: { id: READER, role: "read_only", status: "active", primary_department_id: null },
+        },
+      ]) {
+        holder.session = session;
+        await expect(
+          callNew("getAgentPolicyHistory", { workflowType: "qualify_lead", limit: 25 }),
+        ).resolves.toMatchObject({ canConfigure: false });
+        await expect(setAgentPolicy(request())).rejects.toMatchObject({ code: "FORBIDDEN" });
+        await expect(
+          callNew("rollbackAgentPolicyFn", { ...request().data, versionId: LEAD_ID }),
+        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      }
+      expect(await policyVersionCount()).toBe(0);
+    },
+  );
+  it.runIf(hasDatabase)(
+    "unauthenticated policy access has its own error and never writes",
+    async () => {
+      holder.session = null;
+      await expect(setAgentPolicy(request())).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
+      await expect(
+        callNew("getAgentPolicyHistory", { workflowType: "qualify_lead", limit: 25 }),
+      ).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
+      expect(await policyVersionCount()).toBe(0);
+    },
+  );
+  it.runIf(hasDatabase)(
+    "cross-workflow rollback conflicts and leaves the ledger unchanged",
+    async () => {
+      await setAgentPolicy(request());
+      await expect(
+        callNew("rollbackAgentPolicyFn", {
+          workflowType: "draft_reply",
+          expectedVersionId: null,
+          versionId: await currentId(),
+          reason: "Cross workflow cannot be restored",
+        }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+      expect(await policyVersionCount()).toBe(1);
+    },
+  );
+  it
+    .runIf(hasDatabase)
+    .each([
+      ADMIN_SESSION,
+      MANAGER_SESSION,
+      { profile: { id: READER, role: "read_only", status: "active", primary_department_id: null } },
+    ])(
+    "policy read carries the current authorized actor ($profile.role) without a write",
+    async (session) => {
+      holder.session = session;
+      const result = await callNew("getAgentPolicyHistory", {
+        workflowType: "qualify_lead",
+        limit: 25,
+      });
+      expect(result).toMatchObject({
+        actorId: session.profile.id,
+        canConfigure: session.profile.role === "admin",
+      });
+      expect(await policyVersionCount()).toBe(0);
+    },
+  );
+  it.runIf(hasDatabase)("allows_only_one_first_version", async () => {
+    const results = await Promise.allSettled([
+      setAgentPolicy(request()),
+      setAgentPolicy(request()),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(await policyVersionCount()).toBe(1);
+  });
+  it.runIf(hasDatabase)(
+    "preserves_effective_human_approval despite hidden client false",
+    async () => {
+      await insertPolicyVersion({
+        workflowType: "qualify_lead",
+        status: "active",
+        humanApproval: true,
+        changedBy: ADMIN,
+        createdAt: "2024-06-01T00:00:00Z",
+      });
+      const id = await currentId();
+      await setAgentPolicy(request({ expectedVersionId: id, humanApproval: false }));
+      expect((await loadAgentPolicies()).get("qualify_lead")).toEqual({
+        status: "inactive",
+        humanApproval: true,
+      });
+    },
+  );
+  it.runIf(hasDatabase)(
+    "rejects_configure_without_capability even via direct handler call",
+    async () => {
+      holder.session = MANAGER_SESSION;
+      await expect(setAgentPolicy(request())).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(await policyVersionCount()).toBe(0);
+    },
+  );
+  it.runIf(hasDatabase)(
+    "validates reason and required expected version on direct calls",
+    async () => {
+      for (const changes of [
+        { reason: "short" },
+        { reason: "x".repeat(1001) },
+        { expectedVersionId: undefined },
+        { expectedVersionId: "not-uuid" },
+      ]) {
+        await expect(setAgentPolicy(request(changes))).rejects.toMatchObject({
+          code: "INVALID_INPUT",
+        });
+      }
+      expect(await policyVersionCount()).toBe(0);
+    },
+  );
+  it.runIf(hasDatabase)("rollback_appends_status_only and preserves CURRENT approval", async () => {
+    await insertPolicyVersion({
+      workflowType: "qualify_lead",
+      status: "inactive",
+      humanApproval: false,
+      changedBy: ADMIN,
+      createdAt: "2020-01-01T00:00:00Z",
+    });
+    const historical = await currentId();
+    await insertPolicyVersion({
+      workflowType: "qualify_lead",
+      status: "active",
+      humanApproval: true,
+      changedBy: ADMIN,
+      createdAt: "2024-06-01T00:00:00Z",
+    });
+    await callNew("rollbackAgentPolicyFn", {
+      workflowType: "qualify_lead",
+      versionId: historical,
+      expectedVersionId: await currentId(),
+      reason: "Restore historical status only",
+    });
+    expect(await policyVersionCount()).toBe(3);
+    expect((await loadAgentPolicies()).get("qualify_lead")).toEqual({
+      status: "inactive",
+      humanApproval: true,
+    });
+    expect(
+      (
+        await db().query("select status,human_approval from agent_policy_versions where id=$1", [
+          historical,
+        ])
+      ).rows[0],
+    ).toEqual({ status: "inactive", human_approval: false });
+  });
+  it.runIf(hasDatabase)(
+    "history reaches >25 versions with created_at AND version_seq workflow-bound cursors",
+    async () => {
+      for (let i = 0; i < 27; i++)
+        await insertPolicyVersion({
+          workflowType: "qualify_lead",
+          status: "inactive",
+          humanApproval: true,
+          changedBy: ADMIN,
+          createdAt: "2024-06-01T00:00:00.123456Z",
+        });
+      const first = (await callNew("getAgentPolicyHistory", {
+        workflowType: "qualify_lead",
+        limit: 25,
+      })) as {
+        items: { id: string; reason?: string; created_at: string }[];
+        nextCursor: string;
+        effectiveVersionId: string;
+      };
+      expect(first.items).toHaveLength(25);
+      expect(first.effectiveVersionId).toBe(await currentId());
+      expect(first.items[0].created_at).toContain("123456");
+      const second = (await callNew("getAgentPolicyHistory", {
+        workflowType: "qualify_lead",
+        limit: 25,
+        cursor: first.nextCursor,
+      })) as typeof first;
+      expect(second.items).toHaveLength(2);
+      expect(new Set([...first.items, ...second.items].map((v) => v.id)).size).toBe(27);
+      await expect(
+        callNew("getAgentPolicyHistory", {
+          workflowType: "draft_reply",
+          limit: 25,
+          cursor: first.nextCursor,
+        }),
+      ).rejects.toThrow();
+    },
+  );
 });

@@ -1,0 +1,10 @@
+{
+  "sha": null,
+  "database": "clientops_ai_uat_996bbea11e0e4d628b03e364eac75859",
+  "syntheticRuns": 18,
+  "syntheticLeads": 18,
+  "syntheticApprovals": 1,
+  "historicalCount": 135,
+  "historicalHash": "e099893be89470181b84a0c44cda2e9d4188fbc99cafadb57328dcb13d0f9673",
+  "productionAccess": false
+}

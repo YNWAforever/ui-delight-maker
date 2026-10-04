@@ -35,6 +35,8 @@ function createRouteQueryKeys(route: string) {
 }
 
 export const crmQueryKeys = {
+  agentQueue: (filters: QueryFilters = {}) =>
+    ["agents", "queue", normalizeQueryFilters(filters)] as const,
   shell: () => ["shell"] as const,
   dashboard: () => ["dashboard"] as const,
   account: createRouteQueryKeys("account"),

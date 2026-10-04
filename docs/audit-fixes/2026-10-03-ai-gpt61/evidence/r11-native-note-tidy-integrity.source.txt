@@ -1,0 +1,130 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { Pool } from "pg";
+import assert from "node:assert/strict";
+const f = ".clientops-perf/ai-gpt61-20261003",
+  fx = JSON.parse(readFileSync(f + "/r11-note-tidy-uat.private.json", "utf8")),
+  base = JSON.parse(readFileSync(f + "/r11-local-uat.private.json", "utf8")),
+  before = JSON.parse(readFileSync(f + "/r11-note-tidy-source-before.private.json", "utf8"));
+for (const x of [fx, base]) {
+  assert.equal(x.isolationConfirmed, true);
+  const u = new URL(x.connectionString);
+  assert.equal(u.hostname, "127.0.0.1");
+  assert.equal(u.port, "64409");
+  assert.equal(u.pathname, "/" + x.db);
+}
+assert.equal(before.sourceDatabase, base.db);
+const source = new Pool({ connectionString: base.connectionString }),
+  target = new Pool({ connectionString: fx.connectionString });
+try {
+  const rows = [];
+  for (const b of before.tables) {
+    const r = (
+      await source.query('select row_to_json(t)::text value from public."' + b.table + '" t')
+    ).rows
+      .map((x) => x.value)
+      .sort();
+    rows.push({
+      table: b.table,
+      count: r.length,
+      sha256: createHash("sha256").update(JSON.stringify(r)).digest("hex"),
+    });
+  }
+  assert.deepEqual(rows, before.tables);
+  const constraints = async (p) =>
+    (
+      await p.query(
+        "select conname,convalidated,pg_get_constraintdef(oid) as definition from pg_constraint where conrelid='agent_runs'::regclass order by conname",
+      )
+    ).rows;
+  assert.deepEqual(await constraints(source), before.constraints);
+  assert.deepEqual(await constraints(target), before.constraints);
+  const deltas = [];
+  for (const b of before.tables) {
+    const count = Number(
+      (await target.query('select count(*) from public."' + b.table + '"')).rows[0].count,
+    );
+    if (count !== b.count)
+      deltas.push({ table: b.table, before: b.count, after: count, delta: count - b.count });
+  }
+  assert.equal(deltas.find((x) => x.table === "touchpoints")?.delta, 10);
+  assert.equal(deltas.find((x) => x.table === "agent_runs")?.delta, 14);
+  assert.equal(deltas.find((x) => x.table === "clientops_schema_migrations")?.delta, 1);
+  const notes = (
+    await target.query(
+      "select status,outcome_code,model_used,tokens_used,usage_data,input_data from agent_runs where workflow_type='note_tidy' and input_data->>'sha256' in (select input_data->>'sha256' from agent_runs where created_by=$1)",
+      [fx.accounts.find((a) => a.role === "client_success").profileId],
+    )
+  ).rows;
+  const oldIds = (await source.query("select id from agent_runs")).rows.map((x) => x.id);
+  const historicalRows = (
+    await target.query(
+      "select row_to_json(t)::text value from agent_runs t where id=any($1::uuid[])",
+      [oldIds],
+    )
+  ).rows
+    .map((x) => x.value)
+    .sort();
+  assert.equal(
+    createHash("sha256").update(JSON.stringify(historicalRows)).digest("hex"),
+    before.tables.find((x) => x.table === "agent_runs").sha256,
+  );
+  const fresh = (
+    await target.query(
+      "select id,status,model_used,tokens_used,usage_data,input_data from agent_runs where not(id=any($1::uuid[]))",
+      [oldIds],
+    )
+  ).rows;
+  assert.equal(fresh.length, 14);
+  for (const r of fresh) {
+    assert.deepEqual(Object.keys(r.input_data).sort(), ["length", "sha256"]);
+    assert.equal(r.tokens_used, null);
+    assert.equal(r.usage_data, null);
+    assert.equal(r.model_used, r.status === "completed" ? "local-fixture/not-a-real-model" : null);
+  }
+  const runtime = JSON.parse(readFileSync(f + "/r11-note-tidy-runtime-result.json", "utf8")),
+    network = JSON.parse(readFileSync(f + "/r11-note-tidy-network-result.json", "utf8"));
+  assert.equal(network.sha, runtime.sha);
+  assert.ok(network.outbound.every((x) => x.allowed && x.kind === "independent-auth-session"));
+  assert.equal(network.fixtureCalls.length, 14);
+  assert.ok(
+    network.fixtureCalls.every(
+      (x) => x.actualProviderCall === false && x.transportFixture && x.settled,
+    ),
+  );
+  assert.equal(network.actualProviderCalls, 0);
+  const result = {
+    checkedAt: new Date().toISOString(),
+    sha: runtime.sha,
+    sourceDiffSha256: runtime.workingSourceDiffSha256,
+    sourceDatabase: base.db,
+    targetDatabase: fx.db,
+    originalAll56TablesUnchanged: true,
+    tableSnapshotSha256: createHash("sha256").update(JSON.stringify(rows)).digest("hex"),
+    businessAgentConstraintsFullyValidatedAndUnchanged: true,
+    onlySchemaDelta: "026 model telemetry nullable/no default; no historical row rewrite",
+    deltas,
+    registeredMigrations: 26,
+    historical135RunRowsUnchanged: true,
+    newInvocations: 14,
+    newTouchpoints: 10,
+    inputMetadataOnly: true,
+    missingUsageTokensRemainNull: true,
+    failedActualModelRemainsNull: true,
+    network: {
+      requests: network.requests.length,
+      authReads: network.outbound.length,
+      unexpectedOutbound: 0,
+      interceptedLocalFixtureExecutions: network.fixtureCalls.length,
+      actualProviderCalls: 0,
+    },
+    measuredDeadline: network.fixtureCalls.find((x) => x.tag === "deadline"),
+    productionAccess: false,
+    realAIQualityAcceptance: false,
+  };
+  writeFileSync(f + "/r11-native-note-tidy-integrity-result.json", JSON.stringify(result, null, 2));
+  console.log(JSON.stringify(result));
+} finally {
+  await source.end();
+  await target.end();
+}

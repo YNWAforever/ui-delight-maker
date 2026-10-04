@@ -15,6 +15,7 @@ import {
   type ColumnDef,
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
+import { PolicyPanel } from "@/components/agents/policy-panel";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -87,7 +88,7 @@ import type { Product } from "@/lib/types";
  *
  * What is left is the two groups that are real: the product catalogue, which writes through
  * `createProduct` / `updateProduct` / `deactivateProductFn`, and the agent catalogue, which
- * is read-only per BD-3.
+ * offers versioned status changes while human approval and model remain read-only.
  */
 
 const productsQueryKey = crmQueryKeys.products.list({});
@@ -696,15 +697,13 @@ function ToggleActiveButton({
  * That has since changed: migration `009_agent_policy_versions.sql` created
  * `agent_policy_versions`, and `status` / `human_approval` are now read here through
  * `loadEffectiveAgentCatalogue` - the stored override when a row exists for a workflow, the
- * code catalogue's own value when it does not. This panel is a read-only mirror of that: it
- * still writes nothing, and the switches this card used to have are not coming back until the
- * form BD-3 describes lands.
+ * code catalogue's own value when it does not. PolicyPanel now writes status through an
+ * authorized, version-checked append with an operator reason and explicit confirmation.
  *
  * It was also the third independent copy of the same fake control, after `/agents` and
  * `/agents/$name` - three surfaces, three local states, so flipping one contradicted the
- * other two. Per BD-3 the remaining prerequisites for an editable version of this panel are a
- * capability check on the write itself, an audit log, rollback and runtime telemetry - and
- * that is a project of its own, not a frontend revision.
+ * other two. All presentations now read the stored effective policy and invalidate it after
+ * a confirmed write. An active policy does not establish worker/provider readiness.
  */
 function AgentCatalogueTab() {
   const catalogueQuery = useQuery(effectiveCatalogueQueryOptions());
@@ -723,8 +722,9 @@ function AgentCatalogueTab() {
       >
         <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <p className="text-muted-foreground">
-          These are the values the dispatch path enforces today. Changing them requires the
-          agents.configure capability and is not yet available from this page.
+          These are the stored values used by dispatch. Changing active/inactive status requires
+          agents.configure, a reason and confirmation. Human approval, model and capabilities remain
+          read-only; worker/provider readiness is reported separately.
         </p>
       </div>
 
@@ -758,6 +758,9 @@ function AgentCatalogueTab() {
                     </dd>
                   </div>
                 </dl>
+              </CardContent>
+              <CardContent className="p-4 pt-0">
+                <PolicyPanel workflowType={agent.workflow_type} />
               </CardContent>
             </Card>
           </li>

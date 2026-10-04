@@ -127,8 +127,7 @@ import type { AgentRunSummary } from "@/server/read-models/agent-workspaces";
 import { Route as AgentsRoute } from "../agents";
 import { Route as AgentDetailRoute } from "../agents.$name";
 
-const READ_ONLY_SENTENCE =
-  "Configuration is read-only until runtime policy enforcement is enabled.";
+const READ_ONLY_SENTENCE = "Open an agent’s Governance tab for versioned status controls";
 
 /**
  * `agents.$name.tsx` no longer carries `READ_ONLY_SENTENCE` above: enforcement shipped, so
@@ -136,7 +135,7 @@ const READ_ONLY_SENTENCE =
  * enforced values and states the capability a write would need instead.
  */
 const ENFORCED_VALUES_SENTENCE =
-  "These are the values the dispatch path enforces today - changing them requires the agents.configure capability.";
+  "Status changes require agents.configure and a new policy version.";
 
 const REGISTER_SENTENCE_BY_FILE: Record<(typeof ROUTE_FILES)[number], string> = {
   "agents.tsx": READ_ONLY_SENTENCE,
@@ -272,6 +271,22 @@ const AGENT_FIXTURE = {
 } as const;
 
 describe("/agents/$name reports the catalogue's status, not the reader's clicks", () => {
+  it("loads history with workflow identity rather than a mutable display name", async () => {
+    const { getAgentHistoryPage } = await import("@/server-functions/agent-runs");
+    const ensureQueryData = vi.fn(async (options: { queryFn: () => Promise<unknown> }) => {
+      if (ensureQueryData.mock.calls.length === 1)
+        return [{ ...AGENT_FIXTURE, display_name: "Renamed Agent" }];
+      return options.queryFn();
+    });
+    await (AgentDetailRoute.options.loader as (context: unknown) => Promise<unknown>)({
+      context: { queryClient: { ensureQueryData } },
+      params: { name: "qualify-lead" },
+      deps: { page: 1 },
+    });
+    expect(getAgentHistoryPage).toHaveBeenCalledWith({
+      data: { workflowType: "qualify_lead", page: 1, limit: 25 },
+    });
+  });
   beforeEach(() => {
     captures.statusBadges = [];
     captures.tabValues = [];
@@ -313,9 +328,10 @@ describe("/agents/$name reports the catalogue's status, not the reader's clicks"
     expect(captures.tabValues).toEqual(["runs", "governance"]);
   });
 
-  it("says what has to exist before the settings come back", () => {
+  it("states the versioned status gate and retains the unavailable memory explanation", () => {
     renderDetail();
-    expect(screen.getByText(/Required before settings become editable/)).toBeTruthy();
+    expect(screen.queryByText(/Required before settings become editable/)).toBeNull();
+    expect(screen.getByRole("region", { name: "Policy governance" })).toBeTruthy();
     expect(screen.getByText(new RegExp(ENFORCED_VALUES_SENTENCE))).toBeTruthy();
     // The Memory tab's one sentence survives as prose here rather than as a destination.
     expect(screen.getByText(/Long-term memory/)).toBeTruthy();

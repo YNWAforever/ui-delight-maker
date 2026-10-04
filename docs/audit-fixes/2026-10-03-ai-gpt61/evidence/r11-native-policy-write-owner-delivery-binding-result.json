@@ -1,0 +1,183 @@
+{
+  "recordedAt": "2026-10-04T11:26:38.383Z",
+  "codeVerifiedCommit": "1326cefb939e16e8ba57a156de9eca13299e264e",
+  "executionHead": "1326cefb939e16e8ba57a156de9eca13299e264e",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceTrees": {
+    "src": "776ce26a9a62906a72da002350ce9ab98e14007b",
+    "neon": "3cf78f7d35c15b02c8099a728b9a78b74116b82f",
+    "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
+    "scripts": "ecca3b87db60afb06f23d74fb5c24aa09a48e639"
+  },
+  "unchangedFromBaseline": [
+    "neon",
+    "n8n",
+    "scripts",
+    "package.json",
+    "bun.lock"
+  ],
+  "serverEntrySha256": "d26114d3817032e5da7c95bf4831222a49f586e09aaab3f934022a5ec6e8799b",
+  "artifactInventory": {
+    "files": 401,
+    "bytes": 5513641,
+    "sha256": "96043c45f2797506f6c050cde448776ae4ca8a2cc14dc5d04a448427b6655577",
+    "privatePath": ".clientops-perf/ai-gpt61-20261003/r11-native-policy-write-owner-artifact-inventory.private.json"
+  },
+  "runners": [
+    {
+      "path": "evidence/r11-native-policy-write-owner-runner.source.txt",
+      "sha256": "24fc3cc0df01cc5718ec561f654a57bbdffc59afc0d801459fdc828183f22643",
+      "executedPrivateSourceSha256": "24fc3cc0df01cc5718ec561f654a57bbdffc59afc0d801459fdc828183f22643",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-read-runner.source.txt",
+      "sha256": "3bd9e95812354e9680ab46ddc91bf013331204abdb67a5a77fd8f86935395eb1",
+      "executedPrivateSourceSha256": "3bd9e95812354e9680ab46ddc91bf013331204abdb67a5a77fd8f86935395eb1",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-red-runner.source.txt",
+      "sha256": "24fc3cc0df01cc5718ec561f654a57bbdffc59afc0d801459fdc828183f22643",
+      "executedPrivateSourceSha256": "24fc3cc0df01cc5718ec561f654a57bbdffc59afc0d801459fdc828183f22643",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-runtime.source.txt",
+      "sha256": "a4d9cffea000932670acc3349c36a6b486fc528827020191cbfb6adf3d473f5e",
+      "executedPrivateSourceSha256": "4fff33f4169a4cc033d0296f03d179e5ecc48317e6dd4785a9aab36e6dc718ba",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-prepare.source.txt",
+      "sha256": "7547adb641aa92133d201444434a4432cae9babaadab3874558be9f55854d066",
+      "executedPrivateSourceSha256": "8176d20fd4d0c0d2a4a7f9fac1e2a3186e87cab023943d58a69fe56c78eb4c46",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-migration.source.txt",
+      "sha256": "2d7b7f39a9cb4b47ca584edb9d624ea082a5e7fe29f98a8977aae75f9148743a",
+      "executedPrivateSourceSha256": "f5261df582a464b498657bda2b0fe9e960cc769ef6f6586d64f756d5bec751a5",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-integrity.source.txt",
+      "sha256": "e94266d65038ef90dfbbeb3e86dbacbb630b62d90f95c6e9d4c6ea7f71090b8c",
+      "executedPrivateSourceSha256": "e94266d65038ef90dfbbeb3e86dbacbb630b62d90f95c6e9d4c6ea7f71090b8c",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-isolated-target-checks.source.txt",
+      "sha256": "fc2749f13ec09c2b353e10b6086035ca1623996240bc44c6fa35763aec925ce0",
+      "executedPrivateSourceSha256": "fc2749f13ec09c2b353e10b6086035ca1623996240bc44c6fa35763aec925ce0",
+      "normalization": "UTF8/LF; no semantic change"
+    }
+  ],
+  "receipts": [
+    {
+      "path": "evidence/r11-native-policy-write-owner-green-result.json",
+      "sha256": "0defe127ba22dbb8d1bac3e379d5fd5577aa79029a11a37c73fb5a63df4687df"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-read-green-result.json",
+      "sha256": "0ca3def6b1b06bc56078bc669550c0eda2d538a7e092acecb6c0bc2f9c2e38c5"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-integrity-result.json",
+      "sha256": "4387542051a5508c82177aec28659789c06008baf0abcbecde3ccf57687380d6"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-runtime-result.json",
+      "sha256": "3758b64a77c793eb04a0fe164a267ce7b6a46b942863a0b93796ee2d0720fc9e"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-migration-result.json",
+      "sha256": "563a97f5f7ed3e287dd5335ed9e273d7aa22d557acfed028ca45f75e97dfb163"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-code-ci-result.json",
+      "sha256": "299cbab601ff2c60f9d637bac8fec51267f965ee85950994856ad44c54b66b8e"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-network-result.json",
+      "sha256": "caa1456c0b6a0bd732c9ea8a7cbdf4fa0d2f0a0f3a097060cedf417d6b33290e"
+    },
+    {
+      "path": "evidence/r11-policy-write-owner-red-result.json",
+      "sha256": "b63d1ec3c81add915e295f12b22fcb558042b666e383b8ba8415ca6792466210"
+    },
+    {
+      "path": "evidence/r11-policy-write-owner-target-result.json",
+      "sha256": "8d5fffa6395ef8aa434836b84d2900c150af7439fe78bacfdcb3f7b2de9a682c"
+    },
+    {
+      "path": "evidence/r11-policy-write-owner-static-result.json",
+      "sha256": "7ec566ae193f7b60a6b1c24abaf56eecec6aa0e1c126d3f515f5112f6deae352"
+    },
+    {
+      "path": "evidence/r11-policy-write-owner-build-result.json",
+      "sha256": "c8597bd0a74fc7e5679a8aa4511cb498796fefcd7a4080d4b7a8e078be9b3e9d"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-red-result.json",
+      "sha256": "16a31513fb122f1c1297b7562fdf30c7fd5c0dbb09841f5ac1b19da01a6d4fe2"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-red-integrity-result.json",
+      "sha256": "c281d00379c633496a8a5e09213627b942e0717cd2cda85bc253a7e9d245e999"
+    },
+    {
+      "path": "evidence/r11-native-policy-write-owner-red-runtime-result.json",
+      "sha256": "c764ec9ee5bb32d13d4f0188c6f3f7513530f36347ff561b18316a1449c49f71"
+    }
+  ],
+  "screenshots": [
+    {
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/r11-native-policy-write-owner-green-manager-late-outcome.private.png",
+      "sha256": "b1e71b85cca20c8664adb11685428effc26c3940bade3ab29e7f0210da8dcab4"
+    },
+    {
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/r11-native-policy-write-owner-read-green-accounting403.private.png",
+      "sha256": "5d79a8878a724330af23f69da4ebd5cc851c7d6c0c2c3748324905b106f5b244"
+    },
+    {
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/r11-native-policy-write-owner-read-green-read-only-final.private.png",
+      "sha256": "dcfce7f9c1423e43ad9ea3df9d713c4b67766871bc550804f4f48a6ce1be6a01"
+    }
+  ],
+  "commands": {
+    "target": "bun .clientops-perf/ai-gpt61-20261003/r11-policy-write-owner-checks.private.mjs r11-policy-write-owner-target <four named policy test files>",
+    "native": "node .clientops-perf/ai-gpt61-20261003/r11-native-policy-write-owner.private.mjs green",
+    "roles": "node .clientops-perf/ai-gpt61-20261003/r11-native-policy-write-owner-read.private.mjs green",
+    "integrity": "node .clientops-perf/ai-gpt61-20261003/r11-native-policy-write-owner-integrity.private.mjs",
+    "migration": "bun .clientops-perf/ai-gpt61-20261003/r11-native-policy-write-owner-migrate.private.ts",
+    "nativeExit": 0,
+    "rolesExit": 0,
+    "integrityExit": 0,
+    "migrationExit": 0,
+    "targetExit": 0,
+    "targetTests": 45,
+    "targetSkipped": 0,
+    "nativeChecks": 3,
+    "nativeActualActors": 2,
+    "separateReadChecks": 9,
+    "separateReadRoles": 7,
+    "fullCI": 2920,
+    "fullCISkipped": 0
+  },
+  "scope": "real admin local synthetic status/CAS append; genuine manager reauthorization in the same SPA; original successful BFF response delayed by browser transport fixture, no Auth/BFF result mock; not interactive login or whole-app/provider acceptance",
+  "readScope": "same-document cookie-fixture transitions for seven distinct actual independent Auth users; no Auth/BFF result doubles, policy decisions or provider calls",
+  "originalZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
+  "executionPlanSha256": "37e03bf6cff9564ce68c35c7cd838ae5c6348c37575158d1743cad48bef6ce38",
+  "wholeAppHandoff": "not-tested",
+  "interactiveLogoutRelogin": "not-tested",
+  "manualAT": "not-tested",
+  "trueProviderAcceptance": "blocked",
+  "sourceSchema": 26,
+  "authorReviewOnly": true,
+  "productionAccess": false,
+  "actualProviderCalls": 0,
+  "ownedRuntimePid": 47692,
+  "ownedRuntimeStopped": true,
+  "releaseDecision": "NO-GO"
+}

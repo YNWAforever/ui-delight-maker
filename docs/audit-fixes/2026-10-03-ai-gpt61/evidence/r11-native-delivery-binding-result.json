@@ -1,0 +1,116 @@
+{
+  "checkedAt": "2026-10-03T18:49:16.013Z",
+  "codeVerifiedCommit": "d2328ae0c4548ba8c2e9cf56a4b9f11f71f7e938",
+  "applicationBehaviorCommit": "622c5df5a3e1e323f9364902340d119480a95737",
+  "deltaFromApplicationBehavior": [
+    "scripts/clientops/__tests__/redact-ui-diagnostics.test.ts",
+    "scripts/clientops/redact-ui-diagnostics.ts",
+    "scripts/clientops/verify-ai-local-ui.ts",
+    "src/server/read-models/__tests__/note-tidy-runs.test.ts",
+    "src/server/workflows/__tests__/retention-sweep-checkpoint.integration.test.ts"
+  ],
+  "applicationBehaviorUnchanged": true,
+  "cliDelta": "Credential-line/DSN redaction only; eight regressions; success/native authorization paths unchanged",
+  "sourceTrees": {
+    "src": "568080dcaecad44a3858af06eb8a676a3769566d",
+    "neon": "a45443f775b7e65d42dc31259f33b48b73e1c527",
+    "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
+    "scripts": "ecca3b87db60afb06f23d74fb5c24aa09a48e639"
+  },
+  "package": {
+    "path": "package.json",
+    "sha256": "c220d5e3a2d6688e89bb92958ed310d814e01b446b450d538244e0874ddcde5f",
+    "gitBlob": "cd3363e5545afe56e44b0a114b4ba572f374c352"
+  },
+  "lock": {
+    "path": "bun.lock",
+    "sha256": "5bce664aedbd85728dbc3335af74b87b40ba0a3d2a1a3b8cd5b73776b1746b85",
+    "gitBlob": "b624d731c6d674a6c0990f09d88abe214784366a"
+  },
+  "serverArtifactSha256": "014497601f7d4e55a8a66f35fd7e25170029c2b26b05cb0819b7b5fed9b20039",
+  "clientArtifactSha256": "4cb139736769b47f0a1cba839dddcd199a058a91edb697dbec655a5b16c5422e",
+  "serverEntrySha256": "261166a51770879a1abe649195f8e0b57cd1c6b8d63712bdcfe75ac8f9be6d28",
+  "native": {
+    "executionSha": "4c523591c6fc8d0647c5b5c40348c54884b35739",
+    "applicationBytesMatch": true,
+    "roleJourneys": 7,
+    "checks": 59,
+    "distinctLiveIdentities": 7,
+    "reviewChecks": 14,
+    "policyChecks": 4,
+    "manualSaveChecks": 3,
+    "bulkChecks": 5,
+    "bulkOriginalReceipts": 95,
+    "bulkReplayAdditionalReceipts": 0,
+    "phaseReceiptsPreserveOriginalExecutionSHA": true
+  },
+  "fullLocalApplication": {
+    "sourceSha": "27040f148b6a9ef2bede434904de582af57870e2",
+    "passed": 2841,
+    "failed": 0,
+    "skipped": 0,
+    "files": 355,
+    "exitCode": 0,
+    "elapsedMs": 1256716,
+    "receipt": "evidence/r11-native-complete-final-full-result.json"
+  },
+  "localCliDelta": {
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "files": 1,
+    "exitCode": 0,
+    "receipt": "evidence/r11-native-diagnostic-green-result.json",
+    "workingSourceBinding": "27040f1 plus extracted/redacted helper/import/test; committed final CI verifies combined source"
+  },
+  "combinedLocalFull2849Executed": false,
+  "exactCodeCI": {
+    "checkedAt": "2026-10-03T18:49:03.492Z",
+    "sourceSha": "d2328ae0c4548ba8c2e9cf56a4b9f11f71f7e938",
+    "success": true,
+    "databaseRun": 37145172622,
+    "databaseUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37145172622",
+    "checksRun": 37145172566,
+    "checksUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37145172566",
+    "scope": "GitHub isolated pgvector PostgreSQL17 services; no production connection",
+    "passed": 2849,
+    "failed": 0,
+    "skipped": 0,
+    "files": 356,
+    "strictNoSkips": "exit0",
+    "migrationSeedReplay": "passed on isolated CI service",
+    "databaseJobs": [
+      {
+        "name": "contract",
+        "conclusion": "success"
+      },
+      {
+        "name": "Isolated migration and seed replay",
+        "conclusion": "success"
+      }
+    ],
+    "commands": {
+      "full": "bunx vitest run --no-file-parallelism --testTimeout=30000 --reporter=default --reporter=json --outputFile=<private report>",
+      "strict": "bun scripts/clientops/assert-vitest-no-skips.ts <private report>",
+      "checks": [
+        "bun run typecheck",
+        "bun run typecheck:runtime",
+        "bun run lint",
+        "bunx vite build",
+        "bun run performance:bundles",
+        "bun run test:browser-collector"
+      ]
+    },
+    "logSha256": "8612fa08606459a2540ce6da80cb73d7d83f68b18e9a017d5600ec91f8e7a157",
+    "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-code-ci.private.log",
+    "releaseDecision": "NO-GO"
+  },
+  "earlierFailuresRetained": [
+    "r11-native-full-cleanup-red-result.json",
+    "r11-native-full-sweep-timeout-result.json",
+    "r11-native-sweep-unchanged-result.json",
+    "r11-native-diagnostic-red-result.json"
+  ],
+  "releaseDecision": "NO-GO",
+  "productionMutations": 0
+}

@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-10-04T09:00:42.601Z",
+  "originalDatabase": "clientops_ai_uat_843cdc77175546ddbad0417b36ac845a",
+  "cloneDatabase": "clientops_ai_uat_0ec16f06903c4d11a94d3f69837891fc",
+  "loopbackOnly": true,
+  "originalAll56TablesUnchanged": true,
+  "historical135RunRowsUnchanged": true,
+  "syntheticFixtureRuns": 18,
+  "allowedDeltas": [
+    {
+      "table": "agent_runs",
+      "additionalRows": 18
+    },
+    {
+      "table": "clientops_schema_migrations",
+      "additionalRows": 1
+    },
+    {
+      "table": "human_approvals",
+      "additionalRows": 1
+    },
+    {
+      "table": "leads",
+      "additionalRows": 18
+    }
+  ],
+  "previewsOnly": 0,
+  "effectiveCancels": 0,
+  "newCommandReceipts": 0,
+  "newActivityAudits": 0,
+  "allOtherCloneTablesUnchanged": true,
+  "productionAccess": false,
+  "actualProviderCalls": 0,
+  "passed": true
+}

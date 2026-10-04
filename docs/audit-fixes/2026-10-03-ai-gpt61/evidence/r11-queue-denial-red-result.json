@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-10-04T07:29:31.666Z",
+  "sourceSha": "1f345757b03f51137867e964215ca1c1c0c5ad83",
+  "db": "clientops_ai_gpt61_f25bf73fd3",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/components/agents/__tests__/queue-refresh-access.test.tsx",
+    "src/components/agents/__tests__/queue-navigation.test.tsx",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-queue-denial-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 22,
+  "failed": 6,
+  "skipped": 0,
+  "total": 28,
+  "files": 2,
+  "elapsedMs": 40123,
+  "reportSha256": "eeefa75eacc7d05d74082fa1928f6f03622f25b3c2a02f43f982fbf80362ae93"
+}

@@ -1,0 +1,175 @@
+{
+  "checkedAt": "2026-10-03T19:48:05.858Z",
+  "sourceSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
+  "workingSourceDiffSha256": "9bb3b78b383e80a89b11550d63f856a06505f6e3c54e5a03877c7e37e51fae89",
+  "serverEntrySha256": "b0532e35fd2633cd62dd88a418c37bad5aec815a3d0b980d0ad1977327a95f46",
+  "checks": [
+    {
+      "name": "synthetic pre-existing drift only; strict new-write guard rejects unknown23514 before and during native acceptance",
+      "passed": true
+    },
+    {
+      "role": "super_admin",
+      "name": "unknown historical workflow retains own run ID/workflow in native filter/deep link",
+      "passed": true
+    },
+    {
+      "role": "super_admin",
+      "name": "unsupported subject native run detail redacts content and has no recovery controls",
+      "passed": true
+    },
+    {
+      "role": "super_admin",
+      "name": "both historical and current quote labels reach the exact native run detail; reload retains run ID",
+      "passed": true
+    },
+    {
+      "role": "super_admin",
+      "name": "native detail390 screenshot retained",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/super_admin-native-detail390.png",
+      "screenshotSha256": "e251aaabaec10d3c69b08ba6d4a2fc4815a5d7fffce4488c5877f4ebd1188f2e"
+    },
+    {
+      "role": "admin",
+      "name": "unknown historical workflow retains own run ID/workflow in native filter/deep link",
+      "passed": true
+    },
+    {
+      "role": "admin",
+      "name": "unsupported subject native run detail redacts content and has no recovery controls",
+      "passed": true
+    },
+    {
+      "role": "admin",
+      "name": "both historical and current quote labels reach the exact native run detail; reload retains run ID",
+      "passed": true
+    },
+    {
+      "role": "admin",
+      "name": "native detail390 screenshot retained",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/admin-native-detail390.png",
+      "screenshotSha256": "e251aaabaec10d3c69b08ba6d4a2fc4815a5d7fffce4488c5877f4ebd1188f2e"
+    },
+    {
+      "role": "manager",
+      "name": "unknown historical workflow retains own run ID/workflow in native filter/deep link",
+      "passed": true
+    },
+    {
+      "role": "manager",
+      "name": "unsupported subject native run detail redacts content and has no recovery controls",
+      "passed": true
+    },
+    {
+      "role": "manager",
+      "name": "both historical and current quote labels reach the exact native run detail; reload retains run ID",
+      "passed": true
+    },
+    {
+      "role": "manager",
+      "name": "native detail390 screenshot retained",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/manager-native-detail390.png",
+      "screenshotSha256": "e251aaabaec10d3c69b08ba6d4a2fc4815a5d7fffce4488c5877f4ebd1188f2e"
+    },
+    {
+      "role": "sales",
+      "name": "unknown historical workflow retains own run ID/workflow in native filter/deep link",
+      "passed": true
+    },
+    {
+      "role": "sales",
+      "name": "unsupported subject native run detail redacts content and has no recovery controls",
+      "passed": true
+    },
+    {
+      "role": "sales",
+      "name": "both historical and current quote labels reach the exact native run detail; reload retains run ID",
+      "passed": true
+    },
+    {
+      "role": "sales",
+      "name": "native detail390 screenshot retained",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/sales-native-detail390.png",
+      "screenshotSha256": "e251aaabaec10d3c69b08ba6d4a2fc4815a5d7fffce4488c5877f4ebd1188f2e"
+    },
+    {
+      "role": "client_success",
+      "name": "unknown historical workflow retains own run ID/workflow in native filter/deep link",
+      "passed": true
+    },
+    {
+      "role": "client_success",
+      "name": "unsupported subject native run detail redacts content and has no recovery controls",
+      "passed": true
+    },
+    {
+      "role": "client_success",
+      "name": "both historical and current quote labels reach the exact native run detail; reload retains run ID",
+      "passed": true
+    },
+    {
+      "role": "client_success",
+      "name": "native detail390 screenshot retained",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/client_success-native-detail390.png",
+      "screenshotSha256": "e251aaabaec10d3c69b08ba6d4a2fc4815a5d7fffce4488c5877f4ebd1188f2e"
+    },
+    {
+      "role": "accounting",
+      "name": "direct unknown queue remains denied without context leakage",
+      "passed": true
+    },
+    {
+      "role": "read_only",
+      "name": "unknown historical workflow retains own run ID/workflow in native filter/deep link",
+      "passed": true
+    },
+    {
+      "role": "read_only",
+      "name": "unsupported subject native run detail redacts content and has no recovery controls",
+      "passed": true
+    },
+    {
+      "role": "read_only",
+      "name": "both historical and current quote labels reach the exact native run detail; reload retains run ID",
+      "passed": true
+    },
+    {
+      "role": "read_only",
+      "name": "native detail390 screenshot retained",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/read_only-native-detail390.png",
+      "screenshotSha256": "e251aaabaec10d3c69b08ba6d4a2fc4815a5d7fffce4488c5877f4ebd1188f2e"
+    },
+    {
+      "role": "admin",
+      "name": "native attention queue at original server-derived asOf excludes59:59 and includes exact60:00 regardless of updated_at",
+      "passed": true,
+      "asOf": "2026-10-03T19:48:01.789Z",
+      "cursorSha256": "b6ee856f194c888160c4f33b3523bace2a65e4d5bacd3edf3003dd11bd7d5d4a",
+      "youngerAgeSeconds": 3599,
+      "boundaryAgeSeconds": 3600,
+      "matching": 27,
+      "pageItems": 2,
+      "timeMocked": false,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/native-60minute-snapshot-boundary.png",
+      "screenshotSha256": "1662d7866ca9498698ed19fb71db4cfb0c9837a732b3602f80c65e8993f22aca"
+    }
+  ],
+  "failures": [],
+  "passed": true,
+  "syntheticLegacyFixture": true,
+  "currentNewWriteGuardAlwaysEnforcedDuringUI": true,
+  "originalValidatedConstraintsRestored": true,
+  "syntheticRowsRemoved": 30,
+  "syntheticLeadRowsRemoved": 2,
+  "originalLeadRowsPreserved": 103,
+  "originalRunCountPreserved": 135,
+  "approvalRowsChanged": 0,
+  "providerCalls": 0,
+  "productionAccess": false
+}

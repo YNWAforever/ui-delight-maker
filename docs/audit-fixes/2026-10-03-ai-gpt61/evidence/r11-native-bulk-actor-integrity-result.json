@@ -1,0 +1,80 @@
+{
+  "checkedAt": "2026-10-04T04:54:59.025Z",
+  "sha": "6d5c43646fb46433afa647ec3f698eff341bd332",
+  "sourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceDatabase": "clientops_ai_uat_843cdc77175546ddbad0417b36ac845a",
+  "targetDatabase": "clientops_ai_uat_996bbea11e0e4d628b03e364eac75859",
+  "originalAll56TablesUnchanged": true,
+  "tableSnapshotSha256": "2ea1f6386a0527176903dd1f182bd0eaa83aed60196fae67bcb765acf3f32072",
+  "businessAgentConstraintsFullyValidatedAndUnchanged": true,
+  "historical135RunRowsUnchanged": true,
+  "onlySchemaDelta": "026 nullable/no-default model; no historical rewrite",
+  "registeredMigrations": 26,
+  "deltas": [
+    {
+      "table": "activity_logs",
+      "before": 97,
+      "after": 104,
+      "delta": 7
+    },
+    {
+      "table": "agent_runs",
+      "before": 135,
+      "after": 153,
+      "delta": 18
+    },
+    {
+      "table": "bulk_operation_items",
+      "before": 100,
+      "after": 119,
+      "delta": 19
+    },
+    {
+      "table": "bulk_operations",
+      "before": 1,
+      "after": 17,
+      "delta": 16
+    },
+    {
+      "table": "clientops_schema_migrations",
+      "before": 25,
+      "after": 26,
+      "delta": 1
+    },
+    {
+      "table": "command_receipts",
+      "before": 95,
+      "after": 102,
+      "delta": 7
+    },
+    {
+      "table": "human_approvals",
+      "before": 1,
+      "after": 3,
+      "delta": 2
+    },
+    {
+      "table": "leads",
+      "before": 103,
+      "after": 121,
+      "delta": 18
+    }
+  ],
+  "syntheticRuns": 18,
+  "syntheticLeads": 18,
+  "syntheticApprovals": 2,
+  "effectiveCancels": 7,
+  "commandReceipts": 7,
+  "activityAudits": 7,
+  "blockedItemsNotRecovered": true,
+  "nativeChecks": 41,
+  "roles": 7,
+  "network": {
+    "requests": 146,
+    "authReads": 146,
+    "unexpectedOutbound": 0,
+    "actualProviderCalls": 0
+  },
+  "productionAccess": false,
+  "realAIQualityAcceptance": false
+}

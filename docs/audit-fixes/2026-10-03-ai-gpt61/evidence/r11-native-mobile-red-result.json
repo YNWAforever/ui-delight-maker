@@ -1,0 +1,387 @@
+{
+  "checkedAt": "2026-10-03T15:49:32.069Z",
+  "sha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "b5bbc6016a2d11228a14f1fc88a124ed9d7141493e028029bd0412c36ee21316",
+  "fixtureVersion": "ai-local-role-uat-v1",
+  "database": "clientops_ai_uat_843cdc77175546ddbad0417b36ac845a",
+  "distinctAuthUsers": 7,
+  "distinctSessions": 7,
+  "distinctCookieSets": 7,
+  "roles": [
+    {
+      "role": "super_admin",
+      "identitySha256": "2e826afbc440c3626a35f510b27c62dfe97a4cf4087ce7bce5171444e4f6a10f",
+      "checks": [
+        {
+          "name": "own live Auth identity and persisted role",
+          "passed": true
+        },
+        {
+          "name": "scoped whole-queue count",
+          "passed": true,
+          "expected": 129
+        },
+        {
+          "name": "own Note Tidy invocation only",
+          "passed": true
+        },
+        {
+          "name": "legacy and new quote names share complete paginated workflow",
+          "passed": true,
+          "matching": 28
+        },
+        {
+          "name": "filter/cursor survive native reload",
+          "passed": true
+        },
+        {
+          "name": "policy controls reflect server capability; humanApproval preserved",
+          "passed": true,
+          "canConfigure": true
+        }
+      ],
+      "errors": [],
+      "screenshots": [
+        {
+          "label": "desktop",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/super_admin-desktop.png",
+          "sha256": "ad6d6307197ca6c0d4bf99e5bb34403837ee5b9d015b61314be895f7f1daeee4"
+        },
+        {
+          "label": "mobile390",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/super_admin-mobile390.png",
+          "sha256": "0f49e725fdf30214b04770637ae6dead61ed24493bf92102f5ae99fda61b5679"
+        },
+        {
+          "label": "failure",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/super_admin-failure.png",
+          "sha256": "0f49e725fdf30214b04770637ae6dead61ed24493bf92102f5ae99fda61b5679"
+        }
+      ],
+      "passed": false,
+      "failure": "390px horizontal overflow {\"width\":390,\"scrollWidth\":404}"
+    },
+    {
+      "role": "admin",
+      "identitySha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "checks": [
+        {
+          "name": "own live Auth identity and persisted role",
+          "passed": true
+        },
+        {
+          "name": "scoped whole-queue count",
+          "passed": true,
+          "expected": 129
+        },
+        {
+          "name": "own Note Tidy invocation only",
+          "passed": true
+        },
+        {
+          "name": "legacy and new quote names share complete paginated workflow",
+          "passed": true,
+          "matching": 28
+        },
+        {
+          "name": "filter/cursor survive native reload",
+          "passed": true
+        },
+        {
+          "name": "policy controls reflect server capability; humanApproval preserved",
+          "passed": true,
+          "canConfigure": true
+        }
+      ],
+      "errors": [],
+      "screenshots": [
+        {
+          "label": "desktop",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/admin-desktop.png",
+          "sha256": "aacf865efc750808250720c3b2bf3cdc4bc5886f647a4b94551f92b2adea8f48"
+        },
+        {
+          "label": "mobile390",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/admin-mobile390.png",
+          "sha256": "0f49e725fdf30214b04770637ae6dead61ed24493bf92102f5ae99fda61b5679"
+        },
+        {
+          "label": "failure",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/admin-failure.png",
+          "sha256": "0f49e725fdf30214b04770637ae6dead61ed24493bf92102f5ae99fda61b5679"
+        }
+      ],
+      "passed": false,
+      "failure": "390px horizontal overflow {\"width\":390,\"scrollWidth\":404}"
+    },
+    {
+      "role": "manager",
+      "identitySha256": "88a8c8cdaf3230e0b257c07071d13cad63a259b16f13ca290a1cb01f9ae8799b",
+      "checks": [
+        {
+          "name": "own live Auth identity and persisted role",
+          "passed": true
+        },
+        {
+          "name": "scoped whole-queue count",
+          "passed": true,
+          "expected": 125
+        },
+        {
+          "name": "own Note Tidy invocation only",
+          "passed": true
+        },
+        {
+          "name": "legacy and new quote names share complete paginated workflow",
+          "passed": true,
+          "matching": 26
+        },
+        {
+          "name": "filter/cursor survive native reload",
+          "passed": true
+        },
+        {
+          "name": "foreign subject excluded from direct run query",
+          "passed": true
+        },
+        {
+          "name": "policy controls reflect server capability; humanApproval preserved",
+          "passed": true,
+          "canConfigure": false
+        },
+        {
+          "name": "direct policy POST 403; no appended version",
+          "passed": true
+        }
+      ],
+      "errors": [],
+      "screenshots": [
+        {
+          "label": "desktop",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/manager-desktop.png",
+          "sha256": "54de84d6f139426ad44f32be2911e46dc25e23db3ba78b9c78c2c96aafe4a42f"
+        },
+        {
+          "label": "mobile390",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/manager-mobile390.png",
+          "sha256": "b02ca5aec232f5136f2fcb5b003615dafe022be2a3b37269bc50602e7fc6af5b"
+        },
+        {
+          "label": "failure",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/manager-failure.png",
+          "sha256": "b02ca5aec232f5136f2fcb5b003615dafe022be2a3b37269bc50602e7fc6af5b"
+        }
+      ],
+      "passed": false,
+      "failure": "390px horizontal overflow {\"width\":390,\"scrollWidth\":404}"
+    },
+    {
+      "role": "sales",
+      "identitySha256": "2e9ac9f96d4a9c1a8a5f8c5c7fb7868a71018f7fbff18d8ba1933d585c2c404a",
+      "checks": [
+        {
+          "name": "own live Auth identity and persisted role",
+          "passed": true
+        },
+        {
+          "name": "scoped whole-queue count",
+          "passed": true,
+          "expected": 129
+        },
+        {
+          "name": "own Note Tidy invocation only",
+          "passed": true
+        },
+        {
+          "name": "legacy and new quote names share complete paginated workflow",
+          "passed": true,
+          "matching": 28
+        },
+        {
+          "name": "filter/cursor survive native reload",
+          "passed": true
+        },
+        {
+          "name": "policy controls reflect server capability; humanApproval preserved",
+          "passed": true,
+          "canConfigure": false
+        },
+        {
+          "name": "direct policy POST 403; no appended version",
+          "passed": true
+        }
+      ],
+      "errors": [],
+      "screenshots": [
+        {
+          "label": "desktop",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/sales-desktop.png",
+          "sha256": "94dd950161f73345a88e472f8c116c99e53e2940e6d45327144f06181ded697b"
+        },
+        {
+          "label": "mobile390",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/sales-mobile390.png",
+          "sha256": "24980b9f5aec16a95b348ffb69e30d9593d056a394a61c17e2690e5f71b19914"
+        },
+        {
+          "label": "failure",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/sales-failure.png",
+          "sha256": "24980b9f5aec16a95b348ffb69e30d9593d056a394a61c17e2690e5f71b19914"
+        }
+      ],
+      "passed": false,
+      "failure": "390px horizontal overflow {\"width\":390,\"scrollWidth\":404}"
+    },
+    {
+      "role": "client_success",
+      "identitySha256": "abf1d43bcd802e6970d36f832ce785a036d7e947feef56054b54b10e3642298d",
+      "checks": [
+        {
+          "name": "own live Auth identity and persisted role",
+          "passed": true
+        },
+        {
+          "name": "scoped whole-queue count",
+          "passed": true,
+          "expected": 129
+        },
+        {
+          "name": "own Note Tidy invocation only",
+          "passed": true
+        },
+        {
+          "name": "legacy and new quote names share complete paginated workflow",
+          "passed": true,
+          "matching": 28
+        },
+        {
+          "name": "filter/cursor survive native reload",
+          "passed": true
+        },
+        {
+          "name": "policy controls reflect server capability; humanApproval preserved",
+          "passed": true,
+          "canConfigure": false
+        },
+        {
+          "name": "direct policy POST 403; no appended version",
+          "passed": true
+        }
+      ],
+      "errors": [],
+      "screenshots": [
+        {
+          "label": "desktop",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/client_success-desktop.png",
+          "sha256": "c4fad5a6f90b8e2737fada96fb53718fb3d20169da5c6960d3952853e7dfdb83"
+        },
+        {
+          "label": "mobile390",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/client_success-mobile390.png",
+          "sha256": "24980b9f5aec16a95b348ffb69e30d9593d056a394a61c17e2690e5f71b19914"
+        },
+        {
+          "label": "failure",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/client_success-failure.png",
+          "sha256": "24980b9f5aec16a95b348ffb69e30d9593d056a394a61c17e2690e5f71b19914"
+        }
+      ],
+      "passed": false,
+      "failure": "390px horizontal overflow {\"width\":390,\"scrollWidth\":404}"
+    },
+    {
+      "role": "accounting",
+      "identitySha256": "5bc88a9c60cb5e3d014a51eee07126e6adc00ec54681efaa531b50ba90c67fbb",
+      "checks": [
+        {
+          "name": "own live Auth identity and persisted role",
+          "passed": true
+        },
+        {
+          "name": "agents.view denied on direct route",
+          "passed": true
+        },
+        {
+          "name": "direct policy POST 403; no appended version",
+          "passed": true
+        },
+        {
+          "name": "no uncaught browser errors",
+          "passed": true
+        }
+      ],
+      "errors": [],
+      "screenshots": [
+        {
+          "label": "desktop-denied",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/accounting-desktop-denied.png",
+          "sha256": "0830e47f7eb218dc9282dfa73f8bab036b45b0892f2f742591bf2928893735ec"
+        }
+      ],
+      "passed": true,
+      "failure": null
+    },
+    {
+      "role": "read_only",
+      "identitySha256": "b6b6e8a481e03b614e6890a0668fe1fed886b0da3fddc389af96210ceec975ae",
+      "checks": [
+        {
+          "name": "own live Auth identity and persisted role",
+          "passed": true
+        },
+        {
+          "name": "scoped whole-queue count",
+          "passed": true,
+          "expected": 129
+        },
+        {
+          "name": "own Note Tidy invocation only",
+          "passed": true
+        },
+        {
+          "name": "legacy and new quote names share complete paginated workflow",
+          "passed": true,
+          "matching": 28
+        },
+        {
+          "name": "filter/cursor survive native reload",
+          "passed": true
+        },
+        {
+          "name": "policy controls reflect server capability; humanApproval preserved",
+          "passed": true,
+          "canConfigure": false
+        },
+        {
+          "name": "direct policy POST 403; no appended version",
+          "passed": true
+        }
+      ],
+      "errors": [],
+      "screenshots": [
+        {
+          "label": "desktop",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/read_only-desktop.png",
+          "sha256": "a862088ec6a3d47028fa0b56ef437beeca2c8d09b091b39f2ce09111d07fa58b"
+        },
+        {
+          "label": "mobile390",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/read_only-mobile390.png",
+          "sha256": "24980b9f5aec16a95b348ffb69e30d9593d056a394a61c17e2690e5f71b19914"
+        },
+        {
+          "label": "failure",
+          "path": "C:/tmp/ui-delight-maker-git/.worktrees/clientops-merge-record/.clientops-perf/ai-gpt61-20261003/native-ui/read_only-failure.png",
+          "sha256": "24980b9f5aec16a95b348ffb69e30d9593d056a394a61c17e2690e5f71b19914"
+        }
+      ],
+      "passed": false,
+      "failure": "390px horizontal overflow {\"width\":390,\"scrollWidth\":404}"
+    }
+  ],
+  "providerReceipts": "not-tested",
+  "native200PercentZoom": "not-tested",
+  "manualAssistiveTechnology": "not-tested",
+  "productionAccess": false
+}

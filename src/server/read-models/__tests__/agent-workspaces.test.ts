@@ -39,6 +39,26 @@ function stubRows(
 const allowAllRows = () => stubRows({}, true);
 
 describe("agent operations read model", () => {
+  it("groups_legacy_names_by_workflow without using display names as joins", async () => {
+    queryMock.mockResolvedValueOnce([
+      { workflow_type: "draft_quote", runs_24h: 2, completed_24h: 2 },
+    ]);
+    const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+    const result = await loadAgentDirectoryRead({}, allowAllRows());
+    expect(result.agents.find((agent) => agent.workflow_type === "draft_quote")?.runs_24h).toBe(2);
+  });
+
+  it("keeps_unknown_workflows_unmapped and traceable by their recorded workflow", async () => {
+    queryMock.mockResolvedValueOnce([
+      { workflow_type: "retired_unknown", runs_24h: 3, completed_24h: 3 },
+    ]);
+    const { loadAgentDirectoryRead } = await import("../agent-workspaces");
+    const result = await loadAgentDirectoryRead({}, allowAllRows());
+    expect(result).toHaveProperty("unknownWorkflows", [
+      expect.objectContaining({ workflow_type: "retired_unknown", runs_24h: 3 }),
+    ]);
+    expect(result.agents.every((agent) => agent.runs_24h === 0)).toBe(true);
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     queryMock.mockResolvedValue([]);
@@ -54,10 +74,11 @@ describe("agent operations read model", () => {
     queryMock
       .mockResolvedValueOnce([
         {
-          agent_name: "Lead Qualification Agent",
+          workflow_type: "qualify_lead",
           runs_24h: "10",
           completed_24h: "8",
           failed_24h: "2",
+          failed_7d: "2",
           waiting_approval: "0",
           running: "1",
           stuck_runs: "1",
@@ -67,10 +88,11 @@ describe("agent operations read model", () => {
           last_run_at: "2026-08-26T01:00:00.000Z",
         },
         {
-          agent_name: "Reply Draft Agent",
+          workflow_type: "draft_reply",
           runs_24h: "4",
           completed_24h: "3",
           failed_24h: "1",
+          failed_7d: "1",
           waiting_approval: "2",
           running: "0",
           stuck_runs: "0",
@@ -81,8 +103,8 @@ describe("agent operations read model", () => {
         },
       ])
       .mockResolvedValueOnce([
-        { agent_name: "Lead Qualification Agent", hours_ago: "13", run_count: "1" },
-        { agent_name: "Lead Qualification Agent", hours_ago: "0", run_count: "3" },
+        { workflow_type: "qualify_lead", hours_ago: "13", run_count: "1" },
+        { workflow_type: "qualify_lead", hours_ago: "0", run_count: "3" },
       ])
       .mockResolvedValueOnce([
         {

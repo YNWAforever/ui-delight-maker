@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T10:37:39.544Z",
+  "sourceSha": "b2fa7e53f96a0a9739f9465115c1717813be72ac",
+  "db": "clientops_ai_gpt61_6d257bed03",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/workflows/__tests__/retention-sweep-checkpoint.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r09-red-fixture-fixed-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 0,
+  "failed": 6,
+  "skipped": 0,
+  "total": 6,
+  "files": 1,
+  "elapsedMs": 2327,
+  "reportSha256": "119f3193a31a9537003eba72fc03672270a4ad4d8174d9bfdb32f0e92a510cdb"
+}

@@ -15,6 +15,9 @@ import {
   type SalesMetric,
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
+import { AgentDataScope, DemoOriginLabel } from "@/components/agents/data-scope";
+import { PolicyPanel } from "@/components/agents/policy-panel";
+import { matchesAgentDataFilter, type AgentDataFilter } from "@/lib/agent-data-scope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { agentDetailSearchSchema } from "@/lib/admin-ux-search";
@@ -22,6 +25,7 @@ import { toSafeErrorMessage } from "@/lib/errors";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { formatCount, formatDateTime, formatPercent } from "@/lib/format";
+import { normalizeAIExecutionProvenance } from "@/lib/workflows/provenance";
 import { getAgentHistoryPage, recoverAgentRunFn } from "@/server-functions/agent-runs";
 import { getEffectiveAgentCatalogue } from "@/server-functions/agents-catalogue";
 
@@ -41,10 +45,8 @@ import { getEffectiveAgentCatalogue } from "@/server-functions/agents-catalogue"
  * laid over the code catalogue — because those two fields are exactly what the dispatch path
  * and the writeback obey; every other field (model, capabilities, description, workflow type)
  * still comes straight from the code catalogue, since nothing overrides them. The Governance
- * tab does not write policy; the Runs tab now supports an audited local recovery command. BD-3
- * records what has to exist before catalogue settings can become editable, and the
- * Governance tab states it on the page rather than leaving a reader to assume the controls
- * were merely misbehaving.
+ * tab offers versioned status changes with a reason, confirmation and server capability/CAS
+ * checks. Human approval remains read-only. Worker readiness requires separate evidence.
  *
  * The Memory tab is gone (M-1). It was a URL-addressable destination whose entire body was
  * one sentence saying memory is not persisted — Instruction §16's "coming soon presented as
@@ -55,14 +57,20 @@ import { getEffectiveAgentCatalogue } from "@/server-functions/agents-catalogue"
 
 const agentHistorySearchSchema = agentDetailSearchSchema.extend({
   page: z.coerce.number().int().min(1).default(1).catch(1),
+  runId: z.string().uuid().optional().catch(undefined),
 });
 
 const HISTORY_PAGE_SIZE = 25;
 
-const historyQuery = (agent: string, page: number) =>
+const historyQuery = (workflowType: string, page: number, runId?: string) =>
   routeQueryOptions({
-    queryKey: crmQueryKeys.agents.section(agent, "history", { page, limit: HISTORY_PAGE_SIZE }),
-    queryFn: () => getAgentHistoryPage({ data: { agent, page, limit: HISTORY_PAGE_SIZE } }),
+    queryKey: crmQueryKeys.agents.section(workflowType, "history", {
+      page,
+      limit: HISTORY_PAGE_SIZE,
+      runId,
+    }),
+    queryFn: () =>
+      getAgentHistoryPage({ data: { workflowType, page, limit: HISTORY_PAGE_SIZE, runId } }),
   });
 
 const effectiveCatalogueQuery = () =>
@@ -80,21 +88,6 @@ const effectiveCatalogueQuery = () =>
  */
 const HUMAN_APPROVAL_LABEL = { required: "Required", auto: "Auto-execute" } as const;
 
-/**
- * What BD-3 and BD-4 say has to exist before any of this page becomes editable.
- *
- * Written out on the page rather than left in a design document, because the reader who
- * needs it is the one looking at a control that is missing and wondering whether it broke.
- */
-const GOVERNANCE_PREREQUISITES = [
-  "A versioned policy store, so a change to an agent has an author, a time and a previous value.",
-  "Server-side enforcement in the dispatch path, so a paused agent actually stops running.",
-  "Capability checks on policy writes, so reading this page is not the same permission as changing it.",
-  "An audit log covering every change, alongside the one Admin already keeps for users.",
-  "Rollback to a previous version, so a bad change is recoverable without a deploy.",
-  "Runtime telemetry, so the effect of a change is observable rather than assumed.",
-];
-
 const MEMORY_PREREQUISITES = [
   "Persistence for long-term and episodic memory, which no migration provides today.",
   "A retention policy, since memory would hold client conversation content.",
@@ -103,13 +96,13 @@ const MEMORY_PREREQUISITES = [
 
 export const Route = createFileRoute("/agents/$name")({
   validateSearch: agentHistorySearchSchema,
-  loaderDeps: ({ search }) => ({ page: search.page }),
+  loaderDeps: ({ search }) => ({ page: search.page, runId: search.runId }),
   loader: async ({ context, params, deps }) => {
     const catalogue = await context.queryClient.ensureQueryData(effectiveCatalogueQuery());
     const agent = catalogue.find((item) => item.name === params.name);
     if (!agent) throw notFound();
     const history = await context.queryClient.ensureQueryData(
-      historyQuery(agent.display_name, deps.page),
+      historyQuery(agent.workflow_type, deps.page, deps.runId),
     );
     return { agent, history };
   },
@@ -161,14 +154,16 @@ function AgentDetailErrorState({ error }: { error: unknown }) {
 }
 
 function AgentDetail() {
+  const router = useRouter();
   const loaderData = Route.useLoaderData();
   const { agent } = loaderData;
   const search = Route.useSearch();
   const { data: history } = useQuery({
-    ...historyQuery(agent.display_name, search.page),
+    ...historyQuery(agent.workflow_type, search.page, search.runId),
     initialData: loaderData.history,
   });
-  const runs = history.items;
+  const [originFilter, setOriginFilter] = useState<AgentDataFilter>("all");
+  const runs = history.items.filter((run) => matchesAgentDataFilter(run.is_demo, originFilter));
   const navigate = useNavigate({ from: Route.fullPath });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [recovery, setRecovery] = useState<{
@@ -194,7 +189,7 @@ function AgentDetail() {
       });
       setRecovery(null);
       await queryClient.invalidateQueries({
-        queryKey: crmQueryKeys.agents.section(agent.display_name, "history", {
+        queryKey: crmQueryKeys.agents.section(agent.workflow_type, "history", {
           page: search.page,
           limit: HISTORY_PAGE_SIZE,
         }),
@@ -266,6 +261,7 @@ function AgentDetail() {
                 </div>
 
                 <TabsContent value="runs" className="mt-4 space-y-4">
+                  <AgentDataScope value={originFilter} onChange={setOriginFilter} />
                   <SectionHeader
                     title="Run history"
                     description={`Every run recorded for this agent, newest first, ${HISTORY_PAGE_SIZE} to a page.`}
@@ -283,6 +279,7 @@ function AgentDetail() {
                   ) : (
                     <ul className="divide-y divide-border">
                       {runs.map((run) => {
+                        const provenance = normalizeAIExecutionProvenance(run.execution_metadata);
                         const open = expanded === run.id;
                         const active =
                           run.status === "running" || run.status === "waiting_approval";
@@ -304,6 +301,7 @@ function AgentDetail() {
                               <span className="min-w-0 flex-1">
                                 <span className="flex flex-wrap items-center gap-2">
                                   <span className="text-sm font-medium">{run.id}</span>
+                                  <DemoOriginLabel value={run.is_demo} />
                                   <StatusBadge domain="agentRuns" value={run.status} />
                                   {run.confidence_score != null && (
                                     <span className="text-xs text-muted-foreground">
@@ -335,7 +333,38 @@ function AgentDetail() {
                                       ? JSON.stringify(run.input_data, null, 2)
                                       : "—"}
                                 </pre>
-                                <p className="text-xs text-muted-foreground">Cost: unrecorded</p>
+                                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 break-all text-xs text-muted-foreground">
+                                  <dt>Result source</dt>
+                                  <dd>
+                                    {provenance.source === "provider"
+                                      ? "Provider"
+                                      : provenance.source === "deterministic_fallback"
+                                        ? "Deterministic fallback"
+                                        : "Unknown"}
+                                  </dd>
+                                  <dt>Actual model</dt>
+                                  <dd>{provenance.actualModel ?? "Unknown"}</dd>
+                                  <dt>Requested model</dt>
+                                  <dd>{provenance.requestedModel ?? "Unknown"}</dd>
+                                  <dt>Provider receipt</dt>
+                                  <dd>{provenance.providerRequestId ?? "Unrecorded"}</dd>
+                                  <dt>Worker execution</dt>
+                                  <dd>{provenance.workerExecutionId ?? "Unrecorded"}</dd>
+                                  <dt>Worker version</dt>
+                                  <dd>{provenance.workerVersion ?? "Unrecorded"}</dd>
+                                  {provenance.fallbackReason && (
+                                    <>
+                                      <dt>Fallback reason</dt>
+                                      <dd>{provenance.fallbackReason}</dd>
+                                    </>
+                                  )}
+                                  <dt>Cost</dt>
+                                  <dd>
+                                    {run.usage_data?.cost == null
+                                      ? "Unknown"
+                                      : `${run.usage_data.cost} ${run.usage_data.currency ?? "(currency unknown)"}`}
+                                  </dd>
+                                </dl>
                                 {run.outcome_code && (
                                   <div className="rounded-md border border-border p-3 text-xs">
                                     <p>Recovery outcome: {run.outcome_code}</p>
@@ -502,7 +531,7 @@ function AgentDetail() {
                 <TabsContent value="governance" className="mt-4 space-y-5">
                   <SectionHeader
                     title="Catalogue definition"
-                    description="Catalogue state and Workflow type govern dispatch: an inactive agent is refused before any run is created. Human approval governs the writeback, deciding whether a finished run parks for a human; Model and Capabilities are descriptive only. These are the values the dispatch path enforces today - changing them requires the agents.configure capability."
+                    description="Stored status governs new dispatches: an inactive agent is refused before any run is created. Human approval, Model and Capabilities are read-only here. Status changes require agents.configure and a new policy version."
                   />
 
                   <dl className="divide-y divide-border rounded-md border border-border">
@@ -523,16 +552,12 @@ function AgentDetail() {
                     </GovernanceRow>
                   </dl>
 
-                  <div className="rounded-md border border-border bg-muted/30 p-4">
-                    <h3 className="text-sm font-medium text-foreground">
-                      Required before settings become editable
-                    </h3>
-                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                      {GOVERNANCE_PREREQUISITES.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  <PolicyPanel
+                    workflowType={agent.workflow_type}
+                    onChanged={() =>
+                      router.invalidate({ filter: (match) => match.routeId === "/agents/$name" })
+                    }
+                  />
 
                   <div className="rounded-md border border-border bg-muted/30 p-4">
                     <h3 className="text-sm font-medium text-foreground">Long-term memory</h3>

@@ -1,0 +1,529 @@
+{
+  "phase": "red",
+  "sha": "dafb429af80098ad819a5c84d4f4a5c5e284af23",
+  "workingSourceDiffSha256": "8a061d9a550f5dd747012cfe21905b5dd460ab343ea2090c93b41c041b1c9bf6",
+  "serverEntrySha256": "cefc9173546a043925ed180917859cb4327d0f6a69c51c58686848c1d93c5a10",
+  "database": "clientops_ai_uat_7f093d14edae42f2b987b9fe46c5290e",
+  "checks": [
+    {
+      "name": "actual admin status/CAS write appends one synthetic policy version under the original actor before delayed delivery",
+      "passed": true
+    },
+    {
+      "name": "actual manager background reauthorization reads the committed version in the same document and clears the predecessor draft",
+      "passed": true
+    }
+  ],
+  "identities": [
+    {
+      "role": "admin",
+      "userSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "sessionSha256": "7b93f6916940fc215b90c1623bd5ab426eb96fa3b4f00f49597af14dd8731c93",
+      "savedStateSha256": "562c417be5922885bddde5029ac5651b790dc9641da16a04cb8f1a31bf705a6a",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "manager",
+      "userSha256": "88a8c8cdaf3230e0b257c07071d13cad63a259b16f13ca290a1cb01f9ae8799b",
+      "sessionSha256": "0961759d930d6cdcce225e241e95b1a27ae60d2136750044a7eb24eb8f6f1cc9",
+      "savedStateSha256": "037688af678684217f5f146801ab0d11f75c9cafc75f5f56819401def1b3f125",
+      "live": true,
+      "persistedRoleMatches": true
+    }
+  ],
+  "pageErrors": [],
+  "actualSSR": true,
+  "actualNeonDriver": true,
+  "actualLoopbackPostgres17": true,
+  "actualProviderCalls": 0,
+  "productionAccess": false,
+  "policyWrites": 1,
+  "interactiveLogoutRelogin": "not-tested",
+  "wholeAppHandoff": "not-tested; policy panel only",
+  "scope": "real admin local synthetic status/CAS append; genuine manager reauthorization in the same SPA; original successful BFF response delayed by browser transport fixture, no Auth/BFF result mock; not interactive login or whole-app/provider acceptance",
+  "roles": 2,
+  "before": {
+    "access_requests": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "account_contacts": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "accounts": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "activity_logs": {
+      "count": 97,
+      "hash": "cbcc8a0e5c2144041566a12e8606bdde5a2c0320350a75d6dc22fcb05ad6d2f4"
+    },
+    "admin_audit_logs": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "agent_policy_versions": {
+      "count": 8,
+      "hash": "9a9a8c13414613ec26f0ad6e1a4d001bd4bc867c9c02fb369a304714d8ee0a87"
+    },
+    "agent_runs": {
+      "count": 135,
+      "hash": "e099893be89470181b84a0c44cda2e9d4188fbc99cafadb57328dcb13d0f9673"
+    },
+    "agent_tool_calls": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "approval_message_handoffs": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "automation_playbooks": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "automation_runs": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "bulk_operation_items": {
+      "count": 100,
+      "hash": "e711e8fd04bafeb589b65f77bcf29af06db7ffa816ca9c8e191e1c5394048c10"
+    },
+    "bulk_operations": {
+      "count": 1,
+      "hash": "5289716e341302d4a9fa9775c1076443643d04c2e972347c5cc6cdb7998fb4c2"
+    },
+    "campaign_members": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "campaigns": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "channel_identities": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "client_contacts": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "clientops_schema_migrations": {
+      "count": 26,
+      "hash": "cdbbaf296229a7124102c0f156303bf251741e3c4aaf947bbd5785a0bd941654"
+    },
+    "clients": {
+      "count": 1,
+      "hash": "cfe6c99c1195871939a2bbff4158d24ad336530f3632e845c8049c19ca24ce26"
+    },
+    "command_receipts": {
+      "count": 95,
+      "hash": "67a57eacab5042052da7367c1e925d32ecb020eda95ef8023c66f03364eab7f0"
+    },
+    "customer_success_profiles": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "deals": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "departments": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "engagement_events": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "engagements": {
+      "count": 1,
+      "hash": "97b625644ea67dace09354dc8fced11d3b7227aa4e45958d0f0acaa0b6c6223b"
+    },
+    "human_approvals": {
+      "count": 1,
+      "hash": "d21426621b6d6e9e4f6b660f04daef62816e42239cb64514a9b9bb6c8da7ccee"
+    },
+    "import_identity_keys": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "import_session_rows": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "import_sessions": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "job_sheet_activity": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "job_sheet_portions": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "job_sheets": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "leads": {
+      "count": 103,
+      "hash": "689593dd4db61b3eb936d494835472e41153064192504c0edfe3e7eec22d55a2"
+    },
+    "notifications": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "pdf_templates": {
+      "count": 2,
+      "hash": "f31b2800d44cd7ae88158428bcf4749322292aaae93a5d98f2f0035ebee6b6dd"
+    },
+    "permission_overrides": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "pricing_templates": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "products": {
+      "count": 1,
+      "hash": "b8f03ecb30ac5c83c16e1274a96692b0bbf1a074ab43ae9676b40fe2a385dde5"
+    },
+    "profiles": {
+      "count": 8,
+      "hash": "8665d4669c874256f6cad71fca4f685ee9219a8dc67bbc410f6184caa5e965ad"
+    },
+    "projects": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "quote_line_items": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "quote_templates": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "quote_versions": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "quotes": {
+      "count": 1,
+      "hash": "0ba8942a205ffe5cc8f231f1e1c886ff6dc140db507c712b36e4491a57bbc463"
+    },
+    "relationship_signals": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "retention_sweep_items": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "retention_sweeps": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "success_touchpoints": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "tasks": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "team_memberships": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "teams": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "touchpoints": {
+      "count": 2,
+      "hash": "b34bae0135bf7b0d025bc589fa773eacc481aeb8f6aebf720c454c5c9b74045d"
+    },
+    "user_invitations": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "work_delegations": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "workspace_favorites": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "workspace_views": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "policyRowsBefore": 8,
+  "initialHumanApproval": false,
+  "requestedStatus": "inactive",
+  "actualServerStatus": 200,
+  "originalResponseSha256": "95912cead374e63d20a71e3779a8a66502343c3b296c3728b3b47b53b43d32f0",
+  "appendedVersionId": "1b22c152-7380-4da9-a28b-54a1c1dcd972",
+  "appendedActorSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+  "humanApprovalPreserved": true,
+  "afterWrite": {
+    "access_requests": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "account_contacts": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "accounts": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "activity_logs": {
+      "count": 97,
+      "hash": "cbcc8a0e5c2144041566a12e8606bdde5a2c0320350a75d6dc22fcb05ad6d2f4"
+    },
+    "admin_audit_logs": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "agent_policy_versions": {
+      "count": 9,
+      "hash": "2bcd2ac5808ac1ba58751714cd85951708e965127e1b683973a5d0509bb6256a"
+    },
+    "agent_runs": {
+      "count": 135,
+      "hash": "e099893be89470181b84a0c44cda2e9d4188fbc99cafadb57328dcb13d0f9673"
+    },
+    "agent_tool_calls": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "approval_message_handoffs": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "automation_playbooks": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "automation_runs": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "bulk_operation_items": {
+      "count": 100,
+      "hash": "e711e8fd04bafeb589b65f77bcf29af06db7ffa816ca9c8e191e1c5394048c10"
+    },
+    "bulk_operations": {
+      "count": 1,
+      "hash": "5289716e341302d4a9fa9775c1076443643d04c2e972347c5cc6cdb7998fb4c2"
+    },
+    "campaign_members": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "campaigns": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "channel_identities": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "client_contacts": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "clientops_schema_migrations": {
+      "count": 26,
+      "hash": "cdbbaf296229a7124102c0f156303bf251741e3c4aaf947bbd5785a0bd941654"
+    },
+    "clients": {
+      "count": 1,
+      "hash": "cfe6c99c1195871939a2bbff4158d24ad336530f3632e845c8049c19ca24ce26"
+    },
+    "command_receipts": {
+      "count": 95,
+      "hash": "67a57eacab5042052da7367c1e925d32ecb020eda95ef8023c66f03364eab7f0"
+    },
+    "customer_success_profiles": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "deals": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "departments": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "engagement_events": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "engagements": {
+      "count": 1,
+      "hash": "97b625644ea67dace09354dc8fced11d3b7227aa4e45958d0f0acaa0b6c6223b"
+    },
+    "human_approvals": {
+      "count": 1,
+      "hash": "d21426621b6d6e9e4f6b660f04daef62816e42239cb64514a9b9bb6c8da7ccee"
+    },
+    "import_identity_keys": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "import_session_rows": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "import_sessions": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "job_sheet_activity": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "job_sheet_portions": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "job_sheets": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "leads": {
+      "count": 103,
+      "hash": "689593dd4db61b3eb936d494835472e41153064192504c0edfe3e7eec22d55a2"
+    },
+    "notifications": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "pdf_templates": {
+      "count": 2,
+      "hash": "f31b2800d44cd7ae88158428bcf4749322292aaae93a5d98f2f0035ebee6b6dd"
+    },
+    "permission_overrides": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "pricing_templates": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "products": {
+      "count": 1,
+      "hash": "b8f03ecb30ac5c83c16e1274a96692b0bbf1a074ab43ae9676b40fe2a385dde5"
+    },
+    "profiles": {
+      "count": 8,
+      "hash": "8665d4669c874256f6cad71fca4f685ee9219a8dc67bbc410f6184caa5e965ad"
+    },
+    "projects": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "quote_line_items": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "quote_templates": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "quote_versions": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "quotes": {
+      "count": 1,
+      "hash": "0ba8942a205ffe5cc8f231f1e1c886ff6dc140db507c712b36e4491a57bbc463"
+    },
+    "relationship_signals": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "retention_sweep_items": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "retention_sweeps": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "success_touchpoints": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "tasks": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "team_memberships": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "teams": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "touchpoints": {
+      "count": 2,
+      "hash": "b34bae0135bf7b0d025bc589fa773eacc481aeb8f6aebf720c454c5c9b74045d"
+    },
+    "user_invitations": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "work_delegations": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "workspace_favorites": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "workspace_views": {
+      "count": 0,
+      "hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "actualQueryStaleWindowWaitMs": 35000,
+  "observation": {
+    "sameDocument": true,
+    "originalActorCompletionShown": true,
+    "alertShown": false,
+    "newActorReasonEmpty": true,
+    "newActorConfigureDisabled": true,
+    "oldConfirmationWithdrawn": true
+  },
+  "screenshot": {
+    "path": ".clientops-perf/ai-gpt61-20261003/r11-native-policy-write-owner-red-manager-late-outcome.private.png",
+    "sha256": "9e63087fe55e66c8afcf700eed730a5ebb7a268b2aef6ab20d294ccc737ebdad"
+  },
+  "passed": false,
+  "error": {
+    "name": "AssertionError",
+    "message": "Original actor completion must not be presented to the manager\n\ntrue !== false\n"
+  },
+  "diagnosticScreenshot": {
+    "path": ".clientops-perf/ai-gpt61-20261003/r11-native-policy-write-owner-red-diagnostic-late-original-response.private.png",
+    "sha256": "b1e71b85cca20c8664adb11685428effc26c3940bade3ab29e7f0210da8dcab4"
+  },
+  "stage": "late-original-response"
+}

@@ -1,0 +1,122 @@
+{
+  "recordedAt": "2026-10-04T01:51:28.501Z",
+  "codeVerifiedCommit": "edb27a493af2cfea51f27630a7a0ff6caa6e51bb",
+  "executionHead": "edb27a493af2cfea51f27630a7a0ff6caa6e51bb",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceTrees": {
+    "src": "ae4c536e6c9ea3f090ecf0a2ba3f87d301ff0169",
+    "neon": "3cf78f7d35c15b02c8099a728b9a78b74116b82f",
+    "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
+    "scripts": "ecca3b87db60afb06f23d74fb5c24aa09a48e639"
+  },
+  "serverEntrySha256": "ef5517e09172ae38bd35ba87a873d3fa82da3d52c42b2c976de625cd24d7ad2e",
+  "artifactInventory": {
+    "files": 401,
+    "bytes": 5506882,
+    "sha256": "37691919be40ef2029913e4ed53ffec8ec6e3076299866886ffe525b86a2cfec",
+    "privatePath": ".clientops-perf/ai-gpt61-20261003/r11-native-note-tidy-artifact-inventory.private.json"
+  },
+  "runners": [
+    {
+      "path": "evidence/r11-native-note-tidy-runner.source.txt",
+      "sha256": "f32aae9580707feab4ec667add36807c3503c0a3c37999ffdabbff7c5077aa3b",
+      "executedPrivateSourceSha256": "ab3a39f4eef4c9ccc2f230c8c5af7c19b5db7e7bb305bf3dbf5a85cc478525fa",
+      "normalization": "UTF8/LF; no semantic changes"
+    },
+    {
+      "path": "evidence/r11-native-note-tidy-runtime.source.txt",
+      "sha256": "4e45d30b166f74c8ee83badc6f68c5172186d5d939f53a7059808fe17acd5799",
+      "executedPrivateSourceSha256": "5aeb6caad53e353a2589a23980f7399581fc474d0e5e2a83162174225bc5858b",
+      "normalization": "UTF8/LF; no semantic changes"
+    },
+    {
+      "path": "evidence/r11-native-note-tidy-migration.source.txt",
+      "sha256": "d4faa95d01ef47e6abebe32bfdbb6e5b6f595dbe636aa60866d0bcd2a6db129c",
+      "executedPrivateSourceSha256": "0236b5cca320a96b643d468e4c0e904ad8279452821bd17ce790b7ab9e049b55",
+      "normalization": "UTF8/LF; no semantic changes"
+    },
+    {
+      "path": "evidence/r11-native-note-tidy-integrity.source.txt",
+      "sha256": "9514d1f6ef2a49e26f4ab920bfd358e1d80b73a4bbaaedaaa730478986669089",
+      "executedPrivateSourceSha256": "afc4f7058b96f25bf36110696325c8429824320ccccb5f2002e202fed633c4aa",
+      "normalization": "UTF8/LF; no semantic changes"
+    }
+  ],
+  "receipts": [
+    {
+      "path": "evidence/r11-native-note-tidy-result.json",
+      "sha256": "a74a1152adcdb179526bd659f6151e8e1512cd5a717a47728daf4aef96c6c338"
+    },
+    {
+      "path": "evidence/r11-native-note-tidy-integrity-result.json",
+      "sha256": "41909cc3600933280342037acea86a577c38e84a277c8e0b04a31df1f40cc8ff"
+    },
+    {
+      "path": "evidence/r11-native-note-tidy-runtime-result.json",
+      "sha256": "552641a1911d539c933179068e7fcb9b57cca82c51554cd511f469d00803989c"
+    },
+    {
+      "path": "evidence/r11-native-note-tidy-migration-result.json",
+      "sha256": "a6f44d08a3da50131b9deb4b838d8090cf36e73e807ddf34e28547207262fe21"
+    },
+    {
+      "path": "evidence/r11-native-note-tidy-final-code-ci-result.json",
+      "sha256": "9107f37c9cbea36debe1dd616cf321e942481ec6b72bed647ecf119fef62326a"
+    },
+    {
+      "path": "evidence/r11-native-note-tidy-final-target-result.json",
+      "sha256": "00e1a52a8d98347b5e92292cbf06724ca6acff0e06981a91bbe8109b0ca7b097"
+    },
+    {
+      "path": "evidence/r11-native-note-tidy-final-static-result.json",
+      "sha256": "68369b9d3913195f6595ef544a3894f44a3ba76b30549362a8d1084d6e2f9218"
+    },
+    {
+      "path": "evidence/r11-native-note-tidy-final-build-result.json",
+      "sha256": "7c7edcb820fd04ceb40bdcc3ee26f20cd900c50c02f087bbf2c00710e9083534"
+    }
+  ],
+  "screenshots": [
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc09-compare390.png",
+      "sha256": "c074086271ae2d8979c6900abb20b26597703bd8845b2737590ce266ac04f640"
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc09-reopened-no-stale-error390.png",
+      "sha256": "93376dc0572be288e05149b5a40fd863426646cd394526056bf198dd7c5654c4"
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc09-real-deadline390.png",
+      "sha256": "991fd383a4e9f7caee5df7236f60b3f822407b488405d19fe01568c231d95d1c"
+    },
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/uc09-own-history390.png",
+      "sha256": "e2d93f4e066f57ed38d4aceb4292f3b17f15568b17b0b49463743311fc567751"
+    }
+  ],
+  "commands": {
+    "native": "node .clientops-perf/ai-gpt61-20261003/r11-native-note-tidy.private.mjs",
+    "migration": "bun .clientops-perf/ai-gpt61-20261003/r11-note-tidy-migrate.private.ts",
+    "integrity": "node .clientops-perf/ai-gpt61-20261003/r11-note-tidy-integrity.private.mjs",
+    "target": "bun .clientops-perf/ai-gpt61-20261003/checks.private.mjs r11-note-tidy-final-all-target <11 explicit test paths; see target receipt>",
+    "build": "bunx vite build",
+    "nativeExit": 0,
+    "migrationExit": 0,
+    "integrityExit": 0,
+    "targetExit": 0,
+    "nativeChecks": 51,
+    "roles": 7,
+    "targetTests": 101,
+    "targetSkipped": 0,
+    "fullCI": 2871,
+    "fullCISkipped": 0
+  },
+  "originalZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
+  "schema": 26,
+  "providerTransport": "14 local intercepted executions, sentinel not a credential; zero actual provider/model calls",
+  "trueProviderAcceptance": "blocked",
+  "manualAT": "not-tested",
+  "authorReviewOnly": true,
+  "productionAccess": false,
+  "releaseDecision": "NO-GO"
+}

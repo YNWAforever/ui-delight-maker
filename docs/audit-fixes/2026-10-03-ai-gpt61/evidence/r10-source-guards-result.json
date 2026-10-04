@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-10-03T11:29:13.455Z",
+  "sourceSha": "2fcb2acc07d8ef40d510ccf302c69f36eec85084",
+  "db": "clientops_ai_gpt61_3944951244",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/lib/workflows/__tests__/n8n-provider-routing.test.ts",
+    "src/lib/workflows/__tests__/output-worker-parity.test.ts",
+    "src/lib/workflows/__tests__/output-contracts.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r10-source-guards-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 109,
+  "failed": 0,
+  "skipped": 0,
+  "total": 109,
+  "files": 3,
+  "elapsedMs": 3916,
+  "reportSha256": "feef36bb7a89120c27dad774510bf9fb7b5dbd9a779d38a528f310b9154cafe5"
+}

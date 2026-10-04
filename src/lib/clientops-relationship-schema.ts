@@ -27,6 +27,10 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/020_job_sheet_handoff_fields.sql",
   "neon/migrations/021_ai_invocation_telemetry.sql",
   "neon/migrations/022_neon_domain_storage.sql",
+  "neon/migrations/023_ai_execution_provenance.sql",
+  "neon/migrations/024_ai_invalid_output.sql",
+  "neon/migrations/025_retention_sweep_checkpoints.sql",
+  "neon/migrations/026_ai_unknown_model.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
@@ -79,6 +83,8 @@ export const CLIENTOPS_REQUIRED_TABLES = [
   "approval_message_handoffs",
   "bulk_operations",
   "bulk_operation_items",
+  "retention_sweeps",
+  "retention_sweep_items",
   "import_sessions",
   "import_session_rows",
   "import_identity_keys",
@@ -152,6 +158,7 @@ export const CLIENTOPS_REQUIRED_COLUMNS = [
   "agent_runs.idempotency_key",
   "agent_runs.policy_version_id",
   "agent_runs.usage_data",
+  "agent_runs.execution_metadata",
   "approval_message_handoffs.handoff_status",
 ] as const;
 

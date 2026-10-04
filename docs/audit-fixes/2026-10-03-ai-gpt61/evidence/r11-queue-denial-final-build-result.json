@@ -1,0 +1,50 @@
+[
+  {
+    "command": [
+      "bunx",
+      "vite",
+      "build"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 72086,
+    "sourceSha": "1f345757b03f51137867e964215ca1c1c0c5ad83",
+    "dbAbsent": true,
+    "providerAbsent": true
+  },
+  {
+    "command": [
+      "bun",
+      "run",
+      "performance:bundles"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 998,
+    "sourceSha": "1f345757b03f51137867e964215ca1c1c0c5ad83",
+    "dbAbsent": true,
+    "providerAbsent": true
+  },
+  {
+    "command": [
+      "bun",
+      "run",
+      "test:browser-collector"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 10234,
+    "sourceSha": "1f345757b03f51137867e964215ca1c1c0c5ad83",
+    "dbAbsent": true,
+    "providerAbsent": true
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 88,
+    "sourceSha": "1f345757b03f51137867e964215ca1c1c0c5ad83",
+    "dbAbsent": true,
+    "providerAbsent": true
+  }
+]

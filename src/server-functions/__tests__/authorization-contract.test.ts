@@ -65,6 +65,14 @@ const ACKNOWLEDGED_UNGUARDED: Record<string, string> = {
     "the actor-owned operation is checked and every resumed item rechecks capability",
   "bulk-operations.ts::getBulkResultFn":
     "returns only this actor's receipt statuses and IDs, without preview summaries",
+  "agent-bulk-recovery.ts::previewAgentRecoveryFn":
+    "command requires agents.run and checks each selected run's verified subject ownership before eligibility; no run writes in preview",
+  "agent-bulk-recovery.ts::executeAgentRecoveryFn":
+    "command requires agents.run, locks actor-owned intent, and rechecks persisted actor/scope and linked approval/full snapshot inside each item transaction",
+  "agent-bulk-recovery.ts::getAgentRecoveryOperationFn":
+    "command requires agents.view and enforces actor-owned operation; returns only metadata receipts/selected IDs",
+  "agent-bulk-recovery.ts::resumeAgentRecoveryFn":
+    "command checks agents.view and actor-owned operation; each resumed item reloads persisted actor and enforces agents.run against the locked subject",
   "lead-import.ts::commitLeadImportFn":
     "retired endpoint authenticates then rejects every write; new session endpoint owns commits",
   "client-import.ts::commitClientImportFn":

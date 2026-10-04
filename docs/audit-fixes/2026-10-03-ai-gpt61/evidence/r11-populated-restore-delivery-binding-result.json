@@ -1,0 +1,103 @@
+{
+  "recordedAt": "2026-10-04T05:48:39.651Z",
+  "executionHead": "b7554ef3fd658c65130dd2b9f8ec7597dd09cf49",
+  "applicationCodeSha": "6d5c43646fb46433afa647ec3f698eff341bd332",
+  "sourceTrees": {
+    "src": "5edf572e3cf0c33644f599e0cfacc18f8807d425",
+    "neon": "3cf78f7d35c15b02c8099a728b9a78b74116b82f",
+    "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
+    "scripts": "ecca3b87db60afb06f23d74fb5c24aa09a48e639"
+  },
+  "workingApplicationDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "191fd1fae147951144d5436e99d3aad3a694c8c3b756383934ca22f7f2492cdc",
+  "compiledArtifactBinding": "evidence/r11-native-bulk-actor-delivery-binding-result.json",
+  "actualCompiledArtifacts": 401,
+  "backupSha256": "6be7388ab4357e1a23738c888381a5cb9271517bdc6e428b4a7e56b7ee662a46",
+  "backupBytes": 309077,
+  "privateBackupRetained": true,
+  "tableCount": 56,
+  "rows": 669,
+  "commandReceipts": 102,
+  "bulkOperations": 17,
+  "bulkItems": 119,
+  "unknownModelRowsPreserved": 18,
+  "sequenceCount": 2,
+  "registeredMigrations": 26,
+  "migrationReplayApplied": 0,
+  "appendOnlyPolicyUpdateDeleteDenied": true,
+  "sourceAndRestoreHashesUnchanged": true,
+  "nativeChecks": 52,
+  "nativeFailed": 0,
+  "nativeSkipped": 0,
+  "roles": 7,
+  "originalIntentReplays": 11,
+  "originalKeysUnchanged": true,
+  "additionalWrites": 0,
+  "originalZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
+  "planSha256": "37e03bf6cff9564ce68c35c7cd838ae5c6348c37575158d1743cad48bef6ce38",
+  "runners": [
+    {
+      "path": "evidence/r11-populated-restore-backup-restore.source.txt",
+      "sha256": "7543909556e9accfe096a206530870bc3b752aea3464e6ff6a976347eb45c9da",
+      "executedPrivateSourceSha256": "7543909556e9accfe096a206530870bc3b752aea3464e6ff6a976347eb45c9da",
+      "normalization": "UTF8/LF only; no semantic edits"
+    },
+    {
+      "path": "evidence/r11-populated-restore-native-replay.source.txt",
+      "sha256": "3fb2530d202753f107d50071a4251208164e7e8410160b9a3e8b4773c70c0481",
+      "executedPrivateSourceSha256": "3fb2530d202753f107d50071a4251208164e7e8410160b9a3e8b4773c70c0481",
+      "normalization": "UTF8/LF only; no semantic edits"
+    },
+    {
+      "path": "evidence/r11-populated-restore-runtime.source.txt",
+      "sha256": "073825e6181450674b7c1606e60adba13fc583627e119210868762a7d1f10c1f",
+      "executedPrivateSourceSha256": "2884847eee880d170bcfb831ad17c0e98dd1be2ff45a1d31b7462363fd445803",
+      "normalization": "UTF8/LF only; no semantic edits"
+    },
+    {
+      "path": "evidence/r11-populated-restore-integrity.source.txt",
+      "sha256": "c5e6684f5e2c6e10d7735bfbbb423693234ee44155cfa2c48f7f383837851f0d",
+      "executedPrivateSourceSha256": "c5e6684f5e2c6e10d7735bfbbb423693234ee44155cfa2c48f7f383837851f0d",
+      "normalization": "UTF8/LF only; no semantic edits"
+    }
+  ],
+  "receipts": [
+    {
+      "path": "evidence/r11-populated-restore-result.json",
+      "sha256": "5cb89f059b510cec681e2296173150237e377890cacda449a3e87f2af642b2e6"
+    },
+    {
+      "path": "evidence/r11-populated-restore-native-result.json",
+      "sha256": "482a966982fc217f7e247d4c9939976dcbe2a4c73075dca53f63f45f9030df6c"
+    },
+    {
+      "path": "evidence/r11-populated-restore-integrity-result.json",
+      "sha256": "fec878a888cfd97882f8735934a2322e0d914daff9236c9071f40be1a197196d"
+    },
+    {
+      "path": "evidence/r11-populated-restore-runtime-result.json",
+      "sha256": "7778c7c56be25fb554027997d7df2247fc2f1fb0b2c34ff87e2a2103f3f9e657"
+    },
+    {
+      "path": "evidence/r11-master-plan-production-metadata-result.json",
+      "sha256": "015ac7c3626a89ccad857b476b4d49803e67d3877abb175db1fa95d075ba37c4"
+    }
+  ],
+  "commands": {
+    "backupRestore": "bun .clientops-perf/ai-gpt61-20261003/r11-populated-restore.private.mjs",
+    "runtime": "node .clientops-perf/ai-gpt61-20261003/r11-populated-restore-runtime.private.mjs",
+    "native": "node .clientops-perf/ai-gpt61-20261003/r11-populated-restore-native.private.mjs",
+    "integrity": "node .clientops-perf/ai-gpt61-20261003/r11-populated-restore-integrity.private.mjs",
+    "backupRestoreExit": 0,
+    "nativeExit": 0,
+    "integrityExit": 0
+  },
+  "runtimeStopped": true,
+  "providerCalls": 0,
+  "productionAccess": false,
+  "productionPitr": "blocked",
+  "manualAT": "not-tested",
+  "spaAccountHandoff": "not-tested",
+  "authorReviewOnly": true,
+  "releaseDecision": "NO-GO"
+}

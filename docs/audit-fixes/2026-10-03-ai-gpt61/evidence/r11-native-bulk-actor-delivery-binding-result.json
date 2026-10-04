@@ -1,0 +1,140 @@
+{
+  "recordedAt": "2026-10-04T04:59:35.341Z",
+  "codeVerifiedCommit": "6d5c43646fb46433afa647ec3f698eff341bd332",
+  "executionHead": "6d5c43646fb46433afa647ec3f698eff341bd332",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceTrees": {
+    "src": "5edf572e3cf0c33644f599e0cfacc18f8807d425",
+    "neon": "3cf78f7d35c15b02c8099a728b9a78b74116b82f",
+    "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
+    "scripts": "ecca3b87db60afb06f23d74fb5c24aa09a48e639"
+  },
+  "unchangedFromBaseline": [
+    "neon",
+    "n8n",
+    "scripts",
+    "package.json",
+    "bun.lock"
+  ],
+  "serverEntrySha256": "191fd1fae147951144d5436e99d3aad3a694c8c3b756383934ca22f7f2492cdc",
+  "artifactInventory": {
+    "files": 401,
+    "bytes": 5508178,
+    "sha256": "dd36df8c97c0c2baf1a2ffd5735893f88f153cdff11cbf6e6f30d8a2a78b78c2",
+    "privatePath": ".clientops-perf/ai-gpt61-20261003/r11-native-bulk-actor-artifact-inventory.private.json"
+  },
+  "runners": [
+    {
+      "path": "evidence/r11-native-bulk-actor-runner.source.txt",
+      "sha256": "2c9e2a1d2fac0bc120520184f1fe507ce7f5ce94be39c41985b598f255f89bb6",
+      "executedPrivateSourceSha256": "6b548f96a77a9d064c032fa6f601d1ef5c2035660e5e4039789814aa240e0395",
+      "normalization": "UTF8/LF; no semantic changes"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-runtime.source.txt",
+      "sha256": "cad3cef1d014446a180b29f631b4a279dc272c0824d51b28e1a12f4be0321948",
+      "executedPrivateSourceSha256": "0f068144d15e4ade8d181d9ec901c02b4e84acb41a8e0a316983d3f1c95ce9f9",
+      "normalization": "UTF8/LF; no semantic changes"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-prepare.source.txt",
+      "sha256": "f35af0b7199d1eb71fd7032d19d9060d33deeb2b066aca773e3e0d2932ec165d",
+      "executedPrivateSourceSha256": "f1ca358795a618956270018a36030c0486870b169872d50283386b01c55bae8e",
+      "normalization": "UTF8/LF; no semantic changes"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-fixtures.source.txt",
+      "sha256": "f6a4e9342d84d752137eff8465cc9b8f2131d7d3adcd23b39a8d6c48b0131285",
+      "executedPrivateSourceSha256": "1f862804a7a1480ec8a7b9ddabf958e1d3a90f220561f33ca4045b10a52e4ea3",
+      "normalization": "UTF8/LF; no semantic changes"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-migration.source.txt",
+      "sha256": "523fef2531fcb368e731fcf8239d25922e2beb88b91ce1e71d37691c10b3e05d",
+      "executedPrivateSourceSha256": "85ff0d15b7bc9d52fe30366d9526ccb2aab01c6bfa7901f768b353f19aafc0ec",
+      "normalization": "UTF8/LF; no semantic changes"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-integrity.source.txt",
+      "sha256": "e5a7c68f732c4db8ddb9b417ef7ac4d5415dec50480639e2f99a7af429d3b1b6",
+      "executedPrivateSourceSha256": "e5a7c68f732c4db8ddb9b417ef7ac4d5415dec50480639e2f99a7af429d3b1b6",
+      "normalization": "UTF8/LF; no semantic changes"
+    }
+  ],
+  "receipts": [
+    {
+      "path": "evidence/r11-native-bulk-actor-result.json",
+      "sha256": "577c15481ad39c337566c1b14489c0d28e97a055a059067baaf17fe14287a72a"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-integrity-result.json",
+      "sha256": "0f9e1128cbc0b3180eb8bd53765ea33fec5e6ce685bb33612f39718744596e07"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-runtime-result.json",
+      "sha256": "53507531ea3e84e3d687b52cc8c996230e75e50ed8fff3561994c3b82fe05d09"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-migration-result.json",
+      "sha256": "409f57b2b419b3311a0532211418fb69a8f9711feff7bd21a65768a95e38bf62"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-seed-result.json",
+      "sha256": "93918544bb3130ab7ac611f596d25a1de758ee6df5a83e86d338380cbc6f5e58"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-code-ci-result.json",
+      "sha256": "a6be1d122d91018dd47e53d53e3e677b41b3a1451316a796ed9197f193b2ac53"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-final-target-result.json",
+      "sha256": "71abb2e8311fb8ca96c5d9e4e0cc3de03baa88652101214973f6b0fe840d7656"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-final-static-result.json",
+      "sha256": "3b4225aa1bd7d0819931356e68d19e4d674d23ed5ab2c7ffdde62d5796940a77"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-final-build-result.json",
+      "sha256": "982a08ac6409c872fa1063b9ddb0cb3f436111a82a615aac9055f1de8fdbf4a2"
+    },
+    {
+      "path": "evidence/r11-native-bulk-actor-red-result.json",
+      "sha256": "046d5f34b6a0ec518b28ee6e8ada63e3d8f097de0172c4b88c254103adf449bf"
+    }
+  ],
+  "screenshots": [
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/bulk-actor-mixed-completed.png",
+      "sha256": "d98c4bdf72cc3a5c8f167c60ea05c2c84ba842ae89cb0e8189a56361d7a2cca3"
+    }
+  ],
+  "commands": {
+    "prepare": "node .clientops-perf/ai-gpt61-20261003/r11-native-bulk-actor-prepare.private.mjs",
+    "migration": "bun .clientops-perf/ai-gpt61-20261003/r11-native-bulk-actor-migrate.private.ts",
+    "fixtures": "node .clientops-perf/ai-gpt61-20261003/r11-native-bulk-actor-fixtures.private.mjs",
+    "runtime": "node .clientops-perf/ai-gpt61-20261003/r11-native-bulk-actor-runtime.private.mjs",
+    "native": "node .clientops-perf/ai-gpt61-20261003/r11-native-bulk-actor.private.mjs",
+    "integrity": "node .clientops-perf/ai-gpt61-20261003/r11-native-bulk-actor-integrity.private.mjs",
+    "target": "see final-target-result command array; guarded disposable PG",
+    "build": "bunx vite build",
+    "nativeExit": 0,
+    "migrationExit": 0,
+    "integrityExit": 0,
+    "targetExit": 0,
+    "nativeChecks": 41,
+    "roles": 7,
+    "targetTests": 70,
+    "targetSkipped": 0,
+    "fullCI": 2882,
+    "fullCISkipped": 0
+  },
+  "originalZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
+  "schema": 26,
+  "providerTransport": "none; provider credentials absent, only independent UAT Auth GET allowed",
+  "trueProviderAcceptance": "blocked",
+  "manualAT": "not-tested",
+  "authorReviewOnly": true,
+  "productionAccess": false,
+  "releaseDecision": "NO-GO"
+}

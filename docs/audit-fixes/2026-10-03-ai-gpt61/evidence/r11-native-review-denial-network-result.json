@@ -1,0 +1,10 @@
+{
+  "sourceSha": "353015de8aad02825b68d802ceb0d7dc1643bda7",
+  "requests": 33,
+  "authorizedIndependentAuthReads": 33,
+  "unexpectedOutbound": 0,
+  "providerCalls": 0,
+  "http5xx": 0,
+  "productionAccess": false,
+  "rawPrivateReceiptSha256": "b768aea83d849c722a05e6372b935f89c720e58db264ae2d73bfd73044a04c35"
+}

@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-10-03T11:59:11.249Z",
+  "sourceSha": "b9d2925330eac98aca07baa05a34c728c12c766f",
+  "db": "clientops_ai_gpt61_1e58d6d10d",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/components/agents/__tests__/queue-navigation.test.tsx",
+    "src/components/agents/__tests__/bulk-recovery-dialog.test.tsx",
+    "src/server/commands/__tests__/agent-bulk-recovery.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-selection-green-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 30,
+  "failed": 0,
+  "skipped": 0,
+  "total": 30,
+  "files": 3,
+  "elapsedMs": 24288,
+  "reportSha256": "3466fd6890920ab5e862b53645f410c297327fcc9ab61a6d7db16e055c0a6e76"
+}

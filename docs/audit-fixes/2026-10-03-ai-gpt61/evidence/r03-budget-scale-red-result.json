@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-03T07:40:13.511Z",
+  "sourceSha": "6a2ab0272f0db037168380eccf5c4e1c3753970e",
+  "db": "clientops_ai_gpt61_937d3b4ea0",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/lib/workflows/__tests__/output-contracts.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r03-budget-scale-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 34,
+  "failed": 2,
+  "skipped": 0,
+  "total": 36,
+  "files": 1,
+  "elapsedMs": 1415,
+  "reportSha256": "14d6fb51cf34adaefb5e5aa8b1319100e1201da2ff80a287dba99096eb31aeb9"
+}

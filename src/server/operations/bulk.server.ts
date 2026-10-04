@@ -33,6 +33,7 @@ export type BulkActionHandler = {
     version: number | null;
     status?: "forbidden" | "not_found" | "stale";
     groupKey?: string;
+    code?: string;
   }>;
   apply(
     context: RequestAuthorization,
@@ -40,6 +41,7 @@ export type BulkActionHandler = {
     action: BulkAction,
     expectedVersion: number | null,
     db: Queryable,
+    operationId?: string,
   ): Promise<{ resultingVersion?: number }>;
 };
 
@@ -126,6 +128,7 @@ export function createBulkService(options: { handler: BulkActionHandler }) {
     const request = BulkPreviewRequestSchema.parse(rawRequest);
     const rows: BulkPreview["rows"] = [];
     const initialStatus: Array<BulkItemStatus | null> = [];
+    const initialCode: Array<string | null> = [];
     let groupKey: string | null = null;
 
     for (let offset = 0; offset < request.ids.length; offset += WORKER_CONCURRENCY) {
@@ -152,12 +155,14 @@ export function createBulkService(options: { handler: BulkActionHandler }) {
             expectedVersion: check.version,
           });
           initialStatus.push(check.eligible ? null : (check.status ?? "not_found"));
+          initialCode.push(check.eligible ? null : (check.code ?? "PREVIEW_INELIGIBLE"));
         } catch (error) {
           if (error instanceof Error && error.message === "Bulk approval types must match")
             throw error;
           const status = error instanceof BulkItemError ? error.status : "failed";
           rows.push({ id, eligible: false, summary: null, expectedVersion: null });
           initialStatus.push(status);
+          initialCode.push(error instanceof BulkItemError ? error.code : "PREVIEW_INELIGIBLE");
         }
       }
     }
@@ -196,7 +201,7 @@ export function createBulkService(options: { handler: BulkActionHandler }) {
               expected_version: row.expectedVersion,
               summary: row.summary,
               status: initialStatus[position],
-              code: initialStatus[position] ? "PREVIEW_INELIGIBLE" : null,
+              code: initialCode[position],
             })),
           ),
         ],
@@ -235,6 +240,7 @@ export function createBulkService(options: { handler: BulkActionHandler }) {
           operation.action,
           item.expected_version,
           db,
+          ...(operation.action.type === "agent.recover" ? [operation.id] : []),
         );
         result = {
           id: item.resource_id,
@@ -398,7 +404,7 @@ export function createBulkService(options: { handler: BulkActionHandler }) {
 
   async function resumeBulk(
     context: RequestAuthorization,
-    input: { operationId: string },
+    input: { operationId: string; processLimit?: number },
   ): Promise<BulkResult> {
     ensureOwner(
       await queryOne<OperationRow>("select * from bulk_operations where id=$1", [
@@ -406,7 +412,7 @@ export function createBulkService(options: { handler: BulkActionHandler }) {
       ]),
       context,
     );
-    return processChunk(context, input.operationId);
+    return processChunk(context, input.operationId, input.processLimit);
   }
 
   return { previewBulk, commitBulk, resumeBulk, getBulkResult };

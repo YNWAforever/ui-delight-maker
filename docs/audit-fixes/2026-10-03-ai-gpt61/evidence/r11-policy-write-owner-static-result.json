@@ -1,0 +1,50 @@
+[
+  {
+    "command": [
+      "bun",
+      "run",
+      "typecheck"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 25475,
+    "sourceSha": "dafb429af80098ad819a5c84d4f4a5c5e284af23",
+    "dbAbsent": true,
+    "providerAbsent": true
+  },
+  {
+    "command": [
+      "bun",
+      "run",
+      "typecheck:runtime"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 1478,
+    "sourceSha": "dafb429af80098ad819a5c84d4f4a5c5e284af23",
+    "dbAbsent": true,
+    "providerAbsent": true
+  },
+  {
+    "command": [
+      "bun",
+      "run",
+      "lint"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 34430,
+    "sourceSha": "dafb429af80098ad819a5c84d4f4a5c5e284af23",
+    "dbAbsent": true,
+    "providerAbsent": true
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "elapsedMs": 39,
+    "sourceSha": "dafb429af80098ad819a5c84d4f4a5c5e284af23",
+    "dbAbsent": true,
+    "providerAbsent": true
+  }
+]

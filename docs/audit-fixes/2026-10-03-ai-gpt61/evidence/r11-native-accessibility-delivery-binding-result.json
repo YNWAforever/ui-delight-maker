@@ -1,0 +1,61 @@
+{
+  "checkedAt": "2026-10-03T20:05:18.773Z",
+  "codeVerifiedCommit": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
+  "executionBaseSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
+  "executionWorkingSourceDiffSha256": "9bb3b78b383e80a89b11550d63f856a06505f6e3c54e5a03877c7e37e51fae89",
+  "changedExecutableFiles": [
+    "src/routes/__tests__/-ai-review-denied-loader.test.tsx",
+    "src/routes/ai-review.tsx"
+  ],
+  "sourceCanonicalHashesMatch": true,
+  "sourceFiles": [
+    {
+      "path": "src/routes/ai-review.tsx",
+      "sha256": "66c95ab7663bc44a51d60857c1a91dfce843c2157ebda8c6d898d852a3a8fbbe",
+      "sha256CanonicalLF": "66c95ab7663bc44a51d60857c1a91dfce843c2157ebda8c6d898d852a3a8fbbe"
+    },
+    {
+      "path": "src/routes/__tests__/-ai-review-denied-loader.test.tsx",
+      "sha256": "8f39d82dea25869e006464d8e79232f3bd15e5eb19d144d3a13612a8411b6510",
+      "sha256CanonicalLF": "5096f26565f9f42818ef3beba9dca8d1695f8dc26458cc5db6ff39cf78ae4a29"
+    }
+  ],
+  "sourceTrees": {
+    "src": "c535e19c6128737c7dbf5d63d4b1b26b78a6f3e2",
+    "neon": "a45443f775b7e65d42dc31259f33b48b73e1c527",
+    "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
+    "scripts": "ecca3b87db60afb06f23d74fb5c24aa09a48e639"
+  },
+  "builtArtifactServerSha256": "b0532e35fd2633cd62dd88a418c37bad5aec815a3d0b980d0ad1977327a95f46",
+  "artifactInventorySha256": "5fa09ff7f86eb1be7770747d946df9c15f63f53c1d25ee2dd2bb9a056cda7c66",
+  "artifactCount": 403,
+  "nativeExecutionReceiptsRetainOriginalBaseAndDiff": true,
+  "nativeZoomChecksPassed": 27,
+  "nativeDetailBoundaryChecksPassed": 27,
+  "strictTargetTestsPassed": 57,
+  "targetSkips": 0,
+  "ci": {
+    "sourceSha": "57dad0e415c898d980e07ec5ecaf3c63f07714a3",
+    "passed": 2856,
+    "failed": 0,
+    "skipped": 0,
+    "files": 357,
+    "databaseRun": 37149654891,
+    "checksRun": 37149654882,
+    "migrationSeedReplay": "passed on isolated CI service"
+  },
+  "originalZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
+  "migrationFilesUnchanged": 25,
+  "workerFilesUnchanged": 6,
+  "dependency24hGuard": "unchanged",
+  "latestMainSha": "953ec0a36806d4362fad9e2b2d8cd17a49adbb26",
+  "productionObservedAt": "2026-10-03T19:51:49.368Z",
+  "productionSha": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+  "productionHoldUnchanged": true,
+  "productionMutations": 0,
+  "providerCalls": 0,
+  "manualAssistiveTechnology": "not-tested",
+  "baselineScreenshotScope": "Preserved original failure JSON/diagnostic hashes. Earlier reused Playwright screenshots are superseded as visual acceptance by unique final CDP paths; only final CDP hash-matching images establish current native view evidence.",
+  "releaseDecision": "NO-GO",
+  "finalDocumentationHead": "must retain these executable source trees and receive fresh exact-head CI, recorded on draft176 to avoid self-reference"
+}

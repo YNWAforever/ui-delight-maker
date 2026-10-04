@@ -1,8 +1,9 @@
+import { validQualification } from "@/lib/workflows/__tests__/commercial-fixtures";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const fakeDb = {
-    query: vi.fn(),
+    query: vi.fn().mockResolvedValue({ rows: [{ currency: "HKD" }] }),
   };
 
   return {
@@ -78,10 +79,126 @@ import {
 import { AGENT_DEFINITIONS } from "@/lib/agents";
 
 describe("workflow writebacks", () => {
+  const bindingCases = [
+    {
+      workflow: "qualify_lead",
+      subject: "lead",
+      writer: writeQualificationResult,
+      payload: {
+        lead_id: "binding-subject",
+        agent_run_id: "binding-run",
+        qualification_data: { ...validQualification },
+        lead_score: 80,
+        output_summary: "Synthetic",
+        confidence_score: 0.8,
+      },
+    },
+    {
+      workflow: "draft_reply",
+      subject: "lead",
+      writer: writeReplyDraftResult,
+      payload: {
+        lead_id: "binding-subject",
+        agent_run_id: "binding-run",
+        draft_message: "Synthetic draft",
+        context_summary: "Synthetic",
+        confidence_score: 0.8,
+      },
+    },
+    {
+      workflow: "draft_quote",
+      subject: "lead",
+      writer: writeQuoteDraftResult,
+      payload: {
+        lead_id: "binding-subject",
+        agent_run_id: "binding-run",
+        quote: {
+          currency: "HKD",
+          total_value: 200,
+          line_items: [
+            {
+              id: "synthetic",
+              service: "Synthetic",
+              description: "Synthetic",
+              qty: 2,
+              unit_price: 100,
+            },
+          ],
+        },
+        create_send_approval: false,
+        confidence_score: 0.8,
+      },
+    },
+    {
+      workflow: "score_renewal_risk",
+      subject: "engagement",
+      writer: writeScoreRenewalRiskResult,
+      payload: {
+        engagement_id: "binding-subject",
+        agent_run_id: "binding-run",
+        health_score: 80,
+        renewal_risk: "medium",
+        risk_reasoning: "Synthetic",
+        suggested_next_action: "Review",
+        confidence: 0.8,
+        output_summary: "Synthetic",
+      },
+    },
+    {
+      workflow: "relationship_intelligence",
+      subject: "account",
+      writer: writeRelationshipIntelligenceResult,
+      payload: {
+        account_id: "binding-subject",
+        agent_run_id: "binding-run",
+        output_summary: "Synthetic",
+        next_action: null,
+        signals: [],
+        confidence_score: 0.8,
+      },
+    },
+  ];
+  it.each(bindingCases)(
+    "$workflow rejects_cross_attempt_callback before business writes",
+    async ({ workflow, subject, writer, payload }) => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "binding-run",
+        workflow_type: workflow,
+        attempt_id: "current-attempt",
+        subject_type: subject,
+        subject_id: "binding-subject",
+        status: "running",
+      });
+      await expect(writer({ ...payload, attempt_id: "wrong-attempt" } as never)).rejects.toThrow(
+        "attempt",
+      );
+      expect(mocks.updateLeadMock).not.toHaveBeenCalled();
+      expect(mocks.createQuoteMock).not.toHaveBeenCalled();
+      expect(mocks.createApprovalMock).not.toHaveBeenCalled();
+      expect(mocks.applyEngagementScoreMock).not.toHaveBeenCalled();
+      expect(mocks.updateAccountMock).not.toHaveBeenCalled();
+    },
+  );
+  it.each(bindingCases)(
+    "$workflow rejects another workflow's run on the same subject",
+    async ({ subject, writer, payload }) => {
+      mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        id: "binding-run",
+        workflow_type: "note_tidy",
+        attempt_id: "current-attempt",
+        subject_type: subject,
+        subject_id: "binding-subject",
+        status: "running",
+      });
+      await expect(writer(payload as never)).rejects.toThrow("workflow");
+      expect(mocks.updateAgentRunResultMock).not.toHaveBeenCalled();
+    },
+  );
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.fakeDb.query.mockReset();
+    mocks.fakeDb.query.mockReset().mockResolvedValue({ rows: [{ currency: "HKD" }] });
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "relationship_intelligence",
       id: "run-default",
       status: "running",
       output_data: null,
@@ -97,6 +214,7 @@ describe("workflow writebacks", () => {
 
   it("wraps qualification writebacks in one transaction client", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "qualify_lead",
       id: "run-1",
       status: "running",
       output_data: null,
@@ -144,6 +262,7 @@ describe("workflow writebacks", () => {
 
   it("creates reply approvals atomically and returns the approval id", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "draft_reply",
       id: "run-2",
       status: "running",
       output_data: null,
@@ -186,6 +305,7 @@ describe("workflow writebacks", () => {
 
   it("reuses an existing reply approval for retried writebacks", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "draft_reply",
       id: "run-2",
       status: "waiting_approval",
       output_data: { approval_id: "approval-1" },
@@ -210,6 +330,7 @@ describe("workflow writebacks", () => {
 
   it("skips quote approvals when send approval is not requested", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "draft_quote",
       id: "run-3",
       status: "running",
       output_data: null,
@@ -271,6 +392,7 @@ describe("workflow writebacks", () => {
 
   it("reuses an existing quote draft result for retried writebacks", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "draft_quote",
       id: "run-3",
       status: "completed",
       output_data: { quote_id: "quote-1", approval_id: "approval-2" },
@@ -311,6 +433,7 @@ describe("workflow writebacks", () => {
 
   it("writes relationship intelligence results atomically and records signal output", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "relationship_intelligence",
       id: "run-9",
       status: "running",
       output_data: null,
@@ -403,6 +526,7 @@ describe("workflow writebacks", () => {
 
   it("treats completed relationship intelligence writebacks as idempotent", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "relationship_intelligence",
       id: "run-9",
       status: "completed",
       output_data: { signals: [] },
@@ -431,6 +555,7 @@ describe("workflow writebacks", () => {
 
   it("rejects relationship intelligence writebacks for a mismatched account run before writes", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "relationship_intelligence",
       id: "run-9",
       status: "running",
       output_data: null,
@@ -461,8 +586,9 @@ describe("workflow writebacks", () => {
   // The workflow relays whatever the model returned, so what lands in the column has to be
   // coerced here rather than trusted — the lead Insights tab reads `.service_interest.map(...)`
   // off it directly.
-  it("stores a renderable qualification even when the model returned an unrelated object", async () => {
+  it("rejects unrelated qualification output without inventing a successful score", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "qualify_lead",
       id: "run-1",
       status: "running",
       output_data: null,
@@ -470,35 +596,31 @@ describe("workflow writebacks", () => {
       subject_id: "lead-1",
     });
 
-    await writeQualificationResult({
-      lead_id: "lead-1",
-      agent_run_id: "run-1",
-      qualification_data: { notes: "looks good" },
-      lead_score: 60,
-      output_summary: "Model went off-script",
-      confidence_score: 0.9,
-    });
-
-    const [, updates] = mocks.updateLeadMock.mock.calls[0]!;
-    expect(updates.qualification_data).toMatchObject({
-      service_interest: [],
-      budget_range: "unknown",
-      next_action: "Request more info",
-      human_review_required: true,
-    });
-    expect(Number.isFinite(updates.qualification_data.confidence)).toBe(true);
-
-    // The agent run records the same normalized object, not the raw payload, so the two cannot
-    // disagree about what the agent decided.
+    await expect(
+      writeQualificationResult({
+        lead_id: "lead-1",
+        agent_run_id: "run-1",
+        qualification_data: { notes: "looks good" },
+        lead_score: 60,
+        output_summary: "Model went off-script",
+        confidence_score: 0.9,
+      }),
+    ).rejects.toThrow("INVALID_AI_OUTPUT");
+    expect(mocks.updateLeadMock).not.toHaveBeenCalled();
     expect(mocks.updateAgentRunResultMock).toHaveBeenCalledWith(
       "run-1",
-      expect.objectContaining({ output_data: updates.qualification_data }),
+      expect.objectContaining({
+        status: "failed",
+        outcome_code: "invalid_output",
+        output_data: { invalid_output_code: "INVALID_AI_OUTPUT" },
+      }),
       mocks.fakeDb,
     );
   });
 
   it("rejects a qualification writeback whose run belongs to a different lead", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "qualify_lead",
       id: "run-1",
       status: "running",
       output_data: null,
@@ -510,7 +632,7 @@ describe("workflow writebacks", () => {
       writeQualificationResult({
         lead_id: "lead-1",
         agent_run_id: "run-1",
-        qualification_data: { fit: "high" },
+        qualification_data: { ...validQualification, fit: "high" },
         lead_score: 82,
         output_summary: "Strong fit",
         confidence_score: 0.9,
@@ -523,6 +645,7 @@ describe("workflow writebacks", () => {
 
   it("rejects a reply draft writeback whose run belongs to a different lead", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "draft_reply",
       id: "run-2",
       status: "running",
       output_data: null,
@@ -545,6 +668,7 @@ describe("workflow writebacks", () => {
 
   it("rejects a quote draft writeback whose run belongs to a different lead", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "draft_quote",
       id: "run-3",
       status: "running",
       output_data: null,
@@ -567,6 +691,7 @@ describe("workflow writebacks", () => {
 
   it("rejects a renewal risk writeback whose run belongs to a different engagement", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "score_renewal_risk",
       id: "run-4",
       status: "running",
       output_data: null,
@@ -593,6 +718,7 @@ describe("workflow writebacks", () => {
 
   it("replays a completed qualification writeback without touching the lead", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "qualify_lead",
       id: "run-1",
       status: "completed",
       output_data: { fit: "high" },
@@ -603,7 +729,7 @@ describe("workflow writebacks", () => {
     await writeQualificationResult({
       lead_id: "lead-1",
       agent_run_id: "run-1",
-      qualification_data: { fit: "low" },
+      qualification_data: { ...validQualification, fit: "low" },
       lead_score: 10,
       output_summary: "Replayed",
       confidence_score: 0.2,
@@ -618,6 +744,7 @@ describe("workflow writebacks", () => {
   // never lower it below what the confidence threshold already demands.
   it("keeps human review required when the model asks to skip it below the confidence floor", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "qualify_lead",
       id: "run-1",
       status: "running",
       output_data: null,
@@ -628,7 +755,7 @@ describe("workflow writebacks", () => {
     await writeQualificationResult({
       lead_id: "lead-1",
       agent_run_id: "run-1",
-      qualification_data: { human_review_required: false },
+      qualification_data: { ...validQualification, human_review_required: false },
       lead_score: 40,
       output_summary: "Model says no review needed",
       confidence_score: 0.2,
@@ -643,6 +770,7 @@ describe("workflow writebacks", () => {
 
   it("still lets the model raise the review bar above the confidence floor", async () => {
     mocks.getAgentRunForUpdateMock.mockResolvedValue({
+      workflow_type: "qualify_lead",
       id: "run-1",
       status: "running",
       output_data: null,
@@ -653,7 +781,7 @@ describe("workflow writebacks", () => {
     await writeQualificationResult({
       lead_id: "lead-1",
       agent_run_id: "run-1",
-      qualification_data: { human_review_required: true },
+      qualification_data: { ...validQualification, human_review_required: true },
       lead_score: 95,
       output_summary: "Confident but wants a look",
       confidence_score: 0.99,
@@ -673,6 +801,7 @@ describe("workflow writebacks", () => {
   describe("which writebacks park a run in waiting_approval", () => {
     it("completes a qualification run outright and never parks it", async () => {
       mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        workflow_type: "qualify_lead",
         id: "run-p1",
         status: "running",
         output_data: null,
@@ -683,7 +812,7 @@ describe("workflow writebacks", () => {
       await writeQualificationResult({
         lead_id: "lead-p1",
         agent_run_id: "run-p1",
-        qualification_data: { confidence: 0.9 },
+        qualification_data: { ...validQualification, confidence: 0.9 },
         lead_score: 80,
         output_summary: "Qualified",
         confidence_score: 0.9,
@@ -701,6 +830,7 @@ describe("workflow writebacks", () => {
     // that it is a reply draft.
     it("parks every reply draft run, whatever the confidence", async () => {
       mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        workflow_type: "draft_reply",
         id: "run-p2",
         status: "running",
         output_data: null,
@@ -732,6 +862,7 @@ describe("workflow writebacks", () => {
 
     it("parks a quote draft run when the draft asks for a send approval", async () => {
       mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        workflow_type: "draft_quote",
         id: "run-p3",
         status: "running",
         output_data: null,
@@ -776,6 +907,7 @@ describe("workflow writebacks", () => {
 
     it("completes a quote draft run when no send approval is asked for", async () => {
       mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        workflow_type: "draft_quote",
         id: "run-p4",
         status: "running",
         output_data: null,
@@ -816,6 +948,7 @@ describe("workflow writebacks", () => {
 
     it("parks a renewal risk run only when it raises the risk to high", async () => {
       mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        workflow_type: "score_renewal_risk",
         id: "run-p5",
         status: "running",
         output_data: null,
@@ -853,6 +986,7 @@ describe("workflow writebacks", () => {
 
     it("completes a renewal risk run that does not raise the risk to high", async () => {
       mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        workflow_type: "score_renewal_risk",
         id: "run-p6",
         status: "running",
         output_data: null,
@@ -885,6 +1019,7 @@ describe("workflow writebacks", () => {
 
     it("completes a relationship intelligence run and never parks it", async () => {
       mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        workflow_type: "relationship_intelligence",
         id: "run-p7",
         status: "running",
         output_data: null,
@@ -918,6 +1053,7 @@ describe("workflow writebacks", () => {
   describe("every writeback forwards tokens_used and model_used to the run row", () => {
     it("writeReplyDraftResult forwards tokens_used and model_used to the run row", async () => {
       mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        workflow_type: "draft_reply",
         id: "run-tok-2",
         status: "running",
         output_data: null,
@@ -948,6 +1084,7 @@ describe("workflow writebacks", () => {
 
     it("writeQuoteDraftResult forwards tokens_used and model_used to the run row", async () => {
       mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        workflow_type: "draft_quote",
         id: "run-tok-3",
         status: "running",
         output_data: null,
@@ -991,6 +1128,7 @@ describe("workflow writebacks", () => {
 
     it("writeScoreRenewalRiskResult forwards tokens_used to the run row", async () => {
       mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        workflow_type: "score_renewal_risk",
         id: "run-tok-4",
         status: "running",
         output_data: null,
@@ -1024,6 +1162,7 @@ describe("workflow writebacks", () => {
 
     it("writeRelationshipIntelligenceResult forwards tokens_used to the run row", async () => {
       mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        workflow_type: "relationship_intelligence",
         id: "run-tok-5",
         status: "running",
         output_data: null,
@@ -1054,6 +1193,7 @@ describe("workflow writebacks", () => {
     });
     it("stores provider-reported usage without inventing cost when absent", async () => {
       mocks.getAgentRunForUpdateMock.mockResolvedValue({
+        workflow_type: "relationship_intelligence",
         id: "run-usage",
         status: "running",
         output_data: null,

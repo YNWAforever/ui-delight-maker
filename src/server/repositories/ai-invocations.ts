@@ -1,8 +1,8 @@
 import { queryOne } from "@/server/db/neon.server";
 import { updateAgentRunResult } from "@/server/repositories/agent-runs";
 import type { AIInvocationContext, AIUsage } from "@/server/workflows/ai-invocation.server";
+import { readGovernedAgentPolicy } from "@/server/repositories/agent-policy";
 
-type PolicyRow = { id: string; status: "active" | "inactive" };
 type InvocationRow = {
   id: string;
   status: string;
@@ -12,19 +12,17 @@ type InvocationRow = {
 };
 
 export async function readNoteTidyPolicy() {
-  const row = await queryOne<PolicyRow>(
-    "select id,status from agent_policy_versions where workflow_type='note_tidy' order by created_at desc,version_seq desc limit 1",
-  );
-  return { status: row?.status ?? "active", versionId: row?.id ?? null };
+  const policy = await readGovernedAgentPolicy("note_tidy");
+  return { status: policy.status, versionId: policy.versionId };
 }
 
 export async function beginNoteTidyRun(input: Parameters<AIInvocationContext["beginRun"]>[0]) {
   const inserted = await queryOne<InvocationRow>(
     `insert into agent_runs
       (agent_name,workflow_type,trigger_type,subject_type,subject_id,
-       input_data,status,created_by,idempotency_key,policy_version_id)
+       input_data,status,created_by,idempotency_key,policy_version_id,model_used)
      values ('Note Tidy','note_tidy','manual','note',$1,
-       $2::jsonb,'running',$3,$4,$5)
+       $2::jsonb,'running',$3,$4,$5,null)
      on conflict do nothing returning id,status,input_data,output_data`,
     [
       input.subjectId,

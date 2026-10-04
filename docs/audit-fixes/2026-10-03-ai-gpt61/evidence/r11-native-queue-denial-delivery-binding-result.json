@@ -1,0 +1,182 @@
+{
+  "screenshots": [
+    {
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/r11-native-queue-denial-green-accounting-denial.private.png",
+      "sha256": "0b10a87934d075eb3025f532d71bfd1fc41ab92e2dc832ee7f40f7f9a4af4490"
+    },
+    {
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/r11-native-queue-denial-green-final-read-only.private.png",
+      "sha256": "95a11d834e33e930b0a435a1e898ee04081df6af2e5ac308dd5bd6fdf2c6e4e2"
+    }
+  ],
+  "recordedAt": "2026-10-04T08:02:07.973Z",
+  "codeVerifiedCommit": "e79a724322ae54919893797141916b9087833ce2",
+  "executionHead": "e79a724322ae54919893797141916b9087833ce2",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceTrees": {
+    "src": "4011d09d60f6820e05d91d97d03aed4a4eb411f6",
+    "neon": "3cf78f7d35c15b02c8099a728b9a78b74116b82f",
+    "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
+    "scripts": "ecca3b87db60afb06f23d74fb5c24aa09a48e639"
+  },
+  "unchangedFromBaseline": [
+    "neon",
+    "n8n",
+    "scripts",
+    "package.json",
+    "bun.lock"
+  ],
+  "serverEntrySha256": "f6882ffdfa1ba33613759ff9ff4c81bf01c82a5659079ad5cd694eb6e707b4a1",
+  "artifactInventory": {
+    "files": 401,
+    "bytes": 5509680,
+    "sha256": "088aa8c6cee3a129f47412fdc97551d1a2fa82a51c754f264207bddabe830a96",
+    "privatePath": ".clientops-perf/ai-gpt61-20261003/r11-native-queue-denial-artifact-inventory.private.json"
+  },
+  "runners": [
+    {
+      "path": "evidence/r11-native-queue-denial-runner.source.txt",
+      "sha256": "ae4d7e5016610de4f877491b6f5d9c0abe2a6a7c5be245d2e12e29e682476cec",
+      "executedPrivateSourceSha256": "35031fdd34debb91dce06a059dd0075d31d79666c98519abe388685e1a88313e",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-original-runner.source.txt",
+      "sha256": "da4d399279abe757ff521c84684c8ae10002fcefc464299a97f30e811aae3f19",
+      "executedPrivateSourceSha256": "f433e6c0b5810b42709421a2fd01ef5d13f51ae6f471b8fccc415af8a815659e",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-runtime.source.txt",
+      "sha256": "e9f13930ef4efea49b6e4b9140338333e3985646ab0063113c73dc41016487a2",
+      "executedPrivateSourceSha256": "d2e5116d713dd72ae0e72f11b347baf31c597b8a2207a0bd46e75820a2f6f999",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-prepare.source.txt",
+      "sha256": "df26e3925ad866bb166a2789738435b97d079e6175e24a0f6df40a81d723931e",
+      "executedPrivateSourceSha256": "cc602977709fb6a10f84cd801d491387720daa38e2ed03b8ed5193a953dc0c84",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-fixtures.source.txt",
+      "sha256": "9af84f33a7f5448dbb086af82aa0e4da5d9db289b76c34043c8d28db91942a05",
+      "executedPrivateSourceSha256": "0c6db7ed3334c73869a277c6e03481f1afc21243cae7c33d2236dfa3e2b5151f",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-migration.source.txt",
+      "sha256": "70a47f05151d61d6db5722f80d540feec81eff89c3e9e22b8f793377990b1728",
+      "executedPrivateSourceSha256": "4fbc061093fafad6764a2d9b11257b8a5cc3401359967e952db24ef9f1544ace",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-integrity.source.txt",
+      "sha256": "a252003530ba2f3521f53b6ba0a0ca14784abefa9cb9d93562537e3a7918d54c",
+      "executedPrivateSourceSha256": "a252003530ba2f3521f53b6ba0a0ca14784abefa9cb9d93562537e3a7918d54c",
+      "normalization": "UTF8/LF; no semantic change"
+    }
+  ],
+  "receipts": [
+    {
+      "path": "evidence/r11-native-queue-denial-green-result.json",
+      "sha256": "2d2df48e429d60c26994dbdc26ee02d03c85b8776e6269992ff2bdba67db910d"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-integrity-result.json",
+      "sha256": "7728912fe310833534feb76d7582be5d62e553989f7becd6ddc24c223b20c40a"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-runtime-result.json",
+      "sha256": "44bfbab54e1becac2ff94764a166633653d00a92ca1ece72f999bf821f299a9e"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-migration-result.json",
+      "sha256": "8b3d2676a682621024c592ec9463b5cbde6acae688bde20e90165011308e2341"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-seed-result.json",
+      "sha256": "cc1e1442e9af204ea37f53c6f958005602e207122fd86211f6800c5ce83dd90b"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-code-ci-result.json",
+      "sha256": "fc86b25dd5c53ef5022847f3d08be617e0ac8eecae2b9d610676589d607d023c"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-network-result.json",
+      "sha256": "2b525e068e6702d3e1aea0c4c210a3c31ab83da32fee2b726bb9a22399266e8e"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-red-result.json",
+      "sha256": "0c9aa870e0da9ff1c0f7483f05ad533aa9e958895bd996b8dfbc5f48d7c7216e"
+    },
+    {
+      "path": "evidence/r11-queue-denial-red-result.json",
+      "sha256": "6b6335c7801ac0ed9f28ccef28b762e760431759a423021147cecbbce4d18966"
+    },
+    {
+      "path": "evidence/r11-queue-denial-final-target-result.json",
+      "sha256": "896dccb713a7b288ba1d790c72d4e2641ef8d5d63f07277dc86a9a2754bbc5e7"
+    },
+    {
+      "path": "evidence/r11-queue-denial-final-static-result.json",
+      "sha256": "b962fbbbb4340290770702e4314c5bb65bd9b6ae44b35d5e16115b2332ec978a"
+    },
+    {
+      "path": "evidence/r11-queue-denial-final-build-result.json",
+      "sha256": "2edd746a3c5518df42fda4bb76e270f8b31446ada9e25ef1677a424cbed3999d"
+    },
+    {
+      "path": "evidence/r11-clear-filters-red-result.json",
+      "sha256": "67995b5634606e12320a0ee2a4041006fbe3735d2008b037961a81982f5201cb"
+    },
+    {
+      "path": "evidence/r11-queue-denial-combined-target-result.json",
+      "sha256": "bec25507b62e0fa9fa24d3294181d04e1c7d9cdd2a090c4b19d87c6b1c2bc6ff"
+    },
+    {
+      "path": "evidence/r11-queue-denial-combined-final-static-result.json",
+      "sha256": "f31e9c5bd12d10bff8ee1aef17f9f17c4af8d4570573f34f0ba3d4a4bdbb2500"
+    },
+    {
+      "path": "evidence/r11-queue-denial-combined-build-result.json",
+      "sha256": "8140128118f26be84dc35d4542861754d6eac50a77390dfecb2953adbc44ef04"
+    },
+    {
+      "path": "evidence/r11-native-queue-denial-initial-code-ci-result.json",
+      "sha256": "1bdf0287fda228f8475805c20fd73cea0b772650c45e16709c48ff7268868c19"
+    }
+  ],
+  "commands": {
+    "prepare": "node .clientops-perf/ai-gpt61-20261003/r11-native-queue-denial-prepare.private.mjs",
+    "migration": "bun .clientops-perf/ai-gpt61-20261003/r11-native-queue-denial-migrate.private.ts",
+    "fixtures": "node .clientops-perf/ai-gpt61-20261003/r11-native-queue-denial-fixtures.private.mjs",
+    "runtime": "node .clientops-perf/ai-gpt61-20261003/r11-native-queue-denial-runtime.private.mjs",
+    "native": "node .clientops-perf/ai-gpt61-20261003/r11-native-queue-denial.private.mjs green",
+    "integrity": "node .clientops-perf/ai-gpt61-20261003/r11-native-queue-denial-integrity.private.mjs",
+    "nativeExit": 0,
+    "migrationExit": 0,
+    "integrityExit": 0,
+    "targetExit": 0,
+    "nativeChecks": 11,
+    "roles": 7,
+    "targetTests": 87,
+    "targetSkipped": 0,
+    "fullCI": 2899,
+    "fullCISkipped": 0
+  },
+  "scope": "queue-only same-document cookie-fixture handoff using seven distinct actual independent Auth sessions; genuine accounting403 hides cached rows/selection/preview/maintenance, returning owner reads original uncertain intent; native execute intercepted before server forwarding, no Auth mutation",
+  "clearQueueFiltersDropsOldOptionalSearchFields": true,
+  "wholeAppHandoff": "not-tested",
+  "interactiveLogoutRelogin": "not-tested",
+  "manualAT": "not-tested",
+  "trueProviderAcceptance": "blocked",
+  "schema": 26,
+  "originalZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
+  "authorReviewOnly": true,
+  "productionAccess": false,
+  "actualProviderCalls": 0,
+  "ownedRuntimePid": 34128,
+  "ownedRuntimeStopped": true,
+  "releaseDecision": "NO-GO"
+}

@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-10-04T09:38:38.258Z",
+  "sourceSha": "893d5fc7e78d239da4359d1f6b40de7efb74bc32",
+  "db": "clientops_ai_gpt61_683b8864b0",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/components/agents/__tests__/policy-refresh-access.test.tsx",
+    "src/components/agents/__tests__/policy-panel.test.tsx",
+    "src/server-functions/__tests__/agent-policy.integration.test.ts",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-policy-refresh-complete-red-vitest.private.json"
+  ],
+  "exitCode": 1,
+  "passed": 23,
+  "failed": 12,
+  "skipped": 0,
+  "total": 35,
+  "files": 3,
+  "elapsedMs": 17013,
+  "reportSha256": "97237ca49cb3d3dd22f9a055a0894ca52174be1d435eab070b51a1b8e9c0288a"
+}

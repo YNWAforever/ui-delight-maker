@@ -7,7 +7,30 @@ import type {
 } from "@/lib/workflows/types";
 import type { AgentPolicy, AgentWorkflowType } from "@/lib/agents";
 import { normalizeQualificationData } from "@/lib/workflows/qualification";
-import { transaction } from "@/server/db/neon.server";
+import { z } from "zod";
+import {
+  AIOutputContractError,
+  CURRENCY_MINOR_UNITS,
+  parseAIOutput,
+  safeOutputErrorCode,
+  validateQuoteDraft,
+} from "@/lib/workflows/output-contracts";
+import { callbackProvenanceFields } from "@/lib/workflows/provenance";
+import {
+  qualificationWritebackSchema,
+  replyDraftWritebackSchema,
+  quoteDraftWritebackSchema,
+  scoreRenewalRiskWritebackSchema,
+  relationshipIntelligenceWritebackSchema,
+} from "./writeback-payloads.server";
+import {
+  normalizeAIExecutionProvenance,
+  providerUsageSchema,
+  type AIExecutionProvenance,
+} from "@/lib/workflows/provenance";
+import type { AgentRun } from "@/lib/types";
+import { AdminError } from "@/lib/admin/errors";
+import { transaction, type Queryable } from "@/server/db/neon.server";
 import { normalizeAIUsage } from "@/server/workflows/ai-invocation.server";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createActivityLog } from "@/server/repositories/activity-logs";
@@ -61,13 +84,180 @@ function agentParksForApproval(
  * a quote draft onto an unrelated engagement. `getAgentRunForUpdate` already selects the whole
  * row, so `subject_type`/`subject_id` are in hand at no extra cost.
  */
+class CallbackBindingError extends AdminError {
+  constructor(message: string) {
+    super("CONFLICT", message);
+  }
+}
 function assertAgentRunSubject(
   agentRun: { subject_type?: unknown; subject_id?: unknown },
   expectedType: string,
   expectedId: string,
 ) {
   if (agentRun.subject_type !== expectedType || agentRun.subject_id !== expectedId) {
-    throw new Error(`Agent run does not belong to this ${expectedType.replace(/_/g, " ")}`);
+    throw new CallbackBindingError(
+      `Agent run does not belong to this ${expectedType.replace(/_/g, " ")}`,
+    );
+  }
+}
+
+function assertCallbackIdentity(
+  run: AgentRun,
+  expectedWorkflow: AgentWorkflowType,
+  payload: { agent_run_id: string; workflow_type?: string; attempt_id?: string },
+) {
+  if (
+    run.id !== payload.agent_run_id ||
+    run.workflow_type !== expectedWorkflow ||
+    (payload.workflow_type !== undefined && payload.workflow_type !== expectedWorkflow)
+  )
+    throw new CallbackBindingError("Agent run does not belong to this workflow");
+  if (payload.attempt_id !== undefined && payload.attempt_id !== run.attempt_id)
+    throw new CallbackBindingError("Callback does not belong to this attempt");
+}
+function assertCallbackBinding(
+  run: AgentRun,
+  workflow: AgentWorkflowType,
+  payload: { agent_run_id: string; workflow_type?: string; attempt_id?: string },
+) {
+  assertCallbackIdentity(run, workflow, payload);
+  if (run.status === "failed") throw new CallbackBindingError("Agent run is no longer active");
+}
+
+function writebackTelemetry(payload: {
+  execution_metadata?: AIExecutionProvenance;
+  usage?: import("@/lib/workflows/types").ProviderUsage;
+  tokens_used?: number;
+  model_used?: string;
+}) {
+  const provenance = normalizeAIExecutionProvenance(payload.execution_metadata);
+  const usage = payload.usage ? providerUsageSchema.parse(payload.usage) : undefined;
+  return {
+    execution_metadata: provenance,
+    tokens_used: usage?.totalTokens ?? payload.tokens_used ?? null,
+    ...(usage ? { usage_data: normalizeAIUsage(usage) } : {}),
+    model_used: payload.execution_metadata
+      ? provenance.actualModel
+      : payload.model_used === "deterministic-fallback"
+        ? null
+        : (payload.model_used ?? null),
+  };
+}
+
+type BoundCallback = Parameters<typeof writebackTelemetry>[0] & {
+  agent_run_id: string;
+  workflow_type?: string;
+  attempt_id?: string;
+};
+async function withInvalidOutputReceipt<T>(
+  payload: BoundCallback,
+  workflow: AgentWorkflowType,
+  subject: { type: string; id: string },
+  work: (db: Queryable) => Promise<T>,
+): Promise<T> {
+  const result = await transaction(async (db) => {
+    await db.query("savepoint clientops_ai_output");
+    try {
+      return { ok: true as const, value: await work(db) };
+    } catch (error) {
+      if (!(error instanceof AIOutputContractError)) throw error;
+      await db.query("rollback to savepoint clientops_ai_output");
+      const run = await getAgentRunForUpdate(payload.agent_run_id, db);
+      if (!run) throw new Error("Agent run not found");
+      assertAgentRunSubject(run, subject.type, subject.id);
+      assertCallbackIdentity(run, workflow, payload);
+      if (run.status === "failed" && run.outcome_code === "invalid_output")
+        return { ok: false as const, error };
+      if (run.status !== "running") throw new CallbackBindingError("Agent run is no longer active");
+      await updateAgentRunResult(
+        run.id,
+        {
+          status: "failed",
+          outcome_code: "invalid_output",
+          output_data: { invalid_output_code: error.code },
+          output_summary: "Invalid AI output; manual review required.",
+          human_review_required: true,
+          ...writebackTelemetry(payload),
+        },
+        db,
+      );
+      await createActivityLog(
+        {
+          actor_type: "agent",
+          actor_id: run.id,
+          actor_name: run.agent_name,
+          action: "rejected invalid AI output",
+          object_type: "agent_run",
+          object_id: run.id,
+          diff_data: { invalid_output_code: error.code },
+        },
+        db,
+      );
+      return { ok: false as const, error };
+    }
+  });
+  if (!result.ok) throw result.error;
+  return result.value;
+}
+
+/** Called only after token validation and bounded parsing; commercial data is never stored. */
+export async function recordInvalidWriteback(
+  body: unknown,
+  workflow: AgentWorkflowType,
+  schemaError?: string,
+) {
+  const subjectKey =
+    workflow === "score_renewal_risk"
+      ? "engagement_id"
+      : workflow === "relationship_intelligence"
+        ? "account_id"
+        : "lead_id";
+  const envelope = z
+    .object({
+      ...callbackProvenanceFields,
+      agent_run_id: z.string().uuid(),
+      workflow_type: z.string().optional(),
+      lead_id: z.string().uuid().optional(),
+      account_id: z.string().uuid().optional(),
+      engagement_id: z.string().uuid().optional(),
+      invalid_output_code: z.string().optional(),
+    })
+    .safeParse(body);
+  if (!envelope.success) return;
+  const payload = envelope.data;
+  const subjectId = payload[subjectKey];
+  if (!subjectId) return;
+  try {
+    await withInvalidOutputReceipt(
+      payload,
+      workflow,
+      { type: subjectKey.replace("_id", ""), id: subjectId },
+      async () => {
+        throw new AIOutputContractError(
+          safeOutputErrorCode(payload.invalid_output_code ?? schemaError),
+        );
+      },
+    );
+  } catch (error) {
+    if (!(error instanceof AIOutputContractError) && !(error instanceof CallbackBindingError))
+      throw error;
+  }
+}
+export async function handleAIWriteback(work: () => Promise<Response>): Promise<Response> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof AIOutputContractError)
+      return Response.json(
+        { ok: false, error: error.code, next_action: "Manual review required" },
+        { status: 400 },
+      );
+    if (error instanceof CallbackBindingError)
+      return Response.json(
+        { ok: false, error: "Callback identity or state conflict" },
+        { status: 409 },
+      );
+    throw error;
   }
 }
 
@@ -130,338 +320,374 @@ function getExistingQuoteDraftResult(outputData: unknown) {
  * `true` fails loudly instead of silently doing nothing.
  */
 export async function writeQualificationResult(payload: QualificationWritebackPayload) {
-  await transaction(async (db) => {
-    const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
-    if (!agentRun) {
-      throw new Error("Agent run not found");
-    }
-    assertAgentRunSubject(agentRun, "lead", payload.lead_id);
+  await withInvalidOutputReceipt(
+    payload,
+    "qualify_lead",
+    { type: "lead", id: payload.lead_id },
+    async (db) => {
+      const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
+      if (!agentRun) {
+        throw new Error("Agent run not found");
+      }
+      assertAgentRunSubject(agentRun, "lead", payload.lead_id);
+      assertCallbackBinding(agentRun, "qualify_lead", payload);
 
-    // Every other writeback short-circuits on an already-settled run. Without it a redelivered
-    // callback replays the model's scoring over whatever a rep has since edited by hand.
-    if (agentRun.status === "completed") {
-      return;
-    }
+      // Every other writeback short-circuits on an already-settled run. Without it a redelivered
+      // callback replays the model's scoring over whatever a rep has since edited by hand.
+      if (agentRun.status === "completed") {
+        return;
+      }
+      payload = parseAIOutput(qualificationWritebackSchema, payload);
 
-    // Normalized before it is stored, not cast. The agent returns free-form model output, and
-    // every reader of this column — the lead Insights tab most of all — assumes the declared
-    // shape is actually there.
-    const qualificationData = normalizeQualificationData(payload.qualification_data);
+      // Normalized before it is stored, not cast. The agent returns free-form model output, and
+      // every reader of this column — the lead Insights tab most of all — assumes the declared
+      // shape is actually there.
+      const qualificationData = normalizeQualificationData(payload.qualification_data);
 
-    await updateLead(
-      payload.lead_id,
-      {
-        lead_score: payload.lead_score,
-        qualification_data: qualificationData,
-      },
-      db,
-    );
-
-    await updateAgentRunResult(
-      payload.agent_run_id,
-      {
-        status: "completed",
-        output_data: qualificationData,
-        output_summary: payload.output_summary,
-        confidence_score: payload.confidence_score,
-        human_review_required: getHumanReviewRequired(qualificationData, payload.confidence_score),
-        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
-        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
-        model_used: payload.model_used ?? null,
-      },
-      db,
-    );
-
-    await createActivityLog(
-      {
-        actor_type: "agent",
-        actor_id: payload.agent_run_id,
-        actor_name: "Lead Qualification Agent",
-        action: "qualified lead",
-        object_type: "lead",
-        object_id: payload.lead_id,
-        diff_data: {
+      await updateLead(
+        payload.lead_id,
+        {
           lead_score: payload.lead_score,
           qualification_data: qualificationData,
-        },
-      },
-      db,
-    );
-  });
-}
-
-export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload) {
-  return transaction(async (db) => {
-    await assertLeadExists(payload.lead_id, db);
-
-    const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
-    if (!agentRun) {
-      throw new Error("Agent run not found");
-    }
-    assertAgentRunSubject(agentRun, "lead", payload.lead_id);
-
-    if (agentRun.status === "waiting_approval" || agentRun.status === "completed") {
-      const approvalId = getExistingApprovalId(agentRun.output_data);
-      if (approvalId) {
-        return approvalId;
-      }
-    }
-
-    // This writeback has no condition of its own — a reply draft is never sent unreviewed —
-    // so the effective policy is the whole decision.
-    const policies = await loadAgentPolicies();
-    const approval = agentParksForApproval("draft_reply", policies)
-      ? await createApproval(
-          {
-            agent_run_id: payload.agent_run_id,
-            approval_type: "message_send",
-            requested_by: "Reply Draft Agent",
-            context_data: {
-              lead_id: payload.lead_id,
-              draft_message: payload.draft_message,
-              confidence_score: payload.confidence_score,
-              risk_notes: payload.risk_notes ?? [],
-            },
-            context_summary: payload.context_summary,
-          },
-          db,
-        )
-      : null;
-
-    // Forwarded, not measured. No n8n workflow sends these yet, so they stay null - the
-    // Duration and Tokens columns already render "-" for null, and nothing claims
-    // otherwise. When the workflows are updated the values land here with no code change.
-    await updateAgentRunResult(
-      payload.agent_run_id,
-      {
-        status: approval ? "waiting_approval" : "completed",
-        output_data: {
-          approval_id: approval?.id ?? null,
-          draft_message: payload.draft_message,
-          risk_notes: payload.risk_notes ?? [],
-        },
-        output_summary: payload.context_summary,
-        confidence_score: payload.confidence_score,
-        human_review_required: Boolean(approval),
-        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
-        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
-        model_used: payload.model_used ?? null,
-      },
-      db,
-    );
-
-    await createActivityLog(
-      {
-        actor_type: "agent",
-        actor_id: payload.agent_run_id,
-        actor_name: "Reply Draft Agent",
-        action: approval ? "drafted reply for review" : "drafted reply",
-        object_type: "lead",
-        object_id: payload.lead_id,
-        diff_data: { approval_id: approval?.id ?? null },
-      },
-      db,
-    );
-
-    return approval?.id ?? null;
-  });
-}
-
-export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWritebackPayload) {
-  return transaction(async (db) => {
-    const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
-    if (!agentRun) {
-      throw new Error("Agent run not found");
-    }
-    assertAgentRunSubject(agentRun, "engagement", payload.engagement_id);
-
-    if (agentRun.status === "waiting_approval") {
-      const approvalId = getExistingApprovalId(agentRun.output_data);
-      if (approvalId) {
-        return { applied: false as const, approvalId };
-      }
-    }
-
-    if (agentRun.status === "completed") {
-      return { applied: true as const };
-    }
-
-    const engagement = await getEngagement(payload.engagement_id, db);
-    const isRaiseToHigh = payload.renewal_risk === "high" && engagement.renewal_risk !== "high";
-    // The condition is unchanged and stays where it was; the effective policy gates it.
-    const policies = await loadAgentPolicies();
-    const parksForApproval = agentParksForApproval("score_renewal_risk", policies) && isRaiseToHigh;
-
-    const approval = parksForApproval
-      ? await createApproval(
-          {
-            agent_run_id: payload.agent_run_id,
-            approval_type: "cs_risk_review",
-            requested_by: "Renewal Risk Agent",
-            context_data: {
-              engagement_id: payload.engagement_id,
-              health_score: payload.health_score,
-              renewal_risk: payload.renewal_risk,
-              risk_reasoning: payload.risk_reasoning,
-              suggested_next_action: payload.suggested_next_action,
-            },
-            context_summary: payload.output_summary,
-          },
-          db,
-        )
-      : null;
-
-    await updateAgentRunResult(
-      payload.agent_run_id,
-      {
-        status: parksForApproval ? "waiting_approval" : "completed",
-        output_data: {
-          health_score: payload.health_score,
-          renewal_risk: payload.renewal_risk,
-          risk_reasoning: payload.risk_reasoning,
-          suggested_next_action: payload.suggested_next_action,
-          ...(approval ? { approval_id: approval.id } : {}),
-        },
-        output_summary: payload.output_summary,
-        confidence_score: payload.confidence,
-        human_review_required: parksForApproval,
-        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
-        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
-        model_used: payload.model_used ?? null,
-      },
-      db,
-    );
-
-    if (parksForApproval && approval) {
-      await createActivityLog(
-        {
-          actor_type: "agent",
-          actor_id: payload.agent_run_id,
-          actor_name: "Renewal Risk Agent",
-          action: "flagged high renewal risk for review",
-          object_type: "engagement",
-          object_id: payload.engagement_id,
-          diff_data: { approval_id: approval.id },
         },
         db,
       );
 
-      return { applied: false as const, approvalId: approval.id };
-    }
+      await updateAgentRunResult(
+        payload.agent_run_id,
+        {
+          status: "completed",
+          output_data: qualificationData,
+          output_summary: payload.output_summary,
+          confidence_score: payload.confidence_score,
+          human_review_required: getHumanReviewRequired(
+            qualificationData,
+            payload.confidence_score,
+          ),
+          ...writebackTelemetry(payload),
+        },
+        db,
+      );
 
-    await applyEngagementScore(
-      payload.engagement_id,
-      {
-        health_score: payload.health_score,
-        renewal_risk: payload.renewal_risk,
-        risk_reasoning: payload.risk_reasoning,
-        next_action: payload.suggested_next_action,
-      },
-      db,
-    );
-
-    await createActivityLog(
-      {
-        actor_type: "agent",
-        actor_id: payload.agent_run_id,
-        actor_name: "Renewal Risk Agent",
-        action: "scored renewal risk",
-        object_type: "engagement",
-        object_id: payload.engagement_id,
-        diff_data: { health_score: payload.health_score, renewal_risk: payload.renewal_risk },
-      },
-      db,
-    );
-
-    return { applied: true as const };
-  });
+      await createActivityLog(
+        {
+          actor_type: "agent",
+          actor_id: payload.agent_run_id,
+          actor_name: "Lead Qualification Agent",
+          action: "qualified lead",
+          object_type: "lead",
+          object_id: payload.lead_id,
+          diff_data: {
+            lead_score: payload.lead_score,
+            qualification_data: qualificationData,
+          },
+        },
+        db,
+      );
+    },
+  );
 }
 
-export async function writeQuoteDraftResult(payload: QuoteDraftWritebackPayload) {
-  return transaction(async (db) => {
-    await assertLeadExists(payload.lead_id, db);
+export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload) {
+  return withInvalidOutputReceipt(
+    payload,
+    "draft_reply",
+    { type: "lead", id: payload.lead_id },
+    async (db) => {
+      await assertLeadExists(payload.lead_id, db);
 
-    const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
-    if (!agentRun) {
-      throw new Error("Agent run not found");
-    }
-    assertAgentRunSubject(agentRun, "lead", payload.lead_id);
-
-    if (agentRun.status === "waiting_approval" || agentRun.status === "completed") {
-      const existingResult = getExistingQuoteDraftResult(agentRun.output_data);
-      if (existingResult) {
-        return existingResult;
+      const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
+      if (!agentRun) {
+        throw new Error("Agent run not found");
       }
-    }
+      assertAgentRunSubject(agentRun, "lead", payload.lead_id);
+      assertCallbackBinding(agentRun, "draft_reply", payload);
 
-    const quote = await createQuote(
-      {
-        lead_id: payload.lead_id,
-        number: payload.quote.number ?? null,
-        currency: payload.quote.currency,
-        total_value: payload.quote.total_value,
-        valid_until: payload.quote.valid_until ?? null,
-        line_items: payload.quote.line_items,
-      },
-      db,
-    );
+      if (agentRun.status === "waiting_approval" || agentRun.status === "completed") {
+        const approvalId = getExistingApprovalId(agentRun.output_data);
+        if (approvalId) {
+          return approvalId;
+        }
+      }
 
-    // The condition is unchanged and stays where it was; the effective policy gates it.
-    const policies = await loadAgentPolicies();
-    const approval =
-      agentParksForApproval("draft_quote", policies) && payload.create_send_approval
+      payload = parseAIOutput(replyDraftWritebackSchema, payload);
+      // This writeback has no condition of its own — a reply draft is never sent unreviewed —
+      // so the effective policy is the whole decision.
+      const policies = await loadAgentPolicies();
+      const approval = agentParksForApproval("draft_reply", policies)
         ? await createApproval(
             {
               agent_run_id: payload.agent_run_id,
-              approval_type: "quote_send",
-              requested_by: "Quote Draft Agent",
+              approval_type: "message_send",
+              requested_by: "Reply Draft Agent",
               context_data: {
                 lead_id: payload.lead_id,
-                quote_id: quote.id,
+                draft_message: payload.draft_message,
                 confidence_score: payload.confidence_score,
+                risk_notes: payload.risk_notes ?? [],
               },
-              context_summary: payload.context_summary ?? "Review drafted quote before sending.",
+              context_summary: payload.context_summary,
             },
             db,
           )
         : null;
 
-    await updateAgentRunResult(
-      payload.agent_run_id,
-      {
-        status: approval ? "waiting_approval" : "completed",
-        output_data: {
-          quote_id: quote.id,
-          approval_id: approval?.id ?? null,
+      // Forwarded, not measured. No n8n workflow sends these yet, so they stay null - the
+      // Duration and Tokens columns already render "-" for null, and nothing claims
+      // otherwise. When the workflows are updated the values land here with no code change.
+      await updateAgentRunResult(
+        payload.agent_run_id,
+        {
+          status: approval ? "waiting_approval" : "completed",
+          output_data: {
+            approval_id: approval?.id ?? null,
+            draft_message: payload.draft_message,
+            risk_notes: payload.risk_notes ?? [],
+          },
+          output_summary: payload.context_summary,
+          confidence_score: payload.confidence_score,
+          human_review_required: Boolean(approval),
+          ...writebackTelemetry(payload),
         },
-        output_summary: payload.context_summary ?? "Draft quote created.",
-        confidence_score: payload.confidence_score,
-        human_review_required: Boolean(approval),
-        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
-        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
-        model_used: payload.model_used ?? null,
-      },
-      db,
-    );
+        db,
+      );
 
-    await createActivityLog(
-      {
-        actor_type: "agent",
-        actor_id: payload.agent_run_id,
-        actor_name: "Quote Draft Agent",
-        action: "created draft quote",
-        object_type: "quote",
-        object_id: quote.id,
-        diff_data: { lead_id: payload.lead_id, approval_id: approval?.id ?? null },
-      },
-      db,
-    );
+      await createActivityLog(
+        {
+          actor_type: "agent",
+          actor_id: payload.agent_run_id,
+          actor_name: "Reply Draft Agent",
+          action: approval ? "drafted reply for review" : "drafted reply",
+          object_type: "lead",
+          object_id: payload.lead_id,
+          diff_data: { approval_id: approval?.id ?? null },
+        },
+        db,
+      );
 
-    return {
-      quoteId: quote.id,
-      approvalId: approval?.id ?? null,
-    };
-  });
+      return approval?.id ?? null;
+    },
+  );
+}
+
+export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWritebackPayload) {
+  return withInvalidOutputReceipt(
+    payload,
+    "score_renewal_risk",
+    { type: "engagement", id: payload.engagement_id },
+    async (db) => {
+      const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
+      if (!agentRun) {
+        throw new Error("Agent run not found");
+      }
+      assertAgentRunSubject(agentRun, "engagement", payload.engagement_id);
+      assertCallbackBinding(agentRun, "score_renewal_risk", payload);
+
+      if (agentRun.status === "waiting_approval") {
+        const approvalId = getExistingApprovalId(agentRun.output_data);
+        if (approvalId) {
+          return { applied: false as const, approvalId };
+        }
+      }
+
+      if (agentRun.status === "completed") {
+        return { applied: true as const };
+      }
+
+      payload = parseAIOutput(scoreRenewalRiskWritebackSchema, payload);
+      const engagement = await getEngagement(payload.engagement_id, db);
+      const isRaiseToHigh = payload.renewal_risk === "high" && engagement.renewal_risk !== "high";
+      // The condition is unchanged and stays where it was; the effective policy gates it.
+      const policies = await loadAgentPolicies();
+      const parksForApproval =
+        agentParksForApproval("score_renewal_risk", policies) && isRaiseToHigh;
+
+      const approval = parksForApproval
+        ? await createApproval(
+            {
+              agent_run_id: payload.agent_run_id,
+              approval_type: "cs_risk_review",
+              requested_by: "Renewal Risk Agent",
+              context_data: {
+                engagement_id: payload.engagement_id,
+                health_score: payload.health_score,
+                renewal_risk: payload.renewal_risk,
+                risk_reasoning: payload.risk_reasoning,
+                suggested_next_action: payload.suggested_next_action,
+              },
+              context_summary: payload.output_summary,
+            },
+            db,
+          )
+        : null;
+
+      await updateAgentRunResult(
+        payload.agent_run_id,
+        {
+          status: parksForApproval ? "waiting_approval" : "completed",
+          output_data: {
+            health_score: payload.health_score,
+            renewal_risk: payload.renewal_risk,
+            risk_reasoning: payload.risk_reasoning,
+            suggested_next_action: payload.suggested_next_action,
+            ...(approval ? { approval_id: approval.id } : {}),
+          },
+          output_summary: payload.output_summary,
+          confidence_score: payload.confidence,
+          human_review_required: parksForApproval,
+          ...writebackTelemetry(payload),
+        },
+        db,
+      );
+
+      if (parksForApproval && approval) {
+        await createActivityLog(
+          {
+            actor_type: "agent",
+            actor_id: payload.agent_run_id,
+            actor_name: "Renewal Risk Agent",
+            action: "flagged high renewal risk for review",
+            object_type: "engagement",
+            object_id: payload.engagement_id,
+            diff_data: { approval_id: approval.id },
+          },
+          db,
+        );
+
+        return { applied: false as const, approvalId: approval.id };
+      }
+
+      await applyEngagementScore(
+        payload.engagement_id,
+        {
+          health_score: payload.health_score,
+          renewal_risk: payload.renewal_risk,
+          risk_reasoning: payload.risk_reasoning,
+          next_action: payload.suggested_next_action,
+        },
+        db,
+      );
+
+      await createActivityLog(
+        {
+          actor_type: "agent",
+          actor_id: payload.agent_run_id,
+          actor_name: "Renewal Risk Agent",
+          action: "scored renewal risk",
+          object_type: "engagement",
+          object_id: payload.engagement_id,
+          diff_data: { health_score: payload.health_score, renewal_risk: payload.renewal_risk },
+        },
+        db,
+      );
+
+      return { applied: true as const };
+    },
+  );
+}
+
+export async function writeQuoteDraftResult(payload: QuoteDraftWritebackPayload) {
+  return withInvalidOutputReceipt(
+    payload,
+    "draft_quote",
+    { type: "lead", id: payload.lead_id },
+    async (db) => {
+      await assertLeadExists(payload.lead_id, db);
+
+      const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
+      if (!agentRun) {
+        throw new Error("Agent run not found");
+      }
+      assertAgentRunSubject(agentRun, "lead", payload.lead_id);
+      assertCallbackBinding(agentRun, "draft_quote", payload);
+
+      if (agentRun.status === "waiting_approval" || agentRun.status === "completed") {
+        const existingResult = getExistingQuoteDraftResult(agentRun.output_data);
+        if (existingResult) {
+          return existingResult;
+        }
+      }
+
+      payload = parseAIOutput(quoteDraftWritebackSchema, payload);
+      const currencies = (
+        await db.query<{ currency: string }>(
+          "select distinct currency from pricing_templates where active=true",
+        )
+      ).rows.map((row) => row.currency);
+      payload = {
+        ...payload,
+        quote: validateQuoteDraft(payload.quote, {
+          allowedCurrencies: currencies,
+          minorUnitsByCurrency: CURRENCY_MINOR_UNITS,
+        }),
+      };
+      const quote = await createQuote(
+        {
+          lead_id: payload.lead_id,
+          number: payload.quote.number ?? null,
+          currency: payload.quote.currency,
+          total_value: payload.quote.total_value,
+          valid_until: payload.quote.valid_until ?? null,
+          line_items: payload.quote.line_items,
+        },
+        db,
+      );
+
+      // The condition is unchanged and stays where it was; the effective policy gates it.
+      const policies = await loadAgentPolicies();
+      const approval =
+        agentParksForApproval("draft_quote", policies) && payload.create_send_approval
+          ? await createApproval(
+              {
+                agent_run_id: payload.agent_run_id,
+                approval_type: "quote_send",
+                requested_by: "Quote Draft Agent",
+                context_data: {
+                  lead_id: payload.lead_id,
+                  quote_id: quote.id,
+                  confidence_score: payload.confidence_score,
+                },
+                context_summary: payload.context_summary ?? "Review drafted quote before sending.",
+              },
+              db,
+            )
+          : null;
+
+      await updateAgentRunResult(
+        payload.agent_run_id,
+        {
+          status: approval ? "waiting_approval" : "completed",
+          output_data: {
+            quote_id: quote.id,
+            approval_id: approval?.id ?? null,
+          },
+          output_summary: payload.context_summary ?? "Draft quote created.",
+          confidence_score: payload.confidence_score,
+          human_review_required: Boolean(approval),
+          ...writebackTelemetry(payload),
+        },
+        db,
+      );
+
+      await createActivityLog(
+        {
+          actor_type: "agent",
+          actor_id: payload.agent_run_id,
+          actor_name: "Quote Draft Agent",
+          action: "created draft quote",
+          object_type: "quote",
+          object_id: quote.id,
+          diff_data: { lead_id: payload.lead_id, approval_id: approval?.id ?? null },
+        },
+        db,
+      );
+
+      return {
+        quoteId: quote.id,
+        approvalId: approval?.id ?? null,
+      };
+    },
+  );
 }
 
 /**
@@ -474,64 +700,69 @@ export async function writeQuoteDraftResult(payload: QuoteDraftWritebackPayload)
 export async function writeRelationshipIntelligenceResult(
   payload: RelationshipIntelligenceWritebackPayload,
 ) {
-  return transaction(async (db) => {
-    const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
-    if (!agentRun) {
-      throw new Error("Agent run not found");
-    }
-    assertAgentRunSubject(agentRun, "account", payload.account_id);
+  return withInvalidOutputReceipt(
+    payload,
+    "relationship_intelligence",
+    { type: "account", id: payload.account_id },
+    async (db) => {
+      const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
+      if (!agentRun) {
+        throw new Error("Agent run not found");
+      }
+      assertAgentRunSubject(agentRun, "account", payload.account_id);
+      assertCallbackBinding(agentRun, "relationship_intelligence", payload);
 
-    if (agentRun.status === "completed") {
-      return { applied: true as const };
-    }
+      if (agentRun.status === "completed") {
+        return { applied: true as const };
+      }
 
-    await updateAccount(
-      payload.account_id,
-      {
-        next_action: payload.next_action,
-        last_activity_at: new Date().toISOString(),
-      },
-      db,
-    );
+      payload = parseAIOutput(relationshipIntelligenceWritebackSchema, payload);
+      await updateAccount(
+        payload.account_id,
+        {
+          next_action: payload.next_action,
+          last_activity_at: new Date().toISOString(),
+        },
+        db,
+      );
 
-    const signals = await upsertRelationshipSignals(
-      payload.account_id,
-      payload.signals.map((signal) => ({
-        account_id: payload.account_id,
-        source: "ai",
-        ...signal,
-      })),
-      db,
-    );
+      const signals = await upsertRelationshipSignals(
+        payload.account_id,
+        payload.signals.map((signal) => ({
+          account_id: payload.account_id,
+          source: "ai",
+          ...signal,
+        })),
+        db,
+      );
 
-    await updateAgentRunResult(
-      payload.agent_run_id,
-      {
-        status: "completed",
-        output_data: { next_action: payload.next_action, signals },
-        output_summary: payload.output_summary,
-        confidence_score: payload.confidence_score,
-        human_review_required: false,
-        tokens_used: payload.usage?.totalTokens ?? payload.tokens_used ?? null,
-        ...(payload.usage ? { usage_data: normalizeAIUsage(payload.usage) } : {}),
-        model_used: payload.model_used ?? null,
-      },
-      db,
-    );
+      await updateAgentRunResult(
+        payload.agent_run_id,
+        {
+          status: "completed",
+          output_data: { next_action: payload.next_action, signals },
+          output_summary: payload.output_summary,
+          confidence_score: payload.confidence_score,
+          human_review_required: false,
+          ...writebackTelemetry(payload),
+        },
+        db,
+      );
 
-    await createActivityLog(
-      {
-        actor_type: "agent",
-        actor_id: payload.agent_run_id,
-        actor_name: "Relationship Intelligence Agent",
-        action: "analyzed account relationship",
-        object_type: "account",
-        object_id: payload.account_id,
-        diff_data: { signal_count: signals.length, next_action: payload.next_action },
-      },
-      db,
-    );
+      await createActivityLog(
+        {
+          actor_type: "agent",
+          actor_id: payload.agent_run_id,
+          actor_name: "Relationship Intelligence Agent",
+          action: "analyzed account relationship",
+          object_type: "account",
+          object_id: payload.account_id,
+          diff_data: { signal_count: signals.length, next_action: payload.next_action },
+        },
+        db,
+      );
 
-    return { applied: true as const, signalCount: signals.length };
-  });
+      return { applied: true as const, signalCount: signals.length };
+    },
+  );
 }

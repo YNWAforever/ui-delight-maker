@@ -161,6 +161,7 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "agent_policy_versions",
   ] as const,
   columns: {
+    "agent_runs.execution_metadata": { type: "jsonb", nullable: true },
     "deals.owner": { type: "text", nullable: true },
     "deals.contact_id": { type: "uuid", nullable: true },
     "projects.owner": { type: "text", nullable: true },
@@ -209,6 +210,7 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     ...ADMIN_SCHEMA_COLUMNS,
   },
   constraints: [
+    "agent_runs_execution_metadata_check",
     "account_contacts_account_id_fkey",
     "relationship_signals_account_id_fkey",
     "profiles_role_check",
