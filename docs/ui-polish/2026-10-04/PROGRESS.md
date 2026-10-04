@@ -50,7 +50,7 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | 6 | Names instead of identifiers (leads, sidebar role, renewals, access requests) | UX-06 | done for lead subtitle/header, sidebar role, Today status, audit action/target type, access capability/team; renewal owner, requester and audit actor names need SP-2 |
 | 7 | Lead actions and invitable roles gated by capability | UX-07 | done |
 | 8 | Follow-up task from a lead | UX-10 | done (shared `FollowUpTaskDialog`, gated by `tasks.create`; notes apology removed) |
-| 9 | Honest summary strip instead of page-scoped stat cards | UX-09, UX-29 | in progress: page-scoped strips removed (Leads, Clients, Companies, Campaigns, Tasks, Job Sheets), Revenue Desk on server totals; compact strip next |
+| 9 | Honest summary strip instead of page-scoped stat cards | UX-09, UX-29 | done: page-scoped strips removed (Leads, Clients, Companies, Campaigns, Tasks, Job Sheets), Revenue Desk on server totals, `MetricStrip` one compact bordered row (no icon chips, sentence-case labels, 2-up below `xl`, tone-fg text) |
 | 10 | Money that fits (quote line items, job sheet) | UX-13, UX-14 | |
 | 11 | Approvals split view; admin audit layout and labels | UX-11, UX-12 | |
 | 12 | Accounting Today | UX-15 | |
@@ -71,13 +71,15 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `49115d6` | fix(ui): show names and labels instead of ids and keys | UX-06 | access-request-queue +1, humanize-key 2, 9 suites 83/83; tsc clean |
 | `21828b0` | fix(leads): offer lead actions and invite roles only to those who can use them | UX-07 | lead detail 15/15 (+1 read-only), invite dialog 12/12 (+1); tsc clean |
 | `fe30e41` | feat(leads): add a follow-up task from the lead page | UX-10 | new follow-up-task-dialog 3, lead detail 16/16 (+1 gating); tsc clean |
-| next | fix(ui): stop counting only the loaded page in workspace summaries | UX-09 | 13 route suites 102/102; revenue desk +1 (whole-workspace metrics), campaigns count test updated; tsc clean |
+| `b429b08` | fix(ui): stop counting only the loaded page in workspace summaries | UX-09 | 13 route suites 102/102; revenue desk +1 (whole-workspace metrics), campaigns count test updated; tsc clean |
+| next | feat(ui): make the workspace summary one compact row | UX-09, UX-29 | metric-strip 13 (+3), sales+admin 24 files 174 (1 timing flake in admin-modal-keyboard under parallel load, passes alone); `vite build` emits the odd-cell span; static render checked at 375/1280 light+dark |
 
 ## Resume notes (keep current)
 
 - Last commit: UX-10 (see log). The log's `next` row is always the latest commit; replace it
   with the hash at the start of the next commit.
-- Next: item 9 second half — compact `MetricStrip` (one bordered row, no icon chips, sentence-case labels, 2-up on phones, tone-fg text). Then items 10–14.
+- Next: item 10 (UX-13 quote line items as cards below `md` with the total always visible; UX-14 job sheet money cells `whitespace-nowrap` + tabular figures, shorter headers). Then items 11–14.
+- Watch in Phase 4: `src/components/admin/__tests__/admin-modal-keyboard.test.tsx` (role modal Tab containment) failed once when 24 suites ran in parallel and passed alone.
 - Cleanup PR candidates (UX-32, not this PR): `getClientPortfolioMetrics`, `getTaskBoardMetrics` (`src/lib/sales-workspace.ts`), `formatAcceptedValueSummary` (`src/lib/job-sheet-editor.ts`) and `getPipelineSummary` (`src/lib/pipeline.ts`) lost their last route callers in the UX-09 commit.
 - Working method: one concern per commit; run the focused suites that query changed names
   (`grep -rln "<old name>" src --include=*.test.tsx`), `bunx prettier --write <files>`,

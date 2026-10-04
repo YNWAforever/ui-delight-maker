@@ -12,6 +12,8 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
+import { Flame } from "lucide-react";
+
 import { MetricStrip, type SalesMetric } from "../metric-strip";
 
 const metric = (label: string, extra: Partial<SalesMetric> = {}): SalesMetric => ({
@@ -201,5 +203,42 @@ describe("MetricStrip", () => {
     expect(screen.getByText(/-12%/)).toBeTruthy();
     expect(screen.getByText(/\+8%/)).toBeTruthy();
     expect((container.firstElementChild as HTMLElement).className).toContain("xl:grid-cols-3");
+  });
+
+  it("is one compact bordered row, two cells per row until extra-wide screens", () => {
+    // UX-09/UX-29: four tall cards took ~480 px at 1280 and the whole first screen on a
+    // phone. The strip is now a single bordered panel of short cells.
+    const { container } = render(
+      <MetricStrip metrics={[metric("Open"), metric("Waiting"), metric("Value")]} />,
+    );
+    const root = container.firstElementChild as HTMLElement;
+
+    expect(root.className).toContain("grid-cols-2");
+    expect(root.className).toContain("xl:grid-cols-3");
+    expect(root.className).toContain("rounded-lg");
+    expect(root.className).toContain("border");
+    // No card inside the strip: the cells are plain divisions of it, with no shadow or
+    // rounding of their own.
+    for (const cell of container.querySelectorAll("[data-metric-cell]")) {
+      expect(cell.className).not.toMatch(/\bshadow|\brounded/);
+    }
+  });
+
+  it("puts the hint beside the value, and draws no decorative icon chip", () => {
+    const { container } = render(
+      <MetricStrip
+        metrics={[metric("Open tasks", { value: "581", hint: "every open task", icon: Flame })]}
+      />,
+    );
+
+    const value = screen.getByText("581");
+    expect(value.parentElement?.textContent).toBe("581every open task");
+    expect(container.querySelector("svg")).toBeNull();
+  });
+
+  it("writes labels in the case they are given, not upper-cased", () => {
+    render(<MetricStrip metrics={[metric("Waiting approval")]} />);
+
+    expect(screen.getByText("Waiting approval").className).not.toContain("uppercase");
   });
 });

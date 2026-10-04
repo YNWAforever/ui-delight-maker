@@ -2,7 +2,6 @@ import type { LucideIcon } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useClientNow } from "@/hooks/use-client-now";
 import { formatDate, relativeTime } from "@/lib/format";
@@ -99,27 +98,44 @@ const TONE_LABEL: Record<MetricTone, string | null> = {
 
 const TONE_CLASS: Record<MetricTone, string> = {
   neutral: "",
-  info: "text-info",
-  success: "text-success",
+  info: "text-tone-info-fg",
+  success: "text-tone-success-fg",
   warning: "text-tone-warning-fg",
-  destructive: "text-destructive",
+  destructive: "text-tone-danger-fg",
 };
 
 type CellState = "loaded" | "loading" | "error";
 
 /**
- * Every slot carries its own `min-h-*` rather than a filler character, so an absent hint,
- * a skeleton and an error message all leave the card exactly the same height. `min-h-4`
- * is the line box of `text-xs`; `min-h-8` is the line box of `text-2xl`.
+ * One bordered row of compact cells rather than a grid of tall cards (UX-09, UX-29): the
+ * cards took ~480 px at 1280 and the whole first screen on a phone. Two cells per row below
+ * `xl`, so four metrics cost two short rows on a phone instead of four cards.
+ *
+ * The divider lines are each cell's own top and left border, pulled 1 px up and left so the
+ * outer edge is clipped by the strip's border: an unfilled slot in the last row stays plain
+ * card colour instead of showing a grey block, as a `gap-px` divider grid would.
  */
-const LABEL_CLASS = "text-xs font-medium uppercase tracking-wide text-muted-foreground";
+const STRIP_CLASS =
+  "grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-card text-card-foreground";
+// A lone last cell spans the row on two-column layouts rather than leaving half a row empty.
+const STRIP_CELL_CLASS =
+  "relative -ml-px -mt-px min-w-0 border-l border-t border-border px-4 py-3 [&:last-child:nth-child(odd)]:col-span-2 xl:[&:last-child:nth-child(odd)]:col-span-1";
+
+/**
+ * Every slot carries its own `min-h-*` rather than a filler character, so an absent hint,
+ * a skeleton and an error message all leave the cell exactly the same height. `min-h-4`
+ * is the line box of `text-xs`; `min-h-7` is the line box of the value.
+ */
+const LABEL_CLASS = "text-xs font-medium text-muted-foreground";
 const LABEL_SLOT_CLASS = "flex min-h-4 items-center";
-// These are cards, not a <table>, so the global `table { tabular-nums }` rule in
-// styles.css does not reach them and the utility has to be spelled out.
-const VALUE_CLASS = "mt-2 min-h-8 text-2xl font-semibold tracking-tight tabular-nums";
-const FOOTER_CLASS =
-  "mt-1 flex min-h-4 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground";
-// Stretches the link over the whole card, so the click target is the card rather than
+const VALUE_ROW_CLASS = "mt-1 flex min-h-7 flex-wrap items-baseline gap-x-2 gap-y-0.5";
+// Cells, not a <table>, so the global `table { tabular-nums }` rule in styles.css does not
+// reach them and the utility has to be spelled out.
+const VALUE_CLASS =
+  "text-lg leading-7 font-semibold tracking-tight tabular-nums break-words sm:text-xl";
+const META_CLASS =
+  "inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground";
+// Stretches the link over the whole cell, so the click target is the cell rather than
 // four words of label.
 const STRETCH_CLASS = "after:absolute after:inset-0 after:content-[''] hover:text-foreground";
 
@@ -185,12 +201,12 @@ function MetricLabel({ metric, state }: { metric: SalesMetric; state: CellState 
 }
 
 function MetricValue({ metric, state }: { metric: SalesMetric; state: CellState }) {
-  if (state === "loading") return <Skeleton className="mt-2 h-8 w-24" />;
+  if (state === "loading") return <Skeleton className="h-6 w-20 self-center" />;
   // An em dash, never the last number and never a zero: a strip that keeps reporting "0"
   // through an outage is worse than one that admits it does not know.
-  if (state === "error") return <p className={VALUE_CLASS}>&mdash;</p>;
+  if (state === "error") return <span className={VALUE_CLASS}>&mdash;</span>;
 
-  return <p className={VALUE_CLASS}>{metric.value}</p>;
+  return <span className={VALUE_CLASS}>{metric.value}</span>;
 }
 
 function DeltaChip({ delta }: { delta: number }) {
@@ -200,63 +216,69 @@ function DeltaChip({ delta }: { delta: number }) {
     <span
       className={cn(
         "inline-flex items-center gap-0.5 font-medium tabular-nums",
-        up ? "text-success" : "text-destructive",
+        up ? "text-tone-success-fg" : "text-tone-danger-fg",
       )}
     >
-      {up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+      {up ? (
+        <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+      ) : (
+        <ArrowDownRight className="h-3 w-3" aria-hidden="true" />
+      )}
       {up ? "+" : ""}
       {delta}%
     </span>
   );
 }
 
-function MetricFooter({ metric, state }: { metric: SalesMetric; state: CellState }) {
-  if (state === "loading") {
-    return (
-      <div className={FOOTER_CLASS}>
-        <Skeleton className="h-4 w-28" />
-      </div>
-    );
-  }
-
+/** Tone, change, hint and freshness, set beside the value on the same baseline. */
+function MetricMeta({ metric, state }: { metric: SalesMetric; state: CellState }) {
+  // Hidden on phones, where a hint wraps under the value and would make the placeholder taller.
+  if (state === "loading") return <Skeleton className="hidden h-3 w-24 self-center sm:block" />;
   if (state === "error") {
     return (
-      <div className={FOOTER_CLASS}>
-        <span className="font-medium text-destructive">Unavailable</span>
-      </div>
+      <span className={META_CLASS}>
+        <span className="font-medium text-tone-danger-fg">Unavailable</span>
+      </span>
     );
   }
 
+  const hasMeta =
+    metric.tone || typeof metric.delta === "number" || metric.hint || metric.updatedAt;
+  if (!hasMeta) return null;
+
   return (
-    <div className={FOOTER_CLASS}>
+    <span className={META_CLASS}>
       {metric.tone && <ToneMarker tone={metric.tone} />}
       {typeof metric.delta === "number" && <DeltaChip delta={metric.delta} />}
-      {metric.hint && <span>{metric.hint}</span>}
+      {metric.hint && <span className="text-pretty">{metric.hint}</span>}
       {metric.updatedAt && <MetricTimestamp iso={metric.updatedAt} />}
-    </div>
+    </span>
   );
 }
 
+/**
+ * `icon` is still accepted from callers but no longer drawn: the tinted icon chip on every
+ * card was decoration that cost width on every cell (UX-29).
+ */
 function MetricCell({ metric, state }: { metric: SalesMetric; state: CellState }) {
-  const Icon = metric.icon;
+  const linked = Boolean(metric.href) && state === "loaded";
 
   return (
-    <Card data-metric-cell="" className="relative p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className={LABEL_SLOT_CLASS}>
-            <MetricLabel metric={metric} state={state} />
-          </div>
-          <MetricValue metric={metric} state={state} />
-          <MetricFooter metric={metric} state={state} />
-        </div>
-        {Icon && (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-            <Icon className="h-4 w-4" />
-          </div>
-        )}
+    <div
+      data-metric-cell=""
+      className={cn(
+        STRIP_CELL_CLASS,
+        linked && "transition-colors duration-150 hover:bg-muted/50 motion-reduce:transition-none",
+      )}
+    >
+      <div className={LABEL_SLOT_CLASS}>
+        <MetricLabel metric={metric} state={state} />
       </div>
-    </Card>
+      <div className={VALUE_ROW_CLASS}>
+        <MetricValue metric={metric} state={state} />
+        <MetricMeta metric={metric} state={state} />
+      </div>
+    </div>
   );
 }
 
@@ -282,7 +304,7 @@ function SupportingCell({ metric, state }: { metric: SalesMetric; state: CellSta
       </div>
       <div className="flex min-h-5 items-center gap-2 text-sm font-medium tabular-nums">
         {state === "loading" && <Skeleton className="h-4 w-14" />}
-        {state === "error" && <span className="font-medium text-destructive">Unavailable</span>}
+        {state === "error" && <span className="font-medium text-tone-danger-fg">Unavailable</span>}
         {state === "loaded" && (
           <>
             <span>{metric.value}</span>
@@ -334,7 +356,7 @@ export function MetricStrip({
   const grid = (
     <div
       className={cn(
-        "grid grid-cols-1 gap-4 sm:grid-cols-2",
+        STRIP_CLASS,
         COLUMN_CLASS[columnCount],
         supportingCells.length === 0 && className,
       )}
