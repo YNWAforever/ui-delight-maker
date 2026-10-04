@@ -101,12 +101,14 @@ export function TouchpointLogger({
       if (epoch === tidyEpoch.current && notesRef.current === original)
         setProposal({ original, tidied: result.tidied, runId: result.runId });
     } catch {
-      setAiProblem(
-        "AI tidy did not complete. Your manual note is unchanged and can still be saved. A timeout does not confirm provider cancellation.",
-      );
-      toast.error("Couldn't tidy notes right now.");
+      if (epoch === tidyEpoch.current && notesRef.current === original) {
+        setAiProblem(
+          "AI tidy did not complete. Your manual note is unchanged and can still be saved. A timeout does not confirm provider cancellation.",
+        );
+        toast.error("Couldn't tidy notes right now.");
+      }
     } finally {
-      setTidying(false);
+      if (epoch === tidyEpoch.current) setTidying(false);
     }
   };
 
@@ -134,6 +136,8 @@ export function TouchpointLogger({
       setNotes("");
       notesRef.current = "";
       tidyEpoch.current++;
+      setTidying(false);
+      setAiProblem(null);
       setProposal(null);
       tidyRequestRef.current = null;
       setOpen(false);
@@ -153,6 +157,8 @@ export function TouchpointLogger({
         if (saving) return;
         if (!next) {
           tidyEpoch.current++;
+          setTidying(false);
+          setAiProblem(null);
           setProposal(null);
         }
         setOpen(next);

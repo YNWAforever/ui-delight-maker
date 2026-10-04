@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-10-04T00:57:31.390Z",
+  "sourceSha": "71b068cbde4577e0a8e5851a2423e86d3ee9ad87",
+  "db": "clientops_ai_gpt61_38303a6514",
+  "loopbackOnly": true,
+  "providerConfigurationAbsent": true,
+  "command": [
+    "bunx",
+    "vitest",
+    "run",
+    "src/server/read-models/__tests__/note-tidy-runs.test.ts",
+    "src/server/workflows/__tests__/ai-invocation.test.ts",
+    "src/server/workflows/__tests__/ai-invocation.integration.test.ts",
+    "src/components/__tests__/touchpoint-logger-ai.test.tsx",
+    "src/server-functions/__tests__/ai-note-tidy-guards.test.ts",
+    "src/components/__tests__/touchpoint-logger.test.tsx",
+    "--no-file-parallelism",
+    "--testTimeout=30000",
+    "--reporter=default",
+    "--reporter=json",
+    "--outputFile=.clientops-perf/ai-gpt61-20261003/r11-note-tidy-final-target-vitest.private.json"
+  ],
+  "exitCode": 0,
+  "passed": 33,
+  "failed": 0,
+  "skipped": 0,
+  "total": 33,
+  "files": 6,
+  "elapsedMs": 20208,
+  "reportSha256": "4663b77aa98f8ca44ae83e2a3911d8ca87fd0a7317aa0c63bb067a8ddb4f8c6d"
+}
