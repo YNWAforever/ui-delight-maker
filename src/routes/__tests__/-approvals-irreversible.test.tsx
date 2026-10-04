@@ -279,6 +279,24 @@ describe("The Approval Desk at laptop width", () => {
   });
 });
 
+describe("The decided history on narrow screens", () => {
+  it("starts collapsed below xl and opens on request", async () => {
+    // UX-28: under a 50-card queue the history made Approvals 11,056 px tall on a phone.
+    renderInbox([approval()]);
+
+    const toggle = screen.getByRole("button", { name: "Show decided requests" });
+    expect(toggle.className).toContain("xl:hidden");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    const list = document.getElementById(toggle.getAttribute("aria-controls") ?? "");
+    expect(list?.className).toContain("hidden xl:block");
+
+    await userEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(toggle.textContent).toBe("Hide decided requests");
+    expect(list?.className).not.toContain("hidden");
+  });
+});
+
 describe("Every approval decision is confirmed, and the confirmation names the consequence", () => {
   it("approving a plain request asks first and says the agent cannot be called back", async () => {
     renderInbox([approval()]);

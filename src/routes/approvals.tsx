@@ -295,6 +295,10 @@ function ApprovalsInbox() {
   };
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  // Below xl the decided history starts collapsed: under a 50-card queue it made the page
+  // 11,056 px tall on a phone and buried nothing useful (UX-28). From xl it is always shown.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyListId = useId();
   const [reason, setReason] = useState("");
   const [manualReference, setManualReference] = useState("");
   const [bulk, setBulk] = useState<Set<string>>(new Set());
@@ -1216,8 +1220,21 @@ function ApprovalsInbox() {
               <SectionHeader
                 title="Recently decided"
                 description={`${historyQuery.data?.total ?? 0} decided requests.`}
+                action={
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="xl:hidden"
+                    aria-expanded={historyOpen}
+                    aria-controls={historyListId}
+                    onClick={() => setHistoryOpen((open) => !open)}
+                  >
+                    {historyOpen ? "Hide decided requests" : "Show decided requests"}
+                  </Button>
+                }
               />
-              <Card>
+              <Card id={historyListId} className={cn(!historyOpen && "hidden xl:block")}>
                 {decided.length === 0 ? (
                   <div className="p-4">
                     <EmptyWorkspaceState
@@ -1252,6 +1269,7 @@ function ApprovalsInbox() {
                 <Button
                   type="button"
                   variant="outline"
+                  className={cn(!historyOpen && "hidden xl:inline-flex")}
                   disabled={Boolean(loadingMore)}
                   onClick={() => void loadMore("history")}
                 >
