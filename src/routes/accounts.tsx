@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchDraft } from "@/hooks/use-search-draft";
 import { createFileRoute, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Building2, Eye } from "lucide-react";
@@ -208,8 +209,7 @@ function AccountsIndex() {
    * filters by name in SQL — a page-local search would silently search 50 of N rows. The
    * delay is what keeps a keystroke from being a round trip.
    */
-  const [searchDraft, setSearchDraft] = useState(activeQuery);
-  useEffect(() => setSearchDraft(activeQuery), [activeQuery]);
+  const [searchDraft, setSearchDraft] = useSearchDraft(activeQuery);
   useEffect(() => {
     const next = searchDraft.trim();
     if (next === activeQuery) return;
