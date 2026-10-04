@@ -29,6 +29,7 @@ const {
   getTasksMock,
   toastErrorMock,
   toastSuccessMock,
+  filterToolbarMock,
 } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
   routerInvalidateMock: vi.fn(),
@@ -37,6 +38,7 @@ const {
   getTasksMock: vi.fn(),
   toastErrorMock: vi.fn(),
   toastSuccessMock: vi.fn(),
+  filterToolbarMock: vi.fn((_props: unknown) => null),
 }));
 
 const search: { view: "board" | "list"; priority: string; assignee: string; search: string } = {
@@ -82,7 +84,7 @@ vi.mock("@/components/sales", () => ({
     </div>
   ),
   MetricStrip: () => null,
-  FilterToolbar: () => null,
+  FilterToolbar: filterToolbarMock,
   FilteredEmptyState: () => null,
   EmptyWorkspaceState: () => null,
   ErrorState: () => null,
@@ -233,6 +235,30 @@ describe("task view switcher", () => {
       view: "list",
       priority: "all",
       assignee: "all",
+    });
+  });
+
+  it("commits the search to the URL once, after a pause, not on every keystroke", async () => {
+    // UX-17: each keystroke wrote the URL and refetched the queue.
+    renderBoard();
+    const typeInSearch = (value: string) =>
+      act(() => {
+        const props = filterToolbarMock.mock.calls.at(-1)?.[0] as {
+          search: { onChange: (value: string) => void };
+        };
+        props.search.onChange(value);
+      });
+
+    for (const value of ["r", "re", "ren", "renewal"]) typeInSearch(value);
+    expect(navigateMock).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledTimes(1));
+    const call = navigateMock.mock.calls[0][0] as {
+      search: (current: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(call.search({ view: "board", search: "" })).toEqual({
+      view: "board",
+      search: "renewal",
     });
   });
 

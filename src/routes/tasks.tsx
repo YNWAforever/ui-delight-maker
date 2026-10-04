@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { Bot, Plus } from "lucide-react";
@@ -184,6 +184,8 @@ const COLUMNS: { id: TaskStatus; label: string }[] = [
 ];
 
 const OVERDUE_LABEL = getDerivedStatusLabel("overdue").label;
+/** Same pause as the Accounts and Quotes search boxes. */
+const SEARCH_COMMIT_DELAY_MS = 300;
 
 /**
  * The wording `getTasks` implies with `restricted: true`, matched to the short/long split
@@ -265,6 +267,21 @@ function TasksBoard() {
       search: (current) => ({ ...current, ...patch }),
       replace: true,
     });
+
+  /**
+   * The search box commits to the URL after a pause, as Accounts and Quotes do. It used to
+   * write the URL, and so refetch the queue, on every keystroke (UX-17).
+   */
+  const [searchDraft, setSearchDraft] = useState(query);
+  useEffect(() => setSearchDraft(query), [query]);
+  useEffect(() => {
+    const next = searchDraft.trim();
+    if (next === query) return;
+    const timer = setTimeout(() => {
+      navigate({ search: (current) => ({ ...current, search: next }), replace: true });
+    }, SEARCH_COMMIT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [searchDraft, query, navigate]);
 
   // PostgreSQL applies search before the page limit; the loaded rows are already filtered.
   const filtered = rows;
@@ -510,8 +527,8 @@ function TasksBoard() {
 
         <FilterToolbar
           search={{
-            value: query,
-            onChange: (search) => setFilters({ search }),
+            value: searchDraft,
+            onChange: setSearchDraft,
             placeholder: "Search tasks by title or description",
           }}
           filters={[

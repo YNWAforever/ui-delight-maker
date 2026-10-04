@@ -94,7 +94,8 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `2c545d3` | fix(approvals): collapse the decided history on phones and tablets | UX-28 | approvals 28/28 (+1 disclosure); tsc clean |
 | `ac43b4e` | fix(ui): two lines for long record names instead of a one-line ellipsis | UX-25 | attention-queue +1 (CJK name), renewals; tsc clean |
 | `e14d1c4` | fix(ui): theme tokens for notification and role-dialog colours | UX-27 | new theme-colour-tokens guard (fails on the old files, passes now); bell + role dialog suites 14/14 |
-| next | fix(ui): grouped page counts and a 12 px text floor | UX-35 | list-pagination +1 (5,036); tsc clean |
+| `5276e1f` | fix(ui): grouped page counts and a 12 px text floor | UX-35 | list-pagination +1 (5,036); tsc clean |
+| next | fix(tasks): commit the search after a pause, not on every keystroke | UX-17 | tasks write-safety 12/12 (+1 debounce); tsc clean |
 
 ## Resume notes (keep current)
 
