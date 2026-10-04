@@ -51,14 +51,49 @@ export function PolicyPanel({
   const [problem, setProblem] = useState<string | null>(null),
     [success, setSuccess] = useState<string | null>(null);
   const restoreFocus = useRef<HTMLButtonElement | null>(null);
+  const actorKey =
+    typeof query.data?.actorId === "string" && query.data.actorId.trim()
+      ? `${workflowType}:${query.data.actorId}`
+      : null;
+  const [readOwner, setReadOwner] = useState<string | null>(null);
+  const retainedOwner = useRef<string | null>(null);
+  const historyEpoch = useRef(0);
   useEffect(() => {
-    if (query.data) {
-      setVersions(query.data.items);
-      setCursor(query.data.nextCursor);
-      setStatus(query.data.effectivePolicy.status);
+    historyEpoch.current += 1;
+    setLoadingMore(false);
+    // A failed read can retain query data. Hide it without losing the same owner's
+    // corrective reason; a successful read under another actor clears that draft.
+    const currentData = query.data;
+    if (query.isError || !currentData || !actorKey) {
+      setVersions([]);
+      setCursor(null);
+      setIntent(null);
+      setProblem(null);
+      setSuccess(null);
+      restoreFocus.current = null;
+      return;
     }
-  }, [query.data]);
-  const data = query.data,
+    if (retainedOwner.current !== actorKey) {
+      setReason("");
+      setIntent(null);
+      setProblem(null);
+      setSuccess(null);
+      restoreFocus.current = null;
+    } else {
+      setIntent((previous) =>
+        previous && previous.expectedVersionId !== currentData.effectiveVersionId ? null : previous,
+      );
+    }
+    retainedOwner.current = actorKey;
+    setReadOwner(actorKey);
+    setVersions(currentData.items);
+    setCursor(currentData.nextCursor);
+    setStatus(currentData.effectivePolicy.status);
+    return () => {
+      historyEpoch.current += 1;
+    };
+  }, [query.data, query.isError, actorKey]);
+  const data = query.isError || !actorKey || readOwner !== actorKey ? undefined : query.data,
     reasonValid = reason.trim().length >= 10 && reason.trim().length <= 1000;
   const canChange = data?.canConfigure === true;
   const preview = (
@@ -79,7 +114,7 @@ export function PolicyPanel({
     });
   };
   const apply = async () => {
-    if (!intent || busy || !reasonValid) return;
+    if (!data || !canChange || !intent || busy || !reasonValid) return;
     setBusy(true);
     setProblem(null);
     try {
@@ -121,10 +156,16 @@ export function PolicyPanel({
   };
   const more = async () => {
     if (!cursor || !data || loadingMore) return;
+    const epoch = historyEpoch.current;
     setLoadingMore(true);
     setProblem(null);
     try {
       const next = await getAgentPolicyHistory({ data: { workflowType, limit: 25, cursor } });
+      if (epoch !== historyEpoch.current) return;
+      if (next.actorId !== data.actorId) {
+        await query.refetch();
+        return;
+      }
       if (next.effectiveVersionId !== data.effectiveVersionId) {
         await query.refetch();
         setProblem("Policy changed while loading history. Review the current version.");
@@ -134,18 +175,29 @@ export function PolicyPanel({
         ...new Map([...previous, ...next.items].map((item) => [item.id, item])).values(),
       ]);
       setCursor(next.nextCursor);
-    } catch {
+    } catch (error) {
+      if (epoch !== historyEpoch.current) return;
+      const code = error && typeof error === "object" && "code" in error ? error.code : null;
+      if (code === "FORBIDDEN" || code === "UNAUTHENTICATED" || code === "OUTSIDE_SCOPE") {
+        await query.refetch();
+        return;
+      }
       setProblem("Older policy versions did not load. Try loading them again.");
     } finally {
-      setLoadingMore(false);
+      if (epoch === historyEpoch.current) setLoadingMore(false);
     }
   };
+  const loading = query.isPending || Boolean(!query.isError && actorKey && readOwner !== actorKey);
   if (!data)
     return (
       <section className="rounded-md border p-4" aria-label="Policy governance">
-        <p>{query.isPending ? "Loading policy history…" : "Policy history unavailable."}</p>
-        {query.isError && (
-          <Button variant="outline" onClick={() => void query.refetch()}>
+        <p>{loading ? "Loading policy history…" : "Policy history unavailable."}</p>
+        {!loading && (
+          <Button
+            variant="outline"
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
             Reload policy
           </Button>
         )}

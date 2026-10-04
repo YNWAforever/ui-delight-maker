@@ -401,6 +401,27 @@ describe("agent policy store, proven against a real database", () => {
       expect(await policyVersionCount()).toBe(1);
     },
   );
+  it
+    .runIf(hasDatabase)
+    .each([
+      ADMIN_SESSION,
+      MANAGER_SESSION,
+      { profile: { id: READER, role: "read_only", status: "active", primary_department_id: null } },
+    ])(
+    "policy read carries the current authorized actor ($profile.role) without a write",
+    async (session) => {
+      holder.session = session;
+      const result = await callNew("getAgentPolicyHistory", {
+        workflowType: "qualify_lead",
+        limit: 25,
+      });
+      expect(result).toMatchObject({
+        actorId: session.profile.id,
+        canConfigure: session.profile.role === "admin",
+      });
+      expect(await policyVersionCount()).toBe(0);
+    },
+  );
   it.runIf(hasDatabase)("allows_only_one_first_version", async () => {
     const results = await Promise.allSettled([
       setAgentPolicy(request()),

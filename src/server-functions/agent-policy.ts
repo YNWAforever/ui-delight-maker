@@ -1,5 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireCapability, requirePageAuthorization } from "@/server/auth/authorization.server";
+import {
+  requireCapability,
+  requirePageAuthorization,
+  loadRequestAuthorization,
+} from "@/server/auth/authorization.server";
 import {
   readAgentPolicyHistory,
   setAgentPolicyStatus,
@@ -47,11 +51,16 @@ export const rollbackAgentPolicyFn = createServerFn({ method: "POST" })
 export const getAgentPolicyHistory = createServerFn({ method: "GET" })
   .validator((data: unknown) => parseOperationInput(agentPolicyHistorySchema, data))
   .handler(async ({ data }) => {
+    const context = await policyAuthorization(() => loadRequestAuthorization());
     const { access } = await policyAuthorization(() =>
-      requirePageAuthorization(["agents.view"], { optional: ["agents.configure"] }),
+      requirePageAuthorization(["agents.view"], { optional: ["agents.configure"], context }),
     );
     const history = await readAgentPolicyHistory(
       parseOperationInput(agentPolicyHistorySchema, data),
     );
-    return { ...history, canConfigure: access["agents.configure"] === true };
+    return {
+      ...history,
+      canConfigure: access["agents.configure"] === true,
+      actorId: context.actor.profileId,
+    };
   });

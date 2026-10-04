@@ -12,6 +12,7 @@ import { PolicyPanel } from "../policy-panel";
 const current = "00000000-0000-4000-8000-000000000001",
   old = "00000000-0000-4000-8000-000000000002";
 const page = (changes = {}) => ({
+  actorId: "policy-fixture-actor",
   items: [
     {
       id: current,

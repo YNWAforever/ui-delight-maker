@@ -1,0 +1,66 @@
+{
+  "phase": "red",
+  "sha": "893d5fc7e78d239da4359d1f6b40de7efb74bc32",
+  "workingSourceDiffSha256": "ca08c5f0b8f7170f0161a7a841311e3e50df89e4c015eb31263935daf273f90b",
+  "serverEntrySha256": "97133b32c43a9e444f29c9966a6e988aaad42ebba6b7adf5439270a27355e9e1",
+  "database": "clientops_ai_uat_96822fd692ae47949508e838a2bd71a4",
+  "checks": [
+    {
+      "name": "actual admin reads retained policy history and drafts local reason without writes",
+      "passed": true
+    }
+  ],
+  "identities": [
+    {
+      "role": "admin",
+      "userSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "sessionSha256": "7b93f6916940fc215b90c1623bd5ab426eb96fa3b4f00f49597af14dd8731c93",
+      "savedStateSha256": "562c417be5922885bddde5029ac5651b790dc9641da16a04cb8f1a31bf705a6a",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "accounting",
+      "userSha256": "5bc88a9c60cb5e3d014a51eee07126e6adc00ec54681efaa531b50ba90c67fbb",
+      "sessionSha256": "53c77aaaff970a04349d056fab770c2a0b9438e873af00ff0dd5b8f27aba5ebb",
+      "savedStateSha256": "a5e6b243ea4ed9eae118b8d7068007130542d695aeb27870f191b656755ecb12",
+      "live": true,
+      "persistedRoleMatches": true
+    }
+  ],
+  "pageErrors": [],
+  "actualSSR": true,
+  "actualNeonDriver": true,
+  "actualLoopbackPostgres17": true,
+  "actualProviderCalls": 0,
+  "productionAccess": false,
+  "policyWrites": 0,
+  "interactiveLogoutRelogin": "not-tested",
+  "wholeAppHandoff": "not-tested; policy panel only",
+  "scope": "same-document cookie-fixture transitions for seven distinct actual independent Auth users; no Auth/BFF result doubles, policy decisions or provider calls",
+  "snapshotBeforeSha256": "07bce77f6e44700edd26a56b9596e19098cc8f99afbb9e6c06369064a7687cc3",
+  "policyRowsBefore": 8,
+  "nativeReadServerFunctionPath": "/_serverFn/16a0429f6d31780ebaaa1b615be842749f17ec2f3178a70c1c543dc2577e758b",
+  "observation": {
+    "serverStatus": 403,
+    "sameDocument": true,
+    "cachedHistoryVisible": true,
+    "cachedReasonVisible": true,
+    "cachedGovernanceControlsVisible": true,
+    "errorVisible": false
+  },
+  "denialScreenshot": {
+    "path": ".clientops-perf/ai-gpt61-20261003/r11-native-policy-refresh-red-accounting403.private.png",
+    "sha256": "d25562ffa8eb042fe84355e202107248c720d892a1027e1792c40c8b40b9bf51"
+  },
+  "passed": false,
+  "error": {
+    "name": "AssertionError",
+    "message": "Actual policy403 must withdraw cached policy history\n\ntrue !== false\n"
+  },
+  "diagnosticScreenshot": {
+    "path": ".clientops-perf/ai-gpt61-20261003/r11-native-policy-refresh-red-diagnostic-accounting-denial.private.png",
+    "sha256": "d25562ffa8eb042fe84355e202107248c720d892a1027e1792c40c8b40b9bf51"
+  },
+  "stage": "accounting-denial"
+}
