@@ -81,7 +81,8 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `008a4f7` | feat(admin): give admin pages the width and find audit actors by name | UX-12 | admin-shell +1, audit route +2 (picker with users.view, ID fallback without), audit table; tsc clean |
 | `5c58123` | feat(today): give accounting's landing page something to triage by | UX-15 | new today-job-sheet-list 2, app-sidebar 8/8 (Today vs Revenue Desk), dashboard landing + revenue desk; tsc clean |
 | `7730610` | fix(ui): render the product typeface, with Traditional Chinese fallbacks | UX-39, UX-25 (D-6) | new typeface 3, tone-contrast 10; built CSS served over HTTP in Chromium: body stack starts with Plus Jakarta Sans, latin woff2 loaded, `document.fonts.check` true |
-| next | fix(ui): visible field borders, a quiet hover surface and an 8 px radius | UX-21, UX-22 | tone-contrast 15 (+5: input ≥3:1 on card and page in both themes, text on --accent ≥4.5:1, low-chroma light accent) |
+| `1b431d0` | fix(ui): visible field borders, a quiet hover surface and an 8 px radius | UX-21, UX-22 | tone-contrast 15 (+5: input ≥3:1 on card and page in both themes, text on --accent ≥4.5:1, low-chroma light accent) |
+| next | feat(a11y): show keyboard focus everywhere and mark the current page | UX-22, UX-21 (D-3) | new focus-indicator 2 (rules present and unlayered); real Button/Input/SidebarMenuButton rendered with the built CSS and focused by keyboard in Chromium, light and dark: 2 px outline at 2 px offset, active item shows the 3 px bar |
 
 ## Resume notes (keep current)
 

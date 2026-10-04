@@ -237,6 +237,29 @@
 }
 
 /* --------------------------------------------------------------------------------------
+ * Keyboard focus and the current page (owner decision D-3)
+ *
+ * Unlayered on purpose. The primitives in src/components/ui/ (not hand-edited) pair
+ * focus-visible:outline-none with a 1 px ring, which was the only focus signal on every
+ * button (UX-22); an unlayered rule outranks those layered utilities without touching them.
+ * Elements with tabindex -1 only ever receive focus from script or roving menus, which style
+ * their own highlight: route headings, the open approval, Radix menu and select items.
+ * The theme's own --ring is used directly, because the Neon Auth bundle also defines
+ * --color-ring.
+ * ----------------------------------------------------------------------------------- */
+:focus-visible:not([tabindex="-1"]) {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* The current page in the app sidebar: a 3 px bar and weight 600, not only a background
+   that measured 1.13:1 against the rail (UX-21). */
+[data-sidebar="menu-button"][data-active="true"] {
+  box-shadow: inset 3px 0 0 var(--sidebar-primary);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------------------
  * Print
  *
  * IF-C2-32: this file previously contained zero print rules, so /quotes/$id_/pdf printed
