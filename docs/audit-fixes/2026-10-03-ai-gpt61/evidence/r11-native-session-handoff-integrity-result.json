@@ -1,0 +1,43 @@
+{
+  "checkedAt": "2026-10-04T06:49:34.355Z",
+  "originalDatabase": "clientops_ai_uat_843cdc77175546ddbad0417b36ac845a",
+  "cloneDatabase": "clientops_ai_uat_a338bc51cbf34039ac5f176c56604cb5",
+  "loopbackOnly": true,
+  "originalAll56TablesUnchanged": true,
+  "historical135RunRowsUnchanged": true,
+  "syntheticFixtureRuns": 18,
+  "allowedDeltas": [
+    {
+      "table": "agent_runs",
+      "additionalRows": 18
+    },
+    {
+      "table": "bulk_operation_items",
+      "additionalRows": 2
+    },
+    {
+      "table": "bulk_operations",
+      "additionalRows": 2
+    },
+    {
+      "table": "clientops_schema_migrations",
+      "additionalRows": 1
+    },
+    {
+      "table": "human_approvals",
+      "additionalRows": 1
+    },
+    {
+      "table": "leads",
+      "additionalRows": 18
+    }
+  ],
+  "previewsOnly": 2,
+  "effectiveCancels": 0,
+  "newCommandReceipts": 0,
+  "newActivityAudits": 0,
+  "allOtherCloneTablesUnchanged": true,
+  "productionAccess": false,
+  "actualProviderCalls": 0,
+  "passed": true
+}

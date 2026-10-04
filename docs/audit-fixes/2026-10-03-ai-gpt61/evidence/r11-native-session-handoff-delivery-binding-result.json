@@ -1,0 +1,150 @@
+{
+  "recordedAt": "2026-10-04T06:53:14.127Z",
+  "codeVerifiedCommit": "1628b202e494ee650fd924cff41fa1a1408ecac3",
+  "executionHead": "1628b202e494ee650fd924cff41fa1a1408ecac3",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceTrees": {
+    "src": "6f35e2f2e887478f84c04498bf96bc69f1c512d1",
+    "neon": "3cf78f7d35c15b02c8099a728b9a78b74116b82f",
+    "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
+    "scripts": "ecca3b87db60afb06f23d74fb5c24aa09a48e639"
+  },
+  "unchangedFromBaseline": [
+    "neon",
+    "n8n",
+    "scripts",
+    "package.json",
+    "bun.lock"
+  ],
+  "serverEntrySha256": "44d30e28ac635dd3bbc80aadbe036e308f41cf6a02ba0f873ec7de1e38ab6c47",
+  "artifactInventory": {
+    "files": 401,
+    "bytes": 5509175,
+    "sha256": "000ce85c6b64262d59530470e69f5c04bb1bf825f775abeb43e698a1a0112e8a",
+    "privatePath": ".clientops-perf/ai-gpt61-20261003/r11-native-session-handoff-artifact-inventory.private.json"
+  },
+  "runners": [
+    {
+      "path": "evidence/r11-native-session-handoff-runner.source.txt",
+      "sha256": "d06ac8a4d13c6ebbb064263a5299ede9a95c277ddc90a289dd529ccdc6b76a4f",
+      "executedPrivateSourceSha256": "d06ac8a4d13c6ebbb064263a5299ede9a95c277ddc90a289dd529ccdc6b76a4f",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-session-handoff-red-runner.source.txt",
+      "sha256": "290c896bef59a2d767162b611020386c9cfab2f137a64d8b191f1d6d8f9ae073",
+      "executedPrivateSourceSha256": "290c896bef59a2d767162b611020386c9cfab2f137a64d8b191f1d6d8f9ae073",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-session-handoff-runtime.source.txt",
+      "sha256": "b45abfa4cf5d11bd90492f04ed47c86070f61a68ebbd9145df9a366754bba51a",
+      "executedPrivateSourceSha256": "24a5fdbb2a39a684e40b3aad5e035083059a5e4f6b0ce7c52487404f613308f0",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-session-handoff-prepare.source.txt",
+      "sha256": "d493c22829c5f3562bfa264b73ef5a223546cfdb3bd491a6e5a1abcde530440e",
+      "executedPrivateSourceSha256": "70ee714b096883c15c48cba86560ee4138e6bd8edbc5d1a54c43938fd9cf4c6a",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-session-handoff-fixtures.source.txt",
+      "sha256": "93e6f7ee1b4996a77811511cbcb5c5a4811eb879bd61916b302ad4958bd870fd",
+      "executedPrivateSourceSha256": "8824e57365665939f73cf21554f1e27ae80ac44d32a5bdbbf573c17909f9d3d1",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-session-handoff-migration.source.txt",
+      "sha256": "252adb9a07e3b500d0af7f5165fecf840400919032232533c42cb841eeb4794d",
+      "executedPrivateSourceSha256": "4c24d00f5ab78d67889d25338140bbdc63e0dfb3a48367556204ff4b20409839",
+      "normalization": "UTF8/LF; no semantic change"
+    },
+    {
+      "path": "evidence/r11-native-session-handoff-integrity.source.txt",
+      "sha256": "2b9c53e33d9838d117c702fcd41b231e9a88015a3e1f91879ea36fd1c00a7da3",
+      "executedPrivateSourceSha256": "2b9c53e33d9838d117c702fcd41b231e9a88015a3e1f91879ea36fd1c00a7da3",
+      "normalization": "UTF8/LF; no semantic change"
+    }
+  ],
+  "receipts": [
+    {
+      "path": "evidence/r11-native-session-handoff-green-result.json",
+      "sha256": "cd777f8d2b85be4cb61b26ab23228426f392d877c152ef5c5b67f9cb735543f0"
+    },
+    {
+      "path": "evidence/r11-native-session-handoff-integrity-result.json",
+      "sha256": "5d1c18d3f5845d26ea237e195c943ef312fda939879b01fc399c3da719257a37"
+    },
+    {
+      "path": "evidence/r11-native-session-handoff-runtime-result.json",
+      "sha256": "e4c5e8ed84448ccb3cf1ce3499f8de1bdd388b32dc435d2bb946a490cf2b1e2c"
+    },
+    {
+      "path": "evidence/r11-native-session-handoff-migration-result.json",
+      "sha256": "00fe96daa5694758ac24c4af267c1f0fbb4d1f5471c67d82e4026ab765fb736d"
+    },
+    {
+      "path": "evidence/r11-native-session-handoff-seed-result.json",
+      "sha256": "8ff6595f0e9acab7c9836c70632413ff442dd9f920aea56d0d96a5bbe24a774a"
+    },
+    {
+      "path": "evidence/r11-native-session-handoff-code-ci-result.json",
+      "sha256": "3c3e748acc764e345ddd0a597b42e87992dac6e37bffdbce607b4d82c051b352"
+    },
+    {
+      "path": "evidence/r11-native-session-handoff-network-result.json",
+      "sha256": "67a103000300775dcb7e0e1bfb8a00f0205bd76d70084de6b61af60dedc91b79"
+    },
+    {
+      "path": "evidence/r11-native-session-handoff-red-result.json",
+      "sha256": "65fc2d69e5545d1a1bac7d295fab5451fe1fa2408fce7daefdeb5df7f1552a11"
+    },
+    {
+      "path": "evidence/r11-session-handoff-red-result.json",
+      "sha256": "da1cbe3bb0eea4a1107bcaf9d0c0d0f77dd0f874024cf5996ead7af4076ad374"
+    },
+    {
+      "path": "evidence/r11-session-handoff-final-target-result.json",
+      "sha256": "b11795365e2eb3c5ff63fc5bf86682d73b546a039609d06351ca0406a72ae065"
+    },
+    {
+      "path": "evidence/r11-session-handoff-final-static-result.json",
+      "sha256": "28391db4b0049cb6555ce7085ec5b8bda1086742e4bf9e5fdf5b427d5b8649a5"
+    },
+    {
+      "path": "evidence/r11-session-handoff-final-build-result.json",
+      "sha256": "432f883480a9cb05d02541f3ae431772805c55d91a7fe2134f54356569aa1b5d"
+    }
+  ],
+  "commands": {
+    "prepare": "node .clientops-perf/ai-gpt61-20261003/r11-native-session-handoff-prepare.private.mjs",
+    "migration": "bun .clientops-perf/ai-gpt61-20261003/r11-native-session-handoff-migrate.private.ts",
+    "fixtures": "node .clientops-perf/ai-gpt61-20261003/r11-native-session-handoff-fixtures.private.mjs",
+    "runtime": "node .clientops-perf/ai-gpt61-20261003/r11-native-session-handoff-runtime.private.mjs",
+    "native": "node .clientops-perf/ai-gpt61-20261003/r11-native-session-handoff.private.mjs green",
+    "integrity": "node .clientops-perf/ai-gpt61-20261003/r11-native-session-handoff-integrity.private.mjs",
+    "nativeExit": 0,
+    "migrationExit": 0,
+    "integrityExit": 0,
+    "targetExit": 0,
+    "nativeChecks": 5,
+    "roles": 3,
+    "targetTests": 77,
+    "targetSkipped": 0,
+    "fullCI": 2889,
+    "fullCISkipped": 0
+  },
+  "scope": "in-place session-cookie fixture handoff using actual distinct admin/super_admin/read_only independent Auth sessions, native queue BFF and genuine delayed preview response; no interactive Auth mutation",
+  "interactiveLogoutRelogin": "not-tested",
+  "manualAT": "not-tested",
+  "trueProviderAcceptance": "blocked",
+  "schema": 26,
+  "originalZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
+  "authorReviewOnly": true,
+  "productionAccess": false,
+  "actualProviderCalls": 0,
+  "ownedRuntimePid": 29624,
+  "ownedRuntimeStopped": true,
+  "releaseDecision": "NO-GO"
+}

@@ -1,0 +1,89 @@
+{
+  "phase": "green",
+  "sha": "1628b202e494ee650fd924cff41fa1a1408ecac3",
+  "sourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "44d30e28ac635dd3bbc80aadbe036e308f41cf6a02ba0f873ec7de1e38ab6c47",
+  "database": "clientops_ai_uat_a338bc51cbf34039ac5f176c56604cb5",
+  "fixtureVersion": "ai-local-session-handoff-v1",
+  "checks": [
+    {
+      "name": "native same-actor refresh preserves selected IDs, preview and reason",
+      "passed": true
+    },
+    {
+      "name": "native distinct authorized actor refresh clears selected IDs, old preview and reason with all 56 tables unchanged",
+      "passed": true
+    },
+    {
+      "name": "genuine delayed old actor preview cannot revive selection or dialog after new authorized actor refresh",
+      "passed": true
+    },
+    {
+      "name": "genuine read-only identity refresh retains read and hides local maintenance",
+      "passed": true
+    },
+    {
+      "name": "three distinct actual identities/sessions/states; no reused admin session and no browser errors",
+      "passed": true
+    }
+  ],
+  "identities": [
+    {
+      "role": "admin",
+      "userSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "sessionSha256": "7b93f6916940fc215b90c1623bd5ab426eb96fa3b4f00f49597af14dd8731c93",
+      "savedStateSha256": "562c417be5922885bddde5029ac5651b790dc9641da16a04cb8f1a31bf705a6a",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "super_admin",
+      "userSha256": "2e826afbc440c3626a35f510b27c62dfe97a4cf4087ce7bce5171444e4f6a10f",
+      "sessionSha256": "558ceadf8fe6bcab2569f8754836c3af25695a25f8ac52c28583415111a781c2",
+      "savedStateSha256": "b5367ecc7351f50283afdc692a4dfed1b19fedf8bdad7734792d49395fbda754",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "admin",
+      "userSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "sessionSha256": "7b93f6916940fc215b90c1623bd5ab426eb96fa3b4f00f49597af14dd8731c93",
+      "savedStateSha256": "562c417be5922885bddde5029ac5651b790dc9641da16a04cb8f1a31bf705a6a",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "super_admin",
+      "userSha256": "2e826afbc440c3626a35f510b27c62dfe97a4cf4087ce7bce5171444e4f6a10f",
+      "sessionSha256": "558ceadf8fe6bcab2569f8754836c3af25695a25f8ac52c28583415111a781c2",
+      "savedStateSha256": "b5367ecc7351f50283afdc692a4dfed1b19fedf8bdad7734792d49395fbda754",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "read_only",
+      "userSha256": "b6b6e8a481e03b614e6890a0668fe1fed886b0da3fddc389af96210ceec975ae",
+      "sessionSha256": "9d5a6df8b5bd04a23ab5177b09b9152e959fb8cd048ad5425a12a2fbce85c241",
+      "savedStateSha256": "c8bb0f964da8ab9c1e198fb8ef94b6954cf29a4161778828fff5a4584b33b2d1",
+      "live": true,
+      "persistedRoleMatches": true
+    }
+  ],
+  "errors": [],
+  "actualSSR": true,
+  "actualNeonDriver": true,
+  "actualLoopbackPG": true,
+  "providerConfigurationAbsent": true,
+  "actualProviderCalls": 0,
+  "productionAccess": false,
+  "interactiveLogoutRelogin": "not-tested",
+  "transport": "distinct existing real role session cookie fixtures; in-place native queue refresh; no Auth response doubles",
+  "observation": {
+    "sameDocument": true,
+    "selected": false,
+    "previousPreviewVisible": false,
+    "previousReason": null
+  },
+  "passed": true,
+  "stage": "read-only-handoff"
+}
