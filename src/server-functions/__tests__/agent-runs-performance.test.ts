@@ -213,9 +213,17 @@ describe("queue maintenance permission metadata", () => {
         ),
         rows: stubRowAuthorizer,
       }));
+      const context = await mocks.loadRequestAuthorization();
+      context.actor.profileId = "actual-queue-actor-" + String(granted);
+      mocks.loadRequestAuthorization.mockResolvedValue(context);
+      mocks.loadRequestAuthorization.mockClear();
       const { getAgentQueue } = await loadModule();
       const result = await getAgentQueue({ data: { queue: "runs" } });
-      expect(result).toMatchObject({ queue: "runs", canRun: granted === true });
+      expect(result).toMatchObject({
+        queue: "runs",
+        canRun: granted === true,
+        actorId: context.actor.profileId,
+      });
       expect(mocks.loadRequestAuthorization).toHaveBeenCalledTimes(1);
       expect(mocks.query).toHaveBeenCalledTimes(2);
     },

@@ -18,10 +18,19 @@ export function RunQueuePanel({
   onChange: (value: QueueSearch) => void;
   actorId?: string;
 }) {
+  const query = useQuery({
+    queryKey: crmQueryKeys.agentQueue({ ...filters, queue: "runs" }),
+    queryFn: () => getAgentQueue({ data: { ...filters, queue: "runs" } }),
+    refetchInterval: 45000,
+    refetchIntervalInBackground: false,
+  });
+  const data = query.data;
+  const queueActorId = data?.queue === "runs" ? data.actorId : undefined;
   const [selected, setSelected] = useState<string[]>([]);
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
   const selectionEpoch = useRef(0);
+  const selectionActor = useRef<string | undefined>(undefined);
   // Pagination stays in the same selection scope; URL/filter changes start a new scope.
   const selectionQuery = JSON.stringify({ ...filters, cursor: undefined });
   useEffect(() => {
@@ -30,6 +39,15 @@ export function RunQueuePanel({
     setSelectionError(null);
     setSelecting(false);
   }, [selectionQuery, actorId]);
+  useEffect(() => {
+    // A loading page has no actor verdict; keep same-query selection until its response.
+    if (data?.queue !== "runs" || selectionActor.current === queueActorId) return;
+    selectionActor.current = queueActorId;
+    selectionEpoch.current++;
+    setSelected([]);
+    setSelectionError(null);
+    setSelecting(false);
+  }, [data?.queue, queueActorId]);
   const change = (next: QueueSearch) => {
     selectionEpoch.current++;
     setSelected([]);
@@ -50,8 +68,12 @@ export function RunQueuePanel({
           data: { ...filters, queue: "runs", limit: 50, cursor },
         });
         if (epoch !== selectionEpoch.current) return;
+        if (page.queue !== "runs" || page.actorId !== queueActorId) {
+          setSelected([]);
+          void query.refetch();
+          throw Error("Selection actor changed");
+        }
         if (
-          page.queue !== "runs" ||
           page.canRun !== true ||
           page.totalMatching > 100 ||
           ids.length + page.items.length > 100
@@ -70,14 +92,10 @@ export function RunQueuePanel({
       if (epoch === selectionEpoch.current) setSelecting(false);
     }
   };
-  const query = useQuery({
-    queryKey: crmQueryKeys.agentQueue({ ...filters, queue: "runs" }),
-    queryFn: () => getAgentQueue({ data: { ...filters, queue: "runs" } }),
-    refetchInterval: 45000,
-    refetchIntervalInBackground: false,
-  });
-  const data = query.data;
-  const maintenancePermission = data?.queue === "runs" ? data.canRun === true : undefined;
+  const maintenancePermission =
+    data?.queue === "runs"
+      ? data.canRun === true && typeof queueActorId === "string" && queueActorId.length > 0
+      : undefined;
   const canRun = maintenancePermission === true;
   useEffect(() => {
     // A server denial invalidates pending selection requests. Loading another page does not.
@@ -201,8 +219,9 @@ export function RunQueuePanel({
                 before starting another query.
               </p>
               <BulkRecoveryDialog
+                key={actorId}
                 runIds={selected}
-                actorId={actorId}
+                actorId={queueActorId ?? "unknown"}
                 onComplete={() => void query.refetch()}
               />
             </>

@@ -146,7 +146,9 @@ export const getAgentQueue = createServerFn({ method: "GET" })
     const page = await loadAgentQueue(input, context, rows);
     // Display eligibility comes from the same server capability evaluation as the read.
     // Write commands still reauthorize every item against current scope and state.
-    return page.queue === "runs" ? { ...page, canRun: access["agents.run"] === true } : page;
+    return page.queue === "runs"
+      ? { ...page, canRun: access["agents.run"] === true, actorId: context.actor.profileId }
+      : page;
   });
 
 export const recoverAgentRunFn = createServerFn({ method: "POST" })

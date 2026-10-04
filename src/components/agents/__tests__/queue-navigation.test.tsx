@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { agentQueueSearchSchema } from "@/lib/agent-queue-input";
 import { getAgentQueue } from "@/server-functions/agent-runs";
+import { previewAgentRecoveryFn } from "@/server-functions/agent-bulk-recovery";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { QueueToolbar } from "../queue-toolbar";
 import { RunQueuePanel } from "../run-queue-panel";
@@ -31,6 +32,7 @@ const runId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const result = {
   queue: "runs",
   canRun: true,
+  actorId: "queue-actor-a",
   items: [
     {
       id: runId,
@@ -330,6 +332,122 @@ describe("server-authorized run maintenance controls", () => {
       false,
     );
     expect(screen.queryByRole("button", { name: "Preview 1 selected" })).toBeNull();
+    client.clear();
+  });
+});
+
+// BFF transport doubles exercise React state boundaries; native real-session coverage is recorded separately.
+describe("authoritative queue actor lifetime", () => {
+  const one = { ...result, totalMatching: 1, nextCursor: null };
+  const key = crmQueryKeys.agentQueue({ ...agentQueueSearchSchema.parse({}), queue: "runs" });
+  const preview = {
+    previewId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    expiresAt: "2026-10-04T12:10:00Z",
+    eligibleCount: 1,
+    blockedCount: 0,
+    items: [{ runId, eligible: true, reasonCode: "ELIGIBLE" }],
+  };
+  it.each([undefined, null, ""])(
+    "requires server actor metadata when canRun is true (%s)",
+    async (actorId) => {
+      vi.mocked(getAgentQueue).mockResolvedValue({ ...one, actorId } as never);
+      const { client } = mount();
+      await screen.findByText(/This page: 1 \/ 1/);
+      expect(screen.queryByRole("checkbox", { name: "Select run " + runId })).toBeNull();
+      expect(screen.queryByRole("region", { name: "Local bulk maintenance" })).toBeNull();
+      expect(screen.getByRole("link", { name: "Renamed Draft" })).toBeTruthy();
+      client.clear();
+    },
+  );
+  it("clears selected IDs, preview and reason on a new server actor with cached shell context", async () => {
+    vi.mocked(getAgentQueue).mockResolvedValue(one as never);
+    vi.mocked(previewAgentRecoveryFn).mockResolvedValue(preview);
+    const { client } = mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Select this page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview 1 selected" }));
+    await screen.findByRole("group", { name: "Confirm local recovery" });
+    fireEvent.change(screen.getByRole("textbox", { name: "Recovery reason" }), {
+      target: { value: "Previous actor reviewed reason" },
+    });
+    await act(async () => {
+      client.setQueryData(key, { ...one, actorId: "queue-actor-b" });
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: "Select run " + runId })).toHaveProperty(
+        "checked",
+        false,
+      ),
+    );
+    expect(screen.queryByRole("group", { name: "Confirm local recovery" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Recovery reason" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Select this page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview 1 selected" }));
+    await screen.findByRole("group", { name: "Confirm local recovery" });
+    expect(screen.getByRole("textbox", { name: "Recovery reason" })).toHaveProperty("value", "");
+    client.clear();
+  });
+  it("ignores an all-matching response from the previous server actor", async () => {
+    vi.mocked(getAgentQueue).mockResolvedValue(one as never);
+    const { client } = mount();
+    await screen.findByRole("button", { name: "Select all 1 matching runs" });
+    let finish!: (value: unknown) => void;
+    vi.mocked(getAgentQueue).mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          finish = r;
+        }) as never,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Select all 1 matching runs" }));
+    await act(async () => {
+      client.setQueryData(key, { ...one, actorId: "queue-actor-b" });
+    });
+    await act(async () => {
+      finish(one);
+    });
+    expect(screen.getByRole("checkbox", { name: "Select run " + runId })).toHaveProperty(
+      "checked",
+      false,
+    );
+    expect(screen.queryByRole("button", { name: "Preview 1 selected" })).toBeNull();
+    client.clear();
+  });
+  it("refuses all-selection pages from a different actor and refreshes authoritative metadata", async () => {
+    vi.mocked(getAgentQueue).mockResolvedValue(one as never);
+    const { client } = mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Select this page" }));
+    vi.mocked(getAgentQueue).mockResolvedValueOnce({ ...one, actorId: "queue-actor-b" } as never);
+    fireEvent.click(screen.getByRole("button", { name: "Select all 1 matching runs" }));
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: "Select run " + runId })).toHaveProperty(
+        "checked",
+        false,
+      ),
+    );
+    expect(screen.queryByRole("button", { name: "Preview 1 selected" })).toBeNull();
+    expect(getAgentQueue).toHaveBeenCalledTimes(3);
+    client.clear();
+  });
+  it("retains selected IDs, preview and reason on same-actor refresh", async () => {
+    vi.mocked(getAgentQueue).mockResolvedValue(one as never);
+    vi.mocked(previewAgentRecoveryFn).mockResolvedValue(preview);
+    const { client } = mount();
+    fireEvent.click(await screen.findByRole("button", { name: "Select this page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview 1 selected" }));
+    await screen.findByRole("group", { name: "Confirm local recovery" });
+    fireEvent.change(screen.getByRole("textbox", { name: "Recovery reason" }), {
+      target: { value: "Same actor reviewed reason" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Refresh run queue" }));
+    await waitFor(() => expect(getAgentQueue).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("checkbox", { name: "Select run " + runId })).toHaveProperty(
+      "checked",
+      true,
+    );
+    expect(screen.getByRole("group", { name: "Confirm local recovery" })).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: "Recovery reason" })).toHaveProperty(
+      "value",
+      "Same actor reviewed reason",
+    );
     client.clear();
   });
 });

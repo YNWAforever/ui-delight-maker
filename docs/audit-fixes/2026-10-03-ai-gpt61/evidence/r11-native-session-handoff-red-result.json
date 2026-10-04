@@ -1,0 +1,48 @@
+{
+  "phase": "red",
+  "sha": "81bc66960db046529715e9d4fc4cf3be0102a6bc",
+  "sourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "191fd1fae147951144d5436e99d3aad3a694c8c3b756383934ca22f7f2492cdc",
+  "database": "clientops_ai_uat_cb098276075c4635b650439e0688db7f",
+  "fixtureVersion": "ai-local-session-handoff-v1",
+  "checks": [],
+  "identities": [
+    {
+      "role": "admin",
+      "userSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "sessionSha256": "7b93f6916940fc215b90c1623bd5ab426eb96fa3b4f00f49597af14dd8731c93",
+      "savedStateSha256": "562c417be5922885bddde5029ac5651b790dc9641da16a04cb8f1a31bf705a6a",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "super_admin",
+      "userSha256": "2e826afbc440c3626a35f510b27c62dfe97a4cf4087ce7bce5171444e4f6a10f",
+      "sessionSha256": "558ceadf8fe6bcab2569f8754836c3af25695a25f8ac52c28583415111a781c2",
+      "savedStateSha256": "b5367ecc7351f50283afdc692a4dfed1b19fedf8bdad7734792d49395fbda754",
+      "live": true,
+      "persistedRoleMatches": true
+    }
+  ],
+  "errors": [],
+  "actualSSR": true,
+  "actualNeonDriver": true,
+  "actualLoopbackPG": true,
+  "providerConfigurationAbsent": true,
+  "actualProviderCalls": 0,
+  "productionAccess": false,
+  "interactiveLogoutRelogin": "not-tested",
+  "transport": "distinct existing real role session cookie fixtures; in-place native queue refresh; no Auth response doubles",
+  "observation": {
+    "sameDocument": true,
+    "selected": true,
+    "previousPreviewVisible": true,
+    "previousReason": null
+  },
+  "passed": false,
+  "error": {
+    "name": "AssertionError",
+    "message": "Fresh authoritative actor queue must clear old selection despite cached root context\n\ntrue !== false\n"
+  },
+  "stage": "real-superadmin-cookie-handoff"
+}
