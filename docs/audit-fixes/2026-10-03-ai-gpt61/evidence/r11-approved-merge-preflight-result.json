@@ -1,0 +1,513 @@
+{
+  "checkedAt": "2026-10-04T12:27:20.842Z",
+  "authority": {
+    "merge": "explicit human request: commit and merge all pr if go green",
+    "release": "not authorized by this merge request"
+  },
+  "stack": {
+    "checkedAt": "2026-10-04T12:24:52.987Z",
+    "finalCandidate": "30af2d00173744ab3340173db878d07e5d017057",
+    "main": "953ec0a36806d4362fad9e2b2d8cd17a49adbb26",
+    "allFourteenHeadsAreAncestorsOfFinal": true,
+    "openPrsOnlyThisStack": true,
+    "mergeCommitEnabled": true,
+    "branchProtection": null,
+    "rows": [
+      {
+        "number": 163,
+        "title": "R00: verify ClientOps AI remediation baseline",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/163",
+        "headRefName": "codex/clientops-ai-gpt61-remediation",
+        "headSha": "23261dcf9cb71f7f5fd575013842f525be1c4b67",
+        "originalBase": "main",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37101403989,
+            "headSha": "23261dcf9cb71f7f5fd575013842f525be1c4b67",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37101403989",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37101404034,
+            "headSha": "23261dcf9cb71f7f5fd575013842f525be1c4b67",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37101404034",
+            "workflowName": "Database contract"
+          }
+        ]
+      },
+      {
+        "number": 164,
+        "title": "R01: align Agent workflow identity and attention rules",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/164",
+        "headRefName": "codex/clientops-ai-r01-identity",
+        "headSha": "abd506066c3b819e49e8011f0cb9bef93276b8e9",
+        "originalBase": "codex/clientops-ai-gpt61-remediation",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37104986317,
+            "headSha": "abd506066c3b819e49e8011f0cb9bef93276b8e9",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37104986317",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37104986294,
+            "headSha": "abd506066c3b819e49e8011f0cb9bef93276b8e9",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37104986294",
+            "workflowName": "Database contract"
+          }
+        ]
+      },
+      {
+        "number": 165,
+        "title": "R02: Preserve AI execution provenance and usage",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/165",
+        "headRefName": "codex/clientops-ai-r02-provenance",
+        "headSha": "6a2ab0272f0db037168380eccf5c4e1c3753970e",
+        "originalBase": "codex/clientops-ai-r01-identity",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37105956331,
+            "headSha": "6a2ab0272f0db037168380eccf5c4e1c3753970e",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37105956331",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37105956342,
+            "headSha": "6a2ab0272f0db037168380eccf5c4e1c3753970e",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37105956342",
+            "workflowName": "Database contract"
+          }
+        ]
+      },
+      {
+        "number": 166,
+        "title": "R03: reject invalid AI commercial output atomically",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/166",
+        "headRefName": "codex/clientops-ai-r03-output-contracts",
+        "headSha": "b1befc05b57362b1589d1d71a1507064ec0642eb",
+        "originalBase": "codex/clientops-ai-r02-provenance",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37108625689,
+            "headSha": "b1befc05b57362b1589d1d71a1507064ec0642eb",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37108625689",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37108625568,
+            "headSha": "b1befc05b57362b1589d1d71a1507064ec0642eb",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37108625568",
+            "workflowName": "Database contract"
+          }
+        ]
+      },
+      {
+        "number": 167,
+        "title": "R04: read-only AI reconciliation and explicit demo origin",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/167",
+        "headRefName": "codex/clientops-ai-r04-reconciliation",
+        "headSha": "7bb476f69ac9dfc8b0835cc8d36c5d0ec80e54c5",
+        "originalBase": "codex/clientops-ai-r03-output-contracts",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37110139935,
+            "headSha": "7bb476f69ac9dfc8b0835cc8d36c5d0ec80e54c5",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37110139935",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37110139921,
+            "headSha": "7bb476f69ac9dfc8b0835cc8d36c5d0ec80e54c5",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37110139921",
+            "workflowName": "Database contract"
+          }
+        ]
+      },
+      {
+        "number": 168,
+        "title": "R05 / AI-07: versioned status-only policy controls",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/168",
+        "headRefName": "codex/clientops-ai-r05-policy-controls",
+        "headSha": "fa61f068c7cb7e606211ee0c7ef9147228dc83c9",
+        "originalBase": "codex/clientops-ai-r04-reconciliation",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37112222681,
+            "headSha": "fa61f068c7cb7e606211ee0c7ef9147228dc83c9",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37112222681",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37112222706,
+            "headSha": "fa61f068c7cb7e606211ee0c7ef9147228dc83c9",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37112222706",
+            "workflowName": "Database contract"
+          }
+        ]
+      },
+      {
+        "number": 169,
+        "title": "R06 / AI-09: governed auxiliary Note Tidy operations",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/169",
+        "headRefName": "codex/clientops-ai-r06-auxiliary-ops",
+        "headSha": "ea944d42fd667c3f717775d53e2c8d0fc69c4424",
+        "originalBase": "codex/clientops-ai-r05-policy-controls",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37112790752,
+            "headSha": "ea944d42fd667c3f717775d53e2c8d0fc69c4424",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37112790752",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37112790794,
+            "headSha": "ea944d42fd667c3f717775d53e2c8d0fc69c4424",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37112790794",
+            "workflowName": "Database contract"
+          }
+        ]
+      },
+      {
+        "number": 170,
+        "title": "R07: complete scoped AI queues and shareable filters",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/170",
+        "headRefName": "codex/clientops-ai-r07-complete-queues",
+        "headSha": "914e0e554de66cb7169408b7760d15aef8492ddb",
+        "originalBase": "codex/clientops-ai-r06-auxiliary-ops",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37116017858,
+            "headSha": "914e0e554de66cb7169408b7760d15aef8492ddb",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37116017858",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37116017950,
+            "headSha": "914e0e554de66cb7169408b7760d15aef8492ddb",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37116017950",
+            "workflowName": "Database contract"
+          }
+        ]
+      },
+      {
+        "number": 171,
+        "title": "R08: resumable local bulk agent maintenance",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/171",
+        "headRefName": "codex/clientops-ai-r08-bulk-maintenance",
+        "headSha": "9956d5b9818370a3c8c210524fc1e456aca7872f",
+        "originalBase": "codex/clientops-ai-r07-complete-queues",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37118143173,
+            "headSha": "9956d5b9818370a3c8c210524fc1e456aca7872f",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37118143173",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37118143295,
+            "headSha": "9956d5b9818370a3c8c210524fc1e456aca7872f",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37118143295",
+            "workflowName": "Database contract"
+          }
+        ]
+      },
+      {
+        "number": 172,
+        "title": "ClientOps AI R09: bounded sweeps and measured runtime",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/172",
+        "headRefName": "codex/clientops-ai-r09-bounded-sweep",
+        "headSha": "1d2812288614b70f6fa14e85415df51974842a3d",
+        "originalBase": "codex/clientops-ai-r08-bulk-maintenance",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37120472779,
+            "headSha": "1d2812288614b70f6fa14e85415df51974842a3d",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37120472779",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37120472793,
+            "headSha": "1d2812288614b70f6fa14e85415df51974842a3d",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37120472793",
+            "workflowName": "Database contract"
+          }
+        ]
+      },
+      {
+        "number": 173,
+        "title": "ClientOps AI R10: provider receipt contracts and owner-pending cases",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/173",
+        "headRefName": "codex/clientops-ai-r10-acceptance-pack",
+        "headSha": "b9d2925330eac98aca07baa05a34c728c12c766f",
+        "originalBase": "codex/clientops-ai-r09-bounded-sweep",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37120515478,
+            "headSha": "b9d2925330eac98aca07baa05a34c728c12c766f",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37120515478",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37120515490,
+            "headSha": "b9d2925330eac98aca07baa05a34c728c12c766f",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37120515490",
+            "workflowName": "Database contract"
+          }
+        ]
+      },
+      {
+        "number": 174,
+        "title": "ClientOps AI R11: final verification and release evidence",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/174",
+        "headRefName": "codex/clientops-ai-r11-release-evidence",
+        "headSha": "a55e8691e9e6745927a4f1e52804771fc46724d0",
+        "originalBase": "codex/clientops-ai-r10-acceptance-pack",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37123127770,
+            "headSha": "a55e8691e9e6745927a4f1e52804771fc46724d0",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37123127770",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37123127747,
+            "headSha": "a55e8691e9e6745927a4f1e52804771fc46724d0",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37123127747",
+            "workflowName": "Database contract"
+          }
+        ]
+      },
+      {
+        "number": 175,
+        "title": "perf: avoid scoped AI queue JIT overhead (R09 follow-up)",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/175",
+        "headRefName": "codex/clientops-ai-r09-jit-followup",
+        "headSha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
+        "originalBase": "codex/clientops-ai-r11-release-evidence",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37134247987,
+            "headSha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37134247987",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37134248020,
+            "headSha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37134248020",
+            "workflowName": "Database contract"
+          }
+        ]
+      },
+      {
+        "number": 176,
+        "title": "ClientOps AI R11: native journeys and queue actor recovery",
+        "url": "https://github.com/YNWAforever/ui-delight-maker/pull/176",
+        "headRefName": "codex/clientops-ai-r11-native-uat",
+        "headSha": "30af2d00173744ab3340173db878d07e5d017057",
+        "originalBase": "codex/clientops-ai-r09-jit-followup",
+        "draft": true,
+        "checksGreen": true,
+        "runs": [
+          {
+            "conclusion": "success",
+            "databaseId": 37198861154,
+            "headSha": "30af2d00173744ab3340173db878d07e5d017057",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37198861154",
+            "workflowName": "Checks"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 37198861138,
+            "headSha": "30af2d00173744ab3340173db878d07e5d017057",
+            "status": "completed",
+            "url": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37198861138",
+            "workflowName": "Database contract"
+          }
+        ]
+      }
+    ]
+  },
+  "environmentContinuity": {
+    "checkedAt": "2026-10-04T12:20:17.332Z",
+    "projectId": "prj_jlIsv7mLYGpZR4XEV4njX05jAZYJ",
+    "retainedBindingPath": ".clientops-perf/uat/agent-owner-cache-final-uat-project.private.json",
+    "retainedBindingSha256": "b88599bfcc4f4686b38b821e455626f9b0bb29a2b68d12c9be6e49a41ec2c6a4",
+    "comparisons": [
+      {
+        "key": "NEON_AUTH_URL",
+        "sameId": true,
+        "sameMetadataAndSealedValue": true,
+        "lastUpdatedAt": 1790707376496
+      },
+      {
+        "key": "DATABASE_URL",
+        "sameId": true,
+        "sameMetadataAndSealedValue": true,
+        "lastUpdatedAt": 1790707382710
+      },
+      {
+        "key": "CLIENTOPS_SEED_ON_DEPLOY",
+        "sameId": true,
+        "sameMetadataAndSealedValue": true,
+        "lastUpdatedAt": 1790707387322
+      },
+      {
+        "key": "APP_BASE_URL",
+        "sameId": true,
+        "sameMetadataAndSealedValue": true,
+        "lastUpdatedAt": 1790707393897
+      },
+      {
+        "key": "GITHUB_SHA",
+        "sameId": true,
+        "sameMetadataAndSealedValue": true,
+        "lastUpdatedAt": 1790707398257
+      },
+      {
+        "key": "VERCEL_GIT_COMMIT_SHA",
+        "sameId": true,
+        "sameMetadataAndSealedValue": true,
+        "lastUpdatedAt": 1790764099214
+      }
+    ],
+    "currentCount": 6,
+    "retainedCount": 6,
+    "providerKeysAbsent": true,
+    "decryptedValuesUnavailable": true,
+    "secretValuesOutput": false,
+    "success": true
+  },
+  "uatMigration": {
+    "checkedAt": "2026-10-04T12:23:11.772Z",
+    "sourceSha": "30af2d00173744ab3340173db878d07e5d017057",
+    "success": true,
+    "project": "polished-forest-15724329",
+    "branch": "br-solitary-butterfly-b3883kwo",
+    "database": "clientops_uat",
+    "independentSyntheticUatOnly": true,
+    "applied": [
+      "neon/migrations/023_ai_execution_provenance.sql",
+      "neon/migrations/024_ai_invalid_output.sql",
+      "neon/migrations/025_retention_sweep_checkpoints.sql",
+      "neon/migrations/026_ai_unknown_model.sql"
+    ],
+    "previousLedgerCount": 22,
+    "currentLedgerCount": 26,
+    "replayApplied": 0,
+    "replaySkipped": 26,
+    "seedExecuted": false,
+    "beforeTables": 54,
+    "afterTables": 56,
+    "all53OriginalBusinessTableHashesUnchanged": true,
+    "additiveExecutionMetadataOnlyNull": true,
+    "newSweepTablesEmpty": true,
+    "unknownModelNullableNoDefault": true,
+    "backupPath": ".clientops-perf/ai-gpt61-20261003/r11-approved-merge-uat-before-migration-backup.private.json",
+    "backupSha256": "f0b657ded20a2a36c92eaef4085ebb707ddfdeb06aeabd3b16b212b0d3c2aba3",
+    "productionAccess": false,
+    "providerCalls": 0
+  },
+  "productionHold": {
+    "checkedAt": "2026-10-04T12:10:23.399Z",
+    "productionProjectId": "prj_28RsIf31nvcD0YS3UIQqdnvJlHki",
+    "productionHold": "if [ \"$VERCEL_ENV\" = \"production\" ]; then exit 0; else exit 1; fi",
+    "latestReady": {
+      "id": "dpl_2XjJ6dX9xPT4uT2LCtQt2GujiDEY",
+      "sha": "bed941b37d18d214d0e7658ebce2116a2fc33eb9"
+    },
+    "latestAttempt": {
+      "id": "dpl_3P8WRkb2T2niuoALbsvqW88VAB9W",
+      "state": "CANCELED",
+      "sha": "953ec0a36806d4362fad9e2b2d8cd17a49adbb26"
+    },
+    "publicProductionSha": "bed941b37d18d214d0e7658ebce2116a2fc33eb9",
+    "productionMutation": false
+  },
+  "mergeGate": {
+    "exactFinalHeadCI": "pending after evidence commit",
+    "exactCandidatePreviewBuild": "pending",
+    "sevenActualRoleCandidateUat": "pending",
+    "mainIntegration": "pending; keep production hold"
+  },
+  "externalRelease": "NO-GO; owners/provider/worker/performance/manual AT/PITR/window still blocked"
+}

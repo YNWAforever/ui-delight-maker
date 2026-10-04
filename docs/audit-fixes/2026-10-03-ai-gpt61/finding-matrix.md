@@ -1,5 +1,7 @@
 # AI finding / task / review matrix
 
+> **2026-10-04 integration update:** conditional source merge is explicitly authorized after fresh CI and exact isolated candidate/seven-role UAT. Production release remains NO-GO. Earlier no-merge/open-draft statements below are timestamped historical checkpoints. Current merge state and final receipts: [conditional integration](conditional-merge-2026-10-04.md) and [PR176](https://github.com/YNWAforever/ui-delight-maker/pull/176).
+
 All original audit input and its20-pass/12-fail VM result are retained. This matrix records corrected source contracts and remaining acceptance separately. Every code task has its baseline, commands/exit/counts/skips/source SHA, receipts, rollback and owners in the [execution ledger](execution-ledger.md).
 
 | Finding | Corrected behavior | Tasks / draft PR | Code evidence | External acceptance / next owner |

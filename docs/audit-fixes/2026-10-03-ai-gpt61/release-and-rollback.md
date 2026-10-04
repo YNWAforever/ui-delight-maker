@@ -1,5 +1,7 @@
 # ClientOps AI candidate release / rollback
 
+> **2026-10-04 integration update:** conditional source merge is explicitly authorized after fresh CI and exact isolated candidate/seven-role UAT. Production release remains NO-GO. Earlier no-merge/open-draft statements below are timestamped historical checkpoints. Current merge state and final receipts: [conditional integration](conditional-merge-2026-10-04.md) and [PR176](https://github.com/YNWAforever/ui-delight-maker/pull/176).
+
 **Decision: NO-GO. Not merged or deployed to production.** Authority covers local reversible implementation/testing, branch push, draft PR and CI. It does not authorize production release/migration, historical data changes, real customer messages, paid provider calls or cloud n8n activation. Automatic PR build previews do not supply isolated authenticated UAT acceptance. Production build hold remains in place; fresh metadata/public build evidence is recorded separately.
 
 ## Required release gate

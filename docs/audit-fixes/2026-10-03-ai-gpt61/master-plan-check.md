@@ -1,5 +1,7 @@
 # Master plan execution check — 2026-10-04
 
+> **2026-10-04 integration update:** conditional source merge is explicitly authorized after fresh CI and exact isolated candidate/seven-role UAT. Production release remains NO-GO. Earlier no-merge/open-draft statements below are timestamped historical checkpoints. Current merge state and final receipts: [conditional integration](conditional-merge-2026-10-04.md) and [PR176](https://github.com/YNWAforever/ui-delight-maker/pull/176).
+
 Latest code/local checkpoint: **1326cefb939e16e8ba57a156de9eca13299e264e**, sourceCI2920/0skip, target45/0skip, native late-write3/two actual actors plus separate read9/seven roles. Final docs-only HEAD CI on draft176. The original checkpoint/table below is historical; latest bounded follow-ups and unchanged external NO-GO gates are recorded at the end.
 
 Execution plan: 2026-10-03 GPT-6.1 Sol plan, SHA-256 37e03bf6cff9564ce68c35c7cd838ae5c6348c37575158d1743cad48bef6ce38. Original task matrix and ZIP remain historical inputs; their initial unchecked/status fields are not current implementation status. Original ZIP checksum freshly reverified as c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7.
