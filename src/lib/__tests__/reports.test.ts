@@ -142,8 +142,9 @@ describe("formatReportCell", () => {
       "Pending approval",
     );
     expect(formatReportCell(field("pipeline", "stage"), "won")).toBe("Won");
-    // Unknown values fall back to the raw word rather than crashing or inventing one.
-    expect(formatReportCell(field("pipeline", "stage"), "brand_new")).toBe("brand new");
+    // Unknown values fall back to the raw words, in sentence case (UX-30), rather than
+    // crashing or inventing one.
+    expect(formatReportCell(field("pipeline", "stage"), "brand_new")).toBe("Brand new");
   });
 });
 
