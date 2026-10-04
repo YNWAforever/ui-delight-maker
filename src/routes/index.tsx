@@ -20,6 +20,7 @@ import { getBusinessDateKey } from "@/lib/business-date";
 import { describeTriggerFailure, toSafeErrorMessage } from "@/lib/errors";
 import { filterPipelineLeads, getPipelineSummary } from "@/lib/pipeline";
 import { getStatusLabel } from "@/lib/status-labels";
+import { getJobSheetStatusLabel } from "@/lib/job-sheet-editor";
 import { buildRevenueActions } from "@/lib/sales-workspace";
 import {
   pipelineFiltersFromSearch,
@@ -126,7 +127,9 @@ function DashboardLanding() {
                   className="flex items-center justify-between rounded-md border border-border p-4 hover:bg-muted/50"
                 >
                   <span className="font-medium">{sheet.number}</span>
-                  <span className="text-sm text-muted-foreground">{sheet.status}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {getJobSheetStatusLabel(sheet.status)}
+                  </span>
                 </Link>
               </li>
             ))}

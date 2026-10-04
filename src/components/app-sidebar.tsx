@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { isSidebarItemActive } from "@/lib/sidebar-active";
 import type { Profile, WorkspaceFavorite } from "@/lib/types";
 import type { AdminNavigationItem, Capability } from "@/lib/admin/types";
+import { getUserRoleLabel } from "@/lib/status-labels";
 import { canOpenWorkspace } from "@/lib/workspace-access";
 import {
   LayoutDashboard,
@@ -197,7 +198,7 @@ export function AppSidebar({
           <div className="flex min-w-0 flex-1 flex-col leading-tight">
             <span className="truncate text-xs font-medium">{profile?.name ?? "—"}</span>
             <span className="truncate text-[11px] text-muted-foreground">
-              {profile?.role ?? "—"} · Fimmick
+              {profile?.role ? getUserRoleLabel(profile.role) : "—"} · Fimmick
             </span>
           </div>
           <Button

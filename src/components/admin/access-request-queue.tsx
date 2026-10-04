@@ -4,6 +4,7 @@ import { EmptyWorkspaceState, SectionHeader, StatusBadge } from "@/components/sa
 import { Button } from "@/components/ui/button";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatDateTime } from "@/lib/format";
+import { humanizeKey } from "@/lib/status-labels";
 import type { UserRole } from "@/lib/admin/types";
 import type { AccessRequest } from "@/server/repositories/admin-access";
 
@@ -24,12 +25,17 @@ type AccessRequestQueueProps = {
   /** True when the current list is filtered to something other than the pending queue. */
   filtered?: boolean;
   onDecide: (input: AccessRequestDecision) => Promise<unknown> | unknown;
+  /** Team names by id, so a team request reads "Coverage team" rather than its id. */
+  teamName?: (teamId: string) => string | undefined;
 };
 
-function requestTarget(request: AccessRequest) {
-  return request.requestType === "capability"
-    ? (request.capability ?? "Capability request")
-    : (request.teamId ?? "Team request");
+/** What the request is for, in words: a capability name or a team name, never a raw key or id. */
+function requestTarget(request: AccessRequest, teamName?: (teamId: string) => string | undefined) {
+  if (request.requestType === "capability") {
+    return request.capability ? humanizeKey(request.capability) : "Capability request";
+  }
+  const name = request.teamId ? teamName?.(request.teamId) : undefined;
+  return name ? `Join ${name}` : "Team membership request";
 }
 
 /**
@@ -67,6 +73,7 @@ export function AccessRequestQueue({
   actorProfileId,
   filtered = false,
   onDecide,
+  teamName,
 }: AccessRequestQueueProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
@@ -159,7 +166,7 @@ export function AccessRequestQueue({
                     id={`access-request-${request.id}-target`}
                     className="mt-1 break-words text-sm font-medium text-foreground"
                   >
-                    {requestTarget(request)}
+                    {requestTarget(request, teamName)}
                   </h3>
                   <dl className="mt-2 grid gap-x-5 gap-y-1 text-sm sm:grid-cols-2">
                     <div>

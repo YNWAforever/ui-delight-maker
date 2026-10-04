@@ -389,6 +389,9 @@ function AdminAccessRoute() {
           actorProfileId={profile?.id ?? null}
           filtered={search.requestStatus !== "pending"}
           onDecide={decide}
+          teamName={(teamId) =>
+            teamOptions(organizationQuery.data).find((team) => team.id === teamId)?.name
+          }
         />
       ) : selectedUser ? (
         <>

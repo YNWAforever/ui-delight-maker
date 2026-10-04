@@ -49,7 +49,7 @@ describe("AccessRequestQueue", () => {
     // reject, so neither control is offered and the rule is stated instead of the symptom.
     expect(screen.queryByRole("button", { name: "Approve capability access" })).toBeNull();
     const capabilityCard = screen
-      .getByRole("heading", { name: "accounts.update" })
+      .getByRole("heading", { name: "Accounts update" })
       .closest("article") as HTMLElement;
     expect(within(capabilityCard).queryByRole("button", { name: "Reject request" })).toBeNull();
     // Decision controls carry no record ids in their names (audit UX-05).
@@ -65,6 +65,22 @@ describe("AccessRequestQueue", () => {
       reason: "Coverage approved",
       accessExpiresAt: null,
     });
+  });
+
+  it("names the team and capability instead of showing ids or keys", () => {
+    render(
+      <AccessRequestQueue
+        requests={[teamRequest, capabilityRequest]}
+        actorRole="admin"
+        onDecide={vi.fn()}
+        teamName={(teamId) => (teamId === "team-1" ? "Coverage team" : undefined)}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Join Coverage team" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Accounts update" })).toBeTruthy();
+    expect(screen.queryByText("team-1")).toBeNull();
+    expect(screen.queryByText("accounts.update")).toBeNull();
   });
 
   it("renders each request's real state instead of a hardcoded Pending pill", () => {

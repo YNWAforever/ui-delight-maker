@@ -86,6 +86,16 @@ export type StatusPresentation = {
  * themes. The previous tone colours on these tints measured 3.77–4.16:1 in light mode and the
  * warning pair 1.33:1 in dark mode, below WCAG AA for 12 px text.
  */
+/**
+ * A stored key read as words: "profile.deactivated_with_reassignment" becomes
+ * "Profile deactivated with reassignment". For audit actions, target types and capability
+ * names, which have no curated label and must not reach the screen as code.
+ */
+export function humanizeKey(key: string | null | undefined): string {
+  const words = (key ?? "").replace(/[._]+/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : "";
+}
+
 export const STATUS_TONE_CLASS: Record<StatusTone, string> = {
   neutral: "bg-muted text-tone-neutral-fg border-border",
   info: "bg-info/12 text-tone-info-fg border-info/25",

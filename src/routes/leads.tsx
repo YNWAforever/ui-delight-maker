@@ -213,7 +213,9 @@ function LeadsPage() {
       cell: (lead) => (
         <div className="min-w-0">
           <span className="font-medium">{lead.company_name}</span>
-          <span className="block truncate text-xs text-muted-foreground">{lead.id}</span>
+          <span className="block truncate text-xs text-muted-foreground">
+            {lead.contact_name?.trim() || lead.contact_email?.trim() || "No contact recorded"}
+          </span>
         </div>
       ),
     },

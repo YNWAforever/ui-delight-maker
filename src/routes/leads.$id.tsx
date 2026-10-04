@@ -246,7 +246,7 @@ function LeadDetail() {
       <WorkspaceHeader
         context="Acquire"
         title={lead.company_name}
-        description={`${lead.id} · created ${formatDateTime(lead.created_at)}`}
+        description={`Created ${formatDateTime(lead.created_at)}`}
         backHref={{ to: "/leads", label: "All leads" }}
         status={
           workspaceQuery.isError ? (

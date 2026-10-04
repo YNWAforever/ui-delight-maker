@@ -9,6 +9,7 @@ import {
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
 import { formatCount, formatDateTime } from "@/lib/format";
+import { humanizeKey } from "@/lib/status-labels";
 import type { AdminAuditLog, Paginated } from "@/server/repositories/admin-access";
 
 type AdminAuditTableProps = {
@@ -66,7 +67,11 @@ export function AdminAuditTable({
       id: "action",
       header: "Action",
       priority: "primary",
-      cell: (entry) => <span className="font-medium text-foreground">{entry.action}</span>,
+      cell: (entry) => (
+        <span className="font-medium text-foreground" title={entry.action}>
+          {humanizeKey(entry.action)}
+        </span>
+      ),
     },
     {
       id: "severity",
@@ -80,7 +85,7 @@ export function AdminAuditTable({
       priority: "secondary",
       cell: (entry) => (
         <span className="block max-w-[18rem] break-words text-foreground">
-          {entry.target_type}
+          {humanizeKey(entry.target_type)}
           {entry.target_id ? ` · ${entry.target_id}` : ""}
         </span>
       ),
@@ -145,7 +150,9 @@ export function AdminAuditTable({
               columns={columns}
               rows={data.items}
               rowKey={(entry) => entry.id}
-              rowLabel={(entry) => `${entry.action} at ${formatDateTime(entry.created_at)}`}
+              rowLabel={(entry) =>
+                `${humanizeKey(entry.action)} at ${formatDateTime(entry.created_at)}`
+              }
               caption="Administrative audit entries"
               expandable={{
                 renderDetails: (entry) => (
