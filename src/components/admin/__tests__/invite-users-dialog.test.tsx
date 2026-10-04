@@ -95,6 +95,69 @@ describe("InviteUsersDialog", () => {
     await waitFor(() => expect(document.activeElement).toBe(trigger));
     expect(onSubmit).not.toHaveBeenCalled();
   });
+  it("shows a copyable activation link for every invitation that was not emailed", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    const onSubmit = vi.fn().mockResolvedValue([
+      {
+        invitation: { email: "ada@example.com", expires_at: "2026-10-11T02:00:00Z" },
+        inviteUrl: "https://clientops.example/invite/raw-token-1",
+        delivery: { delivered: false, reason: "missing_webhook" },
+      },
+      {
+        invitation: { email: "bob@example.com", expires_at: "2026-10-11T02:00:00Z" },
+        inviteUrl: "https://clientops.example/invite/raw-token-2",
+        delivery: { delivered: true },
+      },
+    ]);
+    render(<InviteUsersDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Email addresses" }),
+      "ada@example.com, bob@example.com",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Send invitations" }));
+
+    const link = await screen.findByRole("textbox", { name: "ada@example.com" });
+    expect((link as HTMLInputElement).value).toBe("https://clientops.example/invite/raw-token-1");
+    expect((link as HTMLInputElement).readOnly).toBe(true);
+    // The emailed invitee needs no link on screen.
+    expect(screen.queryByRole("textbox", { name: "bob@example.com" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Copy activation link for ada@example.com" }),
+    );
+    expect(writeText).toHaveBeenCalledWith("https://clientops.example/invite/raw-token-1");
+    expect(await screen.findByText("Link copied. Send it to the person directly.")).toBeTruthy();
+  });
+
+  it("selects the link when the clipboard is blocked", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error("denied")) },
+    });
+    const onSubmit = vi.fn().mockResolvedValue([
+      {
+        invitation: { email: "ada@example.com", expires_at: "2026-10-11T02:00:00Z" },
+        inviteUrl: "https://clientops.example/invite/raw-token-1",
+        delivery: { delivered: false, reason: "missing_webhook" },
+      },
+    ]);
+    render(<InviteUsersDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Email addresses" }),
+      "ada@example.com",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Send invitations" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Copy activation link for ada@example.com" }),
+    );
+
+    expect(await screen.findByText(/Copying is blocked in this browser/)).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "ada@example.com" }));
+  });
+
   it("keeps the dialog open while an invitation is submitting", async () => {
     let finish!: () => void;
     const onSubmit = vi.fn().mockReturnValue(

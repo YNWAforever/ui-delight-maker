@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { countUndelivered, describeDelivery } from "../invitation-delivery";
+import { countUndelivered, describeDelivery, readActivationLinks } from "../invitation-delivery";
 
 /**
  * An invitation that was saved but never emailed must never be reported as sent.
@@ -73,5 +73,58 @@ describe("describeDelivery", () => {
     const message = describeDelivery(undefined, 3);
     expect(message).toContain("3 invitations submitted");
     expect(message).toContain("treat the email as unsent");
+  });
+
+  it("points at the links instead of asking for 'another way'", () => {
+    expect(describeDelivery([notDelivered], 1)).toContain("Copy each link below");
+    expect(describeDelivery([notDelivered], 1)).not.toContain("another way");
+  });
+});
+
+describe("readActivationLinks", () => {
+  /** The shape `inviteUsers` really returns: `{ invitation, inviteUrl, delivery }`. */
+  const unsent = {
+    invitation: {
+      id: "invitation-4",
+      email: "ada@example.com",
+      expires_at: "2026-10-11T02:00:00Z",
+    },
+    inviteUrl: "https://clientops.example/invite/raw-token-1",
+    delivery: { delivered: false, reason: "missing_webhook" },
+  };
+
+  it("returns the link, address and expiry of every invitation that was not emailed", () => {
+    expect(readActivationLinks([unsent])).toEqual([
+      {
+        email: "ada@example.com",
+        url: "https://clientops.example/invite/raw-token-1",
+        expiresAt: "2026-10-11T02:00:00Z",
+      },
+    ]);
+  });
+
+  it("leaves out invitations that were emailed", () => {
+    const emailed = { ...unsent, delivery: { delivered: true } };
+    expect(readActivationLinks([emailed, { ...delivered, inviteUrl: unsent.inviteUrl }])).toEqual(
+      [],
+    );
+  });
+
+  it("never treats a value that is not an invite URL as a link", () => {
+    for (const inviteUrl of [
+      "javascript:alert(1)",
+      "https://clientops.example/admin/people",
+      "not a url",
+      42,
+      undefined,
+    ]) {
+      expect(readActivationLinks([{ ...unsent, inviteUrl }])).toEqual([]);
+    }
+  });
+
+  it("returns nothing for a result that is not a list", () => {
+    for (const value of [undefined, null, {}, "ok"]) {
+      expect(readActivationLinks(value)).toEqual([]);
+    }
   });
 });
