@@ -1,0 +1,246 @@
+{
+  "checkedAt": "2026-10-04T03:00:09.989Z",
+  "sha": "fd6c74222f714373ef5ba8d3ca644cf418956b2c",
+  "sourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "serverEntrySha256": "e44ad6bd0a9b7b40bb2e3d90d2046d444b6d9ed1aeb0a3c26bd5792a3a74a217",
+  "database": "clientops_ai_uat_5c6e927349d048fba30eb3a9291244db",
+  "fixtureVersion": "ai-local-cancel-uat-v1",
+  "checks": [
+    {
+      "name": "super_admin independent live identity/session/persisted role",
+      "passed": true
+    },
+    {
+      "name": "admin independent live identity/session/persisted role",
+      "passed": true
+    },
+    {
+      "name": "manager independent live identity/session/persisted role",
+      "passed": true
+    },
+    {
+      "name": "sales independent live identity/session/persisted role",
+      "passed": true
+    },
+    {
+      "name": "client_success independent live identity/session/persisted role",
+      "passed": true
+    },
+    {
+      "name": "accounting independent live identity/session/persisted role",
+      "passed": true
+    },
+    {
+      "name": "read_only independent live identity/session/persisted role",
+      "passed": true
+    },
+    {
+      "name": "seven distinct live users/sessions/cookie sets; no shared admin state",
+      "passed": true
+    },
+    {
+      "name": "young10min expire blocked with zero local effects",
+      "passed": true
+    },
+    {
+      "name": "super_admin own young cancel preview authorized; no run/approval/audit/command changes",
+      "passed": true
+    },
+    {
+      "name": "super_admin explicit native local cancel creates one command/audit, no approval/provider effect",
+      "passed": true
+    },
+    {
+      "name": "super_admin identical native body/key replay adds zero effects",
+      "passed": true
+    },
+    {
+      "name": "admin own young cancel preview authorized; no run/approval/audit/command changes",
+      "passed": true
+    },
+    {
+      "name": "native Cancel preview leaves all effect facts unchanged",
+      "passed": true
+    },
+    {
+      "name": "admin explicit native local cancel creates one command/audit, no approval/provider effect",
+      "passed": true
+    },
+    {
+      "name": "admin identical native body/key replay adds zero effects",
+      "passed": true
+    },
+    {
+      "name": "changed reason under same native key returns409 with zero writes",
+      "passed": true
+    },
+    {
+      "name": "manager own young cancel preview authorized; no run/approval/audit/command changes",
+      "passed": true
+    },
+    {
+      "name": "manager explicit native local cancel creates one command/audit, no approval/provider effect",
+      "passed": true
+    },
+    {
+      "name": "manager identical native body/key replay adds zero effects",
+      "passed": true
+    },
+    {
+      "name": "sales own young cancel preview authorized; no run/approval/audit/command changes",
+      "passed": true
+    },
+    {
+      "name": "sales explicit native local cancel creates one command/audit, no approval/provider effect",
+      "passed": true
+    },
+    {
+      "name": "sales identical native body/key replay adds zero effects",
+      "passed": true
+    },
+    {
+      "name": "client_success own young cancel preview authorized; no run/approval/audit/command changes",
+      "passed": true
+    },
+    {
+      "name": "client_success explicit native local cancel creates one command/audit, no approval/provider effect",
+      "passed": true
+    },
+    {
+      "name": "client_success identical native body/key replay adds zero effects",
+      "passed": true
+    },
+    {
+      "name": "read_only hidden bulk controls and genuine same-origin preview/execute403 with zero writes",
+      "passed": true
+    },
+    {
+      "name": "accounting hidden bulk controls and genuine same-origin preview/execute403 with zero writes",
+      "passed": true
+    },
+    {
+      "name": "mixed cancel4 has1effective receipt; linked/unknown/terminal3 untouched",
+      "passed": true
+    },
+    {
+      "name": "actual390px local cancel receipt has no horizontal overflow",
+      "passed": true,
+      "viewport": 390,
+      "scroll": 390
+    },
+    {
+      "name": "native mixed cancel receipt screenshot retained",
+      "passed": true,
+      "screenshot": ".clientops-perf/ai-gpt61-20261003/native-ui/cancel-mixed-completed.png",
+      "screenshotSha256": "203924fab6abef3ca8ceb968440a14157e9b0a2d85e3d52e3d300bb1b78a8157"
+    },
+    {
+      "name": "staleAfterPreview transaction recheck records STALE_SNAPSHOT; zero command/audit/commercial effects",
+      "passed": true
+    },
+    {
+      "name": "linkedAfterPreview transaction recheck records LINKED_APPROVAL; zero command/audit/commercial effects",
+      "passed": true
+    },
+    {
+      "name": "changedOwnerAfterPreview transaction recheck records FORBIDDEN; zero command/audit/commercial effects",
+      "passed": true
+    },
+    {
+      "name": "real server expired preview409 and native unconfirmed state preserve all facts; no fake clock",
+      "passed": true
+    },
+    {
+      "name": "native direct auxiliary note preview is blocked UNSUPPORTED_OWNERSHIP; zero effects",
+      "passed": true
+    },
+    {
+      "name": "manager foreign run absent; direct native preview reports per-item FORBIDDEN with zero effects",
+      "passed": true
+    },
+    {
+      "name": "manager cannot execute another actual actor native operation403 with zero writes",
+      "passed": true
+    },
+    {
+      "name": "two different live actors race same native cancel: one effect/command/audit, one skipped terminal item",
+      "passed": true
+    },
+    {
+      "name": "both concurrent actor-owned original native intents replay with zero added effects",
+      "passed": true
+    },
+    {
+      "name": "all seven native role journeys have zero uncaught page errors",
+      "passed": true
+    }
+  ],
+  "identities": [
+    {
+      "role": "super_admin",
+      "userSha256": "2e826afbc440c3626a35f510b27c62dfe97a4cf4087ce7bce5171444e4f6a10f",
+      "sessionSha256": "558ceadf8fe6bcab2569f8754836c3af25695a25f8ac52c28583415111a781c2",
+      "cookiesSha256": "3ad24046b0be0904279be342f85fba3f905111f359565753bfaf28483b50fafc",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "admin",
+      "userSha256": "2ef95b03cf7152804fe7e2658f05c81443eefa109e38409f556015c8fe57f2b1",
+      "sessionSha256": "7b93f6916940fc215b90c1623bd5ab426eb96fa3b4f00f49597af14dd8731c93",
+      "cookiesSha256": "3a089499864dc4975a3eabc2cb538b4152f903ab24bdab97f98858af36810abd",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "manager",
+      "userSha256": "88a8c8cdaf3230e0b257c07071d13cad63a259b16f13ca290a1cb01f9ae8799b",
+      "sessionSha256": "0961759d930d6cdcce225e241e95b1a27ae60d2136750044a7eb24eb8f6f1cc9",
+      "cookiesSha256": "a4c3f9f5f63b5d347b9fdd228ac67fb9d9fa3ff2c769c1af2a7fd686b9906372",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "sales",
+      "userSha256": "2e9ac9f96d4a9c1a8a5f8c5c7fb7868a71018f7fbff18d8ba1933d585c2c404a",
+      "sessionSha256": "667b589e00957902c7aee72d00d7db6d92be65f34cf70563600fa807829b3171",
+      "cookiesSha256": "7da674b235ef93337cebb63275241cb13fef4188b51326c34bb3e979e1eec866",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "client_success",
+      "userSha256": "abf1d43bcd802e6970d36f832ce785a036d7e947feef56054b54b10e3642298d",
+      "sessionSha256": "10e01fb86f8c1587480705e7e1fe7d3080c3cbd187eed7c93bf114c7cdbae624",
+      "cookiesSha256": "bca7209b5e11bbb178f06b0025df86f99b984ccac6012329330cac1f639457e3",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "accounting",
+      "userSha256": "5bc88a9c60cb5e3d014a51eee07126e6adc00ec54681efaa531b50ba90c67fbb",
+      "sessionSha256": "53c77aaaff970a04349d056fab770c2a0b9438e873af00ff0dd5b8f27aba5ebb",
+      "cookiesSha256": "c19430236b29ec7eb321b34b92131fd5c13b6457fba6c0bd284cc94ea3c54b95",
+      "live": true,
+      "persistedRoleMatches": true
+    },
+    {
+      "role": "read_only",
+      "userSha256": "b6b6e8a481e03b614e6890a0668fe1fed886b0da3fddc389af96210ceec975ae",
+      "sessionSha256": "9d5a6df8b5bd04a23ab5177b09b9152e959fb8cd048ad5425a12a2fbce85c241",
+      "cookiesSha256": "0e11e7fe692dccd4d04bde9f7e07fe06b4c24a3fe2c03f16aa900212c392f3ac",
+      "live": true,
+      "persistedRoleMatches": true
+    }
+  ],
+  "pageErrors": [],
+  "stage": "two-live-actors-concurrent",
+  "passed": true,
+  "error": null,
+  "actualSSR": true,
+  "actualNeonDriver": true,
+  "actualLoopbackPG": true,
+  "providerConfigurationAbsent": true,
+  "actualProviderCalls": 0,
+  "productionAccess": false
+}

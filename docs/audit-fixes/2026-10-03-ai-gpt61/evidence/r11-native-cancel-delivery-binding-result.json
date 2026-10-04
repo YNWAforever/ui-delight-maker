@@ -1,0 +1,144 @@
+{
+  "recordedAt": "2026-10-04T03:02:08.779Z",
+  "codeVerifiedCommit": "fd6c74222f714373ef5ba8d3ca644cf418956b2c",
+  "executionHead": "fd6c74222f714373ef5ba8d3ca644cf418956b2c",
+  "workingSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceTrees": {
+    "src": "84ebdff7ac6fecd94fac4b598af9393531d5aff6",
+    "neon": "3cf78f7d35c15b02c8099a728b9a78b74116b82f",
+    "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
+    "scripts": "ecca3b87db60afb06f23d74fb5c24aa09a48e639"
+  },
+  "unchangedFromBaseline": [
+    "neon",
+    "n8n",
+    "scripts",
+    "package.json",
+    "bun.lock"
+  ],
+  "serverEntrySha256": "e44ad6bd0a9b7b40bb2e3d90d2046d444b6d9ed1aeb0a3c26bd5792a3a74a217",
+  "artifactInventory": {
+    "files": 401,
+    "bytes": 5507745,
+    "sha256": "83d606da5558e32576b22b2db40ff7a9599f6cdbed60fc74e7e349457e7d6bb2",
+    "privatePath": ".clientops-perf/ai-gpt61-20261003/r11-native-cancel-artifact-inventory.private.json"
+  },
+  "runners": [
+    {
+      "path": "evidence/r11-native-cancel-runner.source.txt",
+      "sha256": "203aa9c86454c16048458c22b60b447598abbe6773e7bbecfde1554b58665070",
+      "executedPrivateSourceSha256": "5b92ead5c3474186c181f6993f97303e41efb55560d6daf123dc46460ecbece9",
+      "normalization": "UTF8/LF; no semantic changes"
+    },
+    {
+      "path": "evidence/r11-native-cancel-runtime.source.txt",
+      "sha256": "b1744a77f8807827fd2eb025b7466685a392164e20386c7199343af161025c01",
+      "executedPrivateSourceSha256": "e88c75483f2cf63ae6abb94b4f95f970996fa444489bf32672c83409f5cd7e17",
+      "normalization": "UTF8/LF; no semantic changes"
+    },
+    {
+      "path": "evidence/r11-native-cancel-prepare.source.txt",
+      "sha256": "79e9fdcd9a53b711b84626b3c843e16d6bf4d8c75df362e0e3e0932ec4fe5942",
+      "executedPrivateSourceSha256": "2bde161d59284711fcd175a6bbf75ac80eeaa33d03c04fbfe060c9383ef6d118",
+      "normalization": "UTF8/LF; no semantic changes"
+    },
+    {
+      "path": "evidence/r11-native-cancel-fixtures.source.txt",
+      "sha256": "d0deaa82853e385c708d3e8ceec6e046566a77f45cb9439da2a869f590df2c92",
+      "executedPrivateSourceSha256": "c82ca6c76878fa352499e38d9a44a58c43ee9685d5a3869c1e0f6b53cda58297",
+      "normalization": "UTF8/LF; no semantic changes"
+    },
+    {
+      "path": "evidence/r11-native-cancel-migration.source.txt",
+      "sha256": "e140938c1d2541591cf49e7bc4b1463220b9cb2677cc702f4fef7aa34902df80",
+      "executedPrivateSourceSha256": "c5b536cbe6db4fe9baa4491f8cfb437a333d14a617c15a4b3f333b36c0160e10",
+      "normalization": "UTF8/LF; no semantic changes"
+    },
+    {
+      "path": "evidence/r11-native-cancel-integrity.source.txt",
+      "sha256": "ad6f0ac5e66c54dc42083d5384b39c35ffdddcb4cce2708c96b530d7f7fede8c",
+      "executedPrivateSourceSha256": "ad6f0ac5e66c54dc42083d5384b39c35ffdddcb4cce2708c96b530d7f7fede8c",
+      "normalization": "UTF8/LF; no semantic changes"
+    }
+  ],
+  "receipts": [
+    {
+      "path": "evidence/r11-native-cancel-result.json",
+      "sha256": "5a10406e0b9070090773f1b547075afb430ea40ff9bbf2665bf2daaff70ef86b"
+    },
+    {
+      "path": "evidence/r11-native-cancel-integrity-result.json",
+      "sha256": "4dd22e4e51f18ca40c147c93bbf493821ac0a0c2f1159fdc8b4acf73281489fa"
+    },
+    {
+      "path": "evidence/r11-native-cancel-runtime-result.json",
+      "sha256": "ceee71491e0366a4f1fa5fdeb7189ecef2b26fdd6dab35c2ec1b80f11498a2ea"
+    },
+    {
+      "path": "evidence/r11-native-cancel-migration-result.json",
+      "sha256": "4cc3c06e9da251706aac79f50db97ba378351cb7f3a0d8f98e3d9e8279f8705a"
+    },
+    {
+      "path": "evidence/r11-native-cancel-seed-result.json",
+      "sha256": "99f9657217fe8979332a093ac8d5b5db14a12040a99aa9a5934a18116a288890"
+    },
+    {
+      "path": "evidence/r11-native-cancel-code-ci-result.json",
+      "sha256": "881700f1b402ccf2b358012762a24b2e6f9265793c03cfd2084bcabfc39bbc25"
+    },
+    {
+      "path": "evidence/r11-native-cancel-final-target-result.json",
+      "sha256": "ed1b3b9755e2d43f0e4f0ce30b6d8f0e22b12f3bcc317cc62388e3ad8b9e0b83"
+    },
+    {
+      "path": "evidence/r11-native-cancel-final-static-result.json",
+      "sha256": "b246a1e19f5edc4eeed724a912cb0fbd17d75b1e987ae103d48fc781fe1a31da"
+    },
+    {
+      "path": "evidence/r11-native-cancel-final-build-result.json",
+      "sha256": "1a3f38e32c5e3f7747befd25d1243d6f6113dd1a70f0e7a371c29135d2c58061"
+    },
+    {
+      "path": "evidence/r11-native-cancel-ui-red-result.json",
+      "sha256": "4def6b47118ba19bb81da09dbf53208c77870c54792d30ab3ca4937a1852d947"
+    },
+    {
+      "path": "evidence/r11-native-cancel-readonly-ui-red-result.json",
+      "sha256": "5dafc1afba2a88c28300da4e9555fac8545264c2766c4cf45e408c142f7693e3"
+    }
+  ],
+  "screenshots": [
+    {
+      "path": ".clientops-perf/ai-gpt61-20261003/native-ui/cancel-mixed-completed.png",
+      "sha256": "203924fab6abef3ca8ceb968440a14157e9b0a2d85e3d52e3d300bb1b78a8157"
+    }
+  ],
+  "commands": {
+    "prepare": "node .clientops-perf/ai-gpt61-20261003/r11-native-cancel-prepare.private.mjs",
+    "migration": "bun .clientops-perf/ai-gpt61-20261003/r11-native-cancel-migrate.private.ts",
+    "fixtures": "node .clientops-perf/ai-gpt61-20261003/r11-native-cancel-fixtures.private.mjs",
+    "runtime": "node .clientops-perf/ai-gpt61-20261003/r11-native-cancel-runtime.private.mjs",
+    "native": "node .clientops-perf/ai-gpt61-20261003/r11-native-cancel.private.mjs",
+    "integrity": "node .clientops-perf/ai-gpt61-20261003/r11-native-cancel-integrity.private.mjs",
+    "target": "see final-target-result command array; guarded disposable PG",
+    "build": "bunx vite build",
+    "nativeExit": 0,
+    "migrationExit": 0,
+    "integrityExit": 0,
+    "targetExit": 0,
+    "nativeChecks": 41,
+    "roles": 7,
+    "targetTests": 66,
+    "targetSkipped": 0,
+    "fullCI": 2878,
+    "fullCISkipped": 0
+  },
+  "originalZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
+  "schema": 26,
+  "providerTransport": "none; provider credentials absent, only independent UAT Auth GET allowed",
+  "trueProviderAcceptance": "blocked",
+  "manualAT": "not-tested",
+  "authorReviewOnly": true,
+  "productionAccess": false,
+  "releaseDecision": "NO-GO"
+}

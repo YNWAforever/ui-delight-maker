@@ -1,0 +1,22 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {randomUUID,createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import {Pool} from 'pg';
+import assert from 'node:assert/strict';
+const f='.clientops-perf/ai-gpt61-20261003';
+const sourcePath=f+'/r11-local-uat.private.json',base=JSON.parse(readFileSync(sourcePath,'utf8')),u=new URL(base.connectionString);
+assert.equal(base.isolationConfirmed,true);assert.equal(u.hostname,'127.0.0.1');assert.equal(u.port,'64409');assert.equal(u.pathname,'/'+base.db);assert.match(base.db,/^clientops_ai_uat_[a-f0-9]{32}$/);
+const c=JSON.parse(execFileSync('docker',['inspect','clientops-approval-review-pg-20261001'],{encoding:'utf8'}))[0];
+assert.equal(c.Config.Image,'pgvector/pgvector:pg17');assert.equal(c.State.Running,true);assert.equal(c.NetworkSettings.Ports['5432/tcp'][0].HostIp,'127.0.0.1');assert.equal(c.NetworkSettings.Ports['5432/tcp'][0].HostPort,'64409');
+const p=new Pool({connectionString:u.toString()}),before=[];
+for(const {tablename:t}of(await p.query("select tablename from pg_tables where schemaname='public' order by tablename")).rows){
+ assert.match(t,/^[a-z_0-9]+$/);const rows=(await p.query('select row_to_json(t)::text value from "'+t+'" t')).rows.map(x=>x.value).sort();before.push({table:t,count:rows.length,sha256:createHash('sha256').update(JSON.stringify(rows)).digest('hex')});
+}
+const constraints=(await p.query("select conname,convalidated,pg_get_constraintdef(oid) definition from pg_constraint where conrelid='agent_runs'::regclass order by conname")).rows;assert.ok(constraints.every(x=>x.convalidated));await p.end();
+writeFileSync(f+'/r11-native-cancel-source-before.private.json',JSON.stringify({sourceDatabase:base.db,tables:before,constraints},null,2));
+const adminUrl=new URL(u);adminUrl.pathname='/postgres';const admin=new Pool({connectionString:adminUrl.toString()}),db='clientops_ai_uat_'+randomUUID().replaceAll('-','');
+assert.equal(Number((await admin.query('select count(*) from pg_stat_activity where datname=$1',[base.db])).rows[0].count),0);
+writeFileSync(f+'/r11-native-cancel-clone-checkpoint.private.json',JSON.stringify({sourceDatabase:base.db,db,purpose:'UC07/10 native local cancel and snapshot reauthorization'}));
+await admin.query('create database "'+db+'" template "'+base.db+'"');await admin.end();u.pathname='/'+db;
+writeFileSync(f+'/r11-native-cancel-uat.private.json',JSON.stringify({...base,db,connectionString:u.toString(),version:'ai-local-cancel-uat-v1',sourceRecord:{kind:'owned synthetic UAT clone',sourceDatabase:base.db,productionAccess:false},testOnlyProviderFixture:false},null,2));
+console.log(JSON.stringify({database:db,sourceTables:before.length,productionAccess:false,originalSourcePreserved:true}));

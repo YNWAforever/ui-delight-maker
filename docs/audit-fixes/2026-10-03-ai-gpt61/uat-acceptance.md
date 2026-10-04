@@ -82,3 +82,19 @@ Code/execution **edb27a493af2cfea51f27630a7a0ff6caa6e51bb**, empty working sourc
 [Target tests](evidence/r11-native-note-tidy-final-target-result.json): **101/0fail/0skip,11files**, real isolated PG plus explicitly labelled unit/jsdom boundaries, exit0 at24bd88d plus the committed edb source delta. [Exact code CI](evidence/r11-native-note-tidy-final-code-ci-result.json): **2871/0fail/0skip,358files**, both jobs and isolated migration/seed026 replay successful atedb27a. Local static/pure-build gates exit0; no production build/migration is executed.
 
 [Integrity](evidence/r11-native-note-tidy-integrity-result.json) proves original56fake-UAT tables/validated constraints and135historical run rows unchanged. New clone alone has14invocations,10fake notes/activity logs and migration026; full26 replay applies0. **14 local intercepted fixture executions / zero actual provider calls / zero unexpected outbound**. True AI quality, model/cost receipts, provider120case rubric, deployed cloud worker/candidate, manual AT and owner/release gates remain blocked/not-tested. **NO-GO; unmerged, not production deployed.** Historical RED/partial/harness results remain separate; no pass counts are aggregated from them.
+
+## Current UC-07/UC-10 local cancel acceptance
+
+Source/execution **fd6c74222f714373ef5ba8d3ca644cf418956b2c**, [receipt](evidence/r11-native-cancel-result.json): **41pass/0fail/0skip, seven distinct live users/sessions/cookie sets**, one fresh fake-data clone, actual SSR/Neon driver/PostgreSQL17 and no provider calls. [Targets](evidence/r11-native-cancel-final-target-result.json)66/0/0 include physical concurrency/rollback/idempotency plus explicitly labelled component/BFF doubles. [Fresh source CI](evidence/r11-native-cancel-code-ci-result.json)2878/0/0,358files and isolated026migration/seed replay.
+
+| Role | Native local cancel | Maintenance display / direct BFF |
+|---|---|---|
+| super_admin / admin | own synthetic run permitted | server canRun=true; explicit confirmation,1receipt/audit |
+| manager | own/team synthetic run permitted | foreign run absent; changed owner/foreign preview forbidden; other actor operation403 |
+| sales / client_success | own synthetic run permitted | original intent/key replay0added writes |
+| read_only | denied | read links/filter/paging retained; checkbox/maintenance absent; same-origin preview/execute403/0writes |
+| accounting | denied | expected data-free denied shell200; no queue/maintenance; same-origin preview/execute403/0writes |
+
+Preview Cancel/young expiry create0effects. Mixed4 has1eligible cancel/3linked/unknown/terminal blockers unchanged. Changed snapshot/link/owner are rechecked after preview and cannot create command/audit/commercial effects. Actual expired preview409 stays unconfirmed/unchanged; no manufactured clock. Two different actual operators race the same synthetic run:1cancel/receipt/audit, other terminal skipped; both original native keys replay0effects. Actual390px result has no horizontal overflow;0uncaught errors across all roles. Raw storage not_found/TERMINAL is correctly mapped to skipped by the read projection.
+
+[Integrity](evidence/r11-native-cancel-integrity-result.json) retains all56source fake-UAT tables/constraints and135historical clone runs unchanged. New clone alone holds18synthetic leads/runs,2fake approval fixtures and7effective cancels/commands/audits. [Binding](evidence/r11-native-cancel-delivery-binding-result.json) publishes six reviewable runner sources and source/artifact/receipt/private screenshot hashes. Genuine read_only UI RED and intermediate harness partials remain separate; no passes aggregated from partial runs. No real customer/provider execution occurred. Manual AT, exact cloud candidate and true AI/provider/worker/owner/release gates remain blocked/not-tested. **NO-GO; draft only, not production deployed.**
