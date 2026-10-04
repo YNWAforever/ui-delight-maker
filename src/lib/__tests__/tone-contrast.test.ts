@@ -80,3 +80,31 @@ describe.each([
     expect(contrast(text, toSrgb(token(body, "muted")))).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+describe.each([
+  ["light", ":root"],
+  ["dark", ".dark"],
+])("%s theme controls", (_theme, selector) => {
+  const body = block(selector);
+
+  it("draws field boundaries at 3:1 or more on the card and the page", () => {
+    // WCAG 1.4.11. The input border measured 1.31:1 light and 1.56:1 dark (UX-21).
+    const input = toSrgb(token(body, "input"));
+    expect(contrast(input, toSrgb(token(body, "card")))).toBeGreaterThanOrEqual(3);
+    expect(contrast(input, toSrgb(token(body, "background")))).toBeGreaterThanOrEqual(3);
+  });
+
+  it("keeps text readable on the hover and menu-highlight surface", () => {
+    const surface = toSrgb(token(body, "accent"));
+    expect(contrast(toSrgb(token(body, "accent-foreground")), surface)).toBeGreaterThanOrEqual(4.5);
+    // Ghost buttons and menu items keep their own text colour on hover, so it must hold too.
+    expect(contrast(toSrgb(token(body, "foreground")), surface)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+it("uses a quiet, low-chroma hover surface in the light theme", () => {
+  // UX-22: --accent was a saturated blue, so every ghost and outline button flashed blue.
+  const [lightness, chroma] = token(block(":root"), "accent");
+  expect(lightness).toBeGreaterThan(0.9);
+  expect(chroma).toBeLessThan(0.03);
+});
