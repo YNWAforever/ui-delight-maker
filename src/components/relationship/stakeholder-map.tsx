@@ -83,7 +83,7 @@ export function StakeholderMap({ contacts, action, renderContactAction }: Stakeh
                   <div className="flex items-center gap-2">
                     <p className="truncate text-sm font-medium">{contact.name}</p>
                     {contact.is_primary && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
                         <Star className="h-3 w-3" aria-hidden="true" />
                         Primary
                       </span>

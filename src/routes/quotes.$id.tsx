@@ -1066,7 +1066,7 @@ function QuoteDetail() {
                         {reached ? (
                           <Check aria-hidden="true" className="h-3 w-3" />
                         ) : (
-                          <span className="text-[10px] tabular-nums">{idx + 1}</span>
+                          <span className="text-xs tabular-nums">{idx + 1}</span>
                         )}
                       </div>
                       <span

@@ -93,7 +93,8 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `a88c670` | fix(forms): show validation at the field it concerns | UX-16 | access-request-queue 6/6 (rewritten validation test), tasks 4 files 18/18 (+1 title at the field); tsc clean |
 | `2c545d3` | fix(approvals): collapse the decided history on phones and tablets | UX-28 | approvals 28/28 (+1 disclosure); tsc clean |
 | `ac43b4e` | fix(ui): two lines for long record names instead of a one-line ellipsis | UX-25 | attention-queue +1 (CJK name), renewals; tsc clean |
-| next | fix(ui): theme tokens for notification and role-dialog colours | UX-27 | new theme-colour-tokens guard (fails on the old files, passes now); bell + role dialog suites 14/14 |
+| `e14d1c4` | fix(ui): theme tokens for notification and role-dialog colours | UX-27 | new theme-colour-tokens guard (fails on the old files, passes now); bell + role dialog suites 14/14 |
+| next | fix(ui): grouped page counts and a 12 px text floor | UX-35 | list-pagination +1 (5,036); tsc clean |
 
 ## Resume notes (keep current)
 

@@ -13,7 +13,7 @@ describe("ListPagination", () => {
     const onPageChange = vi.fn();
     render(<ListPagination page={2} limit={50} total={120} onPageChange={onPageChange} />);
 
-    expect(screen.getByText("51-100 of 120")).not.toBeNull();
+    expect(screen.getByText("51–100 of 120")).not.toBeNull();
 
     await userEvent.click(screen.getByRole("button", { name: "Previous page" }));
     await userEvent.click(screen.getByRole("button", { name: "Next page" }));
@@ -42,5 +42,12 @@ describe("ListPagination", () => {
     expect((screen.getByRole("button", { name: "Next page" }) as HTMLButtonElement).disabled).toBe(
       true,
     );
+  });
+
+  it("groups thousands like every other count", () => {
+    // UX-35: Renewals read "5036" beside "5,041".
+    render(<ListPagination page={2} limit={50} total={5036} onPageChange={vi.fn()} />);
+
+    expect(screen.getByText("51–100 of 5,036")).not.toBeNull();
   });
 });

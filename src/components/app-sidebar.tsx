@@ -147,7 +147,7 @@ export function AppSidebar({
           </div>
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold">Fimmick ClientOps</span>
-            <span className="text-[11px] text-muted-foreground">Total CRM + AI Operations</span>
+            <span className="text-xs text-muted-foreground">Total CRM + AI Operations</span>
           </div>
         </div>
       </SidebarHeader>
@@ -205,7 +205,7 @@ export function AppSidebar({
           </div>
           <div className="flex min-w-0 flex-1 flex-col leading-tight">
             <span className="truncate text-xs font-medium">{profile?.name ?? "—"}</span>
-            <span className="truncate text-[11px] text-muted-foreground">
+            <span className="truncate text-xs text-muted-foreground">
               {profile?.role ? getUserRoleLabel(profile.role) : "—"} · Fimmick
             </span>
           </div>

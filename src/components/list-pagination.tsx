@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { formatCount } from "@/lib/format";
 
 export interface ListPaginationProps {
   page: number;
@@ -20,7 +21,8 @@ export function ListPagination({ page, limit, total, onPageChange }: ListPaginat
         aria-live="polite"
         className="min-w-28 text-right text-xs tabular-nums text-muted-foreground"
       >
-        {start}-{end} of {total}
+        {/* Grouped like every other count on the page: "5,036", not "5036" (UX-35). */}
+        {formatCount(start)}–{formatCount(end)} of {formatCount(total)}
       </p>
       <Button
         type="button"

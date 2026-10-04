@@ -830,7 +830,7 @@ function TasksBoard() {
                               </span>
                             </div>
                             {t.created_by_agent && (
-                              <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
+                              <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">
                                 <Bot className="h-3 w-3" aria-hidden="true" /> {t.created_by_agent}
                               </div>
                             )}
