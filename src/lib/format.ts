@@ -123,6 +123,8 @@ export const relativeTime = (iso: string, now: number) => {
   const diff = Math.round((t - NOW) / 1000);
   const abs = Math.abs(diff);
   const sign = diff < 0 ? "ago" : "from now";
+  // A fetch that just finished read "Updated 0s from now" on every page (UX-18).
+  if (abs < 10) return "just now";
   if (abs < 60) return `${abs}s ${sign}`;
   if (abs < 3600) return `${Math.round(abs / 60)}m ${sign}`;
   if (abs < 86400) return `${Math.round(abs / 3600)}h ${sign}`;

@@ -227,7 +227,7 @@ export function AccessRequestQueue({
                   <p className="text-sm text-muted-foreground">
                     {decision === "approved"
                       ? isCapabilityRequest
-                        ? "Approving writes an explicit allow override for this capability, which the policy engine consults before the role baseline. It is recorded in the audit log."
+                        ? "Approving gives the requester this capability, whatever their role allows. It is recorded in the audit log."
                         : "Approving adds this person to the team, which widens what they can see and own. It is recorded in the audit log."
                       : "Rejecting closes the request. The requester can raise a new one."}
                   </p>

@@ -813,7 +813,7 @@ function ApprovalsInbox() {
                   {approval.can_assign === true && (
                     <ProfileSearchCombobox
                       purpose="approval_reviewer"
-                      label={`Assign reviewer (${surface})`}
+                      label="Assign reviewer"
                       resourceId={approval.id}
                       value={approval.assigned_to ?? ""}
                       onChange={(value) => void assignReviewer(approval, value || UNASSIGNED_VALUE)}

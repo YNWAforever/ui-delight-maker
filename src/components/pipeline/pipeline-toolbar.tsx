@@ -37,22 +37,17 @@ const AI_STATES: Array<AiReviewState | "all"> = [
 interface PipelineToolbarProps {
   filters: PipelineFilters;
   /**
-   * Assignable owners, from the server. Empty means there is no owner source yet — the
-   * Select is then disabled with the reason spelled out rather than offered with a single
-   * inert option, and rather than filled from a fixture list whose ids match no profile
-   * row (every selection would filter the board to nothing).
+   * Assignable owners, from the server. Empty hides the owner filter: a control that could
+   * only ever be disabled, with an apology beneath it, was noise on every visit (UX-18). It is
+   * never filled from a fixture list whose ids match no profile row (every selection would
+   * filter the board to nothing).
    */
   owners: Array<{ id: string; name: string }>;
   onFiltersChange: (filters: PipelineFilters) => void;
 }
 
-const OWNER_UNAVAILABLE_ID = "pipeline-owner-filter-unavailable";
-const OWNER_UNAVAILABLE_REASON =
-  "Filtering by owner needs an assignable-owner list from the server, which does not exist yet.";
-
 export function PipelineToolbar({ filters, owners, onFiltersChange }: PipelineToolbarProps) {
   const patch = (next: Partial<PipelineFilters>) => onFiltersChange({ ...filters, ...next });
-  const ownerFilterUnavailable = owners.length === 0;
   const hasFilters =
     Boolean(filters.search) ||
     (filters.source != null && filters.source !== "all") ||
@@ -90,28 +85,21 @@ export function PipelineToolbar({ filters, owners, onFiltersChange }: PipelineTo
           </SelectContent>
         </Select>
 
-        <Select
-          value={filters.owner ?? "all"}
-          disabled={ownerFilterUnavailable}
-          onValueChange={(owner) => patch({ owner })}
-        >
-          <SelectTrigger
-            className="h-9 w-[160px]"
-            aria-label="Filter by owner"
-            aria-describedby={ownerFilterUnavailable ? OWNER_UNAVAILABLE_ID : undefined}
-            title={ownerFilterUnavailable ? OWNER_UNAVAILABLE_REASON : undefined}
-          >
-            <SelectValue placeholder="All owners" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All owners</SelectItem>
-            {owners.map((owner) => (
-              <SelectItem key={owner.id} value={owner.id}>
-                {owner.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {owners.length > 0 && (
+          <Select value={filters.owner ?? "all"} onValueChange={(owner) => patch({ owner })}>
+            <SelectTrigger className="h-9 w-[160px]" aria-label="Filter by owner">
+              <SelectValue placeholder="All owners" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All owners</SelectItem>
+              {owners.map((owner) => (
+                <SelectItem key={owner.id} value={owner.id}>
+                  {owner.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <Select
           value={filters.urgency ?? "all"}
@@ -165,12 +153,6 @@ export function PipelineToolbar({ filters, owners, onFiltersChange }: PipelineTo
           </Button>
         )}
       </div>
-
-      {ownerFilterUnavailable && (
-        <p id={OWNER_UNAVAILABLE_ID} className="mt-2 text-xs text-muted-foreground">
-          {OWNER_UNAVAILABLE_REASON}
-        </p>
-      )}
     </Card>
   );
 }

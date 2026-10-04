@@ -403,8 +403,7 @@ describe("Assigning a reviewer", () => {
     Element.prototype.scrollIntoView = () => {};
   });
 
-  const reviewerSelect = () =>
-    screen.findByRole("combobox", { name: "Assign reviewer (inline) search" });
+  const reviewerSelect = () => screen.findByRole("combobox", { name: "Assign reviewer search" });
 
   it("routes a pending approval to the reviewer chosen from the assignable roster", async () => {
     renderInbox([approval()]);

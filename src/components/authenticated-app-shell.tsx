@@ -45,7 +45,10 @@ export function AuthenticatedAppShell({
               await router.invalidate();
               await router.navigate({ to: "/login" });
             } catch (error) {
-              toast.error(error instanceof Error ? error.message : "Neon Auth sign-out failed");
+              // The provider's message ("Neon Auth sign-out failed") means nothing to the person
+              // signing out; say what happened and what to do (UX-18).
+              console.error(error);
+              toast.error("You are still signed in. Try signing out again.");
             }
           }}
         />

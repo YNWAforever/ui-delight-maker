@@ -25,4 +25,12 @@ describe("relativeTime", () => {
     expect(at(anHourAgo)).toBe("1h ago");
     expect(at(anHourAgo)).not.toContain("from now");
   });
+
+  it("says just now inside ten seconds, either side", () => {
+    // UX-18: a fetch that had just finished read "Updated 0s from now".
+    expect(at("2026-07-26T12:00:00Z")).toBe("just now");
+    expect(at("2026-07-26T12:00:04Z")).toBe("just now");
+    expect(at("2026-07-26T11:59:51Z")).toBe("just now");
+    expect(at("2026-07-26T11:59:50Z")).toBe("10s ago");
+  });
 });
