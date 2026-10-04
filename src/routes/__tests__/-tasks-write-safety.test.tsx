@@ -167,12 +167,13 @@ function renderBoard() {
   });
   const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
   const Component = Route.options.component as ComponentType;
-  render(
+  const tree = () => (
     <QueryClientProvider client={queryClient}>
       <Component />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
-  return { queryClient, invalidateQueries };
+  const view = render(tree());
+  return { queryClient, invalidateQueries, rerender: () => view.rerender(tree()) };
 }
 
 const openCreateDialog = () => {
@@ -260,6 +261,25 @@ describe("task view switcher", () => {
       view: "board",
       search: "renewal",
     });
+  });
+
+  it("keeps a trailing space the user is still typing after its own commit comes back", async () => {
+    const { rerender } = renderBoard();
+    const latestSearch = () =>
+      (
+        filterToolbarMock.mock.calls.at(-1)?.[0] as {
+          search: { value: string; onChange: (value: string) => void };
+        }
+      ).search;
+
+    act(() => latestSearch().onChange("renewal "));
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledTimes(1));
+    // The URL now holds the trimmed commit, as the router would report it.
+    search.search = "renewal";
+    rerender();
+
+    expect(latestSearch().value).toBe("renewal ");
+    search.search = "";
   });
 
   it("renders the board or the list according to the search param, not a local toggle", () => {

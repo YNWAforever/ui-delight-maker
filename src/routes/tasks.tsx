@@ -273,7 +273,12 @@ function TasksBoard() {
    * write the URL, and so refetch the queue, on every keystroke (UX-17).
    */
   const [searchDraft, setSearchDraft] = useState(query);
-  useEffect(() => setSearchDraft(query), [query]);
+  // Follow the URL when it changes from elsewhere, but not when it is only this draft's own
+  // commit coming back trimmed: replacing "renewal " with "renewal" mid-typing turned the next
+  // keystroke into "renewalc".
+  useEffect(() => {
+    setSearchDraft((draft) => (draft.trim() === query ? draft : query));
+  }, [query]);
   useEffect(() => {
     const next = searchDraft.trim();
     if (next === query) return;
