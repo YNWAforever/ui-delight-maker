@@ -1,11 +1,11 @@
 {
-  "recordedAt": "2026-10-04T09:57:45.917Z",
+  "recordedAt": "2026-10-04T11:26:38.383Z",
   "kind": "reviewable candidate; not production release",
   "releaseDecision": "NO-GO",
   "app": {
-    "codeVerifiedCommit": "ee4173b1a2d8bd8277b95d38edc8d4a50bd467b8",
+    "codeVerifiedCommit": "1326cefb939e16e8ba57a156de9eca13299e264e",
     "sourceTrees": {
-      "src": "910760d3e4a588ff56ab5ff6a6b077f704fadb7a",
+      "src": "776ce26a9a62906a72da002350ce9ab98e14007b",
       "neon": "3cf78f7d35c15b02c8099a728b9a78b74116b82f",
       "n8n": "2c820750411ef40dfc21e41a3ff6801d2a652e60",
       "scripts": "ecca3b87db60afb06f23d74fb5c24aa09a48e639"
@@ -24,10 +24,10 @@
     "finalReviewPr": "https://github.com/YNWAforever/ui-delight-maker/pull/176",
     "finalHeadBinding": "Final documentation-only HEAD must retain these source trees/package/lock and pass fresh exact-head Actions; final HEAD/run IDs are recorded on PR176 without a self-referential manifest claim",
     "releaseFreezeSha": null,
-    "applicationBehaviorCommit": "ee4173b1a2d8bd8277b95d38edc8d4a50bd467b8",
+    "applicationBehaviorCommit": "1326cefb939e16e8ba57a156de9eca13299e264e",
     "performanceFollowupPr": "https://github.com/YNWAforever/ui-delight-maker/pull/175",
-    "sourceBinding": "evidence/r11-native-policy-refresh-delivery-binding-result.json",
-    "previousCodeVerifiedCommit": "353015de8aad02825b68d802ceb0d7dc1643bda7"
+    "sourceBinding": "evidence/r11-native-policy-write-owner-delivery-binding-result.json",
+    "previousCodeVerifiedCommit": "ee4173b1a2d8bd8277b95d38edc8d4a50bd467b8"
   },
   "inputs": {
     "originalZipSha256": "c068b0cf4bc5de3238847d173beeaf205eec78f4f9d9fb10815580c9bb44a6c7",
@@ -38,15 +38,15 @@
   },
   "verification": {
     "full": {
-      "checkedAt": "2026-10-04T09:56:28.240Z",
-      "sourceSha": "ee4173b1a2d8bd8277b95d38edc8d4a50bd467b8",
+      "checkedAt": "2026-10-04T11:26:37.594Z",
+      "sourceSha": "1326cefb939e16e8ba57a156de9eca13299e264e",
       "success": true,
-      "databaseRun": 37193288089,
-      "databaseUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37193288089",
-      "checksRun": 37193288056,
-      "checksUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37193288056",
+      "databaseRun": 37198292462,
+      "databaseUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37198292462",
+      "checksRun": 37198292477,
+      "checksUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37198292477",
       "scope": "GitHub isolated pgvector PostgreSQL17 services; no production connection",
-      "passed": 2917,
+      "passed": 2920,
       "failed": 0,
       "skipped": 0,
       "files": 362,
@@ -54,11 +54,11 @@
       "migrationSeedReplay": "passed on isolated CI service",
       "databaseJobs": [
         {
-          "name": "contract",
+          "name": "Isolated migration and seed replay",
           "conclusion": "success"
         },
         {
-          "name": "Isolated migration and seed replay",
+          "name": "contract",
           "conclusion": "success"
         }
       ],
@@ -74,8 +74,8 @@
           "bun run test:browser-collector"
         ]
       },
-      "logSha256": "8fe427b6cad48b5816b43cf2f1c0e761b2ae753659c50cbbd0c57116d740dcc4",
-      "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-policy-refresh-code-ci.private.log",
+      "logSha256": "860cd822e6929129d729317a6dfe85665c8e5e13677a8668e2bb2854a22d0845",
+      "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-policy-write-owner-code-ci.private.log",
       "releaseDecision": "NO-GO"
     },
     "statics": [
@@ -669,6 +669,47 @@
         "logSha256": "0ce69f0a0425228ce977ddb612c0c4176471ef0a7534d726d4e4614c8ea6a3ad",
         "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-review-denial-code-ci.private.log",
         "releaseDecision": "NO-GO"
+      },
+      {
+        "checkedAt": "2026-10-04T09:56:28.240Z",
+        "sourceSha": "ee4173b1a2d8bd8277b95d38edc8d4a50bd467b8",
+        "success": true,
+        "databaseRun": 37193288089,
+        "databaseUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37193288089",
+        "checksRun": 37193288056,
+        "checksUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37193288056",
+        "scope": "GitHub isolated pgvector PostgreSQL17 services; no production connection",
+        "passed": 2917,
+        "failed": 0,
+        "skipped": 0,
+        "files": 362,
+        "strictNoSkips": "exit0",
+        "migrationSeedReplay": "passed on isolated CI service",
+        "databaseJobs": [
+          {
+            "name": "contract",
+            "conclusion": "success"
+          },
+          {
+            "name": "Isolated migration and seed replay",
+            "conclusion": "success"
+          }
+        ],
+        "commands": {
+          "full": "bunx vitest run --no-file-parallelism --testTimeout=30000 --reporter=default --reporter=json --outputFile=<private report>",
+          "strict": "bun scripts/clientops/assert-vitest-no-skips.ts <private report>",
+          "checks": [
+            "bun run typecheck",
+            "bun run typecheck:runtime",
+            "bun run lint",
+            "bunx vite build",
+            "bun run performance:bundles",
+            "bun run test:browser-collector"
+          ]
+        },
+        "logSha256": "8fe427b6cad48b5816b43cf2f1c0e761b2ae753659c50cbbd0c57116d740dcc4",
+        "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-policy-refresh-code-ci.private.log",
+        "releaseDecision": "NO-GO"
       }
     ]
   },
@@ -865,7 +906,7 @@
     "localCandidate": {
       "executionBaseSha": "08ae0b3a9b1078df51f96b0cff364f50811f948e",
       "workingSourceDiffSha256": "9bb3b78b383e80a89b11550d63f856a06505f6e3c54e5a03877c7e37e51fae89",
-      "codeVerifiedCommit": "ee4173b1a2d8bd8277b95d38edc8d4a50bd467b8",
+      "codeVerifiedCommit": "1326cefb939e16e8ba57a156de9eca13299e264e",
       "sourceBinding": "evidence/r11-native-accessibility-delivery-binding-result.json",
       "schemaMigrations": "001–026",
       "syntheticOnly": true,
@@ -1222,6 +1263,55 @@
           "files": 4
         },
         "externalAcceptance": "blocked; data/approval owners, real provider/worker/cloud, performance/release gates remain"
+      },
+      "nativePolicyWriteOwner": {
+        "sourceCommit": "1326cefb939e16e8ba57a156de9eca13299e264e",
+        "executionHead": "1326cefb939e16e8ba57a156de9eca13299e264e",
+        "binding": "evidence/r11-native-policy-write-owner-delivery-binding-result.json",
+        "nativeReceipt": "evidence/r11-native-policy-write-owner-green-result.json",
+        "nativeChecks": 3,
+        "nativeDistinctActors": 2,
+        "lateActualOriginalResponseOwnerScoped": true,
+        "unmodifiedResponseTransportDelay": true,
+        "queryStaleWindowWaitMs": 35000,
+        "readReceipt": "evidence/r11-native-policy-write-owner-read-green-result.json",
+        "readChecks": 9,
+        "distinctActualRoles": [
+          "super_admin",
+          "admin",
+          "manager",
+          "sales",
+          "client_success",
+          "accounting",
+          "read_only"
+        ],
+        "distinctLiveUsers": 7,
+        "distinctSessions": 7,
+        "distinctSavedCookieStates": 7,
+        "all56OriginalTablesUnchanged": true,
+        "all54OtherCloneTablesUnchanged": true,
+        "historical135RunRowsUnchanged": true,
+        "all8OriginalPolicyVersionsUnchanged": true,
+        "appendedUnderOriginalAdmin": true,
+        "isolatedSyntheticPolicyAppends": 1,
+        "separateReadAll56CloneHashesUnchanged": true,
+        "seedExecuted": false,
+        "newCommandReceipts": 0,
+        "newActivityAudits": 0,
+        "authorizedIndependentAuthReads": 38,
+        "unexpectedServerOutbound": 0,
+        "actualProviderCalls": 0,
+        "scope": "real admin local synthetic status/CAS append; genuine manager reauthorization in the same SPA; original successful BFF response delayed by browser transport fixture, no Auth/BFF result mock; not interactive login or whole-app/provider acceptance",
+        "wholeAppHandoff": "not-tested",
+        "interactiveLogoutRelogin": "not-tested",
+        "manualAT": "not-tested",
+        "targetTests": {
+          "passed": 45,
+          "failed": 0,
+          "skipped": 0,
+          "files": 4
+        },
+        "externalAcceptance": "blocked; data/approval owners, real provider/worker/cloud, performance/release gates remain"
       }
     },
     "cloudCandidate": {
@@ -1485,8 +1575,8 @@
   "nativeContinuation": {
     "branch": "codex/clientops-ai-r11-native-uat",
     "baseSha": "37477d46ddb7ba0c65f8b64556cc471e84283289",
-    "committedHead": "ee4173b1a2d8bd8277b95d38edc8d4a50bd467b8",
-    "sourceBinding": "evidence/r11-native-policy-refresh-delivery-binding-result.json",
+    "committedHead": "1326cefb939e16e8ba57a156de9eca13299e264e",
+    "sourceBinding": "evidence/r11-native-policy-write-owner-delivery-binding-result.json",
     "nativeBrowser": "evidence/r11-native-browser-post-role-result.json",
     "nativeRolesPassed": 7,
     "nativeChecksPassed": 59,
@@ -1502,8 +1592,58 @@
       "evidence": "evidence/r11-native-denied-final-result.json"
     },
     "staticBuild": "exit0; evidence/r11-native-denied-fixed-static-result.json and evidence/r11-native-denied-build-result.json",
-    "fullRegression": "Exact code ee4173b1a2d8bd8277b95d38edc8d4a50bd467b8 CI2917/0fail/0skip,362files; isolated026 migration/seed replay; target42/0skip; native Policy9/7distinct actual roles; no POST/provider/production.",
+    "fullRegression": "Exact code 1326cefb939e16e8ba57a156de9eca13299e264e CI2920/0fail/0skip,362files; isolated026migration/seed replay; target45/0skip; native late-write3/two actual actors plus separate read9/seven actual roles; one synthetic local policy append, no provider/production.",
     "exactHeadCI": {
+      "checkedAt": "2026-10-04T11:26:37.594Z",
+      "sourceSha": "1326cefb939e16e8ba57a156de9eca13299e264e",
+      "success": true,
+      "databaseRun": 37198292462,
+      "databaseUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37198292462",
+      "checksRun": 37198292477,
+      "checksUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37198292477",
+      "scope": "GitHub isolated pgvector PostgreSQL17 services; no production connection",
+      "passed": 2920,
+      "failed": 0,
+      "skipped": 0,
+      "files": 362,
+      "strictNoSkips": "exit0",
+      "migrationSeedReplay": "passed on isolated CI service",
+      "databaseJobs": [
+        {
+          "name": "Isolated migration and seed replay",
+          "conclusion": "success"
+        },
+        {
+          "name": "contract",
+          "conclusion": "success"
+        }
+      ],
+      "commands": {
+        "full": "bunx vitest run --no-file-parallelism --testTimeout=30000 --reporter=default --reporter=json --outputFile=<private report>",
+        "strict": "bun scripts/clientops/assert-vitest-no-skips.ts <private report>",
+        "checks": [
+          "bun run typecheck",
+          "bun run typecheck:runtime",
+          "bun run lint",
+          "bunx vite build",
+          "bun run performance:bundles",
+          "bun run test:browser-collector"
+        ]
+      },
+      "logSha256": "860cd822e6929129d729317a6dfe85665c8e5e13677a8668e2bb2854a22d0845",
+      "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-policy-write-owner-code-ci.private.log",
+      "releaseDecision": "NO-GO"
+    },
+    "cloudCandidate": "not-provisioned",
+    "native200PercentZoom": "verified; seven roles/27 checks",
+    "manualAssistiveTechnology": "not-tested",
+    "productionAccess": false,
+    "releaseDecision": "NO-GO",
+    "applicationBehaviorCommit": "1326cefb939e16e8ba57a156de9eca13299e264e",
+    "review": "evidence/r11-native-review-result.json",
+    "reviewChecksPassed": 14,
+    "previousCommittedHead": "ee4173b1a2d8bd8277b95d38edc8d4a50bd467b8",
+    "previousExactHeadCI": {
       "checkedAt": "2026-10-04T09:56:28.240Z",
       "sourceSha": "ee4173b1a2d8bd8277b95d38edc8d4a50bd467b8",
       "success": true,
@@ -1542,56 +1682,6 @@
       },
       "logSha256": "8fe427b6cad48b5816b43cf2f1c0e761b2ae753659c50cbbd0c57116d740dcc4",
       "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-policy-refresh-code-ci.private.log",
-      "releaseDecision": "NO-GO"
-    },
-    "cloudCandidate": "not-provisioned",
-    "native200PercentZoom": "verified; seven roles/27 checks",
-    "manualAssistiveTechnology": "not-tested",
-    "productionAccess": false,
-    "releaseDecision": "NO-GO",
-    "applicationBehaviorCommit": "ee4173b1a2d8bd8277b95d38edc8d4a50bd467b8",
-    "review": "evidence/r11-native-review-result.json",
-    "reviewChecksPassed": 14,
-    "previousCommittedHead": "353015de8aad02825b68d802ceb0d7dc1643bda7",
-    "previousExactHeadCI": {
-      "checkedAt": "2026-10-04T09:15:33.033Z",
-      "sourceSha": "353015de8aad02825b68d802ceb0d7dc1643bda7",
-      "success": true,
-      "databaseRun": 37191214884,
-      "databaseUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37191214884",
-      "checksRun": 37191214886,
-      "checksUrl": "https://github.com/YNWAforever/ui-delight-maker/actions/runs/37191214886",
-      "scope": "GitHub isolated pgvector PostgreSQL17 services; no production connection",
-      "passed": 2904,
-      "failed": 0,
-      "skipped": 0,
-      "files": 361,
-      "strictNoSkips": "exit0",
-      "migrationSeedReplay": "passed on isolated CI service",
-      "databaseJobs": [
-        {
-          "name": "contract",
-          "conclusion": "success"
-        },
-        {
-          "name": "Isolated migration and seed replay",
-          "conclusion": "success"
-        }
-      ],
-      "commands": {
-        "full": "bunx vitest run --no-file-parallelism --testTimeout=30000 --reporter=default --reporter=json --outputFile=<private report>",
-        "strict": "bun scripts/clientops/assert-vitest-no-skips.ts <private report>",
-        "checks": [
-          "bun run typecheck",
-          "bun run typecheck:runtime",
-          "bun run lint",
-          "bunx vite build",
-          "bun run performance:bundles",
-          "bun run test:browser-collector"
-        ]
-      },
-      "logSha256": "0ce69f0a0425228ce977ddb612c0c4176471ef0a7534d726d4e4614c8ea6a3ad",
-      "privateLog": ".clientops-perf/ai-gpt61-20261003/r11-native-review-denial-code-ci.private.log",
       "releaseDecision": "NO-GO"
     },
     "nativeZoom": "evidence/r11-native-zoom-roles-result.json",
@@ -1935,6 +2025,55 @@
       "manualAT": "not-tested",
       "targetTests": {
         "passed": 42,
+        "failed": 0,
+        "skipped": 0,
+        "files": 4
+      },
+      "externalAcceptance": "blocked; data/approval owners, real provider/worker/cloud, performance/release gates remain"
+    },
+    "nativePolicyWriteOwner": {
+      "sourceCommit": "1326cefb939e16e8ba57a156de9eca13299e264e",
+      "executionHead": "1326cefb939e16e8ba57a156de9eca13299e264e",
+      "binding": "evidence/r11-native-policy-write-owner-delivery-binding-result.json",
+      "nativeReceipt": "evidence/r11-native-policy-write-owner-green-result.json",
+      "nativeChecks": 3,
+      "nativeDistinctActors": 2,
+      "lateActualOriginalResponseOwnerScoped": true,
+      "unmodifiedResponseTransportDelay": true,
+      "queryStaleWindowWaitMs": 35000,
+      "readReceipt": "evidence/r11-native-policy-write-owner-read-green-result.json",
+      "readChecks": 9,
+      "distinctActualRoles": [
+        "super_admin",
+        "admin",
+        "manager",
+        "sales",
+        "client_success",
+        "accounting",
+        "read_only"
+      ],
+      "distinctLiveUsers": 7,
+      "distinctSessions": 7,
+      "distinctSavedCookieStates": 7,
+      "all56OriginalTablesUnchanged": true,
+      "all54OtherCloneTablesUnchanged": true,
+      "historical135RunRowsUnchanged": true,
+      "all8OriginalPolicyVersionsUnchanged": true,
+      "appendedUnderOriginalAdmin": true,
+      "isolatedSyntheticPolicyAppends": 1,
+      "separateReadAll56CloneHashesUnchanged": true,
+      "seedExecuted": false,
+      "newCommandReceipts": 0,
+      "newActivityAudits": 0,
+      "authorizedIndependentAuthReads": 38,
+      "unexpectedServerOutbound": 0,
+      "actualProviderCalls": 0,
+      "scope": "real admin local synthetic status/CAS append; genuine manager reauthorization in the same SPA; original successful BFF response delayed by browser transport fixture, no Auth/BFF result mock; not interactive login or whole-app/provider acceptance",
+      "wholeAppHandoff": "not-tested",
+      "interactiveLogoutRelogin": "not-tested",
+      "manualAT": "not-tested",
+      "targetTests": {
+        "passed": 45,
         "failed": 0,
         "skipped": 0,
         "files": 4

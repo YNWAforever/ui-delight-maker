@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-10-04T11:21:45.466Z",
+  "sourceSha": "1326cefb939e16e8ba57a156de9eca13299e264e",
+  "originalDatabase": "clientops_ai_uat_843cdc77175546ddbad0417b36ac845a",
+  "cloneDatabase": "clientops_ai_uat_4e7682ace38546328fc4b5cdff292705",
+  "originalAll56TablesUnchanged": true,
+  "all54OtherCloneTablesUnchanged": true,
+  "historical135RunRowsUnchanged": true,
+  "all8OriginalPolicyVersionsUnchanged": true,
+  "appendedSyntheticPolicyVersions": 1,
+  "appendedUnderOriginalAdmin": true,
+  "allowedDeltas": [
+    {
+      "table": "agent_policy_versions",
+      "additionalRows": 1
+    },
+    {
+      "table": "clientops_schema_migrations",
+      "additionalRows": 1
+    }
+  ],
+  "seedExecuted": false,
+  "syntheticFixtureWrites": 0,
+  "effectiveCancels": 0,
+  "newCommandReceipts": 0,
+  "newActivityAudits": 0,
+  "actualProviderCalls": 0,
+  "productionAccess": false,
+  "passed": true
+}
