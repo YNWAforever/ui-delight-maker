@@ -115,7 +115,21 @@ export function QueueToolbar({
           Needs attention (failed in 7 days, waiting, or stuck ≥60m)
         </label>
       )}
-      <Button variant="outline" onClick={() => onChange(agentQueueSearchSchema.parse({}))}>
+      <Button
+        variant="outline"
+        onClick={() =>
+          onChange({
+            // Route search merges patches; omitted optional fields would retain old filters.
+            workflowType: undefined,
+            status: undefined,
+            from: undefined,
+            to: undefined,
+            cursor: undefined,
+            runId: undefined,
+            ...agentQueueSearchSchema.parse({}),
+          })
+        }
+      >
         Clear queue filters
       </Button>
       <p className="text-xs text-muted-foreground">
