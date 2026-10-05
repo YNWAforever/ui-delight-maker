@@ -214,8 +214,10 @@ this branch's own earlier commits; each was fixed in its own commit:
 | `9c99f1f` | Follow-up title prefill could exceed the 255-character schema limit. |
 | `8db9428` | Dark-mode solid red text contrast (axe). |
 
-Observed, not changed (out of scope): Accounts and Quotes search have the same trailing-space
-edge as the Tasks one fixed in `bc4c42b`; suggested as a separate task.
+Accounts and Quotes search had the same trailing-space edge as the Tasks one fixed in
+`bc4c42b`. That fix is a separate draft PR, YNWAforever/ui-delight-maker#178, which adds a
+shared `useSearchDraft` hook; Tasks moved onto the same hook here in `4f32f09`, with the hook
+file identical in both PRs so they merge cleanly in either order.
 
 ## Skills
 
