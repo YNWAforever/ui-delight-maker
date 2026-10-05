@@ -4,6 +4,7 @@ import { EmptyWorkspaceState, SectionHeader, StatusBadge } from "@/components/sa
 import { Button } from "@/components/ui/button";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatDateTime } from "@/lib/format";
+import { humanizeKey } from "@/lib/status-labels";
 import type { UserRole } from "@/lib/admin/types";
 import type { AccessRequest } from "@/server/repositories/admin-access";
 
@@ -24,12 +25,17 @@ type AccessRequestQueueProps = {
   /** True when the current list is filtered to something other than the pending queue. */
   filtered?: boolean;
   onDecide: (input: AccessRequestDecision) => Promise<unknown> | unknown;
+  /** Team names by id, so a team request reads "Coverage team" rather than its id. */
+  teamName?: (teamId: string) => string | undefined;
 };
 
-function requestTarget(request: AccessRequest) {
-  return request.requestType === "capability"
-    ? (request.capability ?? "Capability request")
-    : (request.teamId ?? "Team request");
+/** What the request is for, in words: a capability name or a team name, never a raw key or id. */
+function requestTarget(request: AccessRequest, teamName?: (teamId: string) => string | undefined) {
+  if (request.requestType === "capability") {
+    return request.capability ? humanizeKey(request.capability) : "Capability request";
+  }
+  const name = request.teamId ? teamName?.(request.teamId) : undefined;
+  return name ? `Join ${name}` : "Team membership request";
 }
 
 /**
@@ -61,19 +67,28 @@ function undecidableReason(
   return null;
 }
 
+/** The decision reason's minimum, which the server's schema also enforces. */
+const REASON_MIN_LENGTH = 8;
+
+const fieldId = (requestId: string, field: string) => `access-request-${requestId}-${field}`;
+
 export function AccessRequestQueue({
   requests,
   actorRole,
   actorProfileId,
   filtered = false,
   onDecide,
+  teamName,
 }: AccessRequestQueueProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [expiries, setExpiries] = useState<Record<string, string>>({});
   const [temporary, setTemporary] = useState<Record<string, boolean>>({});
+  // A failed write, shown above the confirm button. Field problems are kept apart and shown at
+  // the field they concern, linked by aria-describedby (UX-16).
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ reason?: string; expiry?: string }>({});
   const [submittingId, setSubmittingId] = useState<string | null>(null);
 
   if (requests.length === 0) {
@@ -91,21 +106,26 @@ export function AccessRequestQueue({
     );
   }
 
+  // Opening a decision shows no error: "required" before anything was typed read as a mistake
+  // already made (UX-16). The rule is stated as a hint beside the field instead.
   function beginDecision(request: AccessRequest, decision: Decision) {
     setExpandedId(request.id);
     setDecisions((current) => ({ ...current, [request.id]: decision }));
-    if (decision === "rejected" && !reasons[request.id]?.trim()) {
-      setError("Decision reason is required");
-    } else {
-      setError(null);
-    }
+    setError(null);
+    setFieldErrors({});
   }
 
   async function submit(request: AccessRequest) {
     if (submittingId) return;
     const reason = reasons[request.id]?.trim() ?? "";
-    if (reason.length < 8) {
-      setError("Decision reason is required");
+    if (reason.length < REASON_MIN_LENGTH) {
+      setFieldErrors({
+        reason:
+          reason.length === 0
+            ? "Enter a reason for this decision."
+            : `Use at least ${REASON_MIN_LENGTH} characters for the reason.`,
+      });
+      document.getElementById(fieldId(request.id, "reason"))?.focus();
       return;
     }
     const accessExpiresAt = temporary[request.id]
@@ -114,12 +134,14 @@ export function AccessRequestQueue({
         : null
       : null;
     if (temporary[request.id] && !accessExpiresAt) {
-      setError("Expiry is required for temporary access");
+      setFieldErrors({ expiry: "Choose when the temporary access ends." });
+      document.getElementById(fieldId(request.id, "expiry"))?.focus();
       return;
     }
 
     setSubmittingId(request.id);
     setError(null);
+    setFieldErrors({});
     try {
       await onDecide({
         id: request.id,
@@ -155,8 +177,11 @@ export function AccessRequestQueue({
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     {isCapabilityRequest ? "Capability request" : "Team membership request"}
                   </p>
-                  <h3 className="mt-1 break-words text-sm font-medium text-foreground">
-                    {requestTarget(request)}
+                  <h3
+                    id={`access-request-${request.id}-target`}
+                    className="mt-1 break-words text-sm font-medium text-foreground"
+                  >
+                    {requestTarget(request, teamName)}
                   </h3>
                   <dl className="mt-2 grid gap-x-5 gap-y-1 text-sm sm:grid-cols-2">
                     <div>
@@ -194,6 +219,7 @@ export function AccessRequestQueue({
                     type="button"
                     size="sm"
                     disabled={busy}
+                    aria-describedby={`access-request-${request.id}-target`}
                     onClick={() => beginDecision(request, "approved")}
                   >
                     {isCapabilityRequest ? "Approve capability access" : "Approve team access"}
@@ -203,9 +229,10 @@ export function AccessRequestQueue({
                     size="sm"
                     variant="outline"
                     disabled={busy}
+                    aria-describedby={`access-request-${request.id}-target`}
                     onClick={() => beginDecision(request, "rejected")}
                   >
-                    Reject {request.id}
+                    Reject request
                   </Button>
                 </div>
               )}
@@ -215,31 +242,55 @@ export function AccessRequestQueue({
                   <p className="text-sm text-muted-foreground">
                     {decision === "approved"
                       ? isCapabilityRequest
-                        ? "Approving writes an explicit allow override for this capability, which the policy engine consults before the role baseline. It is recorded in the audit log."
+                        ? "Approving gives the requester this capability, whatever their role allows. It is recorded in the audit log."
                         : "Approving adds this person to the team, which widens what they can see and own. It is recorded in the audit log."
                       : "Rejecting closes the request. The requester can raise a new one."}
                   </p>
-                  <label className="block">
-                    <span className="text-sm font-medium text-foreground">
-                      Decision reason for {request.id}
-                    </span>
+                  <div>
+                    <label
+                      htmlFor={fieldId(request.id, "reason")}
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Decision reason
+                    </label>
                     <textarea
-                      aria-label={"Decision reason for " + request.id}
+                      id={fieldId(request.id, "reason")}
                       value={reasons[request.id] ?? ""}
                       onChange={(event) => {
                         setReasons((current) => ({ ...current, [request.id]: event.target.value }));
                         setError(null);
+                        setFieldErrors((current) => ({ ...current, reason: undefined }));
                       }}
                       rows={3}
-                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-invalid={fieldErrors.reason ? true : undefined}
+                      aria-describedby={[
+                        fieldId(request.id, "reason-hint"),
+                        fieldErrors.reason ? fieldId(request.id, "reason-error") : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-destructive"
                     />
-                  </label>
+                    <p
+                      id={fieldId(request.id, "reason-hint")}
+                      className="mt-1 text-xs text-muted-foreground"
+                    >
+                      At least {REASON_MIN_LENGTH} characters. Recorded in the audit log.
+                    </p>
+                    {fieldErrors.reason ? (
+                      <p
+                        id={fieldId(request.id, "reason-error")}
+                        className="mt-1 text-xs font-medium text-tone-danger-fg"
+                      >
+                        {fieldErrors.reason}
+                      </p>
+                    ) : null}
+                  </div>
                   {decision === "approved" ? (
                     <>
                       <label className="flex items-center gap-2 text-sm text-foreground">
                         <input
                           type="checkbox"
-                          aria-label={"Temporary access for " + request.id}
                           checked={temporary[request.id] ?? false}
                           onChange={(event) =>
                             setTemporary((current) => ({
@@ -251,28 +302,44 @@ export function AccessRequestQueue({
                         Temporary access
                       </label>
                       {temporary[request.id] ? (
-                        <label className="block">
-                          <span className="text-sm font-medium text-foreground">
-                            Access expiry for {request.id}
-                          </span>
+                        <div>
+                          <label
+                            htmlFor={fieldId(request.id, "expiry")}
+                            className="text-sm font-medium text-foreground"
+                          >
+                            Access expiry
+                          </label>
                           <input
+                            id={fieldId(request.id, "expiry")}
                             type="datetime-local"
-                            aria-label={"Access expiry for " + request.id}
                             value={expiries[request.id] ?? ""}
-                            onChange={(event) =>
+                            onChange={(event) => {
                               setExpiries((current) => ({
                                 ...current,
                                 [request.id]: event.target.value,
-                              }))
+                              }));
+                              setFieldErrors((current) => ({ ...current, expiry: undefined }));
+                            }}
+                            aria-invalid={fieldErrors.expiry ? true : undefined}
+                            aria-describedby={
+                              fieldErrors.expiry ? fieldId(request.id, "expiry-error") : undefined
                             }
-                            className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="mt-1 min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-destructive"
                           />
-                        </label>
+                          {fieldErrors.expiry ? (
+                            <p
+                              id={fieldId(request.id, "expiry-error")}
+                              className="mt-1 text-xs font-medium text-tone-danger-fg"
+                            >
+                              {fieldErrors.expiry}
+                            </p>
+                          ) : null}
+                        </div>
                       ) : null}
                     </>
                   ) : null}
                   {error ? (
-                    <p role="alert" className="text-sm text-destructive">
+                    <p role="alert" className="text-sm text-tone-danger-fg">
                       {error}
                     </p>
                   ) : null}
@@ -281,11 +348,14 @@ export function AccessRequestQueue({
                     size="sm"
                     className="w-fit"
                     disabled={busy}
+                    aria-describedby={`access-request-${request.id}-target`}
                     onClick={() => void submit(request)}
                   >
                     {busy
                       ? "Recording…"
-                      : `${decision === "approved" ? "Approve" : "Reject"} ${request.id}`}
+                      : decision === "approved"
+                        ? "Confirm approval"
+                        : "Confirm rejection"}
                   </Button>
                 </div>
               ) : null}

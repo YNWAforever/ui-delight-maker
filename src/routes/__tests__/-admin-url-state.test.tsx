@@ -34,8 +34,10 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("@tanstack/react-query", () => ({
   queryOptions: (options: unknown) => options,
+  // dataUpdatedAt is always a number in TanStack Query; pages pass it to StaleDataIndicator.
   useQuery: ({ initialData }: { initialData: unknown }) => ({
     data: initialData,
+    dataUpdatedAt: Date.now(),
     isFetching: false,
     refetch: vi.fn(),
   }),

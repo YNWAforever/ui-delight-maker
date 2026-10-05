@@ -212,7 +212,7 @@ export function OrganizationUnitDialog({
             </select>
           </label>
           {isArchiving ? (
-            <label className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-3 text-sm text-destructive">
+            <label className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-3 text-sm text-tone-danger-fg">
               <input
                 type="checkbox"
                 checked={archiveConfirmed}
@@ -229,7 +229,7 @@ export function OrganizationUnitDialog({
           {error ? (
             <p
               role="alert"
-              className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+              className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-tone-danger-fg"
             >
               {error}
             </p>

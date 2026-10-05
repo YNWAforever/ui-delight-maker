@@ -131,8 +131,8 @@ export function UserRoleDialog({
           </label>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-3">
-              <p className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
+            <div className="rounded-md border border-success/25 bg-success/8 px-3 py-3">
+              <p className="flex items-center gap-2 text-xs font-semibold text-tone-success-fg">
                 <ArrowUpRight aria-hidden="true" className="h-4 w-4" /> Gained access
               </p>
               <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
@@ -143,8 +143,8 @@ export function UserRoleDialog({
                 )}
               </ul>
             </div>
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-3">
-              <p className="flex items-center gap-2 text-xs font-semibold text-amber-700">
+            <div className="rounded-md border border-warning/30 bg-warning/8 px-3 py-3">
+              <p className="flex items-center gap-2 text-xs font-semibold text-tone-warning-fg">
                 <ArrowDownRight aria-hidden="true" className="h-4 w-4" /> Lost access
               </p>
               <ul className="mt-2 space-y-1 text-xs text-muted-foreground">

@@ -125,9 +125,12 @@ export function AttentionQueue({
                   <Icon className="h-3 w-3" aria-hidden="true" />
                   {severity.label}
                 </span>
+                {/* Two lines, not one: long names share a prefix ("香港…有限公司"), so a one-line
+                    ellipsis hid the part that tells them apart (UX-25). */}
                 <Link
                   to={item.href}
-                  className="truncate text-sm font-medium text-foreground hover:underline"
+                  title={item.title}
+                  className="line-clamp-2 min-w-0 text-sm font-medium break-words text-foreground hover:underline"
                 >
                   {item.title}
                 </Link>

@@ -171,7 +171,7 @@ export function GlobalSearch({ iconOnly = false }: { iconOnly?: boolean }) {
                   <div className="truncate font-medium">{r.title}</div>
                   <div className="truncate text-xs text-muted-foreground">{r.subtitle}</div>
                 </div>
-                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {r.type}
                 </span>
               </a>

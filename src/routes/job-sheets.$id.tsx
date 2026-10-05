@@ -647,8 +647,12 @@ function JobSheetDetailPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 px-4 py-6 md:px-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      {/*
+        Side by side only from 2xl: beside the app sidebar, two thirds of an xl screen left the
+        six-column billing statement ~640 px, so amounts and headers wrapped (UX-14).
+      */}
+      <div className="grid grid-cols-1 gap-6 px-4 py-6 md:px-6 2xl:grid-cols-3">
+        <div className="space-y-6 2xl:col-span-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
               <CardTitle className="text-base">Billing portions</CardTitle>
@@ -908,7 +912,7 @@ function JobSheetDetailPage() {
                         so where the user made the choice.
                       */}
                       {cancelledWithAmount && (
-                        <p className="mt-3 text-xs text-warning-foreground">
+                        <p className="mt-3 text-xs text-tone-warning-fg">
                           Cancelled portions still count toward planned billing. Set this amount to
                           0 for the plan to reconcile.
                         </p>
@@ -1169,7 +1173,7 @@ function JobSheetDetailPage() {
                         </div>
                       </div>
                       {needsReview && (
-                        <p className="mt-3 text-xs text-warning-foreground">
+                        <p className="mt-3 text-xs text-tone-warning-fg">
                           Legacy entry needs invoice evidence review. No Xero confirmation is
                           inferred.
                         </p>

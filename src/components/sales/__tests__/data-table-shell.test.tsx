@@ -230,11 +230,12 @@ describe("DataTableShell", () => {
         columns={columns}
         rows={quotes}
         rowKey={rowKey}
+        rowLabel={(row) => row.name}
         expandable={{ renderDetails: (row) => <p>Line items for {row.name}</p> }}
       />,
     );
 
-    const toggle = screen.getByRole("button", { name: "Show details for q-1" });
+    const toggle = screen.getByRole("button", { name: "Show details for ACME renewal" });
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     expect(screen.queryByText("Line items for ACME renewal")).toBeNull();
 
@@ -242,7 +243,9 @@ describe("DataTableShell", () => {
 
     expect(screen.getByText("Line items for ACME renewal")).toBeDefined();
     expect(
-      screen.getByRole("button", { name: "Hide details for q-1" }).getAttribute("aria-expanded"),
+      screen
+        .getByRole("button", { name: "Hide details for ACME renewal" })
+        .getAttribute("aria-expanded"),
     ).toBe("true");
   });
 
@@ -258,8 +261,24 @@ describe("DataTableShell", () => {
 
     const triggers = screen.getAllByRole("button", { name: /Actions for row/ });
     expect(triggers).toHaveLength(quotes.length);
+    // Without a rowLabel the position names the row; the key (an id) never does (UX-05).
+    expect(triggers[0].getAttribute("aria-label")).toBe("Actions for row 1");
+    for (const quote of quotes) {
+      expect(screen.queryByRole("button", { name: new RegExp(rowKey(quote)) })).toBeNull();
+    }
     // Closed menu: the items are not in the document until the trigger is opened.
     expect(screen.queryByText("Duplicate")).toBeNull();
     expect(triggers[0].getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("never wraps a numeric column, header or cell", () => {
+    // UX-14: job sheet amounts read "HKD" on one line and "66.84" on the next.
+    render(<DataTableShell columns={columns} rows={quotes} rowKey={rowKey} />);
+
+    expect(screen.getByRole("columnheader", { name: "Amount" }).className).toContain(
+      "whitespace-nowrap",
+    );
+    expect(screen.getByRole("cell", { name: "12,400" }).className).toContain("whitespace-nowrap");
+    expect(screen.getByRole("cell", { name: "Dana" }).className).not.toContain("whitespace-nowrap");
   });
 });

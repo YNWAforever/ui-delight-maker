@@ -245,6 +245,68 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("The Approval Desk at laptop width", () => {
+  it("lists each request in two columns, with its waiting time under the request", () => {
+    // UX-11: four columns in two fifths of a 1280 screen wrapped the request to six lines.
+    renderInbox([approval()]);
+
+    const table = screen.getByRole("table", { name: "Approvals waiting on a human decision" });
+    const headers = within(table)
+      .getAllByRole("columnheader")
+      .map((header) => header.textContent?.trim())
+      .filter(Boolean);
+    expect(headers).toEqual(["Request", "Status"]);
+    expect(
+      within(table).getByRole("button", { name: /Discount of 15% on renewal/ }).textContent,
+    ).toMatch(/Raised /);
+  });
+
+  it("takes focus to the open record when a request is chosen", async () => {
+    // UX-40: a keyboard user tabbed past every row's controls (131 stops) to reach a decision.
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+    renderInbox([approval()]);
+
+    const table = screen.getByRole("table", { name: "Approvals waiting on a human decision" });
+    await userEvent.click(
+      within(table).getByRole("button", { name: /Discount of 15% on renewal/ }),
+    );
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { level: 2, name: "Discount" }),
+      ),
+    );
+    // The record stays in view beside the queue, so taking focus must not scroll the page
+    // back to its top (self-review of 83f9ad3).
+    expect(screen.getByRole("region", { name: "Discount" }).className).toContain("xl:sticky");
+    const headingFocus = focusSpy.mock.calls.find(
+      (_call, index) =>
+        focusSpy.mock.contexts[index] ===
+        screen.getByRole("heading", { level: 2, name: "Discount" }),
+    );
+    expect(headingFocus?.[0]).toEqual({ preventScroll: true });
+    focusSpy.mockRestore();
+  });
+});
+
+describe("The decided history on narrow screens", () => {
+  it("starts collapsed below xl and opens on request", async () => {
+    // UX-28: under a 50-card queue the history made Approvals 11,056 px tall on a phone.
+    renderInbox([approval()]);
+
+    const toggle = screen.getByRole("button", { name: "Show decided requests" });
+    expect(toggle.className).toContain("xl:hidden");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    const list = document.getElementById(toggle.getAttribute("aria-controls") ?? "");
+    expect(list?.className).toContain("hidden xl:block");
+
+    await userEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(toggle.textContent).toBe("Hide decided requests");
+    expect(list?.className).not.toContain("hidden");
+  });
+});
+
 describe("Every approval decision is confirmed, and the confirmation names the consequence", () => {
   it("approving a plain request asks first and says the agent cannot be called back", async () => {
     renderInbox([approval()]);
@@ -369,8 +431,7 @@ describe("Assigning a reviewer", () => {
     Element.prototype.scrollIntoView = () => {};
   });
 
-  const reviewerSelect = () =>
-    screen.findByRole("combobox", { name: "Assign reviewer (inline) search" });
+  const reviewerSelect = () => screen.findByRole("combobox", { name: "Assign reviewer search" });
 
   it("routes a pending approval to the reviewer chosen from the assignable roster", async () => {
     renderInbox([approval()]);
@@ -432,7 +493,7 @@ describe("Assigning a reviewer", () => {
     // assignee is visible and clearing it is possible.
     renderInbox([approval(), approval({ id: "ap-2" })]);
 
-    fireEvent.click(screen.getAllByRole("checkbox", { name: /Select row ap-1/ })[0]);
+    fireEvent.click(screen.getAllByRole("checkbox", { name: /Discount of 15% on renewal/ })[0]);
 
     expect(screen.queryByRole("button", { name: /Assign reviewer/ })).toBeNull();
     expect(
@@ -485,17 +546,18 @@ describe("Server-evaluated approval action boundaries", () => {
       approval(),
       approval({
         id: "ap-denied",
+        context_summary: "Denied row",
         can_decide: false,
         can_assign: false,
         can_claim: false,
         can_request_changes: false,
       }),
     ]);
-    const denied = screen.getAllByRole("checkbox", { name: /Select row ap-denied/ });
+    const denied = screen.getAllByRole("checkbox", { name: /Denied row/ });
     expect(denied.every((element) => (element as HTMLButtonElement).disabled)).toBe(true);
     fireEvent.click(denied[0]);
     expect(screen.queryByText("1 selected")).toBeNull();
-    fireEvent.click(screen.getAllByRole("checkbox", { name: /Select row ap-1/ })[0]);
+    fireEvent.click(screen.getAllByRole("checkbox", { name: /Discount of 15% on renewal/ })[0]);
     expect(screen.getByText("1 selected")).toBeTruthy();
   });
 

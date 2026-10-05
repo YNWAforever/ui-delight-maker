@@ -34,9 +34,12 @@ export function SectionHeader({ title, description, action, className }: Section
       )}
     >
       <div className="min-w-0">
-        <h2 className="text-base font-medium tracking-tight text-foreground lg:text-lg">{title}</h2>
+        {/* Section title: 15/22, weight 600, one size at every width (direction, type scale). */}
+        <h2 className="text-[15px] leading-[22px] font-semibold text-balance text-foreground">
+          {title}
+        </h2>
         {description && (
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
+          <p className="mt-1 max-w-2xl text-sm text-pretty text-muted-foreground">{description}</p>
         )}
       </div>
       {action && <div className="shrink-0">{action}</div>}

@@ -152,7 +152,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  const { queryClient, profile, favorites, adminNavigation } = Route.useRouteContext();
+  const { queryClient, profile, favorites, adminNavigation, capabilities } =
+    Route.useRouteContext();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -182,6 +183,7 @@ function RootComponent() {
           profile={profile ?? null}
           favorites={favorites ?? []}
           adminNavigation={adminNavigation ?? []}
+          capabilities={capabilities ?? []}
         />
       </Suspense>
     </QueryClientProvider>

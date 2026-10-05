@@ -69,7 +69,8 @@ describe("Admin audit export uses the effective server capability", () => {
   it("removes export for a super admin with an effective deny", () => {
     render(<Page />);
     expect(screen.queryByRole("button", { name: "Export this page (CSV)" })).toBeNull();
-    expect(screen.getAllByText("profile.updated").length).toBeGreaterThan(0);
+    // The raw key is the cell title; the text is the humanised action (UX-06).
+    expect(screen.getAllByTitle("profile.updated")[0].textContent).toBe("Profile updated");
   });
   it("fails closed when the effective snapshot is absent", () => {
     state.capabilities = undefined;
@@ -93,5 +94,26 @@ describe("Admin audit export uses the effective server capability", () => {
       "disabled",
       false,
     );
+  });
+});
+
+describe("Admin audit filters", () => {
+  it("finds the actor by name when the session can read the directory", () => {
+    // UX-12: the filter asked for an "Actor profile id".
+    state.capabilities = ["audit.view", "users.view"];
+    render(<Page />);
+
+    expect(screen.getByRole("combobox", { name: "Actor search" })).toBeTruthy();
+    expect(screen.getByText("Selected: Anyone")).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "Audit actor" })).toBeNull();
+  });
+
+  it("falls back to the ID field rather than offer a search the server would refuse", () => {
+    state.capabilities = ["audit.view"];
+    render(<Page />);
+
+    expect(screen.queryByRole("combobox", { name: "Actor search" })).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Audit actor" })).toBeTruthy();
+    expect(screen.getByText("Actor ID")).toBeTruthy();
   });
 });

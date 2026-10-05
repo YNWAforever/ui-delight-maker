@@ -17,7 +17,6 @@ import {
   ErrorState,
   FilterToolbar,
   FilteredEmptyState,
-  MetricStrip,
   ResponsiveRecordList,
   WorkspaceHeader,
   type ColumnDef,
@@ -32,11 +31,7 @@ import { csvFileName, toCsv, type CsvColumn } from "@/lib/csv";
 import type { JobSheetListItem } from "@/server/repositories/job-sheets";
 import { useIsExactPath } from "@/lib/routing-utils";
 import type { JobSheetStatus } from "@/lib/types";
-import {
-  JOB_SHEET_STATUS_VALUES,
-  formatAcceptedValueSummary,
-  getJobSheetStatusLabel,
-} from "@/lib/job-sheet-editor";
+import { JOB_SHEET_STATUS_VALUES, getJobSheetStatusLabel } from "@/lib/job-sheet-editor";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { getJobSheetsPage } from "@/server-functions/job-sheets";
@@ -239,9 +234,6 @@ function JobSheetsIndex() {
       search.createdFrom ||
       search.createdTo,
     );
-  const awaitingReview = rows.filter((row) => row.status !== "accepted").length;
-  const acceptedValue = formatAcceptedValueSummary(rows);
-  const pageScope = `on this page of ${formatCount(rows.length)}`;
 
   const statusOptions: FilterOption[] = [
     { value: "all", label: "All statuses" },
@@ -322,34 +314,6 @@ function JobSheetsIndex() {
       />
 
       <div className="space-y-6 px-4 py-6 md:px-6">
-        <MetricStrip
-          metrics={[
-            {
-              id: "total",
-              label: "Job sheets",
-              value: formatCount(jobSheetPage.total),
-              hint:
-                statusFilter === "all"
-                  ? "all statuses, every page"
-                  : `status: ${getJobSheetStatusLabel(statusFilter)}`,
-            },
-            {
-              id: "needs-review",
-              label: "Needs review",
-              value: formatCount(awaitingReview),
-              hint: `not accepted, ${pageScope}`,
-              tone: awaitingReview > 0 ? "warning" : "neutral",
-            },
-            {
-              id: "accepted-value",
-              label: "Accepted value",
-              value: acceptedValue,
-              hint: `locked handoffs by currency, ${pageScope}`,
-            },
-          ]}
-          columns={3}
-        />
-
         <FilterToolbar
           filters={[
             {
@@ -522,6 +486,7 @@ function JobSheetsIndex() {
                 columns={columns}
                 rows={rows}
                 rowKey={(row) => row.id}
+                rowLabel={(row) => [row.number, row.company_name].filter(Boolean).join(" · ")}
                 rowHref={(row) => `/job-sheets/${row.id}`}
                 selection={{
                   selected: bulkSelected,

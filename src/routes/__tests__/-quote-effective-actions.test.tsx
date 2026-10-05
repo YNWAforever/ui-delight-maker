@@ -51,8 +51,10 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: ReactNode }) => <a>{children}</a>,
 }));
 vi.mock("@tanstack/react-query", () => ({
+  // dataUpdatedAt is always a number in TanStack Query: the fetch time, here "now".
   useQuery: ({ initialData }: { initialData?: unknown }) => ({
     data: initialData,
+    dataUpdatedAt: Date.now(),
     isFetching: false,
   }),
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
@@ -72,15 +74,26 @@ vi.mock("@/server-functions/quotes", () => ({
   updateQuote: updateQuoteMock,
 }));
 vi.mock("@/components/sales", () => ({
-  WorkspaceHeader: ({ primaryAction }: { primaryAction?: ReactNode }) => (
-    <header>{primaryAction}</header>
+  WorkspaceHeader: ({
+    primaryAction,
+    status,
+  }: {
+    primaryAction?: ReactNode;
+    status?: ReactNode;
+  }) => (
+    <header>
+      {status}
+      {primaryAction}
+    </header>
   ),
   ActivityTimeline: () => null,
   EmptyWorkspaceState: () => null,
   ErrorState: () => null,
   LoadingSkeleton: () => null,
   SectionHeader: () => null,
-  StaleDataIndicator: () => null,
+  StaleDataIndicator: ({ updatedAt }: { updatedAt: string }) => (
+    <time aria-label="Freshness" dateTime={updatedAt} />
+  ),
   StatusBadge: () => null,
   StickyActionBar: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
@@ -146,5 +159,17 @@ describe("persisted quote commercial round trip", () => {
       qty: 1,
       unit_price: 100,
     });
+  });
+});
+
+describe("quote freshness", () => {
+  it("reports when the page fetched the quote, not when the quote was last edited", () => {
+    // UX-19: the quote's own updated_at made almost every quote read "Out of date".
+    const before = Date.now();
+    draw("sales", ["quotes.view"]);
+
+    const fetchedAt = Date.parse(screen.getByLabelText("Freshness").getAttribute("dateTime") ?? "");
+    expect(fetchedAt).toBeGreaterThanOrEqual(before - 1000);
+    expect(fetchedAt).toBeLessThanOrEqual(Date.now());
   });
 });

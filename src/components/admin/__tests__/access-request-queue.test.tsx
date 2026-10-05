@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AccessRequest } from "@/server/repositories/admin-access";
 import { AccessRequestQueue } from "../access-request-queue";
@@ -48,14 +48,16 @@ describe("AccessRequestQueue", () => {
     // The server refuses a manager *any* decision on a capability request, approve or
     // reject, so neither control is offered and the rule is stated instead of the symptom.
     expect(screen.queryByRole("button", { name: "Approve capability access" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Reject request-capability" })).toBeNull();
+    const capabilityCard = screen
+      .getByRole("heading", { name: "Accounts update" })
+      .closest("article") as HTMLElement;
+    expect(within(capabilityCard).queryByRole("button", { name: "Reject request" })).toBeNull();
+    // Decision controls carry no record ids in their names (audit UX-05).
+    expect(screen.queryByRole("button", { name: /request-team|request-capability/ })).toBeNull();
     expect(screen.getByText(/Managers decide team access requests/)).toBeTruthy();
     await actor.click(screen.getByRole("button", { name: "Approve team access" }));
-    await actor.type(
-      screen.getByLabelText("Decision reason for request-team"),
-      "Coverage approved",
-    );
-    await actor.click(screen.getByRole("button", { name: "Approve request-team" }));
+    await actor.type(screen.getByLabelText("Decision reason"), "Coverage approved");
+    await actor.click(screen.getByRole("button", { name: "Confirm approval" }));
 
     expect(onDecide).toHaveBeenCalledWith({
       id: "request-team",
@@ -63,6 +65,22 @@ describe("AccessRequestQueue", () => {
       reason: "Coverage approved",
       accessExpiresAt: null,
     });
+  });
+
+  it("names the team and capability instead of showing ids or keys", () => {
+    render(
+      <AccessRequestQueue
+        requests={[teamRequest, capabilityRequest]}
+        actorRole="admin"
+        onDecide={vi.fn()}
+        teamName={(teamId) => (teamId === "team-1" ? "Coverage team" : undefined)}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Join Coverage team" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Accounts update" })).toBeTruthy();
+    expect(screen.queryByText("team-1")).toBeNull();
+    expect(screen.queryByText("accounts.update")).toBeNull();
   });
 
   it("renders each request's real state instead of a hardcoded Pending pill", () => {
@@ -119,14 +137,30 @@ describe("AccessRequestQueue", () => {
     expect(screen.getByText(/You raised this request/)).toBeTruthy();
   });
 
-  it("requires a decision reason before rejection", async () => {
+  it("requires a decision reason before rejection, at the field and without scolding first", async () => {
     const onDecide = vi.fn();
     const actor = userEvent.setup();
 
     render(<AccessRequestQueue requests={[teamRequest]} actorRole="admin" onDecide={onDecide} />);
 
-    await actor.click(screen.getByRole("button", { name: "Reject request-team" }));
-    expect(screen.getByRole("alert").textContent).toContain("Decision reason is required");
+    // UX-16: opening the decision used to show "Decision reason is required" before typing,
+    // and the 8-character minimum was never stated.
+    await actor.click(screen.getByRole("button", { name: "Reject request" }));
+    const reason = screen.getByRole("textbox", { name: "Decision reason" });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(reason.getAttribute("aria-invalid")).toBeNull();
+    expect(screen.getByText("At least 8 characters. Recorded in the audit log.")).toBeTruthy();
+
+    await actor.click(screen.getByRole("button", { name: "Confirm rejection" }));
+    expect(reason.getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(reason);
+    const describedBy = reason.getAttribute("aria-describedby") ?? "";
+    const messages = describedBy.split(" ").map((id) => document.getElementById(id)?.textContent);
+    expect(messages).toContain("Enter a reason for this decision.");
+
+    await actor.type(reason, "short");
+    await actor.click(screen.getByRole("button", { name: "Confirm rejection" }));
+    expect(screen.getByText("Use at least 8 characters for the reason.")).toBeTruthy();
     expect(onDecide).not.toHaveBeenCalled();
   });
 });

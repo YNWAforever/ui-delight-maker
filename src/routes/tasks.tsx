@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchDraft } from "@/hooks/use-search-draft";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { Bot, Plus } from "lucide-react";
@@ -10,7 +11,6 @@ import {
   ErrorState,
   FilterToolbar,
   FilteredEmptyState,
-  MetricStrip,
   ResponsiveRecordList,
   SectionHeader,
   StaleDataIndicator,
@@ -48,7 +48,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatCount, formatDate } from "@/lib/format";
 import { getBusinessDateKey } from "@/lib/business-date";
-import { getTaskBoardMetrics } from "@/lib/sales-workspace";
 import { invalidateLinkedCompanyWorkspaceMutation } from "@/lib/company-workspace/invalidation";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
@@ -186,6 +185,8 @@ const COLUMNS: { id: TaskStatus; label: string }[] = [
 ];
 
 const OVERDUE_LABEL = getDerivedStatusLabel("overdue").label;
+/** Same pause as the Accounts and Quotes search boxes. */
+const SEARCH_COMMIT_DELAY_MS = 300;
 
 /**
  * The wording `getTasks` implies with `restricted: true`, matched to the short/long split
@@ -268,6 +269,22 @@ function TasksBoard() {
       replace: true,
     });
 
+  /**
+   * The search box commits to the URL after a pause, as Accounts and Quotes do. It used to
+   * write the URL, and so refetch the queue, on every keystroke (UX-17).
+   */
+  // Shared with Accounts and Quotes: follows the URL, but keeps a trailing space the person is
+  // still typing when the draft's own trimmed commit comes back.
+  const [searchDraft, setSearchDraft] = useSearchDraft(query);
+  useEffect(() => {
+    const next = searchDraft.trim();
+    if (next === query) return;
+    const timer = setTimeout(() => {
+      navigate({ search: (current) => ({ ...current, search: next }), replace: true });
+    }, SEARCH_COMMIT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [searchDraft, query, navigate]);
+
   // PostgreSQL applies search before the page limit; the loaded rows are already filtered.
   const filtered = rows;
 
@@ -309,8 +326,6 @@ function TasksBoard() {
       setLoadingMore(null);
     }
   };
-
-  const metrics = getTaskBoardMetrics(rows, today);
 
   const markPending = (id: string) => {
     pendingTaskIdsRef.current.add(id);
@@ -496,33 +511,6 @@ function TasksBoard() {
       />
 
       <div className="space-y-6 px-4 py-6 md:px-6">
-        <MetricStrip
-          metrics={[
-            { id: "open", label: "Open", value: metrics.open, hint: "in loaded pages" },
-            {
-              id: "overdue",
-              label: OVERDUE_LABEL,
-              value: metrics.overdue,
-              hint: "in loaded pages",
-              tone: metrics.overdue > 0 ? "destructive" : "neutral",
-            },
-            {
-              id: "due-today",
-              label: "Due today",
-              value: metrics.dueToday,
-              hint: "in loaded pages",
-              tone: metrics.dueToday > 0 ? "warning" : "neutral",
-            },
-            {
-              id: "high",
-              label: "High priority",
-              value: metrics.highPriority,
-              hint: "in loaded pages",
-            },
-          ]}
-          columns={4}
-        />
-
         {/*
           `tasksQuery.isError` was referenced nowhere. Because `initialData` is set, `data`
           is always defined, so a failed background refetch was completely invisible: the
@@ -541,8 +529,8 @@ function TasksBoard() {
 
         <FilterToolbar
           search={{
-            value: query,
-            onChange: (search) => setFilters({ search }),
+            value: searchDraft,
+            onChange: setSearchDraft,
             placeholder: "Search tasks by title or description",
           }}
           filters={[
@@ -730,6 +718,7 @@ function TasksBoard() {
                 columns={listColumns}
                 rows={filtered}
                 rowKey={(task) => task.id}
+                rowLabel={(task) => taskTitle(task)}
                 selection={
                   canUpdate || bulkSelected.size > 0
                     ? {
@@ -860,7 +849,7 @@ function TasksBoard() {
                               </span>
                             </div>
                             {t.created_by_agent && (
-                              <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[10px] text-primary">
+                              <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">
                                 <Bot className="h-3 w-3" aria-hidden="true" /> {t.created_by_agent}
                               </div>
                             )}
@@ -918,14 +907,18 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
    * and two clicks created two tasks.
    */
   const [saving, setSaving] = useState(false);
+  // Shown under the field and linked to it, not as a toast that vanishes (UX-16).
+  const [titleError, setTitleError] = useState<string | null>(null);
 
   const submit = async () => {
     if (saving) return;
     if (!title.trim()) {
-      toast.error("Title required");
+      setTitleError("Enter a title for the task.");
+      document.getElementById("new-task-title")?.focus();
       return;
     }
 
+    setTitleError(null);
     setSaving(true);
     try {
       await onCreate({
@@ -977,8 +970,18 @@ function NewTaskDialog({ onCreate }: { onCreate: (t: CreateTaskPayload) => Promi
               autoComplete="off"
               className="mt-1"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              aria-invalid={titleError ? true : undefined}
+              aria-describedby={titleError ? "new-task-title-error" : undefined}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (titleError) setTitleError(null);
+              }}
             />
+            {titleError ? (
+              <p id="new-task-title-error" className="mt-1 text-xs font-medium text-tone-danger-fg">
+                {titleError}
+              </p>
+            ) : null}
           </div>
           <div>
             <Label htmlFor="new-task-description" className="text-xs">

@@ -117,4 +117,15 @@ describe("WorkspaceHeader", () => {
     // An empty action row would still take vertical space and shift the title.
     expect(container.querySelectorAll("header > div > div")).toHaveLength(1);
   });
+
+  it("uses one 24 px page title and a sentence-case context line", () => {
+    // Direction type scale: the h1 grew to 30 px from lg, and the context was an upper-cased
+    // eyebrow repeating the sidebar group (UX-29).
+    render(<WorkspaceHeader context="Convert" title="Quotes" />);
+
+    const title = screen.getByRole("heading", { level: 1 });
+    expect(title.className).toContain("text-2xl");
+    expect(title.className).not.toMatch(/text-3xl/);
+    expect(screen.getByText("Convert").className).not.toContain("uppercase");
+  });
 });

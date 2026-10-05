@@ -494,11 +494,11 @@ function CampaignDetailRoute() {
             className="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 p-4 text-sm sm:flex-row sm:items-start sm:gap-3"
           >
             <AlertTriangle
-              className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground"
+              className="mt-0.5 h-4 w-4 shrink-0 text-tone-warning-fg"
               aria-hidden="true"
             />
             <div className="min-w-0 space-y-1">
-              <p className="font-medium text-warning-foreground">This roster has data to fix</p>
+              <p className="font-medium text-tone-warning-fg">This roster has data to fix</p>
               <p className="text-muted-foreground">
                 {formatCount(attendeeSummary.unmatchedAccounts)} attendee
                 {attendeeSummary.unmatchedAccounts === 1 ? "" : "s"} matched no account, and{" "}
@@ -581,6 +581,7 @@ function CampaignDetailRoute() {
                     columns={attendeeColumns}
                     rows={members}
                     rowKey={(member) => member.id}
+                    rowLabel={(member) => attendeeName(member)}
                     breakpoint="lg"
                     renderCard={(member) => (
                       <div className="space-y-1">

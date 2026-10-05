@@ -142,6 +142,20 @@ export function toSafeErrorMessage(error: unknown, kind: SafeErrorKind = "server
 }
 
 /**
+ * Whether a thrown value is the server refusing this user, rather than something failing.
+ *
+ * Read by shape, not class: during SSR a loader sees the original `AdminError` or
+ * `OperationError`, but after a client navigation the same refusal arrives as a deserialized
+ * object that keeps its `code` without its prototype. Both error classes use `FORBIDDEN`, and
+ * `AdminError` adds `OUTSIDE_SCOPE`; an explicit 403 status counts too.
+ */
+export function isPermissionDenial(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const { code, status } = error as { code?: unknown; status?: unknown };
+  return code === "FORBIDDEN" || code === "OUTSIDE_SCOPE" || status === 403;
+}
+
+/**
  * Whether a dispatched agent run actually started.
  *
  * Six server functions return `{ triggered: false, reason: "missing_webhook" }` instead of

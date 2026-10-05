@@ -327,7 +327,10 @@ function RenewalsPage() {
       priority: "primary",
       cell: (row) => (
         <div className="min-w-0">
-          <span className="block truncate font-medium">{row.client_company_name}</span>
+          {/* Two lines with the full name on hover: one line hid the end of long CJK names (UX-25). */}
+          <span className="line-clamp-2 font-medium break-words" title={row.client_company_name}>
+            {row.client_company_name}
+          </span>
           <span className="block truncate text-xs text-muted-foreground">{row.product_name}</span>
         </div>
       ),
@@ -506,7 +509,7 @@ function RenewalsPage() {
                       <Link to="/clients">Go to Clients</Link>
                     </Button>
                     <Button size="sm" variant="outline" asChild>
-                      <Link to="/">Go to Revenue Desk</Link>
+                      <Link to="/">Go to your start page</Link>
                     </Button>
                   </div>
                 }
@@ -518,6 +521,7 @@ function RenewalsPage() {
               columns={columns}
               rows={rows}
               rowKey={(row) => row.id}
+              rowLabel={(row) => `${row.client_company_name} — ${row.product_name}`}
               selectedRowKey={selectedId ?? undefined}
               renderCard={(row) => (
                 // Date and risk lead the card: on a phone the only two things that decide
@@ -536,7 +540,10 @@ function RenewalsPage() {
                   <span className="mt-0.5 block text-xs text-muted-foreground">
                     {WINDOW_LABELS[windowOf(row)]}
                   </span>
-                  <span className="mt-2 block truncate text-sm font-medium">
+                  <span
+                    className="mt-2 line-clamp-2 text-sm font-medium break-words"
+                    title={row.client_company_name}
+                  >
                     {row.client_company_name}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">

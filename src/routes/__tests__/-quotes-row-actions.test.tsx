@@ -124,7 +124,7 @@ function renderQuotes() {
 
 /** Radix opens its menu on pointerdown; the table and the card list each render a trigger. */
 const openRowMenu = async () => {
-  const [trigger] = screen.getAllByRole("button", { name: "Actions for row quote-1" });
+  const [trigger] = screen.getAllByRole("button", { name: "Actions for QT-1001" });
   fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
   return screen.findByRole("menu");
 };

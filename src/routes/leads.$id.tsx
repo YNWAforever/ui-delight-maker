@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FollowUpTaskDialog } from "@/components/tasks/follow-up-task-dialog";
+import { hasCapability } from "@/lib/admin/capabilities";
 import { leadDetailSearchSchema } from "@/lib/admin-ux-search";
 import { describeTriggerFailure, toSafeErrorMessage } from "@/lib/errors";
 import { formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
@@ -115,6 +117,10 @@ const leadMutationQueryKeys = {
     crmQueryKeys.leads.detail(leadId),
     crmQueryKeys.quotes.lists(),
   ],
+  follow_up_task: (leadId: string) => [
+    crmQueryKeys.leads.detail(leadId),
+    crmQueryKeys.tasks.lists(),
+  ],
 } as const;
 
 async function invalidateLeadMutation(
@@ -155,6 +161,13 @@ function LeadDetail() {
     : null;
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const { capabilities = [] } = Route.useRouteContext();
+  // Advisory, like every client-side check: the server decides each write again. An empty
+  // set (the shell could not compute it) fails closed, so nothing is offered that may fail.
+  const canUpdateLead = hasCapability(capabilities, "leads.update");
+  const canCreateQuote = hasCapability(capabilities, "quotes.create");
+  const canRunAgents = hasCapability(capabilities, "agents.run");
+  const canCreateTask = hasCapability(capabilities, "tasks.create");
 
   const [status, setStatus] = useState<LeadStatus>(lead.status);
   useEffect(() => setStatus(lead.status), [lead.status]);
@@ -246,11 +259,11 @@ function LeadDetail() {
       <WorkspaceHeader
         context="Acquire"
         title={lead.company_name}
-        description={`${lead.id} · created ${formatDateTime(lead.created_at)}`}
+        description={`Created ${formatDateTime(lead.created_at)}`}
         backHref={{ to: "/leads", label: "All leads" }}
         status={
           workspaceQuery.isError ? (
-            <span className="text-xs text-warning-foreground">
+            <span className="text-xs text-tone-warning-fg">
               Live updates paused. Showing the last data that loaded.
             </span>
           ) : undefined
@@ -271,11 +284,13 @@ function LeadDetail() {
           </Button>,
         ]}
         primaryAction={
-          <Button size="sm" asChild>
-            <Link to="/quotes/new" search={{ leadId: lead.id }}>
-              <FileText aria-hidden="true" className="mr-2 h-4 w-4" /> New quote
-            </Link>
-          </Button>
+          canCreateQuote ? (
+            <Button size="sm" asChild>
+              <Link to="/quotes/new" search={{ leadId: lead.id }}>
+                <FileText aria-hidden="true" className="mr-2 h-4 w-4" /> New quote
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -322,14 +337,25 @@ function LeadDetail() {
                     </blockquote>
                   </div>
 
-                  <Separator />
-
-                  <div>
-                    <SectionHeader
-                      title="Notes"
-                      description="Lead notes are not stored yet, so there is nowhere to write one. Agent and user actions are recorded on the Activity tab."
-                    />
-                  </div>
+                  {canCreateTask ? (
+                    <>
+                      <Separator />
+                      {/* Replaces a "notes are not stored yet" apology with the next step (UX-10). */}
+                      <SectionHeader
+                        title="Next step"
+                        description="Plan the follow-up as a task so it reaches someone's queue. Everything already done is on the Activity tab."
+                        action={
+                          <FollowUpTaskDialog
+                            link={{ lead_id: lead.id }}
+                            defaultTitle={`Follow up with ${lead.company_name}`}
+                            onCreated={() =>
+                              invalidateLeadMutation(queryClient, lead.id, "follow_up_task")
+                            }
+                          />
+                        }
+                      />
+                    </>
+                  ) : null}
                 </TabsContent>
 
                 <TabsContent value="activity" className="mt-4">
@@ -424,7 +450,7 @@ function LeadDetail() {
                         <p className="text-sm font-medium">{insights.next_action}</p>
                       </div>
                       {insights.human_review_required && (
-                        <p className="rounded-md bg-warning/15 px-2 py-1 text-xs text-warning-foreground">
+                        <p className="rounded-md bg-warning/15 px-2 py-1 text-xs text-tone-warning-fg">
                           Human review required — confidence below threshold
                         </p>
                       )}
@@ -453,22 +479,28 @@ function LeadDetail() {
             <CardContent className="space-y-3 text-sm">
               <div>
                 <p className="text-xs text-muted-foreground">Status</p>
-                <Select
-                  value={status}
-                  disabled={statusSaving}
-                  onValueChange={(v) => void handleStatusChange(v as LeadStatus)}
-                >
-                  <SelectTrigger className="mt-1 h-9" aria-label="Lead status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUSES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {getStatusLabel("leads", s).label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {canUpdateLead ? (
+                  <Select
+                    value={status}
+                    disabled={statusSaving}
+                    onValueChange={(v) => void handleStatusChange(v as LeadStatus)}
+                  >
+                    <SelectTrigger className="mt-1 h-9" aria-label="Lead status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {getStatusLabel("leads", s).label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="mt-1">
+                    <StatusBadge domain="leads" value={status} />
+                  </div>
+                )}
                 {statusSaving && (
                   <p className="mt-1 text-xs text-muted-foreground">Saving status…</p>
                 )}
@@ -508,37 +540,39 @@ function LeadDetail() {
             next to "Generate Quote" (an agent) was two near-identical labels for two very
             different things.
           */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Agent actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start"
-                disabled={agentPending !== null}
-                onClick={() => void handleQualifyLead()}
-              >
-                <Sparkles aria-hidden="true" className="mr-2 h-4 w-4" />
-                {agentPending === "qualify" ? "Queuing…" : "Qualify this lead"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start"
-                disabled={agentPending !== null}
-                onClick={() => void handleGenerateQuote()}
-              >
-                <Bot aria-hidden="true" className="mr-2 h-4 w-4" />
-                {agentPending === "quote" ? "Queuing…" : "Draft a quote with the agent"}
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Both hand the lead to an n8n workflow. You will be told if the workflow is not
-                connected.
-              </p>
-            </CardContent>
-          </Card>
+          {canRunAgents ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Agent actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  disabled={agentPending !== null}
+                  onClick={() => void handleQualifyLead()}
+                >
+                  <Sparkles aria-hidden="true" className="mr-2 h-4 w-4" />
+                  {agentPending === "qualify" ? "Queuing…" : "Qualify this lead"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  disabled={agentPending !== null}
+                  onClick={() => void handleGenerateQuote()}
+                >
+                  <Bot aria-hidden="true" className="mr-2 h-4 w-4" />
+                  {agentPending === "quote" ? "Queuing…" : "Draft a quote with the agent"}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Both run an automated assistant on this lead. If the assistant is not set up, you
+                  will be told and nothing changes.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
       </div>
     </>

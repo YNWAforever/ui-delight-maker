@@ -3,11 +3,12 @@ import { Outlet, useRouter } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { AppSidebar } from "@/components/app-sidebar";
 import { GlobalSearch } from "@/components/global-search";
+import { NavigationProgress, RouteAnnouncer } from "@/components/navigation-feedback";
 import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import type { AdminNavigationItem } from "@/lib/admin/types";
+import type { AdminNavigationItem, Capability } from "@/lib/admin/types";
 import type { Profile, WorkspaceFavorite } from "@/lib/types";
 import { signOut } from "@/server-functions/auth";
 
@@ -16,6 +17,7 @@ type AuthenticatedAppShellProps = {
   profile: Profile | null;
   favorites: Array<Pick<WorkspaceFavorite, "id" | "label" | "href">>;
   adminNavigation: readonly AdminNavigationItem[];
+  capabilities?: readonly Capability[];
 };
 
 export function AuthenticatedAppShell({
@@ -23,15 +25,19 @@ export function AuthenticatedAppShell({
   profile,
   favorites,
   adminNavigation,
+  capabilities = [],
 }: AuthenticatedAppShellProps) {
   const router = useRouter();
   return (
     <SidebarProvider>
+      <NavigationProgress />
+      <RouteAnnouncer />
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar
           profile={profile}
           favorites={favorites}
           adminNavigation={adminNavigation}
+          capabilities={capabilities}
           onSignOut={async () => {
             try {
               await signOut();
@@ -39,7 +45,10 @@ export function AuthenticatedAppShell({
               await router.invalidate();
               await router.navigate({ to: "/login" });
             } catch (error) {
-              toast.error(error instanceof Error ? error.message : "Neon Auth sign-out failed");
+              // The provider's message ("Neon Auth sign-out failed") means nothing to the person
+              // signing out; say what happened and what to do (UX-18).
+              console.error(error);
+              toast.error("You are still signed in. Try signing out again.");
             }
           }}
         />

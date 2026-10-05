@@ -80,7 +80,7 @@ export function LeadPreviewPanel({
               {sla.label}
             </span>
             {quote.value != null && (
-              <span className="rounded-md bg-success/10 px-2 py-0.5 font-medium text-success">
+              <span className="rounded-md bg-success/10 px-2 py-0.5 font-medium text-tone-success-fg">
                 {formatCurrencyAmount(quote.value, quote.currency)}
               </span>
             )}

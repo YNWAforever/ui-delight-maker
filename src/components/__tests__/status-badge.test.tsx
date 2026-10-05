@@ -23,9 +23,8 @@ afterEach(() => cleanup());
  *
  * On casing: the old badge put lowercase text in the DOM and leaned on CSS `capitalize` to
  * title-case it on screen. The expectations below are the DOM text, which is now the
- * canonical sentence-case label. `capitalize` is still on the element, so the rendered pixels
- * are unchanged — "Pending approval" paints as "Pending Approval" exactly as "pending
- * approval" did. What changed is what a screen reader announces, for the better.
+ * canonical sentence-case label. Since UX-30 the badge no longer carries `capitalize`, so the
+ * pixels match the DOM text too: "Pending approval" paints as written.
  *
  * Three entries are marked `consolidated`. Those are the deliberate rewordings from
  * design-decisions.md §5 and are the only labels whose wording moves.
@@ -134,15 +133,21 @@ describe("StatusBadge", () => {
     expect(screen.getByText("Unknown")).not.toBeNull();
   });
 
-  it("falls back to the raw value with underscores replaced, in neutral tone", () => {
+  it("falls back to the raw value in sentence case, in neutral tone", () => {
     render(<StatusBadge value="awaiting_client_countersign" />);
-    const badge = screen.getByText("awaiting client countersign");
+    const badge = screen.getByText("Awaiting client countersign");
     expect(badge.className).toContain("bg-muted");
+  });
+
+  it("paints the label as written, without CSS title case", () => {
+    // UX-30: `capitalize` turned "Waiting approval" into "Waiting Approval" on screen.
+    render(<StatusBadge domain="approvals" value="pending" />);
+    expect(screen.getByText("Waiting approval").className).not.toContain("capitalize");
   });
 
   it("does not resolve a value off Object.prototype", () => {
     render(<StatusBadge value="constructor" />);
-    expect(screen.getByText("constructor")).not.toBeNull();
+    expect(screen.getByText("Constructor")).not.toBeNull();
   });
 
   it("still lets a caller override the label, as the approvals screen does", () => {

@@ -174,7 +174,8 @@ describe("Job Sheet selection keeps permitted export separate from owner writes"
     "keeps read/export selection while omitting owner controls when assignment is %s",
     (canAssign) => {
       renderSheets([sheetRow("js-1", canAssign)]);
-      const checkbox = screen.getAllByRole("checkbox", { name: "Select row js-1" })[0];
+      // Row controls are named by sheet number (audit UX-05), never by id.
+      const checkbox = screen.getAllByRole("checkbox", { name: /^Select JS js-1$/ })[0];
       expect((checkbox as HTMLButtonElement).disabled).toBe(false);
       fireEvent.click(checkbox);
       expect(screen.getByRole("button", { name: "Export selected on this page" })).toBeTruthy();
@@ -185,7 +186,7 @@ describe("Job Sheet selection keeps permitted export separate from owner writes"
   it("previews only independently authorized selected rows with the named writer-purpose picker", async () => {
     renderSheets([sheetRow("js-1", true), sheetRow("js-denied", false)]);
     for (const id of ["js-1", "js-denied"])
-      fireEvent.click(screen.getAllByRole("checkbox", { name: "Select row " + id })[0]);
+      fireEvent.click(screen.getAllByRole("checkbox", { name: "Select JS " + id })[0]);
     fireEvent.change(screen.getByRole("combobox", { name: "Bulk accounting owner search" }), {
       target: { value: "Named" },
     });

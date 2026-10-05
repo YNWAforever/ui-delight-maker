@@ -16,11 +16,11 @@ export function slaChip(createdAt: string, now: number) {
   const elapsed = (now - new Date(createdAt).getTime()) / 36e5;
   const remaining = SLA_HOURS - elapsed;
   if (remaining <= 0)
-    return { text: "SLA breached", className: "bg-destructive/15 text-destructive" };
+    return { text: "SLA breached", className: "bg-destructive/15 text-tone-danger-fg" };
   if (remaining < 1)
     return {
       text: `${(remaining * 60).toFixed(0)}m left`,
-      className: "bg-warning/15 text-warning-foreground",
+      className: "bg-warning/15 text-tone-warning-fg",
     };
-  return { text: `${remaining.toFixed(1)}h left`, className: "bg-info/10 text-info" };
+  return { text: `${remaining.toFixed(1)}h left`, className: "bg-info/10 text-tone-info-fg" };
 }

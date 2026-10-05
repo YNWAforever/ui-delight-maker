@@ -23,17 +23,17 @@ interface LeadCardProps {
 }
 
 const SLA_STYLES = {
-  overdue: "border-destructive/40 bg-destructive/5 text-destructive",
-  due_today: "border-warning/40 bg-warning/10 text-warning-foreground",
+  overdue: "border-destructive/40 bg-destructive/5 text-tone-danger-fg",
+  due_today: "border-warning/40 bg-warning/10 text-tone-warning-fg",
   clear: "border-border bg-muted/40 text-muted-foreground",
 };
 
 const AI_STYLES = {
-  running: "bg-info/10 text-info",
-  ready_for_review: "bg-info/10 text-info",
-  approved: "bg-success/10 text-success",
-  sent: "bg-success/10 text-success",
-  failed: "bg-destructive/10 text-destructive",
+  running: "bg-info/10 text-tone-info-fg",
+  ready_for_review: "bg-info/10 text-tone-info-fg",
+  approved: "bg-success/10 text-tone-success-fg",
+  sent: "bg-success/10 text-tone-success-fg",
+  failed: "bg-destructive/10 text-tone-danger-fg",
   idle: "bg-muted text-muted-foreground",
 };
 
@@ -78,7 +78,7 @@ export function LeadCard({
         <div className="flex flex-wrap items-center gap-1.5">
           <span
             className={cn(
-              "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium",
+              "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium",
               SLA_STYLES[sla.state],
             )}
           >
@@ -91,7 +91,7 @@ export function LeadCard({
           </span>
           <span
             className={cn(
-              "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium",
+              "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium",
               AI_STYLES[ai.state],
             )}
           >

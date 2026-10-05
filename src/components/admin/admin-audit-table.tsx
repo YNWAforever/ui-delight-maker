@@ -9,6 +9,7 @@ import {
 } from "@/components/sales";
 import { Button } from "@/components/ui/button";
 import { formatCount, formatDateTime } from "@/lib/format";
+import { humanizeKey } from "@/lib/status-labels";
 import type { AdminAuditLog, Paginated } from "@/server/repositories/admin-access";
 
 type AdminAuditTableProps = {
@@ -66,7 +67,11 @@ export function AdminAuditTable({
       id: "action",
       header: "Action",
       priority: "primary",
-      cell: (entry) => <span className="font-medium text-foreground">{entry.action}</span>,
+      cell: (entry) => (
+        <span className="font-medium text-foreground" title={entry.action}>
+          {humanizeKey(entry.action)}
+        </span>
+      ),
     },
     {
       id: "severity",
@@ -79,9 +84,15 @@ export function AdminAuditTable({
       header: "Target",
       priority: "secondary",
       cell: (entry) => (
-        <span className="block max-w-[18rem] break-words text-foreground">
-          {entry.target_type}
-          {entry.target_id ? ` · ${entry.target_id}` : ""}
+        // IDs wrap anywhere: an unbreakable UUID set the column's minimum width, and with the
+        // actor column that pushed the table to 1,452 px at 1280 (UX-12).
+        <span className="block max-w-[18rem] text-foreground">
+          {humanizeKey(entry.target_type)}
+          {entry.target_id ? (
+            <span className="block font-mono text-xs text-muted-foreground wrap-anywhere">
+              {entry.target_id}
+            </span>
+          ) : null}
         </span>
       ),
     },
@@ -89,11 +100,15 @@ export function AdminAuditTable({
       id: "actor",
       header: "Actor",
       priority: "secondary",
-      cell: (entry) => (
-        <span className="block max-w-[16rem] break-words text-foreground">
-          {entry.actor_profile_id ?? "System"}
-        </span>
-      ),
+      // Names need the server to resolve them (SP-2); until then the ID, kept narrow.
+      cell: (entry) =>
+        entry.actor_profile_id ? (
+          <span className="block max-w-[16rem] font-mono text-xs text-foreground wrap-anywhere">
+            {entry.actor_profile_id}
+          </span>
+        ) : (
+          <span className="text-foreground">System</span>
+        ),
     },
     {
       id: "reason",
@@ -145,6 +160,9 @@ export function AdminAuditTable({
               columns={columns}
               rows={data.items}
               rowKey={(entry) => entry.id}
+              rowLabel={(entry) =>
+                `${humanizeKey(entry.action)} at ${formatDateTime(entry.created_at)}`
+              }
               caption="Administrative audit entries"
               expandable={{
                 renderDetails: (entry) => (
@@ -153,7 +171,7 @@ export function AdminAuditTable({
                       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         Before
                       </p>
-                      <pre className="mt-1 max-h-64 overflow-auto rounded-md bg-muted p-2 text-xs">
+                      <pre className="mt-1 max-h-64 overflow-auto rounded-md bg-muted p-2 text-xs whitespace-pre-wrap wrap-anywhere">
                         {snapshot(entry.before_snapshot)}
                       </pre>
                     </div>
@@ -161,7 +179,7 @@ export function AdminAuditTable({
                       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         After
                       </p>
-                      <pre className="mt-1 max-h-64 overflow-auto rounded-md bg-muted p-2 text-xs">
+                      <pre className="mt-1 max-h-64 overflow-auto rounded-md bg-muted p-2 text-xs whitespace-pre-wrap wrap-anywhere">
                         {snapshot(entry.after_snapshot)}
                       </pre>
                     </div>

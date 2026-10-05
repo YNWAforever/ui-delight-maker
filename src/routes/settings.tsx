@@ -627,8 +627,8 @@ function ProductsTab({
           role="note"
           className="flex items-start gap-3 rounded-md border border-warning/30 bg-warning/10 p-4 text-sm"
         >
-          <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-warning-foreground" />
-          <p className="text-warning-foreground">
+          <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-tone-warning-fg" />
+          <p className="text-tone-warning-fg">
             Changing the product catalogue needs admin access, which is not part of your role. You
             can read the catalogue here; saving will be refused unless you have been granted an
             exception.
@@ -654,6 +654,7 @@ function ProductsTab({
           columns={columns}
           rows={products}
           rowKey={(product) => product.id}
+          rowLabel={(product) => product.name}
           renderCard={renderCard}
           caption="Product catalogue"
         />

@@ -29,6 +29,7 @@ const {
   getTasksMock,
   toastErrorMock,
   toastSuccessMock,
+  filterToolbarMock,
 } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
   routerInvalidateMock: vi.fn(),
@@ -37,6 +38,7 @@ const {
   getTasksMock: vi.fn(),
   toastErrorMock: vi.fn(),
   toastSuccessMock: vi.fn(),
+  filterToolbarMock: vi.fn((_props: unknown) => null),
 }));
 
 const search: { view: "board" | "list"; priority: string; assignee: string; search: string } = {
@@ -82,7 +84,7 @@ vi.mock("@/components/sales", () => ({
     </div>
   ),
   MetricStrip: () => null,
-  FilterToolbar: () => null,
+  FilterToolbar: filterToolbarMock,
   FilteredEmptyState: () => null,
   EmptyWorkspaceState: () => null,
   ErrorState: () => null,
@@ -165,12 +167,13 @@ function renderBoard() {
   });
   const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
   const Component = Route.options.component as ComponentType;
-  render(
+  const tree = () => (
     <QueryClientProvider client={queryClient}>
       <Component />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
-  return { queryClient, invalidateQueries };
+  const view = render(tree());
+  return { queryClient, invalidateQueries, rerender: () => view.rerender(tree()) };
 }
 
 const openCreateDialog = () => {
@@ -236,6 +239,49 @@ describe("task view switcher", () => {
     });
   });
 
+  it("commits the search to the URL once, after a pause, not on every keystroke", async () => {
+    // UX-17: each keystroke wrote the URL and refetched the queue.
+    renderBoard();
+    const typeInSearch = (value: string) =>
+      act(() => {
+        const props = filterToolbarMock.mock.calls.at(-1)?.[0] as {
+          search: { onChange: (value: string) => void };
+        };
+        props.search.onChange(value);
+      });
+
+    for (const value of ["r", "re", "ren", "renewal"]) typeInSearch(value);
+    expect(navigateMock).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledTimes(1));
+    const call = navigateMock.mock.calls[0][0] as {
+      search: (current: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(call.search({ view: "board", search: "" })).toEqual({
+      view: "board",
+      search: "renewal",
+    });
+  });
+
+  it("keeps a trailing space the user is still typing after its own commit comes back", async () => {
+    const { rerender } = renderBoard();
+    const latestSearch = () =>
+      (
+        filterToolbarMock.mock.calls.at(-1)?.[0] as {
+          search: { value: string; onChange: (value: string) => void };
+        }
+      ).search;
+
+    act(() => latestSearch().onChange("renewal "));
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledTimes(1));
+    // The URL now holds the trimmed commit, as the router would report it.
+    search.search = "renewal";
+    rerender();
+
+    expect(latestSearch().value).toBe("renewal ");
+    search.search = "";
+  });
+
   it("renders the board or the list according to the search param, not a local toggle", () => {
     renderBoard();
     // The board is a set of draggable cards, each exposing the arrow-key affordance.
@@ -259,6 +305,25 @@ describe("task view switcher", () => {
 });
 
 describe("task creation safety", () => {
+  it("says a title is needed at the field, not in a toast", async () => {
+    // UX-16: "Title required" was a toast, attached to nothing.
+    renderBoard();
+    fireEvent.click(screen.getByRole("button", { name: /New task/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    const title = screen.getByLabelText("Title");
+    expect(title.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(title.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      "Enter a title for the task.",
+    );
+    expect(document.activeElement).toBe(title);
+    expect(toastErrorMock).not.toHaveBeenCalled();
+    expect(createTaskMock).not.toHaveBeenCalled();
+
+    fireEvent.change(title, { target: { value: "Renewal check-in" } });
+    expect(title.getAttribute("aria-invalid")).toBeNull();
+  });
+
   it("locks the submit while the create is in flight so two clicks make one task", async () => {
     const request = deferred<unknown>();
     createTaskMock.mockReturnValue(request.promise);

@@ -325,7 +325,7 @@ export function PeopleDirectory({
       {error ? (
         <div
           role="alert"
-          className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+          className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-tone-danger-fg"
         >
           <span>{error}</span>
           {onRetry ? (
@@ -357,6 +357,7 @@ export function PeopleDirectory({
           columns={columns}
           rows={rows}
           rowKey={(user) => user.id}
+          rowLabel={(user) => user.name || user.email || ""}
           renderCard={renderCard}
           breakpoint="container"
           caption="People in this workspace"

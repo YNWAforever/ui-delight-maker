@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ export function ProfileSearchCombobox({
   onChange,
   onSelected,
   resourceId,
+  emptyLabel,
 }: {
   purpose: ProfilePurpose;
   label: string;
@@ -29,7 +30,12 @@ export function ProfileSearchCombobox({
   onChange: (value: string) => void;
   onSelected?: (person: AssignableProfile) => void;
   resourceId?: string;
+  /** What "nobody selected" means here, e.g. "Anyone" for a filter. Defaults per purpose. */
+  emptyLabel?: string;
 }) {
+  // The id comes from React, not the label, so two pickers can share a visible label (the
+  // inline and panel reviewer pickers did, which is why one was labelled "(inline)", UX-18).
+  const inputId = useId();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
@@ -120,17 +126,19 @@ export function ProfileSearchCombobox({
         Selected:{" "}
         {selectedId
           ? (selected.data?.displayName ?? "Name unavailable")
-          : purpose === "task_filter"
-            ? (FILTER_PRESETS.find((preset) => preset.value === value)?.label ?? "All owners")
-            : purpose === "job_sheet_owner_filter"
-              ? "All owners"
-              : "Unassigned"}
+          : emptyLabel
+            ? emptyLabel
+            : purpose === "task_filter"
+              ? (FILTER_PRESETS.find((preset) => preset.value === value)?.label ?? "All owners")
+              : purpose === "job_sheet_owner_filter"
+                ? "All owners"
+                : "Unassigned"}
       </p>
-      <label htmlFor={"people-search-" + purpose + "-" + label} className="text-sm font-medium">
+      <label htmlFor={inputId} className="text-sm font-medium">
         {label} search
       </label>
       <Input
-        id={"people-search-" + purpose + "-" + label}
+        id={inputId}
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={suggestions.length > 0}

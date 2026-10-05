@@ -10,7 +10,6 @@ import {
   ErrorState,
   FilterToolbar,
   FilteredEmptyState,
-  MetricStrip,
   ResponsiveRecordList,
   SectionHeader,
   StatusBadge,
@@ -39,9 +38,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toSafeErrorMessage } from "@/lib/errors";
-import { formatCompactHKD, formatCount, formatCurrencyAmount, formatDate } from "@/lib/format";
+import { formatCount, formatCurrencyAmount, formatDate } from "@/lib/format";
 import { getRenewalWindow } from "@/lib/engagement-utils";
-import { getClientPortfolioMetrics } from "@/lib/sales-workspace";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { routeQueryOptions } from "@/lib/route-query";
 import { getClientsPage, createClient } from "@/server-functions/clients";
@@ -99,9 +97,9 @@ function ClientsErrorState({ error }: { error: unknown }) {
 
 /** Health bands. Colour is the second channel — `healthLabel` carries the same meaning in words. */
 function healthClass(score: number) {
-  if (score >= 75) return "bg-success/15 text-success border-success/30";
-  if (score >= 55) return "bg-warning/15 text-warning-foreground border-warning/30";
-  return "bg-destructive/10 text-destructive border-destructive/30";
+  if (score >= 75) return "bg-success/15 text-tone-success-fg border-success/30";
+  if (score >= 55) return "bg-warning/15 text-tone-warning-fg border-warning/30";
+  return "bg-destructive/10 text-tone-danger-fg border-destructive/30";
 }
 
 function healthBandLabel(score: number) {
@@ -169,7 +167,6 @@ function ClientsIndex() {
   const [sortKey, setSortKey] = useState<"arr" | "health" | "renewal">("arr");
   const [newOpen, setNewOpen] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
-  const portfolio = getClientPortfolioMetrics(rows, today);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -337,32 +334,6 @@ function ClientsIndex() {
       />
 
       <div className="space-y-6 px-4 py-6 md:px-6">
-        <MetricStrip
-          metrics={[
-            {
-              label: "ARR",
-              value: formatCompactHKD(portfolio.totalArr),
-              hint: "on this page",
-            },
-            {
-              label: "Avg health",
-              value: `${portfolio.averageHealth}/100`,
-              hint: "on this page",
-            },
-            {
-              label: "At risk",
-              value: portfolio.atRiskAccounts,
-              hint: "health below 55, on this page",
-              tone: portfolio.atRiskAccounts > 0 ? "warning" : "neutral",
-            },
-            {
-              label: "Renewals 90d",
-              value: portfolio.renewalsNext90Days,
-              hint: "upcoming decisions, on this page",
-            },
-          ]}
-        />
-
         <section className="space-y-3">
           <SectionHeader
             title="Clients"
@@ -451,6 +422,7 @@ function ClientsIndex() {
               columns={columns}
               rows={filtered}
               rowKey={(c) => c.id}
+              rowLabel={(c) => c.company_name}
               rowHref={(c) => `/clients/${c.id}`}
               renderCard={(c) => (
                 <div className="space-y-1">

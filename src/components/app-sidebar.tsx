@@ -1,7 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { isSidebarItemActive } from "@/lib/sidebar-active";
 import type { Profile, WorkspaceFavorite } from "@/lib/types";
-import type { AdminNavigationItem } from "@/lib/admin/types";
+import type { AdminNavigationItem, Capability } from "@/lib/admin/types";
+import { getUserRoleLabel } from "@/lib/status-labels";
+import { canOpenWorkspace } from "@/lib/workspace-access";
 import {
   LayoutDashboard,
   Inbox,
@@ -87,6 +89,11 @@ interface AppSidebarProps {
   onSignOut: () => void;
   favorites: Array<Pick<WorkspaceFavorite, "id" | "label" | "href">>;
   adminNavigation?: readonly AdminNavigationItem[];
+  /**
+   * The session's effective capabilities. Workspaces whose list read they cannot satisfy are
+   * not offered (see `canOpenWorkspace`); an empty set hides nothing.
+   */
+  capabilities?: readonly Capability[];
 }
 
 export function AppSidebar({
@@ -94,6 +101,7 @@ export function AppSidebar({
   onSignOut,
   favorites,
   adminNavigation = [],
+  capabilities = [],
 }: AppSidebarProps) {
   const currentPath = useRouterState({
     select: (s) => s.location.pathname,
@@ -102,8 +110,15 @@ export function AppSidebar({
   const isActive = (item: SidebarItem) => isSidebarItemActive(item, currentPath);
 
   // A null label renders the group unlabelled, for single-entry groups where a heading
-  // would be redundant chrome above one item.
-  const renderGroup = (label: string | null, items: SidebarItem[]) => (
+  // would be redundant chrome above one item. Items the session cannot open are left out,
+  // and a group left with nothing is not rendered at all.
+  const renderGroup = (label: string | null, allItems: SidebarItem[]) => {
+    const items = allItems.filter((item) => canOpenWorkspace(item.url, capabilities));
+    if (items.length === 0) return null;
+    return renderVisibleGroup(label, items);
+  };
+
+  const renderVisibleGroup = (label: string | null, items: SidebarItem[]) => (
     <SidebarGroup>
       {label ? <SidebarGroupLabel>{label}</SidebarGroupLabel> : null}
       <SidebarGroupContent>
@@ -132,13 +147,21 @@ export function AppSidebar({
           </div>
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold">Fimmick ClientOps</span>
-            <span className="text-[11px] text-muted-foreground">Total CRM + AI Operations</span>
+            <span className="text-xs text-muted-foreground">Total CRM + AI Operations</span>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-        {renderGroup("Today", todayItems)}
+        {renderGroup(
+          "Today",
+          // The landing is the Revenue Desk only for sessions that can read leads; everyone
+          // else lands on a page titled "Today", so the link says that (UX-15). An unknown
+          // capability set keeps the default.
+          capabilities.length > 0 && !capabilities.includes("leads.view")
+            ? todayItems.map((item) => ({ ...item, title: "Today" }))
+            : todayItems,
+        )}
         {favorites.length > 0
           ? renderGroup(
               "Favorites",
@@ -182,8 +205,8 @@ export function AppSidebar({
           </div>
           <div className="flex min-w-0 flex-1 flex-col leading-tight">
             <span className="truncate text-xs font-medium">{profile?.name ?? "—"}</span>
-            <span className="truncate text-[11px] text-muted-foreground">
-              {profile?.role ?? "—"} · Fimmick
+            <span className="truncate text-xs text-muted-foreground">
+              {profile?.role ? getUserRoleLabel(profile.role) : "—"} · Fimmick
             </span>
           </div>
           <Button

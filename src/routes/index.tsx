@@ -1,12 +1,13 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, Clock, Flame, Plus, ShieldCheck, Target } from "lucide-react";
+import { ArrowUpRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { PipelineToolbar } from "@/components/pipeline/pipeline-toolbar";
 import { StageMoveDialog } from "@/components/pipeline/stage-move-dialog";
 import { WonConversionDialog } from "@/components/pipeline/won-conversion-dialog";
+import { TodayJobSheetList } from "@/components/job-sheets/today-job-sheet-list";
 import {
   EmptyWorkspaceState,
   MetricStrip,
@@ -18,7 +19,7 @@ import { formatCount } from "@/lib/format";
 import { formatCurrencyTotals } from "@/lib/money";
 import { getBusinessDateKey } from "@/lib/business-date";
 import { describeTriggerFailure, toSafeErrorMessage } from "@/lib/errors";
-import { filterPipelineLeads, getPipelineSummary } from "@/lib/pipeline";
+import { filterPipelineLeads } from "@/lib/pipeline";
 import { getStatusLabel } from "@/lib/status-labels";
 import { buildRevenueActions } from "@/lib/sales-workspace";
 import {
@@ -57,9 +58,12 @@ export const Route = createFileRoute("/")({
         queryFn: () => getDashboardRead(),
       }),
     ),
-  head: () => ({
+  head: ({ loaderData }) => ({
     meta: [
-      { title: "Revenue Desk - Fimmick ClientOps" },
+      // Sessions without lead access land on "Today", so the tab says so too (UX-15).
+      {
+        title: `${loaderData?.access.leads === false ? "Today" : "Revenue Desk"} - Fimmick ClientOps`,
+      },
       {
         name: "description",
         content:
@@ -75,70 +79,70 @@ function DashboardLanding() {
   if (access.leads) return <PipelineCommandCenter />;
 
   const hasQueue = access.jobSheets || access.tasks || access.approvals || access.quotes;
+  // Same page chrome as every other workspace: the header spans the page and the content
+  // sits in the padded column below it (UX-15).
   return (
-    <div className="space-y-6 px-4 py-6 md:px-6">
+    <>
       <WorkspaceHeader
         context="Operations"
         title="Today"
-        description="Open an available queue to continue your work"
+        description="Open an available queue to continue your work."
       />
-      <div className="flex flex-wrap gap-2">
-        {access.jobSheets && (
-          <Button asChild variant="outline">
-            <Link to="/job-sheets">All job sheets</Link>
-          </Button>
-        )}
-        {access.tasks && (
-          <Button asChild variant="outline">
-            <Link to="/tasks">Tasks</Link>
-          </Button>
-        )}
-        {access.approvals && (
-          <Button asChild variant="outline">
-            <Link to="/approvals">Approvals</Link>
-          </Button>
-        )}
-        {access.quotes && (
-          <Button asChild variant="outline">
-            <Link to="/quotes">Quotes</Link>
-          </Button>
-        )}
-      </div>
-      {!hasQueue && (
-        <EmptyWorkspaceState
-          title="No available work queues"
-          description="Ask a workspace administrator to review your access."
-        />
-      )}
-      {access.jobSheets &&
-        (jobSheets.length === 0 ? (
+      <div className="space-y-6 px-4 py-6 md:px-6">
+        <div className="flex flex-wrap gap-2">
+          {access.jobSheets && (
+            <Button asChild variant="outline" size="sm">
+              <Link to="/job-sheets">All job sheets</Link>
+            </Button>
+          )}
+          {access.tasks && (
+            <Button asChild variant="outline" size="sm">
+              <Link to="/tasks">Tasks</Link>
+            </Button>
+          )}
+          {access.approvals && (
+            <Button asChild variant="outline" size="sm">
+              <Link to="/approvals">Approvals</Link>
+            </Button>
+          )}
+          {access.quotes && (
+            <Button asChild variant="outline" size="sm">
+              <Link to="/quotes">Quotes</Link>
+            </Button>
+          )}
+        </div>
+        {!hasQueue && (
           <EmptyWorkspaceState
-            title="No visible job sheets"
-            description="There are no job sheets in this view."
+            title="No available work queues"
+            description="Ask a workspace administrator to review your access."
           />
-        ) : (
-          <ul className="space-y-2">
-            {jobSheets.map((sheet) => (
-              <li key={sheet.id}>
-                <Link
-                  to="/job-sheets/$id"
-                  params={{ id: sheet.id }}
-                  className="flex items-center justify-between rounded-md border border-border p-4 hover:bg-muted/50"
-                >
-                  <span className="font-medium">{sheet.number}</span>
-                  <span className="text-sm text-muted-foreground">{sheet.status}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ))}
-    </div>
+        )}
+        {access.jobSheets &&
+          (jobSheets.length === 0 ? (
+            <EmptyWorkspaceState
+              title="No job sheets waiting"
+              description="Accepted quotes appear here when they are handed to accounting."
+            />
+          ) : (
+            <TodayJobSheetList jobSheets={jobSheets} />
+          ))}
+      </div>
+    </>
   );
 }
 
 function PipelineCommandCenter() {
-  const { leads, quotes, tasks, approvals, agentRuns, activityLogs, products, pipelineTotals } =
-    Route.useLoaderData();
+  const {
+    leads,
+    quotes,
+    tasks,
+    approvals,
+    agentRuns,
+    activityLogs,
+    products,
+    pipelineTotals,
+    access,
+  } = Route.useLoaderData();
   const router = useRouter();
   const queryClient = useQueryClient();
   const search = Route.useSearch();
@@ -190,7 +194,6 @@ function PipelineCommandCenter() {
 
   const selectedLead =
     filteredLeads.find((lead) => lead.id === search.lead) ?? filteredLeads[0] ?? null;
-  const summary = getPipelineSummary({ leads: filteredLeads, tasks, approvals, today });
   const revenueActions = buildRevenueActions({
     leads,
     tasks,
@@ -380,45 +383,37 @@ function PipelineCommandCenter() {
       />
 
       <div className="space-y-6 px-4 py-6 md:px-6">
+        {/*
+          Whole-workspace figures only (UX-09). The board-scoped "Overdue", "Due today" and
+          "Hot leads" counted the 40 leads loaded here, so "0 overdue" sat above a queue of
+          overdue follow-ups; the queue below is where those items are ranked.
+        */}
         <MetricStrip
           metrics={[
             {
-              label: "Overdue",
-              value: summary.overdue,
-              icon: Flame,
-              tone: summary.overdue > 0 ? "destructive" : "neutral",
-              hint: "follow-ups past due on this board",
+              id: "open-leads",
+              label: "Open leads",
+              value: formatCount(pipelineTotals.openLeads),
+              href: "/leads",
             },
             {
-              label: "Due today",
-              value: summary.dueToday,
-              icon: Clock,
-              hint: "needs action today on this board",
+              id: "open-tasks",
+              label: "Open tasks",
+              value: formatCount(pipelineTotals.openTasks),
+              href: access.tasks ? "/tasks" : undefined,
             },
-            {
-              label: "Hot leads",
-              value: summary.highScore,
-              icon: Target,
-              hint: "score 75+ on this board",
-            },
-            {
-              // The server aggregate, not a sum of the loaded page: `pipelineTotals` counts
-              // every pending/sent/viewed quote, so this tile is a workspace figure and the
-              // three beside it are explicitly board-scoped.
-              label: "Quote value by currency",
-              value: formatCurrencyTotals(pipelineTotals.activeQuoteTotals),
-              icon: ShieldCheck,
-              hint: "pending approval + approved + sent + viewed, all quotes",
-            },
-          ]}
-          supporting={[
-            { id: "open-leads", label: "Open leads", value: formatCount(pipelineTotals.openLeads) },
-            { id: "open-tasks", label: "Open tasks", value: formatCount(pipelineTotals.openTasks) },
             {
               id: "pending-approvals",
               label: "Waiting approval",
               value: formatCount(pipelineTotals.pendingApprovals),
               tone: pipelineTotals.pendingApprovals > 0 ? "warning" : "neutral",
+              href: access.approvals ? "/approvals" : undefined,
+            },
+            {
+              id: "quote-value",
+              label: "Quote value by currency",
+              value: formatCurrencyTotals(pipelineTotals.activeQuoteTotals),
+              hint: "pending approval, approved, sent and viewed",
             },
           ]}
         />
