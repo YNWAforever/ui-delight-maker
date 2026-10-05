@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchDraft } from "@/hooks/use-search-draft";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, Outlet, useNavigate, useRouter } from "@tanstack/react-router";
 import { Copy, FileText, Plus } from "lucide-react";
@@ -247,8 +248,7 @@ function QuotesIndex() {
    * true server total. Same shape as `/accounts`: the delay keeps a keystroke from being a
    * round trip, and the sync effect keeps Back and Clear reflected in the input.
    */
-  const [searchDraft, setSearchDraft] = useState(activeQuery);
-  useEffect(() => setSearchDraft(activeQuery), [activeQuery]);
+  const [searchDraft, setSearchDraft] = useSearchDraft(activeQuery);
   useEffect(() => {
     const next = searchDraft.trim();
     if (next === activeQuery) return;
