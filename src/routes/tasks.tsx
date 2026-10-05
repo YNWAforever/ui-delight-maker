@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchDraft } from "@/hooks/use-search-draft";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { Bot, Plus } from "lucide-react";
@@ -272,13 +273,9 @@ function TasksBoard() {
    * The search box commits to the URL after a pause, as Accounts and Quotes do. It used to
    * write the URL, and so refetch the queue, on every keystroke (UX-17).
    */
-  const [searchDraft, setSearchDraft] = useState(query);
-  // Follow the URL when it changes from elsewhere, but not when it is only this draft's own
-  // commit coming back trimmed: replacing "renewal " with "renewal" mid-typing turned the next
-  // keystroke into "renewalc".
-  useEffect(() => {
-    setSearchDraft((draft) => (draft.trim() === query ? draft : query));
-  }, [query]);
+  // Shared with Accounts and Quotes: follows the URL, but keeps a trailing space the person is
+  // still typing when the draft's own trimmed commit comes back.
+  const [searchDraft, setSearchDraft] = useSearchDraft(query);
   useEffect(() => {
     const next = searchDraft.trim();
     if (next === query) return;

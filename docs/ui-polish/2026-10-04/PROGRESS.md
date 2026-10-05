@@ -118,7 +118,9 @@ Resume here cold. Read [audit.md](audit.md) (findings UX-01…UX-40) and [direct
 | `79a675e` | fix(ui): keep the freshness marker identical through hydration | UX-23 | new SSR+hydrate test (fails on the old version) |
 | `469bc26` | build(deps): add @axe-core/playwright for accessibility scans | D-4 | — |
 | `8db9428` | fix(ui): readable text on the solid red in dark mode | UX-02, UX-04 | tone-contrast +10 (every solid fill, both themes); axe 0 violations after |
-| next | docs(ui-polish): final report and Phase 4 results | — | full gate at `8db9428`: 375 files, 3,016 tests, 0 skipped |
+| `29ac917` | docs(ui-polish): final report and Phase 4 results | — | full gate at `8db9428`: 375 files, 3,016 tests, 0 skipped |
+| `db7689d`, `32616ae` | docs(ui-polish): public-page checks on the branch preview | — | — |
+| next | refactor(tasks): use the shared search-draft hook | UX-17 | hook 3 (same file as #178), tasks suites 23/23, routes + hooks 65 files 539/539; tsc clean |
 
 ## Resume notes (keep current)
 
