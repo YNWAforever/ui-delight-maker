@@ -1,10 +1,10 @@
 # WorkflowMax V2 history scaffold
 
 This draft provides lossless history staging, stable source identities, an HTTP/OAuth
-client, an ordered importer, and a reconciliation baseline. It does not authorize live
-WFM requests or database deployment. The local `WFM_HARD_STOP.md` instruction is:
-
-> Willy (via Rio): draft scaffold PR only. NO UAT/prod Neon apply. NO live WFM pulls until Willy Approves P1 schema + OAuth.
+client, an ordered importer, and a reconciliation baseline. The boundary for this PR
+review is draft only: no merge, ready-for-review state change, live WFM API requests,
+OAuth token use, or UAT/production database apply. Prior approvals recorded in the
+local `WFM_HARD_STOP.md` do not expand this review's scope.
 
 All proof for this PR uses synthetic fixtures and disposable local PostgreSQL. Do not
 merge or run migrations against UAT/production as part of this scaffold review.
@@ -35,7 +35,7 @@ does not automatically advance an incremental checkpoint or delete old rows.
 | --------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | Settings                                | Raw tax settings; registry can be extended with other catalogues                                    |
 | Staff                                   | `wfm_staff_map`; profile mapping is nullable and operator maintained                                |
-| Clients / included contacts             | Raw client; canonical `accounts` / `account_contacts` projections                                   |
+| Clients / included active contacts      | Raw client; canonical `accounts` / `account_contacts` projections                                   |
 | Leads / quotes                          | Raw history; commercial domain promotion remains a stub                                             |
 | Jobs                                    | `projects` first, using account identity; never a synthetic job sheet                               |
 | Tasks / costs / notes / purchase orders | Raw history; costs from job includes; task domain promotion remains a stub                          |
@@ -175,7 +175,9 @@ CLI per client/organisation; coordinate other consumers externally. Pagination h
 a trailing empty page to detect per-page totals masquerading as complete history.
 Ambiguous totals, duplicate UUIDs or a changing total abort the run. Endpoint-specific
 `pagesize`/`pageSize` and `updatedsince`/`updatedSince` spellings are in the registry.
-Settings are always read fully. Explicit status filters include archived clients,
+Tax settings use `pagesize` and are paginated even during incremental runs, with no
+date filter. Empty terminal metadata pages after earlier data abort the snapshot;
+an empty collection may declare zero or one page. Explicit status filters include archived clients,
 deleted staff, completed/cancelled/deleted jobs, and draft/cancelled invoices.
 
 ## Reconciliation and remaining work
@@ -183,9 +185,11 @@ deleted staff, completed/cancelled/deleted jobs, and draft/cancelled invoices.
 `wfm:recon` reads a full-source snapshot and the namespace's DB rows in one read-only,
 repeatable-read transaction. Source evidence is accumulated from fetched rows before
 DB writes. It checks UUID sets and counts per top-level collection and keyed included
-contacts/costs/invoice lines, invoice total/paid sums **per currency**, and exact summed
+contacts/costs/invoice lines, derived accounts, invoice total/paid sums **per currency**, and exact summed
 minutes (also displaying derived hours). Projection absence is a count mismatch.
-Unknown currency, missing numeric fields, incomplete runs, and unkeyed included rows
+Account projections are checked even for clients with no contacts or jobs. Source
+snapshots must include the derived `account` UUID collection; regenerate older fixture
+snapshots that predate that check. Unknown currency, missing numeric fields, incomplete runs, and unkeyed included rows
 fail. Incremental/partial snapshots are rejected. Different UUIDs fail even when counts
 match. Missing/extra key lists in the report are capped at 100 entries; counts remain
 complete. Exit status is 0 for a pass and 1 for mismatch/invalid input.
@@ -208,13 +212,16 @@ Current evidence is a latest-object history baseline, not a point-in-time revisi
 
 Open Willy Asks / follow-ups, none blocking this scaffold:
 
-- Approve P1 schema, OAuth app/scopes/org claim, UAT target binding and first live pull.
+- Confirm recorded P1 schema approval, OAuth app/scopes/org claim, UAT target binding
+  and explicit authorization for the first live pull.
 - Approve durable rotated-token storage/ownership and initial consent/redirect handling.
 - Confirm organisation currency and whether historical multi-currency values need a
   different source. The documented invoice payload omits currency; no HKD default is assumed.
+  A blank `WFM_HISTORY_CURRENCY` is treated as unset.
 - Validate pagination envelopes, status coverage, permissions and endpoint spellings with
   approved UAT receipts. The global job-cost docs disagree with their path; costs currently
-  come from job includes. Expand settings/catalogues and deleted-record/tombstone sweeps.
+  come from job includes. Client includes return active contacts only; archived contact
+  coverage needs a separate endpoint contract. Expand settings/catalogues and deleted-record/tombstone sweeps.
 - Review commercial client/lead/quote/task promotion, staff/profile matches, project status
   mapping, multi-job invoice links, and exceptional lines lacking stable UUIDs.
 - Extend recon to per-invoice line/payment balances, optional WIP/cost totals, mapping
@@ -225,6 +232,7 @@ Open Willy Asks / follow-ups, none blocking this scaffold:
 Contracts consulted: [authentication](https://api-docs.workflowmax.com/basic/authentication),
 [rate limiting](https://api-docs.workflowmax.com/basic/rate-limiting),
 [response format](https://api-docs.workflowmax.com/basic/response-format),
+[tax settings](https://api-docs.workflowmax.com/settings/tax/get-v2-taxes),
 [timesheets](https://api-docs.workflowmax.com/objects/timesheet/get-v2-timesheets),
 [invoices](https://api-docs.workflowmax.com/objects/invoice/get-invoices), and
 [payments](https://api-docs.workflowmax.com/objects/invoice/get-v2-payments).

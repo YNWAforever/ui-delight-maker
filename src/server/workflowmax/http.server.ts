@@ -125,6 +125,8 @@ export async function* listWfm(
     if (pagination) {
       if (expectedPages === 0 && seen.size !== 0)
         throw new Error("WFM zero-page list contains data");
+      if (!data.length && (page > 1 || expectedPages! > 1))
+        throw new Error("Incomplete WFM list response");
       if (page >= expectedPages!) return;
       if (!data.length || options.unpaginated) throw new Error("Incomplete WFM list response");
     } else {

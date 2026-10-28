@@ -31,7 +31,7 @@ export async function importWfmHistory(options: {
     for (const step of WFM_PLAN) {
       for await (const row of options.source.list(step.path, {
         ...step.options,
-        // Settings with no updatedSince contract must always be read in full.
+        // Refresh settings in full, including during incremental history imports.
         updatedSince: step.type === "setting" ? undefined : options.updatedSince,
       })) {
         try {

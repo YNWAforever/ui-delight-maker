@@ -83,7 +83,7 @@ async function main() {
     throw new Error("Choose exactly one of --fixture <file> or --live");
   if (values.apply && values["dry-run"]) throw new Error("Choose --apply or --dry-run");
   const updatedSince = values["updated-since"] ? assertDate(values["updated-since"]) : undefined;
-  const currency = process.env.WFM_HISTORY_CURRENCY;
+  const currency = process.env.WFM_HISTORY_CURRENCY?.trim() || undefined;
   if (currency && !/^[A-Z]{3}$/.test(currency))
     throw new Error("WFM_HISTORY_CURRENCY must be an ISO currency code");
   let source: WfmSource;

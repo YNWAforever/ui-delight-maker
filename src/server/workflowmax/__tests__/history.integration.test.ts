@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CLIENTOPS_MIGRATION_PATHS } from "@/lib/clientops-relationship-schema";
@@ -14,21 +18,26 @@ const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
 let pool: Pool;
 const namespace = `workflowmax:fixture-${randomUUID()}`;
 const probeNamespace = namespace + "-identity";
+const projectionNamespace = namespace + "-projection";
+const financialNamespace = namespace + "-financial";
+const cliNamespace = namespace + "-cli";
+const importNamespaces = [namespace, projectionNamespace, financialNamespace, cliNamespace];
+const execFileAsync = promisify(execFile);
 let resources: Record<string, WfmObject[]>;
 let firstSnapshot: WfmSnapshot;
 
-function source(data = resources): WfmSource {
+function source(data = resources, sourceNamespace = namespace): WfmSource {
   return {
-    sourceNamespace: namespace,
+    sourceNamespace,
     async *list(path) {
       const step = WFM_PLAN.find((step) => step.path === path)!;
       for (const row of data[step.type]) yield row;
     },
   };
 }
-async function run(data = resources) {
-  const store = await WfmHistoryStore.open(pool, namespace);
-  return importWfmHistory({ source: source(data), store });
+async function run(data = resources, sourceNamespace = namespace) {
+  const store = await WfmHistoryStore.open(pool, sourceNamespace);
+  return importWfmHistory({ source: source(data, sourceNamespace), store });
 }
 
 describe("WFM history on disposable PostgreSQL", () => {
@@ -72,18 +81,22 @@ describe("WFM history on disposable PostgreSQL", () => {
       "wfm_staff_map",
       "wfm_import_runs",
     ])
-      await pool.query(`delete from ${table} where source_namespace=$1`, [namespace]);
+      await pool.query(`delete from ${table} where source_namespace=any($1::text[])`, [
+        importNamespaces,
+      ]);
     await pool.query(
-      "delete from projects where id in(select resource_id from import_identity_keys where source_namespace=$1 and resource_type='project')",
-      [namespace],
+      "delete from projects where id in(select resource_id from import_identity_keys where source_namespace=any($1::text[]) and resource_type='project')",
+      [importNamespaces],
     );
     await pool.query(
-      "delete from accounts where id in(select resource_id from import_identity_keys where source_namespace=$1 and resource_type='account')",
-      [namespace],
+      "delete from accounts where id in(select resource_id from import_identity_keys where source_namespace=any($1::text[]) and resource_type='account')",
+      [importNamespaces],
     );
-    await pool.query("delete from wfm_raw_objects where source_namespace=$1", [namespace]);
+    await pool.query("delete from wfm_raw_objects where source_namespace=any($1::text[])", [
+      importNamespaces,
+    ]);
     await pool.query("delete from import_identity_keys where source_namespace=any($1::text[])", [
-      [namespace, probeNamespace],
+      [...importNamespaces, probeNamespace],
     ]);
     await pool.end();
   });
@@ -147,6 +160,123 @@ describe("WFM history on disposable PostgreSQL", () => {
         )
       ).rows;
       expect(receipts).toEqual([{ action: "updated", count: 16 }]);
+    },
+  );
+
+  it.runIf(hasDatabase)(
+    "reconciles the account projection even when a client has no contacts or jobs",
+    async () => {
+      const data: Record<string, WfmObject[]> = Object.fromEntries(
+        WFM_PLAN.map((step) => [step.type, []]),
+      );
+      data.client = [{ uuid: randomUUID(), name: "Unlinked historical client", contacts: [] }];
+      const snapshot = await run(data, projectionNamespace);
+      expect((await reconcileWfm(pool, snapshot)).ok).toBe(true);
+      await pool.query(
+        "delete from accounts where id in(select resource_id from import_identity_keys where source_namespace=$1 and resource_type='account')",
+        [projectionNamespace],
+      );
+      const report = await reconcileWfm(pool, snapshot);
+      expect(report.ok).toBe(false);
+      expect(report.counts.find((row) => row.resource === "account")).toMatchObject({
+        wfm: 1,
+        db: 0,
+        missingCount: 1,
+        ok: false,
+      });
+      await run(data, projectionNamespace);
+      expect((await reconcileWfm(pool, snapshot)).ok).toBe(true);
+    },
+  );
+
+  it.runIf(hasDatabase)(
+    "detects offsetting currency errors and compares timesheet minutes with hour thresholds",
+    async () => {
+      const data: Record<string, WfmObject[]> = Object.fromEntries(
+        WFM_PLAN.map((step) => [step.type, []]),
+      );
+      data.invoice = ["HKD", "USD"].map((currency) => ({
+        uuid: randomUUID(),
+        currency,
+        amountIncTax: "100",
+        amountPaid: "20",
+      }));
+      data.timesheet = [{ uuid: randomUUID(), time: 20 }];
+      const snapshot = await run(data, financialNamespace);
+      expect((await reconcileWfm(pool, snapshot)).ok).toBe(true);
+      await pool.query(
+        "update wfm_invoices set total=total+case currency when 'HKD' then 1 else -1 end,paid=paid+case currency when 'HKD' then 2 else -2 end where source_namespace=$1",
+        [financialNamespace],
+      );
+      const report = await reconcileWfm(pool, snapshot);
+      expect(report.ok).toBe(false);
+      expect(report.invoiceTotals).toHaveLength(4);
+      expect(report.invoiceTotals.every((row) => !row.ok)).toBe(true);
+      await run(data, financialNamespace);
+      await pool.query("update wfm_timesheets set minutes=minutes+1 where source_namespace=$1", [
+        financialNamespace,
+      ]);
+      expect((await reconcileWfm(pool, snapshot)).timesheets).toMatchObject({
+        differenceMinutes: "1",
+        ok: false,
+      });
+      expect((await reconcileWfm(pool, snapshot, { hours: "0.02" })).ok).toBe(true);
+    },
+  );
+
+  it.runIf(hasDatabase)(
+    "runs fixture CLI dry-run/apply/replay with blank optional currency and exits nonzero on recon mismatch",
+    async () => {
+      const directory = await mkdtemp(join(tmpdir(), "wfm-cli-"));
+      const fixturePath = join(directory, "fixture.json");
+      const snapshotPath = join(directory, "snapshot.json");
+      const data: Record<string, WfmObject[]> = Object.fromEntries(
+        WFM_PLAN.map((step) => [step.type, []]),
+      );
+      data.client = [{ uuid: randomUUID(), name: "CLI fixture client" }];
+      data.invoice = [{ uuid: randomUUID(), currency: "HKD", amountIncTax: 100, amountPaid: 20 }];
+      data.timesheet = [{ uuid: randomUUID(), time: 20 }];
+      await writeFile(
+        fixturePath,
+        JSON.stringify({ orgId: cliNamespace.replace(/^workflowmax:/, ""), resources: data }),
+      );
+      const env = {
+        ...process.env,
+        WFM_DATABASE_URL: process.env.DATABASE_TEST_URL!,
+        WFM_TARGET: "local",
+        WFM_HISTORY_CURRENCY: "",
+      };
+      const cli = (args: string[], commandEnv = env) =>
+        execFileAsync("bun", ["scripts/clientops/wfm.ts", ...args], {
+          env: commandEnv,
+          timeout: 20_000,
+        });
+      try {
+        expect(
+          (await cli(["import", "--fixture", fixturePath], { ...env, WFM_DATABASE_URL: "" }))
+            .stdout,
+        ).toContain('"mode":"dry-run"');
+        expect(
+          (
+            await pool.query("select id from wfm_import_runs where source_namespace=$1", [
+              cliNamespace,
+            ])
+          ).rows,
+        ).toEqual([]);
+        await cli(["import", "--fixture", fixturePath, "--apply", "--snapshot", snapshotPath]);
+        await cli(["import", "--fixture", fixturePath, "--apply"]);
+        const report = JSON.parse((await cli(["recon", "--source", snapshotPath])).stdout);
+        expect(report.ok).toBe(true);
+        const snapshot = JSON.parse(await readFile(snapshotPath, "utf8"));
+        snapshot.invoiceTotals.HKD.total = "101";
+        await writeFile(snapshotPath, JSON.stringify(snapshot));
+        await expect(cli(["recon", "--source", snapshotPath])).rejects.toMatchObject({
+          code: 1,
+          stdout: expect.stringContaining('"ok": false'),
+        });
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
     },
   );
 
@@ -226,6 +356,39 @@ describe("WFM history on disposable PostgreSQL", () => {
           )
         ).rows,
       ).toEqual([{ status: "failed", action: "failed", state: "failed" }]);
+      await run();
+    },
+  );
+
+  it.runIf(hasDatabase)(
+    "rolls back parent/account writes and their success receipts when an included child fails",
+    async () => {
+      const broken = structuredClone(resources);
+      const parent = randomUUID();
+      const child = randomUUID();
+      const name = `Broken client ${parent}`;
+      broken.client = [{ uuid: parent, name, contacts: [{ uuid: child }] }];
+      await expect(run(broken)).rejects.toThrow("client");
+      for (const table of ["import_identity_keys", "wfm_raw_objects"])
+        expect(
+          (
+            await pool.query(
+              `select * from ${table} where source_namespace=$1 and external_key=any($2::text[])`,
+              [namespace, [parent, child]],
+            )
+          ).rows,
+        ).toEqual([]);
+      expect((await pool.query("select * from accounts where name=$1", [name])).rows).toEqual([]);
+      expect(
+        (
+          await pool.query(
+            "select resource_type,status,error_code from wfm_import_receipts where source_namespace=$1 and external_key=any($2::text[])",
+            [namespace, [parent, child]],
+          )
+        ).rows,
+      ).toEqual([
+        { resource_type: "client", status: "failed", error_code: "WFM_CONTACT_CONTEXT_REQUIRED" },
+      ]);
       await run();
     },
   );

@@ -45,8 +45,8 @@ or `null` if the platform supplied no valid SHA.
 
 The [WorkflowMax history scaffold](docs/workflowmax-history.md) documents fixture dry runs,
 isolated migration rehearsal, environment variables, dependency order, and reconciliation.
-It remains draft-only under the documented WFM hard stop: no live pulls or UAT/prod
-apply until Willy approves P1 schema and OAuth.
+It remains draft-only under the documented WFM hard stop: no live pulls, OAuth token
+use, or UAT/prod apply during scaffold review.
 
 [ClientOps test sign-in](https://clientops-uat-20260930.vercel.app/login/sign-in) uses a separate synthetic database and Auth with seven genuinely distinct role accounts. The [environment and private local account/session paths](docs/audit-fixes/2026-09-29/isolated-uat-environment.md) and [current source/evidence/gates](docs/audit-fixes/2026-09-29/final-local-acceptance-2026-10-01.md) document the verified binding. Test cookies and credentials must remain untracked.
 

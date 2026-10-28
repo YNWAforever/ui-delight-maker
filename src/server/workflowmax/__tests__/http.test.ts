@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { WFM_PLAN } from "../plan.server";
 import {
   assertDate,
   listWfm,
@@ -67,6 +68,21 @@ describe("WFM rate limiting", () => {
 });
 
 describe("WFM V2 pagination", () => {
+  it("paginates tax settings with the registry's endpoint-specific page size", async () => {
+    const get = vi.fn(async (_path: string, params: URLSearchParams) => {
+      const page = Number(params.get("page") ?? 1);
+      return {
+        data: [{ uuid: `tax-${page}` }],
+        meta: { pagination: { page, total_pages: 2 } },
+      };
+    });
+    const setting = WFM_PLAN.find((step) => step.type === "setting")!;
+    const rows = [];
+    for await (const row of listWfm(get, setting.path, setting.options)) rows.push(row.uuid);
+    expect(rows).toEqual(["tax-1", "tax-2"]);
+    expect(get.mock.calls.map(([, params]) => params.get("page"))).toEqual(["1", "2"]);
+    expect(get.mock.calls.every(([, params]) => params.get("pagesize") === "100")).toBe(true);
+  });
   it("uses endpoint-specific parameter casing and continues through capped pages", async () => {
     const get = vi.fn(async (_path: string, params: URLSearchParams) => ({
       data: Number(params.get("page")) <= 3 ? [{ uuid: params.get("page") }] : [],
@@ -123,6 +139,27 @@ describe("WFM V2 pagination", () => {
       ))
         void row;
     }).rejects.toThrow("source changed");
+  });
+  it("rejects an empty final metadata page after a nonempty page", async () => {
+    await expect(async () => {
+      for await (const row of listWfm(
+        async (_path, params) => ({
+          data: params.get("page") === "1" ? [{ uuid: "first" }] : [],
+          meta: { pagination: { page: Number(params.get("page")), total_pages: 2 } },
+        }),
+        "v2/jobs",
+      ))
+        void row;
+    }).rejects.toThrow("Incomplete");
+  });
+  it.each([0, 1])("accepts empty metadata collections declaring %s pages", async (pages) => {
+    const rows = [];
+    for await (const row of listWfm(
+      async () => ({ data: [], meta: { pagination: { page: 1, total_pages: pages } } }),
+      "v2/jobs",
+    ))
+      rows.push(row);
+    expect(rows).toEqual([]);
   });
   it("accepts an empty full collection and unpaginated settings", async () => {
     const rows = [];

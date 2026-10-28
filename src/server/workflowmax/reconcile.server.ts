@@ -6,7 +6,11 @@ import { wfmNamespace } from "./oauth.server";
 import { currencyValue, decimalText, decimalUnits, uuidKey } from "./values.server";
 import { includedWfmObjects, WFM_CHILD_TYPES } from "./children.server";
 
-export const WFM_RECON_TYPES = [...WFM_PLAN.map((step) => step.type), ...WFM_CHILD_TYPES];
+export const WFM_RECON_TYPES = [
+  ...WFM_PLAN.map((step) => step.type),
+  "account",
+  ...WFM_CHILD_TYPES,
+];
 
 const decimalSchema = z.string().refine((value) => {
   try {
@@ -62,6 +66,7 @@ export class WfmSourceSnapshot {
   add(type: WfmResourceType, row: WfmObject) {
     const key = uuidKey(row);
     this.addKey(type, key);
+    if (type === "client") this.addKey("account", key);
     for (const child of includedWfmObjects(type, row)) {
       if (!child.row.uuid) this.value.issues.push(`${type}:${key}:unkeyed_${child.type}`);
       else this.addKey(child.type, uuidKey(child.row));
@@ -141,12 +146,13 @@ export async function reconcileWfm(
     await db.query<{ resource_type: string; external_key: string }>(
       `select r.resource_type,r.external_key from wfm_raw_objects r
      where r.source_namespace=$1 and
-       (r.resource_type not in ('invoice','timesheet','invoice_payment','staff_map','project','account_contact','invoice_line_item')
+       (r.resource_type not in ('invoice','timesheet','invoice_payment','staff_map','project','account','account_contact','invoice_line_item')
         or (r.resource_type='invoice' and exists(select 1 from wfm_invoices i where i.id=r.id and i.source_namespace=r.source_namespace))
         or (r.resource_type='timesheet' and exists(select 1 from wfm_timesheets t where t.id=r.id and t.source_namespace=r.source_namespace))
         or (r.resource_type='invoice_payment' and exists(select 1 from wfm_invoice_payments p where p.id=r.id and p.source_namespace=r.source_namespace))
         or (r.resource_type='staff_map' and exists(select 1 from wfm_staff_map s where s.id=r.id and s.source_namespace=r.source_namespace))
         or (r.resource_type='project' and exists(select 1 from projects p where p.id=r.id))
+        or (r.resource_type='account' and exists(select 1 from accounts a where a.id=r.id))
         or (r.resource_type='account_contact' and exists(select 1 from account_contacts c where c.id=r.id))
         or (r.resource_type='invoice_line_item' and exists(select 1 from wfm_invoice_line_items l where l.id=r.id and l.source_namespace=r.source_namespace)))`,
       [source.sourceNamespace],

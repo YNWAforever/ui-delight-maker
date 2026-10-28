@@ -1,7 +1,7 @@
 import type { ListOptions } from "./http.server";
 
 export const WFM_PLAN = [
-  { type: "setting", stage: "settings", path: "v2/taxes", options: { unpaginated: true } },
+  { type: "setting", stage: "settings", path: "v2/taxes", options: { pageSizeParam: "pagesize" } },
   {
     type: "staff_map",
     stage: "staff",
