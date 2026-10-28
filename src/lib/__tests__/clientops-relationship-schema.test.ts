@@ -58,6 +58,7 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/024_ai_invalid_output.sql",
       "neon/migrations/025_retention_sweep_checkpoints.sql",
       "neon/migrations/026_ai_unknown_model.sql",
+      "neon/migrations/027_wfm_history_scaffold.sql",
     ]);
   });
 
