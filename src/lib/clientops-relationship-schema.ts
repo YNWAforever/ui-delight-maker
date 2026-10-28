@@ -31,6 +31,7 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/024_ai_invalid_output.sql",
   "neon/migrations/025_retention_sweep_checkpoints.sql",
   "neon/migrations/026_ai_unknown_model.sql",
+  "neon/migrations/027_wfm_history_scaffold.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
@@ -88,6 +89,15 @@ export const CLIENTOPS_REQUIRED_TABLES = [
   "import_sessions",
   "import_session_rows",
   "import_identity_keys",
+  "wfm_import_runs",
+  "wfm_raw_objects",
+  "wfm_staff_map",
+  "wfm_invoices",
+  "wfm_invoice_line_items",
+  "wfm_invoice_payments",
+  "wfm_timesheets",
+  "wfm_timesheet_lines",
+  "wfm_import_receipts",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_COLUMNS = [

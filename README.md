@@ -36,12 +36,17 @@ The audit remediation is tracked in [status](docs/audit-fixes/2026-09-27/status.
 with [release checklist](docs/audit-fixes/2026-09-27/release-checklist.md),
 [operator runbook](docs/audit-fixes/2026-09-27/operations-runbook.md),
 and [role UAT results](docs/audit-fixes/2026-09-27/uat-results.md).
-Migrations `001`–`022` are registered in the ClientOps migration contract.
+Migrations `001`–`027` are registered in the ClientOps migration contract.
 All application storage and authentication use Neon. Supabase runtime/SDK/source switches are forbidden; frozen legacy SQL is historical only. [Neon-only implementation, migration and acceptance limits](docs/audit-fixes/2026-09-27/neon-only-2026-10-03.md).
 The read-only `/api/build` endpoint exposes only the deployment commit SHA,
 or `null` if the platform supplied no valid SHA.
 
 ## Independent UAT
+
+The [WorkflowMax history scaffold](docs/workflowmax-history.md) documents fixture dry runs,
+isolated migration rehearsal, environment variables, dependency order, and reconciliation.
+It remains draft-only under the documented WFM hard stop: no live pulls or UAT/prod
+apply until Willy approves P1 schema and OAuth.
 
 [ClientOps test sign-in](https://clientops-uat-20260930.vercel.app/login/sign-in) uses a separate synthetic database and Auth with seven genuinely distinct role accounts. The [environment and private local account/session paths](docs/audit-fixes/2026-09-29/isolated-uat-environment.md) and [current source/evidence/gates](docs/audit-fixes/2026-09-29/final-local-acceptance-2026-10-01.md) document the verified binding. Test cookies and credentials must remain untracked.
 

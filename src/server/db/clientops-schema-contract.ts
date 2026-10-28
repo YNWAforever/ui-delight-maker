@@ -125,6 +125,15 @@ const ADMIN_SCHEMA_COLUMNS = {
 } as const;
 export const CLIENTOPS_SCHEMA_CONTRACT = {
   relations: [
+    "wfm_import_runs",
+    "wfm_raw_objects",
+    "wfm_staff_map",
+    "wfm_invoices",
+    "wfm_invoice_line_items",
+    "wfm_invoice_payments",
+    "wfm_timesheets",
+    "wfm_timesheet_lines",
+    "wfm_import_receipts",
     "deals",
     "projects",
     "engagement_events",
@@ -161,6 +170,13 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "agent_policy_versions",
   ] as const,
   columns: {
+    "wfm_staff_map.profile_id": { type: "text", nullable: true },
+    "wfm_invoices.account_id": { type: "uuid", nullable: true },
+    "wfm_invoices.project_id": { type: "uuid", nullable: true },
+    "wfm_invoices.total": { type: "numeric", nullable: true },
+    "wfm_invoices.paid": { type: "numeric", nullable: true },
+    "wfm_timesheets.minutes": { type: "numeric", nullable: true },
+    "wfm_timesheets.hours": { type: "numeric", nullable: true },
     "agent_runs.execution_metadata": { type: "jsonb", nullable: true },
     "deals.owner": { type: "text", nullable: true },
     "deals.contact_id": { type: "uuid", nullable: true },
