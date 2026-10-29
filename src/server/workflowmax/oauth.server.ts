@@ -34,14 +34,14 @@ export function orgFromJwt(token: string, claim: string): { orgId: string; expir
     const parts = token.split(".");
     if (parts.length !== 3) throw new Error();
     const body = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
-    if (
-      typeof body[claim] !== "string" ||
-      typeof body.exp !== "number" ||
-      !Number.isFinite(body.exp)
-    )
+    const orgClaim = body[claim];
+    const orgId = Array.isArray(orgClaim)
+      ? orgClaim.find((org): org is string => typeof org === "string" && org.trim() !== "")?.trim()
+      : orgClaim;
+    if (typeof orgId !== "string" || typeof body.exp !== "number" || !Number.isFinite(body.exp))
       throw new Error();
-    wfmNamespace(body[claim]);
-    return { orgId: body[claim], expiresAt: body.exp * 1_000 };
+    wfmNamespace(orgId);
+    return { orgId, expiresAt: body.exp * 1_000 };
   } catch {
     throw new Error("WFM access JWT lacks the configured organisation claim or expiry");
   }
@@ -99,8 +99,15 @@ export class WfmOAuth {
     );
     // Never include response bodies, credentials, or tokens in diagnostics.
     if (!response.ok) throw new Error(`WFM OAuth HTTP ${response.status}`);
-    const body = (await response.json()) as Record<string, unknown>;
-    if (typeof body.access_token !== "string" || typeof body.refresh_token !== "string")
+    const body = (await response.json().catch(() => {
+      throw new Error("Invalid WFM OAuth token response");
+    })) as Record<string, unknown> | null;
+    if (
+      !body ||
+      typeof body.access_token !== "string" ||
+      typeof body.refresh_token !== "string" ||
+      !body.refresh_token.trim()
+    )
       throw new Error("Invalid WFM OAuth token response");
     this.refresh = body.refresh_token;
     await this.options.onRefreshToken?.(this.refresh);

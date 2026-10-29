@@ -33,6 +33,8 @@ export const snapshotSchema = z.object({
   capturedAt: z.string().datetime(),
   runId: z.uuid().optional(),
   resources: z.record(z.string(), z.array(z.string())),
+  // Optional so version-1 snapshots captured before shared contacts still parse.
+  contactClientLinks: z.record(z.string(), z.array(z.string())).optional(),
   invoiceTotals: currencyTotals,
   timesheetMinutes: decimalSchema,
   issues: z.array(z.string()),
@@ -58,6 +60,7 @@ export class WfmSourceSnapshot {
       startedAt: new Date().toISOString(),
       capturedAt: new Date().toISOString(),
       resources: Object.fromEntries(WFM_RECON_TYPES.map((type) => [type, []])),
+      contactClientLinks: {},
       invoiceTotals: {},
       timesheetMinutes: "0",
       issues: [],
@@ -69,7 +72,15 @@ export class WfmSourceSnapshot {
     if (type === "client") this.addKey("account", key);
     for (const child of includedWfmObjects(type, row)) {
       if (!child.row.uuid) this.value.issues.push(`${type}:${key}:unkeyed_${child.type}`);
-      else this.addKey(child.type, uuidKey(child.row));
+      else {
+        const childKey = uuidKey(child.row);
+        this.addKey(child.type, childKey);
+        if (child.type === "account_contact") {
+          const links = (this.value.contactClientLinks ??= {});
+          const clients = (links[childKey] ??= []);
+          if (!clients.includes(key)) clients.push(key);
+        }
+      }
     }
     if (type === "invoice") {
       const currency = currencyValue(row, this.currency) ?? "unknown";
@@ -93,7 +104,11 @@ export class WfmSourceSnapshot {
   }
   private addKey(type: string, key: string) {
     const keys = this.keys.get(type) ?? new Set<string>();
-    if (keys.has(key)) throw new Error("DUPLICATE_SOURCE_UUID");
+    if (keys.has(key)) {
+      // A contact can be included by multiple clients, or repeated by one client.
+      if (type === "account_contact") return;
+      throw new Error("DUPLICATE_SOURCE_UUID");
+    }
     keys.add(key);
     this.keys.set(type, keys);
     this.value.resources[type].push(key);
@@ -180,6 +195,43 @@ export async function reconcileWfm(
       ok: Math.max(missing.length, extra.length) <= countThreshold,
     };
   });
+  if (source.contactClientLinks) {
+    const expected = new Set(
+      Object.entries(source.contactClientLinks).flatMap(([contact, clients]) =>
+        clients.map((client) => JSON.stringify([contact, client])),
+      ),
+    );
+    const links = (
+      await db.query<{ contact_key: string; client_key: string | null }>(
+        `select c.external_key as contact_key,a.external_key as client_key
+         from account_contact_links l
+         join wfm_raw_objects c on c.id=l.contact_id and c.resource_type='account_contact'
+         left join wfm_raw_objects a on a.id=l.account_id and a.resource_type='account'
+           and a.source_namespace=c.source_namespace
+         where c.source_namespace=$1`,
+        [source.sourceNamespace],
+      )
+    ).rows;
+    if (links.some((link) => link.client_key === null))
+      issues.push("account_contact_links:invalid_account_namespace");
+    const actual = new Set(
+      links
+        .filter((link) => link.client_key !== null)
+        .map((link) => JSON.stringify([link.contact_key, link.client_key])),
+    );
+    const missing = [...expected].filter((key) => !actual.has(key));
+    const extra = [...actual].filter((key) => !expected.has(key));
+    counts.push({
+      resource: "account_contact_link",
+      wfm: expected.size,
+      db: actual.size,
+      missing: missing.slice(0, 100),
+      extra: extra.slice(0, 100),
+      missingCount: missing.length,
+      extraCount: extra.length,
+      ok: Math.max(missing.length, extra.length) <= countThreshold,
+    });
+  }
   const invoiceRows = (
     await db.query<{ currency: string; total: string; paid: string; missing: number }>(
       `select coalesce(currency,'unknown') as currency,coalesce(sum(total),0)::text as total,

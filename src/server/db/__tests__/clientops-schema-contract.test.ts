@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { CLIENTOPS_SCHEMA_CONTRACT, verifyClientOpsDatabase } from "../clientops-schema-contract";
 
-function contractQueryStub(columnTypes: Record<string, string> = {}) {
+function contractQueryStub(
+  columnTypes: Record<string, string> = {},
+  missingConstraints: readonly string[] = [],
+) {
   return {
     query: vi.fn(async (text: string) => {
       if (text.includes("information_schema.tables")) {
@@ -26,9 +29,9 @@ function contractQueryStub(columnTypes: Record<string, string> = {}) {
 
       if (text.includes("pg_constraint")) {
         return {
-          rows: CLIENTOPS_SCHEMA_CONTRACT.constraints.map((constraint_name) => ({
-            constraint_name,
-          })),
+          rows: CLIENTOPS_SCHEMA_CONTRACT.constraints
+            .filter((name) => !missingConstraints.includes(name))
+            .map((constraint_name) => ({ constraint_name })),
         };
       }
 
@@ -83,6 +86,18 @@ describe("verifyClientOpsDatabase", () => {
           actual: "text",
         },
       ]),
+    });
+  });
+
+  it.each([
+    "account_contact_links_pkey",
+    "account_contact_links_contact_id_fkey",
+    "account_contact_links_account_id_fkey",
+  ])("rejects a shared-contact table without %s", async (constraint) => {
+    const result = await verifyClientOpsDatabase(contractQueryStub({}, [constraint]));
+    expect(result).toMatchObject({
+      ready: false,
+      mismatches: [{ category: "missing_constraint", object: constraint }],
     });
   });
 

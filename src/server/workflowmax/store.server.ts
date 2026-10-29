@@ -129,7 +129,9 @@ export class WfmHistoryStore {
     await this.db.query(
       `insert into wfm_import_receipts(run_id,source_namespace,resource_type,external_key,resource_id,status,action,error_code)
        values($1,$2,$3,$4,$5,$6,$7,$8) on conflict(run_id,resource_type,external_key)
-       do update set resource_id=excluded.resource_id,status=excluded.status,action=excluded.action,
+       do update set resource_id=excluded.resource_id,status=excluded.status,
+         action=case when wfm_import_receipts.action='created' and excluded.action='updated'
+           then 'created' else excluded.action end,
          error_code=excluded.error_code,processed_at=now()`,
       [
         this.runId,
@@ -152,6 +154,32 @@ export class WfmHistoryStore {
     const identity = await upsertWfmIdentity(this.db, this.namespace, type, key);
     const id = identity.resource_id;
     const action = identity.created ? "created" : "updated";
+    if (type === "account_contact") {
+      const existing = (
+        await this.db.query<{ account_id: string }>(
+          "select account_id from account_contacts where id=$1",
+          [id],
+        )
+      ).rows[0];
+      if (existing) {
+        const account = await findIdentity(this.db, this.namespace, "account", row.clientUUID);
+        if (!account) throw new Error("WFM_CONTACT_CONTEXT_REQUIRED");
+        if (existing.account_id !== account) {
+          const stored = await this.db.query(
+            `select id from wfm_raw_objects where id=$1 and source_namespace=$2
+             and resource_type=$3 and external_key=$4`,
+            [id, this.namespace, type, key],
+          );
+          if (!stored.rows.length) throw new Error("WFM_IDENTITY_TARGET_COLLISION");
+          // Reuse the canonical identity and payload; secondary clients only add links.
+          // Contacts imported before 028 may not have their owner association yet.
+          await this.linkContact(id, existing.account_id);
+          await this.linkContact(id, account);
+          await this.receipt(type, key, id, action);
+          return { id, action };
+        }
+      }
+    }
     const stored = await this.db.query(
       `insert into wfm_raw_objects(id,source_namespace,resource_type,external_key,payload)
        values($1,$2,$3,$4,$5::jsonb) on conflict(id) do update set payload=excluded.payload,pulled_at=now()
@@ -167,6 +195,14 @@ export class WfmHistoryStore {
     }
     await this.receipt(type, key, id, action);
     return { id, action };
+  }
+
+  private async linkContact(id: string, account: string) {
+    await this.db.query(
+      `insert into account_contact_links(contact_id,account_id) values($1,$2)
+       on conflict(contact_id,account_id) do nothing`,
+      [id, account],
+    );
   }
 
   private async project(type: WfmStoredType, id: string, row: WfmObject) {
@@ -198,6 +234,7 @@ export class WfmHistoryStore {
         [id, account, name, textValue(details.email), textValue(details.phone)],
       );
       if (!result.rows.length) throw new Error("WFM_CONTACT_ACCOUNT_COLLISION");
+      await this.linkContact(id, account);
     } else if (type === "project") {
       const account = await lookup("account", row.clientUUID);
       if (row.clientUUID && !account) throw new Error("WFM_PROJECT_CLIENT_NOT_IMPORTED");

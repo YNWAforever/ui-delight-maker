@@ -310,7 +310,7 @@ describe("WFM history on disposable PostgreSQL", () => {
   it.runIf(hasDatabase)(
     "replays migration 027 on populated history and keeps RLS server-only",
     async () => {
-      await pool.query(await readFile(CLIENTOPS_MIGRATION_PATHS.at(-1)!, "utf8"));
+      await pool.query(await readFile("neon/migrations/027_wfm_history_scaffold.sql", "utf8"));
       expect((await reconcileWfm(pool, firstSnapshot)).ok).toBe(true);
       const tables = (
         await pool.query(
