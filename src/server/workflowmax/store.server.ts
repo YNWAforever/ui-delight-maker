@@ -172,6 +172,8 @@ export class WfmHistoryStore {
           );
           if (!stored.rows.length) throw new Error("WFM_IDENTITY_TARGET_COLLISION");
           // Reuse the canonical identity and payload; secondary clients only add links.
+          // Contacts imported before 028 may not have their owner association yet.
+          await this.linkContact(id, existing.account_id);
           await this.linkContact(id, account);
           await this.receipt(type, key, id, action);
           return { id, action };

@@ -37,7 +37,7 @@ function fakeDatabase() {
     >(),
   };
   let transaction: typeof state | undefined;
-  let failLink = false;
+  let failLink = 0;
   const query = vi.fn(async (sql: string, values: readonly unknown[] = []) => {
     const args = values as readonly string[];
     if (sql === "begin") transaction = structuredClone(state);
@@ -87,8 +87,7 @@ function fakeDatabase() {
       state.contacts.set(id, { account_id: account, name, email });
       return { rows: [{ id }] };
     } else if (sql.startsWith("insert into account_contact_links(")) {
-      if (failLink) {
-        failLink = false;
+      if (failLink && --failLink === 0) {
         throw new Error("WFM_LINK_WRITE_FAILED");
       }
       if (!state.contacts.has(args[0]) || !state.accounts.has(args[1]))
@@ -118,18 +117,22 @@ function fakeDatabase() {
     query,
     release,
     state: () => state,
-    identity: (type: string, key: string) =>
-      state.identities.get(JSON.stringify([namespace, type, key]))!,
-    failNextLink: () => (failLink = true),
+    identity: (type: string, key: string, sourceNamespace = namespace) =>
+      state.identities.get(JSON.stringify([sourceNamespace, type, key]))!,
+    failNextLink: (attempt = 1) => (failLink = attempt),
   };
 }
 
-async function run(db: ReturnType<typeof fakeDatabase>, clients: WfmObject[]) {
-  const store = await WfmHistoryStore.open(db.pool, namespace);
+async function run(
+  db: ReturnType<typeof fakeDatabase>,
+  clients: WfmObject[],
+  sourceNamespace = namespace,
+) {
+  const store = await WfmHistoryStore.open(db.pool, sourceNamespace);
   const snapshot = await importWfmHistory({
     store,
     source: {
-      sourceNamespace: namespace,
+      sourceNamespace,
       async *list(path) {
         if (path === "v2/clients") yield* clients;
       },
@@ -143,6 +146,26 @@ function contactReceipt(db: ReturnType<typeof fakeDatabase>, runId: string) {
 }
 
 describe("WFM shared contact writes", () => {
+  it("keeps identical source UUIDs in different organisations separate", async () => {
+    const db = fakeDatabase();
+    const otherNamespace = "workflowmax:other-org";
+    await run(db, [firstClient, secondClient]);
+    await run(db, [secondClient, firstClient], otherNamespace);
+    const id = db.identity("account_contact", contactKey);
+    const otherId = db.identity("account_contact", contactKey, otherNamespace);
+    expect(otherId).not.toBe(id);
+    expect(db.state().contacts.size).toBe(2);
+    expect(db.state().links).toEqual(
+      new Set([
+        JSON.stringify([id, db.identity("account", clientA)]),
+        JSON.stringify([id, db.identity("account", clientB)]),
+        JSON.stringify([otherId, db.identity("account", clientA, otherNamespace)]),
+        JSON.stringify([otherId, db.identity("account", clientB, otherNamespace)]),
+      ]),
+    );
+    expect(db.state().raw.get(id)?.payload.firstName).toBe("Shared");
+    expect(db.state().raw.get(otherId)?.payload.firstName).toBe("Secondary");
+  });
   it("imports two client links using one identity, canonical payload, projection and receipt", async () => {
     const db = fakeDatabase();
     const { snapshot, runId } = await run(db, [firstClient, secondClient]);
@@ -210,29 +233,48 @@ describe("WFM shared contact writes", () => {
     expect(contactReceipt(db, runId)).toMatchObject({ id, status: "succeeded", action: "updated" });
   });
 
-  it("rolls back the second client's writes if adding its link fails", async () => {
+  it("restores a pre-028 owner's link when only a secondary client is replayed", async () => {
     const db = fakeDatabase();
-    const store = await WfmHistoryStore.open(db.pool, namespace);
-    try {
-      await store.upsert("client", firstClient);
-      const id = db.identity("account_contact", contactKey);
-      db.failNextLink();
-      await expect(store.upsert("client", secondClient)).rejects.toThrow("WFM_LINK_WRITE_FAILED");
-      expect(db.state().contacts.size).toBe(1);
-      expect(db.state().links.size).toBe(1);
-      expect(db.state().raw.get(id)?.payload).toEqual({ ...contact, clientUUID: clientA });
-      expect(db.identity("client", clientB)).toBeUndefined();
-      expect(db.identity("account", clientB)).toBeUndefined();
-      expect(
-        db.state().receipts.get(JSON.stringify([store.runId, "client", clientB])),
-      ).toMatchObject({
-        status: "failed",
-        errorCode: "WFM_LINK_WRITE_FAILED",
-      });
-    } finally {
-      await store.close(false);
-    }
+    await run(db, [firstClient]);
+    db.state().links.clear(); // Existing contacts predate the association table.
+    await run(db, [secondClient]);
+    const id = db.identity("account_contact", contactKey);
+    expect(db.state().links).toEqual(
+      new Set([
+        JSON.stringify([id, db.identity("account", clientA)]),
+        JSON.stringify([id, db.identity("account", clientB)]),
+      ]),
+    );
+    expect(db.state().raw.get(id)?.payload).toEqual({ ...contact, clientUUID: clientA });
   });
+
+  it.each([false, true])(
+    "rolls back both links and the second client on failure (pre-028: %s)",
+    async (legacy) => {
+      const db = fakeDatabase();
+      const store = await WfmHistoryStore.open(db.pool, namespace);
+      try {
+        await store.upsert("client", firstClient);
+        const id = db.identity("account_contact", contactKey);
+        if (legacy) db.state().links.clear();
+        db.failNextLink(2);
+        await expect(store.upsert("client", secondClient)).rejects.toThrow("WFM_LINK_WRITE_FAILED");
+        expect(db.state().contacts.size).toBe(1);
+        expect(db.state().links.size).toBe(legacy ? 0 : 1);
+        expect(db.state().raw.get(id)?.payload).toEqual({ ...contact, clientUUID: clientA });
+        expect(db.identity("client", clientB)).toBeUndefined();
+        expect(db.identity("account", clientB)).toBeUndefined();
+        expect(
+          db.state().receipts.get(JSON.stringify([store.runId, "client", clientB])),
+        ).toMatchObject({
+          status: "failed",
+          errorCode: "WFM_LINK_WRITE_FAILED",
+        });
+      } finally {
+        await store.close(false);
+      }
+    },
+  );
 
   it("retains the raw identity collision guard when a secondary client reuses a contact", async () => {
     const db = fakeDatabase();

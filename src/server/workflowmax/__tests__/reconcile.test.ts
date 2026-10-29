@@ -64,9 +64,16 @@ describe("WFM source snapshot identities", () => {
 });
 
 describe("WFM reconciliation contact counts", () => {
-  function database(snapshot: ReturnType<typeof sharedContactSnapshot>) {
+  function database(
+    snapshot: ReturnType<typeof sharedContactSnapshot>,
+    links: { contact_key: string; client_key: string | null }[] = [
+      { contact_key: contact, client_key: clientA },
+      { contact_key: contact, client_key: clientB },
+    ],
+  ) {
     return {
       query: vi.fn(async (sql: string) => {
+        if (sql.includes("from account_contact_links")) return { rows: links };
         if (sql.includes("from wfm_raw_objects"))
           return {
             rows: Object.entries(snapshot.resources).flatMap(([resource_type, keys]) =>
@@ -89,6 +96,73 @@ describe("WFM reconciliation contact counts", () => {
       db: 1,
       ok: true,
     });
+    expect(result.counts.find((row) => row.resource === "account_contact_link")).toMatchObject({
+      wfm: 2,
+      db: 2,
+      ok: true,
+    });
+  });
+
+  it("fails when a shared contact is present but its owner or secondary link is missing", async () => {
+    const snapshot = sharedContactSnapshot();
+    for (const client_key of [clientA, clientB]) {
+      const result = await reconcileWfm(
+        database(snapshot, [{ contact_key: contact, client_key }]),
+        snapshot,
+      );
+      expect(result.ok).toBe(false);
+      expect(result.counts.find((row) => row.resource === "account_contact_link")).toMatchObject({
+        wfm: 2,
+        db: 1,
+        missingCount: 1,
+        extraCount: 0,
+        ok: false,
+      });
+    }
+  });
+
+  it("detects an equal-count substitution of a contact's client link", async () => {
+    const snapshot = sharedContactSnapshot();
+    const result = await reconcileWfm(
+      database(snapshot, [
+        { contact_key: contact, client_key: clientA },
+        { contact_key: contact, client_key: "unexpected-client" },
+      ]),
+      snapshot,
+    );
+    expect(result.ok).toBe(false);
+    expect(result.counts.find((row) => row.resource === "account_contact_link")).toMatchObject({
+      wfm: 2,
+      db: 2,
+      missingCount: 1,
+      extraCount: 1,
+      ok: false,
+    });
+  });
+
+  it("rejects links whose account has no raw identity in the contact's namespace", async () => {
+    const snapshot = sharedContactSnapshot();
+    const result = await reconcileWfm(
+      database(snapshot, [
+        { contact_key: contact, client_key: clientA },
+        { contact_key: contact, client_key: clientB },
+        { contact_key: contact, client_key: null },
+      ]),
+      snapshot,
+    );
+    expect(result.ok).toBe(false);
+    expect(result.issues).toContain("account_contact_links:invalid_account_namespace");
+  });
+
+  it("keeps reconciliation compatible with snapshots without link evidence", async () => {
+    const snapshot = sharedContactSnapshot();
+    delete snapshot.contactClientLinks;
+    const db = database(snapshot, []);
+    const result = await reconcileWfm(db, snapshot);
+    expect(result.ok).toBe(true);
+    expect(
+      vi.mocked(db.query).mock.calls.some(([sql]) => sql.includes("from account_contact_links")),
+    ).toBe(false);
   });
 
   it("still rejects duplicate UUIDs in manually supplied snapshot resources", async () => {

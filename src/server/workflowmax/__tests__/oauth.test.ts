@@ -161,6 +161,50 @@ describe("WFM OAuth", () => {
     expect(() => orgFromJwt(jwt(), "guessedClaim")).toThrow();
     expect(() => wfmNamespace("org/../../other")).toThrow();
   });
+
+  it("sanitizes malformed OAuth JSON instead of exposing token response fragments", async () => {
+    const oauth = new WfmOAuth(config, {
+      fetch: vi.fn(async () => new Response("fixture-secret-token")) as typeof fetch,
+      clock: { now: () => 0, async sleep() {} },
+    });
+    await expect(oauth.token()).rejects.toThrow(/^Invalid WFM OAuth token response$/);
+  });
+
+  it.each([
+    { name: "null", body: null },
+    { name: "an array", body: [] },
+    { name: "an empty refresh token", body: { access_token: jwt(), refresh_token: "" } },
+    { name: "a blank refresh token", body: { access_token: jwt(), refresh_token: " \t " } },
+  ])("rejects $name before handing off a refresh token", async ({ body }) => {
+    const rotated = vi.fn(async () => {});
+    const oauth = new WfmOAuth(config, {
+      fetch: vi.fn(async () => new Response(JSON.stringify(body))) as typeof fetch,
+      clock: { now: () => 0, async sleep() {} },
+      onRefreshToken: rotated,
+    });
+    await expect(oauth.token()).rejects.toThrow(/^Invalid WFM OAuth token response$/);
+    expect(rotated).not.toHaveBeenCalled();
+  });
+
+  it("does not cache access after a persistence failure and retries with the rotated refresh token", async () => {
+    const send = vi.fn(
+      async () => new Response(JSON.stringify({ access_token: jwt(), refresh_token: "rotated" })),
+    );
+    const rotated = vi
+      .fn(async () => {})
+      .mockRejectedValueOnce(new Error("WFM refresh token persistence failed"));
+    const oauth = new WfmOAuth(config, {
+      fetch: send as typeof fetch,
+      clock: { now: () => 0, async sleep() {} },
+      onRefreshToken: rotated,
+    });
+    await expect(oauth.token()).rejects.toThrow(/^WFM refresh token persistence failed$/);
+    await expect(oauth.token()).resolves.toBe(jwt());
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(rotated).toHaveBeenCalledTimes(2);
+    const init = (send.mock.calls[1] as unknown as [string, RequestInit])[1];
+    expect((init.body as URLSearchParams).get("refresh_token")).toBe("rotated");
+  });
   it("requires explicit env secrets, org and claim with no application DB fallback", () => {
     expect(() => wfmConfigFromEnv({})).toThrow("WFM_CLIENT_ID");
     expect(

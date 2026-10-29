@@ -42,8 +42,8 @@ the canonical contact or its raw payload; owner sightings can refresh its detail
 Each run retains one receipt per contact UUID, preserving `created` if that run
 created it. Associations are additive, like the existing history projections.
 
-**Migration `028_wfm_shared_contact_links.sql` requires approval and application
-before a future apply. It has not been run as part of this change.** It registers
+**Migration `028_wfm_shared_contact_links.sql` is already applied to UAT. Other
+targets require it before apply.** It registers
 the idempotent link table with foreign keys, RLS and no browser grants; migration
 003's single owner column and migration 022's owner constraints remain unchanged.
 
@@ -84,29 +84,35 @@ artificial header or child UUID is generated.
 
 Install with `bun install --frozen-lockfile`. No additional dependencies are required.
 
-| Variable                | Use                                                                                                  |
-| ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| `WFM_CLIENT_ID`         | OAuth application ID, live source only                                                               |
-| `WFM_CLIENT_SECRET`     | OAuth application secret, live source only                                                           |
-| `WFM_REFRESH_TOKEN`     | Initial OAuth refresh token, live source only                                                        |
-| `WFM_ORG_ID`            | Expected organisation ID, pinned against the access JWT                                              |
-| `WFM_JWT_ORG_CLAIM`     | Top-level JWT claim: string or string array (first non-empty string used); must equal `WFM_ORG_ID`   |
-| `WFM_ALLOW_LIVE_PULL=1` | Explicit live-source opt-in, only after Willy's approval                                             |
-| `WFM_DATABASE_URL`      | Explicit local/UAT PostgreSQL connection for apply or recon; no `DATABASE_URL` fallback              |
-| `WFM_TARGET=local\|uat` | Explicit target label; `local` also requires a loopback host; production unsupported                 |
-| `WFM_HISTORY_CURRENCY`  | Optional operator-confirmed ISO currency for payloads omitting currency; leave unset until confirmed |
-| `DATABASE_TEST_URL`     | Disposable PostgreSQL with pgvector, integration tests only                                          |
+| Variable                 | Use                                                                                                            |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `WFM_CLIENT_ID`          | OAuth application ID, live source only                                                                         |
+| `WFM_CLIENT_SECRET`      | OAuth application secret, live source only                                                                     |
+| `WFM_REFRESH_TOKEN`      | Initial OAuth refresh token, live source only                                                                  |
+| `WFM_REFRESH_TOKEN_PATH` | Optional private file outside the repository for rotated refresh tokens; raw token, mode 0600, `.bak` retained |
+| `WFM_ORG_ID`             | Expected organisation ID, pinned against the access JWT                                                        |
+| `WFM_JWT_ORG_CLAIM`      | Top-level JWT claim: string or string array (first non-empty string used); must equal `WFM_ORG_ID`             |
+| `WFM_ALLOW_LIVE_PULL=1`  | Explicit live-source opt-in, only after Willy's approval                                                       |
+| `WFM_DATABASE_URL`       | Explicit local/UAT PostgreSQL connection for apply or recon; no `DATABASE_URL` fallback                        |
+| `WFM_TARGET=local\|uat`  | Explicit target label; `local` also requires a loopback host; production unsupported                           |
+| `WFM_HISTORY_CURRENCY`   | Optional operator-confirmed ISO currency for payloads omitting currency; leave unset until confirmed           |
+| `DATABASE_TEST_URL`      | Disposable PostgreSQL with pgvector, integration tests only                                                    |
 
-The live WFM access JWT uses `org_ids`.
+The live WFM access JWT uses `org_ids`. Array claims use the first non-empty
+trimmed string; later entries never override that selection, even if they match
+`WFM_ORG_ID`. Scalar string claims must match exactly.
 
-Credentials come from environment variables only and are never logged or stored in
+Credentials are supplied through environment variables and are never logged or stored in
 history tables. HTTPS endpoints are fixed, redirects are rejected, and requests time
 out after 30 seconds. JWT decoding is routing metadata, not application authentication;
 tokens are obtained over HTTPS and validated by the WFM API. The OAuth module has an
-async `onRefreshToken` callback for a future approved secret-manager adapter. The CLI
-currently updates rotated refresh tokens **in process only** and emits a token-free
-notice. Durable rotation handoff must be supplied before operational live imports;
-do not rely on a rotated token surviving CLI exit. OAuth registration, initial consent,
+async `onRefreshToken` callback. The CLI updates rotated refresh tokens in process
+and emits a token-free notice. With `WFM_REFRESH_TOKEN_PATH` set, it also replaces
+the token file atomically with mode 0600 and retains the previous token in a 0600
+`.bak`. Staging files are private and removed on failure; a persistence failure
+aborts the command. The path is write-back only: supply the latest token through
+`WFM_REFRESH_TOKEN` for the next process. Without a path, rotation is process-only
+and needs a separate durable handoff before operational live imports. OAuth registration, initial consent,
 redirect URI, and a browser callback receiver are outside this PR.
 
 Inspect the registry without credentials or any network/database access:
@@ -205,6 +211,10 @@ repeatable-read transaction. Source evidence is accumulated from fetched rows be
 DB writes. It checks UUID sets and counts per top-level collection and keyed included
 contacts/costs/invoice lines, derived accounts, invoice total/paid sums **per currency**, and exact summed
 minutes (also displaying derived hours). Projection absence is a count mismatch.
+Snapshots with `contactClientLinks` also compare contact/client pairs against
+`account_contact_links`, including owner links. Missing, extra or substituted pairs
+are count mismatches; links to accounts outside the source namespace are issues.
+Older snapshots without link evidence retain their existing reconciliation behavior.
 Account projections are checked even for clients with no contacts or jobs. Source
 snapshots must include the derived `account` UUID collection; regenerate older fixture
 snapshots that predate that check. Unknown currency, missing numeric fields, incomplete runs, and unkeyed included rows

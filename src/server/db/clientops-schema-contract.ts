@@ -191,6 +191,7 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
     "account_contacts.account_id": { type: "uuid", nullable: false },
     "account_contact_links.contact_id": { type: "uuid", nullable: false },
     "account_contact_links.account_id": { type: "uuid", nullable: false },
+    "account_contact_links.created_at": { type: "timestamp with time zone", nullable: false },
     "clients.account_id": { type: "uuid", nullable: true },
     "leads.account_id": { type: "uuid", nullable: true },
     "quotes.account_id": { type: "uuid", nullable: true },
@@ -231,6 +232,9 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
   constraints: [
     "agent_runs_execution_metadata_check",
     "account_contacts_account_id_fkey",
+    "account_contact_links_pkey",
+    "account_contact_links_contact_id_fkey",
+    "account_contact_links_account_id_fkey",
     "relationship_signals_account_id_fkey",
     "profiles_role_check",
     "profiles_status_check",
@@ -292,6 +296,7 @@ export const CLIENTOPS_SCHEMA_CONTRACT = {
   indexes: [
     "accounts_last_activity_idx",
     "account_contacts_account_id_idx",
+    "account_contact_links_account_idx",
     "clients_account_id_idx",
     "leads_account_id_idx",
     "quotes_account_id_idx",

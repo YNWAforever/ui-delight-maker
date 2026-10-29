@@ -195,6 +195,43 @@ export async function reconcileWfm(
       ok: Math.max(missing.length, extra.length) <= countThreshold,
     };
   });
+  if (source.contactClientLinks) {
+    const expected = new Set(
+      Object.entries(source.contactClientLinks).flatMap(([contact, clients]) =>
+        clients.map((client) => JSON.stringify([contact, client])),
+      ),
+    );
+    const links = (
+      await db.query<{ contact_key: string; client_key: string | null }>(
+        `select c.external_key as contact_key,a.external_key as client_key
+         from account_contact_links l
+         join wfm_raw_objects c on c.id=l.contact_id and c.resource_type='account_contact'
+         left join wfm_raw_objects a on a.id=l.account_id and a.resource_type='account'
+           and a.source_namespace=c.source_namespace
+         where c.source_namespace=$1`,
+        [source.sourceNamespace],
+      )
+    ).rows;
+    if (links.some((link) => link.client_key === null))
+      issues.push("account_contact_links:invalid_account_namespace");
+    const actual = new Set(
+      links
+        .filter((link) => link.client_key !== null)
+        .map((link) => JSON.stringify([link.contact_key, link.client_key])),
+    );
+    const missing = [...expected].filter((key) => !actual.has(key));
+    const extra = [...actual].filter((key) => !expected.has(key));
+    counts.push({
+      resource: "account_contact_link",
+      wfm: expected.size,
+      db: actual.size,
+      missing: missing.slice(0, 100),
+      extra: extra.slice(0, 100),
+      missingCount: missing.length,
+      extraCount: extra.length,
+      ok: Math.max(missing.length, extra.length) <= countThreshold,
+    });
+  }
   const invoiceRows = (
     await db.query<{ currency: string; total: string; paid: string; missing: number }>(
       `select coalesce(currency,'unknown') as currency,coalesce(sum(total),0)::text as total,

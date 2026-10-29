@@ -99,8 +99,15 @@ export class WfmOAuth {
     );
     // Never include response bodies, credentials, or tokens in diagnostics.
     if (!response.ok) throw new Error(`WFM OAuth HTTP ${response.status}`);
-    const body = (await response.json()) as Record<string, unknown>;
-    if (typeof body.access_token !== "string" || typeof body.refresh_token !== "string")
+    const body = (await response.json().catch(() => {
+      throw new Error("Invalid WFM OAuth token response");
+    })) as Record<string, unknown> | null;
+    if (
+      !body ||
+      typeof body.access_token !== "string" ||
+      typeof body.refresh_token !== "string" ||
+      !body.refresh_token.trim()
+    )
       throw new Error("Invalid WFM OAuth token response");
     this.refresh = body.refresh_token;
     await this.options.onRefreshToken?.(this.refresh);
