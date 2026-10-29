@@ -33,6 +33,8 @@ export const snapshotSchema = z.object({
   capturedAt: z.string().datetime(),
   runId: z.uuid().optional(),
   resources: z.record(z.string(), z.array(z.string())),
+  // Optional so version-1 snapshots captured before shared contacts still parse.
+  contactClientLinks: z.record(z.string(), z.array(z.string())).optional(),
   invoiceTotals: currencyTotals,
   timesheetMinutes: decimalSchema,
   issues: z.array(z.string()),
@@ -58,6 +60,7 @@ export class WfmSourceSnapshot {
       startedAt: new Date().toISOString(),
       capturedAt: new Date().toISOString(),
       resources: Object.fromEntries(WFM_RECON_TYPES.map((type) => [type, []])),
+      contactClientLinks: {},
       invoiceTotals: {},
       timesheetMinutes: "0",
       issues: [],
@@ -69,7 +72,15 @@ export class WfmSourceSnapshot {
     if (type === "client") this.addKey("account", key);
     for (const child of includedWfmObjects(type, row)) {
       if (!child.row.uuid) this.value.issues.push(`${type}:${key}:unkeyed_${child.type}`);
-      else this.addKey(child.type, uuidKey(child.row));
+      else {
+        const childKey = uuidKey(child.row);
+        this.addKey(child.type, childKey);
+        if (child.type === "account_contact") {
+          const links = (this.value.contactClientLinks ??= {});
+          const clients = (links[childKey] ??= []);
+          if (!clients.includes(key)) clients.push(key);
+        }
+      }
     }
     if (type === "invoice") {
       const currency = currencyValue(row, this.currency) ?? "unknown";
@@ -93,7 +104,11 @@ export class WfmSourceSnapshot {
   }
   private addKey(type: string, key: string) {
     const keys = this.keys.get(type) ?? new Set<string>();
-    if (keys.has(key)) throw new Error("DUPLICATE_SOURCE_UUID");
+    if (keys.has(key)) {
+      // A contact can be included by multiple clients, or repeated by one client.
+      if (type === "account_contact") return;
+      throw new Error("DUPLICATE_SOURCE_UUID");
+    }
     keys.add(key);
     this.keys.set(type, keys);
     this.value.resources[type].push(key);

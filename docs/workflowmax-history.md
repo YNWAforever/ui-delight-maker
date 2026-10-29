@@ -31,6 +31,22 @@ database session advisory lock serializes imports for one namespace. Interrupted
 runs can remain `running`; a fresh run replays all rows idempotently. This scaffold
 does not automatically advance an incremental checkpoint or delete old rows.
 
+Shared contact UUIDs across clients are legitimate. Snapshots count each contact
+once and retain its distinct client UUIDs in optional `contactClientLinks` evidence;
+older version-1 snapshots remain readable. Repeats within one client's contacts are
+also de-duped: they add no new identity or link and are not source issues. Other
+resource types still reject duplicate UUIDs. Apply keeps one `account_contacts` row
+owned by the first imported client and adds every client (including the owner) to
+`account_contact_links`. Secondary sightings reuse the identity without overwriting
+the canonical contact or its raw payload; owner sightings can refresh its details.
+Each run retains one receipt per contact UUID, preserving `created` if that run
+created it. Associations are additive, like the existing history projections.
+
+**Migration `028_wfm_shared_contact_links.sql` requires approval and application
+before a future apply. It has not been run as part of this change.** It registers
+the idempotent link table with foreign keys, RLS and no browser grants; migration
+003's single owner column and migration 022's owner constraints remain unchanged.
+
 | Source                                  | Destination / scaffold boundary                                                                     |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | Settings                                | Raw tax settings; registry can be extended with other catalogues                                    |

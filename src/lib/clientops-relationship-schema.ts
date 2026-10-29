@@ -32,6 +32,7 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/025_retention_sweep_checkpoints.sql",
   "neon/migrations/026_ai_unknown_model.sql",
   "neon/migrations/027_wfm_history_scaffold.sql",
+  "neon/migrations/028_wfm_shared_contact_links.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
@@ -67,6 +68,7 @@ export const CLIENTOPS_REQUIRED_TABLES = [
   "notifications",
   "accounts",
   "account_contacts",
+  "account_contact_links",
   "campaigns",
   "campaign_members",
   "relationship_signals",
