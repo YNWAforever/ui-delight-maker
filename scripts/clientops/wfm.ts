@@ -7,6 +7,7 @@ import { assertDate, type WfmObject } from "../../src/server/workflowmax/http.se
 import { importWfmHistory, type WfmSource } from "../../src/server/workflowmax/importer.server";
 import { wfmConfigFromEnv, wfmNamespace } from "../../src/server/workflowmax/oauth.server";
 import { WFM_PLAN } from "../../src/server/workflowmax/plan.server";
+import { persistRefreshToken } from "../../src/server/workflowmax/refresh-persist.server";
 import { reconcileWfm } from "../../src/server/workflowmax/reconcile.server";
 import { WfmHistoryStore, type WfmDatabase } from "../../src/server/workflowmax/store.server";
 
@@ -107,11 +108,18 @@ async function main() {
       );
     source = new WfmClient(wfmConfigFromEnv(process.env), {
       async onRefreshToken(token) {
-        // Process-local only. A durable secret-manager handoff is a Willy Ask.
-        if (process.env.WFM_REFRESH_TOKEN !== token) {
-          process.env.WFM_REFRESH_TOKEN = token;
+        if (process.env.WFM_REFRESH_TOKEN === token) return;
+        process.env.WFM_REFRESH_TOKEN = token;
+        const tokenPath = process.env.WFM_REFRESH_TOKEN_PATH;
+        if (tokenPath) {
+          // Atomic 0600 write-back (+ .bak). Never log the token value.
+          await persistRefreshToken(tokenPath, token);
           console.error(
-            "WFM refresh token rotated; env updated for this process only. Durable secret handoff is still required for the next run.",
+            "WFM refresh token rotated; persisted atomically to WFM_REFRESH_TOKEN_PATH (0600, .bak kept).",
+          );
+        } else {
+          console.error(
+            "WFM refresh token rotated; env updated for this process only. Set WFM_REFRESH_TOKEN_PATH for durable write-back.",
           );
         }
       },

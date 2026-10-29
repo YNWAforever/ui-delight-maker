@@ -54,3 +54,4 @@ docs/frontend-revision/screenshots/
 
 # Private isolated browser session state and local measurement output
 .clientops-perf/
+.env.wfm.local
