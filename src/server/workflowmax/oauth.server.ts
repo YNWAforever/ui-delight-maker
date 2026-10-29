@@ -34,14 +34,14 @@ export function orgFromJwt(token: string, claim: string): { orgId: string; expir
     const parts = token.split(".");
     if (parts.length !== 3) throw new Error();
     const body = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
-    if (
-      typeof body[claim] !== "string" ||
-      typeof body.exp !== "number" ||
-      !Number.isFinite(body.exp)
-    )
+    const orgClaim = body[claim];
+    const orgId = Array.isArray(orgClaim)
+      ? orgClaim.find((org): org is string => typeof org === "string" && org.trim() !== "")?.trim()
+      : orgClaim;
+    if (typeof orgId !== "string" || typeof body.exp !== "number" || !Number.isFinite(body.exp))
       throw new Error();
-    wfmNamespace(body[claim]);
-    return { orgId: body[claim], expiresAt: body.exp * 1_000 };
+    wfmNamespace(orgId);
+    return { orgId, expiresAt: body.exp * 1_000 };
   } catch {
     throw new Error("WFM access JWT lacks the configured organisation claim or expiry");
   }

@@ -74,12 +74,14 @@ Install with `bun install --frozen-lockfile`. No additional dependencies are req
 | `WFM_CLIENT_SECRET`     | OAuth application secret, live source only                                                           |
 | `WFM_REFRESH_TOKEN`     | Initial OAuth refresh token, live source only                                                        |
 | `WFM_ORG_ID`            | Expected organisation ID, pinned against the access JWT                                              |
-| `WFM_JWT_ORG_CLAIM`     | Exact top-level JWT claim containing the organisation ID; confirm with the approved OAuth receipt    |
+| `WFM_JWT_ORG_CLAIM`     | Top-level JWT claim: string or string array (first non-empty string used); must equal `WFM_ORG_ID`   |
 | `WFM_ALLOW_LIVE_PULL=1` | Explicit live-source opt-in, only after Willy's approval                                             |
 | `WFM_DATABASE_URL`      | Explicit local/UAT PostgreSQL connection for apply or recon; no `DATABASE_URL` fallback              |
 | `WFM_TARGET=local\|uat` | Explicit target label; `local` also requires a loopback host; production unsupported                 |
 | `WFM_HISTORY_CURRENCY`  | Optional operator-confirmed ISO currency for payloads omitting currency; leave unset until confirmed |
 | `DATABASE_TEST_URL`     | Disposable PostgreSQL with pgvector, integration tests only                                          |
+
+The live WFM access JWT uses `org_ids`.
 
 Credentials come from environment variables only and are never logged or stored in
 history tables. HTTPS endpoints are fixed, redirects are rejected, and requests time

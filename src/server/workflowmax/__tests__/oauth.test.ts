@@ -10,8 +10,61 @@ const config = {
   orgClaim: "account_id",
 };
 function jwt(org = "fixture-org", exp = 3600) {
-  return `header.${Buffer.from(JSON.stringify({ account_id: org, exp })).toString("base64url")}.signature`;
+  return jwtFromClaims({ account_id: org, exp });
 }
+
+function jwtFromClaims(claims: Record<string, unknown>) {
+  return `header.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.signature`;
+}
+
+describe("orgFromJwt", () => {
+  it("extracts a string org_id claim", () => {
+    const token = jwtFromClaims({ org_id: "fixture-org", exp: 3600 });
+    expect(orgFromJwt(token, "org_id")).toEqual({ orgId: "fixture-org", expiresAt: 3_600_000 });
+  });
+
+  it("extracts the first non-empty trimmed string in org_ids", () => {
+    const token = jwtFromClaims({
+      org_ids: ["", " \t ", null, 0, false, {}, [], " fixture-org ", "other-org"],
+      exp: 3600,
+    });
+    expect(orgFromJwt(token, "org_ids")).toEqual({ orgId: "fixture-org", expiresAt: 3_600_000 });
+  });
+
+  it.each([
+    { name: "an array without usable strings", value: ["", " \t ", null, 0, false, {}, []] },
+    { name: "an empty array", value: [] },
+    { name: "a missing claim", value: undefined },
+    { name: "a null claim", value: null },
+    { name: "a numeric claim", value: 42 },
+    { name: "a boolean claim", value: true },
+    { name: "an object claim", value: { org_id: "fixture-org" } },
+    { name: "an empty string claim", value: "" },
+    { name: "a whitespace-only string claim", value: " \t " },
+    { name: "an untrimmed string claim", value: " fixture-org " },
+    { name: "an invalid string organisation ID", value: "org/../../other" },
+    { name: "an invalid first non-empty array entry", value: ["org/../../other", "fixture-org"] },
+  ])("rejects $name with a sanitized error", ({ value }) => {
+    const token = jwtFromClaims({ org_ids: value, exp: 3600 });
+    expect(() => orgFromJwt(token, "org_ids")).toThrow(
+      /^WFM access JWT lacks the configured organisation claim or expiry$/,
+    );
+  });
+
+  it.each([undefined, null, "3600", true])("rejects an invalid expiry %s", (exp) => {
+    const token = jwtFromClaims({ org_ids: ["fixture-org"], exp });
+    expect(() => orgFromJwt(token, "org_ids")).toThrow(
+      /^WFM access JWT lacks the configured organisation claim or expiry$/,
+    );
+  });
+
+  it("rejects a non-finite numeric expiry", () => {
+    const token = `header.${Buffer.from('{"org_ids":["fixture-org"],"exp":1e400}').toString("base64url")}.signature`;
+    expect(() => orgFromJwt(token, "org_ids")).toThrow(
+      /^WFM access JWT lacks the configured organisation claim or expiry$/,
+    );
+  });
+});
 
 describe("WFM OAuth", () => {
   it("refreshes once for concurrent callers, pins JWT org, and hands off rotated tokens", async () => {
@@ -62,6 +115,40 @@ describe("WFM OAuth", () => {
       clock: { now: () => 0, async sleep() {} },
     });
     await expect(oauth.token()).rejects.toThrow("does not match");
+  });
+  it("accepts org_ids when the first non-empty string matches WFM_ORG_ID", async () => {
+    const token = jwtFromClaims({
+      org_ids: ["", null, " \t ", " fixture-org ", "other-org"],
+      exp: 3600,
+    });
+    const oauth = new WfmOAuth(
+      { ...config, orgClaim: "org_ids" },
+      {
+        fetch: vi.fn(
+          async () =>
+            new Response(JSON.stringify({ access_token: token, refresh_token: "rotated" })),
+        ) as typeof fetch,
+        clock: { now: () => 0, async sleep() {} },
+      },
+    );
+    await expect(oauth.token()).resolves.toBe(token);
+  });
+  it("rejects org_ids when the first non-empty string differs, even if a later entry matches", async () => {
+    const token = jwtFromClaims({
+      org_ids: ["", null, " \t ", " other-org ", "fixture-org"],
+      exp: 3600,
+    });
+    const oauth = new WfmOAuth(
+      { ...config, orgClaim: "org_ids" },
+      {
+        fetch: vi.fn(
+          async () =>
+            new Response(JSON.stringify({ access_token: token, refresh_token: "rotated" })),
+        ) as typeof fetch,
+        clock: { now: () => 0, async sleep() {} },
+      },
+    );
+    await expect(oauth.token()).rejects.toThrow(/^WFM JWT organisation does not match WFM_ORG_ID$/);
   });
   it("sanitizes OAuth errors and rejects malformed JWTs", async () => {
     const oauth = new WfmOAuth(config, {
