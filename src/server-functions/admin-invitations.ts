@@ -151,6 +151,7 @@ export const acceptUserInvitation = createServerFn({ method: "POST" })
     return acceptInvitation(data.token, {
       id: identity.user.id,
       email: identity.user.email,
+      emailVerified: identity.user.emailVerified === true,
       name: identity.user.name,
       ...(identity.user.image ? { image: identity.user.image } : {}),
     });

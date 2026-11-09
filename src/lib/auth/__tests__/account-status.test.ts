@@ -70,7 +70,7 @@ function neonSession(overrides: Record<string, unknown> = {}) {
               id: "session-1",
               createdAt: sessionCreatedAt,
               expiresAt: sessionExpiresAt,
-              user: { id: "user-1", email: "ada@example.com", name: "Ada" },
+              user: { id: "user-1", email: "ada@example.com", name: "Ada", emailVerified: true },
               ...overrides,
             },
           }),
@@ -121,7 +121,7 @@ describe("ClientOps account status at sign in", () => {
   it("returns upstream identity without creating or requiring an app profile", async () => {
     getProfileByIdMock.mockResolvedValue(null);
     await expect(getNeonAuthIdentity()).resolves.toEqual({
-      user: { id: "user-1", email: "ada@example.com", name: "Ada" },
+      user: { id: "user-1", email: "ada@example.com", name: "Ada", emailVerified: true },
       session: {
         id: "session-1",
         createdAt: sessionCreatedAt,
@@ -139,18 +139,68 @@ describe("ClientOps account status at sign in", () => {
     await expect(getNeonAuthSession()).resolves.toBeNull();
   });
 
-  it("loads an existing legacy profile by normalized auth email", async () => {
+  it("loads an existing legacy profile by normalized verified auth email", async () => {
     getProfileByIdMock.mockResolvedValue(null);
     getProfileByEmailMock.mockResolvedValue(
       profile({ id: "legacy-profile", email: "ada@example.com" }),
     );
-    neonSession({ user: { id: "new-auth-id", email: " ADA@EXAMPLE.COM ", name: "Ada" } });
+    neonSession({
+      user: {
+        id: "new-auth-id",
+        email: " ADA@EXAMPLE.COM ",
+        name: "Ada",
+        emailVerified: true,
+      },
+    });
 
     await expect(getNeonAuthSession()).resolves.toMatchObject({
       user: { id: "new-auth-id" },
       profile: { id: "legacy-profile", status: "active" },
     });
     expect(getProfileByEmailMock).toHaveBeenCalledWith("ada@example.com");
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["false", false],
+    ["null", null],
+  ])("does not bind a profile by email when verification is %s", async (_label, emailVerified) => {
+    getProfileByIdMock.mockResolvedValue(null);
+    getProfileByEmailMock.mockResolvedValue(
+      profile({ id: "legacy-profile", email: "ada@example.com" }),
+    );
+    neonSession({
+      user: { id: "new-auth-id", email: "ada@example.com", emailVerified },
+    });
+
+    await expect(resolveWorkspaceAccess()).resolves.toEqual({ state: "no_profile" });
+    expect(getProfileByEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("binds a profile by verified email even when the auth user id is new", async () => {
+    getProfileByIdMock.mockResolvedValue(null);
+    getProfileByEmailMock.mockResolvedValue(profile({ id: "legacy-profile" }));
+    neonSession({
+      user: { id: "new-auth-id", email: "ada@example.com", emailVerified: true },
+    });
+
+    await expect(resolveWorkspaceAccess()).resolves.toMatchObject({
+      state: "active",
+      session: { profile: { id: "legacy-profile" } },
+    });
+  });
+
+  it("binds an id-matched profile without requiring upstream email verification", async () => {
+    getProfileByIdMock.mockResolvedValue(profile({ id: "user-1" }));
+    neonSession({
+      user: { id: "user-1", email: "ada@example.com", emailVerified: false },
+    });
+
+    await expect(resolveWorkspaceAccess()).resolves.toMatchObject({
+      state: "active",
+      session: { profile: { id: "user-1" } },
+    });
+    expect(getProfileByEmailMock).not.toHaveBeenCalled();
   });
 
   it.each(["suspended", "deactivated"])("rejects a %s profile", async (status) => {

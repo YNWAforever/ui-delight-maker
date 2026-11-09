@@ -265,6 +265,19 @@ writeFileSync(
           headers: { "cache-control": "public, max-age=31536000, immutable" },
           continue: true,
         },
+        {
+          // Catch-all response headers for every route (static and SSR). `continue: true` keeps
+          // normal routing intact; embedding protection matters because the app renders
+          // authenticated CRM data and must not be frameable cross-origin.
+          src: "/(.*)",
+          headers: {
+            "Content-Security-Policy": "frame-ancestors 'none'",
+            "X-Frame-Options": "DENY",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "strict-origin-when-cross-origin",
+          },
+          continue: true,
+        },
         { handle: "filesystem" },
         { src: "/(.*)", dest: "/index" },
       ],

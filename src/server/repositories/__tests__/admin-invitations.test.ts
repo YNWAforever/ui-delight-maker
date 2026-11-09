@@ -195,7 +195,11 @@ describe("admin invitation repository", () => {
     });
 
     await expect(
-      repo.acceptInvitation("raw-token", { id: "profile-1", email: "PERSON@example.com" }),
+      repo.acceptInvitation("raw-token", {
+        id: "profile-1",
+        email: "PERSON@example.com",
+        emailVerified: true,
+      }),
     ).resolves.toMatchObject(profile);
     expect(transactionCalls).toBe(1);
     expect(db.calls[0].toLowerCase()).toContain("for update");
@@ -225,6 +229,7 @@ describe("admin invitation repository", () => {
       repo.acceptInvitation("raw-token", {
         id: "profile-1",
         email: "person@example.com",
+        emailVerified: true,
       }),
     ).rejects.toThrow("administrator action");
     expect(db.calls.some((sql) => sql.toLowerCase().includes("insert into profiles"))).toBe(false);
@@ -246,7 +251,11 @@ describe("admin invitation repository", () => {
       now: () => new Date("2026-07-16T00:00:00.000Z"),
     });
     await expect(
-      repo.acceptInvitation("raw-token", { id: "profile-1", email: "other@example.com" }),
+      repo.acceptInvitation("raw-token", {
+        id: "profile-1",
+        email: "other@example.com",
+        emailVerified: true,
+      }),
     ).rejects.toThrow("Invitation email does not match");
 
     const acceptedDb = fakeDatabase([
@@ -264,9 +273,36 @@ describe("admin invitation repository", () => {
       now: () => new Date("2026-07-16T00:00:00.000Z"),
     });
     await expect(
-      acceptedRepo.acceptInvitation("raw-token", { id: "profile-1", email: "person@example.com" }),
+      acceptedRepo.acceptInvitation("raw-token", {
+        id: "profile-1",
+        email: "person@example.com",
+        emailVerified: true,
+      }),
     ).rejects.toThrow("Invitation is no longer available");
   });
+
+  it.each([
+    ["missing", undefined],
+    ["false", false],
+    ["null", null],
+  ])(
+    "refuses to accept an invitation when upstream email verification is %s",
+    async (_label, emailVerified) => {
+      const db = fakeDatabase();
+      const repo = createInvitationRepository({ transaction: async (work) => work(db) });
+
+      await expect(
+        repo.acceptInvitation("raw-token", {
+          id: "profile-1",
+          email: "person@example.com",
+          emailVerified,
+        }),
+      ).rejects.toThrow("Email verification is required");
+
+      // Fail before reading or mutating invitation state.
+      expect(db.calls).toHaveLength(0);
+    },
+  );
 
   it.each([
     ["revoked", "2026-07-23T00:00:00.000Z", "Invitation is no longer available"],
@@ -291,6 +327,7 @@ describe("admin invitation repository", () => {
       repo.acceptInvitation("raw-token", {
         id: "profile-1",
         email: "person@example.com",
+        emailVerified: true,
       }),
     ).rejects.toThrow(message);
   });

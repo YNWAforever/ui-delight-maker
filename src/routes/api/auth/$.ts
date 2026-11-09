@@ -7,6 +7,7 @@ const SIGN_UP_EMAIL_PATH = "sign-up/email";
 const PASSWORD_RESET_PATH = "request-password-reset";
 const SIGN_UP_DOMAIN = "fimmick.com";
 const SIGN_UP_DOMAIN_ERROR = "Sign up is only available for @fimmick.com email addresses.";
+const CROSS_ORIGIN_ERROR = "Cross-origin authentication requests are not allowed.";
 
 type AuthProxyArgs = {
   request: Request;
@@ -35,6 +36,63 @@ function rewriteSetCookie(cookie: string) {
   );
 
   return [nameValue, "Path=/", ...rewrittenAttributes, "SameSite=Lax"].join("; ");
+}
+
+function normalizeOrigin(value: string | null) {
+  if (!value) return null;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
+function getAppOrigins(request: Request) {
+  const origins = new Set([new URL(request.url).origin]);
+  const configuredOrigin = normalizeOrigin(process.env.APP_BASE_URL?.trim() || null);
+  if (configuredOrigin) origins.add(configuredOrigin);
+  return origins;
+}
+
+function rejectCrossOriginRequest() {
+  return Response.json(
+    { message: CROSS_ORIGIN_ERROR },
+    { status: 403, headers: { "cache-control": "no-store" } },
+  );
+}
+
+/**
+ * Login-CSRF guard. Better Auth enforces a form-CSRF check upstream, but `getProxyRequestHeaders`
+ * rewrites the upstream `Origin` to the Neon Auth URL (required for callbackURL validation), so
+ * the upstream sees a trusted origin on every proxied request and cannot detect a cross-site form
+ * POST. Validate the browser-supplied same-origin signals here, before proxying anything unsafe:
+ *
+ * - `Origin` is authoritative when present; `Referer` is only the fallback when it is absent.
+ * - `Sec-Fetch-Site: cross-site` is rejected even when the other headers look same-origin.
+ * - Requests with none of those headers stay allowed for server-to-server callers; a modern
+ *   browser always sends `Origin` on a cross-site form POST, so the browser case is covered.
+ */
+function validateRequestOrigin(request: Request) {
+  if (BODYLESS_METHODS.has(request.method)) return null;
+
+  const allowedOrigins = getAppOrigins(request);
+  const originHeader = request.headers.get("origin");
+  if (originHeader !== null) {
+    const origin = normalizeOrigin(originHeader);
+    if (!origin || !allowedOrigins.has(origin)) return rejectCrossOriginRequest();
+  } else {
+    const refererHeader = request.headers.get("referer");
+    if (refererHeader !== null) {
+      const refererOrigin = normalizeOrigin(refererHeader);
+      if (!refererOrigin || !allowedOrigins.has(refererOrigin)) return rejectCrossOriginRequest();
+    }
+  }
+
+  if (request.headers.get("sec-fetch-site")?.trim().toLowerCase() === "cross-site") {
+    return rejectCrossOriginRequest();
+  }
+
+  return null;
 }
 
 function getProxyRequestHeaders(request: Request) {
@@ -119,6 +177,9 @@ async function getProxyRequestBody(request: Request, path: string) {
 }
 
 export async function proxyNeonAuthRequest({ request, params }: AuthProxyArgs) {
+  const originRejection = validateRequestOrigin(request);
+  if (originRejection) return originRejection;
+
   const path = params._splat ?? "";
   const signUpRejection = await validateSignUpRequest(request, path);
   if (signUpRejection) return signUpRejection;

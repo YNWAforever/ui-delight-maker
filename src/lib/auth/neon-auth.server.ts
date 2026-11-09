@@ -9,6 +9,7 @@ import {
 export type NeonAuthUser = {
   id: string;
   email?: string | null;
+  emailVerified?: boolean | null;
   name?: string | null;
   image?: string | null;
 };
@@ -149,9 +150,18 @@ export async function resolveWorkspaceAccess(): Promise<WorkspaceAccessDecision>
   if (!identity) return { state: "anonymous" };
 
   const normalizedEmail = identity.user.email?.trim().toLowerCase();
+  /**
+   * The Neon Auth project must require email verification — this is the application-side
+   * enforcement. The proxy allows sign-up with any typed @fimmick.com address, so an
+   * unverified address must never bind a pre-provisioned profile by email: whoever typed the
+   * victim's address would otherwise inherit their workspace identity. A profile matched by
+   * `user.id` is already bound (invitation acceptance inserted it with that id) and is
+   * unaffected by the upstream verification flag.
+   */
+  const emailVerified = identity.user.emailVerified === true;
   const profile =
     (await getProfileById(identity.user.id)) ??
-    (normalizedEmail ? await getProfileByEmail(normalizedEmail) : null);
+    (emailVerified && normalizedEmail ? await getProfileByEmail(normalizedEmail) : null);
 
   if (profile?.status === "suspended") return { state: "suspended" };
   if (profile?.status === "deactivated") return { state: "deactivated" };

@@ -250,7 +250,12 @@ beforeEach(() => {
     },
   );
   mocks.requireNeonAuthIdentity.mockResolvedValue({
-    user: { id: "profile-sales", email: "sales@example.com", name: "Sales User" },
+    user: {
+      id: "profile-sales",
+      email: "sales@example.com",
+      name: "Sales User",
+      emailVerified: true,
+    },
     session: {},
   });
   mocks.requireNeonAuthSession.mockImplementation(async () => {
