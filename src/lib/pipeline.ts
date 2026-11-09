@@ -1,3 +1,4 @@
+import { getBusinessDateKey } from "./business-date";
 import type {
   AgentRun,
   ApprovalStatus,
@@ -93,7 +94,7 @@ export function getLeadOpenTasks(lead: Lead, tasks: Task[]): Task[] {
 export function getLeadSlaState(
   lead: Lead,
   tasks: Task[],
-  today = new Date().toISOString().slice(0, 10),
+  today = getBusinessDateKey(),
 ): { state: SlaState; label: string } {
   const openTasks = getLeadOpenTasks(lead, tasks).filter((task) => task.due_date);
 
@@ -186,7 +187,7 @@ export function filterPipelineLeads(input: {
   today?: string;
 }): Lead[] {
   const search = input.filters.search?.trim().toLowerCase() ?? "";
-  const today = input.today ?? new Date().toISOString().slice(0, 10);
+  const today = input.today ?? getBusinessDateKey();
 
   return input.leads.filter((lead) => {
     if (
@@ -244,7 +245,7 @@ export function getPipelineSummary(input: {
   approvals: HumanApproval[];
   today?: string;
 }): PipelineSummary {
-  const today = input.today ?? new Date().toISOString().slice(0, 10);
+  const today = input.today ?? getBusinessDateKey();
 
   return {
     overdue: input.leads.filter(

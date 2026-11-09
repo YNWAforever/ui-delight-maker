@@ -19,13 +19,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { convertWonLead } from "@/server-functions/leads";
+import { getBusinessDateKey } from "@/lib/business-date";
 import { addMonthsToDateString } from "@/lib/engagement-utils";
 import { toSafeErrorMessage } from "@/lib/errors";
 import type { Engagement, Lead, Product, Quote } from "@/lib/types";
 
 const DEFAULT_TERM_MONTHS = 12;
 
-const todayDateString = () => new Date().toISOString().slice(0, 10);
+// The engagement starts on the Hong Kong business day: the UTC slice is still yesterday
+// between 00:00 and 07:59 HKT.
+const todayDateString = () => getBusinessDateKey();
 
 interface WonConversionDialogProps {
   lead: Lead | null;

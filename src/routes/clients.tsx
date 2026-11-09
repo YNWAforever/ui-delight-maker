@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getBusinessDateKey } from "@/lib/business-date";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatCount, formatCurrencyAmount, formatDate } from "@/lib/format";
 import { getRenewalWindow } from "@/lib/engagement-utils";
@@ -166,7 +167,9 @@ function ClientsIndex() {
   const [windowFilter, setWindowFilter] = useState<"all" | "overdue" | "30" | "60" | "90">("all");
   const [sortKey, setSortKey] = useState<"arr" | "health" | "renewal">("arr");
   const [newOpen, setNewOpen] = useState(false);
-  const today = new Date().toISOString().slice(0, 10);
+  // Hong Kong business day, not the UTC date: between 00:00 and 07:59 HKT the UTC date is
+  // still yesterday, which shifts the renewal-window filter by a day at that time.
+  const today = getBusinessDateKey();
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
