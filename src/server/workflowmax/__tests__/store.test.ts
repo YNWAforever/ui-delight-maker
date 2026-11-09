@@ -70,6 +70,42 @@ function fakeDatabase() {
       return { rows: [{ id }] };
     } else if (sql.startsWith("insert into accounts(")) {
       state.accounts.set(args[0], args[1]);
+    } else if (sql.includes("from accounts where lower(trim(name))")) {
+      // Model migration 003's trimmed business-name lookup and exact-spelling preference.
+      const wanted = args[0].trim().toLowerCase();
+      const matches = [...state.accounts.entries()]
+        .filter(([, name]) => name.trim().toLowerCase() === wanted)
+        .map(([id, name]) => ({ id, exact: name === args[0] }));
+      matches.sort((a, b) => Number(b.exact) - Number(a.exact) || a.id.localeCompare(b.id));
+      return { rows: matches.slice(0, 2) };
+    } else if (sql.startsWith("update import_identity_keys set resource_id=")) {
+      const [resourceId, ns, type, key] = args;
+      state.identities.set(JSON.stringify([ns, type, key]), resourceId);
+      return { rows: [] };
+    } else if (
+      sql.includes("from import_identity_keys where resource_type=$1 and resource_id=$2")
+    ) {
+      const [type, resourceId, ns, key] = args;
+      const claimed = [...state.identities.entries()].some(([identityKey, id]) => {
+        const [identityNamespace, identityType, externalKey] = JSON.parse(identityKey) as string[];
+        return (
+          id === resourceId &&
+          identityType === type &&
+          !(identityNamespace === ns && externalKey === key)
+        );
+      });
+      return { rows: claimed ? [{}] : [] };
+    } else if (sql.includes("from account_contacts where account_id=$1 and lower(email)")) {
+      const [account, email] = args;
+      const matches = [...state.contacts.entries()]
+        .filter(
+          ([, row]) =>
+            row.account_id === account &&
+            typeof row.email === "string" &&
+            row.email.toLowerCase() === email.toLowerCase(),
+        )
+        .map(([id]) => ({ id }));
+      return { rows: matches.slice(0, 2) };
     } else if (sql.startsWith("select id from wfm_raw_objects")) {
       const [id, ns, type, key] = args;
       const raw = state.raw.get(id);
@@ -150,7 +186,10 @@ describe("WFM shared contact writes", () => {
     const db = fakeDatabase();
     const otherNamespace = "workflowmax:other-org";
     await run(db, [firstClient, secondClient]);
-    await run(db, [secondClient, firstClient], otherNamespace);
+    // Account names are a CRM-wide business key, so the second organisation must not claim
+    // the first organisation's accounts by name; give it its own names to isolate its UUIDs.
+    const otherOrg = (client: WfmObject) => ({ ...client, name: `${client.name} (other org)` });
+    await run(db, [otherOrg(secondClient), otherOrg(firstClient)], otherNamespace);
     const id = db.identity("account_contact", contactKey);
     const otherId = db.identity("account_contact", contactKey, otherNamespace);
     expect(otherId).not.toBe(id);
@@ -288,6 +327,191 @@ describe("WFM shared contact writes", () => {
       );
       expect(db.state().links.size).toBe(1);
       expect(db.state().contacts.get(id)?.account_id).toBe(db.identity("account", clientA));
+    } finally {
+      await store.close(false);
+    }
+  });
+});
+
+describe("WFM business-key collisions with pre-existing CRM rows", () => {
+  const existingAccountId = "30000000-0000-4000-8000-000000000001";
+  const variantAccountId = "30000000-0000-4000-8000-000000000002";
+  const existingContactId = "30000000-0000-4000-8000-000000000003";
+  const otherContactKey = "20000000-0000-4000-8000-000000000002";
+
+  it("adopts a pre-existing account with the same normalized name", async () => {
+    const db = fakeDatabase();
+    db.state().accounts.set(existingAccountId, "First client");
+    const { runId } = await run(db, [firstClient]);
+    const contactId = db.identity("account_contact", contactKey);
+
+    expect(db.identity("account", clientA)).toBe(existingAccountId);
+    expect(db.state().accounts.size).toBe(1);
+    expect(db.state().raw.get(existingAccountId)).toMatchObject({
+      namespace,
+      type: "account",
+      key: clientA,
+    });
+    expect(db.state().contacts.get(contactId)?.account_id).toBe(existingAccountId);
+    expect(db.state().links).toEqual(new Set([JSON.stringify([contactId, existingAccountId])]));
+    expect(db.state().receipts.get(JSON.stringify([runId, "account", clientA]))).toMatchObject({
+      id: existingAccountId,
+      status: "succeeded",
+      action: "updated",
+      errorCode: null,
+    });
+    expect(db.state().receipts.get(JSON.stringify([runId, "client", clientA]))).toMatchObject({
+      status: "succeeded",
+      action: "created",
+    });
+
+    const replay = await run(db, [firstClient]);
+    expect(db.identity("account", clientA)).toBe(existingAccountId);
+    expect(db.state().accounts.size).toBe(1);
+    expect(
+      db.state().receipts.get(JSON.stringify([replay.runId, "account", clientA])),
+    ).toMatchObject({ id: existingAccountId, status: "succeeded", action: "updated" });
+  });
+
+  it("prefers the exact spelling when whitespace variants also match", async () => {
+    const db = fakeDatabase();
+    db.state().accounts.set(variantAccountId, " First client ");
+    db.state().accounts.set(existingAccountId, "First client");
+    await run(db, [firstClient]);
+    expect(db.identity("account", clientA)).toBe(existingAccountId);
+    expect(db.state().accounts.size).toBe(2);
+  });
+
+  it("refuses to pick between trimmed-equal accounts without an exact match", async () => {
+    const db = fakeDatabase();
+    db.state().accounts.set(existingAccountId, "First client ");
+    db.state().accounts.set(variantAccountId, " first client");
+    const store = await WfmHistoryStore.open(db.pool, namespace);
+    try {
+      await expect(store.upsert("client", firstClient)).rejects.toThrow(
+        "WFM_ACCOUNT_NAME_CONFLICT",
+      );
+      expect(db.state().raw.size).toBe(0);
+      expect(db.state().accounts.size).toBe(2);
+    } finally {
+      await store.close(false);
+    }
+  });
+
+  it("fails typed when another WorkflowMax client owns the matching account", async () => {
+    const db = fakeDatabase();
+    const otherClient = "10000000-0000-4000-8000-000000000009";
+    db.state().accounts.set(existingAccountId, "First client");
+    db.state().identities.set(
+      JSON.stringify([namespace, "account", otherClient]),
+      existingAccountId,
+    );
+    const store = await WfmHistoryStore.open(db.pool, namespace);
+    try {
+      await expect(store.upsert("client", firstClient)).rejects.toThrow(
+        "WFM_ACCOUNT_NAME_CONFLICT",
+      );
+      expect(
+        db.state().receipts.get(JSON.stringify([store.runId, "client", clientA])),
+      ).toMatchObject({ status: "failed", errorCode: "WFM_ACCOUNT_NAME_CONFLICT" });
+      // The client transaction rolled back: no identity, raw payload or projection was added.
+      expect(db.identity("client", clientA)).toBeUndefined();
+      expect(db.state().identities.size).toBe(1);
+      expect(db.state().accounts.size).toBe(1);
+      expect(db.state().raw.size).toBe(0);
+    } finally {
+      await store.close(false);
+    }
+  });
+
+  it("fails typed when another WorkflowMax organisation owns the matching account", async () => {
+    const db = fakeDatabase();
+    const otherNamespace = "workflowmax:other-org";
+    db.state().accounts.set(existingAccountId, "First client");
+    // A second organisation reusing a source client UUID must not adopt another org's account.
+    db.state().identities.set(
+      JSON.stringify([otherNamespace, "account", clientA]),
+      existingAccountId,
+    );
+    const store = await WfmHistoryStore.open(db.pool, namespace);
+    try {
+      await expect(store.upsert("client", firstClient)).rejects.toThrow(
+        "WFM_ACCOUNT_NAME_CONFLICT",
+      );
+      expect(
+        db.state().receipts.get(JSON.stringify([store.runId, "client", clientA])),
+      ).toMatchObject({ status: "failed", errorCode: "WFM_ACCOUNT_NAME_CONFLICT" });
+      expect(db.identity("account", clientA)).toBeUndefined();
+      expect(db.state().accounts.size).toBe(1);
+      expect(db.state().raw.size).toBe(0);
+    } finally {
+      await store.close(false);
+    }
+  });
+
+  it("reuses and refreshes a pre-existing contact under the adopted account", async () => {
+    const db = fakeDatabase();
+    db.state().accounts.set(existingAccountId, "First client");
+    db.state().contacts.set(existingContactId, {
+      account_id: existingAccountId,
+      name: "CRM Shared",
+      email: "Shared@Example.test",
+    });
+    const { runId } = await run(db, [firstClient]);
+
+    expect(db.identity("account_contact", contactKey)).toBe(existingContactId);
+    expect(db.state().contacts.size).toBe(1);
+    expect(db.state().contacts.get(existingContactId)).toEqual({
+      account_id: existingAccountId,
+      name: "Shared Contact",
+      email: "shared@example.test",
+    });
+    expect(db.state().links).toEqual(
+      new Set([JSON.stringify([existingContactId, existingAccountId])]),
+    );
+    expect(db.state().raw.get(existingContactId)?.payload).toEqual({
+      ...contact,
+      clientUUID: clientA,
+    });
+    expect(contactReceipt(db, runId)).toMatchObject({
+      id: existingContactId,
+      status: "succeeded",
+      action: "updated",
+    });
+
+    const replay = await run(db, [firstClient]);
+    expect(db.identity("account_contact", contactKey)).toBe(existingContactId);
+    expect(db.state().contacts.size).toBe(1);
+    expect(contactReceipt(db, replay.runId)).toMatchObject({
+      id: existingContactId,
+      action: "updated",
+    });
+  });
+
+  it("fails typed when the matching contact is owned by another WorkflowMax contact", async () => {
+    const db = fakeDatabase();
+    db.state().accounts.set(existingAccountId, "First client");
+    db.state().contacts.set(existingContactId, {
+      account_id: existingAccountId,
+      name: "CRM Shared",
+      email: "shared@example.test",
+    });
+    db.state().identities.set(
+      JSON.stringify([namespace, "account_contact", otherContactKey]),
+      existingContactId,
+    );
+    const store = await WfmHistoryStore.open(db.pool, namespace);
+    try {
+      await expect(store.upsert("client", firstClient)).rejects.toThrow(
+        "WFM_CONTACT_EMAIL_CONFLICT",
+      );
+      expect(
+        db.state().receipts.get(JSON.stringify([store.runId, "client", clientA])),
+      ).toMatchObject({ status: "failed", errorCode: "WFM_CONTACT_EMAIL_CONFLICT" });
+      expect(db.state().contacts.get(existingContactId)?.name).toBe("CRM Shared");
+      expect(db.state().links.size).toBe(0);
+      expect(db.identity("account_contact", contactKey)).toBeUndefined();
+      expect(db.identity("account", clientA)).toBeUndefined();
     } finally {
       await store.close(false);
     }

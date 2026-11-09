@@ -152,8 +152,27 @@ export class WfmHistoryStore {
   ): Promise<{ id: string; action: "created" | "updated" }> {
     const key = uuidKey(row);
     const identity = await upsertWfmIdentity(this.db, this.namespace, type, key);
-    const id = identity.resource_id;
-    const action = identity.created ? "created" : "updated";
+    let id = identity.resource_id;
+    let action: "created" | "updated" = identity.created ? "created" : "updated";
+    // Migration 003 adds business-key unique indexes (accounts lower(name), contacts
+    // (account_id, lower(email))) that the projections below do not target. A CRM row created
+    // before the first import would raise 23505 and abort the run, so a brand-new identity
+    // reuses the matching row and points at it; an established identity already owns a
+    // projection and must never be re-pointed silently.
+    if (identity.created) {
+      const reusable =
+        type === "account"
+          ? await this.reusableAccount(key, textValue(row.name))
+          : type === "account_contact"
+            ? await this.reusableContact(key, row)
+            : null;
+      if (reusable) {
+        await this.adoptIdentity(type, key, reusable);
+        id = reusable;
+        // The account/contact row pre-existed; this import refreshed and linked it.
+        action = "updated";
+      }
+    }
     if (type === "account_contact") {
       const existing = (
         await this.db.query<{ account_id: string }>(
@@ -195,6 +214,73 @@ export class WfmHistoryStore {
     }
     await this.receipt(type, key, id, action);
     return { id, action };
+  }
+
+  /**
+   * Adopt a pre-existing CRM account with the same normalized name. An exact spelling match
+   * wins; two trimmed-equal rows without one are ambiguous, and merging unrelated companies
+   * is worse than failing, so that becomes a typed conflict for the operator to resolve.
+   */
+  private async reusableAccount(key: string, name: string | null) {
+    if (!name) return null;
+    const matches = (
+      await this.db.query<{ id: string; exact: boolean }>(
+        `select id,(name=$1) as exact from accounts where lower(trim(name))=lower(trim($1))
+         order by exact desc,id limit 2`,
+        [name],
+      )
+    ).rows;
+    const [first, second] = matches;
+    if (!first) return null;
+    if (!first.exact && second) throw new Error("WFM_ACCOUNT_NAME_CONFLICT");
+    return this.unclaimedTarget("account", key, first.id, "WFM_ACCOUNT_NAME_CONFLICT");
+  }
+
+  /**
+   * Adopt a pre-existing CRM contact under the same account and email. The projection then
+   * refreshes its name/phone instead of failing the unique (account_id, lower(email)) index.
+   * A different WorkflowMax contact UUID already owning that row means two source contacts
+   * share one business key; merging them would conflate two people, so fail typed.
+   */
+  private async reusableContact(key: string, row: WfmObject) {
+    const email = textValue(object(row.contactDetails).email);
+    const account = await findIdentity(this.db, this.namespace, "account", row.clientUUID);
+    if (!email || !account) return null;
+    const matches = (
+      await this.db.query<{ id: string }>(
+        "select id from account_contacts where account_id=$1 and lower(email)=lower($2) limit 2",
+        [account, email],
+      )
+    ).rows;
+    const [first, second] = matches;
+    if (!first) return null;
+    if (second) throw new Error("WFM_CONTACT_EMAIL_CONFLICT");
+    return this.unclaimedTarget("account_contact", key, first.id, "WFM_CONTACT_EMAIL_CONFLICT");
+  }
+
+  /** A reusable projection row must not already belong to another source identity. */
+  private async unclaimedTarget(
+    type: "account" | "account_contact",
+    key: string,
+    targetId: string,
+    conflictCode: "WFM_ACCOUNT_NAME_CONFLICT" | "WFM_CONTACT_EMAIL_CONFLICT",
+  ) {
+    const claimed = await this.db.query(
+      `select 1 from import_identity_keys where resource_type=$1 and resource_id=$2
+       and not (source_namespace=$3 and external_key=$4) limit 1`,
+      [type, targetId, this.namespace, key],
+    );
+    if (claimed.rows.length) throw new Error(conflictCode);
+    return targetId;
+  }
+
+  /** Re-point a just-created identity at the pre-existing row its projection reuses. */
+  private async adoptIdentity(type: WfmStoredType, key: string, targetId: string) {
+    await this.db.query(
+      `update import_identity_keys set resource_id=$1
+       where source_namespace=$2 and resource_type=$3 and external_key=$4`,
+      [targetId, this.namespace, type, key],
+    );
   }
 
   private async linkContact(id: string, account: string) {
