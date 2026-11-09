@@ -3,8 +3,8 @@
 This draft provides lossless history staging, stable source identities, an HTTP/OAuth
 client, an ordered importer, and a reconciliation baseline. The boundary for this PR
 review is draft only: no merge, ready-for-review state change, live WFM API requests,
-OAuth token use, or UAT/production database apply. Prior approvals recorded in the
-local `WFM_HARD_STOP.md` do not expand this review's scope.
+OAuth token use, or UAT/production database apply. This is the hard-stop reference for
+those limits; approvals recorded elsewhere do not expand this review's scope.
 
 All proof for this PR uses synthetic fixtures and disposable local PostgreSQL. Do not
 merge or run migrations against UAT/production as part of this scaffold review.

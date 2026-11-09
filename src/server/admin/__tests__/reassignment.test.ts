@@ -209,6 +209,27 @@ describe("reassignment service", () => {
     expect(sqls.filter((sql) => sql.includes("insert into admin_audit_logs"))).toHaveLength(1);
   });
 
+  it("takes the super-admin guard advisory lock before any profile row lock", async () => {
+    // The target `for update` and the ordered active-super-admin set are a lock cycle when two
+    // writers each hold the row the other's guard set wants. The advisory lock is the shared
+    // first wait-for edge, so it must come before the target row lock, not after it.
+    const { service, dbQuery } = makeHarness({});
+    const reviewedInventory = inventoryWithCounts({});
+
+    await service.deactivateUserWithReassignment(
+      { profileId: "target", reason: "Planned departure", reviewedInventory, successors: {} },
+      "admin-1",
+    );
+
+    const sqls = dbQuery.mock.calls.map(([sql]) => String(sql));
+    const guardLockIndex = sqls.findIndex((sql) => sql.includes("pg_advisory_xact_lock"));
+    const targetRowLockIndex = sqls.findIndex((sql) =>
+      sql.includes("from profiles where id = $1 for update"),
+    );
+    expect(guardLockIndex).toBe(0);
+    expect(targetRowLockIndex).toBeGreaterThan(guardLockIndex);
+  });
+
   it("protects the final active Super Admin", async () => {
     const { service } = makeHarness({
       target: { ...target, role: "super_admin" },
