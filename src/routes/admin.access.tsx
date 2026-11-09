@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { ProfileSearchCombobox } from "@/components/people/profile-search-combobox";
+import { useClientNow } from "@/hooks/use-client-now";
 import { adminControlAccess } from "@/lib/admin-capabilities";
 import {
   adminOrganizationQueryKey,
@@ -210,8 +211,14 @@ function AdminAccessRoute() {
 
   const access = adminControlAccess(profile?.role);
   const updateSearch = (next: AdminAccessSearch) => navigate({ search: () => next, replace: true });
+  // `useClientNow` is null on the server and on the first client render, so both agree on the
+  // override split. Until it resolves every non-revoked override counts as active; after mount
+  // an expired grant drops into the history table below instead of showing a live Revoke.
+  const clientNow = useClientNow();
   const activeOverrides = overrides.filter(
-    (entry) => !entry.revokedAt && (!entry.expiresAt || Date.parse(entry.expiresAt) > Date.now()),
+    (entry) =>
+      !entry.revokedAt &&
+      (!entry.expiresAt || clientNow === null || Date.parse(entry.expiresAt) > clientNow),
   );
 
   async function refreshAdminAccessCaches(profileId?: string, teamId?: string) {

@@ -1,5 +1,6 @@
 import { SectionHeader, StatusBadge } from "@/components/sales";
 import { Button } from "@/components/ui/button";
+import { useClientNow } from "@/hooks/use-client-now";
 import type { Capability } from "@/lib/admin/types";
 import type { PermissionOverrideRecord } from "@/server/repositories/admin-access";
 
@@ -175,10 +176,16 @@ export type OverrideHistoryProps = {
  * this screen could only be undone with direct SQL.
  */
 export function OverrideHistory({ overrides }: OverrideHistoryProps) {
+  // Expiry is a clock comparison, so it cannot be decided during the server render: doing so
+  // made the server and the first client render disagree whenever an override expired between
+  // them (a hydration mismatch), and an expired grant could keep a live Revoke button. Until
+  // the client clock resolves, only revoked rows are history — the parent route treats the
+  // rest as active for the same reason — and the expired ones move across after mount.
+  const clientNow = useClientNow();
   const history = overrides.filter(
     (entry) =>
       Boolean(entry.revokedAt) ||
-      Boolean(entry.expiresAt && Date.parse(entry.expiresAt) <= Date.now()),
+      (clientNow !== null && entry.expiresAt != null && Date.parse(entry.expiresAt) <= clientNow),
   );
 
   return (

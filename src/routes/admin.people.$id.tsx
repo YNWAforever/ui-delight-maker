@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useClientNow } from "@/hooks/use-client-now";
 import { adminControlAccess } from "@/lib/admin-capabilities";
 import { refreshAdminCapabilityScope } from "@/lib/admin-invalidation";
 import { AdminError } from "@/lib/admin/errors";
@@ -140,6 +141,7 @@ function AdminUserRoute() {
     initialData: loaderData.access,
     enabled: !loaderData.forbidden,
   });
+  const clientNow = useClientNow();
 
   const user = userData ?? null;
   const access = adminControlAccess(profile?.role);
@@ -179,8 +181,13 @@ function AdminUserRoute() {
 
   const name = user.name || user.email || "Unnamed user";
   const overrides = accessQuery.data.overrides;
+  // Client clock only: null on the server and first client render, so both agree on the split
+  // and an expired grant is never shown as active to a hydrating first paint. After mount the
+  // expired entries move to `OverrideHistory` instead of offering a live Revoke.
   const activeOverrides = overrides.filter(
-    (entry) => !entry.revokedAt && (!entry.expiresAt || Date.parse(entry.expiresAt) > Date.now()),
+    (entry) =>
+      !entry.revokedAt &&
+      (!entry.expiresAt || clientNow === null || Date.parse(entry.expiresAt) > clientNow),
   );
 
   const revokeSessions = async () => {

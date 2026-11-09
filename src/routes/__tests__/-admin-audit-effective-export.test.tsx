@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentType } from "react";
 import type { UserRole } from "@/lib/admin/types";
@@ -58,13 +58,18 @@ vi.mock("@/components/sales", async (importOriginal) => ({
   PermissionDeniedState: () => <p>Permission denied</p>,
   ErrorState: () => <p>Read failed</p>,
 }));
+import { exportAdminAuditLogsFn } from "@/server-functions/admin-access";
 import { Route } from "../admin.audit";
 const Page = Route.options.component as ComponentType;
 beforeEach(() => {
   state.role = "super_admin";
   state.capabilities = [];
+  vi.mocked(exportAdminAuditLogsFn).mockReset();
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 describe("Admin audit export uses the effective server capability", () => {
   it("removes export for a super admin with an effective deny", () => {
     render(<Page />);
@@ -115,5 +120,47 @@ describe("Admin audit filters", () => {
     expect(screen.queryByRole("combobox", { name: "Actor search" })).toBeNull();
     expect(screen.getByRole("textbox", { name: "Audit actor" })).toBeTruthy();
     expect(screen.getByText("Actor ID")).toBeTruthy();
+  });
+});
+
+describe("the audit export produces a real download", () => {
+  type CapturedDownload = {
+    href: string | null;
+    download: string | null;
+    /** True only if the anchor was in the document at the moment the click fired. */
+    connectedAtClick: boolean | null;
+  };
+
+  function captureDownload(): { captured: CapturedDownload; revoke: ReturnType<typeof vi.spyOn> } {
+    const captured: CapturedDownload = { href: null, download: null, connectedAtClick: null };
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:audit");
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      captured.href = this.href;
+      captured.download = this.download;
+      captured.connectedAtClick = this.isConnected;
+    });
+    return { captured, revoke };
+  }
+
+  it("attaches the anchor before clicking and revokes the blob URL afterwards", async () => {
+    // P3-1: the anchor used to be detached when clicked and the object URL was revoked in the
+    // same tick, so a browser could cancel the download while the toast still said it worked.
+    state.capabilities = ["audit.view", "audit.export"];
+    const { captured, revoke } = captureDownload();
+    vi.mocked(exportAdminAuditLogsFn).mockResolvedValue(state.loaded.data as never);
+    render(<Page />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Export this page (CSV)" }));
+
+    await waitFor(() => expect(captured.href).toBe("blob:audit"));
+    expect(captured.connectedAtClick).toBe(true);
+    expect(captured.download).toBe("fimmick-admin-audit-page-1.csv");
+    // Released after the click, not during it, and the anchor is gone from the document.
+    expect(revoke).not.toHaveBeenCalled();
+    expect(document.querySelector("a[download]")).toBeNull();
+    await waitFor(() => expect(revoke).toHaveBeenCalledWith("blob:audit"), { timeout: 2000 });
   });
 });

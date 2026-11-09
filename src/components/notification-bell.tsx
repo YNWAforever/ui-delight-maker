@@ -10,9 +10,12 @@ import {
   AlertTriangle,
   Clock,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { useNotifications } from "@/hooks/use-notifications";
 import { Button } from "@/components/ui/button";
+import { toSafeErrorMessage } from "@/lib/errors";
+import { notificationTarget } from "@/lib/notification-target";
 import { cn } from "@/lib/utils";
 import { formatDateTime, relativeTime } from "@/lib/format";
 import { useClientNow } from "@/hooks/use-client-now";
@@ -32,18 +35,11 @@ const typeColor: Record<string, string> = {
   stale_touchpoint: "text-tone-neutral-fg bg-muted",
 };
 
-function notificationLink(n: NotificationRecord): string {
-  if (n.object_type === "engagement") return `/renewals`;
-  if (n.object_type === "approval") return "/approvals";
-  if (n.object_type === "client") return `/clients/${n.object_id}`;
-  if (n.object_type === "lead") return `/leads/${n.object_id}`;
-  return "/notifications";
-}
-
 export function NotificationBell() {
   const clientNow = useClientNow();
   const { notifications, unreadCount, markAsRead, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
+  const [markingAll, setMarkingAll] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -54,6 +50,56 @@ export function NotificationBell() {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
+
+  /**
+   * One click: mark read, then go where `notificationTarget` says — or nowhere.
+   *
+   * The local resolver this replaces guessed a path string and cast it to `never`, so a
+   * `client`/`lead` row with no object id navigated to `/clients/null` or `/leads/null`, and
+   * an unknown type linked the bell back to itself. A null target is a plain, non-navigating
+   * row: marking it read is the whole action.
+   *
+   * `markAsRead` rethrows after rolling its optimistic write back, so a failed write used to
+   * flip the row read and silently flip it back. Reporting it and keeping the panel open is
+   * what makes the failure visible; navigation waits for the write, so a failed row cannot
+   * take the reader away from the message that explains it.
+   */
+  const openNotification = async (notification: NotificationRecord) => {
+    const target = notificationTarget(notification);
+    if (!notification.read_at) {
+      try {
+        await markAsRead(notification.id);
+      } catch (error) {
+        toast.error(toSafeErrorMessage(error));
+        return;
+      }
+    }
+
+    if (target === null) return;
+    setOpen(false);
+    switch (target.kind) {
+      case "approvals":
+        return navigate({ to: "/approvals" });
+      case "renewals":
+        return navigate({ to: "/renewals" });
+      case "client":
+        return navigate({ to: "/clients/$id", params: { id: target.id } });
+      case "lead":
+        return navigate({ to: "/leads/$id", params: { id: target.id } });
+    }
+  };
+
+  const markEverything = async () => {
+    if (markingAll || unreadCount === 0) return;
+    setMarkingAll(true);
+    try {
+      await markAllRead();
+    } catch (error) {
+      toast.error(toSafeErrorMessage(error));
+    } finally {
+      setMarkingAll(false);
+    }
+  };
 
   const visible = notifications.slice(0, 6);
 
@@ -80,11 +126,12 @@ export function NotificationBell() {
             <span className="text-sm font-semibold">Notifications</span>
             {unreadCount > 0 && (
               <button
-                onClick={markAllRead}
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                onClick={() => void markEverything()}
+                disabled={markingAll}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
               >
                 <CheckCheck className="h-3 w-3" />
-                Mark all read
+                {markingAll ? "Marking…" : "Mark all read"}
               </button>
             )}
           </div>
@@ -101,11 +148,7 @@ export function NotificationBell() {
                 return (
                   <button
                     key={n.id}
-                    onClick={() => {
-                      markAsRead(n.id);
-                      setOpen(false);
-                      navigate({ to: notificationLink(n) as never });
-                    }}
+                    onClick={() => void openNotification(n)}
                     className={cn(
                       "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-accent",
                       isUnread && "bg-accent/40",

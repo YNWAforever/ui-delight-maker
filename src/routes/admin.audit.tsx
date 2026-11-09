@@ -208,8 +208,13 @@ function AdminAuditRoute() {
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = csvFileName("fimmick-admin-audit", "page", result.page);
+      // Same download shape as the other exports: the anchor has to be in the document for
+      // the click to be a user-initiated download, and the object URL cannot be released in
+      // the same tick or some browsers cancel the fetch and the toast lies about a file.
+      document.body.appendChild(anchor);
       anchor.click();
-      URL.revokeObjectURL(url);
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success(
         `Downloaded ${formatCount(result.items.length)} audit ${result.items.length === 1 ? "entry" : "entries"} from this page.`,
       );
