@@ -86,6 +86,16 @@ describe("LoginAuthPage", () => {
     expect(screen.getByRole("heading", { name: "Join Fimmick ClientOps" })).toBeTruthy();
     expect(screen.getByText("Invitation for person@example.com")).toBeTruthy();
   });
+  it("renders the verify-email state for a signed-in unverified identity", () => {
+    render(<LoginAuthPage accessState="unverified" />);
+
+    expect(screen.getByRole("heading", { name: /verify your email/i })).toBeTruthy();
+    expect(screen.getByText(/neon auth sent/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /different account/i })).toBeTruthy();
+    expect(screen.queryByText(/Auth view:/)).toBeNull();
+    expect(screen.queryByText(/Loading sign-in form/)).toBeNull();
+  });
+
   it("gives the public skip link one focusable main target", () => {
     render(<LoginAuthPage />);
     const main = screen.getByRole("main");

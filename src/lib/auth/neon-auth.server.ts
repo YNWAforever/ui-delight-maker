@@ -140,6 +140,7 @@ export type WorkspaceAccessDecision =
   | { state: "anonymous" }
   | { state: "active"; session: AppSession }
   | { state: "invited" }
+  | { state: "unverified" }
   | { state: "suspended" }
   | { state: "deactivated" }
   | { state: "no_profile" };
@@ -159,8 +160,9 @@ export async function resolveWorkspaceAccess(): Promise<WorkspaceAccessDecision>
    * unaffected by the upstream verification flag.
    */
   const emailVerified = identity.user.emailVerified === true;
+  const profileById = await getProfileById(identity.user.id);
   const profile =
-    (await getProfileById(identity.user.id)) ??
+    profileById ??
     (emailVerified && normalizedEmail ? await getProfileByEmail(normalizedEmail) : null);
 
   if (profile?.status === "suspended") return { state: "suspended" };
@@ -168,6 +170,17 @@ export async function resolveWorkspaceAccess(): Promise<WorkspaceAccessDecision>
   if (profile?.status === "active") {
     if (sessionIsRevoked(identity, profile)) return { state: "anonymous" };
     return { state: "active", session: { ...identity, profile } };
+  }
+
+  /**
+   * A signed-in identity whose email the upstream has not verified cannot be trusted to be the
+   * address it names, so it must not reach any email-keyed state: not the email-fallback profile
+   * binding above, and not the pending invitation below (which would otherwise invite it to
+   * accept and then fail the repository's verification check). Report the distinct state so the
+   * login surface can explain the verification step instead of collapsing into `no_profile`.
+   */
+  if (!profileById && normalizedEmail && !emailVerified) {
+    return { state: "unverified" };
   }
 
   if (normalizedEmail) {

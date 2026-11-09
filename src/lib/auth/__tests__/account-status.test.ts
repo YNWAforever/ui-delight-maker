@@ -164,18 +164,49 @@ describe("ClientOps account status at sign in", () => {
     ["missing", undefined],
     ["false", false],
     ["null", null],
-  ])("does not bind a profile by email when verification is %s", async (_label, emailVerified) => {
+  ])(
+    "reports a distinct unverified state without running the email fallback when verification is %s",
+    async (_label, emailVerified) => {
+      getProfileByIdMock.mockResolvedValue(null);
+      getProfileByEmailMock.mockResolvedValue(
+        profile({ id: "legacy-profile", email: "ada@example.com" }),
+      );
+      neonSession({
+        user: { id: "new-auth-id", email: "ada@example.com", emailVerified },
+      });
+
+      await expect(resolveWorkspaceAccess()).resolves.toEqual({ state: "unverified" });
+      expect(getProfileByEmailMock).not.toHaveBeenCalled();
+      expect(getCurrentInvitationMock).not.toHaveBeenCalled();
+      await expect(getNeonAuthSession()).resolves.toBeNull();
+    },
+  );
+
+  it("does not treat a pending invitation as available until the email is verified", async () => {
     getProfileByIdMock.mockResolvedValue(null);
-    getProfileByEmailMock.mockResolvedValue(
-      profile({ id: "legacy-profile", email: "ada@example.com" }),
-    );
+    getCurrentInvitationMock.mockResolvedValue({
+      status: "pending",
+      expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+    });
     neonSession({
-      user: { id: "new-auth-id", email: "ada@example.com", emailVerified },
+      user: { id: "new-auth-id", email: "ada@example.com", emailVerified: false },
     });
 
-    await expect(resolveWorkspaceAccess()).resolves.toEqual({ state: "no_profile" });
-    expect(getProfileByEmailMock).not.toHaveBeenCalled();
+    await expect(resolveWorkspaceAccess()).resolves.toEqual({ state: "unverified" });
+    expect(getCurrentInvitationMock).not.toHaveBeenCalled();
   });
+
+  it.each(["suspended", "deactivated"] as const)(
+    "keeps %s precedence for an id-matched profile even when the email is unverified",
+    async (status) => {
+      getProfileByIdMock.mockResolvedValue(profile({ status }));
+      neonSession({
+        user: { id: "user-1", email: "ada@example.com", emailVerified: false },
+      });
+
+      await expect(resolveWorkspaceAccess()).resolves.toMatchObject({ state: status });
+    },
+  );
 
   it("binds a profile by verified email even when the auth user id is new", async () => {
     getProfileByIdMock.mockResolvedValue(null);

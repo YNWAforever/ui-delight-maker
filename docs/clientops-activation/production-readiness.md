@@ -17,6 +17,7 @@
 
 - [ ] Production `DATABASE_URL` points to Neon production.
 - [ ] Production `NEON_AUTH_URL` points to the production Neon Auth integration; browser auth uses the same-origin `/api/auth` proxy.
+- [ ] Production Neon Auth requires email verification: the app refuses unverified email profile binding and invitation acceptance, and shows the verify-email workspace state, so disabling it blocks invitees from activating until an admin provisions them by auth user id.
 - [ ] Production `APP_BASE_URL` is the production Vercel URL/custom domain.
 - [ ] Production n8n workflows are separate from staging workflows or have production-safe webhook paths.
 - [ ] Production `N8N_WORKFLOW_TOKEN` is different from staging.

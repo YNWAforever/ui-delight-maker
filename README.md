@@ -56,6 +56,7 @@ use, or UAT/prod apply during scaffold review.
 
 ## Production Gates
 
+- The Neon Auth project MUST require email verification. The app refuses to bind a pre-provisioned profile or accept an invitation on an unverified address, and signed-in unverified users get a distinct "Verify your email address" state instead of a workspace; with verification disabled, invitees cannot activate until it is enabled or an admin provisions them by auth user id.
 - Configure `N8N_USER_INVITATION_WEBHOOK_URL` only after an operator explicitly approves the n8n workflow, recipient handling, and secret configuration.
 - Set `CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL` only for the one-time guarded production bootstrap command, after explicit operator approval. Do not run the bootstrap command as part of a normal deploy.
 - A preview must expose `/api/build` with the candidate commit SHA and pass role browser UAT before merging. Missing preview or role sessions remain an open gate; local tests do not substitute for them.

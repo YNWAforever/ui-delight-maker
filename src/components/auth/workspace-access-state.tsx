@@ -1,11 +1,23 @@
-export type WorkspaceAccessStateName = "invited" | "suspended" | "deactivated" | "no_profile";
+export type WorkspaceAccessStateName =
+  | "invited"
+  | "suspended"
+  | "deactivated"
+  | "unverified"
+  | "no_profile";
 
 type WorkspaceAccessStateProps = {
   state: WorkspaceAccessStateName;
   onSignOut?: () => void;
 };
 
-const messages: Record<WorkspaceAccessStateName, { title: string; description: string }> = {
+type WorkspaceAccessStateMessage = {
+  title: string;
+  description: string;
+  /** Overrides the default sign-out label when the state needs a more specific action. */
+  actionLabel?: string;
+};
+
+const messages: Record<WorkspaceAccessStateName, WorkspaceAccessStateMessage> = {
   invited: {
     title: "Invitation pending",
     description:
@@ -18,6 +30,12 @@ const messages: Record<WorkspaceAccessStateName, { title: string; description: s
   deactivated: {
     title: "Workspace access deactivated",
     description: "Your account is deactivated. Contact your administrator for help.",
+  },
+  unverified: {
+    title: "Verify your email address",
+    description:
+      "Open the verification link Neon Auth sent to your email address, then reload this page. Check your inbox and spam folder if it has not arrived.",
+    actionLabel: "Use a different account",
   },
   no_profile: {
     title: "Workspace access pending",
@@ -38,7 +56,7 @@ export function WorkspaceAccessState({ state, onSignOut }: WorkspaceAccessStateP
           className="mt-5 rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent"
           onClick={onSignOut}
         >
-          Sign out
+          {message.actionLabel ?? "Sign out"}
         </button>
       )}
     </section>
