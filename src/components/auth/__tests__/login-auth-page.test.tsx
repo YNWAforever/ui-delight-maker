@@ -86,11 +86,14 @@ describe("LoginAuthPage", () => {
     expect(screen.getByRole("heading", { name: "Join Fimmick ClientOps" })).toBeTruthy();
     expect(screen.getByText("Invitation for person@example.com")).toBeTruthy();
   });
-  it("renders the verify-email state for a signed-in unverified identity", () => {
-    render(<LoginAuthPage accessState="unverified" />);
+  it("renders the verify-email form for a signed-in unverified identity", () => {
+    render(<LoginAuthPage accessState="unverified" accessEmail="invitee@fimmick.com" />);
 
     expect(screen.getByRole("heading", { name: /verify your email/i })).toBeTruthy();
-    expect(screen.getByText(/neon auth sent/i)).toBeTruthy();
+    expect(screen.getByText(/neon auth emailed a verification code/i)).toBeTruthy();
+    expect(screen.getByText("invitee@fimmick.com")).toBeTruthy();
+    expect(screen.getByLabelText(/verification code/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /verify email/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /different account/i })).toBeTruthy();
     expect(screen.queryByText(/Auth view:/)).toBeNull();
     expect(screen.queryByText(/Loading sign-in form/)).toBeNull();

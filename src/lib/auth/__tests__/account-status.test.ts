@@ -175,12 +175,27 @@ describe("ClientOps account status at sign in", () => {
         user: { id: "new-auth-id", email: "ada@example.com", emailVerified },
       });
 
-      await expect(resolveWorkspaceAccess()).resolves.toEqual({ state: "unverified" });
+      await expect(resolveWorkspaceAccess()).resolves.toEqual({
+        state: "unverified",
+        email: "ada@example.com",
+      });
       expect(getProfileByEmailMock).not.toHaveBeenCalled();
       expect(getCurrentInvitationMock).not.toHaveBeenCalled();
       await expect(getNeonAuthSession()).resolves.toBeNull();
     },
   );
+
+  it("returns the normalized unverified email for the verification form", async () => {
+    getProfileByIdMock.mockResolvedValue(null);
+    neonSession({
+      user: { id: "new-auth-id", email: " ADA@EXAMPLE.COM ", emailVerified: false },
+    });
+
+    await expect(resolveWorkspaceAccess()).resolves.toEqual({
+      state: "unverified",
+      email: "ada@example.com",
+    });
+  });
 
   it("does not treat a pending invitation as available until the email is verified", async () => {
     getProfileByIdMock.mockResolvedValue(null);
@@ -192,7 +207,10 @@ describe("ClientOps account status at sign in", () => {
       user: { id: "new-auth-id", email: "ada@example.com", emailVerified: false },
     });
 
-    await expect(resolveWorkspaceAccess()).resolves.toEqual({ state: "unverified" });
+    await expect(resolveWorkspaceAccess()).resolves.toEqual({
+      state: "unverified",
+      email: "ada@example.com",
+    });
     expect(getCurrentInvitationMock).not.toHaveBeenCalled();
   });
 

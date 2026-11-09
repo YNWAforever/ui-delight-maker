@@ -93,8 +93,9 @@ n8n/workflows/         Agent workflow JSON definitions
 - Never set `N8N_USER_INVITATION_WEBHOOK_URL` or `CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL`
   without explicit operator approval — see `README.md` production gates.
 - **The Neon Auth project must require email verification.** The app refuses unverified email
-  profile binding and invitation acceptance, and shows the explicit verify-email workspace state;
-  disabling it blocks invitees from activating until an admin provisions them by auth user id.
+  profile binding and invitation acceptance, and shows the explicit verify-email workspace state
+  where the user enters the emailed verification code; disabling the verification email blocks
+  invitees from activating until an admin provisions them by auth user id.
 - Seed env vars (`CLIENTOPS_SEED_*`) must never point at production.
 
 ## Neon-only runtime

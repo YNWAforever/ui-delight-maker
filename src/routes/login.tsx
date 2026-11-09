@@ -21,5 +21,11 @@ function LoginPage() {
     select: (state) => state.location.pathname,
   });
 
-  return <LoginAuthPage authPath={getLoginAuthPath(pathname)} accessState={access.state} />;
+  return (
+    <LoginAuthPage
+      authPath={getLoginAuthPath(pathname)}
+      accessState={access.state}
+      accessEmail={access.email ?? undefined}
+    />
+  );
 }

@@ -140,7 +140,7 @@ export type WorkspaceAccessDecision =
   | { state: "anonymous" }
   | { state: "active"; session: AppSession }
   | { state: "invited" }
-  | { state: "unverified" }
+  | { state: "unverified"; email: string }
   | { state: "suspended" }
   | { state: "deactivated" }
   | { state: "no_profile" };
@@ -180,7 +180,7 @@ export async function resolveWorkspaceAccess(): Promise<WorkspaceAccessDecision>
    * login surface can explain the verification step instead of collapsing into `no_profile`.
    */
   if (!profileById && normalizedEmail && !emailVerified) {
-    return { state: "unverified" };
+    return { state: "unverified", email: normalizedEmail };
   }
 
   if (normalizedEmail) {

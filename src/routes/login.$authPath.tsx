@@ -17,5 +17,11 @@ export const Route = createFileRoute("/login/$authPath")({
 function LoginAuthPathPage() {
   const { authPath } = Route.useParams();
   const access = Route.useLoaderData();
-  return <LoginAuthPage authPath={authPath} accessState={access.state} />;
+  return (
+    <LoginAuthPage
+      authPath={authPath}
+      accessState={access.state}
+      accessEmail={access.email ?? undefined}
+    />
+  );
 }

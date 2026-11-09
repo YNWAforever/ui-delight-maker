@@ -19,6 +19,8 @@ type LoginAuthPageProps = {
   title?: string;
   description?: string;
   accessState?: "anonymous" | "active" | WorkspaceAccessStateName;
+  /** Server-resolved address for the unverified state; the page never accepts a typed email. */
+  accessEmail?: string;
 };
 
 export function LoginAuthPage({
@@ -27,6 +29,7 @@ export function LoginAuthPage({
   title = "Fimmick ClientOps",
   description,
   accessState = "anonymous",
+  accessEmail,
 }: LoginAuthPageProps) {
   const [signOutError, setSignOutError] = useState(false);
   const isSignUp = authPath === "sign-up" && redirectTo.startsWith("/invite/");
@@ -58,6 +61,7 @@ export function LoginAuthPage({
           <>
             <WorkspaceAccessState
               state={accessState}
+              email={accessEmail}
               onSignOut={() => {
                 void signOut()
                   .then(() => window.location.replace("/login"))
