@@ -157,7 +157,6 @@ vi.mock("@/server/admin/reassignment.server", () => ({
 vi.mock("@/server/repositories/accounts", () => ({
   createAccount: vi.fn(),
   getAccount: vi.fn(),
-  getAccountWorkspaceData: vi.fn(),
   listAccounts: vi.fn(),
   updateAccount: mocks.updateAccount,
 }));

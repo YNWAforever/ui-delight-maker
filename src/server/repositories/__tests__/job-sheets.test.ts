@@ -208,6 +208,23 @@ describe("job sheets repository", () => {
     );
   });
 
+  it("escapes LIKE metacharacters in company, quote number and PO searches", async () => {
+    // Unescaped, `%` matches every job sheet and `_` any one character, so a typed wildcard
+    // would silently turn a filtered list into a workspace-wide one.
+    mockQuery.mockResolvedValue([]);
+    const { listJobSheets } = await import("../job-sheets");
+
+    await listJobSheets(
+      { company: " 100%_x ", quoteNumber: "Q_%", po: "PO%1" },
+      jobSheetAuthorization,
+    );
+
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("from job_sheets"),
+      expect.arrayContaining(["%100\\%\\_x%", "%Q\\_\\%%", "%PO\\%1%"]),
+    );
+  });
+
   it("lists job sheets by client and account filters", async () => {
     mockQuery.mockResolvedValue([]);
     const { listJobSheets } = await import("../job-sheets");

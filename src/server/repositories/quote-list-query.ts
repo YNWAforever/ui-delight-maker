@@ -1,5 +1,6 @@
 import { buildFilters } from "@/server/db/query-builders";
 import type { QuoteFilters } from "@/server/repositories/quotes";
+import { escapeLikePattern } from "@/lib/sql-like";
 
 /**
  * Whether this actor's CAPABILITY (not any single row's ownership) lets a search term match
@@ -46,21 +47,16 @@ export type QuoteListQueryParts = {
   values: unknown[];
 };
 
-/** Longest input that can reach the predicate. No number or company name approaches it. */
-const MAX_SEARCH_LENGTH = 100;
-
 /**
- * Trim, cap, and escape the LIKE metacharacters.
- *
- * Values are parameterised, so this is not about injection. It is that an unescaped `%`
- * matches every row, which would silently turn the tiles into a workspace-wide total. A
- * blank search must return null rather than degrade into `ilike '%%'` — the same bug.
+ * Trim, cap, and escape the LIKE metacharacters. The work itself lives in `escapeLikePattern`
+ * so every user-text search in the repository layer agrees on the rules; this wrapper only owns
+ * the quote-list contract around it: a blank search is null rather than `ilike '%%'`, and a
+ * non-blank one is a contains match.
  */
 function normalizeSearch(raw: string | undefined): string | null {
   const trimmed = (raw ?? "").trim();
   if (!trimmed) return null;
-  const escaped = trimmed.slice(0, MAX_SEARCH_LENGTH).replace(/[\\%_]/g, (char) => `\\${char}`);
-  return `%${escaped}%`;
+  return `%${escapeLikePattern(trimmed)}%`;
 }
 
 /**

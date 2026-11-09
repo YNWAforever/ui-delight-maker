@@ -1,5 +1,6 @@
 import { USER_ROLES, type ProfileStatus, type UserRole } from "@/lib/admin/types";
 import { AdminError } from "@/lib/admin/errors";
+import { escapeLikePattern } from "@/lib/sql-like";
 import { redactAuditValue } from "@/server/repositories/admin-access";
 import {
   query as runQuery,
@@ -174,6 +175,21 @@ function audit(
   );
 }
 
+/**
+ * The one ordered first lock for every evaluation of the "last active super admin" guard.
+ *
+ * `changeUserRole` and `setUserStatus` lock the target profile row before reading the ordered
+ * active-super-admin set `for update`. Two concurrent super-admin changes can then each hold the
+ * row the other's guard set is about to lock (A locks target B, then waits on A's row in the
+ * guard set; B locks target A, then waits on B's row in the guard set), which Postgres resolves
+ * by aborting one with 40P01 instead of failing cleanly. Taking this transaction-scoped advisory
+ * lock BEFORE any profile row lock gives every writer the same first wait-for edge, so the
+ * second one queues here and the cycle never forms. It releases at commit/rollback.
+ */
+async function lockSuperAdminGuard(db: Queryable) {
+  await db.query("select pg_advisory_xact_lock(hashtextextended('profiles:super_admin_guard', 0))");
+}
+
 function buildUserWhere(filters: AdminUserFilters) {
   const conditions: string[] = [];
   const values: unknown[] = [];
@@ -183,7 +199,7 @@ function buildUserWhere(filters: AdminUserFilters) {
   };
 
   if (filters.search?.trim()) {
-    values.push("%" + filters.search.trim() + "%");
+    values.push("%" + escapeLikePattern(filters.search) + "%");
     const placeholder = "$" + values.length;
     conditions.push(
       "(p.name ilike " +
@@ -417,6 +433,8 @@ export function createAdminUsersRepository(dependencies: Dependencies = {}) {
     }
     const reason = requireReason(reasonInput);
     return transaction(async (db) => {
+      // Ordered before the target row lock; see lockSuperAdminGuard for the cycle this breaks.
+      await lockSuperAdminGuard(db);
       const locked = await db.query<Record<string, unknown>>(
         "select * from profiles where id = $1 for update",
         [profileId],
@@ -459,6 +477,8 @@ export function createAdminUsersRepository(dependencies: Dependencies = {}) {
     const targetStatus: ProfileStatus =
       action === "reactivate" ? "active" : action === "suspend" ? "suspended" : "deactivated";
     return transaction(async (db) => {
+      // Ordered before the target row lock; see lockSuperAdminGuard for the cycle this breaks.
+      await lockSuperAdminGuard(db);
       const locked = await db.query<Record<string, unknown>>(
         "select * from profiles where id = $1 for update",
         [profileId],

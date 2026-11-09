@@ -1,4 +1,5 @@
 import { buildFilters, buildUpdate } from "@/server/db/query-builders";
+import { escapeLikePattern } from "@/lib/sql-like";
 import type {
   Client,
   Lead,
@@ -498,13 +499,17 @@ function matchesReferenceSearch(item: { id: string } & Record<string, unknown>, 
   );
 }
 
-async function mergeSelectedReference<T extends { id: string }>(
+function mergeSelectedReference<T extends { id: string }>(
   items: T[],
   selected: T | null,
   limit: number,
 ) {
   if (!selected) return items.slice(0, limit);
-  return [selected, ...items.filter((item) => item.id !== selected.id)];
+  // The pinned row is prepended but the page still holds `limit` rows. Returning the pin plus a
+  // full fetched page would be `limit + 1`: the caller paginates with offset `page * limit`, so
+  // the extra row pushes one fetched row into the overlap where the next page repeats it. The
+  // pin therefore replaces the last fetched row of this page instead of being added to it.
+  return [selected, ...items.filter((item) => item.id !== selected.id)].slice(0, limit);
 }
 
 export async function listQuoteReferencePage<K extends QuoteReferenceKind>(
@@ -512,7 +517,7 @@ export async function listQuoteReferencePage<K extends QuoteReferenceKind>(
 ): Promise<QuoteReferencePage<K>> {
   const { page, limit, offset } = normalizeQuoteReferencePagination(input);
   const search = input.search?.trim();
-  const pattern = search ? `%${search}%` : undefined;
+  const pattern = search ? `%${escapeLikePattern(search)}%` : undefined;
 
   let items: QuoteReferenceItemMap[K][];
   let selected: QuoteReferenceItemMap[K] | null = null;
@@ -623,7 +628,9 @@ export async function listQuoteReferencePage<K extends QuoteReferenceKind>(
     ];
   }
 
-  const merged = await mergeSelectedReference(items, selected, limit);
+  const merged = mergeSelectedReference(items, selected, limit);
+  // Only a selected row the search does NOT match adds to the total: a matching one is already
+  // counted by the aggregate query, and adding it again would overstate the paginated total.
   const selectedAddsToSearch = selected && !matchesReferenceSearch(selected, search);
   return {
     items: merged,

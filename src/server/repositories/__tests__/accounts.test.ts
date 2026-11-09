@@ -1,42 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  mockQuery,
-  mockQueryOne,
-  mockListAccountContacts,
-  mockListClients,
-  mockListLeads,
-  mockListQuotes,
-  mockListTasks,
-  mockGetAccountTimeline,
-} = vi.hoisted(() => ({
+const { mockQuery, mockQueryOne } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
   mockQueryOne: vi.fn(),
-  mockListAccountContacts: vi.fn(),
-  mockListClients: vi.fn(),
-  mockListLeads: vi.fn(),
-  mockListQuotes: vi.fn(),
-  mockListTasks: vi.fn(),
-  mockGetAccountTimeline: vi.fn(),
 }));
 
 vi.mock("@/server/db/neon.server", () => ({
   query: mockQuery,
   queryOne: mockQueryOne,
 }));
-
-vi.mock("@/server/repositories/account-contacts", () => ({
-  listAccountContacts: mockListAccountContacts,
-}));
-
-vi.mock("@/server/repositories/account-timeline", () => ({
-  getAccountTimeline: mockGetAccountTimeline,
-}));
-
-vi.mock("@/server/repositories/clients", () => ({ listClients: mockListClients }));
-vi.mock("@/server/repositories/leads", () => ({ listLeads: mockListLeads }));
-vi.mock("@/server/repositories/quotes", () => ({ listQuotes: mockListQuotes }));
-vi.mock("@/server/repositories/tasks", () => ({ listTasks: mockListTasks }));
 
 describe("accounts repository", () => {
   beforeEach(() => {
@@ -59,6 +31,33 @@ describe("accounts repository", () => {
       "cs-1",
       "prospect",
       "%Acme%",
+    ]);
+  });
+
+  it("escapes LIKE metacharacters in the account name search", async () => {
+    // Unescaped, `%` matches every row and `_` matches any one character, so a typed `%` would
+    // turn a filtered list into a tenant-wide one.
+    mockQuery.mockResolvedValue([]);
+    const { listAccounts } = await import("../accounts");
+
+    await listAccounts({ query: " 100%_x " });
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("name ilike"), ["%100\\%\\_x%"]);
+  });
+
+  it("escapes LIKE metacharacters in the paginated account search and its count", async () => {
+    mockQuery.mockResolvedValue([]);
+    mockQueryOne.mockResolvedValue({ total: 1 });
+    const { listAccountsPage } = await import("../accounts");
+
+    await listAccountsPage({ query: "50%", page: 2, limit: 25 });
+
+    // Both statements bind the same escaped contains-pattern, so the rows and the tile agree.
+    expect(mockQueryOne).toHaveBeenCalledWith(expect.stringContaining("count(*)"), ["%50\\%%"]);
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("name ilike"), [
+      "%50\\%%",
+      25,
+      25,
     ]);
   });
 
@@ -121,30 +120,5 @@ describe("accounts repository", () => {
       ["Renamed", "hello", "account-1"],
       undefined,
     );
-  });
-
-  it("composes the full Account workspace from linked records", async () => {
-    mockQueryOne.mockResolvedValue({
-      id: "account-1",
-      name: "Acme",
-      lifecycle_stage: "active_client",
-    });
-    mockListAccountContacts.mockResolvedValue([{ id: "contact-1", is_primary: true }]);
-    mockListClients.mockResolvedValue([{ id: "client-1" }]);
-    mockListLeads.mockResolvedValue([{ id: "lead-1" }]);
-    mockListQuotes.mockResolvedValue([{ id: "quote-1", status: "sent" }]);
-    mockListTasks.mockResolvedValue([{ id: "task-1", status: "open" }]);
-    mockGetAccountTimeline.mockResolvedValue([{ id: "timeline-1" }]);
-    const { getAccountWorkspaceData } = await import("../accounts");
-
-    const workspace = await getAccountWorkspaceData("account-1");
-
-    expect(mockListAccountContacts).toHaveBeenCalledWith("account-1");
-    expect(mockListClients).toHaveBeenCalledWith({ account_id: "account-1" });
-    expect(mockListLeads).toHaveBeenCalledWith({ account_id: "account-1" });
-    expect(mockListQuotes).toHaveBeenCalledWith({ account_id: "account-1" });
-    expect(mockListTasks).toHaveBeenCalledWith({ account_id: "account-1" });
-    expect(workspace.summary).toMatchObject({ id: "account-1", primaryContactId: "contact-1" });
-    expect(workspace.timeline).toEqual([{ id: "timeline-1" }]);
   });
 });

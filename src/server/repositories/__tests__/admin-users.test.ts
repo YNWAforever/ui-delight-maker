@@ -94,6 +94,20 @@ describe("admin users repository", () => {
     ]);
   });
 
+  it("escapes LIKE metacharacters in the directory search and its count", async () => {
+    // An unescaped `%` matches every profile, so a typed `%` would return the whole tenant from
+    // a search box that is supposed to be filtering. Both the count and the page bind the same
+    // escaped contains-pattern.
+    const query = vi.fn().mockResolvedValue([]);
+    const repo = createAdminUsersRepository({ query });
+
+    await repo.listAdminUsers({ search: " 100%_x " });
+
+    // The count binds the pattern alone; the page also carries the clamped limit and offset.
+    expect(query.mock.calls[0]?.[1]).toEqual(["%100\\%\\_x%"]);
+    expect(query.mock.calls[1]?.[1]).toEqual(["%100\\%\\_x%", 50, 0]);
+  });
+
   it("maps overview counts for actionable admin navigation", async () => {
     const query = vi.fn().mockResolvedValue([
       {
@@ -123,6 +137,7 @@ describe("admin users repository", () => {
 
   it("protects the last active super admin during role changes", async () => {
     const db = fakeDatabase([
+      [],
       [{ id: "super-1", role: "super_admin", status: "active" }],
       [{ count: 1 }],
     ]);
@@ -133,14 +148,17 @@ describe("admin users repository", () => {
     await expect(
       repo.changeUserRole("super-1", "admin", "Role transition", "admin-1"),
     ).rejects.toThrow("last active Super Admin");
-    expect(db.calls[0]?.toLowerCase()).toContain("for update");
-    expect(db.calls[1]).toContain("super_admin");
+    // The advisory lock is the first statement, before any profile row lock: it is the shared
+    // wait-for edge that stops two concurrent guards from deadlocking.
+    expect(db.calls[0]).toContain("pg_advisory_xact_lock");
     expect(db.calls[1]?.toLowerCase()).toContain("for update");
+    expect(db.calls[2]).toContain("super_admin");
+    expect(db.calls[2]?.toLowerCase()).toContain("for update");
   });
 
   it("updates lifecycle state, invalidates sessions, and audits in one transaction", async () => {
     const updated = { ...profileRow, status: "suspended", suspended_by: "admin-1" };
-    const db = fakeDatabase([[profileRow], [updated], [{ id: "audit-1" }]]);
+    const db = fakeDatabase([[], [profileRow], [updated], [{ id: "audit-1" }]]);
     const repo = createAdminUsersRepository({
       transaction: async <T>(work: (client: Queryable) => Promise<T>) => work(db),
     });
@@ -149,11 +167,12 @@ describe("admin users repository", () => {
       repo.setUserStatus("profile-1", "suspend", "Security leave", "admin-1"),
     ).resolves.toMatchObject({ id: "profile-1", status: "suspended" });
 
-    expect(db.calls[0]?.toLowerCase()).toContain("for update");
-    expect(db.calls[1]).toContain("session_invalid_before");
-    expect(db.calls[2]).toContain("admin_audit_logs");
-    expect(db.values[2]?.some((value) => String(value).includes("plain-password"))).toBe(false);
-    expect(db.values[2]?.some((value) => String(value).includes("[REDACTED]"))).toBe(true);
+    expect(db.calls[0]).toContain("pg_advisory_xact_lock");
+    expect(db.calls[1]?.toLowerCase()).toContain("for update");
+    expect(db.calls[2]).toContain("session_invalid_before");
+    expect(db.calls[3]).toContain("admin_audit_logs");
+    expect(db.values[3]?.some((value) => String(value).includes("plain-password"))).toBe(false);
+    expect(db.values[3]?.some((value) => String(value).includes("[REDACTED]"))).toBe(true);
   });
 
   it("reads the target's current role and status for lifecycle capability selection", async () => {
