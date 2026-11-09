@@ -22,6 +22,15 @@ const DASHBOARD_LIMITS = {
   products: 50,
 } as const;
 
+/**
+ * `quotes.currency` is `not null default 'HKD'` but may be the empty string. The quote list's
+ * aggregate and the client already normalise that with
+ * `coalesce(nullif(q.currency, ''), 'HKD')` (see `src/server/repositories/quotes.ts`); the
+ * dashboard total applies the identical rule so a quote counted under `''` cannot be split
+ * from the same quote shown under `HKD`.
+ */
+const CURRENCY = "coalesce(nullif(q.currency, ''), 'HKD')";
+
 type PipelineTotalsRow = {
   open_leads: number | string;
   active_quote_totals: CurrencyTotal[] | null;
@@ -158,11 +167,11 @@ async function visibleTotals(
       (select coalesce(jsonb_agg(jsonb_build_object('currency',currency,'amount',amount)
                                   order by currency), '[]'::jsonb)
        from (
-         select q.currency as currency, sum(q.total_value)::text as amount
+         select ${CURRENCY} as currency, sum(q.total_value)::text as amount
          from quotes q
          where q.status in ('pending_approval','approved','sent','viewed')
            and ${quoteScope}
-         group by q.currency
+         group by ${CURRENCY}
        ) currency_values) as active_quote_totals,
       (select count(*) from tasks t where t.status <> 'done'
         and ${taskScope}) as open_tasks,

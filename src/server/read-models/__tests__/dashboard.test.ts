@@ -66,6 +66,10 @@ describe("dashboard read model", () => {
     ]);
     expect(sql[0]).toContain("jsonb_array_elements");
     expect(sql[7]).toContain("jsonb_array_elements");
+    // An empty-string currency is legal (`not null default 'HKD'` does not exclude ''), and the
+    // tile has to apply the same coalesce the quote list does or the same quote lands in two
+    // currency totals.
+    expect(sql[7]).toContain("coalesce(nullif(q.currency, ''), 'HKD')");
     expect(sql[5]).toContain("from activity_logs");
     expect(sql.slice(0, 7).every((statement) => !/select\s+(?:\w+\.)?\*/i.test(statement))).toBe(
       true,

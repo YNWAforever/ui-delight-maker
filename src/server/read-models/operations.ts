@@ -109,6 +109,14 @@ const HK_END = `((${HK_TODAY} + 1)::timestamp at time zone 'Asia/Hong_Kong')`;
 const ACCEPTED_SNAPSHOT_VALID = `av.quote_id=q.id and av.reason='accepted'
   and av.snapshot->>'currency' ~ '^[A-Z]{3}$'
   and av.snapshot->>'total_value' ~ '^[0-9]+([.][0-9]{1,2})?$'`;
+/**
+ * `quotes.currency` is `not null default 'HKD'` but may be the empty string. The quote list's
+ * own aggregate and the client already normalise that with
+ * `coalesce(nullif(q.currency, ''), 'HKD')` (see `src/server/repositories/quotes.ts`); these
+ * report totals apply the identical rule so a quote counted under `''` cannot sit beside a tile
+ * counted under `HKD` in the same response.
+ */
+const CURRENCY = "coalesce(nullif(q.currency, ''), 'HKD')";
 
 function currencyTotals(value: CurrencyTotal[] | null | undefined): CurrencyTotal[] {
   return Array.isArray(value) ? value : [];
@@ -183,12 +191,12 @@ export async function loadReportSummary(
       (select coalesce(jsonb_agg(jsonb_build_object('currency',currency,'amount',amount)
                                   order by currency), '[]'::jsonb)
        from (
-         select q.currency as currency, sum(q.total_value)::text as amount
+         select ${CURRENCY} as currency, sum(q.total_value)::text as amount
          from quotes q
          where q.status in ('pending_approval','approved','sent','viewed')
            and q.updated_at >= now() - ($1::integer * interval '1 day')
            and ${quoteScope}
-         group by q.currency
+         group by ${CURRENCY}
        ) pipeline_values) as pipeline_totals,
       (select count(*) from quotes q
          left join quote_versions av on av.id=q.accepted_version_id
@@ -268,13 +276,13 @@ export const reportQueries: Record<ReportId, string> = {
   `,
   conversion: `
     select
-      date_trunc('week', created_at)::date::text as week,
+      date_trunc('week', created_at at time zone 'Asia/Hong_Kong')::date::text as week,
       count(*)::integer as leads,
       count(*) filter (where status = 'won')::integer as won
     from leads l
     where created_at >= now() - ($1::integer * interval '1 day')
-    group by date_trunc('week', created_at)
-    order by date_trunc('week', created_at) asc
+    group by date_trunc('week', created_at at time zone 'Asia/Hong_Kong')
+    order by date_trunc('week', created_at at time zone 'Asia/Hong_Kong') asc
   `,
   agents: `
     select
@@ -292,13 +300,13 @@ export const reportQueries: Record<ReportId, string> = {
   `,
   tasks: `
     select
-      created_at::date::text as day,
+      (created_at at time zone 'Asia/Hong_Kong')::date::text as day,
       count(*)::integer as created,
       count(*) filter (where status = 'done')::integer as completed
     from tasks t
     where created_at >= now() - ($1::integer * interval '1 day')
-    group by created_at::date
-    order by created_at::date asc
+    group by (created_at at time zone 'Asia/Hong_Kong')::date
+    order by (created_at at time zone 'Asia/Hong_Kong')::date asc
   `,
   // Pending is deliberately NOT windowed by $1 while decided is. A backlog is a now fact: if
   // the pending count moved when a reader switched 7d/30d/90d, a 30-day-old untouched
