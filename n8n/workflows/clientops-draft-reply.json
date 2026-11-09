@@ -11,23 +11,17 @@
       "name": "clientops-draft-reply",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        0,
-        0
-      ]
+      "position": [0, 0]
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst headers = item.headers ?? {};\nconst body = item.body ?? item;\nconst receivedToken = headers['x-workflow-token'] ?? headers['X-Workflow-Token'];\nif (!receivedToken || receivedToken !== $env.N8N_WORKFLOW_TOKEN) {\n  throw new Error('Invalid x-workflow-token');\n}\nif (body.trigger !== 'lead.reply_draft_requested') {\n  throw new Error(`Unexpected trigger: ${body.trigger ?? 'missing'}`);\n}\nif (!body.lead_id) {\n  throw new Error('Missing lead_id');\n}\nif (!body.agent_run_id) {\n  throw new Error('Missing agent_run_id');\n}\nreturn [{ json: { trigger: body.trigger, lead_id: body.lead_id, agent_run_id: body.agent_run_id } }];"
+        "jsCode": "const item = $input.first().json;\nconst headers = item.headers ?? {};\nconst body = item.body ?? item;\n// Fixed-work compare: no early exit, so response timing does not reveal the first differing byte.\nconst tokenMatches = (actual, expected) => {\n  if (typeof actual !== 'string' || typeof expected !== 'string') return false;\n  if (actual.length === 0 || expected.length === 0) return false;\n  let diff = 0;\n  const length = Math.max(actual.length, expected.length);\n  for (let index = 0; index < length; index += 1) {\n    const actualCode = index < actual.length ? actual.charCodeAt(index) : 0;\n    const expectedCode = index < expected.length ? expected.charCodeAt(index) : 0;\n    diff |= actualCode ^ expectedCode;\n  }\n  return diff === 0 && actual.length === expected.length;\n};\nconst receivedToken = headers['x-workflow-token'] ?? headers['X-Workflow-Token'];\nif (!tokenMatches(receivedToken, $env.N8N_WORKFLOW_TOKEN)) {\n  throw new Error('Invalid x-workflow-token');\n}\nif (body.trigger !== 'lead.reply_draft_requested') {\n  throw new Error(`Unexpected trigger: ${body.trigger ?? 'missing'}`);\n}\nif (!body.lead_id) {\n  throw new Error('Missing lead_id');\n}\nif (!body.agent_run_id) {\n  throw new Error('Missing agent_run_id');\n}\nreturn [{ json: { trigger: body.trigger, lead_id: body.lead_id, agent_run_id: body.agent_run_id } }];"
       },
       "id": "validate-draft-reply-trigger",
       "name": "Validate Trigger",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        220,
-        0
-      ]
+      "position": [220, 0]
     },
     {
       "parameters": {
@@ -51,10 +45,7 @@
       "name": "Fetch Lead Context",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        440,
-        0
-      ]
+      "position": [440, 0]
     },
     {
       "parameters": {
@@ -64,10 +55,7 @@
       "name": "Prepare Fallback / AI Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        660,
-        0
-      ]
+      "position": [660, 0]
     },
     {
       "parameters": {
@@ -98,10 +86,7 @@
       "name": "Provider Configured?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [
-        770,
-        -140
-      ]
+      "position": [770, -140]
     },
     {
       "parameters": {
@@ -129,10 +114,7 @@
       "name": "OpenRouter Request",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        880,
-        0
-      ],
+      "position": [880, 0],
       "continueOnFail": true
     },
     {
@@ -143,10 +125,7 @@
       "name": "Resolve Output",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1100,
-        0
-      ]
+      "position": [1100, 0]
     },
     {
       "parameters": {
@@ -170,10 +149,7 @@
       "name": "Writeback",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        1320,
-        0
-      ]
+      "position": [1320, 0]
     },
     {
       "parameters": {
@@ -185,10 +161,7 @@
       "name": "Respond To Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [
-        1540,
-        0
-      ]
+      "position": [1540, 0]
     }
   ],
   "connections": {
