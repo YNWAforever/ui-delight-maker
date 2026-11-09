@@ -185,11 +185,63 @@ export type RelationshipSchemaMigrationDecision =
       migrationPaths: readonly string[];
     };
 
+/** Loopback literals accepted by Node/PostgreSQL drivers, including bracketed IPv6. */
+const LOOPBACK_DATABASE_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+function databaseTargetHost(databaseUrl: string): string | null {
+  try {
+    return new URL(databaseUrl).hostname || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether a build/script invocation may run schema DDL, and against which host.
+ *
+ * The previous version applied migrations whenever `DATABASE_URL` was non-empty, so a build
+ * environment that inherited a remote URL (a copied Vercel variable, a shell still exporting
+ * UAT credentials) mutated that database without asking. The seed path already refuses
+ * production and requires explicit opt-ins; migration needs the same shape because it is
+ * destructive DDL. A loopback target is self-evidently disposable and stays frictionless —
+ * that is the database-contract CI rehearsal, which also sets `CLIENTOPS_SCRIPT_LOCAL_PG=1`
+ * and still selects the `pg` driver through `selectClientOpsScriptDriver`. Any other host
+ * needs `CLIENTOPS_ALLOW_SCHEMA_MIGRATION=1` from a human. Production deployment markers are
+ * never overridable: Vercel sets them, so copying env vars between environments cannot
+ * downgrade the guard.
+ */
 export function getClientOpsSchemaMigrationDecision(env: Env): RelationshipSchemaMigrationDecision {
   if (!env.DATABASE_URL) {
     return {
       shouldApply: false,
       reason: "DATABASE_URL is not set",
+    };
+  }
+
+  const targetHost = databaseTargetHost(env.DATABASE_URL);
+  if (!targetHost) {
+    return {
+      shouldApply: false,
+      reason: "DATABASE_URL is not a valid absolute URL; refusing to apply ClientOps migrations",
+    };
+  }
+
+  const productionMarkers = [
+    env.VERCEL_ENV === "production" ? "VERCEL_ENV=production" : null,
+    env.NODE_ENV === "production" ? "NODE_ENV=production" : null,
+  ].filter((marker): marker is string => marker !== null);
+  if (productionMarkers.length > 0) {
+    return {
+      shouldApply: false,
+      reason: `refusing to apply ClientOps migrations on a production deployment (${productionMarkers.join(", ")}; target host ${targetHost})`,
+    };
+  }
+
+  const loopback = LOOPBACK_DATABASE_HOSTS.has(targetHost);
+  if (!loopback && env.CLIENTOPS_ALLOW_SCHEMA_MIGRATION !== "1") {
+    return {
+      shouldApply: false,
+      reason: `refusing to apply ClientOps migrations to non-loopback target host ${targetHost}; set CLIENTOPS_ALLOW_SCHEMA_MIGRATION=1 to opt in`,
     };
   }
 

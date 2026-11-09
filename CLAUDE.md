@@ -60,7 +60,7 @@ src/server-functions/  BFF layer — every client data call goes through here
 src/server/            Server-only: repositories, read-models, auth, db, workflows
 src/components/        Feature components; components/ui/ = shadcn primitives
 src/lib/               types.ts (source of truth), format.ts, query-keys.ts, n8n.ts
-neon/migrations/       Registered SQL migrations (001–022)
+neon/migrations/       Registered SQL migrations (001–028)
 scripts/clientops/     Migrate, verify, seed, perf-budget, bootstrap scripts
 n8n/workflows/         Agent workflow JSON definitions
 ```

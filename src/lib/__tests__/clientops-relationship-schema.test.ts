@@ -213,15 +213,85 @@ describe("getClientOpsSchemaMigrationDecision", () => {
     });
   });
 
-  it("uses every Neon migration when DATABASE_URL is present", () => {
+  it.each(["localhost", "127.0.0.1", "[::1]"])(
+    "uses every Neon migration for loopback host %s without a remote opt-in",
+    (host) => {
+      const databaseUrl = `postgres://user:secret@${host}:5432/clientops_test`;
+      expect(getClientOpsSchemaMigrationDecision({ DATABASE_URL: databaseUrl })).toEqual({
+        shouldApply: true,
+        databaseUrl,
+        migrationPaths: CLIENTOPS_MIGRATION_PATHS,
+      });
+    },
+  );
+
+  it("keeps the database-contract CI rehearsal applying migrations", () => {
+    const databaseUrl = "postgres://clientops:clientops@127.0.0.1:5432/clientops_test";
     expect(
       getClientOpsSchemaMigrationDecision({
-        DATABASE_URL: "postgres://user@example/neondb",
+        DATABASE_URL: databaseUrl,
+        DATABASE_TEST_URL: databaseUrl,
+        CLIENTOPS_SCRIPT_LOCAL_PG: "1",
       }),
     ).toEqual({
       shouldApply: true,
-      databaseUrl: "postgres://user@example/neondb",
+      databaseUrl,
       migrationPaths: CLIENTOPS_MIGRATION_PATHS,
+    });
+  });
+
+  it("refuses a non-loopback target without the explicit opt-in and names the host", () => {
+    // CLIENTOPS_SCRIPT_LOCAL_PG only selects the pg driver for a loopback rehearsal database;
+    // it must not widen the DDL target guard to a remote host.
+    const decision = getClientOpsSchemaMigrationDecision({
+      DATABASE_URL: "postgres://user:secret@ep-prod-1.aws.neon.tech/neondb",
+      CLIENTOPS_SCRIPT_LOCAL_PG: "1",
+    });
+    expect(decision).toEqual({
+      shouldApply: false,
+      reason: expect.stringContaining("ep-prod-1.aws.neon.tech"),
+    });
+    expect(decision.shouldApply === false && decision.reason).toContain(
+      "CLIENTOPS_ALLOW_SCHEMA_MIGRATION=1",
+    );
+  });
+
+  it("applies to a non-loopback target only with the explicit opt-in", () => {
+    const databaseUrl = "postgres://user:secret@ep-staging-1.aws.neon.tech/neondb";
+    expect(
+      getClientOpsSchemaMigrationDecision({
+        DATABASE_URL: databaseUrl,
+        CLIENTOPS_ALLOW_SCHEMA_MIGRATION: "1",
+      }),
+    ).toEqual({
+      shouldApply: true,
+      databaseUrl,
+      migrationPaths: CLIENTOPS_MIGRATION_PATHS,
+    });
+  });
+
+  it.each([
+    ["VERCEL_ENV=production", { VERCEL_ENV: "production" }],
+    ["NODE_ENV=production", { NODE_ENV: "production" }],
+  ])("always refuses a production deployment marked by %s", (_label, markers) => {
+    const decision = getClientOpsSchemaMigrationDecision({
+      DATABASE_URL: "postgres://clientops:clientops@127.0.0.1:5432/clientops_test",
+      CLIENTOPS_ALLOW_SCHEMA_MIGRATION: "1",
+      CLIENTOPS_SCRIPT_LOCAL_PG: "1",
+      ...markers,
+    });
+    expect(decision).toEqual({
+      shouldApply: false,
+      reason: expect.stringContaining("refusing"),
+    });
+    expect(decision.shouldApply === false && decision.reason).toContain("127.0.0.1");
+    expect(decision.shouldApply === false && decision.reason).toContain(_label);
+  });
+
+  it("refuses a DATABASE_URL that cannot be resolved to a target host", () => {
+    expect(getClientOpsSchemaMigrationDecision({ DATABASE_URL: "not-a-url" })).toEqual({
+      shouldApply: false,
+      reason: expect.stringContaining("DATABASE_URL"),
     });
   });
 });

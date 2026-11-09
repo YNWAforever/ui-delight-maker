@@ -9,6 +9,8 @@ type N8nWorkflow = {
   settings?: Record<string, unknown>;
 };
 
+type N8nClient = { baseUrl: string; apiKey: string };
+
 /**
  * Every workflow definition in n8n/workflows/, kept in step with the dispatch webhooks the app
  * actually calls (see N8N_*_WEBHOOK_URL in .env.example).
@@ -28,6 +30,12 @@ const WORKFLOW_FILES = [
   "clientops-retention-sweep.json",
 ];
 
+// A key alone identifies no environment: the same N8N_API_KEY shape reaches a local container,
+// a staging instance or production. Requiring a target label here means a mistyped host cannot
+// silently push full workflow definitions into the wrong instance.
+const N8N_TARGETS = ["staging", "local"] as const;
+type N8nTarget = (typeof N8N_TARGETS)[number];
+
 function requiredEnv(name: string) {
   const value = process.env[name];
   if (!value) {
@@ -36,15 +44,47 @@ function requiredEnv(name: string) {
   return value;
 }
 
-const baseUrl = requiredEnv("N8N_API_BASE_URL").replace(/\/+$/, "");
-const apiKey = requiredEnv("N8N_API_KEY");
+function readTarget(env: Record<string, string | undefined>): N8nTarget {
+  const target = env.N8N_TARGET?.trim();
+  if (!target) {
+    throw new Error(
+      "N8N_TARGET must be set to staging or local; refusing to modify an unlabelled n8n instance",
+    );
+  }
+  if (!N8N_TARGETS.includes(target as N8nTarget)) {
+    throw new Error(
+      `N8N_TARGET=${target} is not allowed; this script only writes to staging or local instances`,
+    );
+  }
+  return target as N8nTarget;
+}
 
-async function n8n<T>(path: string, init: RequestInit = {}) {
-  const response = await fetch(`${baseUrl}/api/v1${path}`, {
+function apiHost(baseUrl: string) {
+  try {
+    const url = new URL(baseUrl);
+    if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("bad protocol");
+    return url.host;
+  } catch {
+    throw new Error("N8N_API_BASE_URL must be an absolute http(s) URL");
+  }
+}
+
+function parseMode(argv: readonly string[]) {
+  const apply = argv.includes("--apply");
+  const unknown = argv.filter((arg) => arg !== "--apply" && arg !== "--dry-run");
+  if (unknown.length > 0) {
+    throw new Error(`Unknown arguments: ${unknown.join(", ")}; only --apply is supported`);
+  }
+  if (apply && argv.includes("--dry-run")) throw new Error("Choose --apply or --dry-run");
+  return apply ? "apply" : "dry-run";
+}
+
+async function n8n<T>(client: N8nClient, path: string, init: RequestInit = {}) {
+  const response = await fetch(`${client.baseUrl}/api/v1${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      "X-N8N-API-KEY": apiKey,
+      "X-N8N-API-KEY": client.apiKey,
       ...(init.headers ?? {}),
     },
   });
@@ -95,32 +135,66 @@ function workflowItems(payload: unknown): N8nWorkflow[] {
 }
 
 async function main() {
-  const existingPayload = await n8n<unknown>("/workflows?limit=250");
+  const mode = parseMode(process.argv.slice(2));
+  const target = readTarget(process.env);
+  const baseUrl = requiredEnv("N8N_API_BASE_URL").replace(/\/+$/, "");
+  const host = apiHost(baseUrl);
+
+  // Printed before the API key is read or any request is sent, so the resolved destination is
+  // visible in the operator's log even when the command later fails.
+  console.log(`n8n target: ${target}`);
+  console.log(`n8n api host: ${host}`);
+  console.log(
+    `mode: ${mode}${mode === "dry-run" ? " (read-only; pass --apply to create/update)" : ""}`,
+  );
+
+  const client: N8nClient = { baseUrl, apiKey: requiredEnv("N8N_API_KEY") };
+  const existingPayload = await n8n<unknown>(client, "/workflows?limit=250");
   const existing = new Map(
     workflowItems(existingPayload).map((workflow) => [workflow.name, workflow]),
   );
 
-  for (const file of WORKFLOW_FILES) {
-    const workflow = await loadWorkflow(file);
-    const current = existing.get(workflow.name);
+  const planned = await Promise.all(
+    WORKFLOW_FILES.map(async (file) => {
+      const workflow = await loadWorkflow(file);
+      return { workflow, current: existing.get(workflow.name) };
+    }),
+  );
 
+  if (mode === "dry-run") {
+    for (const { workflow, current } of planned) {
+      console.log(`${current?.id ? "would update" : "would create"} ${workflow.name}`);
+    }
+    console.log(
+      `dry run: ${planned.filter(({ current }) => !current?.id).length} would be created, ` +
+        `${planned.filter(({ current }) => current?.id).length} would be updated; nothing was written`,
+    );
+    return;
+  }
+
+  let created = 0;
+  let updated = 0;
+  for (const { workflow, current } of planned) {
     if (current?.id) {
-      await n8n(`/workflows/${current.id}`, {
+      await n8n(client, `/workflows/${current.id}`, {
         method: "PUT",
         body: JSON.stringify(workflow),
       });
       console.log(`updated ${workflow.name}`);
+      updated += 1;
     } else {
-      await n8n("/workflows", {
+      await n8n(client, "/workflows", {
         method: "POST",
         body: JSON.stringify(workflow),
       });
       console.log(`created ${workflow.name}`);
+      created += 1;
     }
   }
+  console.log(`applied: ${created} created, ${updated} updated on ${host}`);
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.error(error instanceof Error ? error.message : error);
   process.exit(1);
 });

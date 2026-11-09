@@ -19,6 +19,10 @@ if (decision.shouldApply === false) {
     ),
   );
 } else {
+  // Print the resolved target before applying DDL: the decision guard owns which hosts are
+  // allowed, and the operator should see the host this run is about to mutate.
+  const targetHost = new URL(decision.databaseUrl).host;
+  console.log(JSON.stringify({ ok: true, applyingTo: targetHost }, null, 2));
   const migrations = await Promise.all(
     decision.migrationPaths.map((migrationPath) =>
       readFile(resolve(process.cwd(), migrationPath), "utf8").then((sql) => ({
@@ -35,6 +39,7 @@ if (decision.shouldApply === false) {
       JSON.stringify(
         {
           ok: true,
+          targetHost,
           ...result,
         },
         null,
