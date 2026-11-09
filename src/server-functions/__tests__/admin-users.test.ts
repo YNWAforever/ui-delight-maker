@@ -9,6 +9,7 @@ const {
   getAdminOverviewMock,
   getAdminUserMock,
   getProfileRoleMock,
+  getProfileLifecycleMock,
   updateAdminProfileMock,
   changeUserRoleMock,
   getReassignmentInventoryMock,
@@ -35,6 +36,7 @@ const {
     getAdminOverviewMock: vi.fn(),
     getAdminUserMock: vi.fn(),
     getProfileRoleMock: vi.fn(),
+    getProfileLifecycleMock: vi.fn(),
     updateAdminProfileMock: vi.fn(),
     changeUserRoleMock: vi.fn(),
     getReassignmentInventoryMock: vi.fn(),
@@ -64,6 +66,7 @@ vi.mock("@/server/repositories/admin-users", () => ({
   getAdminOverview: getAdminOverviewMock,
   getAdminUser: getAdminUserMock,
   getProfileRole: getProfileRoleMock,
+  getProfileLifecycle: getProfileLifecycleMock,
   updateAdminProfile: updateAdminProfileMock,
   changeUserRole: changeUserRoleMock,
   setUserStatus: setUserStatusMock,
@@ -116,6 +119,7 @@ describe("admin user server functions", () => {
     getAdminOverviewMock.mockResolvedValue({ activeUsers: 3 });
     getAdminUserMock.mockResolvedValue({ id: "profile-1" });
     getProfileRoleMock.mockResolvedValue("sales");
+    getProfileLifecycleMock.mockResolvedValue({ role: "sales", status: "suspended" });
     updateAdminProfileMock.mockResolvedValue({ id: "profile-1" });
     changeUserRoleMock.mockResolvedValue({ id: "profile-1", role: "sales" });
     getReassignmentInventoryMock.mockResolvedValue({
@@ -208,8 +212,9 @@ describe("admin user server functions", () => {
       "admin-1",
     );
 
+    // A suspended target's reactivation is the same authority that suspended it.
     await reactivateAdminUserFn({ data: { profileId: "profile-1", reason: "Return to work" } });
-    expect(requireCapabilityMock).toHaveBeenCalledWith("users.manage", {
+    expect(requireCapabilityMock).toHaveBeenCalledWith("users.suspend", {
       profileId: "profile-1",
       role: "sales",
     });
@@ -225,6 +230,43 @@ describe("admin user server functions", () => {
       profileId: "profile-1",
     });
     expect(setSessionInvalidBeforeMock).toHaveBeenCalledWith("profile-1", "admin-1");
+  });
+
+  it.each([
+    ["suspended", "users.suspend"],
+    ["deactivated", "users.deactivate"],
+    ["active", "users.manage"],
+  ] as const)(
+    "requires the capability that owns the state a %s target is leaving",
+    async (status, capability) => {
+      getProfileLifecycleMock.mockResolvedValue({ role: "sales", status });
+      const { reactivateAdminUserFn } = await import("../admin-users");
+
+      await reactivateAdminUserFn({ data: { profileId: "profile-1", reason: "Return to work" } });
+
+      expect(requireCapabilityMock).toHaveBeenCalledWith(capability, {
+        profileId: "profile-1",
+        role: "sales",
+      });
+      expect(setUserStatusMock).toHaveBeenCalledWith(
+        "profile-1",
+        "reactivate",
+        "Return to work",
+        "admin-1",
+      );
+    },
+  );
+
+  it("resolves the target status before choosing the reactivation capability", async () => {
+    getProfileLifecycleMock.mockRejectedValueOnce(new Error("profile read failed"));
+    const { reactivateAdminUserFn } = await import("../admin-users");
+
+    await expect(
+      reactivateAdminUserFn({ data: { profileId: "profile-1", reason: "Return to work" } }),
+    ).rejects.toThrow("profile read failed");
+
+    expect(requireCapabilityMock).not.toHaveBeenCalled();
+    expect(setUserStatusMock).not.toHaveBeenCalled();
   });
 
   it("loads reassignment inventory and submits safe deactivation under users.deactivate", async () => {

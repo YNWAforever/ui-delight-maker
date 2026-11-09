@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   requireCapabilityMock,
+  requireCapabilitySetMock,
   loadRequestAuthorizationMock,
   loadCompanyWorkspaceCoreMock,
   loadCompanyWorkspaceSectionMock,
@@ -23,6 +24,7 @@ const {
 
   return {
     requireCapabilityMock: vi.fn(),
+    requireCapabilitySetMock: vi.fn(),
     loadRequestAuthorizationMock: vi.fn(),
     loadCompanyWorkspaceCoreMock: vi.fn(),
     loadCompanyWorkspaceSectionMock: vi.fn(),
@@ -33,6 +35,7 @@ const {
 vi.mock("@tanstack/react-start", () => ({ createServerFn: () => createServerFnChain() }));
 vi.mock("@/server/auth/authorization.server", () => ({
   requireCapability: requireCapabilityMock,
+  requireCapabilitySet: requireCapabilitySetMock,
   loadRequestAuthorization: loadRequestAuthorizationMock,
 }));
 vi.mock("@/server/company-workspace/loaders", () => ({
@@ -52,6 +55,7 @@ describe("Company Workspace server functions", () => {
       profile: { id: "user-1", role: "sales", status: "active" },
       session: {},
     });
+    requireCapabilitySetMock.mockResolvedValue({});
   });
 
   it("checks accounts.view on the target account before loading the stable core", async () => {
@@ -67,21 +71,47 @@ describe("Company Workspace server functions", () => {
     expect(loadCompanyWorkspaceCoreMock).toHaveBeenCalledWith("account-1");
   });
 
-  it("loads one optional section for independent retries", async () => {
-    loadCompanyWorkspaceSectionMock.mockResolvedValue({ status: "empty", data: { timeline: [] } });
+  it.each([
+    ["commercial", ["accounts.view", "leads.view", "quotes.view", "engagements.view"]],
+    ["delivery_finance", ["accounts.view", "tasks.view", "job_sheets.view"]],
+    ["activity", ["accounts.view", "engagements.view"]],
+    ["intelligence", ["accounts.view"]],
+  ] as const)(
+    "requires the %s data capabilities on the account before loading the section",
+    async (section, capabilities) => {
+      loadCompanyWorkspaceSectionMock.mockResolvedValue({
+        status: "empty",
+        data: { timeline: [] },
+      });
+      const { getCompanyWorkspaceSection } = await import("../company-workspace");
+
+      await getCompanyWorkspaceSection({ data: { accountId: "account-1", section } });
+
+      expect(requireCapabilitySetMock).toHaveBeenCalledWith(capabilities, {
+        target: { resourceType: "account", resourceId: "account-1" },
+        context: expect.anything(),
+      });
+      expect(requireCapabilitySetMock.mock.invocationCallOrder[0]).toBeLessThan(
+        loadCompanyWorkspaceSectionMock.mock.invocationCallOrder[0],
+      );
+      expect(loadCompanyWorkspaceSectionMock).toHaveBeenCalledWith(
+        "account-1",
+        section,
+        undefined,
+        expect.anything(),
+      );
+    },
+  );
+
+  it("returns no section data when the section capability is denied", async () => {
+    requireCapabilitySetMock.mockRejectedValueOnce(new Error("FORBIDDEN"));
     const { getCompanyWorkspaceSection } = await import("../company-workspace");
 
-    await getCompanyWorkspaceSection({
-      data: { accountId: "account-1", section: "activity" },
-    });
+    await expect(
+      getCompanyWorkspaceSection({ data: { accountId: "account-1", section: "commercial" } }),
+    ).rejects.toThrow("FORBIDDEN");
 
-    expect(requireCapabilityMock).toHaveBeenCalled();
-    expect(loadCompanyWorkspaceSectionMock).toHaveBeenCalledWith(
-      "account-1",
-      "activity",
-      undefined,
-      expect.anything(),
-    );
+    expect(loadCompanyWorkspaceSectionMock).not.toHaveBeenCalled();
   });
 
   it("rejects a missing account ID for the core read before querying", async () => {

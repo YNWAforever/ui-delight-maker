@@ -156,6 +156,26 @@ describe("admin users repository", () => {
     expect(db.values[2]?.some((value) => String(value).includes("[REDACTED]"))).toBe(true);
   });
 
+  it("reads the target's current role and status for lifecycle capability selection", async () => {
+    const query = vi.fn().mockResolvedValue([{ role: "sales", status: "deactivated" }]);
+    const repo = createAdminUsersRepository({ query });
+
+    await expect(repo.getProfileLifecycle("profile-1")).resolves.toEqual({
+      role: "sales",
+      status: "deactivated",
+    });
+    expect(query).toHaveBeenCalledWith("select role, status from profiles where id = $1", [
+      "profile-1",
+    ]);
+  });
+
+  it("returns no lifecycle for a missing target profile", async () => {
+    const query = vi.fn().mockResolvedValue([]);
+    const repo = createAdminUsersRepository({ query });
+
+    await expect(repo.getProfileLifecycle("missing")).resolves.toBeUndefined();
+  });
+
   it("returns workload counts from assigned CRM work", async () => {
     const query = vi.fn().mockResolvedValue([
       {

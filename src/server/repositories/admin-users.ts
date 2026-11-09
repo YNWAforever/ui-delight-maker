@@ -564,11 +564,30 @@ export function createAdminUsersRepository(dependencies: Dependencies = {}) {
     return rows[0]?.role;
   }
 
+  /**
+   * The role and lifecycle status together, for choosing which capability a reactivation needs.
+   *
+   * Reactivation undoes whichever state the target is leaving — `users.suspend` owns the
+   * suspended state and `users.deactivate` the deactivated one — so the status has to be read
+   * before the capability is chosen. One row keeps that a single column read beside the role
+   * `requireCapability` already needs.
+   */
+  async function getProfileLifecycle(
+    profileId: string,
+  ): Promise<{ role: UserRole; status: ProfileStatus } | undefined> {
+    const rows = (await query("select role, status from profiles where id = $1", [
+      profileId,
+    ])) as Array<{ role: UserRole; status: ProfileStatus }>;
+    const row = rows[0];
+    return row ? { role: row.role, status: row.status } : undefined;
+  }
+
   return {
     listAdminUsers,
     getAdminOverview,
     getAdminUser,
     getProfileRole,
+    getProfileLifecycle,
     updateAdminProfile,
     changeUserRole,
     setUserStatus,
@@ -583,6 +602,7 @@ export const listAdminUsers = repository.listAdminUsers;
 export const getAdminOverview = repository.getAdminOverview;
 export const getAdminUser = repository.getAdminUser;
 export const getProfileRole = repository.getProfileRole;
+export const getProfileLifecycle = repository.getProfileLifecycle;
 export const updateAdminProfile = repository.updateAdminProfile;
 export const changeUserRole = repository.changeUserRole;
 export const setUserStatus = repository.setUserStatus;
