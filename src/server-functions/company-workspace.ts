@@ -77,6 +77,30 @@ function requiredCapabilitiesForSections(
   return [...required];
 }
 
+/**
+ * Every capability a section owns, minus `accounts.view` (already required on every read),
+ * evaluated as optional on the account so the read can tell the UI which tabs the caller
+ * would only get a refusal from. The section handlers remain the authoritative gate.
+ */
+const optionalSectionCapabilities: Capability[] = Array.from(
+  new Set(
+    Object.values(sectionCapabilities)
+      .flat()
+      .filter((capability) => capability !== "accounts.view"),
+  ),
+);
+
+function sectionAccessFor(
+  access: Partial<Record<Capability, boolean>>,
+): Record<CompanyWorkspaceSection, boolean> {
+  return Object.fromEntries(
+    (Object.keys(sectionCapabilities) as CompanyWorkspaceSection[]).map((section) => [
+      section,
+      sectionCapabilities[section].every((capability) => access[capability] === true),
+    ]),
+  ) as Record<CompanyWorkspaceSection, boolean>;
+}
+
 function validateCompanyWorkspaceInput(data: unknown): CompanyWorkspaceInput {
   if (
     !data ||
@@ -127,14 +151,22 @@ export const getCompanyWorkspaceRead = createServerFn({ method: "GET" })
     // gets an empty aggregate instead of data from a table it cannot read.
     const context = await loadRequestAuthorization();
     const access = await requireCapabilitySet(requiredCapabilitiesForSections(data.sections), {
-      optional: ["quotes.view", "engagements.view"],
+      optional: optionalSectionCapabilities,
       target: accountTarget(data.accountId),
       context,
     });
-    return loadCompanyWorkspaceRead(data.accountId, data.sections, undefined, undefined, context, {
-      quotes: access["quotes.view"] === true,
-      engagements: access["engagements.view"] === true,
-    });
+    const read = await loadCompanyWorkspaceRead(
+      data.accountId,
+      data.sections,
+      undefined,
+      undefined,
+      context,
+      {
+        quotes: access["quotes.view"] === true,
+        engagements: access["engagements.view"] === true,
+      },
+    );
+    return { ...read, sectionAccess: sectionAccessFor(access) };
   });
 
 export const getCompanyWorkspaceCore = createServerFn({ method: "GET" })

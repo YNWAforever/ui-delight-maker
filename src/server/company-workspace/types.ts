@@ -107,9 +107,18 @@ export type CompanyWorkspaceRead = {
   core: CompanyWorkspaceCore;
   overview: SectionState<CompanyWorkspaceOverview>;
   sections: Partial<CompanyWorkspaceSections>;
+  /**
+   * Which section reads the caller may load, evaluated on the same account target as the
+   * section handlers. The UI hides tabs whose section is denied instead of firing a read the
+   * server is certain to refuse; the section handlers remain the authoritative gate.
+   */
+  sectionAccess: Record<CompanyWorkspaceSection, boolean>;
   cache: {
     core: CompanyWorkspaceCacheMetadata;
     overview: CompanyWorkspaceCacheMetadata;
     sections: Partial<Record<CompanyWorkspaceSection, CompanyWorkspaceCacheMetadata>>;
   };
 };
+
+/** The loader payload before the request-level `sectionAccess` flags are attached. */
+export type CompanyWorkspaceReadData = Omit<CompanyWorkspaceRead, "sectionAccess">;

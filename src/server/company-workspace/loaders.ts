@@ -22,7 +22,7 @@ import type {
   CompanyWorkspaceCore,
   CompanyWorkspaceOverview,
   CompanyWorkspaceOverviewAccess,
-  CompanyWorkspaceRead,
+  CompanyWorkspaceReadData,
   CompanyWorkspaceSection,
   CompanyWorkspaceSectionData,
   SectionState,
@@ -149,7 +149,7 @@ export async function loadCompanyWorkspaceRead(
   now: () => Date = () => new Date(),
   context?: RequestAuthorization,
   overviewAccess?: CompanyWorkspaceOverviewAccess,
-): Promise<CompanyWorkspaceRead> {
+): Promise<CompanyWorkspaceReadData> {
   const cacheMetadata = { fetchedAt: now().toISOString(), freshForMs: 30_000 };
   const [core, overview, sectionEntries] = await Promise.all([
     loadCompanyWorkspaceCore(accountId),

@@ -40,8 +40,12 @@ describe("Company Workspace deep read server function", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     requireCapabilitySet.mockResolvedValue({
+      "accounts.view": true,
+      "leads.view": true,
       "quotes.view": true,
       "engagements.view": true,
+      "tasks.view": true,
+      "job_sheets.view": true,
     });
     loadRequestAuthorizationMock.mockResolvedValue({
       actor: { profileId: "user-1" },
@@ -63,7 +67,13 @@ describe("Company Workspace deep read server function", () => {
     expect(requireCapabilitySet).toHaveBeenCalledWith(
       ["accounts.view", "engagements.view", "leads.view", "quotes.view"],
       {
-        optional: ["quotes.view", "engagements.view"],
+        optional: [
+          "leads.view",
+          "quotes.view",
+          "engagements.view",
+          "tasks.view",
+          "job_sheets.view",
+        ],
         target: { resourceType: "account", resourceId: "account-1" },
         context: expect.anything(),
       },
@@ -87,11 +97,49 @@ describe("Company Workspace deep read server function", () => {
     await getCompanyWorkspaceRead({ data: { accountId: "account-1", sections: [] } });
 
     expect(requireCapabilitySet).toHaveBeenCalledWith(["accounts.view"], {
-      optional: ["quotes.view", "engagements.view"],
+      optional: ["leads.view", "quotes.view", "engagements.view", "tasks.view", "job_sheets.view"],
       target: { resourceType: "account", resourceId: "account-1" },
       context: expect.anything(),
     });
     expect(loadRead).toHaveBeenCalled();
+  });
+
+  it("returns per-section access derived from the optional capability probe", async () => {
+    const { getCompanyWorkspaceRead } = await import("../company-workspace");
+
+    const result = await getCompanyWorkspaceRead({
+      data: { accountId: "account-1", sections: [] },
+    });
+
+    expect(result.sectionAccess).toEqual({
+      commercial: true,
+      delivery_finance: true,
+      activity: true,
+      intelligence: true,
+    });
+  });
+
+  it("marks only the sections whose capabilities are missing as denied", async () => {
+    requireCapabilitySet.mockResolvedValueOnce({
+      "accounts.view": true,
+      "quotes.view": true,
+      "engagements.view": true,
+    });
+    const { getCompanyWorkspaceRead } = await import("../company-workspace");
+
+    const result = await getCompanyWorkspaceRead({
+      data: { accountId: "account-1", sections: [] },
+    });
+
+    // accounts.view is required for the read itself, so intelligence (accounts-only) and
+    // activity (accounts+engagements) stay available; commercial and delivery lose their
+    // own data capabilities and are hidden by the UI.
+    expect(result.sectionAccess).toEqual({
+      commercial: false,
+      delivery_finance: false,
+      activity: true,
+      intelligence: true,
+    });
   });
 
   it("passes denied optional capabilities so the Overview cannot leak aggregates", async () => {

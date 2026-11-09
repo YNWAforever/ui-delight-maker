@@ -37,3 +37,35 @@ export function getCompanyWorkspaceSectionEnablement(
   if (tab === "signals") return { ...none, intelligence: true };
   return none;
 }
+
+/**
+ * Which section reads each tab needs before it can render anything.
+ *
+ * Derived from the enablement map above so the two cannot drift: a section enabled by a tab
+ * is exactly a section that tab must be allowed to read. `overview` and `stakeholders` come
+ * from the core read (account + contacts), so they need no section capability.
+ */
+const TAB_SECTIONS: Record<CompanyWorkspaceTab, readonly CompanyWorkspaceSection[]> = {
+  overview: [],
+  stakeholders: [],
+  timeline: ["activity"],
+  events: ["commercial", "delivery_finance", "activity"],
+  tasks: ["commercial", "delivery_finance"],
+  signals: ["intelligence"],
+};
+
+/**
+ * Whether the caller may open a tab, given the server-evaluated section access flags.
+ *
+ * The section handlers still refuse a denied read; this only keeps the UI from offering a
+ * tab that can only produce a permission error, and keeps the tab's hidden sections from
+ * being fetched. A missing flag (`undefined`) means the read predates the flags, so the tab
+ * stays visible and the server remains the authority.
+ */
+export function isCompanyWorkspaceTabAllowed(
+  tab: CompanyWorkspaceTab,
+  access?: Partial<Record<CompanyWorkspaceSection, boolean>>,
+): boolean {
+  if (!access) return true;
+  return TAB_SECTIONS[tab].every((section) => access[section] !== false);
+}
