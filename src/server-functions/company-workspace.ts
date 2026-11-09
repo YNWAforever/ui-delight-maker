@@ -122,12 +122,19 @@ export const getCompanyWorkspaceRead = createServerFn({ method: "GET" })
     // This read returns core and overview for every caller, but each requested section loads a
     // different table. Gate the account itself and every requested section in one pass, before
     // any loader runs, so a denied capability cannot be bypassed by requesting that section.
+    // The Overview's quote totals and open signals are owned by `quotes.view` and
+    // `engagements.view`; evaluate them as optional here and pass the flags so a denied caller
+    // gets an empty aggregate instead of data from a table it cannot read.
     const context = await loadRequestAuthorization();
-    await requireCapabilitySet(requiredCapabilitiesForSections(data.sections), {
+    const access = await requireCapabilitySet(requiredCapabilitiesForSections(data.sections), {
+      optional: ["quotes.view", "engagements.view"],
       target: accountTarget(data.accountId),
       context,
     });
-    return loadCompanyWorkspaceRead(data.accountId, data.sections, undefined, undefined, context);
+    return loadCompanyWorkspaceRead(data.accountId, data.sections, undefined, undefined, context, {
+      quotes: access["quotes.view"] === true,
+      engagements: access["engagements.view"] === true,
+    });
   });
 
 export const getCompanyWorkspaceCore = createServerFn({ method: "GET" })

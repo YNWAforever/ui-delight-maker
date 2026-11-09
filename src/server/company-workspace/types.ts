@@ -55,6 +55,20 @@ export type CompanyWorkspaceOverview = {
   openSignals: RelationshipSignal[];
 };
 
+/**
+ * Which optional Overview aggregates the caller may see.
+ *
+ * The core read loads the Overview before any section capability is evaluated; its quote
+ * totals belong to `quotes.view` and its open signals to `engagements.view`. The handler
+ * evaluates both as optional capabilities on the account and passes the flags here, so a
+ * caller denied either capability gets an empty aggregate instead of data from a table it
+ * cannot read.
+ */
+export type CompanyWorkspaceOverviewAccess = {
+  quotes: boolean;
+  engagements: boolean;
+};
+
 export type CompanyWorkspaceSectionData = {
   commercial: {
     clients: Client[];

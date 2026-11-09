@@ -39,7 +39,10 @@ vi.mock("@/server/company-workspace/loaders", () => ({
 describe("Company Workspace deep read server function", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    requireCapabilitySet.mockResolvedValue({});
+    requireCapabilitySet.mockResolvedValue({
+      "quotes.view": true,
+      "engagements.view": true,
+    });
     loadRequestAuthorizationMock.mockResolvedValue({
       actor: { profileId: "user-1" },
       overrides: [],
@@ -60,6 +63,7 @@ describe("Company Workspace deep read server function", () => {
     expect(requireCapabilitySet).toHaveBeenCalledWith(
       ["accounts.view", "engagements.view", "leads.view", "quotes.view"],
       {
+        optional: ["quotes.view", "engagements.view"],
         target: { resourceType: "account", resourceId: "account-1" },
         context: expect.anything(),
       },
@@ -73,6 +77,7 @@ describe("Company Workspace deep read server function", () => {
       undefined,
       undefined,
       expect.anything(),
+      { quotes: true, engagements: true },
     );
   });
 
@@ -82,10 +87,27 @@ describe("Company Workspace deep read server function", () => {
     await getCompanyWorkspaceRead({ data: { accountId: "account-1", sections: [] } });
 
     expect(requireCapabilitySet).toHaveBeenCalledWith(["accounts.view"], {
+      optional: ["quotes.view", "engagements.view"],
       target: { resourceType: "account", resourceId: "account-1" },
       context: expect.anything(),
     });
     expect(loadRead).toHaveBeenCalled();
+  });
+
+  it("passes denied optional capabilities so the Overview cannot leak aggregates", async () => {
+    requireCapabilitySet.mockResolvedValueOnce({});
+    const { getCompanyWorkspaceRead } = await import("../company-workspace");
+
+    await getCompanyWorkspaceRead({ data: { accountId: "account-1", sections: [] } });
+
+    expect(loadRead).toHaveBeenCalledWith(
+      "account-1",
+      [],
+      undefined,
+      undefined,
+      expect.anything(),
+      { quotes: false, engagements: false },
+    );
   });
 
   it("does not load any section when the requested capability set is denied", async () => {
