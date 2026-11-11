@@ -30,6 +30,7 @@
     "wfm:recon": "bun scripts/clientops/wfm.ts recon"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@neondatabase/neon-js": "^0.6.2-beta",
     "@neondatabase/serverless": "^1.1.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",

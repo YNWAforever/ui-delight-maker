@@ -39,6 +39,8 @@ export const crmQueryKeys = {
     ["agents", "queue", normalizeQueryFilters(filters)] as const,
   shell: () => ["shell"] as const,
   dashboard: () => ["dashboard"] as const,
+  /** The signed-in user's personal agent-connector tokens. Never carries a raw token. */
+  mcpTokens: () => ["mcp-tokens"] as const,
   account: createRouteQueryKeys("account"),
   accounts: createRouteQueryKeys("accounts"),
   admin: createRouteQueryKeys("admin"),

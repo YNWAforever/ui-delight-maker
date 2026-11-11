@@ -33,6 +33,7 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/026_ai_unknown_model.sql",
   "neon/migrations/027_wfm_history_scaffold.sql",
   "neon/migrations/028_wfm_shared_contact_links.sql",
+  "neon/migrations/029_mcp_access_tokens.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
@@ -100,6 +101,8 @@ export const CLIENTOPS_REQUIRED_TABLES = [
   "wfm_timesheets",
   "wfm_timesheet_lines",
   "wfm_import_receipts",
+  "mcp_access_tokens",
+  "mcp_tool_calls",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_COLUMNS = [
@@ -172,6 +175,12 @@ export const CLIENTOPS_REQUIRED_COLUMNS = [
   "agent_runs.usage_data",
   "agent_runs.execution_metadata",
   "approval_message_handoffs.handoff_status",
+  "mcp_access_tokens.profile_id",
+  "mcp_access_tokens.token_hash",
+  "mcp_access_tokens.expires_at",
+  "mcp_access_tokens.revoked_at",
+  "mcp_tool_calls.token_id",
+  "mcp_tool_calls.profile_id",
 ] as const;
 
 export type RelationshipSchemaMigrationDecision =

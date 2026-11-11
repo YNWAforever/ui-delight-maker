@@ -90,6 +90,12 @@ const ACKNOWLEDGED_UNGUARDED: Record<string, string> = {
     "command checks agents.run and approvals.decide against the locked run and approval",
   "app-shell.ts::getAppShellRead":
     "reads only the actor's favorites and builds navigation/capabilities from one server-loaded authorization context",
+  "mcp-tokens.ts::getMyMcpTokens":
+    "self-scoped by session.profile.id; connector tokens are personal credentials with no other subject to authorize",
+  "mcp-tokens.ts::createMyMcpToken":
+    "self-scoped by session.profile.id and the validator accepts no profile id, so the caller can only mint for itself",
+  "mcp-tokens.ts::revokeMyMcpToken":
+    "the repository update filters both token id and profile_id, so the session profile can only revoke its own token",
   ...Object.fromEntries(
     [
       "account.ts::getMyAccount",

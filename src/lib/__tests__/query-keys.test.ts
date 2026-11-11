@@ -7,6 +7,7 @@ describe("CRM query keys", () => {
   it("creates stable keys for shell, route details, and workspace sections", () => {
     expect(crmQueryKeys.shell()).toEqual(["shell"]);
     expect(crmQueryKeys.dashboard()).toEqual(["dashboard"]);
+    expect(crmQueryKeys.mcpTokens()).toEqual(["mcp-tokens"]);
     expect(crmQueryKeys.clients.detail("c1")).toEqual(["clients", "detail", "c1"]);
     expect(crmQueryKeys.companyWorkspace.section("a1", "activity")).toEqual([
       "company-workspace",

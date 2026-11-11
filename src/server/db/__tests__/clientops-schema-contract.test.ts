@@ -101,6 +101,41 @@ describe("verifyClientOpsDatabase", () => {
     });
   });
 
+  it("verifies the MCP token and tool-call tables", () => {
+    expect(CLIENTOPS_SCHEMA_CONTRACT.relations).toEqual(
+      expect.arrayContaining(["mcp_access_tokens", "mcp_tool_calls"]),
+    );
+    expect(CLIENTOPS_SCHEMA_CONTRACT.columns).toMatchObject({
+      "mcp_access_tokens.profile_id": { type: "text", nullable: false },
+      "mcp_access_tokens.token_hash": { type: "text", nullable: false },
+      "mcp_access_tokens.scopes": { type: "ARRAY", nullable: false },
+      "mcp_access_tokens.created_at": { type: "timestamp with time zone", nullable: false },
+      "mcp_access_tokens.last_used_at": { type: "timestamp with time zone", nullable: true },
+      "mcp_access_tokens.expires_at": { type: "timestamp with time zone", nullable: true },
+      "mcp_access_tokens.revoked_at": { type: "timestamp with time zone", nullable: true },
+      "mcp_tool_calls.token_id": { type: "uuid", nullable: true },
+      "mcp_tool_calls.profile_id": { type: "text", nullable: true },
+      "mcp_tool_calls.status": { type: "text", nullable: false },
+      "mcp_tool_calls.duration_ms": { type: "integer", nullable: true },
+    });
+    expect(CLIENTOPS_SCHEMA_CONTRACT.constraints).toEqual(
+      expect.arrayContaining([
+        "mcp_access_tokens_pkey",
+        "mcp_access_tokens_token_hash_check",
+        "mcp_access_tokens_expires_at_check",
+        "mcp_tool_calls_status_check",
+      ]),
+    );
+    expect(CLIENTOPS_SCHEMA_CONTRACT.indexes).toEqual(
+      expect.arrayContaining([
+        "mcp_access_tokens_token_hash_uidx",
+        "mcp_access_tokens_profile_idx",
+        "mcp_tool_calls_profile_idx",
+        "mcp_tool_calls_token_idx",
+      ]),
+    );
+  });
+
   it("verifies the admin organization schema and immutable audit trigger", () => {
     expect(CLIENTOPS_SCHEMA_CONTRACT.relations).toEqual(
       expect.arrayContaining([

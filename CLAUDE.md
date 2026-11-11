@@ -52,17 +52,25 @@ src/routes/*.tsx           Route + loader (routeQueryOptions + crmQueryKeys)
 n8n calls back in via `src/routes/api/workflows/*` — each handler runs
 `assertWorkflowToken(request)` then a writeback in `src/server/workflows/`.
 
+External agents call in via `src/routes/api/mcp.ts` — a stateless MCP endpoint authenticated
+with a per-user bearer token (`fmcp_…`, SHA-256 at rest) that resolves to a profile and the same
+`RequestAuthorization` context the UI uses. Its tools are read-only and live in
+`src/lib/mcp/tools.server.ts`; see `docs/ai/mcp-connector.md`.
+
 ## Project Structure
 
 ```
-src/routes/            File-based pages; routes/api/ for workflow + auth handlers
+src/routes/            File-based pages; routes/api/ for workflow, auth and MCP handlers
 src/server-functions/  BFF layer — every client data call goes through here
 src/server/            Server-only: repositories, read-models, auth, db, workflows
+  src/server/mcp/      MCP transport, protocol handling, token store
 src/components/        Feature components; components/ui/ = shadcn primitives
 src/lib/               types.ts (source of truth), format.ts, query-keys.ts, n8n.ts
-neon/migrations/       Registered SQL migrations (001–028)
+  src/lib/mcp/         Shared MCP types and the read-only tool registry
+neon/migrations/       Registered SQL migrations (001–029)
 scripts/clientops/     Migrate, verify, seed, perf-budget, bootstrap scripts
 n8n/workflows/         Agent workflow JSON definitions
+docs/ai/               MCP connector design/operations and the AI CRM roadmap
 ```
 
 ## Conventions
@@ -96,6 +104,11 @@ n8n/workflows/         Agent workflow JSON definitions
   profile binding and invitation acceptance, and shows the explicit verify-email workspace state
   where the user enters the emailed verification code; disabling the verification email blocks
   invitees from activating until an admin provisions them by auth user id.
+- **MCP tokens are personal credentials, not service tokens.** Store only the SHA-256 hash, never
+  log or return the raw token after creation, and expose only the prefix. Every MCP tool must
+  resolve identity from the token (never tool arguments), gate through the existing capability +
+  ownership context, and record `mcp_tool_calls`; the connector stays read-only until the governed
+  write/proposal tranche in `docs/ai/ai-crm-roadmap.md` lands.
 - Seed env vars (`CLIENTOPS_SEED_*`) must never point at production.
 
 ## Neon-only runtime

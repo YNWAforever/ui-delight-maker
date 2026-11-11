@@ -9,6 +9,8 @@ import type { Profile } from "@/lib/types";
 import type { AccessRequest, WorkDelegation } from "@/server/repositories/admin-access";
 import type { UserWorkloadSummary } from "@/server/repositories/admin-users";
 
+import { AgentConnectorPanel } from "./agent-connector-panel";
+
 export type AccountViewData = {
   profile: Profile;
   departmentName?: string | null;
@@ -75,6 +77,7 @@ const TAB_LABELS: Record<AccountTab, string> = {
   workload: "Workload",
   availability: "Availability",
   access: "Access",
+  connector: "Agent connector",
 };
 
 /**
@@ -765,6 +768,11 @@ export function AccountSettings({
               </div>
             )}
           </div>
+        </section>
+      ) : null}
+      {tab === "connector" ? (
+        <section aria-label="Agent connector" className="space-y-4">
+          <AgentConnectorPanel />
         </section>
       ) : null}
     </div>
