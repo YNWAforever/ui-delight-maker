@@ -40,10 +40,22 @@ The audit remediation is tracked in [status](docs/audit-fixes/2026-09-27/status.
 with [release checklist](docs/audit-fixes/2026-09-27/release-checklist.md),
 [operator runbook](docs/audit-fixes/2026-09-27/operations-runbook.md),
 and [role UAT results](docs/audit-fixes/2026-09-27/uat-results.md).
-Migrations `001`–`028` are registered in the ClientOps migration contract.
+Migrations `001`–`029` are registered in the ClientOps migration contract.
 All application storage and authentication use Neon. Supabase runtime/SDK/source switches are forbidden; frozen legacy SQL is historical only. [Neon-only implementation, migration and acceptance limits](docs/audit-fixes/2026-09-27/neon-only-2026-10-03.md).
 The read-only `/api/build` endpoint exposes only the deployment commit SHA,
 or `null` if the platform supplied no valid SHA.
+
+## MCP connector
+
+Users can connect their own AI agent to ClientOps over the Model Context Protocol.
+**Account → Agent connector** mints a personal access token (shown once, stored only as a
+SHA-256 hash); the agent then calls the stateless `POST /api/mcp` endpoint. The connector is
+read-only: every tool is gated by the token owner's current capabilities and row ownership, and
+every `tools/call` is recorded in `mcp_tool_calls` without arguments or results (audit inserts are best-effort).
+
+Design, tool catalogue, client setup, security model, and the OAuth/write-tool phases:
+[docs/ai/mcp-connector.md](docs/ai/mcp-connector.md). The ordered AI CRM plan after the
+connector is [docs/ai/ai-crm-roadmap.md](docs/ai/ai-crm-roadmap.md).
 
 ## Independent UAT
 
@@ -60,6 +72,7 @@ use, or UAT/prod apply during scaffold review.
 - Configure `N8N_USER_INVITATION_WEBHOOK_URL` only after an operator explicitly approves the n8n workflow, recipient handling, and secret configuration.
 - Set `CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL` only for the one-time guarded production bootstrap command, after explicit operator approval. Do not run the bootstrap command as part of a normal deploy.
 - A preview must expose `/api/build` with the candidate commit SHA and pass role browser UAT before merging. Missing preview or role sessions remain an open gate; local tests do not substitute for them.
+- Apply migration `029` (`mcp_access_tokens`, `mcp_tool_calls`) with the approved out-of-band migration run before deploying code that verifies the schema. Deactivating a profile immediately blocks its MCP tokens (profile status is checked on every call); revoke tokens explicitly on offboarding with the SQL in the [MCP connector doc](docs/ai/mcp-connector.md).
 
 ## Rollback
 
