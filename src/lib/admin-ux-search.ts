@@ -207,12 +207,15 @@ export const settingsSearchSchema = z
 // persists tab state to the URL. `welcome` is the contract `invite.$token.complete` already
 // states with `redirect({href:"/account?welcome=1"})` and that the destination never parsed
 // (IF-E2-43).
+// `connector` is the personal agent-connector tokens surface: a credential belongs beside
+// the other personal credentials (sessions, password) rather than under admin settings.
 export const ACCOUNT_SETTINGS_TABS = [
   "profile",
   "security",
   "workload",
   "availability",
   "access",
+  "connector",
 ] as const;
 
 export const accountSettingsSearchSchema = z

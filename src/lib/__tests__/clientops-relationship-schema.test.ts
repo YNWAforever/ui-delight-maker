@@ -60,6 +60,7 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/026_ai_unknown_model.sql",
       "neon/migrations/027_wfm_history_scaffold.sql",
       "neon/migrations/028_wfm_shared_contact_links.sql",
+      "neon/migrations/029_mcp_access_tokens.sql",
     ]);
   });
 

@@ -9,6 +9,7 @@ import type {
   PermissionOverride,
 } from "@/lib/admin/types";
 import { requireNeonAuthSession, type AppSession } from "@/lib/auth/neon-auth.server";
+import type { Profile } from "@/lib/types";
 import { resolveOwnerProfileId, resolveOwnerProfileIds } from "@/server/auth/resource-ownership";
 import { query } from "@/server/db/neon.server";
 
@@ -38,10 +39,26 @@ export type RequestAuthorization = {
   now: Date;
 };
 
-export async function loadRequestAuthorization(
-  existingSession?: AppSession,
-): Promise<RequestAuthorization> {
-  const session = existingSession ?? (await requireNeonAuthSession());
+function sessionForProfile(profile: Profile): AppSession {
+  // Token-authenticated MCP requests carry no Neon Auth cookie session. The profile is the id
+  // every authorization read uses; `user.id` only has to identify the claimed identity, and the
+  // MCP read path never dereferences an upstream auth user.
+  return { user: { id: profile.id }, session: {}, profile };
+}
+
+/**
+ * Authorization context for a caller authenticated by something other than the session cookie.
+ *
+ * The MCP endpoint resolves a bearer token to a profile and must evaluate the exact same
+ * actor/capability/row-scope policy as the cookie path. That path arrives through
+ * `loadRequestAuthorization`; both share this body so the two entry points cannot disagree
+ * about what a profile is allowed to see.
+ */
+export async function loadAuthorizationForProfile(profile: Profile): Promise<RequestAuthorization> {
+  return buildAuthorization(sessionForProfile(profile));
+}
+
+async function buildAuthorization(session: AppSession): Promise<RequestAuthorization> {
   const actorId = session.profile.id;
   const [departments, teams, reports, overrideRows] = await Promise.all([
     query<IdRow>(
@@ -108,6 +125,13 @@ export async function loadRequestAuthorization(
       revokedAt: override.revoked_at,
     })),
   };
+}
+
+export async function loadRequestAuthorization(
+  existingSession?: AppSession,
+): Promise<RequestAuthorization> {
+  const session = existingSession ?? (await requireNeonAuthSession());
+  return buildAuthorization(session);
 }
 
 function decisionError(decision: AuthorizationDecision) {
