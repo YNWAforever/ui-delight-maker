@@ -1,6 +1,8 @@
 # ClientOps n8n Workflows
 
 Import these JSON files into staging n8n or apply them with `scripts/clientops/apply-n8n-workflows.ts`.
+The apply script requires `N8N_TARGET=staging|local` (production is refused), prints the resolved
+API host, and is a read-only dry run unless `--apply` is passed.
 
 Required n8n environment variables:
 
@@ -29,3 +31,4 @@ Workflow templates:
 - `clientops-draft-quote.json`: trigger `quote.draft_requested`, context `/api/workflows/context/lead`, writeback `/api/workflows/draft-quote`
 - `clientops-score-renewal-risk.json`: trigger `engagement.score_renewal_risk_requested`, context `/api/workflows/context/engagement`, writeback `/api/workflows/score-renewal-risk`
 - `clientops-relationship-intelligence.json`: trigger `account.relationship_intelligence_requested`, context `/api/workflows/context/account`, writeback `/api/workflows/relationship-intelligence`
+- `clientops-retention-sweep.json`: scheduled retention sweep (no app trigger), writeback `/api/workflows/retention-sweep`

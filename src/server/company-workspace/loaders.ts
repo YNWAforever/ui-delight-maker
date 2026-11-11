@@ -21,7 +21,8 @@ import type {
   CompanyWorkspace,
   CompanyWorkspaceCore,
   CompanyWorkspaceOverview,
-  CompanyWorkspaceRead,
+  CompanyWorkspaceOverviewAccess,
+  CompanyWorkspaceReadData,
   CompanyWorkspaceSection,
   CompanyWorkspaceSectionData,
   SectionState,
@@ -52,26 +53,36 @@ export async function loadCompanyWorkspaceCore(accountId: string): Promise<Compa
 async function loadCompanyWorkspaceOverview(
   accountId: string,
   requestId: string,
+  access?: CompanyWorkspaceOverviewAccess,
 ): Promise<SectionState<CompanyWorkspaceOverview>> {
+  const canReadQuotes = access?.quotes !== false;
+  const canReadEngagements = access?.engagements !== false;
   try {
     const [metrics, quoteTotals, signals] = await Promise.all([
       getCompanyWorkspaceOverviewMetrics(accountId),
-      listCompanyWorkspaceQuoteTotals(accountId),
-      listRelationshipSignals({ account_id: accountId, openOnly: true }),
+      canReadQuotes ? listCompanyWorkspaceQuoteTotals(accountId) : null,
+      canReadEngagements
+        ? listRelationshipSignals({ account_id: accountId, openOnly: true })
+        : null,
     ]);
     return {
       status: "ready",
       data: {
         linkedClientCount: metrics.linked_client_count,
         activeEngagementCount: metrics.active_engagement_count,
-        quoteCount: metrics.quote_count,
-        quoteTotals: quoteTotals.map((total) => ({
-          currency: total.currency,
-          quoteCount: total.quote_count,
-          totalValue: total.total_value,
-        })),
-        openSignalCount: metrics.open_signal_count,
-        openSignals: signals.slice(0, 5),
+        // The row itself is still returned; only the aggregates owned by capabilities the
+        // caller lacks are withheld, so the card degrades to counts instead of leaking quotes
+        // or signals the section readers would refuse.
+        quoteCount: canReadQuotes ? metrics.quote_count : 0,
+        quoteTotals: quoteTotals
+          ? quoteTotals.map((total) => ({
+              currency: total.currency,
+              quoteCount: total.quote_count,
+              totalValue: total.total_value,
+            }))
+          : [],
+        openSignalCount: canReadEngagements ? metrics.open_signal_count : 0,
+        openSignals: signals ? signals.slice(0, 5) : [],
       },
     };
   } catch (error) {
@@ -137,11 +148,12 @@ export async function loadCompanyWorkspaceRead(
   requestId: string = crypto.randomUUID(),
   now: () => Date = () => new Date(),
   context?: RequestAuthorization,
-): Promise<CompanyWorkspaceRead> {
+  overviewAccess?: CompanyWorkspaceOverviewAccess,
+): Promise<CompanyWorkspaceReadData> {
   const cacheMetadata = { fetchedAt: now().toISOString(), freshForMs: 30_000 };
   const [core, overview, sectionEntries] = await Promise.all([
     loadCompanyWorkspaceCore(accountId),
-    loadCompanyWorkspaceOverview(accountId, requestId),
+    loadCompanyWorkspaceOverview(accountId, requestId, overviewAccess),
     Promise.all(
       requestedSections.map(
         async (section) =>

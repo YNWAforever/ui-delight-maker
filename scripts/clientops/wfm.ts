@@ -51,7 +51,7 @@ async function main() {
   if (command === "plan") {
     console.log(
       JSON.stringify(
-        { stages: WFM_PLAN, defaultMode: "dry-run", hardStop: "WFM_HARD_STOP.md" },
+        { stages: WFM_PLAN, defaultMode: "dry-run", hardStop: "docs/workflowmax-history.md" },
         null,
         2,
       ),
@@ -104,7 +104,7 @@ async function main() {
   } else {
     if (process.env.WFM_ALLOW_LIVE_PULL !== "1")
       throw new Error(
-        "Live pulls require WFM_ALLOW_LIVE_PULL=1 after Willy's P1/OAuth approval; see WFM_HARD_STOP.md",
+        "Live pulls require WFM_ALLOW_LIVE_PULL=1 after Willy's P1/OAuth approval; see docs/workflowmax-history.md",
       );
     source = new WfmClient(wfmConfigFromEnv(process.env), {
       async onRefreshToken(token) {

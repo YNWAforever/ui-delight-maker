@@ -81,4 +81,42 @@ describe("workflow endpoints reject unauthenticated callers", () => {
       "expected a 401 Response to be thrown before any work happened",
     );
   });
+
+  // Near-miss and length-mismatch tokens exercise the branches a non-constant-time compare
+  // would short-circuit on; they must still land on the same 401 before any parsing.
+  it.each(routeNames)("%s rejects a near-miss workflow token", async (routeName) => {
+    const module = (await import(/* @vite-ignore */ `../${routeName}`)) as { Route: ServerRoute };
+    const post = module.Route.options?.server?.handlers?.POST;
+
+    for (const token of ["expected-toke", "expected-tokenx"]) {
+      const request = new Request(`https://clientops.example.com/api/workflows/${routeName}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-workflow-token": token },
+        body: JSON.stringify({ lead_id: "lead-1", agent_run_id: "run-1" }),
+      });
+
+      await expect(Promise.resolve().then(() => post!({ request }))).rejects.toSatisfy(
+        (error: unknown) => error instanceof Response && error.status === 401,
+        `expected a 401 Response for the near-miss token ${JSON.stringify(token)}`,
+      );
+    }
+  });
+
+  it.each(routeNames)("%s rejects workflow tokens of the wrong length", async (routeName) => {
+    const module = (await import(/* @vite-ignore */ `../${routeName}`)) as { Route: ServerRoute };
+    const post = module.Route.options?.server?.handlers?.POST;
+
+    for (const token of ["s", "x".repeat(512)]) {
+      const request = new Request(`https://clientops.example.com/api/workflows/${routeName}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-workflow-token": token },
+        body: JSON.stringify({ lead_id: "lead-1", agent_run_id: "run-1" }),
+      });
+
+      await expect(Promise.resolve().then(() => post!({ request }))).rejects.toSatisfy(
+        (error: unknown) => error instanceof Response && error.status === 401,
+        `expected a 401 Response for the ${token.length}-byte token`,
+      );
+    }
+  });
 });

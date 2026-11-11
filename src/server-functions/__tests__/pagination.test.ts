@@ -37,7 +37,6 @@ vi.mock("@/lib/auth/neon-auth.server", () => ({
 vi.mock("@/server/repositories/accounts", () => ({
   createAccount: vi.fn(),
   getAccount: vi.fn(),
-  getAccountWorkspaceData: vi.fn(),
   listAccounts: vi.fn(),
   listAccountsPage: mocks.listAccountsPage,
   updateAccount: vi.fn(),

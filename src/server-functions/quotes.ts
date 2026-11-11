@@ -22,7 +22,6 @@ import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import { getN8nDispatchConfig, n8nFailureOutcome, triggerN8n } from "@/lib/n8n";
 import { buildQuoteDraftPayload } from "@/lib/workflows/payloads";
 import { listPdfTemplates, listQuoteTemplates } from "@/server/repositories/quote-templates";
-import { listQuoteVersions } from "@/server/repositories/quote-versions";
 import {
   createAgentRun,
   findActiveRun,
@@ -49,7 +48,6 @@ import {
   QuoteCreateSchema,
   QuoteMutationSchema,
   QuoteRevisionSchema,
-  QuoteVersionListSchema,
   RejectQuoteSchema,
   RequestQuoteApprovalSchema,
 } from "@/lib/operations/input-schemas";
@@ -337,14 +335,6 @@ export const getQuotePdfTemplates = createServerFn({ method: "GET" }).handler(as
   await requireNeonAuthSession();
   return listPdfTemplates("quote");
 });
-
-export const getQuoteVersions = createServerFn({ method: "GET" })
-  .validator((data: unknown) => parseOperationInput(QuoteVersionListSchema, data))
-  .handler(async ({ data }) => {
-    await requireCapability("quotes.view", { resourceType: "quote", resourceId: data.quoteId });
-    await requireNeonAuthSession();
-    return listQuoteVersions(data.quoteId);
-  });
 
 export const approveQuote = createServerFn({ method: "POST" })
   .validator((data: unknown) => parseOperationInput(ApproveQuoteSchema, data))

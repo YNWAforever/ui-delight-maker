@@ -275,7 +275,6 @@ export const EventImportCommitSchema = EventImportRowsSchema.extend({
   campaignId: UuidSchema,
 });
 export const IdSchema = z.strictObject({ id: UuidSchema });
-export const QuoteVersionListSchema = z.strictObject({ quoteId: UuidSchema });
 export const LeadIdSchema = z.strictObject({ leadId: UuidSchema });
 export const RequestQuoteApprovalSchema = IdSchema.extend({
   assignedTo: ProfileIdSchema.nullable().optional(),

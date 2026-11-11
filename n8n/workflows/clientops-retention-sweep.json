@@ -15,10 +15,7 @@
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [
-        0,
-        0
-      ]
+      "position": [0, 0]
     },
     {
       "parameters": {
@@ -44,20 +41,14 @@
       "name": "Call Retention Sweep",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        220,
-        0
-      ]
+      "position": [220, 0]
     },
     {
       "id": "sweep-needs-continuation",
       "name": "Continue Sweep?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [
-        440,
-        0
-      ],
+      "position": [440, 0],
       "parameters": {
         "conditions": {
           "options": {
@@ -86,10 +77,7 @@
       "name": "Yield Before Resume",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [
-        660,
-        -100
-      ],
+      "position": [660, -100],
       "parameters": {
         "amount": 2,
         "unit": "seconds"

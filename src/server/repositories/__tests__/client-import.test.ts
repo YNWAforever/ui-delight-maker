@@ -131,6 +131,28 @@ describe("commitClientImport", () => {
     expect(result).toMatchObject({ created: 0, updated: 1 });
   });
 
+  it("takes a per-company advisory lock before the shared check-then-insert client lookup", async () => {
+    stubDatabase({});
+
+    await commitClientImport(
+      [row({ company_name: "Apex CRM" }), row({ company_name: "  apex crm  " })],
+      "user-1",
+      context,
+    );
+
+    const names = mocks.fakeDb.query.mock.calls.map(([text]) => String(text));
+    const lockCalls = names.filter((text) => text.includes("pg_advisory_xact_lock"));
+    // One lock per distinct company: the repeated file row reuses the client it just created.
+    expect(lockCalls).toHaveLength(1);
+    expect(mocks.fakeDb.query).toHaveBeenCalledWith(
+      "select pg_advisory_xact_lock(hashtextextended($1, 0))",
+      ["apex crm"],
+    );
+    expect(names.indexOf(lockCalls[0]!)).toBeLessThan(
+      names.findIndex((text) => text.includes("from clients")),
+    );
+  });
+
   it("does not re-add a contact that already exists, case-insensitively", async () => {
     stubDatabase({
       clients: [{ id: "client-existing", key: "apex crm" }],

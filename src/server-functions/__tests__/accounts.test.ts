@@ -10,7 +10,6 @@ const {
   triggerN8nMock,
   buildRelationshipIntelligencePayloadMock,
   serializeAgentRunMock,
-  getAccountWorkspaceDataMock,
   resolveDispatchableAgentMock,
   loadAgentPoliciesMock,
   createServerFnChain,
@@ -34,7 +33,6 @@ const {
     triggerN8nMock: vi.fn(),
     buildRelationshipIntelligencePayloadMock: vi.fn(),
     serializeAgentRunMock: vi.fn((run) => run),
-    getAccountWorkspaceDataMock: vi.fn(),
     resolveDispatchableAgentMock: vi.fn(),
     loadAgentPoliciesMock: vi.fn(),
     createServerFnChain,
@@ -75,7 +73,6 @@ vi.mock("@/lib/workflows/payloads", () => ({
 vi.mock("@/server/repositories/accounts", () => ({
   createAccount: vi.fn(),
   getAccount: vi.fn(),
-  getAccountWorkspaceData: getAccountWorkspaceDataMock,
   listAccounts: vi.fn(),
   updateAccount: vi.fn(),
 }));
@@ -214,16 +211,5 @@ describe("accounts server functions", () => {
     ).rejects.toThrow("Missing capability: agents.run");
     expect(resolveDispatchableAgentMock).not.toHaveBeenCalled();
     expect(createAgentRunMock).not.toHaveBeenCalled();
-  });
-
-  it("loads an Account workspace behind the existing auth guard", async () => {
-    getAccountWorkspaceDataMock.mockResolvedValue({ summary: { id: "account-1" } });
-    const { getAccountWorkspace } = await import("../accounts");
-
-    await expect(getAccountWorkspace({ data: { id: "account-1" } })).resolves.toEqual({
-      summary: { id: "account-1" },
-    });
-    expect(requireNeonAuthSessionMock).toHaveBeenCalled();
-    expect(getAccountWorkspaceDataMock).toHaveBeenCalledWith("account-1");
   });
 });

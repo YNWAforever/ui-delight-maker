@@ -274,6 +274,15 @@ export function createReassignmentService(dependencies: ReassignmentDependencies
   ) {
     const requestId = input.requestId ?? randomUUID();
     return transaction(async (db) => {
+      // The same ordered first lock `src/server/repositories/admin-users.ts` takes around its
+      // super-admin guard. This transaction locks the target profile row and only then reads
+      // the ordered active-super-admin set `for update`; a concurrent role/status change that
+      // locks the other row first can otherwise form a lock cycle (40P01). Every writer that
+      // takes a profile row lock before the guard set must take this advisory lock first, so
+      // the lock ordering is one total order; it releases at commit/rollback.
+      await db.query(
+        "select pg_advisory_xact_lock(hashtextextended('profiles:super_admin_guard', 0))",
+      );
       const lockedTarget = await db.query<ProfileRow>(
         "select id, role, status, email, name from profiles where id = $1 for update",
         [input.profileId],

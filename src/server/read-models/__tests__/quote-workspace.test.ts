@@ -200,9 +200,13 @@ describe("quote workspace read models", () => {
       limit: 500,
     });
 
+    // The pinned row is displayed but does not match the search, so it is counted once more
+    // than the aggregate's 25. The page itself still holds exactly `limit` rows: limit + 1
+    // would push the last fetched row into the overlap the next page repeats.
     expect(page).toMatchObject({ total: 26, page: 2, limit: 25 });
-    expect(page.items).toHaveLength(26);
-    expect(page.items.at(-1)?.id).toBe("lead-25");
+    expect(page.items).toHaveLength(25);
+    expect(page.items[0]?.id).toBe("lead-selected");
+    expect(page.items.at(-1)?.id).toBe("lead-24");
     expect(new Set(page.items.map((item) => item.id)).size).toBe(page.items.length);
     const rowsCall = queryMock.mock.calls.find(([sql]) => sqlText(sql).includes("from leads"));
     const rowsSql = sqlText(rowsCall?.[0]);
@@ -215,6 +219,57 @@ describe("quote workspace read models", () => {
       ([sql, values]) => sqlText(sql).includes("from leads") && values?.[0] === "lead-selected",
     );
     expect(sqlText(selectedCall?.[0])).toContain("where id = $1");
+  });
+
+  it("does not add a selected row the search already matches to the total", async () => {
+    const { listQuoteReferencePage } = await import("@/server/repositories/quotes");
+    queryMock.mockResolvedValue(
+      Array.from({ length: 25 }, (_, index) => ({
+        id: "lead-" + (index + 1),
+        company_name: "Needle " + (index + 1),
+        contact_name: null,
+      })),
+    );
+    queryOneMock.mockImplementation((sql: unknown, values?: unknown[]) => {
+      const text = sqlText(sql);
+      if (text.includes("count(*) as total")) return Promise.resolve({ total: "25" });
+      if (text.includes("from leads") && values?.[0] === "lead-selected") {
+        return Promise.resolve({
+          id: "lead-selected",
+          company_name: "Needle pinned",
+          contact_name: "Ada",
+        });
+      }
+      return Promise.resolve(null);
+    });
+
+    const page = await listQuoteReferencePage({
+      kind: "lead",
+      search: "needle",
+      selectedId: "lead-selected",
+      limit: 25,
+    });
+
+    // The selected row matches the search, so it is already inside count(*): adding one would
+    // overstate the total by a row the reader can never page to.
+    expect(page.total).toBe(25);
+    expect(page.items).toHaveLength(25);
+    expect(page.items[0]?.id).toBe("lead-selected");
+  });
+
+  it("escapes LIKE metacharacters in the reference search pattern", async () => {
+    const { listQuoteReferencePage } = await import("@/server/repositories/quotes");
+    queryMock.mockResolvedValue([]);
+    queryOneMock.mockImplementation((sql: unknown) => {
+      const text = sqlText(sql);
+      if (text.includes("count(*) as total")) return Promise.resolve({ total: "0" });
+      return Promise.resolve(null);
+    });
+
+    await listQuoteReferencePage({ kind: "lead", search: " 100%_x ", limit: 25 });
+
+    const rowsCall = queryMock.mock.calls.find(([sql]) => sqlText(sql).includes("from leads"));
+    expect(rowsCall?.[1]?.[0]).toBe("%100\\%\\_x%");
   });
 
   it("loads quote detail with compact linked parties and no versions or templates", async () => {

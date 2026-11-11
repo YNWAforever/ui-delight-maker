@@ -17,6 +17,7 @@ import {
   changeUserRole,
   getAdminOverview,
   getAdminUser,
+  getProfileLifecycle,
   getProfileRole,
   listAdminUsers,
   setSessionInvalidBefore,
@@ -175,23 +176,38 @@ export const changeAdminUserRoleFn = createServerFn({ method: "POST" })
     return changeUserRole(input.profileId, input.role, input.reason, idOf(session));
   });
 
-async function setLifecycle(
-  data: unknown,
-  action: "suspend" | "reactivate",
-  capability: "users.suspend" | "users.manage",
-) {
+async function suspendUser(data: unknown) {
   const input = lifecycleSchema.parse(data);
-  const session = await requireCapability(capability, await profileTarget(input.profileId));
-  return setUserStatus(input.profileId, action, input.reason, idOf(session));
+  const session = await requireCapability("users.suspend", await profileTarget(input.profileId));
+  return setUserStatus(input.profileId, "suspend", input.reason, idOf(session));
 }
 
 export const suspendAdminUserFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => lifecycleSchema.parse(data))
-  .handler(({ data }) => setLifecycle(data, "suspend", "users.suspend"));
+  .handler(({ data }) => suspendUser(data));
 
 export const reactivateAdminUserFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => lifecycleSchema.parse(data))
-  .handler(({ data }) => setLifecycle(data, "reactivate", "users.manage"));
+  .handler(async ({ data }) => {
+    const input = lifecycleSchema.parse(data);
+    const lifecycle = await getProfileLifecycle(input.profileId);
+    // A reactivation undoes whichever lifecycle state the target is leaving, so it needs the
+    // capability that owns that state: `users.suspend` for a suspended target, and
+    // `users.deactivate` for a deactivated one. Requiring only `users.manage` here was the
+    // asymmetry — an actor who may not suspend or deactivate could still undo either. An
+    // already-active target is a benign no-op and keeps the old `users.manage` requirement.
+    const capability =
+      lifecycle?.status === "suspended"
+        ? "users.suspend"
+        : lifecycle?.status === "deactivated"
+          ? "users.deactivate"
+          : "users.manage";
+    const session = await requireCapability(capability, {
+      profileId: input.profileId,
+      role: lifecycle?.role,
+    });
+    return setUserStatus(input.profileId, "reactivate", input.reason, idOf(session));
+  });
 
 export const getAdminReassignmentInventoryFn = createServerFn({ method: "GET" })
   .validator((data: unknown) => targetSchema.parse(data))

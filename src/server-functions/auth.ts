@@ -33,7 +33,11 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
 /** Public route read with no email parameter; sensitive identity/profile data stays server-side. */
 export const getCurrentWorkspaceAccess = createServerFn({ method: "GET" }).handler(async () => {
   const access = await resolveWorkspaceAccess();
-  return { state: access.state };
+  return {
+    state: access.state,
+    // Only the unverified state needs the address so the verify page can submit the OTP for it.
+    email: access.state === "unverified" ? access.email : null,
+  };
 });
 
 export const signIn = createServerFn({ method: "POST" })

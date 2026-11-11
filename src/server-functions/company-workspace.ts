@@ -1,5 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
-import { loadRequestAuthorization, requireCapability } from "@/server/auth/authorization.server";
+import type { Capability } from "@/lib/admin/types";
+import {
+  loadRequestAuthorization,
+  requireCapability,
+  requireCapabilitySet,
+  type RequestAuthorization,
+} from "@/server/auth/authorization.server";
 import {
   loadCompanyWorkspaceCore,
   loadCompanyWorkspaceRead,
@@ -21,6 +27,79 @@ const companyWorkspaceSections = [
   "activity",
   "intelligence",
 ] as const;
+
+/**
+ * The capabilities that own each section's data.
+ *
+ * `accounts.view` was the only gate on this workspace, so an actor allowed to see the account
+ * could still read leads, quotes, engagements, tasks and job sheets whose own capabilities they
+ * were denied. Each section now requires the capability of the table it loads, checked on the
+ * same account target as the account read.
+ */
+const sectionCapabilities = {
+  commercial: ["accounts.view", "leads.view", "quotes.view", "engagements.view"],
+  delivery_finance: ["accounts.view", "tasks.view", "job_sheets.view"],
+  activity: ["accounts.view", "engagements.view"],
+  intelligence: ["accounts.view"],
+} as const satisfies Record<CompanyWorkspaceSection, readonly Capability[]>;
+
+const accountTarget = (accountId: string) => ({
+  resourceType: "account",
+  resourceId: accountId,
+});
+
+async function authorizeCompanySection(
+  accountId: string,
+  section: CompanyWorkspaceSection,
+  context: RequestAuthorization,
+) {
+  await requireCapabilitySet(sectionCapabilities[section], {
+    target: accountTarget(accountId),
+    context,
+  });
+}
+
+/**
+ * The union of the capabilities every requested section requires, checked in one call.
+ *
+ * One call resolves the account target's ownership once instead of once per section, but the
+ * union still gates *every* requested section: a read is refused unless the caller may load
+ * each one. `accounts.view` is always present because the read also returns the account's core
+ * record, so an empty section list still gate-keeps like `getAccount`.
+ */
+function requiredCapabilitiesForSections(
+  sections: readonly CompanyWorkspaceSection[],
+): Capability[] {
+  const required = new Set<Capability>(["accounts.view"]);
+  for (const section of sections) {
+    for (const capability of sectionCapabilities[section]) required.add(capability);
+  }
+  return [...required];
+}
+
+/**
+ * Every capability a section owns, minus `accounts.view` (already required on every read),
+ * evaluated as optional on the account so the read can tell the UI which tabs the caller
+ * would only get a refusal from. The section handlers remain the authoritative gate.
+ */
+const optionalSectionCapabilities: Capability[] = Array.from(
+  new Set(
+    Object.values(sectionCapabilities)
+      .flat()
+      .filter((capability) => capability !== "accounts.view"),
+  ),
+);
+
+function sectionAccessFor(
+  access: Partial<Record<Capability, boolean>>,
+): Record<CompanyWorkspaceSection, boolean> {
+  return Object.fromEntries(
+    (Object.keys(sectionCapabilities) as CompanyWorkspaceSection[]).map((section) => [
+      section,
+      sectionCapabilities[section].every((capability) => access[capability] === true),
+    ]),
+  ) as Record<CompanyWorkspaceSection, boolean>;
+}
 
 function validateCompanyWorkspaceInput(data: unknown): CompanyWorkspaceInput {
   if (
@@ -64,31 +143,40 @@ function validateCompanyWorkspaceReadInput(data: unknown): CompanyWorkspaceReadI
 export const getCompanyWorkspaceRead = createServerFn({ method: "GET" })
   .validator(validateCompanyWorkspaceReadInput)
   .handler(async ({ data }) => {
-    // Same guard getAccount and getAccountWorkspace already apply to this account's data.
-    // A bare session check let this path skip two things they enforce: an explicit
-    // permission-override deny, and the manager scope check — so a manager barred from an
-    // account could still read it here, which is the primary account screen.
-    // requireCapability loads the session itself, so no separate session check is needed.
+    // This read returns core and overview for every caller, but each requested section loads a
+    // different table. Gate the account itself and every requested section in one pass, before
+    // any loader runs, so a denied capability cannot be bypassed by requesting that section.
+    // The Overview's quote totals and open signals are owned by `quotes.view` and
+    // `engagements.view`; evaluate them as optional here and pass the flags so a denied caller
+    // gets an empty aggregate instead of data from a table it cannot read.
     const context = await loadRequestAuthorization();
-    await requireCapability(
-      "accounts.view",
-      {
-        resourceType: "account",
-        resourceId: data.accountId,
-      },
+    const access = await requireCapabilitySet(requiredCapabilitiesForSections(data.sections), {
+      optional: optionalSectionCapabilities,
+      target: accountTarget(data.accountId),
       context,
+    });
+    const read = await loadCompanyWorkspaceRead(
+      data.accountId,
+      data.sections,
+      undefined,
+      undefined,
+      context,
+      {
+        quotes: access["quotes.view"] === true,
+        engagements: access["engagements.view"] === true,
+      },
     );
-    return loadCompanyWorkspaceRead(data.accountId, data.sections, undefined, undefined, context);
+    return { ...read, sectionAccess: sectionAccessFor(access) };
   });
 
 export const getCompanyWorkspaceCore = createServerFn({ method: "GET" })
   .validator(validateCompanyWorkspaceInput)
   .handler(async ({ data }) => {
-    // Same guard getAccount and getAccountWorkspace already apply to this account's data.
-    // A bare session check let this path skip two things they enforce: an explicit
-    // permission-override deny, and the manager scope check — so a manager barred from an
-    // account could still read it here, which is the primary account screen.
-    // requireCapability loads the session itself, so no separate session check is needed.
+    // The same guard `getAccount` applies to this account's data. A bare session check let this
+    // path skip two things it enforces: an explicit permission-override deny, and the manager
+    // scope check — so a manager barred from an account could still read it here, which is the
+    // primary account screen. requireCapability loads the session itself, so no separate
+    // session check is needed.
     await requireCapability("accounts.view", {
       resourceType: "account",
       resourceId: data.accountId,
@@ -99,19 +187,10 @@ export const getCompanyWorkspaceCore = createServerFn({ method: "GET" })
 export const getCompanyWorkspaceSection = createServerFn({ method: "GET" })
   .validator(validateCompanyWorkspaceSectionInput)
   .handler(async ({ data }) => {
-    // Same guard getAccount and getAccountWorkspace already apply to this account's data.
-    // A bare session check let this path skip two things they enforce: an explicit
-    // permission-override deny, and the manager scope check — so a manager barred from an
-    // account could still read it here, which is the primary account screen.
-    // requireCapability loads the session itself, so no separate session check is needed.
+    // Each independent section retry has to re-apply the account guard *and* the capability
+    // that owns the section's data: otherwise a caller denied leads.view, quotes.view,
+    // engagements.view, tasks.view or job_sheets.view could still read that table here.
     const context = await loadRequestAuthorization();
-    await requireCapability(
-      "accounts.view",
-      {
-        resourceType: "account",
-        resourceId: data.accountId,
-      },
-      context,
-    );
+    await authorizeCompanySection(data.accountId, data.section, context);
     return loadCompanyWorkspaceSection(data.accountId, data.section, undefined, context);
   });

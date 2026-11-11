@@ -25,6 +25,9 @@ export type BootstrapDatabase = {
   transaction<T>(work: (client: BootstrapQueryClient) => Promise<T>): Promise<T>;
 };
 
+/** Transaction-scoped advisory lock key: serializes concurrent bootstrap invocations. */
+const BOOTSTRAP_LOCK_KEY = "clientops:bootstrap-super-admin";
+
 function requiredEnvironmentValue(env: BootstrapEnvironment, name: string) {
   const value = env[name]?.trim();
   if (!value) {
@@ -65,21 +68,44 @@ export async function bootstrapSuperAdmin(
       return profile.id;
     }
 
+    // This command exists to create the *first* Super Admin. A transaction-scoped advisory
+    // lock serializes concurrent invocations, and the guard below refuses to mint a second
+    // all-powerful account: later grants belong in the admin UI, where a real authorizer and
+    // live actor are recorded.
+    await client.query("select pg_advisory_xact_lock(hashtextextended($1,0))", [
+      BOOTSTRAP_LOCK_KEY,
+    ]);
+    const existingSuperAdmins = await client.query(
+      `select id from profiles
+       where role = 'super_admin' and status = 'active'`,
+    );
+    if (existingSuperAdmins.rows.length > 0) {
+      throw new Error(
+        `Refusing to bootstrap a second Super Admin: ${existingSuperAdmins.rows.length} active ` +
+          "Super Admin(s) already exist. Use the admin UI for later grants; this one-time " +
+          "bootstrap only creates the first.",
+      );
+    }
+
     await client.query(
       `update profiles
        set role = 'super_admin', updated_at = now()
        where id = $1`,
       [profile.id],
     );
+    // The actor is the script, not the promoted user: passing profile.id as actor_profile_id
+    // made a self-approved escalation look like something the user authorised. The column is
+    // nullable (migration 007), so a NULL actor plus this marker in the reason keeps the
+    // critical row honest. The marker follows scripts/clientops/backfill-accounts.ts.
     await client.query(
       `insert into admin_audit_logs (
          actor_profile_id, target_type, target_id, action, severity,
          reason, before_snapshot, after_snapshot
-       ) values ($1, 'profile', $1, $2, 'critical', $3, $4::jsonb, $5::jsonb)`,
+       ) values (null, 'profile', $1, $2, 'critical', $3, $4::jsonb, $5::jsonb)`,
       [
         profile.id,
         "profile.bootstrap_super_admin",
-        "Initial Super Admin bootstrap",
+        "One-time Super Admin bootstrap by script:clientops:bootstrap-super-admin",
         JSON.stringify({ role: profile.role }),
         JSON.stringify({ role: "super_admin" }),
       ],

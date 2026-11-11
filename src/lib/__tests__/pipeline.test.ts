@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { HumanApproval, Lead, Quote, Task } from "../types";
 import {
   LEAD_PIPELINE_STAGES,
@@ -155,6 +155,39 @@ describe("getLeadSlaState", () => {
       state: "clear",
       label: "No SLA risk",
     });
+  });
+});
+
+describe("business-date defaults", () => {
+  // 17:00Z on 8 November is 01:00 on 9 November in Hong Kong, so the UTC calendar date is
+  // still the 8th while the business day has rolled over. The defaults used the UTC slice and
+  // therefore treated a task due on the HK business day as "clear".
+  const HKT_NEXT_BUSINESS_DAY = new Date("2026-11-08T17:00:00.000Z");
+
+  it("uses the Hong Kong business day when the SLA helper is given no explicit today", () => {
+    vi.setSystemTime(HKT_NEXT_BUSINESS_DAY);
+    try {
+      expect(
+        getLeadSlaState(baseLead({ id: "lead-1" }), [task({ due_date: "2026-11-09" })]),
+      ).toEqual({ state: "due_today", label: "Due today" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("counts due-today from the Hong Kong business day in the pipeline summary", () => {
+    vi.setSystemTime(HKT_NEXT_BUSINESS_DAY);
+    try {
+      expect(
+        getPipelineSummary({
+          leads: [baseLead({ id: "lead-1" })],
+          tasks: [task({ due_date: "2026-11-09" })],
+          approvals: [],
+        }),
+      ).toEqual({ overdue: 0, dueToday: 1, highScore: 1, pendingApproval: 0 });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

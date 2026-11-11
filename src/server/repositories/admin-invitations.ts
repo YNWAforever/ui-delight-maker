@@ -40,6 +40,7 @@ export type CreateInvitationInput = {
 export type InvitationIdentity = {
   id: string;
   email?: string | null;
+  emailVerified?: boolean | null;
   name?: string | null;
   image?: string | null;
 };
@@ -270,6 +271,17 @@ export function createInvitationRepository(dependencies: InvitationRepositoryDep
     rawToken: string,
     identity: InvitationIdentity,
   ): Promise<Profile> {
+    /**
+     * Accepting an invitation binds the Neon Auth account to a workspace profile by email, and
+     * the invitation token is only as trustworthy as that binding. The Neon Auth project must
+     * require email verification — this is the application-side enforcement — otherwise anyone
+     * who signs up with the invitee's address (the proxy accepts any typed @fimmick.com
+     * address) could claim their pending invitation before they do.
+     */
+    if (identity.emailVerified !== true) {
+      throw new Error("Email verification is required to accept an invitation");
+    }
+
     const tokenHash = hashInvitationToken(rawToken);
     const identityEmail = normalizeInvitationEmail(identity.email ?? "");
 

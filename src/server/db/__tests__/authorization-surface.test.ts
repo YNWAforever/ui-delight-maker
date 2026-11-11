@@ -229,7 +229,18 @@ import { describe, expect, it } from "vitest";
 // The original configure write gate remains and physical denied-write tests cover both.
 // R06: auxiliary-agent-runs adds one agents.view gate and its import (+2).
 // R07: the new bounded queue BFF adds one required page authorization gate.
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 243;
+/*
+ * 243 -> 241 in the 2026-11-09 review fixes, re-derived by measuring the final tree over
+ * src/server-functions/*.ts. The count falls because the two remaining legacy composite
+ * endpoints were deleted (getAccountWorkspace in accounts.ts and getQuoteVersions in
+ * quotes.ts, one lexical match each), company-workspace's rewrite dropped one comment match
+ * while replacing the broad gate with scoped per-section gates (count-neutral for the call
+ * sites), and the reactivate handler gained one explicit capability decision (+1).
+ * Net -2. Nothing that previously enforced a capability for a reachable endpoint was
+ * weakened: the deleted endpoints were superseded by the scoped company-workspace and
+ * quote-document reads, and every new gate is stricter than the one it replaced.
+ */
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 241;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

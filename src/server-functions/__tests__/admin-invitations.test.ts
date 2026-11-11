@@ -92,7 +92,12 @@ describe("admin invitation server functions", () => {
     vi.stubEnv("APP_BASE_URL", "https://clientops.example.com");
     requireCapabilityMock.mockResolvedValue(session("admin"));
     requireNeonAuthIdentityMock.mockResolvedValue({
-      user: { id: "profile-1", email: "person@example.com", name: "Person" },
+      user: {
+        id: "profile-1",
+        email: "person@example.com",
+        name: "Person",
+        emailVerified: true,
+      },
       session: {},
     });
     createInvitationMock.mockResolvedValue({ invitation, rawToken: "raw-token" });
@@ -322,9 +327,37 @@ describe("admin invitation server functions", () => {
     expect(acceptInvitationMock).toHaveBeenCalledWith("raw-token", {
       id: "profile-1",
       email: "person@example.com",
+      emailVerified: true,
       name: "Person",
     });
   });
+
+  it.each([
+    ["verified", true, true],
+    ["unverified", false, false],
+    ["missing from the upstream payload", undefined, false],
+  ])(
+    "maps an email that is %s to emailVerified: %s",
+    async (_label, emailVerified, expectedEmailVerified) => {
+      requireNeonAuthIdentityMock.mockResolvedValue({
+        user: {
+          id: "profile-1",
+          email: "person@example.com",
+          name: "Person",
+          emailVerified,
+        },
+        session: {},
+      });
+      const { acceptUserInvitation } = await import("../admin-invitations");
+
+      await acceptUserInvitation({ data: { token: "raw-token" } });
+
+      expect(acceptInvitationMock).toHaveBeenCalledWith(
+        "raw-token",
+        expect.objectContaining({ emailVerified: expectedEmailVerified }),
+      );
+    },
+  );
 
   it("authorizes resend and revoke operations", async () => {
     const { resendUserInvitation, revokeUserInvitation } = await import("../admin-invitations");

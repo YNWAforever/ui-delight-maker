@@ -2,6 +2,7 @@ import { authorizeDomainLinks } from "@/server/auth/domain-links.server";
 // src/server-functions/customer-success.ts
 import { createServerFn } from "@tanstack/react-start";
 import { requireCapability, loadRequestAuthorization } from "@/server/auth/authorization.server";
+import { getBusinessDateKey } from "@/lib/business-date";
 import { assessRenewalRisk } from "@/lib/lifecycle-utils";
 import {
   createSuccessTouchpoint as createSuccessTouchpointInRepository,
@@ -119,7 +120,9 @@ export const createSuccessTouchpoint = createServerFn({ method: "POST" })
 export const getCustomerSuccessDashboard = createServerFn({ method: "GET" }).handler(async () => {
   const context = await loadRequestAuthorization();
   await requireCapability("engagements.view", {}, context);
-  const in30Days = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  // HK business day + 30 days: the UTC slice would make this window one day short until
+  // 08:00 HKT, and the renewal dates it compares are calendar days.
+  const in30Days = getBusinessDateKey(new Date(Date.now() + 30 * 86_400_000));
 
   const rows = await listCustomerSuccessProfilesForDashboard(context);
   const healthTotal = rows.reduce((sum, profile) => sum + profile.health_score, 0);

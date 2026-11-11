@@ -282,7 +282,7 @@ Full detail in [`repo-map/10-tests-and-conventions.md`](./repo-map/10-tests-and-
 3. **Query keys always come from `crmQueryKeys`** — already enforced (VF-8).
 4. **Invalidation depends on how the route loads** (VF-3).
 5. **Toasts come from `sonner`**, imported as `import { toast } from "sonner"`.
-6. **Forms use `react-hook-form` + `zod`** via `@hookform/resolvers`.
+6. **Forms use controlled React state + `zod`.** `react-hook-form` / `@hookform/resolvers` were removed in the 2026-11-09 review remediation (the direct dependencies and the unused `ui/form.tsx` primitive were deleted; RHF may still arrive transitively through the Neon Auth UI bundle).
 7. **Server functions are `createServerFn`** with a validator and an explicit capability check.
 8. **Path alias `@` → `src/`.**
 9. **Prettier is enforced through ESLint** (`eslint-plugin-prettier`), so formatting violations fail `bun run lint`.

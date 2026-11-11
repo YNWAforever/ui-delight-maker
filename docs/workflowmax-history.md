@@ -3,8 +3,8 @@
 This draft provides lossless history staging, stable source identities, an HTTP/OAuth
 client, an ordered importer, and a reconciliation baseline. The boundary for this PR
 review is draft only: no merge, ready-for-review state change, live WFM API requests,
-OAuth token use, or UAT/production database apply. Prior approvals recorded in the
-local `WFM_HARD_STOP.md` do not expand this review's scope.
+OAuth token use, or UAT/production database apply. This is the hard-stop reference for
+those limits; approvals recorded elsewhere do not expand this review's scope.
 
 All proof for this PR uses synthetic fixtures and disposable local PostgreSQL. Do not
 merge or run migrations against UAT/production as part of this scaffold review.
@@ -25,6 +25,19 @@ job numbers, names, and email addresses are never identity keys. A transactional
 identifies the raw staging object and its projection when one exists. An identity,
 payload, projection, included children, and success receipts commit together. Failed
 rows roll back and get a separate durable receipt with a sanitized error code.
+
+Accounts and contacts also carry unique business keys in the existing CRM schema:
+`accounts` on `lower(name)` and `account_contacts` on `(account_id, lower(email))`
+where email is present (`003_client_relationship_360.sql`). A new WFM identity whose
+projection collides with a pre-existing CRM row adopts that row rather than inserting
+a duplicate: the identity is re-pointed at the existing id, its raw object matches it,
+and the receipt records `updated`. Adoption requires an exact, case-insensitive,
+trimmed name match; two existing accounts that only match after trimming (ambiguous)
+or a projection target already owned by another WorkflowMax identity/source fail the
+row with `WFM_ACCOUNT_NAME_CONFLICT`. Contacts reuse an existing `(account,
+lower(email))` row and fail with `WFM_CONTACT_EMAIL_CONFLICT` when another WorkflowMax
+contact already owns it. These typed codes appear in the durable row receipts; the run
+still stops at the failed row so a full rerun remains idempotent.
 
 Each rerun has its own run ID and receipts; existing resource IDs remain stable. A
 database session advisory lock serializes imports for one namespace. Interrupted

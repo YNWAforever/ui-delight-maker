@@ -1,4 +1,5 @@
 import { query } from "@/server/db/neon.server";
+import { escapeLikePattern } from "@/lib/sql-like";
 import type { RequestAuthorization } from "@/server/auth/authorization.server";
 import {
   buildVisibilityScope,
@@ -27,7 +28,7 @@ export async function searchWorkspace(
   const searchTerm = rawQuery.trim();
   if (searchTerm.length < 3) return [];
   const limit = Math.max(1, Math.min(20, Math.trunc(requestedLimit) || 20));
-  const values: unknown[] = [`%${searchTerm}%`, limit];
+  const values: unknown[] = [`%${escapeLikePattern(searchTerm)}%`, limit];
   const scope = (resourceType: VisibleResourceType, alias: string) => {
     const predicate = buildVisibilityScope(context, resourceType, alias);
     const offset = values.length;

@@ -55,6 +55,20 @@ export type CompanyWorkspaceOverview = {
   openSignals: RelationshipSignal[];
 };
 
+/**
+ * Which optional Overview aggregates the caller may see.
+ *
+ * The core read loads the Overview before any section capability is evaluated; its quote
+ * totals belong to `quotes.view` and its open signals to `engagements.view`. The handler
+ * evaluates both as optional capabilities on the account and passes the flags here, so a
+ * caller denied either capability gets an empty aggregate instead of data from a table it
+ * cannot read.
+ */
+export type CompanyWorkspaceOverviewAccess = {
+  quotes: boolean;
+  engagements: boolean;
+};
+
 export type CompanyWorkspaceSectionData = {
   commercial: {
     clients: Client[];
@@ -93,9 +107,18 @@ export type CompanyWorkspaceRead = {
   core: CompanyWorkspaceCore;
   overview: SectionState<CompanyWorkspaceOverview>;
   sections: Partial<CompanyWorkspaceSections>;
+  /**
+   * Which section reads the caller may load, evaluated on the same account target as the
+   * section handlers. The UI hides tabs whose section is denied instead of firing a read the
+   * server is certain to refuse; the section handlers remain the authoritative gate.
+   */
+  sectionAccess: Record<CompanyWorkspaceSection, boolean>;
   cache: {
     core: CompanyWorkspaceCacheMetadata;
     overview: CompanyWorkspaceCacheMetadata;
     sections: Partial<Record<CompanyWorkspaceSection, CompanyWorkspaceCacheMetadata>>;
   };
 };
+
+/** The loader payload before the request-level `sectionAccess` flags are attached. */
+export type CompanyWorkspaceReadData = Omit<CompanyWorkspaceRead, "sectionAccess">;

@@ -311,6 +311,14 @@ export async function convertWonLeadToEngagement(input: {
 
     const normalizedCompanyName = lead.company_name.trim();
 
+    // The existing-client check below is check-then-insert: two concurrent conversions (or a
+    // conversion and a CSV import) for the same company name could both miss and each insert a
+    // client. A transaction-scoped advisory lock keyed by the normalised name serialises only
+    // writers touching that company; `pg_advisory_xact_lock` releases at commit/rollback.
+    await client.query("select pg_advisory_xact_lock(hashtextextended(lower(trim($1)), 0))", [
+      normalizedCompanyName,
+    ]);
+
     const existingClientResult = await client.query<{ id: string }>(
       "select id from clients where lower(trim(company_name)) = lower(trim($1)) limit 1",
       [normalizedCompanyName],
@@ -323,9 +331,21 @@ export async function convertWonLeadToEngagement(input: {
     }
 
     if (lead.contact_name || lead.contact_email) {
+      // A lead without an email used to be compared with `email = ''`, which never matches a
+      // stored NULL and duplicated the contact on every conversion. Match `email is null` when
+      // the lead has no email and `lower(email) = lower($2)` when it does, so the dedupe is
+      // NULL-safe and case-insensitive.
       const existingContact = await client.query<{ id: string }>(
-        "select id from client_contacts where client_id = $1 and email = $2",
-        [clientId, lead.contact_email ?? ""],
+        `
+          select id
+          from client_contacts
+          where client_id = $1
+            and case
+                  when $2::text is null then email is null
+                  else lower(email) = lower($2)
+                end
+        `,
+        [clientId, lead.contact_email ?? null],
       );
       if (existingContact.rows.length === 0) {
         await createClientContact(

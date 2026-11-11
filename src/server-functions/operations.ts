@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getBusinessDateKey } from "@/lib/business-date";
 import { evaluateAuthorization } from "@/lib/admin/policy";
 import {
   loadRequestAuthorization,
@@ -48,10 +49,10 @@ function parseJobSheetInput(data: unknown) {
 }
 
 function dateOnly(value: unknown) {
+  // The server default is the Hong Kong business day, not the UTC date: until 08:00 HKT the
+  // UTC slice is still yesterday, and the renewal read aggregates by the HKT calendar day.
   const candidate =
-    typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
-      ? value
-      : new Date().toISOString().slice(0, 10);
+    typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : getBusinessDateKey();
   if (Number.isNaN(Date.parse(`${candidate}T00:00:00Z`))) throw new Error("Invalid as-of date");
   return candidate;
 }

@@ -27,6 +27,10 @@ Use an isolated `DATABASE_TEST_URL` and require zero skipped tests.
 `bunx vite build` is the local, source-only build. `bun run build` also applies
 migrations, verifies the database, and runs the deploy seed script; run it only
 against a verified disposable database or in an explicitly approved deployment.
+Schema application is guarded: loopback `DATABASE_URL` targets apply without an extra
+flag, any non-loopback target requires `CLIENTOPS_ALLOW_SCHEMA_MIGRATION=1`, and
+`VERCEL_ENV=production`/`NODE_ENV=production` always refuse (run the approved
+migration separately).
 Vercel's configured build uses only `bunx vite build` and the static output packager;
 migration and seed require a separate, verified database operation before release.
 The GitHub `Checks` and `Database contract` workflows run for PRs and
@@ -36,7 +40,7 @@ The audit remediation is tracked in [status](docs/audit-fixes/2026-09-27/status.
 with [release checklist](docs/audit-fixes/2026-09-27/release-checklist.md),
 [operator runbook](docs/audit-fixes/2026-09-27/operations-runbook.md),
 and [role UAT results](docs/audit-fixes/2026-09-27/uat-results.md).
-Migrations `001`–`027` are registered in the ClientOps migration contract.
+Migrations `001`–`028` are registered in the ClientOps migration contract.
 All application storage and authentication use Neon. Supabase runtime/SDK/source switches are forbidden; frozen legacy SQL is historical only. [Neon-only implementation, migration and acceptance limits](docs/audit-fixes/2026-09-27/neon-only-2026-10-03.md).
 The read-only `/api/build` endpoint exposes only the deployment commit SHA,
 or `null` if the platform supplied no valid SHA.
@@ -52,6 +56,7 @@ use, or UAT/prod apply during scaffold review.
 
 ## Production Gates
 
+- The Neon Auth project MUST require email verification. The app refuses to bind a pre-provisioned profile or accept an invitation on an unverified address, and signed-in unverified users get a distinct "Verify your email address" state instead of a workspace, where they enter the verification code Neon Auth emailed them; with verification emails disabled, invitees cannot activate until the code can be sent or an admin provisions them by auth user id.
 - Configure `N8N_USER_INVITATION_WEBHOOK_URL` only after an operator explicitly approves the n8n workflow, recipient handling, and secret configuration.
 - Set `CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL` only for the one-time guarded production bootstrap command, after explicit operator approval. Do not run the bootstrap command as part of a normal deploy.
 - A preview must expose `/api/build` with the candidate commit SHA and pass role browser UAT before merging. Missing preview or role sessions remain an open gate; local tests do not substitute for them.

@@ -38,6 +38,14 @@ export async function commitClientImport(
     for (const row of rows) {
       const key = buildClientDedupeKey(row.company_name);
       const firstOccurrence = !clientIdByKey.has(key);
+      if (firstOccurrence) {
+        // The lookup below is check-then-insert. A concurrent import or won-lead conversion for
+        // the same normalised company name could both miss and insert duplicates, so take a
+        // transaction-scoped advisory lock on that key (`key` is already trim+lower). It
+        // releases at commit/rollback, and rows are locked in file order so two imports of the
+        // same file cannot deadlock on each other.
+        await db.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [key]);
+      }
       const matched = await db.query<{ id: string; industry: string | null; tier: string | null }>(
         firstOccurrence
           ? "select id, industry, tier from clients where trim(lower(company_name)) = $1 limit 2 for update"

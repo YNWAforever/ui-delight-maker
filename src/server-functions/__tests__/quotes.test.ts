@@ -12,8 +12,6 @@ const {
   listQuoteLineItemsMock,
   listQuoteTemplatesMock,
   listPdfTemplatesMock,
-  listQuoteVersionsMock,
-  createQuoteVersionMock,
   createJobSheetFromAcceptedQuoteMock,
   decideApprovalMock,
   updateQuoteCommercialMock,
@@ -46,8 +44,6 @@ const {
     listQuoteLineItemsMock: vi.fn(),
     listQuoteTemplatesMock: vi.fn(),
     listPdfTemplatesMock: vi.fn(),
-    listQuoteVersionsMock: vi.fn(),
-    createQuoteVersionMock: vi.fn(),
     createJobSheetFromAcceptedQuoteMock: vi.fn(),
     decideApprovalMock: vi.fn(),
     updateQuoteCommercialMock: vi.fn(),
@@ -77,11 +73,6 @@ vi.mock("@/lib/auth/neon-auth.server", () => ({
 vi.mock("@/server/repositories/quote-templates", () => ({
   listQuoteTemplates: listQuoteTemplatesMock,
   listPdfTemplates: listPdfTemplatesMock,
-}));
-
-vi.mock("@/server/repositories/quote-versions", () => ({
-  createQuoteVersion: createQuoteVersionMock,
-  listQuoteVersions: listQuoteVersionsMock,
 }));
 
 vi.mock("@/server/repositories/job-sheets", () => ({
@@ -129,8 +120,6 @@ describe("quote server functions", () => {
     listQuoteLineItemsMock.mockReset();
     listQuoteTemplatesMock.mockReset();
     listPdfTemplatesMock.mockReset();
-    listQuoteVersionsMock.mockReset();
-    createQuoteVersionMock.mockReset();
     createJobSheetFromAcceptedQuoteMock.mockReset();
     decideApprovalMock.mockReset();
     updateQuoteCommercialMock.mockReset().mockResolvedValue({ id: "quote-1", total_value: 120000 });
@@ -188,13 +177,6 @@ describe("quote server functions", () => {
         updated_at: "2026-07-09T00:00:00.000Z",
       },
     ]);
-    listQuoteVersionsMock.mockResolvedValue([]);
-    createQuoteVersionMock.mockResolvedValue({
-      id: "version-1",
-      quote_id: "quote-1",
-      reason: "issued",
-      pdf_url: "/quotes/quote-1/pdf",
-    });
     updateQuoteMock.mockResolvedValue({
       id: "quote-1",
       status: "draft",
@@ -377,19 +359,6 @@ describe("quote server functions", () => {
     expect(listPdfTemplatesMock).toHaveBeenCalledWith("quote");
     expect(requireNeonAuthSessionMock.mock.invocationCallOrder[0]).toBeLessThan(
       listPdfTemplatesMock.mock.invocationCallOrder[0],
-    );
-  });
-
-  it("lists quote versions behind Neon auth", async () => {
-    listQuoteVersionsMock.mockResolvedValue([]);
-    const { getQuoteVersions } = await import("../quotes");
-
-    await getQuoteVersions({ data: { quoteId: "quote-1" } });
-
-    expect(requireNeonAuthSessionMock).toHaveBeenCalled();
-    expect(listQuoteVersionsMock).toHaveBeenCalledWith("quote-1");
-    expect(requireNeonAuthSessionMock.mock.invocationCallOrder[0]).toBeLessThan(
-      listQuoteVersionsMock.mock.invocationCallOrder[0],
     );
   });
 

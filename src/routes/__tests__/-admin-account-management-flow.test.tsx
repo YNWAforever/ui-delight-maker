@@ -157,7 +157,6 @@ vi.mock("@/server/admin/reassignment.server", () => ({
 vi.mock("@/server/repositories/accounts", () => ({
   createAccount: vi.fn(),
   getAccount: vi.fn(),
-  getAccountWorkspaceData: vi.fn(),
   listAccounts: vi.fn(),
   updateAccount: mocks.updateAccount,
 }));
@@ -250,7 +249,12 @@ beforeEach(() => {
     },
   );
   mocks.requireNeonAuthIdentity.mockResolvedValue({
-    user: { id: "profile-sales", email: "sales@example.com", name: "Sales User" },
+    user: {
+      id: "profile-sales",
+      email: "sales@example.com",
+      name: "Sales User",
+      emailVerified: true,
+    },
     session: {},
   });
   mocks.requireNeonAuthSession.mockImplementation(async () => {

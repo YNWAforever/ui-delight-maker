@@ -1074,7 +1074,8 @@ async function seedJobSheets(db: Queryable, ctx: SeedContext) {
 
     const quote = DEMO_QUOTES.find((candidate) => candidate.key === jobSheet.quoteKey);
     if (!quote) continue;
-    const versionSnapshot = jsonb({
+    // JSON.stringify directly: the object is never null, and JSON.parse below needs a string.
+    const versionSnapshot = JSON.stringify({
       demo: true,
       quote_key: quote.key,
       id: quoteId,

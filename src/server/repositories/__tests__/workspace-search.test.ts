@@ -61,4 +61,15 @@ describe("workspace search repository", () => {
 
     expect(mockQuery.mock.calls[0][1].slice(0, 2)).toEqual(["%Acme%", 20]);
   });
+
+  it("escapes LIKE metacharacters so a typed wildcard cannot match everything", async () => {
+    // The search is parameterised, so `%` is not injection here — but unescaped it makes every
+    // union branch match every row, turning the quick-search popover into a workspace dump.
+    mockQuery.mockResolvedValue([]);
+    const { searchWorkspace } = await import("../workspace-search");
+
+    await searchWorkspace("100%_x", 20, context);
+
+    expect(mockQuery.mock.calls[0][1].slice(0, 2)).toEqual(["%100\\%\\_x%", 20]);
+  });
 });

@@ -94,6 +94,48 @@ describe("Company Workspace read model", () => {
     expect(repositories.listClients).not.toHaveBeenCalled();
   });
 
+  it("withholds the aggregates owned by denied capabilities, keeping the account counts", async () => {
+    const result = await loadCompanyWorkspaceRead("account-1", [], "request-4", now, undefined, {
+      quotes: false,
+      engagements: false,
+    });
+
+    expect(result.overview).toMatchObject({
+      status: "ready",
+      data: {
+        linkedClientCount: 3,
+        activeEngagementCount: 2,
+        quoteCount: 0,
+        quoteTotals: [],
+        openSignalCount: 0,
+        openSignals: [],
+      },
+    });
+    expect(repositories.listCompanyWorkspaceQuoteTotals).not.toHaveBeenCalled();
+    expect(repositories.listRelationshipSignals).not.toHaveBeenCalled();
+  });
+
+  it("keeps a denied aggregate empty while the other capability is still granted", async () => {
+    const result = await loadCompanyWorkspaceRead("account-1", [], "request-5", now, undefined, {
+      quotes: true,
+      engagements: false,
+    });
+
+    expect(result.overview).toMatchObject({
+      status: "ready",
+      data: {
+        quoteTotals: [
+          { currency: "HKD", quoteCount: 3, totalValue: 1200 },
+          { currency: "USD", quoteCount: 1, totalValue: 200 },
+        ],
+        openSignalCount: 0,
+        openSignals: [],
+      },
+    });
+    expect(repositories.listCompanyWorkspaceQuoteTotals).toHaveBeenCalledWith("account-1");
+    expect(repositories.listRelationshipSignals).not.toHaveBeenCalled();
+  });
+
   it("keeps core and requested sections when Overview fails", async () => {
     repositories.getCompanyWorkspaceOverviewMetrics.mockRejectedValue(new Error("overview down"));
 

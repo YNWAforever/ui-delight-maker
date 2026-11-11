@@ -198,6 +198,20 @@ describe("WonConversionDialog", () => {
     expect((screen.getByLabelText("Value (HKD)") as HTMLInputElement).value).toBe("0");
   });
 
+  it("defaults the engagement start date to the Hong Kong business day", () => {
+    // 17:00Z on 8 November is 01:00 on 9 November in Hong Kong. The UTC slice this default
+    // used to take would write 8 November into the engagement's start_date, which is a
+    // calendar field the server read back as the business day.
+    vi.setSystemTime(new Date("2026-11-08T17:00:00.000Z"));
+    try {
+      renderDialog();
+
+      expect((screen.getByLabelText("Start date") as HTMLInputElement).value).toBe("2026-11-09");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("sends the value and dates the user actually entered", async () => {
     // The write is the whole point of the dialog: a form that silently drops the edited
     // value creates an engagement worth the quote total instead of the negotiated one.

@@ -2,6 +2,7 @@ import type { RequestAuthorization } from "@/server/auth/authorization.server";
 import { buildVisibilityScope } from "@/server/auth/visibility-scope.server";
 import { buildDefaultPortionsFromLineItems, canAcceptJobSheet } from "@/lib/quote-to-cash";
 import type { NewJobSheetPortion } from "@/lib/quote-to-cash";
+import { escapeLikePattern } from "@/lib/sql-like";
 import type { JobSheet, JobSheetPortion, JsonValue, QuoteLineItemRecord } from "@/lib/types";
 import { query, queryOne, transaction, type Queryable } from "@/server/db/neon.server";
 import {
@@ -170,11 +171,12 @@ function visibleJobSheetWhere(filters: JobSheetFilters, context: RequestAuthoriz
   if (filters.company?.trim())
     add(
       "coalesce(c.company_name,a.name,l.company_name) ilike ?",
-      "%" + filters.company.trim() + "%",
+      "%" + escapeLikePattern(filters.company) + "%",
     );
-  if (filters.quoteNumber?.trim()) add("q.number ilike ?", "%" + filters.quoteNumber.trim() + "%");
+  if (filters.quoteNumber?.trim())
+    add("q.number ilike ?", "%" + escapeLikePattern(filters.quoteNumber) + "%");
   if (filters.accountingOwner) add("js.accounting_owner=?", filters.accountingOwner);
-  if (filters.po?.trim()) add("js.po_number ilike ?", "%" + filters.po.trim() + "%");
+  if (filters.po?.trim()) add("js.po_number ilike ?", "%" + escapeLikePattern(filters.po) + "%");
   if (filters.createdFrom)
     add("(js.created_at at time zone 'Asia/Hong_Kong')::date>=?::date", filters.createdFrom);
   if (filters.createdTo)

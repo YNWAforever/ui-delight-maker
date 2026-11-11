@@ -276,6 +276,31 @@ describe("operations read models", () => {
     expect(sql).not.toContain("now()");
   });
 
+  it("buckets report dates in the Hong Kong business day, including grouping and ordering", async () => {
+    // `created_at` is a timestamptz, so its UTC date is a day behind Hong Kong for eight hours
+    // each day. Every date derivation in these reports — including group by and order by — has
+    // to convert to the business zone first, exactly as the revenue report already does.
+    const { reportQueries } = await import("../operations");
+    const conversion = reportQueries["conversion"].toLowerCase();
+    const tasks = reportQueries["tasks"].toLowerCase();
+
+    expect(conversion.match(/at time zone 'asia\/hong_kong'/g)).toHaveLength(3);
+    expect(conversion).not.toContain("date_trunc('week', created_at)");
+    expect(tasks.match(/at time zone 'asia\/hong_kong'/g)).toHaveLength(3);
+    expect(tasks).not.toContain("group by created_at::date");
+  });
+
+  it("normalises an empty quote currency to HKD in the pipeline report totals", async () => {
+    queryOneMock.mockResolvedValueOnce(null);
+    const { loadReportSummary } = await import("../operations");
+
+    await loadReportSummary({ range: "30d" }, reportContext);
+
+    const summarySql = sqlText(queryOneMock.mock.calls[0]?.[0]);
+    expect(summarySql).toContain("coalesce(nullif(q.currency, ''), 'hkd')");
+    expect(summarySql).not.toContain("group by q.currency");
+  });
+
   it("counts engagements by id, not by row", async () => {
     // count(*) over a left join counts the null-extended row, so a client with zero
     // engagements reports 1 - a perfectly plausible number.

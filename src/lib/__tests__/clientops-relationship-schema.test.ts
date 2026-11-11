@@ -213,15 +213,85 @@ describe("getClientOpsSchemaMigrationDecision", () => {
     });
   });
 
-  it("uses every Neon migration when DATABASE_URL is present", () => {
+  it.each(["localhost", "127.0.0.1", "[::1]"])(
+    "uses every Neon migration for loopback host %s without a remote opt-in",
+    (host) => {
+      const databaseUrl = `postgres://user:secret@${host}:5432/clientops_test`;
+      expect(getClientOpsSchemaMigrationDecision({ DATABASE_URL: databaseUrl })).toEqual({
+        shouldApply: true,
+        databaseUrl,
+        migrationPaths: CLIENTOPS_MIGRATION_PATHS,
+      });
+    },
+  );
+
+  it("keeps the database-contract CI rehearsal applying migrations", () => {
+    const databaseUrl = "postgres://clientops:clientops@127.0.0.1:5432/clientops_test";
     expect(
       getClientOpsSchemaMigrationDecision({
-        DATABASE_URL: "postgres://user@example/neondb",
+        DATABASE_URL: databaseUrl,
+        DATABASE_TEST_URL: databaseUrl,
+        CLIENTOPS_SCRIPT_LOCAL_PG: "1",
       }),
     ).toEqual({
       shouldApply: true,
-      databaseUrl: "postgres://user@example/neondb",
+      databaseUrl,
       migrationPaths: CLIENTOPS_MIGRATION_PATHS,
+    });
+  });
+
+  it("refuses a non-loopback target without the explicit opt-in and names the host", () => {
+    // CLIENTOPS_SCRIPT_LOCAL_PG only selects the pg driver for a loopback rehearsal database;
+    // it must not widen the DDL target guard to a remote host.
+    const decision = getClientOpsSchemaMigrationDecision({
+      DATABASE_URL: "postgres://user:secret@ep-prod-1.aws.neon.tech/neondb",
+      CLIENTOPS_SCRIPT_LOCAL_PG: "1",
+    });
+    expect(decision).toEqual({
+      shouldApply: false,
+      reason: expect.stringContaining("ep-prod-1.aws.neon.tech"),
+    });
+    expect(decision.shouldApply === false && decision.reason).toContain(
+      "CLIENTOPS_ALLOW_SCHEMA_MIGRATION=1",
+    );
+  });
+
+  it("applies to a non-loopback target only with the explicit opt-in", () => {
+    const databaseUrl = "postgres://user:secret@ep-staging-1.aws.neon.tech/neondb";
+    expect(
+      getClientOpsSchemaMigrationDecision({
+        DATABASE_URL: databaseUrl,
+        CLIENTOPS_ALLOW_SCHEMA_MIGRATION: "1",
+      }),
+    ).toEqual({
+      shouldApply: true,
+      databaseUrl,
+      migrationPaths: CLIENTOPS_MIGRATION_PATHS,
+    });
+  });
+
+  it.each([
+    ["VERCEL_ENV=production", { VERCEL_ENV: "production" }],
+    ["NODE_ENV=production", { NODE_ENV: "production" }],
+  ])("always refuses a production deployment marked by %s", (_label, markers) => {
+    const decision = getClientOpsSchemaMigrationDecision({
+      DATABASE_URL: "postgres://clientops:clientops@127.0.0.1:5432/clientops_test",
+      CLIENTOPS_ALLOW_SCHEMA_MIGRATION: "1",
+      CLIENTOPS_SCRIPT_LOCAL_PG: "1",
+      ...markers,
+    });
+    expect(decision).toEqual({
+      shouldApply: false,
+      reason: expect.stringContaining("refusing"),
+    });
+    expect(decision.shouldApply === false && decision.reason).toContain("127.0.0.1");
+    expect(decision.shouldApply === false && decision.reason).toContain(_label);
+  });
+
+  it("refuses a DATABASE_URL that cannot be resolved to a target host", () => {
+    expect(getClientOpsSchemaMigrationDecision({ DATABASE_URL: "not-a-url" })).toEqual({
+      shouldApply: false,
+      reason: expect.stringContaining("DATABASE_URL"),
     });
   });
 });
@@ -389,13 +459,15 @@ describe("applyClientOpsSchemaMigrations", () => {
 describe("bootstrapSuperAdmin", () => {
   function createDatabase(
     profiles: Array<{ id: string; email: string; role: string; status: string }>,
+    activeSuperAdmins: Array<{ id: string }> = [],
   ) {
     const calls: Array<{ text: string; values: readonly unknown[] }> = [];
     const query = vi.fn(async (text: string, values: readonly unknown[] = []) => {
       calls.push({ text, values });
-      if (text.includes("from profiles")) {
-        return { rows: profiles };
-      }
+      if (text.includes("pg_advisory_xact_lock")) return { rows: [] };
+      // The one-time guard's super-admin scan is separate from the target profile lookup.
+      if (text.includes("role = 'super_admin'")) return { rows: activeSuperAdmins };
+      if (text.includes("from profiles")) return { rows: profiles };
       return { rows: [] };
     });
     const db = {
@@ -444,12 +516,46 @@ describe("bootstrapSuperAdmin", () => {
     expect(
       calls.some(({ text }) => text.includes("update profiles") && text.includes("super_admin")),
     ).toBe(true);
-    expect(
-      calls.some(
-        ({ text, values }) =>
-          text.includes("admin_audit_logs") && values.includes("profile.bootstrap_super_admin"),
+
+    const lockIndex = calls.findIndex(({ text }) => text.includes("pg_advisory_xact_lock"));
+    const guardIndex = calls.findIndex(({ text }) => text.includes("role = 'super_admin'"));
+    const auditIndex = calls.findIndex(({ text }) => text.includes("admin_audit_logs"));
+    expect(lockIndex).toBeGreaterThan(-1);
+    expect(guardIndex).toBeGreaterThan(lockIndex);
+    expect(auditIndex).toBeGreaterThan(guardIndex);
+
+    const audit = calls.find(({ text }) => text.includes("admin_audit_logs"));
+    // The actor is the script (NULL) with the script marker, not the promoted user's id.
+    expect(audit?.text.replace(/\s+/g, " ")).toContain("values (null, 'profile', $1");
+    expect(audit).toMatchObject({
+      values: [
+        "profile-1",
+        "profile.bootstrap_super_admin",
+        expect.stringContaining("script:clientops:bootstrap-super-admin"),
+        JSON.stringify({ role: "admin" }),
+        JSON.stringify({ role: "super_admin" }),
+      ],
+    });
+  });
+
+  it("refuses to create a second Super Admin when an active one already exists", async () => {
+    const { calls, db } = createDatabase(
+      [{ id: "profile-1", email: "admin@example.com", role: "admin", status: "active" }],
+      [{ id: "existing-super-admin" }],
+    );
+
+    await expect(
+      bootstrapSuperAdmin(
+        {
+          DATABASE_URL: "postgres://redacted",
+          CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL: "admin@example.com",
+        },
+        db,
       ),
-    ).toBe(true);
+    ).rejects.toThrow(/active Super Admin\(s\) already exist/);
+
+    expect(calls.some(({ text }) => text.includes("update profiles"))).toBe(false);
+    expect(calls.some(({ text }) => text.includes("admin_audit_logs"))).toBe(false);
   });
 
   it.each([
@@ -502,6 +608,12 @@ describe("bootstrapSuperAdmin", () => {
     const client = {
       query: vi.fn(async (text: string) => {
         calls.push(text);
+        if (text.includes("pg_advisory_xact_lock")) {
+          return { rows: [] };
+        }
+        if (text.includes("role = 'super_admin'")) {
+          return { rows: [] };
+        }
         if (text.includes("from profiles")) {
           return {
             rows: [

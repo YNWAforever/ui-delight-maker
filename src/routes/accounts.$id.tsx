@@ -47,7 +47,10 @@ import {
   companyWorkspaceQueryKey,
   invalidateCompanyWorkspaceMutation,
 } from "@/lib/company-workspace/invalidation";
-import { getCompanyWorkspaceSectionEnablement } from "@/lib/company-workspace/section-enablement";
+import {
+  getCompanyWorkspaceSectionEnablement,
+  isCompanyWorkspaceTabAllowed,
+} from "@/lib/company-workspace/section-enablement";
 import { retainCompanyWorkspaceSectionData } from "@/lib/company-workspace/section-state";
 import { describeTriggerFailure, toSafeErrorMessage } from "@/lib/errors";
 import { formatCount, formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
@@ -121,6 +124,16 @@ const SIGNAL_SEVERITY: Record<RelationshipSignalType, AttentionSeverity> = {
 
 const SEVERITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
+/** Tab order and labels; a tab is rendered only when the caller may read its sections. */
+const COMPANY_WORKSPACE_TABS = [
+  { value: "overview", label: "Overview" },
+  { value: "stakeholders", label: "Stakeholders" },
+  { value: "events", label: "Commercial" },
+  { value: "tasks", label: "Delivery & Finance" },
+  { value: "timeline", label: "Activity" },
+  { value: "signals", label: "Signals" },
+] as const;
+
 /**
  * `APP_USERS` is five hard-coded fixtures whose ids appear in no migration and no seed
  * (IF-D1-10), so a real `profiles.id` never resolves through it. Reporting "Unassigned" for
@@ -183,12 +196,26 @@ function AccountDetailRoute() {
     staleTime: COMPANY_WORKSPACE_STALE_TIME_MS,
     refetchOnWindowFocus: true,
   });
-  const { core, overview } = workspaceReadQuery.data;
+  const { core, overview, sectionAccess } = workspaceReadQuery.data;
   const { company: account, contacts } = core;
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const activeTab = search.tab ?? "overview";
-  const sectionEnablement = getCompanyWorkspaceSectionEnablement(activeTab);
+  const activeTabAllowed = isCompanyWorkspaceTabAllowed(activeTab, sectionAccess);
+  /**
+   * A denied tab can still arrive from a bookmark or a shared URL. Replace it with Overview
+   * rather than firing a section read the server will refuse; the tab is also absent from
+   * the trigger list below. The section handler stays authoritative — this keeps the URL and
+   * the queries honest, it does not authorise anything.
+   */
+  useEffect(() => {
+    if (!activeTabAllowed) {
+      navigate({ search: (current) => ({ ...current, tab: undefined }), replace: true });
+    }
+  }, [activeTabAllowed, navigate]);
+  const sectionEnablement = getCompanyWorkspaceSectionEnablement(
+    activeTabAllowed ? activeTab : "overview",
+  );
   const commercialQuery = useCompanyWorkspaceSection(account.id, "commercial", {
     enabled: sectionEnablement.commercial,
   });
@@ -476,12 +503,13 @@ function AccountDetailRoute() {
         >
           <div className="max-w-full overflow-x-auto pb-1">
             <TabsList className="w-max">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="stakeholders">Stakeholders</TabsTrigger>
-              <TabsTrigger value="events">Commercial</TabsTrigger>
-              <TabsTrigger value="tasks">Delivery &amp; Finance</TabsTrigger>
-              <TabsTrigger value="timeline">Activity</TabsTrigger>
-              <TabsTrigger value="signals">Signals</TabsTrigger>
+              {COMPANY_WORKSPACE_TABS.filter((tab) =>
+                isCompanyWorkspaceTabAllowed(tab.value, sectionAccess),
+              ).map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value}>
+                  {tab.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
           </div>
 

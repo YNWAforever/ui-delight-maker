@@ -15,7 +15,7 @@ TanStack Start SSR, deployed to **Vercel**.
 | Database | **Neon Postgres** — raw parameterized SQL, no ORM |
 | Auth | Neon Auth (`src/lib/auth/neon-auth.server.ts`) |
 | Agents | n8n webhooks → OpenRouter (`anthropic/claude-sonnet-4-6`) |
-| Forms / validation | react-hook-form + zod 4 |
+| Forms / validation | zod 4 + controlled React state (no form library) |
 | Charts | Recharts |
 | Build / deploy | Vite 7 via `@lovable.dev/vite-tanstack-config` → Vercel |
 | Package manager | Bun |
@@ -60,7 +60,7 @@ src/server-functions/  BFF layer — every client data call goes through here
 src/server/            Server-only: repositories, read-models, auth, db, workflows
 src/components/        Feature components; components/ui/ = shadcn primitives
 src/lib/               types.ts (source of truth), format.ts, query-keys.ts, n8n.ts
-neon/migrations/       Registered SQL migrations (001–022)
+neon/migrations/       Registered SQL migrations (001–028)
 scripts/clientops/     Migrate, verify, seed, perf-budget, bootstrap scripts
 n8n/workflows/         Agent workflow JSON definitions
 ```
@@ -92,6 +92,10 @@ n8n/workflows/         Agent workflow JSON definitions
   before adding any package to `minimumReleaseAgeExcludes`.
 - Never set `N8N_USER_INVITATION_WEBHOOK_URL` or `CLIENTOPS_BOOTSTRAP_SUPER_ADMIN_EMAIL`
   without explicit operator approval — see `README.md` production gates.
+- **The Neon Auth project must require email verification.** The app refuses unverified email
+  profile binding and invitation acceptance, and shows the explicit verify-email workspace state
+  where the user enters the emailed verification code; disabling the verification email blocks
+  invitees from activating until an admin provisions them by auth user id.
 - Seed env vars (`CLIENTOPS_SEED_*`) must never point at production.
 
 ## Neon-only runtime

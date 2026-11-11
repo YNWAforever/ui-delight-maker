@@ -42,6 +42,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useClientWorkspaceSection } from "@/hooks/use-client-workspace-section";
+import { getBusinessDateKey } from "@/lib/business-date";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatCompactHKD, formatCurrencyAmount, formatDate, formatDateTime } from "@/lib/format";
 import { getRenewalWindow } from "@/lib/engagement-utils";
@@ -212,7 +213,8 @@ function ClientDetail() {
       .filter((engagement) => engagement.risk_reasoning)
       .sort((left, right) => right.updated_at.localeCompare(left.updated_at))[0] ?? null;
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Hong Kong business day, matching the renewal-window labels below across the HKT day.
+  const today = getBusinessDateKey();
 
   return (
     <>

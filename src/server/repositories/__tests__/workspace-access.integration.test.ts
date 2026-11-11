@@ -69,8 +69,8 @@ describe("workspace invitation states on isolated PostgreSQL", () => {
       });
 
       const results = await Promise.allSettled([
-        repo.acceptInvitation(rawToken, { id: "t18-new-profile", email }),
-        repo.acceptInvitation(rawToken, { id: "t18-new-profile", email }),
+        repo.acceptInvitation(rawToken, { id: "t18-new-profile", email, emailVerified: true }),
+        repo.acceptInvitation(rawToken, { id: "t18-new-profile", email, emailVerified: true }),
       ]);
       expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
       expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
@@ -114,7 +114,11 @@ describe("workspace invitation states on isolated PostgreSQL", () => {
       [email, hashInvitationToken(rawToken), actorId],
     );
     await expect(
-      repo.acceptInvitation(rawToken, { id: "t18-suspended-profile", email }),
+      repo.acceptInvitation(rawToken, {
+        id: "t18-suspended-profile",
+        email,
+        emailVerified: true,
+      }),
     ).rejects.toThrow("administrator action");
     const profile = await pool.query("select role,status from profiles where id=$1", [
       "t18-suspended-profile",

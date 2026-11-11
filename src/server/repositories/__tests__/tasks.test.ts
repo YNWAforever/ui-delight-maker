@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * `listTasks` used to run `select *` against a fifteen-column table. Its consumers —
  * `src/routes/tasks.tsx` (via `getTasks`), `src/routes/accounts.$id.tsx` and the "Open tasks"
  * tile on the accounts commercial tab (via `loadCompanyWorkspaceRead`'s delivery_finance
- * section), and `getAccountWorkspaceData`'s `toCompanyWorkspaceSummary` call — only ever read
- * nine of those columns: `id`, `title`, `description`, `assigned_to`, `account_id`, `due_date`,
- * `priority`, `status`, and `created_by_agent`. `account_id` is the one easy to miss: it is
- * never rendered, but `src/routes/tasks.tsx`'s `move()` reads `movedTask?.account_id` to decide
- * which company workspace queries to invalidate after a status change.
+ * section) — only ever read nine of those columns: `id`, `title`, `description`, `assigned_to`,
+ * `account_id`, `due_date`, `priority`, `status`, and `created_by_agent`. `account_id` is the one
+ * easy to miss: it is never rendered, but `src/routes/tasks.tsx`'s `move()` reads
+ * `movedTask?.account_id` to decide which company workspace queries to invalidate after a
+ * status change.
  *
  * `client_id`, `contact_id`, `deal_id`, and `project_id` are `where` filters and `created_at` is
  * the `order by` column — real SQL, but none of them need to appear in the `select` list for the

@@ -9,6 +9,7 @@ import {
 export type NeonAuthUser = {
   id: string;
   email?: string | null;
+  emailVerified?: boolean | null;
   name?: string | null;
   image?: string | null;
 };
@@ -139,6 +140,7 @@ export type WorkspaceAccessDecision =
   | { state: "anonymous" }
   | { state: "active"; session: AppSession }
   | { state: "invited" }
+  | { state: "unverified"; email: string }
   | { state: "suspended" }
   | { state: "deactivated" }
   | { state: "no_profile" };
@@ -149,15 +151,36 @@ export async function resolveWorkspaceAccess(): Promise<WorkspaceAccessDecision>
   if (!identity) return { state: "anonymous" };
 
   const normalizedEmail = identity.user.email?.trim().toLowerCase();
+  /**
+   * The Neon Auth project must require email verification — this is the application-side
+   * enforcement. The proxy allows sign-up with any typed @fimmick.com address, so an
+   * unverified address must never bind a pre-provisioned profile by email: whoever typed the
+   * victim's address would otherwise inherit their workspace identity. A profile matched by
+   * `user.id` is already bound (invitation acceptance inserted it with that id) and is
+   * unaffected by the upstream verification flag.
+   */
+  const emailVerified = identity.user.emailVerified === true;
+  const profileById = await getProfileById(identity.user.id);
   const profile =
-    (await getProfileById(identity.user.id)) ??
-    (normalizedEmail ? await getProfileByEmail(normalizedEmail) : null);
+    profileById ??
+    (emailVerified && normalizedEmail ? await getProfileByEmail(normalizedEmail) : null);
 
   if (profile?.status === "suspended") return { state: "suspended" };
   if (profile?.status === "deactivated") return { state: "deactivated" };
   if (profile?.status === "active") {
     if (sessionIsRevoked(identity, profile)) return { state: "anonymous" };
     return { state: "active", session: { ...identity, profile } };
+  }
+
+  /**
+   * A signed-in identity whose email the upstream has not verified cannot be trusted to be the
+   * address it names, so it must not reach any email-keyed state: not the email-fallback profile
+   * binding above, and not the pending invitation below (which would otherwise invite it to
+   * accept and then fail the repository's verification check). Report the distinct state so the
+   * login surface can explain the verification step instead of collapsing into `no_profile`.
+   */
+  if (!profileById && normalizedEmail && !emailVerified) {
+    return { state: "unverified", email: normalizedEmail };
   }
 
   if (normalizedEmail) {

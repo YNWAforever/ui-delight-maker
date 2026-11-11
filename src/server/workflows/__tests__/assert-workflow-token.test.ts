@@ -11,6 +11,17 @@ function requestWithToken(token?: string) {
   });
 }
 
+function expectUnauthorized(token: string) {
+  try {
+    assertWorkflowToken(requestWithToken(token));
+  } catch (error) {
+    expect(error).toBeInstanceOf(Response);
+    expect((error as Response).status).toBe(401);
+    return;
+  }
+  throw new Error("expected assertWorkflowToken to throw");
+}
+
 describe("assertWorkflowToken", () => {
   beforeEach(() => {
     process.env.N8N_WORKFLOW_TOKEN = "expected-token";
@@ -33,6 +44,19 @@ describe("assertWorkflowToken", () => {
       expect(error).toBeInstanceOf(Response);
       expect((error as Response).status).toBe(401);
     }
+  });
+
+  it("rejects near-miss tokens that share the configured prefix", () => {
+    // One byte short, same length but a different last byte, and one byte long: a plain
+    // `!==` short-circuits on these, so they are the values a timing attack iterates over.
+    expectUnauthorized("expected-toke");
+    expectUnauthorized("expected-toker");
+    expectUnauthorized("expected-tokenx");
+  });
+
+  it("rejects tokens whose length differs from the configured token", () => {
+    expectUnauthorized("expected");
+    expectUnauthorized("x".repeat(512));
   });
 
   it("rejects a missing token with 401", () => {
