@@ -54,6 +54,8 @@ src/server/mcp/protocol.server.ts     MCP lifecycle, JSON-RPC, rate limit, audit
   +- src/server/mcp/transport.server.ts   one Web Request -> one JSON-RPC response (no SSE/session)
   +- src/server/mcp/tokens.server.ts      sha256 lookup, revoked/expired/profile-status checks,
   |                                       last_used_at, mcp_tool_calls audit (no args/PII)
+  +- src/server/mcp/tool-call-trace.server.ts  linked agent_tool_calls trace with a redacted
+  |                                           argument digest (see agent-observability.md)
   +- src/server/auth/authorization.server.ts  loadAuthorizationForProfile -> same RequestAuthorization
   |                                           context the authenticated UI uses
   v
@@ -125,7 +127,7 @@ Deliberately not in v1: quote list (per-row linked-record redaction), agent-run/
 | Double apply | `approval.decision` + `message.manual_send` receipts and handoff CAS; execution shares the decision transaction |
 | Proposal payload PII | only action name, ids, token name and the human-visible reference are stored; no drafts, notes or contact fields |
 | Token privilege drift | scopes are stored per token; write tools require the `write` scope and the token owner's current capabilities are re-evaluated on every call |
-| PII egress | only fields the user can already see in the product; audit stores tool name/status only |
+| PII egress | only fields the user can already see in the product; the MCP audit stores tool name/status only, and the linked trace stores a SHA-256 argument digest plus key names — never raw arguments or results |
 | Cost/abuse | per-profile in-memory limit 60 req/min plus a per-client pre-auth guard (best-effort per serverless instance), max 20 active tokens per profile, bounded tool page sizes, and database audit for after-the-fact analysis |
 | Replay | bearer token is a long-lived credential by design; TLS only; rotate/revoke on suspicion |
 | Network | no CORS headers: browser-based MCP clients are phase 2 (OAuth) |
@@ -140,6 +142,12 @@ where profile_id = $1 and revoked_at is null;
 -- trace a token's calls
 select tool, status, error_code, created_at from mcp_tool_calls
 where token_id = $1 order by created_at desc limit 200;
+
+-- same calls with redacted argument evidence (unified trace; see agent-observability.md)
+select c.called_at, c.tool_name, c.status, c.duration_ms, c.args_keys, c.args_digest
+from agent_tool_calls c
+join mcp_tool_calls m on m.id = c.mcp_tool_call_id
+where m.token_id = $1 order by c.called_at desc limit 200;
 
 -- open agent proposals (all actions)
 select id, requested_by_profile_id, context_data->>'action' as action,

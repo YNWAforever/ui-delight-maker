@@ -33,6 +33,7 @@ vi.mock("@/server/db/neon.server", () => ({
 
 import { CLIENTOPS_MIGRATION_PATHS } from "@/lib/clientops-relationship-schema";
 import { runClientOpsMigrations } from "@/server/db/clientops-migrations";
+import { listApproverProfileIds } from "@/server/repositories/notifications";
 import { escalateOverdueApprovalsBatch } from "@/server/workflows/approval-sla.server";
 
 const hasDatabase = Boolean(process.env.DATABASE_TEST_URL);
@@ -228,20 +229,28 @@ describe("approval SLA escalation writer on isolated PostgreSQL", () => {
       expect(proposerLogs[0].diff_data).toMatchObject({ approval_type: "message_send" });
       expect(proposerLogs[0].diff_data.age_minutes).toBeGreaterThanOrEqual(290);
 
+      // The roster is derived from the live policy, and this shared test database can contain
+      // active approver fixtures from other integration files, so assert against the actual
+      // roster instead of assuming it is exactly this file's two approvers.
+      const roster = [...(await listApproverProfileIds())].sort();
+      expect(roster).toContain(approverAdminId);
+      expect(roster).toContain(approverManagerId);
+      expect(roster).not.toContain(suspendedAdminId);
+      expect(roster).not.toContain(salesId);
+
       // The proposer is an active approver but must not be nudged about their own proposal.
       const proposerNotifications = await notifications(proposerApproval);
       expect(proposerNotifications.map((row) => row.user_id)).toEqual(
-        [approverAdminId, approverManagerId].sort(),
+        roster.filter((id) => id !== proposerAdminId),
       );
+      expect(proposerNotifications.every((row) => row.user_id !== proposerAdminId)).toBe(true);
       expect(proposerNotifications.every((row) => row.type === "approval_escalated")).toBe(true);
       expect(proposerNotifications[0].title).toBe("Approval overdue: Message send");
       expect(proposerNotifications[0].body).toBe("Audit overdue message draft");
 
       // A plain approval has no proposer, so the whole active roster hears about it.
       const plainNotifications = await notifications(plainApproval);
-      expect(plainNotifications.map((row) => row.user_id)).toEqual(
-        [approverAdminId, approverManagerId, proposerAdminId].sort(),
-      );
+      expect(plainNotifications.map((row) => row.user_id)).toEqual(roster);
       expect(plainNotifications[0].title).toBe("Approval overdue: Risk review");
       expect(result.notified).toBe(proposerNotifications.length + plainNotifications.length);
 
@@ -264,13 +273,15 @@ describe("approval SLA escalation writer on isolated PostgreSQL", () => {
         createdMinutesAgo: 280,
         requestedByProfileId: proposerAdminId,
       });
+      const roster = await listApproverProfileIds();
+      const expectedRecipients = roster.filter((id) => id !== proposerAdminId).length;
       await escalateOverdueApprovalsBatch({ limit: 10, deadlineAt: Date.now() + 10_000 });
       const firstState = await state(overdue);
       const firstLogs = await logs(overdue);
       const firstNotifications = await notifications(overdue);
       expect(firstState.sla_escalated_at).not.toBeNull();
       expect(firstLogs).toHaveLength(1);
-      expect(firstNotifications).toHaveLength(2);
+      expect(firstNotifications).toHaveLength(expectedRecipients);
 
       const rerun = await escalateOverdueApprovalsBatch({
         limit: 10,
@@ -282,7 +293,7 @@ describe("approval SLA escalation writer on isolated PostgreSQL", () => {
       expect(rerun.notified).toBe(0);
       expect(await state(overdue)).toEqual(firstState);
       expect(await logs(overdue)).toHaveLength(1);
-      expect(await notifications(overdue)).toHaveLength(2);
+      expect(await notifications(overdue)).toHaveLength(firstNotifications.length);
 
       // Dedupe also protects the notification row if a previous stamp were ever lost.
       const dedupeKey = `approval_escalated:${overdue}:${approverAdminId}`;
