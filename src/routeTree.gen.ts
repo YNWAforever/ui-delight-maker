@@ -50,6 +50,7 @@ import { Route as QuotesNewRouteImport } from './routes/quotes.new'
 import { Route as AdminPeopleIdRouteImport } from './routes/admin.people.$id'
 import { Route as AdminTeamsIdRouteImport } from './routes/admin.teams.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiWorkflowsApprovalSlaRouteImport } from './routes/api/workflows/approval-sla'
 import { Route as ApiWorkflowsDraftQuoteRouteImport } from './routes/api/workflows/draft-quote'
 import { Route as ApiWorkflowsDraftReplyRouteImport } from './routes/api/workflows/draft-reply'
 import { Route as ApiWorkflowsQualifyLeadRouteImport } from './routes/api/workflows/qualify-lead'
@@ -267,6 +268,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWorkflowsApprovalSlaRoute = ApiWorkflowsApprovalSlaRouteImport.update({
+  id: '/api/workflows/approval-sla',
+  path: '/api/workflows/approval-sla',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWorkflowsDraftQuoteRoute = ApiWorkflowsDraftQuoteRouteImport.update({
   id: '/api/workflows/draft-quote',
   path: '/api/workflows/draft-quote',
@@ -370,6 +376,7 @@ export interface FileRoutesByFullPath {
   '/admin/people/$id': typeof AdminPeopleIdRoute
   '/admin/teams/$id': typeof AdminTeamsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/workflows/approval-sla': typeof ApiWorkflowsApprovalSlaRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
@@ -423,6 +430,7 @@ export interface FileRoutesByTo {
   '/admin/people/$id': typeof AdminPeopleIdRoute
   '/admin/teams/$id': typeof AdminTeamsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/workflows/approval-sla': typeof ApiWorkflowsApprovalSlaRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
@@ -478,6 +486,7 @@ export interface FileRoutesById {
   '/admin/people/$id': typeof AdminPeopleIdRoute
   '/admin/teams/$id': typeof AdminTeamsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/workflows/approval-sla': typeof ApiWorkflowsApprovalSlaRoute
   '/api/workflows/draft-quote': typeof ApiWorkflowsDraftQuoteRoute
   '/api/workflows/draft-reply': typeof ApiWorkflowsDraftReplyRoute
   '/api/workflows/qualify-lead': typeof ApiWorkflowsQualifyLeadRoute
@@ -534,6 +543,7 @@ export interface FileRouteTypes {
     | '/admin/people/$id'
     | '/admin/teams/$id'
     | '/api/auth/$'
+    | '/api/workflows/approval-sla'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
@@ -587,6 +597,7 @@ export interface FileRouteTypes {
     | '/admin/people/$id'
     | '/admin/teams/$id'
     | '/api/auth/$'
+    | '/api/workflows/approval-sla'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
@@ -641,6 +652,7 @@ export interface FileRouteTypes {
     | '/admin/people/$id'
     | '/admin/teams/$id'
     | '/api/auth/$'
+    | '/api/workflows/approval-sla'
     | '/api/workflows/draft-quote'
     | '/api/workflows/draft-reply'
     | '/api/workflows/qualify-lead'
@@ -678,6 +690,7 @@ export interface RootRouteChildren {
   ApiMcpRoute: typeof ApiMcpRoute
   InviteTokenRoute: typeof InviteTokenRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiWorkflowsApprovalSlaRoute: typeof ApiWorkflowsApprovalSlaRoute
   ApiWorkflowsDraftQuoteRoute: typeof ApiWorkflowsDraftQuoteRoute
   ApiWorkflowsDraftReplyRoute: typeof ApiWorkflowsDraftReplyRoute
   ApiWorkflowsQualifyLeadRoute: typeof ApiWorkflowsQualifyLeadRoute
@@ -978,6 +991,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/workflows/approval-sla': {
+      id: '/api/workflows/approval-sla'
+      path: '/api/workflows/approval-sla'
+      fullPath: '/api/workflows/approval-sla'
+      preLoaderRoute: typeof ApiWorkflowsApprovalSlaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/workflows/draft-quote': {
       id: '/api/workflows/draft-quote'
       path: '/api/workflows/draft-quote'
@@ -1233,6 +1253,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMcpRoute: ApiMcpRoute,
   InviteTokenRoute: InviteTokenRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiWorkflowsApprovalSlaRoute: ApiWorkflowsApprovalSlaRoute,
   ApiWorkflowsDraftQuoteRoute: ApiWorkflowsDraftQuoteRoute,
   ApiWorkflowsDraftReplyRoute: ApiWorkflowsDraftReplyRoute,
   ApiWorkflowsQualifyLeadRoute: ApiWorkflowsQualifyLeadRoute,

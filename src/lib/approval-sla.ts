@@ -10,7 +10,19 @@
  * Lives here rather than in the route so the route file exports only components — see
  * react-refresh/only-export-components.
  */
-const SLA_HOURS = 4;
+export const SLA_HOURS = 4;
+
+/**
+ * The instant before which a pending approval is overdue, as a `Date`.
+ *
+ * ONE definition of the window: the chip and the scheduled escalation writer both need the same
+ * boundary. Passing `now` in (rather than reading the clock here) keeps callers deterministic
+ * and testable, and returning a `Date` lets the caller bind it to a timestamptz parameter without
+ * re-parsing an ISO string.
+ */
+export function approvalSlaCutoff(nowMs: number): Date {
+  return new Date(nowMs - SLA_HOURS * 3600_000);
+}
 
 export function slaChip(createdAt: string, now: number) {
   const elapsed = (now - new Date(createdAt).getTime()) / 36e5;

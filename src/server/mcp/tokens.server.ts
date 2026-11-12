@@ -264,10 +264,14 @@ export type McpToolCallRecord = {
  * Best-effort audit insert: a connector read must never fail because its telemetry row could
  * not be written, so failures are logged and swallowed. Only the tool name, outcome and
  * duration are stored — never arguments or results, because those can contain client PII.
+ *
+ * Returns the inserted row id so the MCP trace seam can link the unified `agent_tool_calls` row
+ * to this audit row; `null` means no audit row exists and the trace must be skipped rather than
+ * recorded detached from the call it describes.
  */
-export async function recordMcpToolCall(input: McpToolCallRecord): Promise<void> {
+export async function recordMcpToolCall(input: McpToolCallRecord): Promise<{ id: string } | null> {
   const tool = input.tool.trim().slice(0, MCP_TOKEN_NAME_MAX_LENGTH);
-  if (!tool) return;
+  if (!tool) return null;
 
   const durationMs =
     input.durationMs === null || input.durationMs === undefined
@@ -275,14 +279,20 @@ export async function recordMcpToolCall(input: McpToolCallRecord): Promise<void>
       : Math.max(0, Math.trunc(input.durationMs));
 
   try {
-    await query(
+    const row = await queryOne<{ id: string }>(
       `
         insert into mcp_tool_calls (token_id, profile_id, tool, status, error_code, duration_ms)
         values ($1, $2, $3, $4, $5, $6)
+        returning id
       `,
       [input.tokenId, input.profileId, tool, input.status, input.errorCode ?? null, durationMs],
     );
+    return row ?? null;
   } catch (error) {
-    console.error("Failed to record MCP tool call", error);
+    console.error(
+      "Failed to record MCP tool call",
+      error instanceof Error ? error.name : "unknown",
+    );
+    return null;
   }
 }

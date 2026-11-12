@@ -46,8 +46,9 @@ Phase 1/2 work, so this section only names the delta that must land before agent
    before dispatch and is not aggregated per outcome.
 5. **Policy governs status only.** `human_approval` is displayed but always copied from the
    catalogue; approval behaviour is not yet risk/confidence-driven.
-6. **Approval SLA is a chip, not an escalation loop.** Four of seven approval types have no
-   decision handler and say so.
+6. **Approval SLA is a chip, not an escalation loop.** Tranche B1 adds the measured writer and
+   escalation notification, but four of seven approval types still have no decision handler and
+   say so; assignment and manager-chain escalation remain open.
 7. **No memory by design.** Episodic data in `agent_runs` is unused; timeline summaries are
    deterministic counts, not model summaries.
 
@@ -85,15 +86,21 @@ agent-run and approval detail tools (subject-level redaction), writes, browser/C
 
 ### B1. Close the two prerequisites
 
-1. **Tool-call trace writer.** Route every agent tool call (n8n and MCP) through one recorder that
-   writes `agent_tool_calls` with `agent_run_id` or `mcp_tool_calls.id`, tool name, duration,
+1. **Tool-call trace writer.** Route every agent tool call the CRM can observe through one recorder
+   that writes `agent_tool_calls` with `agent_run_id` or `mcp_tool_calls.id`, tool name, duration,
    status, and a redacted argument digest. This is what makes "what did the agent access?" a
-   query, not a log dig. **Still open**: MCP calls are audited in `mcp_tool_calls`; n8n calls are
-   not yet written to `agent_tool_calls`, which remains an unused table.
-2. **Approval SLA escalation.** A scheduled writer that claims overdue approvals (lease pattern
-   from `retention_sweeps`) and raises an escalation notification; the existing 4h chip becomes a
-   measured queue. **Still open**; the first proposal slice reuses the existing approval queue and
-   owner assignment rather than adding escalation.
+   query, not a log dig. **Shipped in Tranche B1**: MCP `tools/call` and governed AI invocations
+   (note tidy now, the assistant later) write trace rows with a SHA-256 argument digest, key names
+   and target UUIDs; raw arguments/results are never stored. n8n workflows keep no CRM-visible
+   per-node tool calls — recording one dispatch row and one writeback row per run is a documented
+   follow-up, not a claim. See [agent-observability.md](agent-observability.md).
+2. **Approval SLA escalation.** A scheduled writer marks overdue approvals and raises an
+   escalation notification; the existing 4h chip becomes a measured queue. **Shipped in Tranche
+   B1, disabled by default**: the token-guarded route (n8n trigger every 15 minutes) stamps
+   `human_approvals.sla_escalated_at`, writes one activity log and one `approval_escalated`
+   notification per active approver, and never changes the approval status — so quote_send and
+   agent_action rows keep their decision semantics. It runs only when an operator verifies the
+   platform duration and enables `CLIENTOPS_APPROVAL_SLA_*`.
 
 ### B2. Write tools as proposals (first slice shipped in PR #185)
 
@@ -150,8 +157,8 @@ Sequence after B, reusing roadmap Phase 2 tables:
 | Priority | Item | Why now |
 | --- | --- | --- |
 | P0 | MCP read connector (shipped) | first agent-native surface; no write risk |
-| P0 | Tool-call trace writer for n8n + MCP | prerequisite for agent observability and incident review |
-| P0 | Approval SLA escalation writer | prerequisite for trustworthy proposals |
+| P0 | Tool-call trace writer for n8n + MCP | prerequisite for agent observability and incident review; **shipped in Tranche B1** for MCP + governed AI, n8n dispatch rows follow |
+| P0 | Approval SLA escalation writer | prerequisite for trustworthy proposals; **shipped in Tranche B1**, disabled until operator-verified runtime |
 | P1 | `mcp_write` proposals + first governed write (`record_manual_message_sent`) — shipped in PR #185 | proves the governed write path without adding an ungoverned write |
 | P1 | In-product assistant on the shared registry | user-facing value; uses same guardrails |
 | P1 | OAuth 2.1 via Neon Auth OAuth server + CIMD | web/desktop clients without long-lived tokens |

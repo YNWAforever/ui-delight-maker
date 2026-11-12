@@ -216,4 +216,35 @@ describe("verifyClientOpsDatabase", () => {
       ]),
     );
   });
+
+  it("verifies the agent tool-call trace and approval SLA schema", () => {
+    expect(CLIENTOPS_SCHEMA_CONTRACT.relations).toContain("agent_tool_calls");
+    expect(CLIENTOPS_SCHEMA_CONTRACT.columns).toMatchObject({
+      "human_approvals.sla_escalated_at": {
+        type: "timestamp with time zone",
+        nullable: true,
+      },
+      "agent_tool_calls.mcp_tool_call_id": { type: "uuid", nullable: true },
+      "agent_tool_calls.duration_ms": { type: "integer", nullable: true },
+      "agent_tool_calls.status": { type: "text", nullable: true },
+      "agent_tool_calls.args_digest": { type: "text", nullable: true },
+      "agent_tool_calls.args_keys": { type: "ARRAY", nullable: true },
+      "agent_tool_calls.target_ids": { type: "ARRAY", nullable: true },
+      "agent_tool_calls.source": { type: "text", nullable: true },
+    });
+    expect(CLIENTOPS_SCHEMA_CONTRACT.constraints).toEqual(
+      expect.arrayContaining([
+        "notifications_type_check",
+        "agent_tool_calls_mcp_tool_call_id_fkey",
+        "agent_tool_calls_args_digest_check",
+        "agent_tool_calls_source_check",
+      ]),
+    );
+    expect(CLIENTOPS_SCHEMA_CONTRACT.indexes).toEqual(
+      expect.arrayContaining([
+        "agent_tool_calls_mcp_tool_call_id_idx",
+        "agent_tool_calls_called_at_idx",
+      ]),
+    );
+  });
 });

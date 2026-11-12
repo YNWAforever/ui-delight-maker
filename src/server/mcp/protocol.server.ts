@@ -14,6 +14,7 @@ import {
   type McpProtocolVersion,
   type McpTokenResolution,
 } from "@/lib/mcp/types";
+import { toolArgumentDigest } from "@/lib/tool-call-digest";
 import {
   executeMcpTool,
   MCP_TOOLS,
@@ -64,6 +65,13 @@ export type McpToolCallRecord = {
   status: "ok" | "error";
   errorCode: McpErrorCode | null;
   durationMs: number;
+  /**
+   * Redacted evidence of the arguments, derived here so the raw arguments never enter the audit
+   * record or the trace table. The trace writer correlates on the digest.
+   */
+  argsDigest: string;
+  argsKeys: string[];
+  targetIds: string[];
 };
 
 /**
@@ -252,6 +260,10 @@ async function recordToolCall(
   startedAt: number,
 ): Promise<void> {
   const tool = isRecord(params) && typeof params.name === "string" ? params.name.slice(0, 80) : "-";
+  // Arguments live only long enough to be digested; the canary in the protocol tests proves the
+  // raw values never reach the audit record or the trace writer.
+  const args = isRecord(params) && "arguments" in params ? params.arguments : undefined;
+  const digest = toolArgumentDigest("mcp", tool, args);
   const known = MCP_TOOLS.some((entry) => entry.definition.name === tool);
   let errorCode: McpErrorCode | null = null;
   if (!known) errorCode = MCP_ERROR_CODES.invalidInput;
@@ -275,6 +287,9 @@ async function recordToolCall(
       status: errorCode ? "error" : "ok",
       errorCode,
       durationMs: Math.max(0, Date.now() - startedAt),
+      argsDigest: digest.sha256,
+      argsKeys: digest.keys,
+      targetIds: digest.targetIds,
     });
   } catch (error) {
     console.error("[mcp] tool-call audit failed", {

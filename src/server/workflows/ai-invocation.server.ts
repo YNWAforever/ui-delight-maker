@@ -1,5 +1,9 @@
 import { createHash } from "node:crypto";
 import { N8nDispatchUncertainError } from "@/lib/n8n";
+import {
+  recordToolCallTrace as persistToolCallTrace,
+  type ToolCallTraceInput,
+} from "@/server/repositories/agent-tool-calls";
 
 export type AIWorkflowType =
   | "qualify_lead"
@@ -51,6 +55,11 @@ export type AIInvocationContext = {
   }>;
   finishRun: (runId: string, result: RunFinish) => Promise<void>;
   execute: (input: unknown, signal: AbortSignal) => Promise<Execution>;
+  /**
+   * Test seam for the unified B1 trace writer. Defaults to the real repository recorder, which
+   * never throws; the invocation catches anyway so a tracing bug can never change an AI outcome.
+   */
+  traceToolCall?: (input: ToolCallTraceInput) => Promise<unknown>;
   /** Test seam; production remains capped at 15s n8n / 60s direct. */
   deadlineMs?: number;
 };
@@ -108,6 +117,24 @@ async function runWithDeadline<T>(
   }
 }
 
+/**
+ * Records one governed AI invocation in the unified tool-call trace.
+ *
+ * The invocation is the agent's tool call here: the workflow type is the tool, the run id links
+ * it to `agent_runs`, and the input is digested (never stored) by the recorder. Best-effort:
+ * the recorder never throws, and a failing injected seam is swallowed so tracing cannot change
+ * the AI outcome.
+ */
+async function traceInvocation(ctx: AIInvocationContext, input: ToolCallTraceInput): Promise<void> {
+  try {
+    await (ctx.traceToolCall ?? persistToolCallTrace)(input);
+  } catch (error) {
+    console.error("[ai] tool-call trace failed", {
+      reason: error instanceof Error ? error.name : "unknown",
+    });
+  }
+}
+
 /** Authorize, check the effective policy, dedupe, run and persist one bounded attempt. */
 export async function invokeGovernedAI(
   ctx: AIInvocationContext,
@@ -156,6 +183,7 @@ export async function invokeGovernedAI(
   }
   const maximum = ctx.kind === "n8n" ? 15_000 : 60_000;
   const deadlineMs = Math.min(ctx.deadlineMs ?? maximum, maximum);
+  const startedAt = Date.now();
   let execution: Execution;
   try {
     execution = await runWithDeadline((signal) => ctx.execute(request.input, signal), deadlineMs);
@@ -163,12 +191,22 @@ export async function invokeGovernedAI(
     const timedOut = error instanceof InvocationTimeoutError;
     const ambiguous =
       ctx.kind === "n8n" && (timedOut || error instanceof N8nDispatchUncertainError);
+    const outcomeCode = ambiguous ? "dispatch_ambiguous" : timedOut ? "timeout" : "provider_error";
     await ctx.finishRun(runId, {
       status: "failed",
-      outcomeCode: ambiguous ? "dispatch_ambiguous" : timedOut ? "timeout" : "provider_error",
+      outcomeCode,
       output: null,
       usage: null,
       model: null,
+    });
+    await traceInvocation(ctx, {
+      source: "governed_ai",
+      toolName: request.workflowType,
+      agentRunId: runId,
+      status: "error",
+      durationMs: Date.now() - startedAt,
+      errorCode: outcomeCode,
+      args: request.input,
     });
     return {
       runId,
@@ -180,6 +218,8 @@ export async function invokeGovernedAI(
   }
   const usage = normalizeAIUsage(execution.usage);
   if (ctx.kind === "n8n") {
+    // The n8n run is finished by the workflow writeback, not here, so there is no finished
+    // local run to link a trace to in this slice (B1 slice 3 covers n8n dispatch rows).
     return { runId, outcome: "dispatched", output: null, usage };
   }
   // Persistence errors are not provider failures: do not overwrite the outcome.
@@ -189,6 +229,14 @@ export async function invokeGovernedAI(
     output: execution.output,
     usage,
     model: execution.model ?? null,
+  });
+  await traceInvocation(ctx, {
+    source: "governed_ai",
+    toolName: request.workflowType,
+    agentRunId: runId,
+    status: "ok",
+    durationMs: Date.now() - startedAt,
+    args: request.input,
   });
   return { runId, outcome: "completed", output: execution.output, usage };
 }

@@ -12,8 +12,8 @@ type N8nWorkflow = {
 type N8nClient = { baseUrl: string; apiKey: string };
 
 /**
- * Every workflow definition in n8n/workflows/, kept in step with the dispatch webhooks the app
- * actually calls (see N8N_*_WEBHOOK_URL in .env.example).
+ * Every workflow definition in n8n/workflows/, kept in step with the dispatch webhooks and
+ * scheduled writers the app actually calls (see N8N_*_WEBHOOK_URL in .env.example).
  *
  * This listed three of the five. An operator running the documented command got three success
  * lines and exit 0 while `clientops-score-renewal-risk` and
@@ -28,6 +28,7 @@ const WORKFLOW_FILES = [
   "clientops-score-renewal-risk.json",
   "clientops-relationship-intelligence.json",
   "clientops-retention-sweep.json",
+  "clientops-approval-sla.json",
 ];
 
 // A key alone identifies no environment: the same N8N_API_KEY shape reaches a local container,

@@ -451,13 +451,23 @@ export interface AgentRun {
 
 export interface AgentToolCall {
   id: string;
-  agent_run_id: string;
+  /** Null for MCP calls made outside an agent run; linked to `mcp_tool_calls` instead. */
+  agent_run_id: string | null;
   tool_name: string;
+  /** Deliberately unused: tool arguments are represented by `args_digest`/`args_keys`. */
   input_params: unknown;
   output_result: unknown;
   success: boolean | null;
   error_message: string | null;
   called_at: string;
+  mcp_tool_call_id?: string | null;
+  duration_ms?: number | null;
+  status?: "ok" | "error" | null;
+  error_code?: string | null;
+  args_digest?: string | null;
+  args_keys?: string[] | null;
+  target_ids?: string[] | null;
+  source?: "mcp" | "governed_ai" | "n8n_dispatch" | "n8n_writeback" | null;
 }
 
 export interface HumanApproval {
@@ -478,6 +488,8 @@ export interface HumanApproval {
   reviewer_notes: string | null;
   decided_at: string | null;
   created_at: string;
+  /** Set once by the scheduled SLA writer; the approval status itself stays `pending`. */
+  sla_escalated_at?: string | null;
 }
 
 export interface ActivityLog {
@@ -818,7 +830,8 @@ export type NotificationType =
   | "renewal_window"
   | "risk_change"
   | "stale_touchpoint"
-  | "approval_pending";
+  | "approval_pending"
+  | "approval_escalated";
 export type RenewalWindowBucket = "overdue" | "30" | "60" | "90" | "later";
 
 export interface Product {

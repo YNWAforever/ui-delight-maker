@@ -32,3 +32,8 @@ Workflow templates:
 - `clientops-score-renewal-risk.json`: trigger `engagement.score_renewal_risk_requested`, context `/api/workflows/context/engagement`, writeback `/api/workflows/score-renewal-risk`
 - `clientops-relationship-intelligence.json`: trigger `account.relationship_intelligence_requested`, context `/api/workflows/context/account`, writeback `/api/workflows/relationship-intelligence`
 - `clientops-retention-sweep.json`: scheduled retention sweep (no app trigger), writeback `/api/workflows/retention-sweep`
+- `clientops-approval-sla.json`: scheduled approval SLA escalation every 15 minutes (no app trigger), calls `/api/workflows/approval-sla` with `{}`; requires the app runtime flags `CLIENTOPS_APPROVAL_SLA_ENABLED=1`, `CLIENTOPS_APPROVAL_SLA_RUNTIME_VERIFIED=1` and `CLIENTOPS_APPROVAL_SLA_MAX_DURATION_SECONDS` (an integer between 30 and 900). The route returns 503 `RUNTIME_NOT_VERIFIED` until an operator verifies the platform duration; the workflow logs that as a clean no-op instead of failing the schedule.
+
+Scheduled workflows (`clientops-retention-sweep.json` and `clientops-approval-sla.json`) have no n8n
+webhook trigger: n8n owns the schedule, and a non-2xx response from the app is logged without
+failing the execution. Importing or applying these files does not enable the app-side runtime gate.
