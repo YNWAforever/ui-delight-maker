@@ -38,8 +38,9 @@ export async function createMessageHandoffInTransaction(
 export async function recordManualMessageSentCommand(
   context: RequestAuthorization,
   input: { approvalId: string; reference: string; idempotencyKey: string },
+  existingDb?: Queryable,
 ): Promise<MessageHandoff> {
-  return transaction(async (db) => {
+  const run = async (db: Queryable) => {
     const reference = input.reference.trim();
     if (reference.length < 3 || reference.length > 255) {
       throw new AdminError("VALIDATION_FAILED", "A manual send reference is required");
@@ -112,5 +113,6 @@ export async function recordManualMessageSentCommand(
     );
     await completeCommandReceipt(db, receipt.id, recorded);
     return recorded;
-  });
+  };
+  return existingDb ? run(existingDb) : transaction(run);
 }

@@ -198,4 +198,22 @@ describe("verifyClientOpsDatabase", () => {
       quote_version_integrity_guard: ["UPDATE", "DELETE"],
     });
   });
+
+  it("verifies the governed agent action approval extensions", () => {
+    expect(CLIENTOPS_SCHEMA_CONTRACT.columns).toMatchObject({
+      "human_approvals.requested_by_profile_id": { type: "text", nullable: true },
+    });
+    expect(CLIENTOPS_SCHEMA_CONTRACT.constraints).toEqual(
+      expect.arrayContaining([
+        "human_approvals_approval_type_check",
+        "human_approvals_requested_by_profile_id_fkey",
+      ]),
+    );
+    expect(CLIENTOPS_SCHEMA_CONTRACT.indexes).toEqual(
+      expect.arrayContaining([
+        "human_approvals_agent_action_open_key_uidx",
+        "human_approvals_agent_action_queue_idx",
+      ]),
+    );
+  });
 });

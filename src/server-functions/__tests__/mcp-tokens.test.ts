@@ -79,6 +79,35 @@ describe("MCP token server functions", () => {
       profileId: "profile-1",
       name: "Laptop",
       expiresInDays: 90,
+      scopes: ["read"],
+    });
+  });
+
+  it("passes a read+write scope selection through unchanged", async () => {
+    const { createMyMcpToken } = await import("../mcp-tokens");
+
+    await createMyMcpToken({
+      data: { name: "Agent", expiresInDays: null, scopes: ["read", "write"] },
+    });
+
+    expect(createMcpAccessTokenMock).toHaveBeenCalledWith({
+      profileId: "profile-1",
+      name: "Agent",
+      expiresInDays: null,
+      scopes: ["read", "write"],
+    });
+  });
+
+  it("normalizes a bare write selection to include read", async () => {
+    const { createMyMcpToken } = await import("../mcp-tokens");
+
+    await createMyMcpToken({ data: { name: "Agent", expiresInDays: null, scopes: ["write"] } });
+
+    expect(createMcpAccessTokenMock).toHaveBeenCalledWith({
+      profileId: "profile-1",
+      name: "Agent",
+      expiresInDays: null,
+      scopes: ["read", "write"],
     });
   });
 
@@ -91,6 +120,7 @@ describe("MCP token server functions", () => {
       profileId: "profile-1",
       name: "Laptop",
       expiresInDays,
+      scopes: ["read"],
     });
   });
 
@@ -99,6 +129,8 @@ describe("MCP token server functions", () => {
     ["an overlong name", { name: "x".repeat(81), expiresInDays: null }],
     ["an unlisted expiry", { name: "Laptop", expiresInDays: 31 }],
     ["a missing expiry", { name: "Laptop" }],
+    ["an empty scope selection", { name: "Laptop", expiresInDays: null, scopes: [] }],
+    ["an unknown scope", { name: "Laptop", expiresInDays: null, scopes: ["admin"] }],
   ])("rejects %s before creating a token", async (_label, data) => {
     const { createMyMcpToken } = await import("../mcp-tokens");
 

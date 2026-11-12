@@ -140,3 +140,47 @@ describe("Approval affordances follow existing per-record policy", () => {
     expect(item.can_decide).toBe(false);
   });
 });
+
+describe("Agent proposals reserve the decision for someone other than the proposer", () => {
+  const agentRow = (overrides: Partial<HumanApproval> = {}) =>
+    row({ approval_type: "agent_action", requested_by_profile_id: "proposer", ...overrides });
+
+  it("denies the proposer both the decision and the change request", async () => {
+    const [item] = await withApprovalActionFlags(context("admin"), [
+      agentRow({ requested_by_profile_id: "actor" }),
+    ]);
+    // The server refuses any decision by the proposer, so the UI must not offer one that
+    // would only fail; routing stays available because it is not a decision.
+    expect(item).toMatchObject({
+      can_decide: false,
+      can_request_changes: false,
+      can_assign: true,
+    });
+    expect(queryMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps the decision for a different reviewer", async () => {
+    const [item] = await withApprovalActionFlags(context("manager"), [agentRow()]);
+    expect(item).toMatchObject({ can_decide: true, can_request_changes: true });
+  });
+
+  it("reads the proposer for queue rows that omit the column", async () => {
+    queryMock.mockResolvedValue([{ id: "approval", requested_by_profile_id: "actor" }]);
+    const [item] = await withApprovalActionFlags(context("admin"), [
+      // The queue select list deliberately omits the column; only its absence triggers the read.
+      row({ approval_type: "agent_action" }),
+    ]);
+    expect(queryMock).toHaveBeenCalledTimes(1);
+    expect(queryMock.mock.calls[0][1]).toEqual([["approval"]]);
+    expect(item.can_decide).toBe(false);
+    expect(item.can_request_changes).toBe(false);
+  });
+
+  it("keeps the proposer column from overriding non-agent types", async () => {
+    // Only agent proposals name a proposer; the same column on another type is unrelated data.
+    const [item] = await withApprovalActionFlags(context("admin"), [
+      row({ requested_by_profile_id: "actor" }),
+    ]);
+    expect(item.can_decide).toBe(true);
+  });
+});

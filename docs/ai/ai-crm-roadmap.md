@@ -81,30 +81,39 @@ Exit gates for A:
 Explicit non-goals in A: quote list (per-row linked-record redaction lives inline in the BFF),
 agent-run and approval detail tools (subject-level redaction), writes, browser/CORS clients, OAuth.
 
-## 4. Tranche B — governed action surface (next)
+## 4. Tranche B — governed action surface (in progress)
 
 ### B1. Close the two prerequisites
 
 1. **Tool-call trace writer.** Route every agent tool call (n8n and MCP) through one recorder that
    writes `agent_tool_calls` with `agent_run_id` or `mcp_tool_calls.id`, tool name, duration,
    status, and a redacted argument digest. This is what makes "what did the agent access?" a
-   query, not a log dig.
+   query, not a log dig. **Still open**: MCP calls are audited in `mcp_tool_calls`; n8n calls are
+   not yet written to `agent_tool_calls`, which remains an unused table.
 2. **Approval SLA escalation.** A scheduled writer that claims overdue approvals (lease pattern
    from `retention_sweeps`) and raises an escalation notification; the existing 4h chip becomes a
-   measured queue.
+   measured queue. **Still open**; the first proposal slice reuses the existing approval queue and
+   owner assignment rather than adding escalation.
 
-### B2. Write tools as proposals
+### B2. Write tools as proposals (first slice implemented in `feat/mcp-write-proposals`)
 
-Add `mcp_write` proposals rather than direct writes:
+Agents never write directly. A write tool validates the target, records a normal `human_approvals`
+row with `approval_type='agent_action'`, and a person with `approvals.decide` decides it on
+`/approvals`. Approval executes the existing command inside the decision transaction, under the
+**approver's** authorization, with command receipts, CAS and audit already applied. The tool result
+is always "pending approval" with the approval id — never a silent success.
 
-- new table `agent_action_proposals` (or extend `human_approvals.approval_type`) with
-  `proposed_by_token`, `policy_version_id`, `input_snapshot`, unique `idempotency_key`, status;
-- execution goes through the existing decision commands (`decideApprovalCommand`,
-  `agent-recovery.server.ts`) so CAS, receipts and audit already apply;
-- tool result tells the agent "pending approval" with the approval id, never a silent success;
-- first low-risk write: `tidy_touchpoint_note` (already governed, `engagements.update`);
-- next: `dispatch_agent` (`agents.run`), `record_manual_message_sent`, `decide_approval`
-  (`approvals.decide`, requester ≠ decider).
+- first action: `record_manual_message_sent` → existing `recordManualMessageSentCommand` (records
+  a send reference on an approved message request; the platform sends nothing);
+- `tidy_touchpoint_note` was evaluated and rejected as the first action: note tidy is an
+  untethered AI text transform with no supervised write target and no note-update path. The next
+  candidate is `propose_touchpoint_note` (insert-only, approver's `engagements.create`);
+- next: `propose_agent_dispatch` (`agents.run`), then `propose_approval_decision` only after an
+  explicit requester ≠ decider rule exists;
+- tokens default to read-only; the Agent connector UI can mint "read + propose writes" tokens.
+  Write scope gates the tool, `approvals.view` on the target gates proposal creation, and execution
+  re-checks the approver's capability;
+- design, data model and threat model: [mcp-write-proposals.md](mcp-write-proposals.md).
 
 ### B3. In-product assistant on the same registry
 
@@ -143,7 +152,7 @@ Sequence after B, reusing roadmap Phase 2 tables:
 | P0 | MCP read connector (shipped) | first agent-native surface; no write risk |
 | P0 | Tool-call trace writer for n8n + MCP | prerequisite for agent observability and incident review |
 | P0 | Approval SLA escalation writer | prerequisite for trustworthy proposals |
-| P1 | `mcp_write` proposals + first governed write (`tidy_touchpoint_note`) | proves the governed write path |
+| P1 | `mcp_write` proposals + first governed write (`record_manual_message_sent`) — in progress | proves the governed write path without adding an ungoverned write |
 | P1 | In-product assistant on the shared registry | user-facing value; uses same guardrails |
 | P1 | OAuth 2.1 via Neon Auth OAuth server + CIMD | web/desktop clients without long-lived tokens |
 | P1 | Prompt/model versioning + eval harness | makes AI changes attributable and reversible |

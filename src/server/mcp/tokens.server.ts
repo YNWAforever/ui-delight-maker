@@ -1,10 +1,11 @@
 import { createHash, randomBytes } from "node:crypto";
 import {
+  isMcpTokenScope,
   MCP_MAX_ACTIVE_TOKENS_PER_PROFILE,
   MCP_TOKEN_HEX_LENGTH,
   MCP_TOKEN_PREFIX,
   MCP_TOKEN_PREFIX_DISPLAY_LENGTH,
-  MCP_TOKEN_SCOPES,
+  normalizeMcpTokenScopes,
   type CreateMcpTokenInput,
   type McpErrorCode,
   type McpTokenCreated,
@@ -55,10 +56,6 @@ type McpAccessTokenResolutionRow = {
   profile_status: string;
 };
 
-function isMcpTokenScope(value: string): value is McpTokenScope {
-  return (MCP_TOKEN_SCOPES as readonly string[]).includes(value);
-}
-
 /**
  * The raw token is `fmcp_` + 64 lowercase hex characters (32 random bytes), so the display
  * prefix is `fmcp_` plus the first 8 hex characters (13 characters). Randomness lives here, not
@@ -89,15 +86,24 @@ function toMcpTokenSummary(row: McpAccessTokenRow): McpTokenSummary {
   };
 }
 
+/**
+ * Mints a token and persists only its hash, display prefix and scopes.
+ *
+ * Scope selection is canonicalized here rather than trusted from the caller: the UI validator
+ * rejects unknown scopes first, but the store is the server-side boundary that a future mint
+ * path cannot bypass. Omitted scopes mean read-only; `write` always includes `read`.
+ */
 export async function createMcpAccessToken(input: {
   profileId: string;
   name: string;
   expiresInDays: CreateMcpTokenInput["expiresInDays"];
+  scopes?: CreateMcpTokenInput["scopes"];
 }): Promise<McpTokenCreated> {
   const name = input.name.trim();
   if (!name || name.length > MCP_TOKEN_NAME_MAX_LENGTH) {
     throw new Error(`MCP token name must be 1-${MCP_TOKEN_NAME_MAX_LENGTH} characters`);
   }
+  const scopes = normalizeMcpTokenScopes(input.scopes);
 
   const rawToken = generateMcpAccessToken();
   // `now()` in the insert default and this instant can differ by the app/database clock skew,
@@ -108,15 +114,15 @@ export async function createMcpAccessToken(input: {
       : new Date(Date.now() + input.expiresInDays * MS_PER_DAY).toISOString();
   const row = await queryOne<McpAccessTokenRow>(
     `
-      insert into mcp_access_tokens (profile_id, name, token_prefix, token_hash, expires_at)
-      select $1, $2, $3, $4, $5
+      insert into mcp_access_tokens (profile_id, name, token_prefix, token_hash, expires_at, scopes)
+      select $1, $2, $3, $4, $5, $6::text[]
       where (
         select count(*)
         from mcp_access_tokens
         where profile_id = $1
           and revoked_at is null
           and (expires_at is null or expires_at > now())
-      ) < $6
+      ) < $7
       returning ${MCP_ACCESS_TOKEN_COLUMNS}
     `,
     [
@@ -125,6 +131,7 @@ export async function createMcpAccessToken(input: {
       rawToken.slice(0, MCP_TOKEN_PREFIX_DISPLAY_LENGTH),
       hashMcpAccessToken(rawToken),
       expiresAt,
+      scopes,
       MCP_MAX_ACTIVE_TOKENS_PER_PROFILE,
     ],
   );

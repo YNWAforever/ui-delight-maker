@@ -62,6 +62,7 @@ export const ApprovalQueuePageSchema = z.strictObject({
       "campaign_send",
       "forecast_review",
       "cs_risk_review",
+      "agent_action",
     ])
     .optional(),
   cursor: z.string().max(2048).optional(),

@@ -28,16 +28,24 @@ import { EmptyWorkspaceState, ErrorState, LoadingSkeleton } from "@/components/s
 import { StatusBadge } from "@/components/status-badge";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { formatDateTime } from "@/lib/format";
-import type { CreateMcpTokenInput, McpTokenCreated, McpTokenSummary } from "@/lib/mcp/types";
+import {
+  MCP_TOKEN_SCOPE_LABELS,
+  mcpTokenScopeLabel,
+  type CreateMcpTokenInput,
+  type McpTokenCreated,
+  type McpTokenScope,
+  type McpTokenSummary,
+} from "@/lib/mcp/types";
 import { crmQueryKeys } from "@/lib/query-keys";
 import { createMyMcpToken, getMyMcpTokens, revokeMyMcpToken } from "@/server-functions/mcp-tokens";
 
 /**
- * Personal access tokens for the read-only agent connector.
+ * Personal access tokens for the agent connector.
  *
  * A token is a credential, so it lives with the other personal credentials on `/account`
  * rather than under admin settings: people mint their own, see only their own, and revoke
- * their own. Nothing here is an approval workflow.
+ * their own. Minting and revoking here is not an approval workflow; a write-scoped token can
+ * only create proposals that a human decides on `/approvals`, and nothing is written directly.
  *
  * The raw value exists exactly once, in the create response. It is held in component state
  * only until the reveal dialog closes, and it is never put in a URL, a query key, the list
@@ -79,6 +87,8 @@ const EXPIRY_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: "365", label: "365 days" },
   { value: "never", label: "No expiry" },
 ];
+
+const SELECT_CLASS = "min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm";
 
 function parseExpiry(value: string): ExpiryDays {
   if (value === "never") return null;
@@ -123,7 +133,8 @@ function TokenRow({
           {expiryLabel(token.expiresAt)}
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <span className="text-xs text-muted-foreground">{mcpTokenScopeLabel(token.scopes)}</span>
         <StatusBadge value={status} label={STATUS_LABEL[status]} />
         {status !== "revoked" ? (
           <Button
@@ -277,6 +288,7 @@ function RevealTokenDialog({
         </DialogHeader>
         {token ? (
           <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">{mcpTokenScopeLabel(token.scopes)}</p>
             <Snippet
               title="Token"
               copyLabel="Copy token"
@@ -329,6 +341,7 @@ function CreateTokenDialog({
 }) {
   const [name, setName] = useState("");
   const [expiresInDays, setExpiresInDays] = useState<ExpiryDays>(30);
+  const [scope, setScope] = useState<McpTokenScope>("read");
   const [error, setError] = useState<string | null>(null);
 
   const createMutation = useMutation({
@@ -336,6 +349,7 @@ function CreateTokenDialog({
     onSuccess: (created) => {
       setName("");
       setExpiresInDays(30);
+      setScope("read");
       setError(null);
       onOpenChange(false);
       onCreated(created);
@@ -348,11 +362,13 @@ function CreateTokenDialog({
 
   const trimmedName = name.trim();
   const canSubmit = trimmedName.length > 0 && trimmedName.length <= 80;
+  // `write` always implies `read`; the server canonicalizes the same way, so send both.
+  const selectedScopes: readonly McpTokenScope[] = scope === "write" ? ["read", "write"] : ["read"];
 
   function submit() {
     if (!canSubmit || createMutation.isPending) return;
     setError(null);
-    createMutation.mutate({ name: trimmedName, expiresInDays });
+    createMutation.mutate({ name: trimmedName, expiresInDays, scopes: selectedScopes });
   }
 
   return (
@@ -364,6 +380,7 @@ function CreateTokenDialog({
           setError(null);
           setName("");
           setExpiresInDays(30);
+          setScope("read");
         }
         onOpenChange(nextOpen);
       }}
@@ -396,7 +413,7 @@ function CreateTokenDialog({
               aria-label="Token expiry"
               value={expiresInDays === null ? "never" : String(expiresInDays)}
               onChange={(event) => setExpiresInDays(parseExpiry(event.target.value))}
-              className="min-h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className={SELECT_CLASS}
             >
               {EXPIRY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -404,6 +421,25 @@ function CreateTokenDialog({
                 </option>
               ))}
             </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="agent-token-scope">Scope</Label>
+            <select
+              id="agent-token-scope"
+              aria-label="Token scope"
+              value={scope}
+              onChange={(event) => setScope(event.target.value === "write" ? "write" : "read")}
+              className={SELECT_CLASS}
+            >
+              <option value="read">{MCP_TOKEN_SCOPE_LABELS.read}</option>
+              <option value="write">{MCP_TOKEN_SCOPE_LABELS.write}</option>
+            </select>
+            {scope === "write" ? (
+              <p className="text-xs text-muted-foreground">
+                Can only create proposals a human approves on /approvals. Nothing is written
+                directly.
+              </p>
+            ) : null}
           </div>
           {error ? (
             <p role="alert" className="text-sm text-destructive">

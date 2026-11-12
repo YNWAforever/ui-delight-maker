@@ -1,7 +1,8 @@
-# MCP connector (v1)
+# MCP connector
 
-Status: shipped on `main` in PR #183, behind no feature flag: the endpoint
-is inert without a minted token.
+Status: v1 read connector shipped on `main` in PR #183, behind no feature flag: the endpoint
+is inert without a minted token. This branch adds v1.5 **governed write proposals** (one
+proposal-only write tool, write-scoped tokens); it is not deployed yet.
 Audience: engineering, operations, and any user connecting an AI agent to ClientOps.
 
 ## What this is
@@ -11,8 +12,11 @@ agent read the CRM workspace with the same permissions the user has in the produ
 
 Every request is authenticated with a **personal access token** minted from
 **Account → Agent connector**. The token is shown once, stored only as a SHA-256 hash, and can be
-revoked at any time. The connector is **read-only in v1**; write tools arrive with explicit
-scopes and the existing human-approval model (see the roadmap).
+revoked at any time. Tokens are **read-only by default**. A higher-scope token ("read + propose
+writes") can call write tools, but those tools never write: they create a normal human approval
+that a person with `approvals.decide` must approve, and only that approval executes the existing
+command under the approver's authorization. See
+[Governed write proposals](mcp-write-proposals.md).
 
 Supported clients: any MCP client that can send custom HTTP headers: Claude Code, Cursor,
 Claude Desktop (via `mcp-remote`), VS Code / GitHub Copilot MCP, and custom agents built on the
@@ -81,7 +85,7 @@ Key properties:
 
 | Tool | Grants | Data |
 | --- | --- | --- |
-| `whoami` | signed-in profile | profile id/name/role, effective capabilities, token name/prefix |
+| `whoami` | signed-in profile | profile id/name/role, effective capabilities, token name/prefix/scopes |
 | `search` | any of accounts/contacts/leads/quotes/tasks view | global workspace search (min 3 chars, max 20) |
 | `list_accounts` | `accounts.view` | accounts page: query, owner, cs_owner, lifecycle_stage, page/limit |
 | `get_account` | `accounts.view` + row scope | one account |
@@ -92,8 +96,19 @@ Key properties:
 | `list_tasks` | `tasks.view` | visibility-scoped task queue page |
 | `get_quote` | `quotes.view` + row scope | one quote |
 
+### v1.5 governed write proposals (write-scoped tokens)
+
+| Tool | Token scope | Grants | Effect |
+| --- | --- | --- | --- |
+| `propose_manual_message_sent` | `write` | `approvals.view` on the target approval | records a `pending` `agent_action` approval that records a manual send reference on an approved message request; the platform sends nothing |
+| `list_my_proposals` | `read` | own proposals only | the token owner's proposals with status, target approval and timestamps |
+
+A write tool result is always `status: "pending_approval"` with the approval id; approval happens
+on `/approvals`, where the decision executes the underlying command. Rejection leaves the target
+untouched, and support for more actions is additive (`docs/ai/mcp-write-proposals.md`).
+
 Deliberately not in v1: quote list (per-row linked-record redaction), agent-run/approval history
-(subject-level redaction), and every write. Those are phase-2/3 items, not gaps in the protocol.
+(subject-level redaction), and direct writes. Those are phase-2/3 items, not gaps in the protocol.
 
 ## Security model
 
@@ -103,7 +118,13 @@ Deliberately not in v1: quote list (per-row linked-record redaction), agent-run/
 | Token leakage in logs | never logged; only token id/prefix; request bodies are not written to the audit table |
 | Stolen/leaked token | revoke in Account → Agent connector (immediate); expiry 30/90/365 days or never |
 | Over-broad access | token acts as its owner with the owner's current role and overrides; deactivation/role change applies next call |
-| Prompt injection making the agent exfiltrate data | read-only tools; no write/send/export tools; operator guidance to scope tokens per task; audit trail enables review |
+| Prompt injection making the agent exfiltrate data | read tools only read what the owner can see; no write/send/export tools; operator guidance to scope tokens per task; audit trail enables review |
+| Prompt injection making the agent write | write tools only create `pending` proposals; a human with `approvals.decide` decides; execution re-checks the approver's capability |
+| Self-approval by the proposer | `requested_by_profile_id` is server-recorded; the decision is hard-denied when the approver is the proposer (and the UI hides the action) |
+| Stale or spoofed proposal target | the target's type/status/handoff are validated at proposal time and re-validated inside the decision transaction; any change fails closed and rolls the decision back |
+| Double apply | `approval.decision` + `message.manual_send` receipts and handoff CAS; execution shares the decision transaction |
+| Proposal payload PII | only action name, ids, token name and the human-visible reference are stored; no drafts, notes or contact fields |
+| Token privilege drift | scopes are stored per token; write tools require the `write` scope and the token owner's current capabilities are re-evaluated on every call |
 | PII egress | only fields the user can already see in the product; audit stores tool name/status only |
 | Cost/abuse | per-profile in-memory limit 60 req/min plus a per-client pre-auth guard (best-effort per serverless instance), max 20 active tokens per profile, bounded tool page sizes, and database audit for after-the-fact analysis |
 | Replay | bearer token is a long-lived credential by design; TLS only; rotate/revoke on suspicion |
@@ -119,6 +140,17 @@ where profile_id = $1 and revoked_at is null;
 -- trace a token's calls
 select tool, status, error_code, created_at from mcp_tool_calls
 where token_id = $1 order by created_at desc limit 200;
+
+-- open agent proposals (all actions)
+select id, requested_by_profile_id, context_data->>'action' as action,
+       context_data->>'target_approval_id' as target, created_at
+from human_approvals
+where approval_type = 'agent_action' and status in ('pending','escalated')
+order by created_at desc;
+
+-- write-scoped tokens (rollback by revoking these)
+select id, profile_id, name, scopes from mcp_access_tokens
+where 'write' = any(scopes) and revoked_at is null;
 ```
 
 ## Connecting a client
@@ -189,15 +221,21 @@ OAuth as a second verifier:
 Prerequisites to schedule before phase 2: custom SMTP (production checklist), Neon Auth trusted
 domains for every origin, and an end-to-end MCP Inspector run against a staging deployment.
 
-## Phase 3: governed write tools
+## Phase 3: governed write tools (v1.5 first slice)
 
-Write tools are the product's differentiator, but they must land on the existing governance
-layer, not as unguarded API writes:
+Write tools are the product's differentiator, but they land on the existing governance layer,
+not as unguarded API writes. The first slice (this branch) implements exactly one action:
 
-- every write tool requires `write` scope **and** the user's write capability;
-- risky actions (quote send/issue, approvals, billing) route through the existing
-  `commands/` + `human_approvals` + audit model with idempotency keys;
-- tool results include the created record id and the audit/approval reference;
-- MCP clients get an explicit `requires_approval` result instead of a silent success.
+- a write tool requires the token's `write` scope **and** the owner's current capabilities on the
+  target;
+- it records a `human_approvals` row with `approval_type='agent_action'` (proposer identity,
+  bounded input snapshot, unique proposal key) instead of writing;
+- the tool result is `pending_approval` with the approval id — never a silent success;
+- a person with `approvals.decide` approves/rejects on `/approvals`. Approval executes the
+  existing command (for v1.5: `recordManualMessageSentCommand`) inside the decision transaction
+  under the approver's authorization, with receipts, CAS, self-approval denial and audit;
+- rejection never executes, and a failed execution rolls back the whole decision.
 
-See `docs/ai/ai-crm-roadmap.md` for the ordered plan.
+Read [Governed agent actions](mcp-write-proposals.md) for the data model, threat model, runbook
+queries and the ordered next actions (`propose_touchpoint_note`, `propose_agent_dispatch`,
+`propose_approval_decision`).

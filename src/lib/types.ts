@@ -43,7 +43,8 @@ export type ApprovalType =
   | "qualification_review"
   | "campaign_send"
   | "forecast_review"
-  | "cs_risk_review";
+  | "cs_risk_review"
+  | "agent_action";
 export type AgentRunStatus = "running" | "completed" | "failed" | "waiting_approval";
 export type UserRole =
   | "super_admin"
@@ -464,6 +465,8 @@ export interface HumanApproval {
   agent_run_id: string | null;
   approval_type: ApprovalType | null;
   requested_by: string | null;
+  /** Server-recorded proposer for `agent_action` rows; null/nullable for every other type. */
+  requested_by_profile_id?: string | null;
   assigned_to: string | null;
   status: ApprovalStatus;
   row_version: number;

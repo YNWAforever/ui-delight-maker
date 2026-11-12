@@ -355,8 +355,11 @@ export async function createApproval(
       | "message_send"
       | "discount"
       | "qualification_review"
-      | "cs_risk_review";
+      | "cs_risk_review"
+      | "agent_action";
     requested_by?: string | null;
+    /** Server-recorded proposer profile for agent actions; unrelated to `requested_by`. */
+    requested_by_profile_id?: string | null;
     assigned_to?: string | null;
     context_data: unknown;
     context_summary?: string | null;
@@ -367,9 +370,10 @@ export async function createApproval(
   const approval = await queryOne<HumanApproval>(
     `
       insert into human_approvals
-        (agent_run_id, approval_type, requested_by, assigned_to, status, context_data, context_summary)
+        (agent_run_id, approval_type, requested_by, requested_by_profile_id, assigned_to,
+         status, context_data, context_summary)
       values
-        ($1, $2, $3, $4, coalesce($5, 'pending'), $6::jsonb, $7)
+        ($1, $2, $3, $8, $4, coalesce($5, 'pending'), $6::jsonb, $7)
       returning *
     `,
     [
@@ -380,6 +384,7 @@ export async function createApproval(
       input.status ?? null,
       JSON.stringify(input.context_data),
       input.context_summary ?? null,
+      input.requested_by_profile_id ?? null,
     ],
     db,
   );
@@ -430,6 +435,16 @@ export async function decideApprovalInTransaction(
   }
   if (current.status !== "pending" && current.status !== "escalated") {
     throw new AdminError("CONFLICT", "Approval already has a terminal decision");
+  }
+  // An agent proposal names its proposer server-side; that person can never decide it. The
+  // executor re-checks this inside the same transaction; enforcing it here means no decision
+  // path (including a future caller) can reach the transition at all.
+  if (
+    current.approval_type === "agent_action" &&
+    current.requested_by_profile_id &&
+    current.requested_by_profile_id === context.actor.profileId
+  ) {
+    throw new AdminError("FORBIDDEN", "A proposal cannot be decided by its proposer");
   }
   const decision = evaluateAuthorization({
     actor: context.actor,

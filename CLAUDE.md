@@ -54,8 +54,10 @@ n8n calls back in via `src/routes/api/workflows/*` — each handler runs
 
 External agents call in via `src/routes/api/mcp.ts` — a stateless MCP endpoint authenticated
 with a per-user bearer token (`fmcp_…`, SHA-256 at rest) that resolves to a profile and the same
-`RequestAuthorization` context the UI uses. Its tools are read-only and live in
-`src/lib/mcp/tools.server.ts`; see `docs/ai/mcp-connector.md`.
+`RequestAuthorization` context the UI uses. Its tools live in `src/lib/mcp/tools.server.ts`:
+read tools by default; tokens with the `write` scope can only create human-reviewed
+`agent_action` proposals, which execute after approval; see `docs/ai/mcp-connector.md` and
+`docs/ai/mcp-write-proposals.md`.
 
 ## Project Structure
 
@@ -66,8 +68,9 @@ src/server/            Server-only: repositories, read-models, auth, db, workflo
   src/server/mcp/      MCP transport, protocol handling, token store
 src/components/        Feature components; components/ui/ = shadcn primitives
 src/lib/               types.ts (source of truth), format.ts, query-keys.ts, n8n.ts
-  src/lib/mcp/         Shared MCP types and the read-only tool registry
-neon/migrations/       Registered SQL migrations (001–029)
+  src/lib/mcp/         Shared MCP types and the tool registry (read tools; write tools are
+                       proposal-only)
+neon/migrations/       Registered SQL migrations (001–030)
 scripts/clientops/     Migrate, verify, seed, perf-budget, bootstrap scripts
 n8n/workflows/         Agent workflow JSON definitions
 docs/ai/               MCP connector design/operations and the AI CRM roadmap
@@ -107,8 +110,11 @@ docs/ai/               MCP connector design/operations and the AI CRM roadmap
 - **MCP tokens are personal credentials, not service tokens.** Store only the SHA-256 hash, never
   log or return the raw token after creation, and expose only the prefix. Every MCP tool must
   resolve identity from the token (never tool arguments), gate through the existing capability +
-  ownership context, and record `mcp_tool_calls`; the connector stays read-only until the governed
-  write/proposal tranche in `docs/ai/ai-crm-roadmap.md` lands.
+  ownership context, and record `mcp_tool_calls`. Write tools never write directly: a write-scoped
+  token can only create a `human_approvals` row with `approval_type='agent_action'`, which a person
+  with `approvals.decide` decides on `/approvals`; execution reuses the existing command inside the
+  decision transaction under the approver's authorization, denies self-approval, and is covered by
+  `docs/ai/mcp-write-proposals.md`. Read-only tokens and dashboard reads are unchanged.
 - Seed env vars (`CLIENTOPS_SEED_*`) must never point at production.
 
 ## Neon-only runtime
