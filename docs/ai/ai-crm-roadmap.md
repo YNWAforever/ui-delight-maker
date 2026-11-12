@@ -1,7 +1,7 @@
 # AI CRM roadmap — MCP connector and what comes after
 
 Status: proposed direction for `feat/mcp-connector`  
-Companion docs: [`docs/fimmick-total-crm-ai-ops-roadmap.md`](../fimmick-total-crm-ai-ops-roadmap.md) (platform-wide phases 0–4), [`docs/ai/mcp-connector.md`](./mcp-connector.md) (the v1 connector that ships with this branch).
+Companion docs: [`docs/fimmick-total-crm-ai-ops-roadmap.md`](../fimmick-total-crm-ai-ops-roadmap.md) (platform-wide phases 0–4), [`docs/ai/mcp-connector.md`](./mcp-connector.md) (the v1 connector shipped in PR #183).
 
 This document is a **delta**, not a replacement. It assumes the existing roadmap's phases and
 adds the agent-native layer: what the MCP connector changes, what has to be true before external
@@ -24,7 +24,7 @@ governable:
 
 | Layer | What it is | State |
 | --- | --- | --- |
-| A. Read tool surface | stateless `/api/mcp` + per-user hashed tokens + 10 read tools reusing BFF authorization | **shipping in this branch** |
+| A. Read tool surface | stateless `/api/mcp` + per-user hashed tokens + 10 read tools reusing BFF authorization | **shipped (PR #183)** |
 | B. Governed action surface | write tools as proposals or governed dispatches; in-product assistant on the same registry | next |
 | C. Intelligence core | semantic search, evals, budgets, incidents, proactive triggers, tool-call traces | after B, on top of roadmap Phase 2 |
 
@@ -55,7 +55,7 @@ The connector must not paper over these. A read-only agent that can see accounts
 job sheets, tasks and approvals is valuable *because* it cannot write; write access without
 traces, budgets and escalation would make the gaps dangerous.
 
-## 3. Tranche A — read tool surface (this branch)
+## 3. Tranche A — read tool surface (shipped)
 
 Delivered:
 
@@ -140,7 +140,7 @@ Sequence after B, reusing roadmap Phase 2 tables:
 
 | Priority | Item | Why now |
 | --- | --- | --- |
-| P0 | MCP read connector (this branch) | first agent-native surface; no write risk |
+| P0 | MCP read connector (shipped) | first agent-native surface; no write risk |
 | P0 | Tool-call trace writer for n8n + MCP | prerequisite for agent observability and incident review |
 | P0 | Approval SLA escalation writer | prerequisite for trustworthy proposals |
 | P1 | `mcp_write` proposals + first governed write (`tidy_touchpoint_note`) | proves the governed write path |
