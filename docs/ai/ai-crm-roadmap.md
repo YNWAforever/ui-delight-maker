@@ -95,7 +95,7 @@ agent-run and approval detail tools (subject-level redaction), writes, browser/C
    measured queue. **Still open**; the first proposal slice reuses the existing approval queue and
    owner assignment rather than adding escalation.
 
-### B2. Write tools as proposals (first slice implemented in `feat/mcp-write-proposals`)
+### B2. Write tools as proposals (first slice shipped in PR #185)
 
 Agents never write directly. A write tool validates the target, records a normal `human_approvals`
 row with `approval_type='agent_action'`, and a person with `approvals.decide` decides it on
@@ -152,7 +152,7 @@ Sequence after B, reusing roadmap Phase 2 tables:
 | P0 | MCP read connector (shipped) | first agent-native surface; no write risk |
 | P0 | Tool-call trace writer for n8n + MCP | prerequisite for agent observability and incident review |
 | P0 | Approval SLA escalation writer | prerequisite for trustworthy proposals |
-| P1 | `mcp_write` proposals + first governed write (`record_manual_message_sent`) — in progress | proves the governed write path without adding an ungoverned write |
+| P1 | `mcp_write` proposals + first governed write (`record_manual_message_sent`) — shipped in PR #185 | proves the governed write path without adding an ungoverned write |
 | P1 | In-product assistant on the shared registry | user-facing value; uses same guardrails |
 | P1 | OAuth 2.1 via Neon Auth OAuth server + CIMD | web/desktop clients without long-lived tokens |
 | P1 | Prompt/model versioning + eval harness | makes AI changes attributable and reversible |

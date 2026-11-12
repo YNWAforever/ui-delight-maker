@@ -1,8 +1,8 @@
 # MCP connector
 
-Status: v1 read connector shipped on `main` in PR #183, behind no feature flag: the endpoint
-is inert without a minted token. This branch adds v1.5 **governed write proposals** (one
-proposal-only write tool, write-scoped tokens); it is not deployed yet.
+Status: v1 read connector shipped on `main` in PR #183 and the v1.5 governed write-proposal slice
+shipped on `main` in PR #185; behind no feature flag (the endpoint is inert without a minted
+token, and write tools require a deliberately minted write-scoped token).
 Audience: engineering, operations, and any user connecting an AI agent to ClientOps.
 
 ## What this is
