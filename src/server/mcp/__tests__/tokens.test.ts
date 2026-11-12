@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { McpTokenScope } from "@/lib/mcp/types";
 
 const { queryMock, queryOneMock } = vi.hoisted(() => ({
   queryMock: vi.fn(),
@@ -60,9 +61,14 @@ describe("MCP access token storage", () => {
     vi.restoreAllMocks();
   });
 
-  it("mints an fmcp_ token and stores only its SHA-256 hash and display prefix", async () => {
+  it("mints an fmcp_ token and stores only its SHA-256 hash, display prefix and scopes", async () => {
     queryOneMock.mockImplementation(async (_sql: string, values: readonly unknown[]) =>
-      tokenRow({ name: values[1], token_prefix: values[2], expires_at: values[4] }),
+      tokenRow({
+        name: values[1],
+        token_prefix: values[2],
+        expires_at: values[4],
+        scopes: values[5],
+      }),
     );
 
     const created = await createMcpAccessToken({
@@ -78,15 +84,70 @@ describe("MCP access token storage", () => {
 
     const [sql, values] = queryOneMock.mock.calls[0] as [string, readonly unknown[]];
     expect(sql).toContain("insert into mcp_access_tokens");
+    expect(sql).toContain("scopes");
     expect(values[0]).toBe("profile-1");
     expect(values[1]).toBe("Claude Desktop");
     expect(values[2]).toBe(created.token.slice(0, 13));
     expect(values[3]).toBe(hashMcpAccessToken(created.token));
     expect(values[3]).toBe(createHash("sha256").update(created.token).digest("hex"));
     expect(values[4]).toBeNull();
+    // Omitted scopes persist the safe read-only default.
+    expect(values[5]).toEqual(["read"]);
     // The raw bearer value is returned once and never written to the database.
     expect(values).not.toContain(created.token);
     expect(JSON.stringify(values)).not.toContain(created.token);
+  });
+
+  it("persists an explicit write scope and returns the canonical scope list", async () => {
+    queryOneMock.mockImplementation(async (_sql: string, values: readonly unknown[]) =>
+      tokenRow({ scopes: values[5] }),
+    );
+
+    const created = await createMcpAccessToken({
+      profileId: "profile-1",
+      name: "Write agent",
+      expiresInDays: null,
+      scopes: ["read", "write"],
+    });
+
+    expect(created.scopes).toEqual(["read", "write"]);
+    const [, values] = queryOneMock.mock.calls[0] as [string, readonly unknown[]];
+    expect(values[5]).toEqual(["read", "write"]);
+  });
+
+  it("normalizes a bare write selection so a write token can always read", async () => {
+    queryOneMock.mockResolvedValue(tokenRow({ scopes: ["read", "write"] }));
+
+    const created = await createMcpAccessToken({
+      profileId: "profile-1",
+      name: "Write-only request",
+      expiresInDays: null,
+      scopes: ["write"],
+    });
+
+    expect(created.scopes).toEqual(["read", "write"]);
+    const [, values] = queryOneMock.mock.calls[0] as [string, readonly unknown[]];
+    expect(values[5]).toEqual(["read", "write"]);
+  });
+
+  it("rejects an empty or unknown scope selection before minting anything", async () => {
+    await expect(
+      createMcpAccessToken({
+        profileId: "profile-1",
+        name: "No scopes",
+        expiresInDays: null,
+        scopes: [],
+      }),
+    ).rejects.toThrow(/at least one scope/);
+    await expect(
+      createMcpAccessToken({
+        profileId: "profile-1",
+        name: "Unknown scope",
+        expiresInDays: null,
+        scopes: ["root"] as unknown as McpTokenScope[],
+      }),
+    ).rejects.toThrow(/Unknown MCP token scope/);
+    expect(queryOneMock).not.toHaveBeenCalled();
   });
 
   it("refuses to mint more than the active-token cap", async () => {
@@ -126,9 +187,13 @@ describe("MCP access token storage", () => {
     expect(queryOneMock).not.toHaveBeenCalled();
   });
 
-  it("lists newest first and keeps revoked and expired rows as history", async () => {
+  it("lists newest first, returns each token's scopes, and keeps revoked/expired history", async () => {
     queryMock.mockResolvedValue([
-      tokenRow({ id: "token-new", created_at: "2026-11-12T00:00:00.000Z" }),
+      tokenRow({
+        id: "token-new",
+        scopes: ["read", "write"],
+        created_at: "2026-11-12T00:00:00.000Z",
+      }),
       tokenRow({
         id: "token-old",
         created_at: "2026-01-01T00:00:00.000Z",
@@ -141,6 +206,8 @@ describe("MCP access token storage", () => {
     const tokens = await listMcpAccessTokens("profile-1");
 
     expect(tokens.map((token) => token.id)).toEqual(["token-new", "token-old"]);
+    expect(tokens[0].scopes).toEqual(["read", "write"]);
+    expect(tokens[1].scopes).toEqual(["read"]);
     expect(tokens[1]).toMatchObject({
       revokedAt: "2026-02-01T00:00:00.000Z",
       expiresAt: "2026-03-01T00:00:00.000Z",

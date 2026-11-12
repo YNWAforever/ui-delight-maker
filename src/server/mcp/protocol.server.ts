@@ -34,6 +34,19 @@ const JSON_HEADERS = {
 /** JSON-RPC bodies are tiny (tool names plus bounded arguments); anything larger is abuse. */
 export const MCP_MAX_REQUEST_BYTES = 1_000_000;
 
+/**
+ * Server instructions shown to MCP clients after initialize.
+ *
+ * Read-only wording would be inaccurate once write-scoped tokens exist: a write-scoped token can
+ * only *propose* a governed action for human approval, and no tool writes or executes directly.
+ */
+export const MCP_SERVER_INSTRUCTIONS =
+  "Fimmick ClientOps CRM. Read tools are scoped to the token owner's capabilities and row visibility. " +
+  "Tokens with the write scope can call propose_manual_message_sent to propose recording a manual " +
+  "message-send reference for human approval; a proposal only creates a pending request and never " +
+  "writes or executes anything itself. list_my_proposals shows the token owner's proposal status. " +
+  "Every action takes effect only after a human approver decides it.";
+
 export const MCP_RATE_LIMIT_PER_MINUTE = 60;
 export const MCP_RATE_LIMIT_WINDOW_MS = 60_000;
 
@@ -175,7 +188,7 @@ export function negotiateMcpProtocolVersion(requested: string): McpProtocolVersi
 }
 
 /**
- * Builds one per-request MCP server over the read-only tool registry.
+ * Builds one per-request MCP server over the tool registry.
  *
  * Each HTTP request gets a fresh server: the endpoint is stateless, so there is no initialize
  * handshake state to carry between POSTs and no session to leak across tokens.
@@ -183,10 +196,7 @@ export function negotiateMcpProtocolVersion(requested: string): McpProtocolVersi
 export function createMcpServer(context: McpToolContext): McpServer {
   const server = new McpServer(
     { name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION },
-    {
-      instructions:
-        "Read-only CRM access scoped to the token owner's capabilities and row visibility.",
-    },
+    { instructions: MCP_SERVER_INSTRUCTIONS },
   );
 
   for (const tool of MCP_TOOLS) {
@@ -228,6 +238,9 @@ function handleInitialize(id: RequestId | null, params: unknown): Response {
     protocolVersion: negotiateMcpProtocolVersion(params.protocolVersion),
     capabilities: { tools: {} },
     serverInfo: { name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION },
+    // Optional per the MCP spec; without it clients never see the server guidance, because this
+    // handler (not the SDK server) owns the initialize reply.
+    instructions: MCP_SERVER_INSTRUCTIONS,
   });
 }
 

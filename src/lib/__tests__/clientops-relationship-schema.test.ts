@@ -61,6 +61,7 @@ describe("getClientOpsSchemaMigrationDecision", () => {
       "neon/migrations/027_wfm_history_scaffold.sql",
       "neon/migrations/028_wfm_shared_contact_links.sql",
       "neon/migrations/029_mcp_access_tokens.sql",
+      "neon/migrations/030_governed_agent_actions.sql",
     ]);
   });
 

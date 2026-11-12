@@ -84,7 +84,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("agent connector panel", () => {
-  it("lists each token with its prefix, timestamps, expiry and status", async () => {
+  it("lists each token with its prefix, timestamps, scope, expiry and status", async () => {
     getMyMcpTokensMock.mockResolvedValue([
       makeToken(),
       makeToken({
@@ -99,6 +99,12 @@ describe("agent connector panel", () => {
         tokenPrefix: "fmcp_cccccccc",
         revokedAt: "2026-10-20T08:00:00.000Z",
       }),
+      makeToken({
+        id: "token-4",
+        name: "Writer agent",
+        tokenPrefix: "fmcp_dddddddd",
+        scopes: ["read", "write"],
+      }),
     ]);
 
     renderPanel();
@@ -112,10 +118,15 @@ describe("agent connector panel", () => {
         `Created ${formatDateTime(CREATED_AT)} · Last used Never · Expires ${formatDateTime(FUTURE_EXPIRY)}`,
       ),
     ).toBeTruthy();
+    expect(within(row as HTMLElement).getByText("Read-only")).toBeTruthy();
     expect(within(row as HTMLElement).getByText("Active")).toBeTruthy();
     expect(
       within(row as HTMLElement).getByRole("button", { name: "Revoke Claude Code" }),
     ).toBeTruthy();
+
+    const writer = screen.getByText("Writer agent").closest("li");
+    expect(writer).toBeTruthy();
+    expect(within(writer as HTMLElement).getByText("Read + propose writes")).toBeTruthy();
 
     expect(screen.getByText("Expired")).toBeTruthy();
     expect(screen.getByText("Revoked")).toBeTruthy();
@@ -180,11 +191,12 @@ describe("agent connector panel", () => {
     await user.click(within(createDialog).getByRole("button", { name: "Create token" }));
 
     expect(createMyMcpTokenMock).toHaveBeenCalledWith({
-      data: { name: "Claude Code", expiresInDays: 90 },
+      data: { name: "Claude Code", expiresInDays: 90, scopes: ["read"] },
     });
 
     const revealDialog = await screen.findByRole("dialog", { name: "Agent token created" });
     expect(within(revealDialog).getByText(rawToken)).toBeTruthy();
+    expect(within(revealDialog).getByText("Read-only")).toBeTruthy();
     expect(revealDialog.textContent).toContain("This token is shown once");
 
     // The snippets are ready to paste, against this deployment's origin.
@@ -215,6 +227,44 @@ describe("agent connector panel", () => {
     await waitFor(() => expect(screen.queryByText(rawToken)).toBeNull());
     expect(document.body.textContent).not.toContain(rawToken);
     await waitFor(() => expect(getMyMcpTokensMock).toHaveBeenCalledTimes(2));
+  });
+
+  it("sends both scopes for a write-scoped token and labels it in the reveal", async () => {
+    const user = userEvent.setup();
+    const rawToken = `fmcp_${"b".repeat(64)}`;
+    const created: McpTokenCreated = {
+      ...makeToken({ id: "write-token", scopes: ["read", "write"] }),
+      token: rawToken,
+    };
+    getMyMcpTokensMock.mockResolvedValue([]);
+    createMyMcpTokenMock.mockResolvedValue(created);
+
+    renderPanel();
+    await screen.findByText("No agent tokens yet");
+
+    await user.click(screen.getByRole("button", { name: "Create token" }));
+    const createDialog = await screen.findByRole("dialog", { name: "Create agent token" });
+    const scopeSelect = within(createDialog).getByLabelText("Token scope") as HTMLSelectElement;
+
+    // Read-only is the default, and the write-proposal caveat is only shown once it matters.
+    expect(scopeSelect.value).toBe("read");
+    expect(within(createDialog).queryByText(/human approves on \/approvals/)).toBeNull();
+
+    await user.type(within(createDialog).getByLabelText("Token name"), "Proposal agent");
+    await user.selectOptions(scopeSelect, "write");
+    expect(within(createDialog).getByText(/human approves on \/approvals/)).toBeTruthy();
+    await user.click(within(createDialog).getByRole("button", { name: "Create token" }));
+
+    expect(createMyMcpTokenMock).toHaveBeenCalledWith({
+      data: { name: "Proposal agent", expiresInDays: 30, scopes: ["read", "write"] },
+    });
+
+    const revealDialog = await screen.findByRole("dialog", { name: "Agent token created" });
+    expect(within(revealDialog).getByText("Read + propose writes")).toBeTruthy();
+    expect(within(revealDialog).getByText(rawToken)).toBeTruthy();
+
+    await user.click(within(revealDialog).getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(screen.queryByText(rawToken)).toBeNull());
   });
 
   it("shows a sanitized create error and keeps the dialog open to fix it", async () => {

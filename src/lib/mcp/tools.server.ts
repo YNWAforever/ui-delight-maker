@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AgentActionProposalInput } from "@/lib/agent-actions";
 import { AdminError } from "@/lib/admin/errors";
 import type { AppSession } from "@/lib/auth/neon-auth.server";
 import {
@@ -13,7 +14,9 @@ import {
   requireCapability,
   type RequestAuthorization,
 } from "@/server/auth/authorization.server";
+import { proposeAgentActionCommand } from "@/server/commands/agent-action-proposal.server";
 import { getAccount, listAccountsPage } from "@/server/repositories/accounts";
+import { listAgentActionProposalsForProfile } from "@/server/repositories/agent-action-proposals";
 import { getJobSheet, listJobSheetsPage } from "@/server/repositories/job-sheets";
 import { getLeadWithActivity, listLeadsPage } from "@/server/repositories/leads";
 import { getQuote } from "@/server/repositories/quotes";
@@ -60,10 +63,24 @@ export type McpToolResult = {
 export type McpTool = {
   definition: Pick<McpToolDefinition, "name" | "title" | "description">;
   inputSchema: z.ZodObject<z.ZodRawShape>;
-  /** Token scope required to run this tool; read-only v1 tools all require `read`. */
+  /** Token scope required to run this tool; defaults to `read` when unspecified. */
   requiredScope?: McpTokenScope;
   handler: (context: McpToolContext, args: Record<string, unknown>) => Promise<unknown>;
 };
+
+/**
+ * Whether a token's scopes satisfy a tool's requirement.
+ *
+ * Read tools default to the `read` scope, so a write-only token cannot read by accident; write
+ * tools name the `write` scope explicitly. Exported because the scope rule is security-relevant
+ * behaviour worth unit-testing without adding a fake tool to the real registry.
+ */
+export function mcpToolScopeAllows(
+  tool: Pick<McpTool, "requiredScope">,
+  scopes: readonly McpTokenScope[],
+): boolean {
+  return scopes.includes(tool.requiredScope ?? "read");
+}
 
 /**
  * Safe, stable tool error messages.
@@ -76,6 +93,8 @@ export const MCP_TOOL_ERROR_MESSAGES = {
   forbidden: "You do not have permission to use this tool.",
   notFound: "The requested record was not found.",
   invalidInput: "The tool arguments were invalid.",
+  /** The target exists but changed state (e.g. a message handoff no longer awaits manual send). */
+  conflict: "The target is not in a state that allows this proposal.",
   internal: "The tool failed unexpectedly. Please try again.",
 } as const;
 
@@ -105,9 +124,9 @@ export async function executeMcpTool(
   context: McpToolContext,
   args: Record<string, unknown>,
 ): Promise<{ result: McpToolResult; errorCode: McpErrorCode | null }> {
-  // Defense in depth on top of the capability check: a token must hold the read scope to run any
-  // v1 tool, so a future write-scoped token cannot read through a read tool by accident.
-  if (!context.scopes.includes(tool.requiredScope ?? "read")) {
+  // Defense in depth on top of the capability check: read tools require the token's read scope,
+  // and write tools require its write scope, so neither kind can run on the wrong credential.
+  if (!mcpToolScopeAllows(tool, context.scopes)) {
     return {
       result: textResult(MCP_TOOL_ERROR_MESSAGES.forbidden, true),
       errorCode: MCP_ERROR_CODES.forbidden,
@@ -134,6 +153,12 @@ export async function executeMcpTool(
       if (error.code === "VALIDATION_FAILED") {
         return {
           result: textResult(MCP_TOOL_ERROR_MESSAGES.invalidInput, true),
+          errorCode: MCP_ERROR_CODES.invalidInput,
+        };
+      }
+      if (error.code === "CONFLICT") {
+        return {
+          result: textResult(MCP_TOOL_ERROR_MESSAGES.conflict, true),
           errorCode: MCP_ERROR_CODES.invalidInput,
         };
       }
@@ -174,6 +199,7 @@ export function toolErrorCodeFromResult(result: unknown): McpErrorCode | null {
   if (text === MCP_TOOL_ERROR_MESSAGES.forbidden) return MCP_ERROR_CODES.forbidden;
   if (text === MCP_TOOL_ERROR_MESSAGES.notFound) return MCP_ERROR_CODES.notFound;
   if (text === MCP_TOOL_ERROR_MESSAGES.invalidInput) return MCP_ERROR_CODES.invalidInput;
+  if (text === MCP_TOOL_ERROR_MESSAGES.conflict) return MCP_ERROR_CODES.invalidInput;
   if (text.includes("Input validation error")) return MCP_ERROR_CODES.invalidInput;
   if (/^Tool \S+ not found$/.test(text)) return MCP_ERROR_CODES.invalidInput;
   return MCP_ERROR_CODES.internal;
@@ -416,12 +442,89 @@ const getQuoteTool: McpTool = {
   },
 };
 
+const proposeManualMessageSentSchema = z.strictObject({
+  approval_id: idSchema,
+  reference: z.string().trim().min(3).max(255),
+  idempotency_key: z.string().trim().min(8).max(128),
+});
+
 /**
- * The v1 read-only tool registry.
+ * The only write-scoped tool: it records a `human_approvals` proposal through the supervised
+ * command. The token evidence comes from the server-verified MCP context, never from the tool
+ * arguments, and the command decides everything else (target state, proposer identity, dedupe).
+ */
+const proposeManualMessageSentTool: McpTool = {
+  definition: {
+    name: "propose_manual_message_sent",
+    title: "Propose manual message sent",
+    description:
+      "Proposes recording a manual message-send reference on an approved message draft. Requires the write scope: the proposal waits for a human approver and this tool never sends, writes or executes anything.",
+  },
+  inputSchema: proposeManualMessageSentSchema,
+  requiredScope: "write",
+  async handler(context, args) {
+    const input = proposeManualMessageSentSchema.parse(args);
+    const proposal: AgentActionProposalInput = {
+      action: "record_manual_message_sent",
+      targetApprovalId: input.approval_id,
+      reference: input.reference,
+      idempotencyKey: input.idempotency_key,
+      tokenId: context.tokenId,
+      tokenName: context.tokenName,
+    };
+    const result = await proposeAgentActionCommand(context.authorization, proposal);
+    return {
+      status: result.status,
+      approvalId: result.approvalId,
+      targetApprovalId: result.targetApprovalId,
+      requiresApproval: result.requiresApproval,
+      message: result.message,
+    };
+  },
+};
+
+const listMyProposalsSchema = z.strictObject({
+  status: z.enum(["pending", "approved", "rejected", "escalated"]).optional(),
+  limit: z.number().int().min(1).max(50).default(20),
+});
+
+/**
+ * Personal read tool: the profile id is the token owner's, so a token can never enumerate
+ * another profile's proposals. The repository returns exactly the requested summary fields.
+ */
+const listMyProposalsTool: McpTool = {
+  definition: {
+    name: "list_my_proposals",
+    title: "List my proposals",
+    description:
+      "Read-only list of this token owner's governed agent proposals, newest first. Only proposals proposed by the token's own profile are returned.",
+  },
+  inputSchema: listMyProposalsSchema,
+  async handler(context, args) {
+    const input = listMyProposalsSchema.parse(args);
+    const proposals = await listAgentActionProposalsForProfile(context.session.profile.id, {
+      status: input.status,
+      limit: input.limit,
+    });
+    return proposals.map((proposal) => ({
+      id: proposal.id,
+      action: proposal.action,
+      targetApprovalId: proposal.targetApprovalId,
+      status: proposal.status,
+      createdAt: proposal.createdAt,
+      decidedAt: proposal.decidedAt,
+      reviewerNotes: proposal.reviewerNotes,
+    }));
+  },
+};
+
+/**
+ * The MCP tool registry.
  *
  * Adding a tool is one entry here: the MCP server registration, tools/list JSON Schema and the
- * protocol audit trail all read from this array. Handlers may only read — writes arrive later
- * behind explicit token scopes and the existing approval model.
+ * protocol audit trail all read from this array. Read tools default to the `read` scope; the
+ * write tool sets `requiredScope: "write"` and only creates a human approval — no tool writes a
+ * CRM record directly.
  */
 export const MCP_TOOLS: readonly McpTool[] = [
   whoamiTool,
@@ -434,7 +537,9 @@ export const MCP_TOOLS: readonly McpTool[] = [
   getJobSheetTool,
   listTasksTool,
   getQuoteTool,
+  proposeManualMessageSentTool,
+  listMyProposalsTool,
 ];
 
-/** Tool names in registry order; the design doc lists exactly these. */
+/** Tool names in registry order, exposed by tools/list and the protocol tests. */
 export const MCP_TOOL_NAMES: readonly string[] = MCP_TOOLS.map((tool) => tool.definition.name);

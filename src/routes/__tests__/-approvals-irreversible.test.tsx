@@ -599,6 +599,91 @@ const ownedBulkReceipt = {
   results: [{ id: "succeeded-item", status: "succeeded" as const, retryable: false }],
 };
 
+describe("Agent action proposals", () => {
+  beforeAll(() => {
+    Element.prototype.hasPointerCapture = () => false;
+    Element.prototype.setPointerCapture = () => {};
+    Element.prototype.releasePointerCapture = () => {};
+    Element.prototype.scrollIntoView = () => {};
+  });
+
+  const TARGET_APPROVAL_ID = "33333333-3333-4333-8333-333333333333";
+
+  const agentProposal = (overrides: Partial<ApprovalView> = {}) =>
+    approval({
+      id: "ap-agent",
+      approval_type: "agent_action",
+      requested_by: "profile-1",
+      requested_by_profile_id: "profile-1",
+      context_data: {
+        action: "record_manual_message_sent",
+        target_approval_id: TARGET_APPROVAL_ID,
+        reference: "WhatsApp thread WA-77",
+        proposal_key: "token-1:key-1",
+        proposed_by_profile_id: "profile-1",
+        proposed_by_token_id: "token-1",
+        token_name: "Claude Code",
+      },
+      context_summary: 'Record the manual send reference proposed by MCP token "Claude Code"',
+      ...overrides,
+    });
+
+  it("reads a proposal as a structured summary rather than a raw payload dump", async () => {
+    renderInbox([agentProposal()]);
+
+    expect(await screen.findAllByText("Agent action")).toBeTruthy();
+    expect(await screen.findByText("Record manual message sent")).toBeTruthy();
+    expect(screen.getByText("Proposal details")).toBeTruthy();
+    // The reviewer sees what identifies the proposal: target, reference, token and time.
+    expect(screen.getByText(TARGET_APPROVAL_ID)).toBeTruthy();
+    expect(screen.getByText("WhatsApp thread WA-77")).toBeTruthy();
+    expect(screen.getAllByText("Claude Code").length).toBeGreaterThan(0);
+    expect(screen.getByText("Created")).toBeTruthy();
+    // What approving does is a sentence traced to the write path, not an invented promise.
+    expect(screen.getByText(/records the proposed manual send reference/i)).toBeTruthy();
+    expect(
+      screen.getByText(/does not send the message and does not confirm delivery/i),
+    ).toBeTruthy();
+    // The raw context JSON is not how a proposal is presented to a reviewer.
+    expect(screen.queryByText(/"target_approval_id"/)).toBeNull();
+    expect(screen.queryByText("Payload")).toBeNull();
+  });
+
+  it("accepts the agent action type as a URL filter", () => {
+    const searchSchema = Route.options.validateSearch as {
+      parse: (input: unknown) => { type: string };
+    };
+    // The filter value the queue is opened with must survive validation; an unknown value
+    // still falls back to the unfiltered queue, so a stale link cannot blank the desk.
+    expect(searchSchema.parse({ type: "agent_action" })).toMatchObject({ type: "agent_action" });
+    expect(searchSchema.parse({ type: "not-a-type" })).toMatchObject({ type: "all" });
+  });
+
+  it("never offers Approve or Reject to the proposal's own proposer", async () => {
+    renderInbox([agentProposal({ can_decide: false, can_request_changes: false })]);
+
+    await screen.findAllByText("Record manual message sent");
+    await waitFor(() => expect(getApprovalDetailFnMock).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Request changes" })).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Reviewer notes or decision reason" })).toBeNull();
+  });
+
+  it("offers the normal decision, with its consequence, to another reviewer", async () => {
+    renderInbox([agentProposal({ can_decide: true, can_request_changes: true })]);
+
+    fireEvent.click(decisionButton(/^Approve$/));
+
+    const dialog = await screen.findByRole("alertdialog");
+    const text = dialog.textContent ?? "";
+    expect(text).toMatch(/records the proposed manual send reference/i);
+    expect(text).toMatch(/does not send the message/i);
+    expect(text).not.toMatch(/proceeds immediately/i);
+  });
+});
+
 describe("Approval durable bulk receipt recovery", () => {
   it("keeps and retries the original receipt with no selected rows, then resumes the exact saved commit key", async () => {
     const saved = JSON.stringify(savedBulkCommit);

@@ -34,6 +34,7 @@ export const CLIENTOPS_MIGRATION_PATHS = [
   "neon/migrations/027_wfm_history_scaffold.sql",
   "neon/migrations/028_wfm_shared_contact_links.sql",
   "neon/migrations/029_mcp_access_tokens.sql",
+  "neon/migrations/030_governed_agent_actions.sql",
 ] as const;
 
 export const CLIENTOPS_REQUIRED_TABLES = [
@@ -181,6 +182,7 @@ export const CLIENTOPS_REQUIRED_COLUMNS = [
   "mcp_access_tokens.revoked_at",
   "mcp_tool_calls.token_id",
   "mcp_tool_calls.profile_id",
+  "human_approvals.requested_by_profile_id",
 ] as const;
 
 export type RelationshipSchemaMigrationDecision =

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
+import { MCP_TOKEN_SCOPES, normalizeMcpTokenScopes } from "@/lib/mcp/types";
 import {
   createMcpAccessToken,
   listMcpAccessTokens,
@@ -10,6 +11,11 @@ import {
 const createMcpTokenSchema = z.strictObject({
   name: z.string().trim().min(1).max(80),
   expiresInDays: z.union([z.literal(30), z.literal(90), z.literal(365), z.null()]),
+  /**
+   * Scope selection from the token dialog. Unknown scopes are rejected by the enum; a bare
+   * `["write"]` is normalized below to `["read","write"]` because write implies read.
+   */
+  scopes: z.array(z.enum(MCP_TOKEN_SCOPES)).min(1).optional(),
 });
 const revokeMcpTokenSchema = z.strictObject({ tokenId: z.uuid() });
 
@@ -28,6 +34,8 @@ export const createMyMcpToken = createServerFn({ method: "POST" })
       profileId: session.profile.id,
       name: data.name,
       expiresInDays: data.expiresInDays,
+      // Canonical here so the value the store persists and the value returned to the UI agree.
+      scopes: normalizeMcpTokenScopes(data.scopes),
     });
   });
 

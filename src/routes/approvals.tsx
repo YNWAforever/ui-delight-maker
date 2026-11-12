@@ -57,8 +57,9 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useClientNow } from "@/hooks/use-client-now";
+import { AGENT_ACTION_LABELS, isAgentActionType } from "@/lib/agent-actions";
 import { slaChip } from "@/lib/approval-sla";
-import { approvalTypeLabel } from "@/lib/approval-types";
+import { approvalProposedAction, approvalTypeLabel } from "@/lib/approval-types";
 import { toSafeErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import { crmQueryKeys } from "@/lib/query-keys";
@@ -103,6 +104,7 @@ const APPROVAL_TYPE_FILTER_VALUES = [
   "campaign_send",
   "forecast_review",
   "cs_risk_review",
+  "agent_action",
 ] as const;
 
 type ApprovalTypeFilter = (typeof APPROVAL_TYPE_FILTER_VALUES)[number];
@@ -135,6 +137,97 @@ const approvalPageKey = (group: "pending" | "history", type: ApprovalTypeFilter)
  * which is a deliberate action rather than an error.
  */
 const UNASSIGNED_VALUE = "__unassigned__";
+
+const AGENT_ACTION_TERM_CLASS = "text-xs font-medium uppercase tracking-wide text-muted-foreground";
+
+type AgentActionDetail = {
+  actionLabel: string;
+  targetApprovalId: string | null;
+  reference: string | null;
+  tokenName: string | null;
+  proposerProfileId: string | null;
+};
+
+/**
+ * Read the proposal payload as protocol data.
+ *
+ * Every field is optional on the wire, so an unrecognised or missing one renders as a stated
+ * absence rather than an invented value; `action` is shown verbatim when it is not one of the
+ * actions this build knows, because a new server action is still a truthful review target.
+ */
+function agentActionDetail(approval: Approval): AgentActionDetail | null {
+  if (approval.approval_type !== "agent_action") return null;
+  const raw = approval.context_data;
+  const payload =
+    raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  const text = (value: unknown) =>
+    typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+  const action = text(payload.action);
+  return {
+    actionLabel:
+      action === null
+        ? "Unrecognised agent action"
+        : isAgentActionType(action)
+          ? AGENT_ACTION_LABELS[action]
+          : action.replace(/_/g, " "),
+    targetApprovalId: text(payload.target_approval_id),
+    reference: text(payload.reference),
+    tokenName: text(payload.token_name),
+    proposerProfileId:
+      text(payload.proposed_by_profile_id) ?? text(approval.requested_by_profile_id) ?? null,
+  };
+}
+
+/** Structured summary of an agent proposal: identity, target and reference, never raw JSON. */
+function AgentActionProposalDetails({ approval }: { approval: Approval }) {
+  const detail = agentActionDetail(approval);
+  if (!detail) return null;
+  return (
+    <dl className="space-y-3 text-sm">
+      <div>
+        <dt className={AGENT_ACTION_TERM_CLASS}>Action</dt>
+        <dd className="mt-1">{detail.actionLabel}</dd>
+      </div>
+      <div>
+        <dt className={AGENT_ACTION_TERM_CLASS}>Target approval</dt>
+        <dd className="mt-1">
+          {detail.targetApprovalId ? (
+            <Link
+              to="/approvals"
+              search={{ type: "message_send" }}
+              className="font-mono text-xs underline-offset-2 hover:underline"
+            >
+              {detail.targetApprovalId}
+            </Link>
+          ) : (
+            "Not recorded"
+          )}
+        </dd>
+      </div>
+      <div>
+        <dt className={AGENT_ACTION_TERM_CLASS}>Reference</dt>
+        <dd className="mt-1 whitespace-pre-wrap break-words">
+          {detail.reference ?? "Not recorded"}
+        </dd>
+      </div>
+      <div>
+        <dt className={AGENT_ACTION_TERM_CLASS}>Proposer</dt>
+        <dd className="mt-1">
+          {detail.tokenName ?? "Unrecognised token"}
+          {detail.proposerProfileId ? (
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Profile {detail.proposerProfileId}
+            </span>
+          ) : null}
+        </dd>
+      </div>
+      <div>
+        <dt className={AGENT_ACTION_TERM_CLASS}>Created</dt>
+        <dd className="mt-1">{formatDateTime(approval.created_at)}</dd>
+      </div>
+    </dl>
+  );
+}
 
 /**
  * Whether this approval can still be decided from this screen.
@@ -547,7 +640,9 @@ function ApprovalsInbox() {
                   ? "Quote approved. Issuance is a separate step."
                   : approval.approval_type === "message_send"
                     ? "Draft approved; awaiting manual send"
-                    : "Approval recorded"
+                    : approval.approval_type === "agent_action"
+                      ? "Proposal approved; execution recorded"
+                      : "Approval recorded"
                 : decision === "rejected"
                   ? "Approval rejected"
                   : "Changes requested",
@@ -788,7 +883,17 @@ function ApprovalsInbox() {
       {
         id: "summary",
         title: "What the agent proposes",
-        content: <p className="text-sm">{approval.context_summary ?? "No summary provided"}</p>,
+        content:
+          approval.approval_type === "agent_action" ? (
+            <div className="space-y-2">
+              <p className="text-sm">{approval.context_summary ?? "No summary provided"}</p>
+              <p className="text-sm text-muted-foreground">
+                {approvalProposedAction(approval.approval_type)}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm">{approval.context_summary ?? "No summary provided"}</p>
+          ),
       },
       /**
        * Only a pending approval carries this control.
@@ -838,14 +943,21 @@ function ApprovalsInbox() {
         : []),
       {
         id: "payload",
-        title: "Payload",
-        content: (
-          <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
-            {approval.context_data
-              ? JSON.stringify(approval.context_data, null, 2)
-              : "No payload data"}
-          </pre>
-        ),
+        title: approval.approval_type === "agent_action" ? "Proposal details" : "Payload",
+        content:
+          approval.approval_type === "agent_action" ? (
+            approval.context_data ? (
+              <AgentActionProposalDetails approval={approval} />
+            ) : (
+              <p className="text-sm text-muted-foreground">No payload data</p>
+            )
+          ) : (
+            <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+              {approval.context_data
+                ? JSON.stringify(approval.context_data, null, 2)
+                : "No payload data"}
+            </pre>
+          ),
       },
       ...(approval.approval_type === "message_send" && approval.status === "approved"
         ? [

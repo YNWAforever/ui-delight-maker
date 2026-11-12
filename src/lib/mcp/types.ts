@@ -1,9 +1,10 @@
 /**
  * Shared MCP connector contracts.
  *
- * The connector is deliberately read-only in v1: a token grants the same CRM reads the
- * signed-in user can see, with the same capability and row-scope authorization. Write tools
- * arrive later behind explicit scopes and the existing approval model.
+ * Tokens are read-only by default: every token grants the same CRM reads its owner can see,
+ * with the same capability and row-scope authorization. A token that also carries the `write`
+ * scope may propose governed actions once those tools land; nothing an agent does writes to a
+ * CRM record directly, and every write still requires a human approval.
  */
 
 /** Every raw token starts with this so leaked values are recognisable in logs and scans. */
@@ -15,11 +16,50 @@ export const MCP_TOKEN_HEX_LENGTH = 64;
 /** What a user sees after creation: `fmcp_` + the first 8 hex characters (13 characters). */
 export const MCP_TOKEN_PREFIX_DISPLAY_LENGTH = MCP_TOKEN_PREFIX.length + 8;
 
-/** Token scopes stored per token. v1 issues `read` only; `write` is reserved. */
+/**
+ * Token scopes stored per token. `write` always implies `read`; it never grants a direct CRM
+ * write, only the right to create human-reviewed proposals once those tools exist.
+ */
 export const MCP_TOKEN_SCOPES = ["read", "write"] as const;
 export type McpTokenScope = (typeof MCP_TOKEN_SCOPES)[number];
 
+/** Scope used when a mint request omits a selection: the safe read-only default. */
 export const DEFAULT_MCP_TOKEN_SCOPE: McpTokenScope = "read";
+
+/** Human labels for the token scope presets shown in Account → Agent connector. */
+export const MCP_TOKEN_SCOPE_LABELS = {
+  read: "Read-only",
+  write: "Read + propose writes",
+} as const satisfies Record<McpTokenScope, string>;
+
+export function isMcpTokenScope(value: string): value is McpTokenScope {
+  return (MCP_TOKEN_SCOPES as readonly string[]).includes(value);
+}
+
+/**
+ * Canonicalizes a scope selection.
+ *
+ * Omitted means read-only (back-compat for existing mint calls). An explicit empty selection or
+ * an unknown scope is rejected: a token without a usable scope would authenticate and then fail
+ * every tool. `write` always includes `read` because proposing an action starts by reading the
+ * record it targets.
+ */
+export function normalizeMcpTokenScopes(requested?: readonly string[]): McpTokenScope[] {
+  if (requested === undefined) return [DEFAULT_MCP_TOKEN_SCOPE];
+  if (requested.length === 0) throw new Error("An MCP token must have at least one scope");
+  for (const scope of requested) {
+    if (!isMcpTokenScope(scope)) throw new Error("Unknown MCP token scope");
+  }
+
+  const selected = new Set<McpTokenScope>(requested as readonly McpTokenScope[]);
+  if (selected.has("write")) selected.add("read");
+  return MCP_TOKEN_SCOPES.filter((scope) => selected.has(scope));
+}
+
+/** Label for a token's scope set; any write scope means the token can propose writes. */
+export function mcpTokenScopeLabel(scopes: readonly McpTokenScope[]): string {
+  return scopes.includes("write") ? MCP_TOKEN_SCOPE_LABELS.write : MCP_TOKEN_SCOPE_LABELS.read;
+}
 
 /** Active (unrevoked, unexpired) tokens one profile may hold; keeps the settings list bounded. */
 export const MCP_MAX_ACTIVE_TOKENS_PER_PROFILE = 20;
@@ -71,6 +111,8 @@ export type McpTokenCreated = McpTokenSummary & { token: string };
 export type CreateMcpTokenInput = {
   name: string;
   expiresInDays: 30 | 90 | 365 | null;
+  /** Scope selection; omitted means read-only. `write` always includes `read`. */
+  scopes?: readonly McpTokenScope[];
 };
 
 /** Result of resolving a bearer token to the acting profile. */
@@ -81,7 +123,7 @@ export type McpTokenResolution = {
   scopes: readonly McpTokenScope[];
 };
 
-/** A single read tool exposed to agents. */
+/** A single MCP tool exposed to agents. */
 export type McpToolDefinition = {
   name: string;
   title: string;
