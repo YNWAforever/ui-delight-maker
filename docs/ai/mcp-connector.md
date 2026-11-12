@@ -1,6 +1,6 @@
 # MCP connector (v1)
 
-Status: implemented in this branch (`feat/mcp-connector`), behind no feature flag: the endpoint
+Status: shipped on `main` in PR #183, behind no feature flag: the endpoint
 is inert without a minted token.
 Audience: engineering, operations, and any user connecting an AI agent to ClientOps.
 
