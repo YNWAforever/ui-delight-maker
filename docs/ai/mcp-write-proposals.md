@@ -1,6 +1,6 @@
 # Governed agent actions (MCP write proposals)
 
-Status: Tranche B first slice, implemented on `feat/mcp-write-proposals` (PR pending).
+Status: shipped on `main` in PR #185 (migration 030 applied to production out of band before deploy).
 Audience: engineering, security review, operations.
 
 ## Why
