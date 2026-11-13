@@ -6,13 +6,22 @@ import { crmQueryKeys } from "@/lib/query-keys";
 import { formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { PolicyPanel } from "./policy-panel";
-export function AuxiliaryWorkflowPanel({ runId }: { runId?: string }) {
+import { AgentRunDetails } from "./run-detail-panel";
+export function AuxiliaryWorkflowPanel({
+  runId,
+  actorId = "unknown",
+}: {
+  runId?: string;
+  actorId?: string;
+}) {
   const [page, setPage] = useState(1);
   const query = useQuery({
-    queryKey: crmQueryKeys.agents.section("note_tidy", "runs", { page, runId }),
+    queryKey: crmQueryKeys.agents.section("note_tidy", "runs", { actorId, page, runId }),
     queryFn: () => getNoteTidyRuns({ data: { page, limit: 25, runId } }),
+    gcTime: 0,
+    refetchOnMount: "always",
   });
-  const history = query.data;
+  const history = !query.isError && !query.isFetching ? query.data : undefined;
   return (
     <section className="space-y-3 rounded-md border p-4" aria-label="Auxiliary AI">
       <h2 className="text-lg font-semibold">Auxiliary AI · Note Tidy</h2>
@@ -46,10 +55,7 @@ export function AuxiliaryWorkflowPanel({ runId }: { runId?: string }) {
                   {run.tokens_used ?? "Unknown"}; cost: {run.usage?.cost ?? "Unknown"}
                   {run.usage?.currency ? ` ${run.usage.currency}` : ""}
                 </p>
-                <details>
-                  <summary>Invocation details</summary>
-                  <p>Run ID: {run.id}</p>
-                </details>
+                <AgentRunDetails runId={run.id} actorId={actorId} label="Invocation details" />
               </li>
             ))}
           </ul>
