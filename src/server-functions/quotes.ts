@@ -19,7 +19,8 @@ import {
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { getN8nDispatchConfig, n8nFailureOutcome, triggerN8n } from "@/lib/n8n";
+import { getN8nDispatchConfig, n8nFailureOutcome } from "@/lib/n8n";
+import { dispatchAgentWorkflow } from "@/server/workflows/n8n-dispatch.server";
 import { buildQuoteDraftPayload } from "@/lib/workflows/payloads";
 import { listPdfTemplates, listQuoteTemplates } from "@/server/repositories/quote-templates";
 import {
@@ -299,9 +300,10 @@ export const triggerQuoteAgent = createServerFn({ method: "POST" })
     }
 
     try {
-      await triggerN8n(
+      await dispatchAgentWorkflow(
         dispatchConfig,
         buildQuoteDraftPayload({ leadId: data.leadId, agentRunId: run.id }),
+        { agentRunId: run.id, workflowType: "draft_quote" },
       );
     } catch (error) {
       await updateAgentRunResult(run.id, {

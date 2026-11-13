@@ -4,7 +4,8 @@ import { evaluateAuthorization } from "@/lib/admin/policy";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { getN8nDispatchConfig, n8nFailureOutcome, triggerN8n } from "@/lib/n8n";
+import { getN8nDispatchConfig, n8nFailureOutcome } from "@/lib/n8n";
+import { dispatchAgentWorkflow } from "@/server/workflows/n8n-dispatch.server";
 import { buildQualificationPayload, buildReplyDraftPayload } from "@/lib/workflows/payloads";
 import {
   createAgentRun,
@@ -231,9 +232,10 @@ export const triggerLeadAgent = createServerFn({ method: "POST" })
     }
 
     try {
-      await triggerN8n(
+      await dispatchAgentWorkflow(
         dispatchConfig,
         buildQualificationPayload({ leadId: data.leadId, agentRunId: run.id }),
+        { agentRunId: run.id, workflowType: "qualify_lead" },
       );
     } catch (error) {
       await updateAgentRunResult(run.id, {
@@ -298,9 +300,10 @@ export const triggerLeadReplyDraft = createServerFn({ method: "POST" })
     }
 
     try {
-      await triggerN8n(
+      await dispatchAgentWorkflow(
         dispatchConfig,
         buildReplyDraftPayload({ leadId: data.leadId, agentRunId: run.id }),
+        { agentRunId: run.id, workflowType: "draft_reply" },
       );
     } catch (error) {
       await updateAgentRunResult(run.id, {

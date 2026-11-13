@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { N8nDispatchUncertainError } from "@/lib/n8n";
+import { n8nTraceArguments } from "./n8n-trace.server";
 import {
   recordToolCallTrace as persistToolCallTrace,
   type ToolCallTraceInput,
@@ -54,6 +55,7 @@ export type AIInvocationContext = {
     outcomeCode?: string | null;
   }>;
   finishRun: (runId: string, result: RunFinish) => Promise<void>;
+  /** For n8n, this invocation owns tracing: execute uses the raw transport, not dispatchAgentWorkflow. */
   execute: (input: unknown, signal: AbortSignal) => Promise<Execution>;
   /**
    * Test seam for the unified B1 trace writer. Defaults to the real repository recorder, which
@@ -184,6 +186,13 @@ export async function invokeGovernedAI(
   const maximum = ctx.kind === "n8n" ? 15_000 : 60_000;
   const deadlineMs = Math.min(ctx.deadlineMs ?? maximum, maximum);
   const startedAt = Date.now();
+  const traceSource = ctx.kind === "n8n" ? "n8n_dispatch" : "governed_ai";
+  const traceArgs =
+    ctx.kind === "n8n"
+      ? n8nTraceArguments(request.workflowType, runId, {
+          [`${request.subjectType}_id`]: request.subjectId,
+        })
+      : request.input;
   let execution: Execution;
   try {
     execution = await runWithDeadline((signal) => ctx.execute(request.input, signal), deadlineMs);
@@ -200,13 +209,13 @@ export async function invokeGovernedAI(
       model: null,
     });
     await traceInvocation(ctx, {
-      source: "governed_ai",
+      source: traceSource,
       toolName: request.workflowType,
       agentRunId: runId,
       status: "error",
       durationMs: Date.now() - startedAt,
       errorCode: outcomeCode,
-      args: request.input,
+      args: traceArgs,
     });
     return {
       runId,
@@ -218,8 +227,15 @@ export async function invokeGovernedAI(
   }
   const usage = normalizeAIUsage(execution.usage);
   if (ctx.kind === "n8n") {
-    // The n8n run is finished by the workflow writeback, not here, so there is no finished
-    // local run to link a trace to in this slice (B1 slice 3 covers n8n dispatch rows).
+    // HTTP acceptance is a dispatch outcome; the writeback later records workflow completion.
+    await traceInvocation(ctx, {
+      source: "n8n_dispatch",
+      toolName: request.workflowType,
+      agentRunId: runId,
+      status: "ok",
+      durationMs: Date.now() - startedAt,
+      args: traceArgs,
+    });
     return { runId, outcome: "dispatched", output: null, usage };
   }
   // Persistence errors are not provider failures: do not overwrite the outcome.

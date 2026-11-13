@@ -3,7 +3,8 @@ import { requireCapability } from "@/server/auth/authorization.server";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createServerFn } from "@tanstack/react-start";
 import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
-import { getN8nDispatchConfig, n8nFailureOutcome, triggerN8n } from "@/lib/n8n";
+import { getN8nDispatchConfig, n8nFailureOutcome } from "@/lib/n8n";
+import { dispatchAgentWorkflow } from "@/server/workflows/n8n-dispatch.server";
 import { buildScoreRenewalRiskPayload } from "@/lib/workflows/payloads";
 import {
   createAgentRun,
@@ -127,9 +128,10 @@ export const triggerRiskScoreAgent = createServerFn({ method: "POST" })
     }
 
     try {
-      await triggerN8n(
+      await dispatchAgentWorkflow(
         dispatchConfig,
         buildScoreRenewalRiskPayload({ engagementId: data.engagementId, agentRunId: run.id }),
+        { agentRunId: run.id, workflowType: "score_renewal_risk" },
       );
     } catch (error) {
       await updateAgentRunResult(run.id, {

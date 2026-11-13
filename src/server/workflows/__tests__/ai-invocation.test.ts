@@ -190,8 +190,35 @@ describe("governed AI tool-call trace", () => {
     await invokeGovernedAI(ctx, request);
 
     expect(ctx.traceToolCall).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "error", errorCode: "dispatch_ambiguous" }),
+      expect.objectContaining({
+        source: "n8n_dispatch",
+        status: "error",
+        errorCode: "dispatch_ambiguous",
+      }),
     );
+  });
+
+  it("traces n8n acceptance once without claiming the workflow completed", async () => {
+    const ctx = context({ kind: "n8n" });
+    const result = await invokeGovernedAI(ctx, {
+      ...request,
+      workflowType: "qualify_lead",
+      subjectType: "lead",
+    });
+    expect(result.outcome).toBe("dispatched");
+    expect(ctx.finishRun).not.toHaveBeenCalled();
+    expect(ctx.traceToolCall).toHaveBeenCalledTimes(1);
+    expect(ctx.traceToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "n8n_dispatch",
+        status: "ok",
+        agentRunId: "run-1",
+        args: { workflow_type: "qualify_lead", agent_run_id: "run-1", lead_id: request.subjectId },
+      }),
+    );
+    expect(
+      JSON.stringify((ctx.traceToolCall as ReturnType<typeof vi.fn>).mock.calls),
+    ).not.toContain(request.input);
   });
 
   it("skips the trace when policy denies or the run is a duplicate", async () => {
