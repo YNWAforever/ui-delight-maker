@@ -1,7 +1,7 @@
 # Agent observability (trace writer and approval SLA)
 
-Status: Tranche B1 shipped in PR #187; n8n boundary tracing is the follow-up on
-`feat/n8n-tool-call-traces` (pending review).
+Status: Tranche B1 shipped in PR #187; n8n boundary tracing shipped in PR #188.
+Run-detail panels use the existing schema and add no migration or configuration requirement.
 Audience: engineering, operations, security review.
 
 This is the B1 half of the governed-action tranche: the evidence layer behind
@@ -104,6 +104,33 @@ where args_digest = $1
 group by 1, 2;
 ```
 
+## Run-detail evidence in AI Ops
+
+Expand a run in an agent's history, **Run details** in the AI Ops queue, or
+**Invocation details** in your Note Tidy history to load its evidence. The panel shows the
+recorded state, actual model, attempt id, and a newest-first trace of source, tool, outcome,
+duration and safe error code. Argument keys and digest are available under **Trace metadata**.
+An accepted n8n dispatch does not establish workflow completion; callback rows count delivery
+attempts, including replay. An empty trace is not proof that no work occurred: older runs may
+predate tracing and recording is best-effort.
+
+`getAgentRunDetailRead` requires `agents.view`. Its read model checks the run's subject through
+the same row authorizer as history (including ownership and resource-scoped denies) before
+querying any trace rows. Unknown subject types fail closed. Note Tidy requires both
+`workflow_type='note_tidy'`, `subject_type='note'` and the current actor as creator, even for an
+administrator. Missing and inaccessible runs return the same data-free result.
+
+Every page repeats those checks. Pages contain at most 50 events, ordered by `(called_at,id)`
+descending; keyset cursors retain PostgreSQL microseconds. Queries and responses explicitly
+project metadata: raw run input/output, legacy trace arguments/results/error messages and
+untyped `target_ids` are excluded. The target ids have no resource-type information with which
+to authorize other linked records. Standalone MCP calls without an `agent_run_id` remain outside
+this run-specific surface.
+
+Panels load on expansion, partition their query cache by actor and run, and hide evidence while
+refreshing or after a failed or denied refresh. Closing a panel removes its unobserved query
+cache; refreshing returns to the newest page. No mutation or re-dispatch is offered here.
+
 ## Approval SLA escalation
 
 ### Semantics
@@ -168,8 +195,7 @@ plus the notifications type-check drop/re-add.
 
 ## Follow-ups
 
-1. Run-detail read path/UI for `agent_tool_calls` (the repository and type already support it; no
-   surface exists today).
+1. Standalone MCP audit browser: calls without an agent run are not part of the run-detail panel.
 2. n8n internal steps: export node-level telemetry only if n8n gains a trustworthy per-tool
    instrumentation contract; current traces cover CRM dispatch and callback boundaries only.
 3. HMAC argument digest if argument secrecy becomes a requirement.

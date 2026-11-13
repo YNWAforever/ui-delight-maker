@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { AgentDataScope, DemoOriginLabel } from "@/components/agents/data-scope";
 import { PolicyPanel } from "@/components/agents/policy-panel";
+import { AgentRunDetailPanel } from "@/components/agents/run-detail-panel";
 import { matchesAgentDataFilter, type AgentDataFilter } from "@/lib/agent-data-scope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -165,6 +166,7 @@ function AgentDetail() {
   const [originFilter, setOriginFilter] = useState<AgentDataFilter>("all");
   const runs = history.items.filter((run) => matchesAgentDataFilter(run.is_demo, originFilter));
   const navigate = useNavigate({ from: Route.fullPath });
+  const actorId = Route.useRouteContext?.()?.profile?.id ?? "unknown";
   const [expanded, setExpanded] = useState<string | null>(null);
   const [recovery, setRecovery] = useState<{
     runId: string;
@@ -324,6 +326,13 @@ function AgentDetail() {
                             </button>
                             {open && (
                               <div className="mt-3 ml-11 space-y-2">
+                                {!run.subject_restricted && (
+                                  <AgentRunDetailPanel
+                                    key={`${actorId}:${run.id}`}
+                                    runId={run.id}
+                                    actorId={actorId}
+                                  />
+                                )}
                                 <pre className="overflow-auto rounded-md border border-border bg-muted/30 p-2 text-xs">
                                   <span className="font-medium text-primary">Input data</span>
                                   {"\n"}

@@ -9,6 +9,7 @@ import { formatDateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { QueueToolbar, type QueueSearch } from "./queue-toolbar";
 import { DemoOriginLabel } from "./data-scope";
+import { AgentRunDetails } from "./run-detail-panel";
 export function RunQueuePanel({
   filters,
   onChange,
@@ -179,12 +180,9 @@ export function RunQueuePanel({
                       ? "Summary restricted."
                       : (run.output_summary ?? "No summary recorded.")}
                   </p>
-                  <details>
-                    <summary>Run details</summary>
-                    <p>Run ID: {run.id}</p>
-                    <p>Workflow: {run.workflow_type}</p>
+                  <AgentRunDetails runId={run.id} actorId={queueActorId ?? actorId}>
                     <p>Tokens: {run.tokens_used ?? "Unknown"}</p>
-                  </details>
+                  </AgentRunDetails>
                 </li>
               );
             })}

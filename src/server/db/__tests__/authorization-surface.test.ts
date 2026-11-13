@@ -240,7 +240,9 @@ import { describe, expect, it } from "vitest";
  * weakened: the deleted endpoints were superseded by the scoped company-workspace and
  * quote-document reads, and every new gate is stricter than the one it replaced.
  */
-const EXPECTED_REQUIRE_CAPABILITY_CALLS = 241;
+// Run-detail read: +1 required agents.view gate; the read model then checks the subject's
+// row-level visibility (or actor ownership for Note Tidy) before loading trace metadata.
+const EXPECTED_REQUIRE_CAPABILITY_CALLS = 242;
 
 describe("authorization surface", () => {
   it("still enforces the same number of capability checks", () => {

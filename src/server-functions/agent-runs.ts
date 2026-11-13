@@ -5,22 +5,17 @@ import { parseOperationInput } from "@/lib/operations/errors";
 import { AgentRecoverySchema } from "@/lib/operations/input-schemas";
 import { loadRequestAuthorization } from "@/server/auth/authorization.server";
 import { recoverAgentRunCommand } from "@/server/commands/agent-recovery.server";
-import { requireNeonAuthSession } from "@/lib/auth/neon-auth.server";
 import { requirePageAuthorization } from "@/server/auth/authorization.server";
 import {
   loadAgentDirectoryRead,
   loadAgentHistoryPage,
 } from "@/server/read-models/agent-workspaces";
-import { listActivityLogs } from "@/server/repositories/activity-logs";
-import { getAgentRunWithCalls, listAgentRuns } from "@/server/repositories/agent-runs";
-import {
-  serializeActivityLog,
-  serializeAgentRun,
-  serializeAgentToolCall,
-} from "@/lib/serializable";
+import { serializeAgentRun } from "@/lib/serializable";
 import { AGENT_SUBJECT_VIEW_CAPABILITIES } from "@/lib/agent-run-visibility";
 import { AGENT_DEFINITIONS, agentWorkflowTypeForDisplayName } from "@/lib/agents";
 import { agentQueueSchema } from "@/lib/agent-queue-input";
+import { agentRunDetailInputSchema } from "@/lib/agent-run-detail";
+import { loadAgentRunDetail } from "@/server/read-models/agent-run-detail";
 import { loadAgentQueue, loadAiReviewQueueRead } from "@/server/read-models/agent-queues";
 
 export type {
@@ -149,6 +144,17 @@ export const getAgentQueue = createServerFn({ method: "GET" })
     return page.queue === "runs"
       ? { ...page, canRun: access["agents.run"] === true, actorId: context.actor.profileId }
       : page;
+  });
+
+export const getAgentRunDetailRead = createServerFn({ method: "GET" })
+  .validator((data: unknown) => parseOperationInput(agentRunDetailInputSchema, data))
+  .handler(async ({ data }) => {
+    const context = await loadRequestAuthorization();
+    const { rows } = await requirePageAuthorization(["agents.view"], {
+      context,
+      cacheRowOwners: true,
+    });
+    return loadAgentRunDetail(data, context, rows);
   });
 
 export const recoverAgentRunFn = createServerFn({ method: "POST" })

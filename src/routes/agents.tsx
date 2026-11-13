@@ -242,7 +242,11 @@ function AgentsMonitor() {
 
       <div className="space-y-6 px-4 py-6 md:px-6">
         <MetricStrip metrics={primaryMetrics} supporting={supportingMetrics} columns={4} />
-        <AuxiliaryWorkflowPanel key={auxiliaryRun ?? "note-history"} runId={auxiliaryRun} />
+        <AuxiliaryWorkflowPanel
+          key={`${actorId}:${auxiliaryRun ?? "note-history"}`}
+          runId={auxiliaryRun}
+          actorId={actorId}
+        />
 
         <section className="space-y-3">
           <SectionHeader
