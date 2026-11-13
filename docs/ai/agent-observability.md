@@ -64,8 +64,10 @@ subject/attempt ids. `args_keys` contains only those allowlisted keys. It does n
 model text, callback output, token values, webhook URLs or arbitrary payload keys. HTTP success
 means the dispatch was accepted; it does not establish that the external workflow completed.
 
-Callbacks are checked against the locked run's workflow, subject and attempt before attribution.
-An unknown run or mismatched identity produces no attributed trace. Evidence is written after the
+Callbacks are checked against the locked run's workflow and subject before attribution; any
+supplied attempt id must also match. Legacy callbacks without an attempt id retain their existing
+compatibility and are attributed to the locked run. An unknown run or mismatched identity produces
+no attributed trace. Evidence is written after the
 business transaction commits or rolls back; invalid-output rejection receipts therefore retain
 an error trace. Retries receive another delivery-attempt row, while the existing idempotency
 checks still prevent another business effect. A trace count is a count of attempts, not a count
