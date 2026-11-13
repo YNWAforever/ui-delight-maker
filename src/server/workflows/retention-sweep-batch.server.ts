@@ -6,7 +6,8 @@ import { query, transaction, type Queryable } from "@/server/db/neon.server";
 import { createNotification } from "@/server/repositories/notifications";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createAgentRun } from "@/server/repositories/agent-runs";
-import { getN8nDispatchConfig, n8nFailureOutcome, triggerN8n } from "@/lib/n8n";
+import { getN8nDispatchConfig, n8nFailureOutcome } from "@/lib/n8n";
+import { dispatchAgentWorkflow } from "./n8n-dispatch.server";
 import { buildScoreRenewalRiskPayload } from "@/lib/workflows/payloads";
 import {
   buildRenewalWindowDedupeKey,
@@ -199,9 +200,10 @@ async function processCandidate(
       return result;
     }
     // Durable intent is committed before HTTP. HTTP never runs inside a database transaction.
-    await triggerN8n(
+    await dispatchAgentWorkflow(
       config,
       buildScoreRenewalRiskPayload({ engagementId: e.id, agentRunId: prepared.runId }),
+      { agentRunId: prepared.runId, workflowType: "score_renewal_risk" },
     );
     accepted = true;
     await finish("acknowledged", "WEBHOOK_ACCEPTED");

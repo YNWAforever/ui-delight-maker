@@ -1,6 +1,7 @@
 # Agent observability (trace writer and approval SLA)
 
-Status: Tranche B1, branch `feat/agent-trace-sla` (PR pending).
+Status: Tranche B1 shipped in PR #187; n8n boundary tracing is the follow-up on
+`feat/n8n-tool-call-traces` (pending review).
 Audience: engineering, operations, security review.
 
 This is the B1 half of the governed-action tranche: the evidence layer behind
@@ -21,7 +22,8 @@ This is the B1 half of the governed-action tranche: the evidence layer behind
 | --- | --- | --- |
 | MCP `tools/call` | one row per call: tool name, `ok`/`error`, error code, duration, argument digest/keys/target ids | `mcp_tool_call_id` → `mcp_tool_calls.id` |
 | Governed AI invocation (`invokeGovernedAI`: note tidy now, assistant later) | one row per invocation: workflow type, outcome, duration, input digest | `agent_run_id` → `agent_runs.id` |
-| n8n workflows | **not traced per node** — the CRM cannot see calls made inside n8n. A future slice can record one dispatch row and one writeback row per run | n/a today |
+| n8n dispatch | one row per HTTP dispatch attempt: acceptance or safe failure, duration and routing-metadata digest | `agent_run_id` → `agent_runs.id` |
+| n8n writeback | one row per server-bound callback delivery, including replay, invalid-output receipts and transaction failures; no raw model content | `agent_run_id` → `agent_runs.id` |
 
 This is deliberately not a claim that every LLM/tool step inside n8n is audited; it is not. The
 roadmap and this document say so.
@@ -33,8 +35,7 @@ roadmap and this document say so.
 - `status` (`ok`/`error`) and `error_code` (bounded text) — parity with `mcp_tool_calls`.
 - `args_digest` (64 lowercase hex), `args_keys text[]`, `target_ids uuid[]` — redacted argument
   evidence.
-- `source` — `mcp`, `governed_ai` (values for future `n8n_dispatch`/`n8n_writeback` already
-  allowed).
+- `source` — `mcp`, `governed_ai`, `n8n_dispatch`, `n8n_writeback`.
 - Index on `(mcp_tool_call_id)` and `(called_at desc)`; RLS enabled with no policies (server-only,
   same as the MCP tables).
 
@@ -57,6 +58,25 @@ for B1.
 Trace writes are best-effort, awaited, and never change the tool response or the authoritative
 audit row. A failed trace insert is logged by error name only. `mcp_tool_calls` remains the
 authoritative security audit; `agent_tool_calls` is the cross-source observability index.
+
+For n8n, the digest covers only routing metadata: server-selected workflow/run id and UUID
+subject/attempt ids. `args_keys` contains only those allowlisted keys. It does not fingerprint
+model text, callback output, token values, webhook URLs or arbitrary payload keys. HTTP success
+means the dispatch was accepted; it does not establish that the external workflow completed.
+
+Callbacks are checked against the locked run's workflow, subject and attempt before attribution.
+An unknown run or mismatched identity produces no attributed trace. Evidence is written after the
+business transaction commits or rolls back; invalid-output rejection receipts therefore retain
+an error trace. Retries receive another delivery-attempt row, while the existing idempotency
+checks still prevent another business effect. A trace count is a count of attempts, not a count
+of unique workflow completions. Durations measure CRM HTTP/callback handling, not n8n model
+execution time.
+
+All six CRM agent dispatch sites share `dispatchAgentWorkflow`; invitation-email HTTP calls
+remain outside agent tracing. For an invocation using `invokeGovernedAI` with `kind='n8n'`,
+that invocation owns its dispatch trace and its `execute` callback must use the raw transport,
+not the already-traced helper. Policy-denied and duplicate invocations execute nothing and
+produce no dispatch trace.
 
 Example queries:
 
@@ -111,8 +131,10 @@ The route refuses to run unless an operator has verified the platform duration f
 - `CLIENTOPS_APPROVAL_SLA_RUNTIME_VERIFIED=1`
 - `CLIENTOPS_APPROVAL_SLA_MAX_DURATION_SECONDS` (integer 30–900; the route clamps its budget)
 
-Otherwise it returns `503 RUNTIME_NOT_VERIFIED`, exactly like the retention sweep route. Ship the
-workflow and env flags disabled; enable only after the n8n trigger and duration are verified on a
+With a valid workflow credential but without these flags, it returns `503 RUNTIME_NOT_VERIFIED`,
+like the retention sweep route. Authentication is checked first: an unset `N8N_WORKFLOW_TOKEN`
+fails closed with `500`, and a missing/invalid request token with `401`. Ship the workflow and
+env flags disabled; enable only after the n8n trigger and duration are verified on a
 non-production branch.
 
 ### Operations
@@ -146,8 +168,8 @@ plus the notifications type-check drop/re-add.
 
 1. Run-detail read path/UI for `agent_tool_calls` (the repository and type already support it; no
    surface exists today).
-2. n8n slice: one dispatch row and one writeback row per workflow run once the repeated
-   policy→create run→dispatch block is extracted.
+2. n8n internal steps: export node-level telemetry only if n8n gains a trustworthy per-tool
+   instrumentation contract; current traces cover CRM dispatch and callback boundaries only.
 3. HMAC argument digest if argument secrecy becomes a requirement.
 4. SLA policy depth: per-type thresholds and a real escalation ladder (assign/notify manager
    chain) once there is data from the measured queue.

@@ -32,6 +32,7 @@ import type { AgentRun } from "@/lib/types";
 import { AdminError } from "@/lib/admin/errors";
 import { transaction, type Queryable } from "@/server/db/neon.server";
 import { normalizeAIUsage } from "@/server/workflows/ai-invocation.server";
+import { n8nTraceArguments, recordN8nTrace } from "./n8n-trace.server";
 import { loadAgentPolicies } from "@/server/repositories/agent-policy";
 import { createActivityLog } from "@/server/repositories/activity-logs";
 import { getAgentRunForUpdate, updateAgentRunResult } from "@/server/repositories/agent-runs";
@@ -153,51 +154,87 @@ async function withInvalidOutputReceipt<T>(
   payload: BoundCallback,
   workflow: AgentWorkflowType,
   subject: { type: string; id: string },
-  work: (db: Queryable) => Promise<T>,
+  work: (db: Queryable, run: AgentRun) => Promise<T>,
 ): Promise<T> {
-  const result = await transaction(async (db) => {
-    await db.query("savepoint clientops_ai_output");
-    try {
-      return { ok: true as const, value: await work(db) };
-    } catch (error) {
-      if (!(error instanceof AIOutputContractError)) throw error;
-      await db.query("rollback to savepoint clientops_ai_output");
-      const run = await getAgentRunForUpdate(payload.agent_run_id, db);
-      if (!run) throw new Error("Agent run not found");
-      assertAgentRunSubject(run, subject.type, subject.id);
-      assertCallbackIdentity(run, workflow, payload);
-      if (run.status === "failed" && run.outcome_code === "invalid_output")
+  const startedAt = Date.now();
+  let traceArgs: Record<string, unknown> | null = null;
+  let traceStatus: "ok" | "error" = "error";
+  let traceErrorCode: string | null = "callback_failed";
+  try {
+    const result = await transaction(async (db) => {
+      // Bind evidence to the server's locked run, never merely to an id asserted by n8n.
+      // Existing writers still apply their own state and output guards below.
+      const boundRun = await getAgentRunForUpdate(payload.agent_run_id, db);
+      if (!boundRun) throw new Error("Agent run not found");
+      assertAgentRunSubject(boundRun, subject.type, subject.id);
+      assertCallbackIdentity(boundRun, workflow, payload);
+      traceArgs = n8nTraceArguments(workflow, boundRun.id, {
+        [`${subject.type}_id`]: boundRun.subject_id,
+        attempt_id: boundRun.attempt_id,
+      });
+      await db.query("savepoint clientops_ai_output");
+      try {
+        return { ok: true as const, value: await work(db, boundRun) };
+      } catch (error) {
+        if (!(error instanceof AIOutputContractError)) throw error;
+        await db.query("rollback to savepoint clientops_ai_output");
+        const run = await getAgentRunForUpdate(payload.agent_run_id, db);
+        if (!run) throw new Error("Agent run not found");
+        assertAgentRunSubject(run, subject.type, subject.id);
+        assertCallbackIdentity(run, workflow, payload);
+        if (run.status === "failed" && run.outcome_code === "invalid_output")
+          return { ok: false as const, error };
+        if (run.status !== "running")
+          throw new CallbackBindingError("Agent run is no longer active");
+        await updateAgentRunResult(
+          run.id,
+          {
+            status: "failed",
+            outcome_code: "invalid_output",
+            output_data: { invalid_output_code: error.code },
+            output_summary: "Invalid AI output; manual review required.",
+            human_review_required: true,
+            ...writebackTelemetry(payload),
+          },
+          db,
+        );
+        await createActivityLog(
+          {
+            actor_type: "agent",
+            actor_id: run.id,
+            actor_name: run.agent_name,
+            action: "rejected invalid AI output",
+            object_type: "agent_run",
+            object_id: run.id,
+            diff_data: { invalid_output_code: error.code },
+          },
+          db,
+        );
         return { ok: false as const, error };
-      if (run.status !== "running") throw new CallbackBindingError("Agent run is no longer active");
-      await updateAgentRunResult(
-        run.id,
-        {
-          status: "failed",
-          outcome_code: "invalid_output",
-          output_data: { invalid_output_code: error.code },
-          output_summary: "Invalid AI output; manual review required.",
-          human_review_required: true,
-          ...writebackTelemetry(payload),
-        },
-        db,
-      );
-      await createActivityLog(
-        {
-          actor_type: "agent",
-          actor_id: run.id,
-          actor_name: run.agent_name,
-          action: "rejected invalid AI output",
-          object_type: "agent_run",
-          object_id: run.id,
-          diff_data: { invalid_output_code: error.code },
-        },
-        db,
-      );
-      return { ok: false as const, error };
+      }
+    });
+    traceStatus = result.ok ? "ok" : "error";
+    traceErrorCode = result.ok ? null : "invalid_output";
+    if (!result.ok) throw result.error;
+    return result.value;
+  } catch (error) {
+    if (error instanceof CallbackBindingError) traceErrorCode = "callback_conflict";
+    throw error;
+  } finally {
+    // Each delivery is an attempt (including replays), not another business write. This runs
+    // after commit/rollback, so a rejected output or rolled-back write still leaves evidence.
+    if (traceArgs) {
+      await recordN8nTrace({
+        source: "n8n_writeback",
+        toolName: workflow,
+        agentRunId: payload.agent_run_id,
+        status: traceStatus,
+        errorCode: traceErrorCode,
+        durationMs: Date.now() - startedAt,
+        args: traceArgs,
+      });
     }
-  });
-  if (!result.ok) throw result.error;
-  return result.value;
+  }
 }
 
 /** Called only after token validation and bounded parsing; commercial data is never stored. */
@@ -324,11 +361,7 @@ export async function writeQualificationResult(payload: QualificationWritebackPa
     payload,
     "qualify_lead",
     { type: "lead", id: payload.lead_id },
-    async (db) => {
-      const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
-      if (!agentRun) {
-        throw new Error("Agent run not found");
-      }
+    async (db, agentRun) => {
       assertAgentRunSubject(agentRun, "lead", payload.lead_id);
       assertCallbackBinding(agentRun, "qualify_lead", payload);
 
@@ -393,13 +426,8 @@ export async function writeReplyDraftResult(payload: ReplyDraftWritebackPayload)
     payload,
     "draft_reply",
     { type: "lead", id: payload.lead_id },
-    async (db) => {
+    async (db, agentRun) => {
       await assertLeadExists(payload.lead_id, db);
-
-      const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
-      if (!agentRun) {
-        throw new Error("Agent run not found");
-      }
       assertAgentRunSubject(agentRun, "lead", payload.lead_id);
       assertCallbackBinding(agentRun, "draft_reply", payload);
 
@@ -475,11 +503,7 @@ export async function writeScoreRenewalRiskResult(payload: ScoreRenewalRiskWrite
     payload,
     "score_renewal_risk",
     { type: "engagement", id: payload.engagement_id },
-    async (db) => {
-      const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
-      if (!agentRun) {
-        throw new Error("Agent run not found");
-      }
+    async (db, agentRun) => {
       assertAgentRunSubject(agentRun, "engagement", payload.engagement_id);
       assertCallbackBinding(agentRun, "score_renewal_risk", payload);
 
@@ -591,13 +615,8 @@ export async function writeQuoteDraftResult(payload: QuoteDraftWritebackPayload)
     payload,
     "draft_quote",
     { type: "lead", id: payload.lead_id },
-    async (db) => {
+    async (db, agentRun) => {
       await assertLeadExists(payload.lead_id, db);
-
-      const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
-      if (!agentRun) {
-        throw new Error("Agent run not found");
-      }
       assertAgentRunSubject(agentRun, "lead", payload.lead_id);
       assertCallbackBinding(agentRun, "draft_quote", payload);
 
@@ -704,11 +723,7 @@ export async function writeRelationshipIntelligenceResult(
     payload,
     "relationship_intelligence",
     { type: "account", id: payload.account_id },
-    async (db) => {
-      const agentRun = await getAgentRunForUpdate(payload.agent_run_id, db);
-      if (!agentRun) {
-        throw new Error("Agent run not found");
-      }
+    async (db, agentRun) => {
       assertAgentRunSubject(agentRun, "account", payload.account_id);
       assertCallbackBinding(agentRun, "relationship_intelligence", payload);
 

@@ -33,10 +33,10 @@ governable:
 These are the gaps an external agent exposes immediately; several are already listed as roadmap
 Phase 1/2 work, so this section only names the delta that must land before agents can be trusted.
 
-1. **Tool calls are never recorded.** `agent_tool_calls` is read by
-   `getAgentRunWithCalls` but nothing inserts into it — the current pipelines are fixed chains, not
-   tool-using agents. MCP tool calls get their own audit table; the AI Ops read models still show
-   no tool trace for n8n runs.
+1. **n8n internal tool steps are not observable.** PR #187 records MCP and governed AI calls
+   in `agent_tool_calls`; the n8n follow-up adds dispatch and bound callback delivery attempts.
+   The fixed n8n chains expose those CRM boundaries, while per-node/model calls inside n8n
+   remain outside the trace contract. The AI Ops UI still needs a run-detail trace surface.
 2. **No run-detail trace surface.** `getAgentRunWithCalls` is imported but unused in the BFF; run
    detail (tool calls, callback history, attempts) is not visible to operators.
 3. **Prompts, models, and output contracts are not versioned.** They live inline in
@@ -91,9 +91,11 @@ agent-run and approval detail tools (subject-level redaction), writes, browser/C
    status, and a redacted argument digest. This is what makes "what did the agent access?" a
    query, not a log dig. **Shipped in Tranche B1**: MCP `tools/call` and governed AI invocations
    (note tidy now, the assistant later) write trace rows with a SHA-256 argument digest, key names
-   and target UUIDs; raw arguments/results are never stored. n8n workflows keep no CRM-visible
-   per-node tool calls — recording one dispatch row and one writeback row per run is a documented
-   follow-up, not a claim. See [agent-observability.md](agent-observability.md).
+   and target UUIDs; raw arguments/results are never stored. The n8n follow-up records each
+   dispatch attempt and each server-bound callback delivery, including retry and failure paths,
+   with a digest of allowlisted routing metadata. Callback attempt counts are distinct from
+   committed business effects; per-node/model calls inside n8n remain unobserved.
+   See [agent-observability.md](agent-observability.md).
 2. **Approval SLA escalation.** A scheduled writer marks overdue approvals and raises an
    escalation notification; the existing 4h chip becomes a measured queue. **Shipped in Tranche
    B1, disabled by default**: the token-guarded route (n8n trigger every 15 minutes) stamps
@@ -157,7 +159,7 @@ Sequence after B, reusing roadmap Phase 2 tables:
 | Priority | Item | Why now |
 | --- | --- | --- |
 | P0 | MCP read connector (shipped) | first agent-native surface; no write risk |
-| P0 | Tool-call trace writer for n8n + MCP | prerequisite for agent observability and incident review; **shipped in Tranche B1** for MCP + governed AI, n8n dispatch rows follow |
+| P0 | Tool-call trace writer for n8n + MCP | prerequisite for agent observability and incident review; **shipped in Tranche B1** for MCP + governed AI; n8n dispatch/callback boundary follow-up pending review |
 | P0 | Approval SLA escalation writer | prerequisite for trustworthy proposals; **shipped in Tranche B1**, disabled until operator-verified runtime |
 | P1 | `mcp_write` proposals + first governed write (`record_manual_message_sent`) — shipped in PR #185 | proves the governed write path without adding an ungoverned write |
 | P1 | In-product assistant on the shared registry | user-facing value; uses same guardrails |
