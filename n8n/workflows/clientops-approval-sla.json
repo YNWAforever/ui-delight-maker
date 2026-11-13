@@ -1,0 +1,141 @@
+{
+  "name": "clientops-approval-sla",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "approval-sla-schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.APP_BASE_URL + '/api/workflows/approval-sla'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-workflow-token",
+              "value": "={{$env.N8N_WORKFLOW_TOKEN}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 65000
+        }
+      },
+      "id": "call-approval-sla",
+      "name": "Call Approval SLA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "continueOnFail": true
+    },
+    {
+      "id": "approval-sla-succeeded",
+      "name": "Writer Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [440, 0],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "writer-ok",
+              "leftValue": "={{ $json.ok === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "approval-sla-logged",
+      "name": "Approval SLA Logged",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [660, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json ?? {};\nconst error = item.error && typeof item.error === 'object' ? item.error : null;\nconst code = (typeof item.code === 'string' && item.code) || (error ? 'HTTP_REQUEST_FAILED' : 'WRITER_NOT_RUN');\nreturn [\n  {\n    json: {\n      ok: false,\n      code,\n      message: 'Approval SLA writer did not run; no approvals escalated.',\n    },\n  },\n];"
+      },
+      "id": "log-approval-sla-failure",
+      "name": "Log Writer Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 100]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Call Approval SLA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Approval SLA": {
+      "main": [
+        [
+          {
+            "node": "Writer Succeeded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Writer Succeeded?": {
+      "main": [
+        [
+          {
+            "node": "Approval SLA Logged",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Writer Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

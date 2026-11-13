@@ -40,7 +40,7 @@ The audit remediation is tracked in [status](docs/audit-fixes/2026-09-27/status.
 with [release checklist](docs/audit-fixes/2026-09-27/release-checklist.md),
 [operator runbook](docs/audit-fixes/2026-09-27/operations-runbook.md),
 and [role UAT results](docs/audit-fixes/2026-09-27/uat-results.md).
-Migrations `001`–`030` are registered in the ClientOps migration contract.
+Migrations `001`–`032` are registered in the ClientOps migration contract.
 All application storage and authentication use Neon. Supabase runtime/SDK/source switches are forbidden; frozen legacy SQL is historical only. [Neon-only implementation, migration and acceptance limits](docs/audit-fixes/2026-09-27/neon-only-2026-10-03.md).
 The read-only `/api/build` endpoint exposes only the deployment commit SHA,
 or `null` if the platform supplied no valid SHA.
@@ -78,6 +78,8 @@ use, or UAT/prod apply during scaffold review.
 - A preview must expose `/api/build` with the candidate commit SHA and pass role browser UAT before merging. Missing preview or role sessions remain an open gate; local tests do not substitute for them.
 - Apply migration `029` (`mcp_access_tokens`, `mcp_tool_calls`) with the approved out-of-band migration run before deploying code that verifies the schema. Deactivating a profile immediately blocks its MCP tokens (profile status is checked on every call); revoke tokens explicitly on offboarding with the SQL in the [MCP connector doc](docs/ai/mcp-connector.md).
 - For the governed write-proposal slice, apply migration `030` (`agent_action` approval type, proposer column and indexes) out of band **before** deploying code that verifies the schema, then mint write-scoped tokens deliberately; rollback is revoking every token with `'write' = any(scopes)` (SQL in the [connector doc](docs/ai/mcp-connector.md)). Approval execution is additive only: existing read-only tokens and approval types are unchanged.
+- For the agent-observability slice, apply migrations `031` (`agent_tool_calls` trace columns, indexes and RLS) and `032` (`human_approvals.sla_escalated_at` and the `approval_escalated` notification type) out of band before deploying code that verifies the schema. Both are additive and replay-safe; no existing row is rewritten and no approval status changes.
+- The approval SLA writer stays **disabled** until an operator verifies the platform duration for this workload: set `CLIENTOPS_APPROVAL_SLA_ENABLED=1`, `CLIENTOPS_APPROVAL_SLA_RUNTIME_VERIFIED=1` and `CLIENTOPS_APPROVAL_SLA_MAX_DURATION_SECONDS` (30–900) only then. Until enabled the n8n trigger receives `503 RUNTIME_NOT_VERIFIED`; pause the workflow `clientops-approval-sla` to stop it entirely. See the [agent observability doc](docs/ai/agent-observability.md).
 
 ## Rollback
 

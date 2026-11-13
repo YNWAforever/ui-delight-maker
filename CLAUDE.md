@@ -56,8 +56,9 @@ External agents call in via `src/routes/api/mcp.ts` — a stateless MCP endpoint
 with a per-user bearer token (`fmcp_…`, SHA-256 at rest) that resolves to a profile and the same
 `RequestAuthorization` context the UI uses. Its tools live in `src/lib/mcp/tools.server.ts`:
 read tools by default; tokens with the `write` scope can only create human-reviewed
-`agent_action` proposals, which execute after approval; see `docs/ai/mcp-connector.md` and
-`docs/ai/mcp-write-proposals.md`.
+`agent_action` proposals, which execute after approval; every MCP tool call is also written to
+`agent_tool_calls` with a redacted argument digest for cross-source incident review. See
+`docs/ai/mcp-connector.md`, `docs/ai/mcp-write-proposals.md` and `docs/ai/agent-observability.md`.
 
 ## Project Structure
 
@@ -70,7 +71,7 @@ src/components/        Feature components; components/ui/ = shadcn primitives
 src/lib/               types.ts (source of truth), format.ts, query-keys.ts, n8n.ts
   src/lib/mcp/         Shared MCP types and the tool registry (read tools; write tools are
                        proposal-only)
-neon/migrations/       Registered SQL migrations (001–030)
+neon/migrations/       Registered SQL migrations (001–032)
 scripts/clientops/     Migrate, verify, seed, perf-budget, bootstrap scripts
 n8n/workflows/         Agent workflow JSON definitions
 docs/ai/               MCP connector design/operations and the AI CRM roadmap

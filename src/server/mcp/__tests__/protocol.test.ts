@@ -12,6 +12,7 @@ import {
   type McpTokenResolution,
 } from "@/lib/mcp/types";
 import { MCP_TOOL_NAMES } from "@/lib/mcp/tools.server";
+import { toolArgumentDigest } from "@/lib/tool-call-digest";
 import {
   handleMcpRequest,
   MCP_MAX_REQUEST_BYTES,
@@ -287,6 +288,61 @@ describe("MCP endpoint transport behaviour", () => {
       errorCode: null,
     });
     expect(records[0].durationMs).toBeGreaterThanOrEqual(0);
+    // Redacted evidence is attached to the audit record; raw arguments are not.
+    expect(records[0].argsDigest).toMatch(/^[0-9a-f]{64}$/);
+    expect(records[0].argsKeys).toEqual([]);
+    expect(records[0].targetIds).toEqual([]);
+  });
+
+  it("puts only digested argument evidence in the audit record, never the raw values", async () => {
+    const { deps, records } = testDeps();
+    const canary = "canary-client-secret-never-record";
+    const accountId = "9f461e2c-5f3a-4d3f-9c2b-7a8e6d5c4b3a";
+
+    const response = await call(
+      deps,
+      jsonRpcRequest("tools/call", {
+        name: "not_a_tool",
+        arguments: { secret: canary, account_id: accountId },
+      }),
+    );
+
+    const expected = toolArgumentDigest("mcp", "not_a_tool", {
+      secret: canary,
+      account_id: accountId,
+    });
+    expect(response.status).toBe(200);
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      tool: "not_a_tool",
+      argsDigest: expected.sha256,
+      argsKeys: ["account_id", "secret"],
+      targetIds: [accountId],
+    });
+    expect(JSON.stringify(records)).not.toContain(canary);
+  });
+
+  it("returns the unchanged MCP response when the trace/audit write fails", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { deps } = testDeps({
+      recordToolCall: vi.fn(async () => {
+        throw new Error("trace writer unavailable");
+      }),
+    });
+
+    const response = await call(
+      deps,
+      jsonRpcRequest("tools/call", { name: "whoami", arguments: {} }),
+    );
+    const body = await readJson(response);
+    const result = body.result as ToolCallResult;
+
+    expect(response.status).toBe(200);
+    expect(result.isError).toBeFalsy();
+    expect(JSON.parse(result.content[0].text)).toMatchObject({
+      profile: { id: "profile-1" },
+    });
+    expect(consoleError).toHaveBeenCalled();
   });
 
   it("returns an isError tool result for an unknown tool and audits it", async () => {

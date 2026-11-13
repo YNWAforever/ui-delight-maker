@@ -1,11 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { loadAuthorizationForProfile } from "@/server/auth/authorization.server";
 import { handleMcpRequest, type McpProtocolDeps } from "@/server/mcp/protocol.server";
-import {
-  recordMcpToolCall,
-  resolveMcpAccessToken,
-  touchMcpAccessToken,
-} from "@/server/mcp/tokens.server";
+import { recordMcpToolCallTrace } from "@/server/mcp/tool-call-trace.server";
+import { resolveMcpAccessToken, touchMcpAccessToken } from "@/server/mcp/tokens.server";
 import { getProfileById } from "@/server/repositories/profiles";
 
 /**
@@ -27,7 +24,9 @@ const mcpDeps: McpProtocolDeps = {
     return { token, authorization: await loadAuthorizationForProfile(profile) };
   },
   touchToken: touchMcpAccessToken,
-  recordToolCall: recordMcpToolCall,
+  // One seam writes both the MCP audit row and the linked unified trace row; tracing is
+  // best-effort and can never change the MCP response.
+  recordToolCall: recordMcpToolCallTrace,
 };
 
 export const Route = createFileRoute("/api/mcp")({

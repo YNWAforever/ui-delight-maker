@@ -1,14 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
+  AlarmClock,
+  AlertTriangle,
   Bell,
+  CalendarClock,
   Check,
   CheckCheck,
+  Clock,
   MailOpen,
   ShieldAlert,
-  CalendarClock,
-  AlertTriangle,
-  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,6 +24,7 @@ import type { NotificationRecord } from "@/lib/types";
 
 const typeIcon: Record<string, React.ReactNode> = {
   approval_pending: <ShieldAlert className="h-4 w-4" />,
+  approval_escalated: <AlarmClock className="h-4 w-4" />,
   renewal_window: <CalendarClock className="h-4 w-4" />,
   risk_change: <AlertTriangle className="h-4 w-4" />,
   stale_touchpoint: <Clock className="h-4 w-4" />,
@@ -30,6 +32,7 @@ const typeIcon: Record<string, React.ReactNode> = {
 
 const typeColor: Record<string, string> = {
   approval_pending: "text-tone-warning-fg bg-warning/12",
+  approval_escalated: "text-tone-warning-fg bg-warning/12",
   renewal_window: "text-tone-info-fg bg-info/12",
   risk_change: "text-tone-danger-fg bg-destructive/12",
   stale_touchpoint: "text-tone-neutral-fg bg-muted",

@@ -79,7 +79,15 @@ vi.mock("@/components/sales", () => ({
     filters,
   }: {
     filters: Array<{ id: string; options: Array<{ value: string; label: string }> }>;
-  }) => <div data-testid="filter-options">{filters[0].options.length}</div>,
+  }) => (
+    <div data-testid="filter-options">
+      {filters[0].options.map((option) => (
+        <span key={option.value} data-filter-value={option.value}>
+          {option.label}
+        </span>
+      ))}
+    </div>
+  ),
   MetricStrip: ({ metrics }: { metrics: Array<Record<string, unknown>> }) => {
     captures.metrics = metrics;
     return null;
@@ -268,6 +276,58 @@ describe("empty and filtered states", () => {
     renderPage();
     expect(screen.getByText(/Filtered to nothing/)).toBeTruthy();
     expect(screen.queryByText("No notifications")).toBeNull();
+  });
+});
+
+describe("the approval escalation notification type", () => {
+  const escalation = (overrides: Record<string, unknown> = {}) =>
+    notification({
+      id: "notification-escalated",
+      type: "approval_escalated",
+      title: "Approval overdue: quote send",
+      body: "Send QT-1042 to Northstar",
+      object_type: "approval",
+      object_id: "approval-7",
+      ...overrides,
+    });
+
+  it("renders its own label and filter option, and opens approvals", () => {
+    hookState.notifications = [escalation()];
+    renderPage();
+
+    expect(screen.getByText("Approval overdue: quote send")).toBeTruthy();
+    // Correct label, not the raw snake_case key.
+    expect(screen.getAllByText("Approval escalation").length).toBeGreaterThan(0);
+    expect(screen.queryByText("approval_escalated")).toBeNull();
+
+    const filterOption = document.querySelector('[data-filter-value="approval_escalated"]');
+    expect(filterOption?.textContent).toBe("Approval escalation");
+
+    // The escalation still resolves through the existing approval target: there is no
+    // approval detail route, so the desk is the honest destination.
+    const link = screen.getByRole("link", { name: "Open approvals" });
+    expect(link.getAttribute("href")).toBe("/approvals");
+  });
+
+  it("filters to escalation rows only and keeps marking read", async () => {
+    search.filter = "approval_escalated";
+    hookState.notifications = [escalation(), notification({ id: "pending-1" })];
+    hookState.unreadCount = 2;
+    renderPage();
+
+    expect(screen.getByText("Approval overdue: quote send")).toBeTruthy();
+    expect(screen.queryByText("Quote send waiting on you")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /Mark read/ }));
+    expect(markAsReadMock).toHaveBeenCalledWith("notification-escalated");
+    await waitFor(() => expect(markAsReadMock).toHaveBeenCalledTimes(1));
+  });
+
+  it("shows no Open button when the approval object id is missing, as before", () => {
+    // Unknown/absent targets stay a plain row: marking it read is the whole action.
+    hookState.notifications = [escalation({ object_type: "unknown_object" })];
+    renderPage();
+    expect(screen.queryByRole("link", { name: /^Open/ })).toBeNull();
   });
 });
 

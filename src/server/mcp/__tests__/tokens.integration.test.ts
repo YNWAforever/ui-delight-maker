@@ -126,20 +126,23 @@ describe("MCP access tokens on isolated PostgreSQL", () => {
       // Within five minutes the second touch is a no-op, so the timestamp is unchanged.
       expect(secondUse).toEqual(firstUse);
 
-      await recordMcpToolCall({
+      const okCall = await recordMcpToolCall({
         tokenId: created.id,
         profileId: OWNER,
         tool: "crm_search",
         status: "ok",
         durationMs: 12,
       });
-      await recordMcpToolCall({
+      const errorCall = await recordMcpToolCall({
         tokenId: created.id,
         profileId: OWNER,
         tool: "crm_search",
         status: "error",
         errorCode: "internal",
       });
+      expect(okCall?.id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(errorCall?.id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(okCall?.id).not.toBe(errorCall?.id);
       const calls = (
         await holder.pool!.query(
           "select tool, status, error_code, duration_ms from mcp_tool_calls where token_id=$1",

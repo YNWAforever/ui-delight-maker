@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import {
+  AlarmClock,
   AlertTriangle,
   CalendarClock,
   CheckCheck,
@@ -49,6 +50,7 @@ import type { NotificationRecord, NotificationType } from "@/lib/types";
 
 const NOTIFICATION_TYPES = [
   "approval_pending",
+  "approval_escalated",
   "renewal_window",
   "risk_change",
   "stale_touchpoint",
@@ -67,13 +69,14 @@ function isFilterValue(value: string): value is FilterValue {
 }
 
 /**
- * The four values `notifications.type` can hold, plus the two list scopes.
+ * Every value `notifications.type` can hold, plus the two list scopes.
  *
- * Keyed on `NotificationType` so a fifth notification kind is a compile error here rather
+ * Keyed on `NotificationType` so a new notification kind is a compile error here rather
  * than a row that renders with no icon and no label.
  */
 const TYPE_LABELS: Record<NotificationType, string> = {
   approval_pending: "Approval needed",
+  approval_escalated: "Approval escalation",
   renewal_window: "Renewal window",
   risk_change: "Risk change",
   stale_touchpoint: "Stale touchpoint",
@@ -87,6 +90,9 @@ const FILTER_LABELS: Record<FilterValue, string> = {
 
 const TYPE_ICON: Record<NotificationType, typeof ShieldAlert> = {
   approval_pending: ShieldAlert,
+  // An escalation is the same request after its wait became overdue, so the icon is a
+  // clock rather than a second shield: the overdue fact is what makes it a different row.
+  approval_escalated: AlarmClock,
   renewal_window: CalendarClock,
   risk_change: AlertTriangle,
   stale_touchpoint: Clock,
@@ -94,6 +100,7 @@ const TYPE_ICON: Record<NotificationType, typeof ShieldAlert> = {
 
 const TYPE_TONE: Record<NotificationType, string> = {
   approval_pending: "text-tone-warning-fg bg-warning/10",
+  approval_escalated: "text-tone-warning-fg bg-warning/10",
   renewal_window: "text-tone-info-fg bg-info/10",
   risk_change: "text-tone-danger-fg bg-destructive/10",
   stale_touchpoint: "text-muted-foreground bg-muted",

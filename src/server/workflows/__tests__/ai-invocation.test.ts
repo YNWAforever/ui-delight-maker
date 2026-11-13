@@ -18,6 +18,7 @@ function context(overrides: Partial<AIInvocationContext> = {}): AIInvocationCont
     beginRun: vi.fn().mockResolvedValue({ runId: "run-1", created: true }),
     finishRun: vi.fn().mockResolvedValue(undefined),
     execute: vi.fn().mockResolvedValue({ output: "Tidied note." }),
+    traceToolCall: vi.fn().mockResolvedValue(true),
     ...overrides,
   };
 }
@@ -141,5 +142,81 @@ describe("governed AI invocation", () => {
       currency: "USD",
       source: "openrouter",
     });
+  });
+});
+
+describe("governed AI tool-call trace", () => {
+  it("records a completed invocation as a governed_ai trace linked to its run", async () => {
+    const ctx = context();
+    await invokeGovernedAI(ctx, request);
+
+    expect(ctx.traceToolCall).toHaveBeenCalledTimes(1);
+    expect(ctx.traceToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "governed_ai",
+        toolName: "note_tidy",
+        agentRunId: "run-1",
+        status: "ok",
+        args: request.input,
+      }),
+    );
+    const recorded = (ctx.traceToolCall as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as {
+      durationMs: number;
+    };
+    expect(recorded.durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("records a provider failure as an error trace with the outcome code", async () => {
+    const ctx = context({
+      execute: vi.fn().mockRejectedValue(new Error("provider exploded")),
+    });
+    await invokeGovernedAI(ctx, request);
+
+    expect(ctx.traceToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "governed_ai",
+        agentRunId: "run-1",
+        status: "error",
+        errorCode: "provider_error",
+      }),
+    );
+  });
+
+  it("records an ambiguous n8n dispatch with its outcome code", async () => {
+    const ctx = context({
+      kind: "n8n",
+      execute: vi.fn().mockRejectedValue(new N8nDispatchUncertainError(new Error("network reset"))),
+    });
+    await invokeGovernedAI(ctx, request);
+
+    expect(ctx.traceToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "error", errorCode: "dispatch_ambiguous" }),
+    );
+  });
+
+  it("skips the trace when policy denies or the run is a duplicate", async () => {
+    const denied = context({
+      policy: vi.fn().mockResolvedValue({ status: "inactive", versionId: null }),
+    });
+    await invokeGovernedAI(denied, request);
+    expect(denied.traceToolCall).not.toHaveBeenCalled();
+
+    const duplicate = context({
+      beginRun: vi.fn().mockResolvedValue({ runId: "old-run", created: false }),
+    });
+    await invokeGovernedAI(duplicate, request);
+    expect(duplicate.traceToolCall).not.toHaveBeenCalled();
+  });
+
+  it("does not change the AI outcome when the trace writer fails", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const ctx = context({
+      traceToolCall: vi.fn().mockRejectedValue(new Error("trace unavailable")),
+    });
+
+    const result = await invokeGovernedAI(ctx, request);
+
+    expect(result).toMatchObject({ outcome: "completed", output: "Tidied note." });
+    expect(consoleError).toHaveBeenCalled();
   });
 });

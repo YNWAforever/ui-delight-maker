@@ -60,8 +60,9 @@ const notification = (overrides: Partial<NotificationRecord> = {}): Notification
 });
 
 function openBell() {
-  render(<NotificationBell />);
+  const view = render(<NotificationBell />);
   fireEvent.click(screen.getByRole("button", { name: "Notifications" }));
+  return view;
 }
 
 function row() {
@@ -137,6 +138,47 @@ describe("a notification with a real target", () => {
         params: { id: "client-3" },
       }),
     );
+    expect(markAsReadMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("an approval escalation", () => {
+  const escalation = (overrides: Partial<NotificationRecord> = {}): NotificationRecord =>
+    notification({
+      type: "approval_escalated",
+      title: "Approval overdue: quote send",
+      object_type: "approval",
+      object_id: "approval-7",
+      ...overrides,
+    });
+
+  it("uses the overdue-clock icon, not the pending shield", () => {
+    hookState.notifications = [escalation()];
+    const { container } = openBell();
+
+    expect(container.querySelector(".lucide-alarm-clock")).toBeTruthy();
+    expect(container.querySelector(".lucide-shield-alert")).toBeNull();
+  });
+
+  it("marks it read and opens the approvals desk", async () => {
+    hookState.notifications = [escalation()];
+    openBell();
+
+    fireEvent.click(screen.getByRole("button", { name: /Approval overdue: quote send/ }));
+
+    await waitFor(() => expect(markAsReadMock).toHaveBeenCalledWith("notification-1"));
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: "/approvals" }));
+    expect(toastErrorMock).not.toHaveBeenCalled();
+  });
+
+  it("does not rewrite an already-read escalation but still navigates", async () => {
+    hookState.notifications = [escalation({ read_at: "2026-08-21T00:00:00.000Z" })];
+    hookState.unreadCount = 0;
+    openBell();
+
+    fireEvent.click(screen.getByRole("button", { name: /Approval overdue: quote send/ }));
+
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: "/approvals" }));
     expect(markAsReadMock).not.toHaveBeenCalled();
   });
 });

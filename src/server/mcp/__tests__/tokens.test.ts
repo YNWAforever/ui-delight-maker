@@ -291,25 +291,28 @@ describe("MCP access token storage", () => {
     expect(values).toEqual(["token-1"]);
   });
 
-  it("records a tool call without arguments or results and clamps the duration", async () => {
-    queryMock.mockResolvedValue([]);
+  it("records a tool call without arguments or results, clamps the duration and returns its id", async () => {
+    queryOneMock.mockResolvedValue({ id: "mcp-call-1" });
 
-    await recordMcpToolCall({
-      tokenId: "token-1",
-      profileId: "profile-1",
-      tool: "  crm_search  ",
-      status: "ok",
-      durationMs: 42.9,
-    });
+    await expect(
+      recordMcpToolCall({
+        tokenId: "token-1",
+        profileId: "profile-1",
+        tool: "  crm_search  ",
+        status: "ok",
+        durationMs: 42.9,
+      }),
+    ).resolves.toEqual({ id: "mcp-call-1" });
 
-    const [sql, values] = queryMock.mock.calls[0] as [string, readonly unknown[]];
+    const [sql, values] = queryOneMock.mock.calls[0] as [string, readonly unknown[]];
     expect(sql).toContain("insert into mcp_tool_calls");
+    expect(sql).toContain("returning id");
     expect(values).toEqual(["token-1", "profile-1", "crm_search", "ok", null, 42]);
   });
 
   it("never throws when the audit insert fails", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-    queryMock.mockRejectedValue(new Error("database unavailable"));
+    queryOneMock.mockRejectedValue(new Error("database unavailable"));
 
     await expect(
       recordMcpToolCall({
@@ -319,18 +322,20 @@ describe("MCP access token storage", () => {
         status: "error",
         errorCode: "internal",
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBeNull();
     expect(consoleError).toHaveBeenCalled();
   });
 
   it("skips an empty tool name instead of failing the column check", async () => {
-    await recordMcpToolCall({
-      tokenId: null,
-      profileId: null,
-      tool: "   ",
-      status: "ok",
-    });
+    await expect(
+      recordMcpToolCall({
+        tokenId: null,
+        profileId: null,
+        tool: "   ",
+        status: "ok",
+      }),
+    ).resolves.toBeNull();
 
-    expect(queryMock).not.toHaveBeenCalled();
+    expect(queryOneMock).not.toHaveBeenCalled();
   });
 });
